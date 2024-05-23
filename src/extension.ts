@@ -9,7 +9,7 @@ var path = require("path");
 3. Current file should have `.sqlx` extension
 */
 
-import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates } from './utils';
+import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
 // import {isNotUndefined} from './utils';
 
 // This method is called when your extension is activated
@@ -50,6 +50,11 @@ export function activate(context: vscode.ExtensionContext) {
 		filename = basenameSplit[0];
 
 		let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+		if (workspaceFolder !== undefined){
+			if (isDataformWorkspace(workspaceFolder) === false){
+				vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
+			}
+		}
 		console.log(filename);
 		console.log(workspaceFolder);
 
@@ -68,6 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const cmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops cost --include-assertions=true -t ${filename}`;
+		console.log(cmd);
 
 		const process = spawn(cmd, [], { shell: true });
 

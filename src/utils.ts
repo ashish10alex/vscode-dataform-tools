@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+const fs = require('fs');
+const path = require('path');
 const { execSync } = require('child_process');
 
 const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
@@ -8,12 +10,27 @@ export function executableIsAvailable(name: string) {
 	catch (error) { return false ;}
 }
 
+export function isDataformWorkspace(workspacePath:string){
+    const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
+    let fileExists = false;
+
+    for (let i=0; dataformSignatureFiles.length; i++){
+        const filePath = path.join(workspacePath, dataformSignatureFiles[i]);
+        let fileExists = fs.existsSync(filePath);
+        if (fileExists) {
+            return fileExists;
+        }
+    }
+    return fileExists;
+}
+
+
+
+
 // Get start and end line number of the config block in the .sqlx file
 // This assumes that the user is using config { } block at the top of the .sqlx file
 //
 // @return [start_of_config_block: number, end_of_config_block: number]
-
-
 export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
