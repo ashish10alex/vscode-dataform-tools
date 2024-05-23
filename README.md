@@ -1,6 +1,6 @@
-# dataform-lsp README
+# dataform-lsp-vscode README
 
-This is the README for your extension "dataform-lsp". After writing up a brief description, we recommend including the following sections.
+This is the README for your extension "dataform-lsp-vscode". After writing up a brief description, we recommend including the following sections.
 
 ## Features
 

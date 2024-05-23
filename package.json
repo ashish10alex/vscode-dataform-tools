@@ -1,5 +1,5 @@
 {
-  "name": "dataform-lsp",
+  "name": "dataform-lsp-vscode",
   "displayName": "dataform_lsp",
   "description": "",
   "version": "0.0.1",
@@ -14,7 +14,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "dataform-lsp.dataformDryRunFile",
+        "command": "dataform-lsp-vscode.dataformDryRunFile",
         "title": "Dataform dry run file"
       }
     ]
