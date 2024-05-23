@@ -5,10 +5,8 @@ var path = require("path");
 
 //TODO:
 /*
-1. Dynamically compute config block length
-2. Automatically execute on save / other event ?
-3. What if Dataform compilation fails ?
-4. Current file should have `.sqlx` extension
+1. Automatically execute on save / other event ?
+3. Current file should have `.sqlx` extension
 */
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates } from './utils';
@@ -50,6 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const { spawn } = require('child_process');
 		let queryStringOffset = 3;
+		let errorRunningCli = false;
 		let configBlockRange = getLineNumberWhereConfigBlockTerminates();
 
 		let configBlockStart = configBlockRange[0] || 0;
@@ -69,7 +68,16 @@ export function activate(context: vscode.ExtensionContext) {
 		const document = editor?.document;
 		const diagnostics: vscode.Diagnostic[] = [];
 
+		process.stderr.on('data', (data: any) => {
+			// console.log(`stderr: ${data}`);
+			vscode.window.showErrorMessage(`Error running cli: ${data}`);
+			errorRunningCli = true;
+			return;
+		});
+
 		process.stdout.on('data', (data: any) => {
+			if (errorRunningCli) {return;}
+
 			let jsonData = JSON.parse(data.toString());
 
 			// console.log(jsonData);
@@ -98,10 +106,6 @@ export function activate(context: vscode.ExtensionContext) {
 					diagnosticCollection.set(document.uri, diagnostics);
 				}
 			}
-		});
-
-		process.stderr.on('data', (data: any) => {
-			console.log(`stderr: ${data}`);
 		});
 
 
