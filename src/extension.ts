@@ -24,6 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	let queryStringOffset = 3;
 	let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
 	context.subscriptions.push(diagnosticCollection);
 
@@ -40,14 +41,20 @@ export function activate(context: vscode.ExtensionContext) {
 		diagnosticCollection.clear();
 
 		var filename = vscode.window.activeTextEditor?.document.uri.fsPath;
-		filename = path.basename(filename).split('.')[0];
+
+		let basenameSplit = path.basename(filename).split('.');
+		let extension = basenameSplit[1];
+		if (extension !== 'sqlx') {
+			return;
+		}
+		filename = basenameSplit[0];
+
 		let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 		console.log(filename);
 		console.log(workspaceFolder);
 
 
 		const { spawn } = require('child_process');
-		let queryStringOffset = 3;
 		let errorRunningCli = false;
 		let configBlockRange = getLineNumberWhereConfigBlockTerminates();
 
