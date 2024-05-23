@@ -45,6 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let basenameSplit = path.basename(filename).split('.');
 		let extension = basenameSplit[1];
 		if (extension !== 'sqlx') {
+			vscode.window.showWarningMessage(`dataform-lsp-vscode extension currently only supports sqlx files`);
 			return;
 		}
 		filename = basenameSplit[0];

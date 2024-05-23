@@ -1,5 +1,8 @@
 # dataform-lsp-vscode README
 
+For inline diagnostics install (Error Lens)[https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens] extension
+
+
 This is the README for your extension "dataform-lsp-vscode". After writing up a brief description, we recommend including the following sections.
 
 ## Features
