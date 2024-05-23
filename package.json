@@ -9,15 +9,11 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:**/*.sqlx"
+ ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "dataform-lsp-vscode.dataformDryRunFile",
-        "title": "Dataform dry run file"
-      }
-    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

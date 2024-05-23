@@ -17,6 +17,7 @@ import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataf
 export function activate(context: vscode.ExtensionContext) {
 
 	let executablesToCheck = ['dataform', 'dj'];
+	let supportedExtensions = ['sqlx'];
 	for (let i = 0; i < executablesToCheck.length; i++) {
 		if (executableIsAvailable(executablesToCheck[i]) !== true) {
 			vscode.window.showErrorMessage(`${executablesToCheck[i]} does not exsits`);
@@ -30,22 +31,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	// console.log('Congratulations, your extension "vs-extension" is now active!');
-
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('dataform-lsp-vscode.dataformDryRunFile', () => {
+	let disposable = vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
 		// The code you place here will be executed every time your command is executed
 		diagnosticCollection.clear();
 
-		var filename = vscode.window.activeTextEditor?.document.uri.fsPath;
-
+		var filename = document.uri.fsPath;
 		let basenameSplit = path.basename(filename).split('.');
 		let extension = basenameSplit[1];
-		if (extension !== 'sqlx') {
-			vscode.window.showWarningMessage(`dataform-lsp-vscode extension currently only supports sqlx files`);
+		let validFileType  = supportedExtensions.includes(extension);
+		if (!validFileType) {
+			vscode.window.showWarningMessage(`dataform-lsp-vscode extension currently only supports ${supportedExtensions} files`);
 			return;
 		}
 		filename = basenameSplit[0];
@@ -56,9 +55,8 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
 			}
 		}
-		console.log(filename);
-		console.log(workspaceFolder);
-
+		console.log(`filename: ${filename}`);
+		console.log(`workspaceFolder: ${workspaceFolder}`);
 
 		const { spawn } = require('child_process');
 		let errorRunningCli = false;
@@ -74,16 +72,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const cmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops cost --include-assertions=true -t ${filename}`;
-		console.log(cmd);
+		console.log(`cmd: ${cmd}`);
 
 		const process = spawn(cmd, [], { shell: true });
 
-		const editor = vscode.window.activeTextEditor;
-		const document = editor?.document;
+		// const editor = vscode.window.activeTextEditor;
+		// const document = editor?.document;
 		const diagnostics: vscode.Diagnostic[] = [];
 
 		process.stderr.on('data', (data: any) => {
-			// console.log(`stderr: ${data}`);
 			vscode.window.showErrorMessage(`Error running cli: ${data}`);
 			errorRunningCli = true;
 			return;
