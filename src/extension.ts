@@ -5,12 +5,12 @@ var path = require("path");
 
 //TODO:
 /*
-1. Automatically execute on save / other event ?
-3. Current file should have `.sqlx` extension
+1. Get compiled query on an empty buffer in a split
+2. Add docs to functions
 */
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
-// import {isNotUndefined} from './utils';
+import {writeCompiledSqlToFile} from './utils';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -70,33 +70,41 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let configLineOffset = configBlockOffset - queryStringOffset;
 
-		const cmd = `dataform compile ${workspaceFolder} --json \
-		| dj table-ops cost --include-assertions=true -t ${filename}`;
-		console.log(`cmd: ${cmd}`);
+		const dryRunCmd = `dataform compile ${workspaceFolder} --json \
+		| dj table-ops cost --compact=true --include-assertions=true -t ${filename}`;
+		console.log(`cmd: ${dryRunCmd}`);
+		const dryRunProcess = spawn(dryRunCmd, [], { shell: true });
 
-		const process = spawn(cmd, [], { shell: true });
+		const compiledQueryCmd = `dataform compile ${workspaceFolder} --json \
+		| dj table-ops query -t ${filename}`;
+		console.log(`cmd: ${compiledQueryCmd}`);
+		const compiledQueryProcess = spawn(compiledQueryCmd, [], { shell: true });
 
-		// const editor = vscode.window.activeTextEditor;
-		// const document = editor?.document;
 		const diagnostics: vscode.Diagnostic[] = [];
 
-		process.stderr.on('data', (data: any) => {
-			vscode.window.showErrorMessage(`Error running cli: ${data}`);
+		dryRunProcess.stderr.on('data', (data: any) => {
+			vscode.window.showErrorMessage(`Error dryRunProcess: ${data}`);
 			errorRunningCli = true;
 			return;
 		});
 
-		process.stdout.on('data', (data: any) => {
+		compiledQueryProcess.stderr.on('data', (data: any) => {
+			vscode.window.showErrorMessage(`Error compiledQueryProcess: ${data}`);
+			errorRunningCli = true;
+			return;
+		});
+
+		compiledQueryProcess.stdout.on('data', (data: any) => {
+			if (errorRunningCli) {return;}
+			writeCompiledSqlToFile(data.toString());
+		});
+
+		dryRunProcess.stdout.on('data', (data: any) => {
 			if (errorRunningCli) {return;}
 
 			let jsonData = JSON.parse(data.toString());
 
-			// console.log(jsonData);
-
 			let isError = jsonData.Error?.IsError;
-			console.log(jsonData.Error);
-			console.log(isError);
-
 			if (isError === false) {
 				let GBProcessed = jsonData.GBProcessed;
 				let fileName = jsonData.FileName;
@@ -118,11 +126,6 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 		});
-
-
-		// vscode.window.showInformationMessage(`GB processed ${GBProcessed}`);
-
-
 	});
 
 	context.subscriptions.push(disposable);

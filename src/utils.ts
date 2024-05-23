@@ -67,3 +67,18 @@ export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
 export function isNotUndefined(value: unknown): any {
     if (typeof value === undefined){ throw new Error("Not a string");}
   }
+
+
+export async function writeCompiledSqlToFile(newData:string) {
+    const outputFilePath = '/tmp/output.sql';
+    if (!fs.existsSync(outputFilePath)) {
+        fs.writeFileSync(outputFilePath, '', 'utf8');
+    }
+
+    // Write the compiled output to the file
+    fs.writeFileSync(outputFilePath, newData, 'utf8');
+
+    // Open the output file in a vertical split
+    const outputDocument = await vscode.workspace.openTextDocument(outputFilePath);
+    await vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+}
