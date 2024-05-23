@@ -7,13 +7,29 @@ var path = require("path");
 /*
 1. Dynamically compute config block length
 2. Automatically execute on save / other event ?
-2. What if Dataform compilation fails ?
+3. What if Dataform compilation fails ?
 */
+
+const { execSync } = require('child_process');
+const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
+
+function executableIsAvailable(name: string) {
+	try { shell(`which ${name}`); return true ;}
+	catch (error) { return false ;}
+}
 
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+
+	let executablesToCheck = ['dataform', 'dj'];
+	for (let i = 0; i < executablesToCheck.length; i++) {
+		if (executableIsAvailable(executablesToCheck[i]) !== true) {
+			vscode.window.showErrorMessage(`${executablesToCheck[i]} does not exsits`);
+			return;
+		}
+	}
 
 	let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
 	context.subscriptions.push(diagnosticCollection);
@@ -32,25 +48,25 @@ export function activate(context: vscode.ExtensionContext) {
 
 		var filename = vscode.window.activeTextEditor?.document.uri.fsPath;
 		filename = path.basename(filename).split('.')[0];
-        let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+		let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 		console.log(filename);
 		console.log(workspaceFolder);
 
 
-		const {spawn} = require ('child_process');
+		const { spawn } = require('child_process');
 		let queryStringOffset = 3;
 		let configLineOffset = 13 - queryStringOffset;
 
 		const cmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops cost --include-assertions=true -t ${filename}`;
 
-		const process = spawn (cmd, [], {shell: true});
+		const process = spawn(cmd, [], { shell: true });
 
 		const editor = vscode.window.activeTextEditor;
 		const document = editor?.document;
-        const diagnostics: vscode.Diagnostic[] = [];
+		const diagnostics: vscode.Diagnostic[] = [];
 
-		process.stdout.on ('data', (data:any) => {
+		process.stdout.on('data', (data: any) => {
 			let jsonData = JSON.parse(data.toString());
 
 			// console.log(jsonData);
@@ -59,13 +75,13 @@ export function activate(context: vscode.ExtensionContext) {
 			console.log(jsonData.Error);
 			console.log(isError);
 
-			if (isError === false){
+			if (isError === false) {
 				let GBProcessed = jsonData.GBProcessed;
 				let fileName = jsonData.FileName;
 				vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
 			}
 
-			let errLineNumber = jsonData.Error?.LineNumber + configLineOffset ;
+			let errLineNumber = jsonData.Error?.LineNumber + configLineOffset;
 			let errColumnNumber = jsonData.Error?.ColumnNumber;
 
 
@@ -75,15 +91,15 @@ export function activate(context: vscode.ExtensionContext) {
 			const diagnostic = new vscode.Diagnostic(range, message, severity);
 			if (diagnostics.length === 0) {
 				diagnostics.push(diagnostic);
-                if (document !== undefined) {
-                    diagnosticCollection.set(document.uri, diagnostics);
-                }
+				if (document !== undefined) {
+					diagnosticCollection.set(document.uri, diagnostics);
+				}
 			}
 		});
 
-		process.stderr.on('data', (data:any) => {
+		process.stderr.on('data', (data: any) => {
 			console.log(`stderr: ${data}`);
-		  });
+		});
 
 
 		// vscode.window.showInformationMessage(`GB processed ${GBProcessed}`);
@@ -95,5 +111,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
 
