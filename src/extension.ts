@@ -5,8 +5,11 @@ var path = require("path");
 
 //TODO:
 /*
-1. Get compiled query on an empty buffer in a split
-2. Add docs to functions
+1. Add option to toogle compiled output display
+2. Could (1) be a plugin settings. How to create plugin settings
+3. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
+   to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
+4. Add docs to functions
 */
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
