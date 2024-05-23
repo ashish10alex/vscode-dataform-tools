@@ -8,16 +8,11 @@ var path = require("path");
 1. Dynamically compute config block length
 2. Automatically execute on save / other event ?
 3. What if Dataform compilation fails ?
+4. Current file should have `.sqlx` extension
 */
 
-const { execSync } = require('child_process');
-const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
-
-function executableIsAvailable(name: string) {
-	try { shell(`which ${name}`); return true ;}
-	catch (error) { return false ;}
-}
-
+import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates } from './utils';
+// import {isNotUndefined} from './utils';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -36,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "vs-extension" is now active!');
+	// console.log('Congratulations, your extension "vs-extension" is now active!');
 
 
 	// The command has been defined in the package.json file
@@ -55,7 +50,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const { spawn } = require('child_process');
 		let queryStringOffset = 3;
-		let configLineOffset = 13 - queryStringOffset;
+		let configBlockRange = getLineNumberWhereConfigBlockTerminates();
+
+		let configBlockStart = configBlockRange[0] || 0;
+		let configBlockEnd = configBlockRange[1] || 0;
+
+		let configBlockOffset = (configBlockStart + configBlockEnd ) - 1;
+		console.log(`configBlockStart: ${configBlockStart} | configBlockEnd: ${configBlockEnd}`);
+
+		let configLineOffset = configBlockOffset - queryStringOffset;
 
 		const cmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops cost --include-assertions=true -t ${filename}`;
