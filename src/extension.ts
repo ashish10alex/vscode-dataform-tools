@@ -17,7 +17,7 @@ import {writeCompiledSqlToFile} from './utils';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
 	let executablesToCheck = ['dataform', 'dj'];
 	let supportedExtensions = ['sqlx'];
@@ -32,13 +32,26 @@ export function activate(context: vscode.ExtensionContext) {
 	let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
 	context.subscriptions.push(diagnosticCollection);
 
+    // Implementing the feature to sync scroll between main editor and vertical split editors
+	let editorSyncDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+        let splitEditors = vscode.window.visibleTextEditors;
+        let activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor) {
+            splitEditors.forEach((editor) => {
+                if (editor !== activeEditor) {
+                    editor.revealRange(activeEditor.visibleRanges[0]);
+                }
+            });
+        }
+	});
+
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
+	let onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
 		// The code you place here will be executed every time your command is executed
 		diagnosticCollection.clear();
 
@@ -97,10 +110,16 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		});
 
+        let compiledQuery = '';
 		compiledQueryProcess.stdout.on('data', (data: any) => {
 			if (errorRunningCli) {return;}
-			writeCompiledSqlToFile(data.toString());
+			compiledQuery += data.toString();
 		});
+
+        compiledQueryProcess.on('close', (data: any) => {
+            if (errorRunningCli) {return;}
+            writeCompiledSqlToFile(compiledQuery);
+        });
 
 		dryRunProcess.stdout.on('data', (data: any) => {
 			if (errorRunningCli) {return;}
@@ -131,7 +150,8 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(onSaveDisposable);
+    context.subscriptions.push(editorSyncDisposable);
 }
 
 // This method is called when your extension is deactivated
