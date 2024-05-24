@@ -10,10 +10,22 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:**/*.sqlx"
+    "workspaceContains:**/*.sqlx",
+    "onCommand:extension.enable",
+    "onCommand:extension.disable"
  ],
   "main": "./out/extension.js",
-  "contributes": {
+ "contributes": {
+    "commands": [
+      {
+        "command": "dataform-lsp-vscode.enable",
+        "title": "Enable Dataform lsp"
+      },
+      {
+        "command": "dataform-lsp-vscode.disable",
+        "title": "Disable Dataform lsp"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
