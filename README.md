@@ -1,22 +1,35 @@
-# dataform-lsp-vscode README
+# dataform-lsp-vscode
 
-For inline diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension
+Provide inline diagnostics errors for Dataform pipelines along with live compiled query on the vertical split which is in sync with the current cursor position.
+
 
 This is the README for your extension "dataform-lsp-vscode". After writing up a brief description, we recommend including the following sections.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+Add animations here
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+1. [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
+
+   `npm i -g @dataform/cli`
+
+2. `dj` cli
+
+   ```bash
+   git clone ...
+
+   cd dataform-json-parser
+
+   # ensure go is installed in your system
+   go build . -o dj
+
+   # copy the binary to a place is visible from your system path
+   cp dj /usr/bin
+   ```
+
+3. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
 
 ## Extension Settings
 
@@ -35,39 +48,3 @@ Calling out known issues can help limit users opening duplicate issues against y
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
