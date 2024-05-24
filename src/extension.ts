@@ -125,9 +125,9 @@ export async function activate(context: vscode.ExtensionContext) {
         let dryRunString = '';
 		dryRunProcess.stdout.on('data', (data: any) => {
             dryRunString += data.toString();
-        })
+        });
 
-		dryRunProcess.stdout.on('close', (data: any) => {
+		dryRunProcess.on('close', (data: any) => {
 			if (errorRunningCli) {return;}
 
 			let jsonData = JSON.parse(dryRunString);
@@ -136,6 +136,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (isError === false) {
 				let GBProcessed = jsonData.GBProcessed;
 				let fileName = jsonData.FileName;
+				GBProcessed = GBProcessed.toFixed(4);
 				vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
 			}
 
