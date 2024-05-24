@@ -6,12 +6,11 @@ let isEnabled = true;
 
 //TODO:
 /*
-1. Add option to toogle compiled output display
-2. Could (1) be a plugin settings. How to create plugin settings
-3. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
+0. Bering in sources for auto-completion from dj cli
+1. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
    to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
    * Maybe we need to wait for the stdout to be read completely
-4. Add docs to functions
+2. Add docs to functions
 */
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
@@ -20,8 +19,10 @@ import { writeCompiledSqlToFile } from './utils';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-    let onSaveDisposable:vscode.Disposable | null = null;
-    let editorSyncDisposable:vscode.Disposable | null = null;
+
+    let onSaveDisposable: vscode.Disposable | null = null;
+    let editorSyncDisposable: vscode.Disposable | null = null;
+    let autoCompletionDisposable: vscode.Disposable | null = null;
 
     let executablesToCheck = ['dataform', 'dj'];
     let supportedExtensions = ['sqlx'];
@@ -38,6 +39,37 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(diagnosticCollection);
 
     function registerAllCommands(context: vscode.ExtensionContext) {
+
+
+        autoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
+            // sql is a file association for sqlx.
+            // you might need to set up the file association to use the auto-completion
+            { language: 'sql', scheme: 'file' },
+            {
+                provideCompletionItems(document, position, token, context) {
+
+                    const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                    console.log(linePrefix);
+                    if (!linePrefix.endsWith('$')) {
+                        return undefined;
+                    }
+                    let myitem = (text:any) => {
+                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Text);
+                        item.range = new vscode.Range(position, position);
+                        return item;
+                    };
+                    return [
+                        //TODO: replace this with real sources from dj cli.
+                        //This can perhaps be pre-computed to give smoother experice when typing
+                        myitem('{ref("TABLE_ONE")}'),
+                        myitem('{ref("TABLE_TWO")}'),
+                        myitem('{ref("TABLE_THREE")}'),
+                    ];
+                }
+            },
+            '$' // trigger
+        );
+        context.subscriptions.push(autoCompletionDisposable);
 
         // Implementing the feature to sync scroll between main editor and vertical split editors
         editorSyncDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
@@ -183,6 +215,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (editorSyncDisposable !== null) {
                 editorSyncDisposable.dispose();
+            }
+            if (autoCompletionDisposable !== null) {
+                autoCompletionDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
