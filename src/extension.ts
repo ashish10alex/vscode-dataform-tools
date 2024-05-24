@@ -9,6 +9,7 @@ var path = require("path");
 2. Could (1) be a plugin settings. How to create plugin settings
 3. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
    to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
+   * Maybe we need to wait for the stdout to be read completely
 4. Add docs to functions
 */
 
@@ -121,10 +122,15 @@ export async function activate(context: vscode.ExtensionContext) {
             writeCompiledSqlToFile(compiledQuery);
         });
 
+        let dryRunString = '';
 		dryRunProcess.stdout.on('data', (data: any) => {
+            dryRunString += data.toString();
+        })
+
+		dryRunProcess.stdout.on('close', (data: any) => {
 			if (errorRunningCli) {return;}
 
-			let jsonData = JSON.parse(data.toString());
+			let jsonData = JSON.parse(dryRunString);
 
 			let isError = jsonData.Error?.IsError;
 			if (isError === false) {
