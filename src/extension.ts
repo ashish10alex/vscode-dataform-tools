@@ -20,6 +20,9 @@ import { writeCompiledSqlToFile } from './utils';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
+    let onSaveDisposable:vscode.Disposable | null = null;
+    let editorSyncDisposable:vscode.Disposable | null = null;
+
     let executablesToCheck = ['dataform', 'dj'];
     let supportedExtensions = ['sqlx'];
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -37,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
     function registerAllCommands(context: vscode.ExtensionContext) {
 
         // Implementing the feature to sync scroll between main editor and vertical split editors
-        let editorSyncDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+        editorSyncDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
             let splitEditors = vscode.window.visibleTextEditors;
             let activeEditor = vscode.window.activeTextEditor;
             if (activeEditor) {
@@ -50,7 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(editorSyncDisposable);
 
-        let onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
+        onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             // The code you place here will be executed every time your command is executed
             diagnosticCollection.clear();
 
@@ -175,9 +178,12 @@ export async function activate(context: vscode.ExtensionContext) {
     let disableCommand = vscode.commands.registerCommand('dataform-lsp-vscode.disable', () => {
         if (isEnabled) {
             isEnabled = false;
-            context.subscriptions.forEach((element) => {
-                element.dispose();
-            });
+            if (onSaveDisposable !== null) {
+                onSaveDisposable.dispose();
+            }
+            if (editorSyncDisposable !== null) {
+                editorSyncDisposable.dispose();
+            }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
             vscode.window.showInformationMessage('Extension is already disabled');
