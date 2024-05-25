@@ -19,11 +19,13 @@
     "commands": [
       {
         "command": "dataform-lsp-vscode.enable",
-        "title": "Enable Dataform lsp"
+        "category": "Dataform",
+        "title": "enable lsp"
       },
       {
         "command": "dataform-lsp-vscode.disable",
-        "title": "Disable Dataform lsp"
+        "category": "Dataform",
+        "title": "disable lsp"
       }
     ]
   },

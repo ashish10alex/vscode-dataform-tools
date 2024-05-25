@@ -59,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
                         return undefined;
                     }
                     let sourceCompletionItem = (text: any) => {
-                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Text);
+                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
                         item.range = new vscode.Range(position, position);
                         return item;
                     };
