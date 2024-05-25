@@ -4,11 +4,10 @@ import * as vscode from 'vscode';
 var path = require("path");
 let isEnabled = true;
 const compiledSqlFilePath = '/tmp/output.sql';
-let dataformSources: string[] = [];
+let declarationsAndTargets: string[] = [];
 
 //TODO:
 /*
-0. Bring in sources for auto-completion from dj cli [declarations done]
 1. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
    to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
    * Maybe we need to wait for the stdout to be read completely
@@ -63,11 +62,11 @@ export async function activate(context: vscode.ExtensionContext) {
                         item.range = new vscode.Range(position, position);
                         return item;
                     };
-                    if (dataformSources.length === 0) {
+                    if (declarationsAndTargets.length === 0) {
                         return undefined;
                     }
                     let sourceCompletionItems: vscode.CompletionItem[] = [];
-                    dataformSources.forEach((source: string) => {
+                    declarationsAndTargets.forEach((source: string) => {
                         source = `{ref("${source}")}`;
                         sourceCompletionItems.push(sourceCompletionItem(source));
                     });
@@ -125,7 +124,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
             const { exec } = require('child_process'); // NOTE: this should be an import statement ?
 
-            const sourcesCmd = `dataform compile ${workspaceFolder} --json | dj table-ops sources`;
+            const sourcesCmd = `dataform compile ${workspaceFolder} --json | dj table-ops declarations-and-targets`;
             console.log(`cmd: ${sourcesCmd}`);
 
             const dryRunCmd = `dataform compile ${workspaceFolder} --json \
@@ -138,10 +137,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
             getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
-                dataformSources = JSON.parse(sources).Sources;
+                let declarations = JSON.parse(sources).Declarations;
+                let targets = JSON.parse(sources).Targets;
+                declarationsAndTargets = declarations.concat(targets);
             }
             ).catch((err) => {
-                dataformSources = [];
+                declarationsAndTargets = [];
                 vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
             });
 
