@@ -16,7 +16,9 @@ Add animations here..
 
    `npm i -g @dataform/cli`
 
-2. `dj` cli
+2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+
+3. `dj` cli
 
    ```bash
    git clone ...
@@ -30,7 +32,7 @@ Add animations here..
    cp dj /usr/bin
    ```
 
-3. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
+4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
 
 ## Extension Settings
 
