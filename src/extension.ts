@@ -3,10 +3,12 @@
 import * as vscode from 'vscode';
 var path = require("path");
 let isEnabled = true;
+const compiledSqlFilePath = '/tmp/output.sql';
+let dataformSources: string[] = [];
 
 //TODO:
 /*
-0. Bering in sources for auto-completion from dj cli
+0. Bring in sources for auto-completion from dj cli [declarations done]
 1. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
    to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
    * Maybe we need to wait for the stdout to be read completely
@@ -14,7 +16,7 @@ let isEnabled = true;
 */
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
-import { writeCompiledSqlToFile } from './utils';
+import { writeCompiledSqlToFile, getStdoutFromCliRun } from './utils';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -42,8 +44,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
         autoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
-            // sql is a file association for sqlx.
-            // you might need to set up the file association to use the auto-completion
+            /*
+            you might need to set up the file association to use the auto-completion
+            sql should be added as a file association for sqlx
+            this will enable both sufficient syntax highlighting and auto-completion
+            */
             { language: 'sql', scheme: 'file' },
             {
                 provideCompletionItems(document, position, token, context) {
@@ -53,18 +58,20 @@ export async function activate(context: vscode.ExtensionContext) {
                     if (!linePrefix.endsWith('$')) {
                         return undefined;
                     }
-                    let myitem = (text:any) => {
+                    let sourceCompletionItem = (text: any) => {
                         let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Text);
                         item.range = new vscode.Range(position, position);
                         return item;
                     };
-                    return [
-                        //TODO: replace this with real sources from dj cli.
-                        //This can perhaps be pre-computed to give smoother experice when typing
-                        myitem('{ref("TABLE_ONE")}'),
-                        myitem('{ref("TABLE_TWO")}'),
-                        myitem('{ref("TABLE_THREE")}'),
-                    ];
+                    if (dataformSources.length === 0) {
+                        return undefined;
+                    }
+                    let sourceCompletionItems: vscode.CompletionItem[] = [];
+                    dataformSources.forEach((source: string) => {
+                        source = `{ref("${source}")}`;
+                        sourceCompletionItems.push(sourceCompletionItem(source));
+                    });
+                    return sourceCompletionItems;
                 }
             },
             '$' // trigger
@@ -72,6 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(autoCompletionDisposable);
 
         // Implementing the feature to sync scroll between main editor and vertical split editors
+        // BUG: git hunks start syncing as well !
         editorSyncDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
             let splitEditors = vscode.window.visibleTextEditors;
             let activeEditor = vscode.window.activeTextEditor;
@@ -108,77 +116,73 @@ export async function activate(context: vscode.ExtensionContext) {
             console.log(`filename: ${filename}`);
             console.log(`workspaceFolder: ${workspaceFolder}`);
 
-            const { spawn } = require('child_process');
-            let errorRunningCli = false;
             let configBlockRange = getLineNumberWhereConfigBlockTerminates();
-
             let configBlockStart = configBlockRange[0] || 0;
             let configBlockEnd = configBlockRange[1] || 0;
-
             let configBlockOffset = (configBlockStart + configBlockEnd) - 1;
             console.log(`configBlockStart: ${configBlockStart} | configBlockEnd: ${configBlockEnd}`);
-
             let configLineOffset = configBlockOffset - queryStringOffset;
+
+            const { exec } = require('child_process'); // NOTE: this should be an import statement ?
+
+            const sourcesCmd = `dataform compile ${workspaceFolder} --json | dj table-ops sources`;
+            console.log(`cmd: ${sourcesCmd}`);
 
             const dryRunCmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops cost --compact=true --include-assertions=true -t ${filename}`;
             console.log(`cmd: ${dryRunCmd}`);
-            const dryRunProcess = spawn(dryRunCmd, [], { shell: true });
 
             const compiledQueryCmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops query -t ${filename}`;
             console.log(`cmd: ${compiledQueryCmd}`);
-            const compiledQueryProcess = spawn(compiledQueryCmd, [], { shell: true });
+
+
+            getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
+                dataformSources = JSON.parse(sources).Sources;
+            }
+            ).catch((err) => {
+                dataformSources = [];
+                vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
+            });
+
+
+            getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
+                writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
+            })
+                .catch((err) => {
+                    ;
+                    vscode.window.showErrorMessage(`Compiled query error: ${err}`);
+                    return;
+                });
 
             const diagnostics: vscode.Diagnostic[] = [];
 
-            dryRunProcess.stderr.on('data', (data: any) => {
-                vscode.window.showErrorMessage(`Error dryRunProcess: ${data}`);
-                errorRunningCli = true;
-                return;
-            });
+            getStdoutFromCliRun(exec, dryRunCmd).then((dryRunString) => {
+                //TODO: Handle more elegantly where multiline json is returned
+                // this is a hack to handle multiline json by picking only the first json item
+                // separated by newline
+                let dryRunJson;
+                let strLen = dryRunString.split('\n').length;
+                if (strLen > 1) {
+                    dryRunJson = JSON.parse(dryRunString.split('\n')[0]);
+                } else {
+                    dryRunJson = JSON.parse(dryRunString);
+                }
 
-            compiledQueryProcess.stderr.on('data', (data: any) => {
-                vscode.window.showErrorMessage(`Error compiledQueryProcess: ${data}`);
-                errorRunningCli = true;
-                return;
-            });
-
-            let compiledQuery = '';
-            compiledQueryProcess.stdout.on('data', (data: any) => {
-                if (errorRunningCli) { return; }
-                compiledQuery += data.toString();
-            });
-
-            compiledQueryProcess.on('close', (data: any) => {
-                if (errorRunningCli) { return; }
-                writeCompiledSqlToFile(compiledQuery);
-            });
-
-            let dryRunString = '';
-            dryRunProcess.stdout.on('data', (data: any) => {
-                dryRunString += data.toString();
-            });
-
-            dryRunProcess.on('close', (data: any) => {
-                if (errorRunningCli) { return; }
-
-                let jsonData = JSON.parse(dryRunString);
-
-                let isError = jsonData.Error?.IsError;
+                let isError = dryRunJson.Error?.IsError;
                 if (isError === false) {
-                    let GBProcessed = jsonData.GBProcessed;
-                    let fileName = jsonData.FileName;
+                    let GBProcessed = dryRunJson.GBProcessed;
+                    let fileName = dryRunJson.FileName;
                     GBProcessed = GBProcessed.toFixed(4);
                     vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
                 }
 
-                let errLineNumber = jsonData.Error?.LineNumber + configLineOffset;
-                let errColumnNumber = jsonData.Error?.ColumnNumber;
+                let errLineNumber = dryRunJson.Error?.LineNumber + configLineOffset;
+                let errColumnNumber = dryRunJson.Error?.ColumnNumber;
 
 
                 const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-                const message = jsonData.Error?.ErrorMsg;
+                const message = dryRunJson.Error?.ErrorMsg || '';
                 const severity = vscode.DiagnosticSeverity.Error;
                 const diagnostic = new vscode.Diagnostic(range, message, severity);
                 if (diagnostics.length === 0) {
@@ -187,7 +191,14 @@ export async function activate(context: vscode.ExtensionContext) {
                         diagnosticCollection.set(document.uri, diagnostics);
                     }
                 }
-            });
+            })
+                .catch((err) => {
+                    if (err.toString() === 'TypeError: message must be set') { // NOTE: not sure how to fix this one?
+                        return;
+                    }
+                    vscode.window.showErrorMessage(`Dry run error: ${err}`);
+                    return;
+                });
         });
         context.subscriptions.push(onSaveDisposable);
 

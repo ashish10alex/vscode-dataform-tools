@@ -6,15 +6,15 @@ const { execSync } = require('child_process');
 const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 
 export function executableIsAvailable(name: string) {
-	try { shell(`which ${name}`); return true ;}
-	catch (error) { return false ;}
+    try { shell(`which ${name}`); return true; }
+    catch (error) { return false; }
 }
 
-export function isDataformWorkspace(workspacePath:string){
+export function isDataformWorkspace(workspacePath: string) {
     const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
     let fileExists = false;
 
-    for (let i=0; dataformSignatureFiles.length; i++){
+    for (let i = 0; dataformSignatureFiles.length; i++) {
         const filePath = path.join(workspacePath, dataformSignatureFiles[i]);
         let fileExists = fs.existsSync(filePath);
         if (fileExists) {
@@ -65,20 +65,46 @@ export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
 };
 
 export function isNotUndefined(value: unknown): any {
-    if (typeof value === undefined){ throw new Error("Not a string");}
-  }
+    if (typeof value === undefined) { throw new Error("Not a string"); }
+}
 
 
-export async function writeCompiledSqlToFile(newData:string) {
-    const outputFilePath = '/tmp/output.sql';
-    if (!fs.existsSync(outputFilePath)) {
-        fs.writeFileSync(outputFilePath, '', 'utf8');
+export async function writeCompiledSqlToFile(compiledQuery: string, filePath:string) {
+    if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, '', 'utf8');
     }
 
     // Write the compiled output to the file
-    fs.writeFileSync(outputFilePath, newData, 'utf8');
+    fs.writeFileSync(filePath, compiledQuery, 'utf8');
 
     // Open the output file in a vertical split
-    const outputDocument = await vscode.workspace.openTextDocument(outputFilePath);
+    const outputDocument = await vscode.workspace.openTextDocument(filePath);
     await vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
 }
+
+export function getStdoutFromCliRun(exec:any, cmd:string): Promise<any> {
+    return new Promise((resolve, reject) => {
+        console.log(`cmd: ${cmd}`);
+
+        exec(cmd, (err: any, stdout: any, stderr: any) => {
+            if (err) {
+                vscode.window.showErrorMessage(`Error sourcesProcess: ${err}`);
+                reject(err);
+                return;
+            }
+            if (stderr) {
+                vscode.window.showErrorMessage(`Error sourcesProcess: ${stderr}`);
+                reject(new Error(stderr));
+                return;
+            }
+
+            try {
+                const output = stdout.toString();
+                resolve(output);
+            } catch (parseError) {
+                reject(parseError);
+            }
+        });
+    });
+}
+
