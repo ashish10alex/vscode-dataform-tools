@@ -1,13 +1,14 @@
 # dataform-lsp-vscode
 
-Provide inline diagnostics errors for Dataform pipelines along with live compiled query on the vertical split which is in sync with the current cursor position.
+Provides support for
 
-
-This is the README for your extension "dataform-lsp-vscode". After writing up a brief description, we recommend including the following sections.
+* Inline diagnostics errors
+* Live compiled query on the vertical split which is in sync with the current cursor position of your sqlx file
+* Auto completion support for declarations in `${ref("..")}`
 
 ## Features
 
-Add animations here
+Add animations here..
 
 ## Requirements
 
@@ -44,7 +45,8 @@ This extension contributes the following settings:
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- [ ] sync between sqlx file and its compiled output is being carried over to the git hunks
+- [ ] sync feature flickers when user tries to scroll a non-active editor. Fixes when user selects the active editor by clicking on it
 
 ## Release Notes
 
