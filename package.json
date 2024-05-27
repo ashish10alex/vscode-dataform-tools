@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/ashish10alex/dataform-lsp-vscode.git"
   },
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.89.0"
   },
@@ -19,9 +19,9 @@
     "workspaceContains:**/*.sqlx",
     "onCommand:extension.enable",
     "onCommand:extension.disable"
- ],
+  ],
   "main": "./out/extension.js",
- "contributes": {
+  "contributes": {
     "commands": [
       {
         "command": "dataform-lsp-vscode.enable",
