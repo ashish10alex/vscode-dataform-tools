@@ -24,14 +24,14 @@ Add animations here..
 3. `dj` cli
 
    ```bash
-   git clone ...
+   git clone https://github.com/ashish10alex/dataform_json_parser.git
 
-   cd dataform-json-parser
+   cd dataform_json_parser
 
    # ensure go is installed in your system
    go build . -o dj
 
-   # copy the binary to a place is visible from your system path
+   # copy the binary to a place is visible from your system path e.g
    cp dj /usr/bin
    ```
 
