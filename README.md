@@ -29,7 +29,7 @@ Provides support for
 
 2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
-3. `dj` cli
+3. [dj cli](https://github.com/ashish10alex/dataform_json_parser)
 
    ```bash
    git clone https://github.com/ashish10alex/dataform_json_parser.git
