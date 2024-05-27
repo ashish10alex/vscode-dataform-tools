@@ -1,7 +1,12 @@
 {
   "name": "dataform-lsp-vscode",
   "displayName": "dataform_lsp",
+  "publisher": "ashishalex",
   "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ashish10alex/dataform-lsp-vscode.git"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.89.0"

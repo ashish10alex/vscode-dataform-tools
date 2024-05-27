@@ -186,7 +186,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 const message = dryRunJson.Error?.ErrorMsg || '';
                 const severity = vscode.DiagnosticSeverity.Error;
                 const diagnostic = new vscode.Diagnostic(range, message, severity);
-                if (diagnostics.length === 0) {
+                if (diagnostics.length === 0) { //NOTE: Did this because we are only showing first error ?
                     diagnostics.push(diagnostic);
                     if (document !== undefined) {
                         diagnosticCollection.set(document.uri, diagnostics);
