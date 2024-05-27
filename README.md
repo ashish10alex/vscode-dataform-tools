@@ -1,5 +1,8 @@
 # dataform-lsp-vscode
 
+⚠️ ***This is not an officially supported Google product.***
+
+
 Provides support for
 
 * Inline diagnostics errors
