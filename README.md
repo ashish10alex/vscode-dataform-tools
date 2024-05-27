@@ -5,13 +5,21 @@
 
 Provides support for
 
-* Inline diagnostics errors
 * Live compiled query on the vertical split which is in sync with the current cursor position of your sqlx file
+* Data processed by the query at bottom right
+* Inline diagnostics errors
 * Auto completion support for declarations in `${ref("..")}`
 
 ## Features
 
-Add animations here..
+* Live compiled query on the vertical split which is in sync with the current cursor position of your sqlx file. Data processed by the query at bottom right
+![compilation](media/images/compilation.gif)
+
+* Inline diagnostics errors
+![diagnostics](media/images/diagnostics.gif)
+
+* Auto completion support for declarations in `${ref("..")}`
+![auto-completion](media/images/auto-completion.gif)
 
 ## Requirements
 
