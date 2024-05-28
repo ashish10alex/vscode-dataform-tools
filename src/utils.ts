@@ -7,7 +7,10 @@ const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 
 export function executableIsAvailable(name: string) {
     try { shell(`which ${name}`); return true; }
-    catch (error) { return false; }
+    catch (error) {
+         vscode.window.showErrorMessage((error as Error).message);
+         return false;
+        }
 }
 
 export function isDataformWorkspace(workspacePath: string) {
