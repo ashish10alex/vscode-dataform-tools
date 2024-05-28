@@ -28,10 +28,8 @@ export async function activate(context: vscode.ExtensionContext) {
     let executablesToCheck = ['dataform', 'dj'];
     let supportedExtensions = ['sqlx'];
     for (let i = 0; i < executablesToCheck.length; i++) {
-        if (executableIsAvailable(executablesToCheck[i]) !== true) {
-            vscode.window.showErrorMessage(`${executablesToCheck[i]} does not exsits`);
-            return;
-        }
+        console.log(`Checking if ${executablesToCheck[i]} is available`);
+        executableIsAvailable(executablesToCheck[i])
     }
 
     let queryStringOffset = 3;
