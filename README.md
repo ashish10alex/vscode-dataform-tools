@@ -25,7 +25,7 @@ Provides support for
 
 1. [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
-   `npm i -g @dataform/cli`
+   `npm i -g @dataform/cli@^3.0.0-beta`
 
 2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
