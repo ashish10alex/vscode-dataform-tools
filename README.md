@@ -53,5 +53,8 @@ Provides support for
 - [ ] sync between sqlx file and its compiled output is being carried over to the git hunks
 - [ ] sync feature flickers when user tries to scroll a non-active editor. Fixes when user selects the active editor by clicking on it
 
-## Release Notes
+## TODO
+
+- [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
+
 
