@@ -307,6 +307,9 @@ export async function activate(context: vscode.ExtensionContext) {
             if (dependenciesAutoCompletionDisposable !== null) {
                 dependenciesAutoCompletionDisposable.dispose();
             }
+            if (tagsAutoCompletionDisposable !== null) {
+                tagsAutoCompletionDisposable.dispose();
+            }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
             vscode.window.showInformationMessage('Extension is already disabled');
