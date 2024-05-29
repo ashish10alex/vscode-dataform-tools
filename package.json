@@ -13,7 +13,11 @@
     "vscode": "^1.89.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Programming Languages",
+    "Snippets",
+    "Data Science",
+    "Testing"
   ],
   "activationEvents": [
     "workspaceContains:**/*.sqlx",
