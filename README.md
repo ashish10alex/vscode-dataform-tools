@@ -22,7 +22,14 @@ Provides support for
 ![diagnostics](media/images/diagnostics.gif)
 
 * Auto completion support for declarations in `${ref("..")}`
-![auto-completion](media/images/auto-completion.gif)
+![auto-completion](media/images/sources_autocompletion.gif)
+
+* Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
+![auto-completion](media/images/dependencies_autocompletion.gif)
+
+* Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
+![auto-completion](media/images/tags_autocompletion.gif)
+
 
 ## Requirements
 
