@@ -46,7 +46,7 @@ Provides support for
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
 
 5. To enable syntax highlighting and auto-complete
-   * In vscode: <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + `p` -> Change language mode -> Configure file association for `.sqlx` -> Select `SQL`
+   * In vscode: <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> -> Change language mode -> Configure file association for `.sqlx` -> Select `SQL`
 
 ## Extension Settings
 
