@@ -5,29 +5,29 @@
 
 Provides support for
 
-* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file
-* Data processed by the query at bottom right
-* Inline diagnostics errors
-* Auto completion support for
+* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file ⚒️
+* Data processed by query on bottom right on successful dry run 💸
+* Inline diagnostics errors on `.sqlx` files ❗
+* Auto completion support for 💬
     * declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
     * `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
     * `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
 
 ## Features
 
-* Live compiled query on the vertical split which is in sync with the current cursor position of your sqlx file. Data processed by the query at bottom right
+* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file. Data processed by query on bottom right on successful dry run ⚒️ , 💸
 ![compilation](media/images/compilation.gif)
 
-* Inline diagnostics errors
+* Inline diagnostics errors on `.sqlx` files ❗
 ![diagnostics](media/images/diagnostics.gif)
 
-* Auto completion support for declarations in `${ref("..")}`
+* Auto completion support for declarations in `${ref("..")}` 💬
 ![auto-completion](media/images/sources_autocompletion.gif)
 
-* Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
+* Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix 💬
 ![auto-completion](media/images/dependencies_autocompletion.gif)
 
-* Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
+* Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix 💬
 ![auto-completion](media/images/tags_autocompletion.gif)
 
 
