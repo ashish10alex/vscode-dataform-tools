@@ -21,7 +21,7 @@ Provides support for
 * Inline diagnostics errors on `.sqlx` files ❗
 ![diagnostics](media/images/diagnostics.gif)
 
-* Auto completion support for declarations in `${ref("..")}` 💬
+* declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed 💬
 ![auto-completion](media/images/sources_autocompletion.gif)
 
 * Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix 💬
