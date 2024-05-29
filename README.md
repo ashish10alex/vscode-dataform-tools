@@ -10,7 +10,8 @@ Provides support for
 * Inline diagnostics errors
 * Auto completion support for
     * declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
-    * dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
+    * `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
+    * `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
 
 ## Features
 

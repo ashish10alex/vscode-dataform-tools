@@ -5,6 +5,7 @@ var path = require("path");
 let isEnabled = true;
 const compiledSqlFilePath = '/tmp/output.sql';
 let declarationsAndTargets: string[] = [];
+let dataformTags : string[] = [];
 
 //TODO:
 /*
@@ -25,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
     let editorSyncDisposable: vscode.Disposable | null = null;
     let sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
     let dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
+    let tagsAutoCompletionDisposable: vscode.Disposable | null = null;
 
     let executablesToCheck = ['dataform', 'dj'];
     let supportedExtensions = ['sqlx'];
@@ -42,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
         sourcesAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
+            // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
             /*
             you might need to set up the file association to use the auto-completion
             sql should be added as a file association for sqlx
@@ -52,7 +55,6 @@ export async function activate(context: vscode.ExtensionContext) {
                 provideCompletionItems(document, position, token, context) {
 
                     const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                    console.log(linePrefix);
                     if (!linePrefix.endsWith('$')) {
                         return undefined;
                     }
@@ -77,12 +79,12 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(sourcesAutoCompletionDisposable);
 
         dependenciesAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
+            // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
             { language: 'sql', scheme: 'file' },
             {
                 provideCompletionItems(document, position, token, context) {
 
                     const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                    console.log(linePrefix);
                     if (!linePrefix.includes('dependencies')) {
                         return undefined;
                     }
@@ -105,6 +107,37 @@ export async function activate(context: vscode.ExtensionContext) {
             ...["'", '"'],
         );
         context.subscriptions.push(dependenciesAutoCompletionDisposable);
+
+        tagsAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
+            // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
+            { language: 'sql', scheme: 'file' },
+            {
+                provideCompletionItems(document, position, token, context) {
+
+                    const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                    if (!linePrefix.includes('tags')) {
+                        return undefined;
+                    }
+                    let sourceCompletionItem = (text: any) => {
+                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
+                        item.range = new vscode.Range(position, position);
+                        return item;
+                    };
+                    if (dataformTags.length === 0) {
+                        return undefined;
+                    }
+                    let sourceCompletionItems: vscode.CompletionItem[] = [];
+                    dataformTags.forEach((source: string) => {
+                        source = `${source}`;
+                        sourceCompletionItems.push(sourceCompletionItem(source));
+                    });
+                    return sourceCompletionItems;
+                },
+            },
+            ...["'", '"'],
+        );
+        context.subscriptions.push(tagsAutoCompletionDisposable);
+
 
         // Implementing the feature to sync scroll between main editor and vertical split editors
         // BUG: git hunks start syncing as well !
@@ -156,6 +189,9 @@ export async function activate(context: vscode.ExtensionContext) {
             const sourcesCmd = `dataform compile ${workspaceFolder} --json | dj table-ops declarations-and-targets`;
             console.log(`cmd: ${sourcesCmd}`);
 
+            const tagsCompletionCmd = `dataform compile ${workspaceFolder} --json | dj tag-ops --unique`;
+
+
             const dryRunCmd = `dataform compile ${workspaceFolder} --json \
 		| dj table-ops cost --compact=true --include-assertions=true -t ${filename}`;
             console.log(`cmd: ${dryRunCmd}`);
@@ -173,6 +209,15 @@ export async function activate(context: vscode.ExtensionContext) {
             ).catch((err) => {
                 vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
             });
+
+            getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
+                let uniqueTags = JSON.parse(sources).tags;
+                dataformTags = uniqueTags;
+            }
+            ).catch((err) => {
+                vscode.window.showErrorMessage(`Error getting tags for project: ${err}`);
+            });
+
 
 
             getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
