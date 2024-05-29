@@ -29,7 +29,7 @@ export async function activate(context: vscode.ExtensionContext) {
     let supportedExtensions = ['sqlx'];
     for (let i = 0; i < executablesToCheck.length; i++) {
         console.log(`Checking if ${executablesToCheck[i]} is available`);
-        executableIsAvailable(executablesToCheck[i])
+        executableIsAvailable(executablesToCheck[i]);
     }
 
     let queryStringOffset = 3;
@@ -137,7 +137,7 @@ export async function activate(context: vscode.ExtensionContext) {
             getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
                 let declarations = JSON.parse(sources).Declarations;
                 let targets = JSON.parse(sources).Targets;
-                declarationsAndTargets = declarations.concat(targets);
+                declarationsAndTargets = [...new Set([...declarations ,...targets])];
             }
             ).catch((err) => {
                 declarationsAndTargets = [];
