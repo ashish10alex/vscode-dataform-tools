@@ -5,7 +5,7 @@
 
 Provides support for
 
-* Live compiled query on the vertical split which is in sync with the current cursor position of your sqlx file
+* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file
 * Data processed by the query at bottom right
 * Inline diagnostics errors
 * Auto completion support for
