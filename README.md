@@ -8,7 +8,9 @@ Provides support for
 * Live compiled query on the vertical split which is in sync with the current cursor position of your sqlx file
 * Data processed by the query at bottom right
 * Inline diagnostics errors
-* Auto completion support for declarations in `${ref("..")}`
+* Auto completion support for
+    * declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
+    * dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
 
 ## Features
 

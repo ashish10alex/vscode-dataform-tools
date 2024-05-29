@@ -23,7 +23,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let onSaveDisposable: vscode.Disposable | null = null;
     let editorSyncDisposable: vscode.Disposable | null = null;
-    let autoCompletionDisposable: vscode.Disposable | null = null;
+    let sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
+    let dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
 
     let executablesToCheck = ['dataform', 'dj'];
     let supportedExtensions = ['sqlx'];
@@ -40,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
     function registerAllCommands(context: vscode.ExtensionContext) {
 
 
-        autoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
+        sourcesAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
             /*
             you might need to set up the file association to use the auto-completion
             sql should be added as a file association for sqlx
@@ -73,7 +74,37 @@ export async function activate(context: vscode.ExtensionContext) {
             },
             '$' // trigger
         );
-        context.subscriptions.push(autoCompletionDisposable);
+        context.subscriptions.push(sourcesAutoCompletionDisposable);
+
+        dependenciesAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
+            { language: 'sql', scheme: 'file' },
+            {
+                provideCompletionItems(document, position, token, context) {
+
+                    const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                    console.log(linePrefix);
+                    if (!linePrefix.includes('dependencies')) {
+                        return undefined;
+                    }
+                    let sourceCompletionItem = (text: any) => {
+                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
+                        item.range = new vscode.Range(position, position);
+                        return item;
+                    };
+                    if (declarationsAndTargets.length === 0) {
+                        return undefined;
+                    }
+                    let sourceCompletionItems: vscode.CompletionItem[] = [];
+                    declarationsAndTargets.forEach((source: string) => {
+                        source = `${source}`;
+                        sourceCompletionItems.push(sourceCompletionItem(source));
+                    });
+                    return sourceCompletionItems;
+                },
+            },
+            ...["'", '"'],
+        );
+        context.subscriptions.push(dependenciesAutoCompletionDisposable);
 
         // Implementing the feature to sync scroll between main editor and vertical split editors
         // BUG: git hunks start syncing as well !
@@ -225,8 +256,11 @@ export async function activate(context: vscode.ExtensionContext) {
             if (editorSyncDisposable !== null) {
                 editorSyncDisposable.dispose();
             }
-            if (autoCompletionDisposable !== null) {
-                autoCompletionDisposable.dispose();
+            if (sourcesAutoCompletionDisposable !== null) {
+                sourcesAutoCompletionDisposable.dispose();
+            }
+            if (dependenciesAutoCompletionDisposable !== null) {
+                dependenciesAutoCompletionDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
