@@ -140,7 +140,6 @@ export async function activate(context: vscode.ExtensionContext) {
                 declarationsAndTargets = [...new Set([...declarations ,...targets])];
             }
             ).catch((err) => {
-                declarationsAndTargets = [];
                 vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
             });
 
