@@ -1,7 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-var path = require("path");
 
 let isEnabled = true;
 const compiledSqlFilePath = '/tmp/output.sql';
@@ -19,10 +18,11 @@ export let dataformTags: string[] = [];
 2. Add docs to functions
 */
 
-import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
-import { writeCompiledSqlToFile, getStdoutFromCliRun, getFileNameFromDocument } from './utils';
+import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates,  } from './utils';
+import { writeCompiledSqlToFile, getStdoutFromCliRun, getFileNameFromDocument, getWorkspaceFolder } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
+import { compiledQueryCommand, getTagsCommand, getSourcesCommand, getDryRunCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -38,12 +38,36 @@ export async function activate(context: vscode.ExtensionContext) {
         executableIsAvailable(executablesToCheck[i]);
     }
 
+    let workspaceFolder = getWorkspaceFolder();
+    let sourcesCmd = getSourcesCommand(workspaceFolder);
+    let tagsCompletionCmd = getTagsCommand(workspaceFolder);
+
+    const { exec } = require('child_process'); // NOTE: this should be an import statement ?
+
+    getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
+        let declarations = JSON.parse(sources).Declarations;
+        let targets = JSON.parse(sources).Targets;
+        declarationsAndTargets = [...new Set([...declarations, ...targets])];
+    }
+    ).catch((err) => {
+        vscode.window.showWarningMessage(`Error getting sources for project: ${err}`);
+    });
+
+    getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
+        let uniqueTags = JSON.parse(sources).tags;
+        dataformTags = uniqueTags;
+    }
+    ).catch((err) => {
+        vscode.window.showWarningMessage(`Error getting tags for project: ${err}`);
+    });
+
+
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
     function registerAllCommands(context: vscode.ExtensionContext) {
 
-        _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable()
+        _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
         context.subscriptions.push(_sourcesAutoCompletionDisposable);
 
         _dependenciesAutoCompletionDisposable = dependenciesAutoCompletionDisposable();
@@ -59,17 +83,10 @@ export async function activate(context: vscode.ExtensionContext) {
             diagnosticCollection.clear();
 
             var filename = getFileNameFromDocument(document)
-            if (filename == "") { return; }
+            if (filename === "") { return; }
 
-            let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-            if (workspaceFolder !== undefined) {
-                if (isDataformWorkspace(workspaceFolder) === false) {
-                    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
-                    return;
-                }
-            }
-            console.log(`filename: ${filename}`);
-            console.log(`workspaceFolder: ${workspaceFolder}`);
+            let workspaceFolder = getWorkspaceFolder();
+            if (workspaceFolder === "") { return; }
 
             let configBlockRange = getLineNumberWhereConfigBlockTerminates();
             let configBlockStart = configBlockRange[0] || 0;
@@ -80,19 +97,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
             const { exec } = require('child_process'); // NOTE: this should be an import statement ?
 
-            const sourcesCmd = `dataform compile ${workspaceFolder} --json | dj table-ops declarations-and-targets`;
-            console.log(`cmd: ${sourcesCmd}`);
-
-            const tagsCompletionCmd = `dataform compile ${workspaceFolder} --json | dj tag-ops --unique`;
-
-
-            const dryRunCmd = `dataform compile ${workspaceFolder} --json \
-		| dj table-ops cost --compact=true --include-assertions=true -t ${filename}`;
-            console.log(`cmd: ${dryRunCmd}`);
-
-            const compiledQueryCmd = `dataform compile ${workspaceFolder} --json \
-		| dj table-ops query -t ${filename}`;
-            console.log(`cmd: ${compiledQueryCmd}`);
+            const sourcesCmd = getSourcesCommand(workspaceFolder);
+            const tagsCompletionCmd = getTagsCommand(workspaceFolder);
+            const dryRunCmd = getDryRunCommand(workspaceFolder, filename);
+            const compiledQueryCmd = compiledQueryCommand(workspaceFolder, filename);
 
 
             getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {

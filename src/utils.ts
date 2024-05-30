@@ -28,6 +28,18 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string {
     return filename;
 }
 
+export function getWorkspaceFolder(): string {
+    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    if (workspaceFolder !== undefined) {
+        if (isDataformWorkspace(workspaceFolder) === false) {
+            vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
+            return "";
+        }
+        return workspaceFolder;
+    }
+    return "";
+}
+
 export function isDataformWorkspace(workspacePath: string) {
     const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
     let fileExists = false;
