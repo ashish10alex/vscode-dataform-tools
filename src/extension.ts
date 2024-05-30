@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+const { exec } = require('child_process');
 
 let isEnabled = true;
 const compiledSqlFilePath = '/tmp/output.sql';
@@ -42,7 +43,6 @@ export async function activate(context: vscode.ExtensionContext) {
     let sourcesCmd = getSourcesCommand(workspaceFolder);
     let tagsCompletionCmd = getTagsCommand(workspaceFolder);
 
-    const { exec } = require('child_process'); // NOTE: this should be an import statement ?
 
     getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
         let declarations = JSON.parse(sources).Declarations;
@@ -82,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
             // The code you place here will be executed every time your command is executed
             diagnosticCollection.clear();
 
-            var filename = getFileNameFromDocument(document)
+            var filename = getFileNameFromDocument(document);
             if (filename === "") { return; }
 
             let workspaceFolder = getWorkspaceFolder();
@@ -94,8 +94,6 @@ export async function activate(context: vscode.ExtensionContext) {
             let configBlockOffset = (configBlockStart + configBlockEnd) - 1;
             console.log(`configBlockStart: ${configBlockStart} | configBlockEnd: ${configBlockEnd}`);
             let configLineOffset = configBlockOffset - queryStringOffset;
-
-            const { exec } = require('child_process'); // NOTE: this should be an import statement ?
 
             const sourcesCmd = getSourcesCommand(workspaceFolder);
             const tagsCompletionCmd = getTagsCommand(workspaceFolder);
