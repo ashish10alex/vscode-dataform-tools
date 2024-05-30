@@ -24,7 +24,7 @@
     "onCommand:extension.enable",
     "onCommand:extension.disable",
     "onCommand:extension.runCurrentFile",
-    "onCommand:extension.runCurrentFileWtDepsCommand"
+    "onCommand:extension.runCurrentFileWtDeps"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -45,7 +45,7 @@
         "title": "Run current file"
       },
       {
-        "command": "dataform-lsp-vscode.runCurrentFileWtDepsCommand",
+        "command": "dataform-lsp-vscode.runCurrentFileWtDeps",
         "category": "Dataform",
         "title": "Run current file with dependencies"
       }

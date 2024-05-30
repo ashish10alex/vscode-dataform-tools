@@ -83,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFile', () => { runCurrentFile(exec, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFileWtDepsCommand', () => { runCurrentFile(exec, true); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFileWtDeps', () => { runCurrentFile(exec, true); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
 
 
