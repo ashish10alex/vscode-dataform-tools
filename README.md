@@ -70,5 +70,6 @@ Provides support for
 ## TODO
 
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
+- [ ] Ability to run a file
 
 
