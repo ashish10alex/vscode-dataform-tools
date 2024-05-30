@@ -19,7 +19,7 @@ export let dataformTags: string[] = [];
 2. Add docs to functions
 */
 
-import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates,  } from './utils';
+import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, runCurrentFile, } from './utils';
 import { writeCompiledSqlToFile, getStdoutFromCliRun, getFileNameFromDocument, getWorkspaceFolder } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -215,6 +215,13 @@ export async function activate(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage('Extension is already disabled');
         }
     });
+
+    let runCurrentFileCommand = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFile', () => {runCurrentFile(exec, false);});
+    context.subscriptions.push(runCurrentFileCommand);
+
+    let runCurrentFileWtDepsCommand = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFileWtDepsCommand', () => {runCurrentFile(exec, true);});
+    context.subscriptions.push(runCurrentFileWtDepsCommand);
+
 
     context.subscriptions.push(enableCommand);
     context.subscriptions.push(disableCommand);

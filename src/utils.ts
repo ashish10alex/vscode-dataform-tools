@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getDryRunCommand } from './commands';
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -138,3 +139,38 @@ export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     });
 }
 
+
+export function runCurrentFile(exec: any, includDependencies: boolean) {
+    let document = vscode.window.activeTextEditor?.document;
+    if (document === undefined) {
+        vscode.window.showErrorMessage('No active document');
+        return;
+    }
+    var filename = getFileNameFromDocument(document);
+    let workspaceFolder = getWorkspaceFolder();
+
+    const getDryRunCmd = getDryRunCommand(workspaceFolder, filename);
+
+    getStdoutFromCliRun(exec, getDryRunCmd).then((dryRunJson) => {
+        dryRunJson = JSON.parse(dryRunJson);
+        let projectId = dryRunJson.Database;
+        let dataset = dryRunJson.Schema;
+        let table = dryRunJson.FileName;
+        let fullTableName = `${projectId}.${dataset}.${table}`;
+        const terminal = vscode.window.createTerminal('dataform');
+        if (includDependencies) {
+            const dataformRunCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-dependencies`);
+            terminal.sendText(dataformRunCmd);
+        } else {
+            const dataformRunCmd = `dataform run ${workspaceFolder} --actions "${fullTableName}"`;
+            terminal.sendText(dataformRunCmd);
+        }
+        terminal.show();
+    })
+        .catch((err) => {
+            ;
+            vscode.window.showErrorMessage(`Error running file: ${err}`);
+            return;
+        });
+
+};

@@ -5,6 +5,7 @@
 
 Provides support for
 
+* Run a file optionally with dependencies
 * Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file
 * Data processed by query on bottom right on successful dry run
 * Inline diagnostics errors on `.sqlx` files ❗
