@@ -3,14 +3,29 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+let supportedExtensions = ['sqlx'];
+
 const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 
 export function executableIsAvailable(name: string) {
     try { shell(`which ${name}`); return true; }
     catch (error) {
-         vscode.window.showErrorMessage((error as Error).message);
-         return false;
-        }
+        vscode.window.showErrorMessage((error as Error).message);
+        return false;
+    }
+}
+
+export function getFileNameFromDocument(document: vscode.TextDocument): string {
+    var filename = document.uri.fsPath;
+    let basenameSplit = path.basename(filename).split('.');
+    let extension = basenameSplit[1];
+    let validFileType = supportedExtensions.includes(extension);
+    if (!validFileType) {
+        vscode.window.showWarningMessage(`dataform-lsp-vscode extension currently only supports ${supportedExtensions} files`);
+        return "";
+    }
+    filename = basenameSplit[0];
+    return filename;
 }
 
 export function isDataformWorkspace(workspacePath: string) {
@@ -72,7 +87,7 @@ export function isNotUndefined(value: unknown): any {
 }
 
 
-export async function writeCompiledSqlToFile(compiledQuery: string, filePath:string) {
+export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, '', 'utf8');
     }
@@ -85,7 +100,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath:str
     await vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
 }
 
-export function getStdoutFromCliRun(exec:any, cmd:string): Promise<any> {
+export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     return new Promise((resolve, reject) => {
         console.log(`cmd: ${cmd}`);
 

@@ -6,7 +6,6 @@ var path = require("path");
 let isEnabled = true;
 const compiledSqlFilePath = '/tmp/output.sql';
 let executablesToCheck = ['dataform', 'dj'];
-let supportedExtensions = ['sqlx'];
 let queryStringOffset = 3;
 
 export let declarationsAndTargets: string[] = [];
@@ -21,8 +20,8 @@ export let dataformTags: string[] = [];
 */
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
-import { writeCompiledSqlToFile, getStdoutFromCliRun } from './utils';
-import { editorSyncDisposable} from './sync';
+import { writeCompiledSqlToFile, getStdoutFromCliRun, getFileNameFromDocument } from './utils';
+import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 
 // This method is called when your extension is activated
@@ -59,20 +58,14 @@ export async function activate(context: vscode.ExtensionContext) {
             // The code you place here will be executed every time your command is executed
             diagnosticCollection.clear();
 
-            var filename = document.uri.fsPath;
-            let basenameSplit = path.basename(filename).split('.');
-            let extension = basenameSplit[1];
-            let validFileType = supportedExtensions.includes(extension);
-            if (!validFileType) {
-                vscode.window.showWarningMessage(`dataform-lsp-vscode extension currently only supports ${supportedExtensions} files`);
-                return;
-            }
-            filename = basenameSplit[0];
+            var filename = getFileNameFromDocument(document)
+            if (filename == "") { return; }
 
             let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
             if (workspaceFolder !== undefined) {
                 if (isDataformWorkspace(workspaceFolder) === false) {
                     vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
+                    return;
                 }
             }
             console.log(`filename: ${filename}`);
