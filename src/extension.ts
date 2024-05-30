@@ -2,10 +2,15 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 var path = require("path");
+
 let isEnabled = true;
 const compiledSqlFilePath = '/tmp/output.sql';
-let declarationsAndTargets: string[] = [];
-let dataformTags : string[] = [];
+let executablesToCheck = ['dataform', 'dj'];
+let supportedExtensions = ['sqlx'];
+let queryStringOffset = 3;
+
+export let declarationsAndTargets: string[] = [];
+export let dataformTags: string[] = [];
 
 //TODO:
 /*
@@ -17,6 +22,7 @@ let dataformTags : string[] = [];
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
 import { writeCompiledSqlToFile, getStdoutFromCliRun } from './utils';
+import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -24,120 +30,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let onSaveDisposable: vscode.Disposable | null = null;
     let editorSyncDisposable: vscode.Disposable | null = null;
-    let sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
-    let dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
-    let tagsAutoCompletionDisposable: vscode.Disposable | null = null;
+    let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
+    let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
+    let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
 
-    let executablesToCheck = ['dataform', 'dj'];
-    let supportedExtensions = ['sqlx'];
     for (let i = 0; i < executablesToCheck.length; i++) {
         console.log(`Checking if ${executablesToCheck[i]} is available`);
         executableIsAvailable(executablesToCheck[i]);
     }
-
-    let queryStringOffset = 3;
 
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
     function registerAllCommands(context: vscode.ExtensionContext) {
 
+        _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable()
+        context.subscriptions.push(_sourcesAutoCompletionDisposable);
 
-        sourcesAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
-            // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
-            /*
-            you might need to set up the file association to use the auto-completion
-            sql should be added as a file association for sqlx
-            this will enable both sufficient syntax highlighting and auto-completion
-            */
-            { language: 'sql', scheme: 'file' },
-            {
-                provideCompletionItems(document, position, token, context) {
+        _dependenciesAutoCompletionDisposable = dependenciesAutoCompletionDisposable();
+        context.subscriptions.push(_dependenciesAutoCompletionDisposable);
 
-                    const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                    if (!linePrefix.endsWith('$')) {
-                        return undefined;
-                    }
-                    let sourceCompletionItem = (text: any) => {
-                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
-                        item.range = new vscode.Range(position, position);
-                        return item;
-                    };
-                    if (declarationsAndTargets.length === 0) {
-                        return undefined;
-                    }
-                    let sourceCompletionItems: vscode.CompletionItem[] = [];
-                    declarationsAndTargets.forEach((source: string) => {
-                        source = `{ref("${source}")}`;
-                        sourceCompletionItems.push(sourceCompletionItem(source));
-                    });
-                    return sourceCompletionItems;
-                }
-            },
-            '$' // trigger
-        );
-        context.subscriptions.push(sourcesAutoCompletionDisposable);
-
-        dependenciesAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
-            // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
-            { language: 'sql', scheme: 'file' },
-            {
-                provideCompletionItems(document, position, token, context) {
-
-                    const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                    if (!linePrefix.includes('dependencies')) {
-                        return undefined;
-                    }
-                    let sourceCompletionItem = (text: any) => {
-                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
-                        item.range = new vscode.Range(position, position);
-                        return item;
-                    };
-                    if (declarationsAndTargets.length === 0) {
-                        return undefined;
-                    }
-                    let sourceCompletionItems: vscode.CompletionItem[] = [];
-                    declarationsAndTargets.forEach((source: string) => {
-                        source = `${source}`;
-                        sourceCompletionItems.push(sourceCompletionItem(source));
-                    });
-                    return sourceCompletionItems;
-                },
-            },
-            ...["'", '"'],
-        );
-        context.subscriptions.push(dependenciesAutoCompletionDisposable);
-
-        tagsAutoCompletionDisposable = vscode.languages.registerCompletionItemProvider(
-            // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
-            { language: 'sql', scheme: 'file' },
-            {
-                provideCompletionItems(document, position, token, context) {
-
-                    const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                    if (!linePrefix.includes('tags')) {
-                        return undefined;
-                    }
-                    let sourceCompletionItem = (text: any) => {
-                        let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
-                        item.range = new vscode.Range(position, position);
-                        return item;
-                    };
-                    if (dataformTags.length === 0) {
-                        return undefined;
-                    }
-                    let sourceCompletionItems: vscode.CompletionItem[] = [];
-                    dataformTags.forEach((source: string) => {
-                        source = `${source}`;
-                        sourceCompletionItems.push(sourceCompletionItem(source));
-                    });
-                    return sourceCompletionItems;
-                },
-            },
-            ...["'", '"'],
-        );
-        context.subscriptions.push(tagsAutoCompletionDisposable);
-
+        _tagsAutoCompletionDisposable = tagsAutoCompletionDisposable();
+        context.subscriptions.push(_tagsAutoCompletionDisposable);
 
         // Implementing the feature to sync scroll between main editor and vertical split editors
         // BUG: git hunks start syncing as well !
@@ -204,7 +118,7 @@ export async function activate(context: vscode.ExtensionContext) {
             getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
                 let declarations = JSON.parse(sources).Declarations;
                 let targets = JSON.parse(sources).Targets;
-                declarationsAndTargets = [...new Set([...declarations ,...targets])];
+                declarationsAndTargets = [...new Set([...declarations, ...targets])];
             }
             ).catch((err) => {
                 vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
@@ -301,14 +215,14 @@ export async function activate(context: vscode.ExtensionContext) {
             if (editorSyncDisposable !== null) {
                 editorSyncDisposable.dispose();
             }
-            if (sourcesAutoCompletionDisposable !== null) {
-                sourcesAutoCompletionDisposable.dispose();
+            if (_sourcesAutoCompletionDisposable !== null) {
+                _sourcesAutoCompletionDisposable.dispose();
             }
-            if (dependenciesAutoCompletionDisposable !== null) {
-                dependenciesAutoCompletionDisposable.dispose();
+            if (_dependenciesAutoCompletionDisposable !== null) {
+                _dependenciesAutoCompletionDisposable.dispose();
             }
-            if (tagsAutoCompletionDisposable !== null) {
-                tagsAutoCompletionDisposable.dispose();
+            if (_tagsAutoCompletionDisposable !== null) {
+                _tagsAutoCompletionDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
