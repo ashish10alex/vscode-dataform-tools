@@ -115,7 +115,6 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 
 export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     return new Promise((resolve, reject) => {
-        console.log(`cmd: ${cmd}`);
 
         exec(cmd, (err: any, stdout: any, stderr: any) => {
             if (err) {
@@ -151,21 +150,45 @@ export function runCurrentFile(exec: any, includDependencies: boolean) {
 
     const getDryRunCmd = getDryRunCommand(workspaceFolder, filename);
 
-    getStdoutFromCliRun(exec, getDryRunCmd).then((dryRunJson) => {
-        dryRunJson = JSON.parse(dryRunJson);
-        let projectId = dryRunJson.Database;
-        let dataset = dryRunJson.Schema;
-        let table = dryRunJson.FileName;
-        let fullTableName = `${projectId}.${dataset}.${table}`;
-        const terminal = vscode.window.createTerminal('dataform');
-        if (includDependencies) {
-            const dataformRunCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-dependencies`);
-            terminal.sendText(dataformRunCmd);
-        } else {
-            const dataformRunCmd = `dataform run ${workspaceFolder} --actions "${fullTableName}"`;
-            terminal.sendText(dataformRunCmd);
+    getStdoutFromCliRun(exec, getDryRunCmd).then((dryRunString) => {
+
+        let allActions = dryRunString.split('\n');
+        let actionsList: string[] = [];
+        let dataformActionCmd = "";
+
+
+        // get a list of tables & assertions that will be ran
+        for (let i = 0; i < allActions.length - 1; i++) {
+            let dryRunJson = JSON.parse(allActions[i]);
+            let projectId = dryRunJson.Database;
+            let dataset = dryRunJson.Schema;
+            let table = dryRunJson.FileName;
+            let fullTableName = `${projectId}.${dataset}.${table}`;
+            actionsList.push(fullTableName);
         }
+
+        // create the dataform run command for the list of actions from actionsList
+        for (let i = 0; i < actionsList.length; i++) {
+            let fullTableName = actionsList[i];
+            if (i === 0) {
+                if (includDependencies) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-deps`);
+                } else {
+                    dataformActionCmd = `dataform run ${workspaceFolder} --actions "${fullTableName}"`;
+                }
+            } else {
+                if (includDependencies) {
+                    dataformActionCmd += ` --actions "${fullTableName}"`;
+                } else {
+                    dataformActionCmd += ` --actions "${fullTableName}"`;
+                }
+            }
+        }
+
+        const terminal = vscode.window.createTerminal('dataform');
+        terminal.sendText(dataformActionCmd);
         terminal.show();
+
     })
         .catch((err) => {
             ;

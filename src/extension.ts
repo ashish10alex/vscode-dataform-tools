@@ -33,6 +33,8 @@ export async function activate(context: vscode.ExtensionContext) {
     let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
     let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
     let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
+    let runCurrentFileCommandDisposable: vscode.Disposable | null = null;
+    let runCurrentFileWtDepsCommandDisposable: vscode.Disposable | null = null;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         console.log(`Checking if ${executablesToCheck[i]} is available`);
@@ -77,6 +79,13 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(_tagsAutoCompletionDisposable);
 
         context.subscriptions.push(editorSyncDisposable);
+
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFile', () => { runCurrentFile(exec, false); });
+        context.subscriptions.push(runCurrentFileCommandDisposable);
+
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFileWtDepsCommand', () => { runCurrentFile(exec, true); });
+        context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
+
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             // The code you place here will be executed every time your command is executed
@@ -210,18 +219,17 @@ export async function activate(context: vscode.ExtensionContext) {
             if (_tagsAutoCompletionDisposable !== null) {
                 _tagsAutoCompletionDisposable.dispose();
             }
+            if (runCurrentFileCommandDisposable !== null) {
+                runCurrentFileCommandDisposable.dispose();
+            }
+            if (runCurrentFileWtDepsCommandDisposable !== null) {
+                runCurrentFileWtDepsCommandDisposable.dispose();
+            }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
             vscode.window.showInformationMessage('Extension is already disabled');
         }
     });
-
-    let runCurrentFileCommand = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFile', () => {runCurrentFile(exec, false);});
-    context.subscriptions.push(runCurrentFileCommand);
-
-    let runCurrentFileWtDepsCommand = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFileWtDepsCommand', () => {runCurrentFile(exec, true);});
-    context.subscriptions.push(runCurrentFileWtDepsCommand);
-
 
     context.subscriptions.push(enableCommand);
     context.subscriptions.push(disableCommand);
