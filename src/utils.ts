@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getDryRunCommand } from './commands';
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -114,7 +115,6 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 
 export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     return new Promise((resolve, reject) => {
-        console.log(`cmd: ${cmd}`);
 
         exec(cmd, (err: any, stdout: any, stderr: any) => {
             if (err) {
@@ -138,3 +138,62 @@ export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     });
 }
 
+
+export function runCurrentFile(exec: any, includDependencies: boolean) {
+    let document = vscode.window.activeTextEditor?.document;
+    if (document === undefined) {
+        vscode.window.showErrorMessage('No active document');
+        return;
+    }
+    var filename = getFileNameFromDocument(document);
+    let workspaceFolder = getWorkspaceFolder();
+
+    const getDryRunCmd = getDryRunCommand(workspaceFolder, filename);
+
+    getStdoutFromCliRun(exec, getDryRunCmd).then((dryRunString) => {
+
+        let allActions = dryRunString.split('\n');
+        let actionsList: string[] = [];
+        let dataformActionCmd = "";
+
+
+        // get a list of tables & assertions that will be ran
+        for (let i = 0; i < allActions.length - 1; i++) {
+            let dryRunJson = JSON.parse(allActions[i]);
+            let projectId = dryRunJson.Database;
+            let dataset = dryRunJson.Schema;
+            let table = dryRunJson.FileName;
+            let fullTableName = `${projectId}.${dataset}.${table}`;
+            actionsList.push(fullTableName);
+        }
+
+        // create the dataform run command for the list of actions from actionsList
+        for (let i = 0; i < actionsList.length; i++) {
+            let fullTableName = actionsList[i];
+            if (i === 0) {
+                if (includDependencies) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-deps`);
+                } else {
+                    dataformActionCmd = `dataform run ${workspaceFolder} --actions "${fullTableName}"`;
+                }
+            } else {
+                if (includDependencies) {
+                    dataformActionCmd += ` --actions "${fullTableName}"`;
+                } else {
+                    dataformActionCmd += ` --actions "${fullTableName}"`;
+                }
+            }
+        }
+
+        const terminal = vscode.window.createTerminal('dataform');
+        terminal.sendText(dataformActionCmd);
+        terminal.show();
+
+    })
+        .catch((err) => {
+            ;
+            vscode.window.showErrorMessage(`Error running file: ${err}`);
+            return;
+        });
+
+};

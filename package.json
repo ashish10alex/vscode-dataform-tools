@@ -22,7 +22,9 @@
   "activationEvents": [
     "workspaceContains:**/*.sqlx",
     "onCommand:extension.enable",
-    "onCommand:extension.disable"
+    "onCommand:extension.disable",
+    "onCommand:extension.runCurrentFile",
+    "onCommand:extension.runCurrentFileWtDepsCommand"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -36,6 +38,16 @@
         "command": "dataform-lsp-vscode.disable",
         "category": "Dataform",
         "title": "disable lsp"
+      },
+      {
+        "command": "dataform-lsp-vscode.runCurrentFile",
+        "category": "Dataform",
+        "title": "Run current file"
+      },
+      {
+        "command": "dataform-lsp-vscode.runCurrentFileWtDepsCommand",
+        "category": "Dataform",
+        "title": "Run current file with dependencies"
       }
     ]
   },

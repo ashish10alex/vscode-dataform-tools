@@ -5,7 +5,8 @@
 
 Provides support for
 
-* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file
+* Run a specific file, optionally with dependencies
+* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file
 * Data processed by query on bottom right on successful dry run
 * Inline diagnostics errors on `.sqlx` files ❗
 * Auto completion support for
@@ -70,5 +71,6 @@ Provides support for
 ## TODO
 
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
+- [x] Ability to run a file optionally with dependencies
 
 
