@@ -22,6 +22,7 @@ export let dataformTags: string[] = [];
 
 import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, isDataformWorkspace } from './utils';
 import { writeCompiledSqlToFile, getStdoutFromCliRun } from './utils';
+import { editorSyncDisposable} from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 
 // This method is called when your extension is activated
@@ -29,7 +30,6 @@ import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, 
 export async function activate(context: vscode.ExtensionContext) {
 
     let onSaveDisposable: vscode.Disposable | null = null;
-    let editorSyncDisposable: vscode.Disposable | null = null;
     let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
     let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
     let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
@@ -53,19 +53,6 @@ export async function activate(context: vscode.ExtensionContext) {
         _tagsAutoCompletionDisposable = tagsAutoCompletionDisposable();
         context.subscriptions.push(_tagsAutoCompletionDisposable);
 
-        // Implementing the feature to sync scroll between main editor and vertical split editors
-        // BUG: git hunks start syncing as well !
-        editorSyncDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
-            let splitEditors = vscode.window.visibleTextEditors;
-            let activeEditor = vscode.window.activeTextEditor;
-            if (activeEditor) {
-                splitEditors.forEach((editor) => {
-                    if (editor !== activeEditor) {
-                        editor.revealRange(activeEditor.visibleRanges[0]);
-                    }
-                });
-            }
-        });
         context.subscriptions.push(editorSyncDisposable);
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
