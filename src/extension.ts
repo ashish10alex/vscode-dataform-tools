@@ -129,14 +129,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
 
-            getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
-                writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
-            })
-                .catch((err) => {
-                    ;
-                    vscode.window.showErrorMessage(`Compiled query error: ${err}`);
-                    return;
-                });
+            // BUG: When user is not conneted to the internet not getting an erorr ???
+            let showCompiledQueryInVerticalSplitOnSave:boolean|undefined = vscode.workspace.getConfiguration('dataform-lsp-vscode').get('showCompiledQueryInVerticalSplitOnSave');
+            if (showCompiledQueryInVerticalSplitOnSave) {
+
+                getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
+                    writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
+                })
+                    .catch((err) => {
+                        ;
+                        vscode.window.showErrorMessage(`Compiled query error: ${err}`);
+                        return;
+                    });
+            }
 
             const diagnostics: vscode.Diagnostic[] = [];
 

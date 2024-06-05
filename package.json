@@ -49,7 +49,17 @@
         "category": "Dataform",
         "title": "Run current file with dependencies"
       }
-    ]
+    ],
+    "configuration": {
+        "title": "Dataform",
+        "properties": {
+            "dataform-lsp-vscode.showCompiledQueryInVerticalSplitOnSave": {
+                "type": "boolean",
+                "default": true,
+                "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
+            }
+        }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
