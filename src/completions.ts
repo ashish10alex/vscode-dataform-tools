@@ -43,7 +43,7 @@ export const dependenciesAutoCompletionDisposable = () => vscode.languages.regis
         provideCompletionItems(document, position, token, context) {
 
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
-            if (!linePrefix.includes('dependencies')) {
+            if (!(linePrefix.includes('dependencies') && ( linePrefix.includes('"') || linePrefix.includes("'")))){
                 return undefined;
             }
             let sourceCompletionItem = (text: any) => {
@@ -72,7 +72,7 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
         provideCompletionItems(document, position, token, context) {
 
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
-            if (!linePrefix.includes('tags')) {
+            if (!(linePrefix.includes('tags') && ( linePrefix.includes('"') || linePrefix.includes("'")))){
                 return undefined;
             }
             let sourceCompletionItem = (text: any) => {
