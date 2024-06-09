@@ -185,9 +185,15 @@ export function runCurrentFile(exec: any, includDependencies: boolean) {
             }
         }
 
-        const terminal = vscode.window.createTerminal('dataform');
-        terminal.sendText(dataformActionCmd);
-        terminal.show();
+        if (vscode.window.activeTerminal === undefined) {
+            const terminal = vscode.window.createTerminal('dataform');
+            terminal.sendText(dataformActionCmd);
+            terminal.show();
+        } else {
+            const terminal = vscode.window.activeTerminal;
+            vscode.window.activeTerminal.sendText(dataformActionCmd);
+            terminal.show();
+        }
 
     })
         .catch((err) => {
