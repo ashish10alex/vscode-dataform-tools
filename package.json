@@ -24,7 +24,9 @@
     "onCommand:extension.enable",
     "onCommand:extension.disable",
     "onCommand:extension.runCurrentFile",
-    "onCommand:extension.runCurrentFileWtDeps"
+    "onCommand:extension.runCurrentFileWtDeps",
+    "onCommand:extension.compileWtDryRun",
+    "onCommand:extension.showCompiledQueryWtDryRun"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -42,20 +44,62 @@
       {
         "command": "dataform-lsp-vscode.runCurrentFile",
         "category": "Dataform",
-        "title": "Run current file"
+        "title": "Run current file",
+        "icon": "$(play)",
+        "group": "navigation"
       },
       {
         "command": "dataform-lsp-vscode.runCurrentFileWtDeps",
         "category": "Dataform",
-        "title": "Run current file with dependencies"
+        "title": "Run current file with dependencies",
+        "icon": "$(debug-rerun)",
+        "group": "navigation@1"
+      },
+      {
+        "command": "dataform-lsp-vscode.compileWtDryRun",
+        "category": "Dataform",
+        "title": "Compile Dataform project followed by dry run",
+        "icon": "$(sync)",
+        "group": "navigation@0"
+      },
+      {
+        "command": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+        "category": "Dataform",
+        "title": "Show compiled query in vertical split",
+        "icon": "$(split-horizontal)",
+        "group": "navigation@2"
       }
     ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "dataform-lsp-vscode.compileWtDryRun",
+          "alt": "dataform-lsp-vscode.compileWtDryRun",
+          "group": "navigation@0"
+        },
+        {
+          "command": "dataform-lsp-vscode.runCurrentFileWtDeps",
+          "alt": "dataform-lsp-vscode.runCurrentFileWtDeps",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+          "alt": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dataform-lsp-vscode.runCurrentFile",
+          "alt": "dataform-lsp-vscode.runCurrentFile",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
         "title": "Dataform",
         "properties": {
             "dataform-lsp-vscode.showCompiledQueryInVerticalSplitOnSave": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
             }
         }

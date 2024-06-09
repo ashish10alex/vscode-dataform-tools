@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
-import { getDryRunCommand } from './commands';
+import { getDryRunCommand, getSourcesCommand, getTagsCommand, compiledQueryCommand } from './commands';
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
 let supportedExtensions = ['sqlx'];
+
+export let declarationsAndTargets: string[] = [];
 
 const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 
@@ -204,3 +206,110 @@ export function runCurrentFile(exec: any, includDependencies: boolean) {
         });
 
 };
+
+export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    // The code you place here will be executed every time your command is executed
+    diagnosticCollection.clear();
+
+    var filename = getFileNameFromDocument(document);
+    if (filename === "") { return; }
+
+    let workspaceFolder = getWorkspaceFolder();
+    if (workspaceFolder === "") { return; }
+
+    let configBlockRange = getLineNumberWhereConfigBlockTerminates();
+    let configBlockStart = configBlockRange[0] || 0;
+    let configBlockEnd = configBlockRange[1] || 0;
+    let configBlockOffset = (configBlockStart + configBlockEnd) - 1;
+    console.log(`configBlockStart: ${configBlockStart} | configBlockEnd: ${configBlockEnd}`);
+    let configLineOffset = configBlockOffset - queryStringOffset;
+
+    const sourcesCmd = getSourcesCommand(workspaceFolder);
+    const tagsCompletionCmd = getTagsCommand(workspaceFolder);
+    const dryRunCmd = getDryRunCommand(workspaceFolder, filename);
+    const compiledQueryCmd = compiledQueryCommand(workspaceFolder, filename);
+
+
+    getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
+        let declarations = JSON.parse(sources).Declarations;
+        let targets = JSON.parse(sources).Targets;
+        declarationsAndTargets = [...new Set([...declarations, ...targets])];
+    }
+    ).catch((err) => {
+        vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
+    });
+
+    let dataformTags: string[] = [];
+    await getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
+        let uniqueTags = JSON.parse(sources).tags;
+        console.log(`uniqueTags: ${uniqueTags}`);
+        dataformTags = uniqueTags;
+    }
+    ).catch((err) => {
+        vscode.window.showErrorMessage(`Error getting tags for project: ${err}`);
+    });
+
+
+
+    // BUG: When user is not conneted to the internet not getting an erorr ???
+    if (showCompiledQueryInVerticalSplitOnSave !== true) {
+        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('dataform-lsp-vscode').get('showCompiledQueryInVerticalSplitOnSave');
+    }
+    if (showCompiledQueryInVerticalSplitOnSave) {
+
+        getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
+            writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
+        })
+            .catch((err) => {
+                ;
+                vscode.window.showErrorMessage(`Compiled query error: ${err}`);
+                return;
+            });
+    }
+
+    const diagnostics: vscode.Diagnostic[] = [];
+
+    getStdoutFromCliRun(exec, dryRunCmd).then((dryRunString) => {
+        //TODO: Handle more elegantly where multiline json is returned
+        // this is a hack to handle multiline json by picking only the first json item
+        // separated by newline
+        let dryRunJson;
+        let strLen = dryRunString.split('\n').length;
+        if (strLen > 1) {
+            dryRunJson = JSON.parse(dryRunString.split('\n')[0]);
+        } else {
+            dryRunJson = JSON.parse(dryRunString);
+        }
+
+        let isError = dryRunJson.Error?.IsError;
+        if (isError === false) {
+            let GBProcessed = dryRunJson.GBProcessed;
+            let fileName = dryRunJson.FileName;
+            GBProcessed = GBProcessed.toFixed(4);
+            vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
+        }
+
+        let errLineNumber = dryRunJson.Error?.LineNumber + configLineOffset;
+        let errColumnNumber = dryRunJson.Error?.ColumnNumber;
+
+
+        const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+        const message = dryRunJson.Error?.ErrorMsg || '';
+        const severity = vscode.DiagnosticSeverity.Error;
+        const diagnostic = new vscode.Diagnostic(range, message, severity);
+        if (diagnostics.length === 0) { //NOTE: Did this because we are only showing first error ?
+            diagnostics.push(diagnostic);
+            if (document !== undefined) {
+                diagnosticCollection.set(document.uri, diagnostics);
+            }
+        }
+    })
+        .catch((err) => {
+            if (err.toString() === 'TypeError: message must be set') { // NOTE: not sure how to fix this one?
+                return;
+            }
+            vscode.window.showErrorMessage(`Dry run error: ${err}`);
+            return;
+        });
+    return dataformTags;
+}

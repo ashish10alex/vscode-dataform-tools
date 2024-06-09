@@ -19,11 +19,11 @@ export let dataformTags: string[] = [];
 2. Add docs to functions
 */
 
-import { executableIsAvailable, getLineNumberWhereConfigBlockTerminates, runCurrentFile, } from './utils';
-import { writeCompiledSqlToFile, getStdoutFromCliRun, getFileNameFromDocument, getWorkspaceFolder } from './utils';
+import { executableIsAvailable, runCurrentFile, } from './utils';
+import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { compiledQueryCommand, getTagsCommand, getSourcesCommand, getDryRunCommand } from './commands';
+import { getTagsCommand, getSourcesCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -67,6 +67,21 @@ export async function activate(context: vscode.ExtensionContext) {
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
+    async function compileAndDryRunWtOpts(exec: any, document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+        if (document === undefined) {
+            document = vscode.window.activeTextEditor?.document;
+        }
+
+        if (document === undefined) {
+            return
+        }
+
+        let uniqueTags = await compiledQueryWtDryRun(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        if (uniqueTags !== undefined) {
+            dataformTags = uniqueTags;
+        }
+    }
+
     function registerAllCommands(context: vscode.ExtensionContext) {
 
         _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
@@ -88,107 +103,27 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-            // The code you place here will be executed every time your command is executed
-            diagnosticCollection.clear();
-
-            var filename = getFileNameFromDocument(document);
-            if (filename === "") { return; }
-
-            let workspaceFolder = getWorkspaceFolder();
-            if (workspaceFolder === "") { return; }
-
-            let configBlockRange = getLineNumberWhereConfigBlockTerminates();
-            let configBlockStart = configBlockRange[0] || 0;
-            let configBlockEnd = configBlockRange[1] || 0;
-            let configBlockOffset = (configBlockStart + configBlockEnd) - 1;
-            console.log(`configBlockStart: ${configBlockStart} | configBlockEnd: ${configBlockEnd}`);
-            let configLineOffset = configBlockOffset - queryStringOffset;
-
-            const sourcesCmd = getSourcesCommand(workspaceFolder);
-            const tagsCompletionCmd = getTagsCommand(workspaceFolder);
-            const dryRunCmd = getDryRunCommand(workspaceFolder, filename);
-            const compiledQueryCmd = compiledQueryCommand(workspaceFolder, filename);
-
-
-            getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
-                let declarations = JSON.parse(sources).Declarations;
-                let targets = JSON.parse(sources).Targets;
-                declarationsAndTargets = [...new Set([...declarations, ...targets])];
-            }
-            ).catch((err) => {
-                vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
-            });
-
-            getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
-                let uniqueTags = JSON.parse(sources).tags;
-                dataformTags = uniqueTags;
-            }
-            ).catch((err) => {
-                vscode.window.showErrorMessage(`Error getting tags for project: ${err}`);
-            });
-
-
-
-            // BUG: When user is not conneted to the internet not getting an erorr ???
-            let showCompiledQueryInVerticalSplitOnSave:boolean|undefined = vscode.workspace.getConfiguration('dataform-lsp-vscode').get('showCompiledQueryInVerticalSplitOnSave');
-            if (showCompiledQueryInVerticalSplitOnSave) {
-
-                getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
-                    writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
-                })
-                    .catch((err) => {
-                        ;
-                        vscode.window.showErrorMessage(`Compiled query error: ${err}`);
-                        return;
-                    });
-            }
-
-            const diagnostics: vscode.Diagnostic[] = [];
-
-            getStdoutFromCliRun(exec, dryRunCmd).then((dryRunString) => {
-                //TODO: Handle more elegantly where multiline json is returned
-                // this is a hack to handle multiline json by picking only the first json item
-                // separated by newline
-                let dryRunJson;
-                let strLen = dryRunString.split('\n').length;
-                if (strLen > 1) {
-                    dryRunJson = JSON.parse(dryRunString.split('\n')[0]);
-                } else {
-                    dryRunJson = JSON.parse(dryRunString);
-                }
-
-                let isError = dryRunJson.Error?.IsError;
-                if (isError === false) {
-                    let GBProcessed = dryRunJson.GBProcessed;
-                    let fileName = dryRunJson.FileName;
-                    GBProcessed = GBProcessed.toFixed(4);
-                    vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
-                }
-
-                let errLineNumber = dryRunJson.Error?.LineNumber + configLineOffset;
-                let errColumnNumber = dryRunJson.Error?.ColumnNumber;
-
-
-                const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-                const message = dryRunJson.Error?.ErrorMsg || '';
-                const severity = vscode.DiagnosticSeverity.Error;
-                const diagnostic = new vscode.Diagnostic(range, message, severity);
-                if (diagnostics.length === 0) { //NOTE: Did this because we are only showing first error ?
-                    diagnostics.push(diagnostic);
-                    if (document !== undefined) {
-                        diagnosticCollection.set(document.uri, diagnostics);
-                    }
-                }
-            })
-                .catch((err) => {
-                    if (err.toString() === 'TypeError: message must be set') { // NOTE: not sure how to fix this one?
-                        return;
-                    }
-                    vscode.window.showErrorMessage(`Dry run error: ${err}`);
-                    return;
-                });
+            let showCompiledQueryInVerticalSplitOnSave = undefined;
+            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(onSaveDisposable);
+
+        let compileWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.compileWtDryRun', async () => {
+            let showCompiledQueryInVerticalSplitOnSave = undefined;
+            let document = undefined;
+            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        });
+
+        context.subscriptions.push(compileWtDryRunDisposable);
+
+        let showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.showCompiledQueryWtDryRun', async () => {
+            let showCompiledQueryInVerticalSplitOnSave = true;
+            let document = undefined;
+            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        });
+
+        context.subscriptions.push(showCompiledQueryWtDryRunDisposable);
+
 
     }
 
