@@ -74,6 +74,7 @@ export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
     }
 
     const document = editor.document;
+    document.save()
     const totalLines = document.lineCount;
 
     for (let i = 0; i < totalLines; i++) {
