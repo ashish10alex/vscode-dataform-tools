@@ -99,7 +99,7 @@
         "properties": {
             "dataform-lsp-vscode.showCompiledQueryInVerticalSplitOnSave": {
                 "type": "boolean",
-                "default": false,
+                "default": true,
                 "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
             }
         }
