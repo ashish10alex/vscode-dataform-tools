@@ -11,6 +11,16 @@ let queryStringOffset = 3;
 export let declarationsAndTargets: string[] = [];
 export let dataformTags: string[] = [];
 
+let onSaveDisposable: vscode.Disposable | null = null;
+let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
+let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
+let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
+let runCurrentFileCommandDisposable: vscode.Disposable | null = null;
+let runCurrentFileWtDepsCommandDisposable: vscode.Disposable | null = null;
+let compileWtDryRunDisposable: vscode.Disposable | null = null;
+let showCompiledQueryWtDryRunDisposable : vscode.Disposable | null = null;
+
+
 //TODO:
 /*
 1. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
@@ -28,13 +38,6 @@ import { getTagsCommand, getSourcesCommand } from './commands';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-
-    let onSaveDisposable: vscode.Disposable | null = null;
-    let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
-    let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
-    let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
-    let runCurrentFileCommandDisposable: vscode.Disposable | null = null;
-    let runCurrentFileWtDepsCommandDisposable: vscode.Disposable | null = null;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         console.log(`Checking if ${executablesToCheck[i]} is available`);
@@ -108,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(onSaveDisposable);
 
-        let compileWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.compileWtDryRun', async () => {
+        compileWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.compileWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
             let document = undefined;
             await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
@@ -116,7 +119,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(compileWtDryRunDisposable);
 
-        let showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.showCompiledQueryWtDryRun', async () => {
+        showCompiledQueryWtDryRunDisposable  = vscode.commands.registerCommand('dataform-lsp-vscode.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
             await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
@@ -164,6 +167,12 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runCurrentFileWtDepsCommandDisposable !== null) {
                 runCurrentFileWtDepsCommandDisposable.dispose();
+            }
+            if (compileWtDryRunDisposable !== null) {
+                compileWtDryRunDisposable.dispose();
+            }
+            if (showCompiledQueryWtDryRunDisposable !== null){
+                showCompiledQueryWtDryRunDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
