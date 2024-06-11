@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.14](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.13...v0.0.14) (2024-06-11)
+
+
+### Bug Fixes
+
+* sync being carried over to git hunks and other files ([2628da0](https://github.com/ashish10alex/dataform-lsp-vscode/commit/2628da0b173b85cb33c58aa92940955b602cb0f1))
+* unable to disable and enable plugin due to some commands being not disposed off ([4f338d8](https://github.com/ashish10alex/dataform-lsp-vscode/commit/4f338d880f4208d591d5759ccc7881bd778c1de0))
+
 ### [0.0.13](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.12...v0.0.13) (2024-06-11)
 
 
