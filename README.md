@@ -71,6 +71,7 @@ Provides support for
 ## TODO
 
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
+- [ ] Make compiling query to vertical split to a command
 - [x] Ability to run a file optionally with dependencies
 
 
