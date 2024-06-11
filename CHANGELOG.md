@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.15](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.14...v0.0.15) (2024-06-11)
+
+
+### Features
+
+* show diagnostics on the compiled query as well ([b5fa9fc](https://github.com/ashish10alex/dataform-lsp-vscode/commit/b5fa9fcb439f5e1eeda89fd3aee524c386d09ff2))
+
 ### [0.0.14](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.13...v0.0.14) (2024-06-11)
 
 
