@@ -1,6 +1,13 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.0.16](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.15...v0.0.16) (2024-06-11)
+
+
+### Bug Fixes
+
+* ensure that diagnostic is actually set on the compiled query ([0a26386](https://github.com/ashish10alex/dataform-lsp-vscode/commit/0a2638685b07b9f9764b56b5404c85f3c36eed4e))
 
 ### [0.0.15](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.14...v0.0.15) (2024-06-11)
 
@@ -29,4 +36,3 @@ All notable changes to this project will be documented in this file. See [standa
 ### Bug Fixes
 
 * no need to open multiple terminal instances ([5715321](https://github.com/ashish10alex/dataform-lsp-vscode/commit/5715321f8bf859aa9beeeb4e9a6aa54fab5d9d62))
-
