@@ -66,7 +66,7 @@
         "command": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
         "category": "Dataform",
         "title": "Show compiled query in vertical split",
-        "icon": "$(split-horizontal)",
+        "icon": "$(layout-centered)",
         "group": "navigation@2"
       }
     ],
