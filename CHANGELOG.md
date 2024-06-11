@@ -1,4 +1,4 @@
-# Changelog
+# Change Log
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
@@ -30,12 +30,3 @@ All notable changes to this project will be documented in this file. See [standa
 
 * no need to open multiple terminal instances ([5715321](https://github.com/ashish10alex/dataform-lsp-vscode/commit/5715321f8bf859aa9beeeb4e9a6aa54fab5d9d62))
 
-# Change Log
-
-All notable changes to the "dataform-lsp-vscode" extension will be documented in this file.
-
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
-
-## [Unreleased]
-
-- Initial release
