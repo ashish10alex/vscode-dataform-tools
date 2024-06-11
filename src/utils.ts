@@ -303,6 +303,17 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
                 diagnosticCollection.set(document.uri, diagnostics);
             }
         }
+
+        if (showCompiledQueryInVerticalSplitOnSave && isError === true) {
+            let compiledQueryDiagnostics:vscode.Diagnostic[] = [];
+            let errLineNumberForCompiledQuery = dryRunJson.Error?.LineNumber - 1;
+            let range = new vscode.Range(new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber), new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber + 5));
+            const testDiagnostic = new vscode.Diagnostic(range, message, severity);
+            compiledQueryDiagnostics.push(testDiagnostic);
+            let test = vscode.window.visibleTextEditors[1].document.uri;
+            diagnosticCollection.set(test, compiledQueryDiagnostics);
+        }
+
     })
         .catch((err) => {
             if (err.toString() === 'TypeError: message must be set') { // NOTE: not sure how to fix this one?
