@@ -4,9 +4,6 @@ import * as vscode from 'vscode';
 const { exec } = require('child_process');
 
 let isEnabled = true;
-const compiledSqlFilePath = '/tmp/output.sql';
-let executablesToCheck = ['dataform', 'dj'];
-let queryStringOffset = 3;
 
 export let declarationsAndTargets: string[] = [];
 export let dataformTags: string[] = [];
@@ -29,6 +26,7 @@ let showCompiledQueryWtDryRunDisposable : vscode.Disposable | null = null;
 2. Add docs to functions
 */
 
+import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
 import { editorSyncDisposable } from './sync';
