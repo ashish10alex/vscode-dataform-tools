@@ -74,21 +74,25 @@
       "editor/title": [
         {
           "command": "dataform-lsp-vscode.compileWtDryRun",
+          "when": "resourceExtname == .sqlx",
           "alt": "dataform-lsp-vscode.compileWtDryRun",
           "group": "navigation@0"
         },
         {
           "command": "dataform-lsp-vscode.runCurrentFileWtDeps",
+          "when": "resourceExtname == .sqlx",
           "alt": "dataform-lsp-vscode.runCurrentFileWtDeps",
           "group": "navigation@1"
         },
         {
           "command": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+          "when": "resourceExtname == .sqlx",
           "alt": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
           "group": "navigation@1"
         },
         {
           "command": "dataform-lsp-vscode.runCurrentFile",
+          "when": "resourceExtname == .sqlx",
           "alt": "dataform-lsp-vscode.runCurrentFile",
           "group": "navigation"
         }
