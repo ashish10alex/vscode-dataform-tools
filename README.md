@@ -65,13 +65,13 @@ Provides support for
 
 ## Known Issues
 
-- [ ] sync between sqlx file and its compiled output is being carried over to the git hunks
 - [ ] sync feature flickers when user tries to scroll a non-active editor. Fixes when user selects the active editor by clicking on it
 
 ## TODO
 
+- [ ] Hide extension icons when the workspace is not a Dataform workspace
+- [ ] Ability to execute a tag
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
-- [ ] Make compiling query to vertical split to a command
 - [x] Ability to run a file optionally with dependencies
 
 
