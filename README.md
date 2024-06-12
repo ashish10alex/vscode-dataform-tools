@@ -5,7 +5,7 @@
 
 Provides support for
 
-* Run a specific file, optionally with dependencies
+* Run a specific file or a tag, optionally with dependencies
 * Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file
 * Data processed by query on bottom right on successful dry run
 * Inline diagnostics errors on `.sqlx` files ❗
@@ -69,9 +69,9 @@ Provides support for
 
 ## TODO
 
-- [ ] Hide extension icons when the workspace is not a Dataform workspace
-- [ ] Ability to execute a tag
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
+- [x] Hide extension icons when the workspace is not a Dataform workspace
+- [x] Ability to execute a tag
 - [x] Ability to run a file optionally with dependencies
 
 
