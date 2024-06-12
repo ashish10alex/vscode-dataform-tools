@@ -24,7 +24,7 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string {
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-        vscode.window.showWarningMessage(`dataform-lsp-vscode extension currently only supports ${supportedExtensions} files`);
+        vscode.window.showWarningMessage(`vscode-dataform-tools extension currently only supports ${supportedExtensions} files`);
         return "";
     }
     filename = basenameSplit[0];
@@ -253,7 +253,7 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
 
     // BUG: When user is not conneted to the internet not getting an erorr ???
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
-        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('dataform-lsp-vscode').get('showCompiledQueryInVerticalSplitOnSave');
+        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
     }
     if (showCompiledQueryInVerticalSplitOnSave) {
 

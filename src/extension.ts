@@ -97,10 +97,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFile', () => { runCurrentFile(exec, false); });
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runCurrentFileWtDeps', () => { runCurrentFile(exec, true); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
 
 
@@ -110,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(onSaveDisposable);
 
-        compileWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.compileWtDryRun', async () => {
+        compileWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.compileWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
             let document = undefined;
             await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
@@ -118,7 +118,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(compileWtDryRunDisposable);
 
-        showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.showCompiledQueryWtDryRun', async () => {
+        showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
             await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
@@ -126,7 +126,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(showCompiledQueryWtDryRunDisposable);
 
-        runTagDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runTag', async () => {
+        runTagDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
             if (dataformTags.length === 0) {
                 vscode.window.showInformationMessage('No tags found in project');
                 return;
@@ -147,7 +147,7 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(runTagDisposable);
 
-        runTagWtDepsDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runTagWtDeps', async () => {
+        runTagWtDepsDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
             if (dataformTags.length === 0) {
                 vscode.window.showInformationMessage('No tags found in project');
                 return;
@@ -175,7 +175,7 @@ export async function activate(context: vscode.ExtensionContext) {
         registerAllCommands(context);
     }
 
-    let enableCommand = vscode.commands.registerCommand('dataform-lsp-vscode.enable', () => {
+    let enableCommand = vscode.commands.registerCommand('vscode-dataform-tools.enable', () => {
         if (!isEnabled) {
             isEnabled = true;
             registerAllCommands(context);
@@ -185,7 +185,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    let disableCommand = vscode.commands.registerCommand('dataform-lsp-vscode.disable', () => {
+    let disableCommand = vscode.commands.registerCommand('vscode-dataform-tools.disable', () => {
         if (isEnabled) {
             isEnabled = false;
             if (onSaveDisposable !== null) {

@@ -1,5 +1,5 @@
 {
-  "name": "dataform-lsp-vscode",
+  "name": "vscode-dataform-tools",
   "displayName": "Dataform tools",
   "publisher": "ashishalex",
   "icon": "media/images/dtools.png",
@@ -34,48 +34,48 @@
   "contributes": {
     "commands": [
       {
-        "command": "dataform-lsp-vscode.enable",
+        "command": "vscode-dataform-tools.enable",
         "category": "Dataform",
         "title": "enable lsp"
       },
       {
-        "command": "dataform-lsp-vscode.runTag",
+        "command": "vscode-dataform-tools.runTag",
         "category": "Dataform",
         "title": "Run a tag"
       },
       {
-        "command": "dataform-lsp-vscode.runTagWtDeps",
+        "command": "vscode-dataform-tools.runTagWtDeps",
         "category": "Dataform",
         "title": "Run a tag with dependencies"
       },
       {
-        "command": "dataform-lsp-vscode.disable",
+        "command": "vscode-dataform-tools.disable",
         "category": "Dataform",
         "title": "disable lsp"
       },
       {
-        "command": "dataform-lsp-vscode.runCurrentFile",
+        "command": "vscode-dataform-tools.runCurrentFile",
         "category": "Dataform",
         "title": "Run current file",
         "icon": "$(play)",
         "group": "navigation"
       },
       {
-        "command": "dataform-lsp-vscode.runCurrentFileWtDeps",
+        "command": "vscode-dataform-tools.runCurrentFileWtDeps",
         "category": "Dataform",
         "title": "Run current file with dependencies",
         "icon": "$(debug-rerun)",
         "group": "navigation@1"
       },
       {
-        "command": "dataform-lsp-vscode.compileWtDryRun",
+        "command": "vscode-dataform-tools.compileWtDryRun",
         "category": "Dataform",
         "title": "Compile Dataform project followed by dry run",
         "icon": "$(sync)",
         "group": "navigation@0"
       },
       {
-        "command": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+        "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
         "category": "Dataform",
         "title": "Show compiled query in vertical split",
         "icon": "$(layout-centered)",
@@ -85,27 +85,27 @@
     "menus": {
       "editor/title": [
         {
-          "command": "dataform-lsp-vscode.compileWtDryRun",
+          "command": "vscode-dataform-tools.compileWtDryRun",
           "when": "resourceExtname == .sqlx",
-          "alt": "dataform-lsp-vscode.compileWtDryRun",
+          "alt": "vscode-dataform-tools.compileWtDryRun",
           "group": "navigation@0"
         },
         {
-          "command": "dataform-lsp-vscode.runCurrentFileWtDeps",
+          "command": "vscode-dataform-tools.runCurrentFileWtDeps",
           "when": "resourceExtname == .sqlx",
-          "alt": "dataform-lsp-vscode.runCurrentFileWtDeps",
+          "alt": "vscode-dataform-tools.runCurrentFileWtDeps",
           "group": "navigation@1"
         },
         {
-          "command": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+          "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
           "when": "resourceExtname == .sqlx",
-          "alt": "dataform-lsp-vscode.showCompiledQueryWtDryRun",
+          "alt": "vscode-dataform-tools.showCompiledQueryWtDryRun",
           "group": "navigation@1"
         },
         {
-          "command": "dataform-lsp-vscode.runCurrentFile",
+          "command": "vscode-dataform-tools.runCurrentFile",
           "when": "resourceExtname == .sqlx",
-          "alt": "dataform-lsp-vscode.runCurrentFile",
+          "alt": "vscode-dataform-tools.runCurrentFile",
           "group": "navigation"
         }
       ]
@@ -113,7 +113,7 @@
     "configuration": {
       "title": "Dataform",
       "properties": {
-        "dataform-lsp-vscode.showCompiledQueryInVerticalSplitOnSave": {
+        "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"

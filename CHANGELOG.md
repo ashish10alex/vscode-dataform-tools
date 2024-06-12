@@ -5,47 +5,47 @@ All notable changes to this project will be documented in this file. See [standa
 ### [0.0.18](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.17...v0.0.18) (2024-06-12)
 
 ### Changes
-* Update repository name from dataform-lsp-vscode to vscode-dataform-tools to follow conventions
+* Update repository name from vscode-dataform-tools to vscode-dataform-tools to follow conventions
 
-### [0.0.17](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.16...v0.0.17) (2024-06-12)
-
-
-### Features
-
-* ability to run a tag optionally with dependencies ([264ec59](https://github.com/ashish10alex/dataform-lsp-vscode/commit/264ec59e28c183666c340069d7f81b4f49dc1074))
-* **menu:** only display menu items when an `.sqlx` file is open ([c89ed94](https://github.com/ashish10alex/dataform-lsp-vscode/commit/c89ed94dba8f7adee3e52c3d2b36490ed4ffe613))
-
-### [0.0.16](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.15...v0.0.16) (2024-06-11)
-
-
-### Bug Fixes
-
-* ensure that diagnostic is actually set on the compiled query ([0a26386](https://github.com/ashish10alex/dataform-lsp-vscode/commit/0a2638685b07b9f9764b56b5404c85f3c36eed4e))
-
-### [0.0.15](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.14...v0.0.15) (2024-06-11)
+### [0.0.17](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.16...v0.0.17) (2024-06-12)
 
 
 ### Features
 
-* show diagnostics on the compiled query as well ([b5fa9fc](https://github.com/ashish10alex/dataform-lsp-vscode/commit/b5fa9fcb439f5e1eeda89fd3aee524c386d09ff2))
+* ability to run a tag optionally with dependencies ([264ec59](https://github.com/ashish10alex/vscode-dataform-tools/commit/264ec59e28c183666c340069d7f81b4f49dc1074))
+* **menu:** only display menu items when an `.sqlx` file is open ([c89ed94](https://github.com/ashish10alex/vscode-dataform-tools/commit/c89ed94dba8f7adee3e52c3d2b36490ed4ffe613))
 
-### [0.0.14](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.13...v0.0.14) (2024-06-11)
+### [0.0.16](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.15...v0.0.16) (2024-06-11)
 
 
 ### Bug Fixes
 
-* sync being carried over to git hunks and other files ([2628da0](https://github.com/ashish10alex/dataform-lsp-vscode/commit/2628da0b173b85cb33c58aa92940955b602cb0f1))
-* unable to disable and enable plugin due to some commands being not disposed off ([4f338d8](https://github.com/ashish10alex/dataform-lsp-vscode/commit/4f338d880f4208d591d5759ccc7881bd778c1de0))
+* ensure that diagnostic is actually set on the compiled query ([0a26386](https://github.com/ashish10alex/vscode-dataform-tools/commit/0a2638685b07b9f9764b56b5404c85f3c36eed4e))
 
-### [0.0.13](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.12...v0.0.13) (2024-06-11)
+### [0.0.15](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.14...v0.0.15) (2024-06-11)
 
 
 ### Features
 
-* Add icon support for operations ([#3](https://github.com/ashish10alex/dataform-lsp-vscode/issues/3)) ([7013a92](https://github.com/ashish10alex/dataform-lsp-vscode/commit/7013a92ebba6258fd09e1e7422e60976df554d79))
-* auto-save the document before compiling ([0bab56b](https://github.com/ashish10alex/dataform-lsp-vscode/commit/0bab56bd75c04c861127ae170c11f0c93b1e54e0))
+* show diagnostics on the compiled query as well ([b5fa9fc](https://github.com/ashish10alex/vscode-dataform-tools/commit/b5fa9fcb439f5e1eeda89fd3aee524c386d09ff2))
+
+### [0.0.14](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.13...v0.0.14) (2024-06-11)
 
 
 ### Bug Fixes
 
-* no need to open multiple terminal instances ([5715321](https://github.com/ashish10alex/dataform-lsp-vscode/commit/5715321f8bf859aa9beeeb4e9a6aa54fab5d9d62))
+* sync being carried over to git hunks and other files ([2628da0](https://github.com/ashish10alex/vscode-dataform-tools/commit/2628da0b173b85cb33c58aa92940955b602cb0f1))
+* unable to disable and enable plugin due to some commands being not disposed off ([4f338d8](https://github.com/ashish10alex/vscode-dataform-tools/commit/4f338d880f4208d591d5759ccc7881bd778c1de0))
+
+### [0.0.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.12...v0.0.13) (2024-06-11)
+
+
+### Features
+
+* Add icon support for operations ([#3](https://github.com/ashish10alex/vscode-dataform-tools/issues/3)) ([7013a92](https://github.com/ashish10alex/vscode-dataform-tools/commit/7013a92ebba6258fd09e1e7422e60976df554d79))
+* auto-save the document before compiling ([0bab56b](https://github.com/ashish10alex/vscode-dataform-tools/commit/0bab56bd75c04c861127ae170c11f0c93b1e54e0))
+
+
+### Bug Fixes
+
+* no need to open multiple terminal instances ([5715321](https://github.com/ashish10alex/vscode-dataform-tools/commit/5715321f8bf859aa9beeeb4e9a6aa54fab5d9d62))
