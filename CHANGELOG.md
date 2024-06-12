@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [0.0.18](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.17...v0.0.18) (2024-06-12)
 
+### Changes
+* Update repository name from dataform-lsp-vscode to vscode-dataform-tools to follow conventions
+
 ### [0.0.17](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.16...v0.0.17) (2024-06-12)
 
 
