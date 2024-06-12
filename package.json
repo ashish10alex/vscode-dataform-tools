@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/ashish10alex/dataform-lsp-vscode.git"
   },
-  "version": "0.0.16",
+  "version": "0.0.17",
   "engines": {
     "vscode": "^1.89.0"
   },
@@ -29,7 +29,6 @@
     "onCommand:extension.showCompiledQueryWtDryRun",
     "onCommand:extension.runTag",
     "onCommand:extension.runTagWtDeps"
-
   ],
   "main": "./out/extension.js",
   "contributes": {

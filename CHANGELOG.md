@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.17](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.16...v0.0.17) (2024-06-12)
+
+
+### Features
+
+* ability to run a tag optionally with dependencies ([264ec59](https://github.com/ashish10alex/dataform-lsp-vscode/commit/264ec59e28c183666c340069d7f81b4f49dc1074))
+* **menu:** only display menu items when an `.sqlx` file is open ([c89ed94](https://github.com/ashish10alex/dataform-lsp-vscode/commit/c89ed94dba8f7adee3e52c3d2b36490ed4ffe613))
+
 ### [0.0.16](https://github.com/ashish10alex/dataform-lsp-vscode/compare/v0.0.15...v0.0.16) (2024-06-11)
 
 
