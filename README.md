@@ -1,9 +1,9 @@
-# dataform-lsp-vscode
+# Dataform tools - a vscode extension
 
 ⚠️ ***This is not an officially supported Google product.***
 
 
-Provides support for
+[Dataform vscode extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) which supports
 
 * Run a specific file or a tag, optionally with dependencies
 * Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file
