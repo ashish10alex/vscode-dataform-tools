@@ -1,5 +1,5 @@
 {
-  "name": "vscode-dataform-tools",
+  "name": "dataform-lsp-vscode",
   "displayName": "Dataform tools",
   "publisher": "ashishalex",
   "icon": "media/images/dtools.png",
