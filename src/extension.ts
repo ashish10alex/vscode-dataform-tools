@@ -15,8 +15,9 @@ let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
 let runCurrentFileCommandDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDepsCommandDisposable: vscode.Disposable | null = null;
 let compileWtDryRunDisposable: vscode.Disposable | null = null;
-let showCompiledQueryWtDryRunDisposable : vscode.Disposable | null = null;
-
+let showCompiledQueryWtDryRunDisposable: vscode.Disposable | null = null;
+let runTagDisposable: vscode.Disposable | null = null;
+let runTagWtDepsDisposable: vscode.Disposable | null = null;
 
 //TODO:
 /*
@@ -27,11 +28,11 @@ let showCompiledQueryWtDryRunDisposable : vscode.Disposable | null = null;
 */
 
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, } from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getTagsCommand, getSourcesCommand } from './commands';
+import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -117,13 +118,55 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(compileWtDryRunDisposable);
 
-        showCompiledQueryWtDryRunDisposable  = vscode.commands.registerCommand('dataform-lsp-vscode.showCompiledQueryWtDryRun', async () => {
+        showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
             await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(showCompiledQueryWtDryRunDisposable);
+
+        runTagDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runTag', async () => {
+            if (dataformTags.length === 0) {
+                vscode.window.showInformationMessage('No tags found in project');
+                return;
+            }
+            vscode.window.showQuickPick(dataformTags, {
+                onDidSelectItem: (tag) => {
+                    // This is triggered as soon as a item is hovered over
+                }
+            }).then((selection) => {
+                if (!selection) {
+                    return;
+                }
+
+                let runTagsCmd = getRunTagsCommand(workspaceFolder, selection);
+
+                runCommandInTerminal(runTagsCmd);
+            });
+        });
+        context.subscriptions.push(runTagDisposable);
+
+        runTagWtDepsDisposable = vscode.commands.registerCommand('dataform-lsp-vscode.runTagWtDeps', async () => {
+            if (dataformTags.length === 0) {
+                vscode.window.showInformationMessage('No tags found in project');
+                return;
+            }
+            vscode.window.showQuickPick(dataformTags, {
+                onDidSelectItem: (tag) => {
+                    // This is triggered as soon as a item is hovered over
+                }
+            }).then((selection) => {
+                if (!selection) {
+                    return;
+                }
+
+                let runTagsCmd = getRunTagsWtDepsCommand(workspaceFolder, selection);
+
+                runCommandInTerminal(runTagsCmd);
+            });
+        });
+        context.subscriptions.push(runTagWtDepsDisposable);
 
 
     }
@@ -169,8 +212,14 @@ export async function activate(context: vscode.ExtensionContext) {
             if (compileWtDryRunDisposable !== null) {
                 compileWtDryRunDisposable.dispose();
             }
-            if (showCompiledQueryWtDryRunDisposable !== null){
+            if (showCompiledQueryWtDryRunDisposable !== null) {
                 showCompiledQueryWtDryRunDisposable.dispose();
+            }
+            if (runTagDisposable !== null) {
+                runTagDisposable.dispose();
+            }
+            if (runTagWtDepsDisposable !== null) {
+                runTagWtDepsDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {

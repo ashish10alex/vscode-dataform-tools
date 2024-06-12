@@ -57,8 +57,17 @@ export function isDataformWorkspace(workspacePath: string) {
     return fileExists;
 }
 
-
-
+export function runCommandInTerminal(command: string) {
+    if (vscode.window.activeTerminal === undefined) {
+        const terminal = vscode.window.createTerminal('dataform');
+        terminal.sendText(command);
+        terminal.show();
+    } else {
+        const terminal = vscode.window.activeTerminal;
+        vscode.window.activeTerminal.sendText(command);
+        terminal.show();
+    }
+}
 
 // Get start and end line number of the config block in the .sqlx file
 // This assumes that the user is using config { } block at the top of the .sqlx file
@@ -188,16 +197,7 @@ export function runCurrentFile(exec: any, includDependencies: boolean) {
             }
         }
 
-        if (vscode.window.activeTerminal === undefined) {
-            const terminal = vscode.window.createTerminal('dataform');
-            terminal.sendText(dataformActionCmd);
-            terminal.show();
-        } else {
-            const terminal = vscode.window.activeTerminal;
-            vscode.window.activeTerminal.sendText(dataformActionCmd);
-            terminal.show();
-        }
-
+        runCommandInTerminal(dataformActionCmd);
     })
         .catch((err) => {
             ;
@@ -305,15 +305,15 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
         }
 
         if (showCompiledQueryInVerticalSplitOnSave && isError === true) {
-            let compiledQueryDiagnostics:vscode.Diagnostic[] = [];
+            let compiledQueryDiagnostics: vscode.Diagnostic[] = [];
             let errLineNumberForCompiledQuery = dryRunJson.Error?.LineNumber - 1;
             let range = new vscode.Range(new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber), new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber + 5));
             const testDiagnostic = new vscode.Diagnostic(range, message, severity);
             compiledQueryDiagnostics.push(testDiagnostic);
             let visibleEditors = vscode.window.visibleTextEditors;
-            visibleEditors.forEach( (editor) => {
+            visibleEditors.forEach((editor) => {
                 let documentUri = editor.document.uri;
-                if (documentUri.toString()  === "file://" + compiledSqlFilePath){
+                if (documentUri.toString() === "file://" + compiledSqlFilePath) {
                     diagnosticCollection.set(documentUri, compiledQueryDiagnostics);
                 }
             });

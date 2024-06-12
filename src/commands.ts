@@ -17,3 +17,11 @@ export function compiledQueryCommand(workspaceFolder: string, filename: string):
     return `dataform compile ${workspaceFolder} --json \
 		| dj table-ops query -t ${filename}`
 }
+
+export function getRunTagsCommand(workspaceFolder: string, tag: string): string {
+    return `dataform run ${workspaceFolder} --tags=${tag}`
+}
+
+export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string): string {
+    return `dataform run ${workspaceFolder} --tags=${tag} --include-deps`
+}

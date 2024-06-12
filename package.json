@@ -26,7 +26,10 @@
     "onCommand:extension.runCurrentFile",
     "onCommand:extension.runCurrentFileWtDeps",
     "onCommand:extension.compileWtDryRun",
-    "onCommand:extension.showCompiledQueryWtDryRun"
+    "onCommand:extension.showCompiledQueryWtDryRun",
+    "onCommand:extension.runTag",
+    "onCommand:extension.runTagWtDeps"
+
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -35,6 +38,16 @@
         "command": "dataform-lsp-vscode.enable",
         "category": "Dataform",
         "title": "enable lsp"
+      },
+      {
+        "command": "dataform-lsp-vscode.runTag",
+        "category": "Dataform",
+        "title": "Run a tag"
+      },
+      {
+        "command": "dataform-lsp-vscode.runTagWtDeps",
+        "category": "Dataform",
+        "title": "Run a tag with dependencies"
       },
       {
         "command": "dataform-lsp-vscode.disable",
