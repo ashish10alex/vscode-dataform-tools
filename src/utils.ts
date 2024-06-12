@@ -304,6 +304,7 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
             }
         }
 
+        let showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave && isError === true) {
             let compiledQueryDiagnostics: vscode.Diagnostic[] = [];
             let errLineNumberForCompiledQuery = dryRunJson.Error?.LineNumber - 1;
