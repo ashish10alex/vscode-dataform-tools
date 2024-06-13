@@ -41,7 +41,6 @@ import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsC
 export async function activate(context: vscode.ExtensionContext) {
 
     for (let i = 0; i < executablesToCheck.length; i++) {
-        console.log(`Checking if ${executablesToCheck[i]} is available`);
         executableIsAvailable(executablesToCheck[i]);
     }
 

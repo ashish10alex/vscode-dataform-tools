@@ -224,7 +224,6 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
     let configBlockStart = configBlockRange[0] || 0;
     let configBlockEnd = configBlockRange[1] || 0;
     let configBlockOffset = (configBlockStart + configBlockEnd) - 1;
-    console.log(`configBlockStart: ${configBlockStart} | configBlockEnd: ${configBlockEnd}`);
     let configLineOffset = configBlockOffset - queryStringOffset;
 
     const sourcesCmd = getSourcesCommand(workspaceFolder);
@@ -245,7 +244,6 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
     let dataformTags: string[] = [];
     await getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
         let uniqueTags = JSON.parse(sources).tags;
-        console.log(`uniqueTags: ${uniqueTags}`);
         dataformTags = uniqueTags;
     }
     ).catch((err) => {
