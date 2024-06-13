@@ -58,12 +58,12 @@
       {
         "command": "vscode-dataform-tools.runTagWtDownstreamDeps",
         "category": "Dataform",
-        "title": "Run a tag with downstream dependents"
+        "title": "Run a tag with dependents"
       },
       {
         "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
         "category": "Dataform",
-        "title": "Run current file with downstream dependents"
+        "title": "Run current file with dependents"
       },
       {
         "command": "vscode-dataform-tools.runCurrentFile",
@@ -82,7 +82,7 @@
       {
         "command": "vscode-dataform-tools.compileWtDryRun",
         "category": "Dataform",
-        "title": "Compile Dataform project followed by dry run",
+        "title": "Compile followed by dry run",
         "icon": "$(sync)",
         "group": "navigation@0"
       },

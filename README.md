@@ -5,14 +5,14 @@
 
 [Dataform vscode extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) which supports
 
-* Run a specific file/tag, optionally with dependencies/dependents
-* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file
-* Data processed by query on bottom right on successful dry run
-* Inline diagnostics errors on `.sqlx` files ❗
-* Auto completion support for
-    * declarations in `${ref("..")}` trigger when `$` character is typed
-    * `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
-    * `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
+
+| Feature | Description |
+|---------|-------------|
+| [Auto-complete support](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
+| [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
+| [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
+| [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
+
 
 ## Requirements
 
@@ -44,20 +44,38 @@
 
 ## Features
 
-* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file. Data processed by query on bottom right on successful dry run
-![compilation](media/images/compilation.gif)
+### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
-* Inline diagnostics errors on `.sqlx` files ❗
-![diagnostics](media/images/diagnostics.gif)
+Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
+![auto-completion](media/images/dependencies_autocompletion.gif)
 
 * declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
 ![auto-completion](media/images/sources_autocompletion.gif)
 
-* Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
-![auto-completion](media/images/dependencies_autocompletion.gif)
-
 * Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
 ![auto-completion](media/images/tags_autocompletion.gif)
+
+### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
+![diagnostics](media/images/diagnostics.gif)
+
+
+### <a id="compilation">Compilation & Dry run stats</a>
+* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file. Data processed by query on bottom right on successful dry run
+![compilation](media/images/compilation.gif)
+
+
+### <a id="filetagruns">Run file/tag with dependencies/dependents</a>
+
+
+| Commands                                             |
+|------------------------------------------------------|
+| `Dataform: Run current file`                           |
+| `Dataform: Run current file with dependencies`         |
+| `Dataform: Run current file with dependents`           |
+| `Dataform: Run current tag`                            |
+| `Dataform: Run current tag with dependencies`          |
+| `Dataform: Run current tag with dependents`            |
+
 
 
 ## Extension Settings
@@ -69,9 +87,8 @@
 
 ## TODO
 
+- [ ] Go to definition for a model
+- [ ] Code suggestions on error
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
-- [x] Hide extension icons when the workspace is not a Dataform workspace
-- [x] Ability to execute a tag
-- [x] Ability to run a file optionally with dependencies
 
 
