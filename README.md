@@ -66,6 +66,7 @@ Auto completion support for `dependencies` when `"` or `'` is typed inside the c
 
 ### <a id="filetagruns">Run file/tag with dependencies/dependents</a>
 
+Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and run one of the required commands
 
 | Commands                                             |
 |------------------------------------------------------|
