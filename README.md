@@ -88,6 +88,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+- [ ] Streamline installation process - script / build process for dependencies ( e.g. dataform / dj clis )
 - [ ] Go to definition for a model
 - [ ] Code suggestions on error
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
