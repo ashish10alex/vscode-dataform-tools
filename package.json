@@ -25,10 +25,12 @@
     "onCommand:extension.disable",
     "onCommand:extension.runCurrentFile",
     "onCommand:extension.runCurrentFileWtDeps",
+    "onCommand:extension.runCurrentFileWtDownstreamDeps",
     "onCommand:extension.compileWtDryRun",
     "onCommand:extension.showCompiledQueryWtDryRun",
     "onCommand:extension.runTag",
-    "onCommand:extension.runTagWtDeps"
+    "onCommand:extension.runTagWtDeps",
+    "onCommand:extension.runTagWtDownstreamDeps"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -36,7 +38,12 @@
       {
         "command": "vscode-dataform-tools.enable",
         "category": "Dataform",
-        "title": "enable lsp"
+        "title": "Enable extension"
+      },
+      {
+        "command": "vscode-dataform-tools.disable",
+        "category": "Dataform",
+        "title": "Disable extension"
       },
       {
         "command": "vscode-dataform-tools.runTag",
@@ -49,9 +56,14 @@
         "title": "Run a tag with dependencies"
       },
       {
-        "command": "vscode-dataform-tools.disable",
+        "command": "vscode-dataform-tools.runTagWtDownstreamDeps",
         "category": "Dataform",
-        "title": "disable lsp"
+        "title": "Run a tag with downstream dependents"
+      },
+      {
+        "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
+        "category": "Dataform",
+        "title": "Run current file with downstream dependents"
       },
       {
         "command": "vscode-dataform-tools.runCurrentFile",

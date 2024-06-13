@@ -18,6 +18,8 @@ let compileWtDryRunDisposable: vscode.Disposable | null = null;
 let showCompiledQueryWtDryRunDisposable: vscode.Disposable | null = null;
 let runTagDisposable: vscode.Disposable | null = null;
 let runTagWtDepsDisposable: vscode.Disposable | null = null;
+let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
+let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
 
 //TODO:
 /*
@@ -32,7 +34,7 @@ import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './u
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand } from './commands';
+import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -97,11 +99,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false); });
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
+
+        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(exec, false, true); });
+        context.subscriptions.push(runCurrentFileWtDownstreamDepsCommandDisposable);
 
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
@@ -161,15 +166,36 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                let runTagsCmd = getRunTagsWtDepsCommand(workspaceFolder, selection);
+                let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection);
 
-                runCommandInTerminal(runTagsCmd);
+                runCommandInTerminal(runTagsWtDepsCommand);
             });
         });
         context.subscriptions.push(runTagWtDepsDisposable);
 
+        runTagWtDownstreamDepsDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
+            if (dataformTags.length === 0) {
+                vscode.window.showInformationMessage('No tags found in project');
+                return;
+            }
+            vscode.window.showQuickPick(dataformTags, {
+                onDidSelectItem: (tag) => {
+                    // This is triggered as soon as a item is hovered over
+                }
+            }).then((selection) => {
+                if (!selection) {
+                    return;
+                }
+
+                let runTagsWtDownstreamDepsCommand = getRunTagsWtDownstreamDepsCommand(workspaceFolder, selection);
+
+                runCommandInTerminal(runTagsWtDownstreamDepsCommand);
+            });
+        });
+        context.subscriptions.push(runTagWtDownstreamDepsDisposable);
 
     }
+
 
     if (isEnabled) {
         registerAllCommands(context);
@@ -220,6 +246,12 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runTagWtDepsDisposable !== null) {
                 runTagWtDepsDisposable.dispose();
+            }
+            if (runTagWtDownstreamDepsDisposable !== null) {
+                runTagWtDownstreamDepsDisposable.dispose();
+            }
+            if (runCurrentFileWtDownstreamDepsCommandDisposable !== null) {
+                runCurrentFileWtDownstreamDepsCommandDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {

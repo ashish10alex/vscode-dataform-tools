@@ -5,7 +5,7 @@
 
 [Dataform vscode extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) which supports
 
-* Run a specific file or a tag, optionally with dependencies
+* Run a specific file/tag, optionally with dependencies/dependents
 * Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file
 * Data processed by query on bottom right on successful dry run
 * Inline diagnostics errors on `.sqlx` files ❗

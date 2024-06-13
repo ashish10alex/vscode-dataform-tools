@@ -151,7 +151,7 @@ export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
 }
 
 
-export function runCurrentFile(exec: any, includDependencies: boolean) {
+export function runCurrentFile(exec: any, includDependencies: boolean, includeDownstreamDependents: boolean) {
     let document = vscode.window.activeTextEditor?.document;
     if (document === undefined) {
         vscode.window.showErrorMessage('No active document');
@@ -185,7 +185,10 @@ export function runCurrentFile(exec: any, includDependencies: boolean) {
             if (i === 0) {
                 if (includDependencies) {
                     dataformActionCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-deps`);
-                } else {
+                } else if (includeDownstreamDependents) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-dependents`);
+                }
+                else {
                     dataformActionCmd = `dataform run ${workspaceFolder} --actions "${fullTableName}"`;
                 }
             } else {

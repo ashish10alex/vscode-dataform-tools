@@ -25,3 +25,8 @@ export function getRunTagsCommand(workspaceFolder: string, tag: string): string 
 export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string): string {
     return `dataform run ${workspaceFolder} --tags=${tag} --include-deps`
 }
+
+export function getRunTagsWtDownstreamDepsCommand(workspaceFolder: string, tag: string): string {
+    return `dataform run ${workspaceFolder} --tags=${tag} --include-dependents`
+}
+
