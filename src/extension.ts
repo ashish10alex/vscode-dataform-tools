@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-const { exec } = require('child_process');
+import {exec as exec} from 'child_process';
 
 let isEnabled = true;
 
@@ -78,7 +78,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         if (document === undefined) {
-            return
+            return;
         }
 
         let uniqueTags = await compiledQueryWtDryRun(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
@@ -92,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
         dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
             { language: 'sql' },
             new DataformRefDefinitionProvider()
-        )
+        );
         context.subscriptions.push(dataformRefDefinitionProviderDisposable);
 
         _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
