@@ -30,8 +30,7 @@
     "onCommand:extension.showCompiledQueryWtDryRun",
     "onCommand:extension.runTag",
     "onCommand:extension.runTagWtDeps",
-    "onCommand:extension.runTagWtDownstreamDeps",
-    "onCommand:extension.goToDefinition"
+    "onCommand:extension.runTagWtDownstreamDeps"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,11 +39,6 @@
         "command": "vscode-dataform-tools.enable",
         "category": "Dataform",
         "title": "Enable extension"
-      },
-      {
-        "command": "vscode-dataform-tools.goToDefinition",
-        "category": "Dataform",
-        "title": "Go To Definition"
       },
       {
         "command": "vscode-dataform-tools.disable",
