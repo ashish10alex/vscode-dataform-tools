@@ -20,6 +20,7 @@ let runTagDisposable: vscode.Disposable | null = null;
 let runTagWtDepsDisposable: vscode.Disposable | null = null;
 let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
+let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 
 //TODO:
 /*
@@ -29,7 +30,7 @@ let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = 
 2. Add docs to functions
 */
 
-import {SimpleDefinitionProvider} from './definitionProvider';
+import { DataformRefDefinitionProvider } from './definitionProvider';
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
@@ -88,12 +89,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     function registerAllCommands(context: vscode.ExtensionContext) {
 
-        context.subscriptions.push(
-            vscode.languages.registerDefinitionProvider(
-                { language: 'sql' },
-                new SimpleDefinitionProvider()
-            )
-        );
+        dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
+            { language: 'sql' },
+            new DataformRefDefinitionProvider()
+        )
+        context.subscriptions.push(dataformRefDefinitionProviderDisposable);
 
         _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
         context.subscriptions.push(_sourcesAutoCompletionDisposable);
@@ -259,6 +259,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runCurrentFileWtDownstreamDepsCommandDisposable !== null) {
                 runCurrentFileWtDownstreamDepsCommandDisposable.dispose();
+            }
+            if (dataformRefDefinitionProviderDisposable) {
+                dataformRefDefinitionProviderDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
