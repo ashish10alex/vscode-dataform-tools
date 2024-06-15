@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-const { exec } = require('child_process');
+import {exec as exec} from 'child_process';
 
 let isEnabled = true;
 
@@ -20,6 +20,7 @@ let runTagDisposable: vscode.Disposable | null = null;
 let runTagWtDepsDisposable: vscode.Disposable | null = null;
 let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
+let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 
 //TODO:
 /*
@@ -29,6 +30,7 @@ let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = 
 2. Add docs to functions
 */
 
+import { DataformRefDefinitionProvider } from './definitionProvider';
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
@@ -76,7 +78,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         if (document === undefined) {
-            return
+            return;
         }
 
         let uniqueTags = await compiledQueryWtDryRun(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
@@ -86,6 +88,12 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     function registerAllCommands(context: vscode.ExtensionContext) {
+
+        dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
+            { language: 'sql' },
+            new DataformRefDefinitionProvider()
+        );
+        context.subscriptions.push(dataformRefDefinitionProviderDisposable);
 
         _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
         context.subscriptions.push(_sourcesAutoCompletionDisposable);
@@ -251,6 +259,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runCurrentFileWtDownstreamDepsCommandDisposable !== null) {
                 runCurrentFileWtDownstreamDepsCommandDisposable.dispose();
+            }
+            if (dataformRefDefinitionProviderDisposable) {
+                dataformRefDefinitionProviderDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {

@@ -94,6 +94,12 @@
         "group": "navigation@2"
       }
     ],
+    "languages": [
+        {
+            "id": "sql",
+            "extensions": [".sqlx"]
+        }
+    ],
     "menus": {
       "editor/title": [
         {

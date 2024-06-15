@@ -8,7 +8,8 @@
 
 | Feature | Description |
 |---------|-------------|
-| [Auto-complete support](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
+| [Auto-complete support](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
+| [Go to definition](#definition) | Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
 | [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
 | [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
@@ -55,6 +56,12 @@ Auto completion support for `dependencies` when `"` or `'` is typed inside the c
 * Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
 ![auto-completion](media/images/tags_autocompletion.gif)
 
+
+### <a id="definition">Go to definition</a>
+Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined
+![go-to-definition](media/images/go_to_definition.gif)
+
+
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
 ![diagnostics](media/images/diagnostics.gif)
 
@@ -88,8 +95,9 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+- [ ] Optimize code. Use async/await where we can. e.g get autocompletion sources for tags & definitions
+- [ ] Add a pre-check to see if the current worksapce is Dataform worksapce & catch compilation errors to avoid executing subsequent commands
 - [ ] Streamline installation process - script / build process for dependencies ( e.g. dataform / dj clis )
-- [ ] Go to definition for a model
 - [ ] Code suggestions on error
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
 

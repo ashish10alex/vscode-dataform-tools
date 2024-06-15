@@ -24,7 +24,7 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string {
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-        vscode.window.showWarningMessage(`vscode-dataform-tools extension currently only supports ${supportedExtensions} files`);
+        // vscode.window.showWarningMessage(`vscode-dataform-tools extension currently only supports ${supportedExtensions} files`);
         return "";
     }
     filename = basenameSplit[0];
