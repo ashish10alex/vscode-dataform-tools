@@ -39,7 +39,7 @@
 
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
 
-5. To enable syntax highlighting and auto-complete
+5. To enable syntax highlighting and auto-complete ( **automatically enabled from version [0.0.21](https://github.com/ashish10alex/vscode-dataform-tools/releases/tag/v0.0.21)** )
    * In vscode: <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> -> Change language mode -> Configure file association for `.sqlx` -> Select `SQL`
 
 
