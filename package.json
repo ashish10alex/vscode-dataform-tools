@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
   },
-  "version": "0.0.20",
+  "version": "0.0.21",
   "engines": {
     "vscode": "^1.89.0"
   },
@@ -95,10 +95,12 @@
       }
     ],
     "languages": [
-        {
-            "id": "sql",
-            "extensions": [".sqlx"]
-        }
+      {
+        "id": "sql",
+        "extensions": [
+          ".sqlx"
+        ]
+      }
     ],
     "menus": {
       "editor/title": [
