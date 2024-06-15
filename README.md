@@ -95,6 +95,8 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+- [ ] Optimize code. Use async/await where we can. e.g get autocompletion sources for tags & definitions
+- [ ] Add a pre-check to see if the current worksapce is Dataform worksapce & catch compilation errors to avoid executing subsequent commands
 - [ ] Streamline installation process - script / build process for dependencies ( e.g. dataform / dj clis )
 - [ ] Code suggestions on error
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
