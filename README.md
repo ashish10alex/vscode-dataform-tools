@@ -59,7 +59,7 @@ Auto completion support for `dependencies` when `"` or `'` is typed inside the c
 
 ### <a id="definition">Go to definition</a>
 Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined
-![go-to-definition]()
+![go-to-definition](media/images/go_to_definition.gif)
 
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
