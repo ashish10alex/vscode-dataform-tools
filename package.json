@@ -30,7 +30,8 @@
     "onCommand:extension.showCompiledQueryWtDryRun",
     "onCommand:extension.runTag",
     "onCommand:extension.runTagWtDeps",
-    "onCommand:extension.runTagWtDownstreamDeps"
+    "onCommand:extension.runTagWtDownstreamDeps",
+    "onCommand:extension.goToDefinition"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -39,6 +40,11 @@
         "command": "vscode-dataform-tools.enable",
         "category": "Dataform",
         "title": "Enable extension"
+      },
+      {
+        "command": "vscode-dataform-tools.goToDefinition",
+        "category": "Dataform",
+        "title": "Go To Definition"
       },
       {
         "command": "vscode-dataform-tools.disable",
@@ -93,6 +99,12 @@
         "icon": "$(layout-centered)",
         "group": "navigation@2"
       }
+    ],
+    "languages": [
+        {
+            "id": "sql",
+            "extensions": [".sqlx"]
+        }
     ],
     "menus": {
       "editor/title": [
