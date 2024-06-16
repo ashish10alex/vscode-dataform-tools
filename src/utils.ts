@@ -85,7 +85,7 @@ export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
     }
 
     const document = editor.document;
-    document.save()
+    document.save();
     const totalLines = document.lineCount;
 
     for (let i = 0; i < totalLines; i++) {
@@ -125,7 +125,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
     await vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
 }
 
-export function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
+export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     return new Promise((resolve, reject) => {
 
         exec(cmd, (err: any, stdout: any, stderr: any) => {
@@ -211,7 +211,6 @@ export function runCurrentFile(exec: any, includDependencies: boolean, includeDo
 };
 
 export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
-    // The code you place here will be executed every time your command is executed
     diagnosticCollection.clear();
 
     var filename = getFileNameFromDocument(document);
@@ -239,20 +238,10 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
     }
     ).catch((err) => {
         vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
+        return;
     });
 
-    let dataformTags: string[] = [];
-    await getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
-        let uniqueTags = JSON.parse(sources).tags;
-        dataformTags = uniqueTags;
-    }
-    ).catch((err) => {
-        vscode.window.showErrorMessage(`Error getting tags for project: ${err}`);
-    });
-
-
-
-    // BUG: When user is not conneted to the internet not getting an erorr ???
+    // BUG: When user is not conneted to the internet not getting an error ???
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
         showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
     }
@@ -262,7 +251,6 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
             writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
         })
             .catch((err) => {
-                ;
                 vscode.window.showErrorMessage(`Compiled query error: ${err}`);
                 return;
             });
@@ -288,6 +276,7 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
             let fileName = dryRunJson.FileName;
             GBProcessed = GBProcessed.toFixed(4);
             vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
+            return;
         }
 
         let errLineNumber = dryRunJson.Error?.LineNumber + configLineOffset;
@@ -329,5 +318,15 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
             vscode.window.showErrorMessage(`Dry run error: ${err}`);
             return;
         });
+
+    let dataformTags: string[] = [];
+    await getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
+        let uniqueTags = JSON.parse(sources).tags;
+        dataformTags = uniqueTags;
+    }
+    ).catch((err) => {
+        vscode.window.showErrorMessage(`Error getting tags for project: ${err}`);
+    });
+
     return dataformTags;
 }
