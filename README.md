@@ -23,12 +23,12 @@
 
 2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
-3. [dj cli](https://github.com/ashish10alex/dataform_json_parser)
+3. [dj cli](https://github.com/ashish10alex/dj)
 
    ```bash
-   git clone https://github.com/ashish10alex/dataform_json_parser.git
+   git clone https://github.com/ashish10alex/dj.git
 
-   cd dataform_json_parser
+   cd dj
 
    # ensure go is installed in your system
    go build . -o dj
@@ -36,6 +36,20 @@
    # copy the binary to a place is visible from your system path e.g
    cp dj /usr/bin
    ```
+
+   **OR**
+
+   Install the [latest release](https://github.com/ashish10alex/dj/releases) to your $GOBIN, which defaults to $GOPATH/bin.
+
+    ```bash
+    go install github.com/ashish10alex/dj@latest
+    ```
+    Then you can optionally manually move this binary to anywhere which is visible from your system path
+
+    You can verify if `dj` is installed correctly by running
+    ```bash
+    dj --help
+    ```
 
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
 
