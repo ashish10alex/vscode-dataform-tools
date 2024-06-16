@@ -1,177 +1,179 @@
 {
-  "name": "dataform-lsp-vscode",
-  "displayName": "Dataform tools",
-  "publisher": "ashishalex",
-  "icon": "media/images/dtools.png",
-  "description": "",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
-  },
-  "version": "0.0.21",
-  "engines": {
-    "vscode": "^1.89.0"
-  },
-  "categories": [
-    "Other",
-    "Programming Languages",
-    "Snippets",
-    "Data Science",
-    "Testing"
-  ],
-  "activationEvents": [
-    "workspaceContains:**/*.sqlx",
-    "onCommand:extension.enable",
-    "onCommand:extension.disable",
-    "onCommand:extension.runCurrentFile",
-    "onCommand:extension.runCurrentFileWtDeps",
-    "onCommand:extension.runCurrentFileWtDownstreamDeps",
-    "onCommand:extension.compileWtDryRun",
-    "onCommand:extension.showCompiledQueryWtDryRun",
-    "onCommand:extension.runTag",
-    "onCommand:extension.runTagWtDeps",
-    "onCommand:extension.runTagWtDownstreamDeps",
-    "onCommand:extension.fixError"
-  ],
-  "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "vscode-dataform-tools.enable",
-        "category": "Dataform",
-        "title": "Enable extension"
-      },
-      {
-        "command": "vscode-dataform-tools.disable",
-        "category": "Dataform",
-        "title": "Disable extension"
-      },
-      {
-        "command": "vscode-dataform-tools.runTag",
-        "category": "Dataform",
-        "title": "Run a tag"
-      },
-      {
-        "command": "vscode-dataform-tools.runTagWtDeps",
-        "category": "Dataform",
-        "title": "Run a tag with dependencies"
-      },
-      {
-        "command": "vscode-dataform-tools.runTagWtDownstreamDeps",
-        "category": "Dataform",
-        "title": "Run a tag with dependents"
-      },
-      {
-        "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
-        "category": "Dataform",
-        "title": "Run current file with dependents"
-      },
-      {
-        "command": "vscode-dataform-tools.runCurrentFile",
-        "category": "Dataform",
-        "title": "Run current file",
-        "icon": "$(play)",
-        "group": "navigation"
-      },
-      {
-        "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-        "category": "Dataform",
-        "title": "Run current file with dependencies",
-        "icon": "$(debug-rerun)",
-        "group": "navigation@1"
-      },
-      {
-        "command": "vscode-dataform-tools.compileWtDryRun",
-        "category": "Dataform",
-        "title": "Compile followed by dry run",
-        "icon": "$(sync)",
-        "group": "navigation@0"
-      },
-      {
-        "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-        "category": "Dataform",
-        "title": "Show compiled query in vertical split",
-        "icon": "$(layout-centered)",
-        "group": "navigation@2"
-      },
-      {
-        "command": "extension.fixError",
-        "title": "Fix Error"
-      }
+    "name": "dataform-lsp-vscode",
+    "displayName": "Dataform tools",
+    "publisher": "ashishalex",
+    "icon": "media/images/dtools.png",
+    "description": "",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
+    },
+    "version": "0.0.21",
+    "engines": {
+        "vscode": "^1.89.0"
+    },
+    "categories": [
+        "Other",
+        "Programming Languages",
+        "Snippets",
+        "Data Science",
+        "Testing"
     ],
-    "languages": [
-      {
-        "id": "sql",
-        "extensions": [
-          ".sqlx"
-        ]
-      }
+    "activationEvents": [
+        "workspaceContains:**/*.sqlx",
+        "onCommand:extension.enable",
+        "onCommand:extension.disable",
+        "onCommand:extension.runCurrentFile",
+        "onCommand:extension.runCurrentFileWtDeps",
+        "onCommand:extension.runCurrentFileWtDownstreamDeps",
+        "onCommand:extension.compileWtDryRun",
+        "onCommand:extension.showCompiledQueryWtDryRun",
+        "onCommand:extension.runTag",
+        "onCommand:extension.runTagWtDeps",
+        "onCommand:extension.runTagWtDownstreamDeps",
+        "onCommand:extension.fixError"
     ],
-    "codeActions": [
-      {
-        "kind": "quickfix",
-        "languages": ["sql"]
-      }
-    ],
-    "menus": {
-      "editor/title": [
-        {
-          "command": "vscode-dataform-tools.compileWtDryRun",
-          "when": "resourceExtname == .sqlx",
-          "alt": "vscode-dataform-tools.compileWtDryRun",
-          "group": "navigation@0"
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "vscode-dataform-tools.enable",
+                "category": "Dataform",
+                "title": "Enable extension"
+            },
+            {
+                "command": "vscode-dataform-tools.disable",
+                "category": "Dataform",
+                "title": "Disable extension"
+            },
+            {
+                "command": "vscode-dataform-tools.runTag",
+                "category": "Dataform",
+                "title": "Run a tag"
+            },
+            {
+                "command": "vscode-dataform-tools.runTagWtDeps",
+                "category": "Dataform",
+                "title": "Run a tag with dependencies"
+            },
+            {
+                "command": "vscode-dataform-tools.runTagWtDownstreamDeps",
+                "category": "Dataform",
+                "title": "Run a tag with dependents"
+            },
+            {
+                "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
+                "category": "Dataform",
+                "title": "Run current file with dependents"
+            },
+            {
+                "command": "vscode-dataform-tools.runCurrentFile",
+                "category": "Dataform",
+                "title": "Run current file",
+                "icon": "$(play)",
+                "group": "navigation"
+            },
+            {
+                "command": "vscode-dataform-tools.runCurrentFileWtDeps",
+                "category": "Dataform",
+                "title": "Run current file with dependencies",
+                "icon": "$(debug-rerun)",
+                "group": "navigation@1"
+            },
+            {
+                "command": "vscode-dataform-tools.compileWtDryRun",
+                "category": "Dataform",
+                "title": "Compile followed by dry run",
+                "icon": "$(sync)",
+                "group": "navigation@0"
+            },
+            {
+                "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
+                "category": "Dataform",
+                "title": "Show compiled query in vertical split",
+                "icon": "$(layout-centered)",
+                "group": "navigation@2"
+            },
+            {
+                "command": "extension.fixError",
+                "title": "Fix Error"
+            }
+        ],
+        "languages": [
+            {
+                "id": "sql",
+                "extensions": [
+                    ".sqlx"
+                ]
+            }
+        ],
+        "codeActions": [
+            {
+                "kind": "quickfix",
+                "languages": [
+                    "sql"
+                ]
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "vscode-dataform-tools.compileWtDryRun",
+                    "when": "resourceExtname == .sqlx",
+                    "alt": "vscode-dataform-tools.compileWtDryRun",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtDeps",
+                    "when": "resourceExtname == .sqlx",
+                    "alt": "vscode-dataform-tools.runCurrentFileWtDeps",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
+                    "when": "resourceExtname == .sqlx",
+                    "alt": "vscode-dataform-tools.showCompiledQueryWtDryRun",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFile",
+                    "when": "resourceExtname == .sqlx",
+                    "alt": "vscode-dataform-tools.runCurrentFile",
+                    "group": "navigation"
+                }
+            ]
         },
-        {
-          "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-          "when": "resourceExtname == .sqlx",
-          "alt": "vscode-dataform-tools.runCurrentFileWtDeps",
-          "group": "navigation@1"
-        },
-        {
-          "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-          "when": "resourceExtname == .sqlx",
-          "alt": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-          "group": "navigation@1"
-        },
-        {
-          "command": "vscode-dataform-tools.runCurrentFile",
-          "when": "resourceExtname == .sqlx",
-          "alt": "vscode-dataform-tools.runCurrentFile",
-          "group": "navigation"
+        "configuration": {
+            "title": "Dataform",
+            "properties": {
+                "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
+                },
+                "vscode-dataform-tools.recompileAfterCodeAction": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Automatically recompiles the file after code action is applied"
+                }
+            },
+            "scripts": {
+                "vscode:prepublish": "npm run compile",
+                "compile": "tsc -p ./",
+                "watch": "tsc -watch -p ./",
+                "pretest": "npm run compile && npm run lint",
+                "lint": "eslint src --ext ts",
+                "test": "vscode-test"
+            },
+            "devDependencies": {
+                "@types/mocha": "^10.0.6",
+                "@types/node": "18.x",
+                "@types/vscode": "^1.89.0",
+                "@typescript-eslint/eslint-plugin": "^7.7.1",
+                "@typescript-eslint/parser": "^7.7.1",
+                "@vscode/test-cli": "^0.0.9",
+                "@vscode/test-electron": "^2.4.0",
+                "eslint": "^8.57.0",
+                "typescript": "^5.4.5"
+            }
         }
-      ]
-    },
-    "configuration": {
-      "title": "Dataform",
-      "properties": {
-        "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
-        },
-        "vscode-dataform-tools.recompileAfterCodeAction": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Automatically recompiles the file after code action is applied"
-        }
-    },
-    "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "pretest": "npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
-        "test": "vscode-test"
-    },
-    "devDependencies": {
-        "@types/mocha": "^10.0.6",
-        "@types/node": "18.x",
-        "@types/vscode": "^1.89.0",
-        "@typescript-eslint/eslint-plugin": "^7.7.1",
-        "@typescript-eslint/parser": "^7.7.1",
-        "@vscode/test-cli": "^0.0.9",
-        "@vscode/test-electron": "^2.4.0",
-        "eslint": "^8.57.0",
-        "typescript": "^5.4.5"
-    }
-}
