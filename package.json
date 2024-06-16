@@ -30,8 +30,7 @@
         "onCommand:extension.showCompiledQueryWtDryRun",
         "onCommand:extension.runTag",
         "onCommand:extension.runTagWtDeps",
-        "onCommand:extension.runTagWtDownstreamDeps",
-        "onCommand:extension.fixError"
+        "onCommand:extension.runTagWtDownstreamDeps"
     ],
     "main": "./out/extension.js",
     "contributes": {
