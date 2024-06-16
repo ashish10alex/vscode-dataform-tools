@@ -92,10 +92,6 @@
                 "title": "Show compiled query in vertical split",
                 "icon": "$(layout-centered)",
                 "group": "navigation@2"
-            },
-            {
-                "command": "extension.fixError",
-                "title": "Fix Error"
             }
         ],
         "languages": [
