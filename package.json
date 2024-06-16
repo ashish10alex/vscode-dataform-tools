@@ -30,7 +30,8 @@
     "onCommand:extension.showCompiledQueryWtDryRun",
     "onCommand:extension.runTag",
     "onCommand:extension.runTagWtDeps",
-    "onCommand:extension.runTagWtDownstreamDeps"
+    "onCommand:extension.runTagWtDownstreamDeps",
+    "onCommand:extension.fixError"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -92,6 +93,10 @@
         "title": "Show compiled query in vertical split",
         "icon": "$(layout-centered)",
         "group": "navigation@2"
+      },
+      {
+        "command": "extension.fixError",
+        "title": "Fix Error"
       }
     ],
     "languages": [
@@ -100,6 +105,12 @@
         "extensions": [
           ".sqlx"
         ]
+      }
+    ],
+    "codeActions": [
+      {
+        "kind": "quickfix",
+        "languages": ["sql"]
       }
     ],
     "menus": {
@@ -137,6 +148,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
+        },
+        "vscode-dataform-tools.recompileAfterCodeAction": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Automatically recompiles the file after code action is applied"
         }
       }
     }
