@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+const path = require('path');
 import { exec as exec } from 'child_process';
 
 let isEnabled = true;
@@ -39,7 +40,7 @@ import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './u
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, extractFixFromDiagnosticMessage } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
+import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -129,6 +130,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
+
+        let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', () => {
+            let document = vscode.window.activeTextEditor?.document;
+            let fileUri = document?.uri;
+            if (fileUri === undefined) {
+                return;
+            }
+            let relativeFilePath = vscode.workspace.asRelativePath(fileUri);
+            if (relativeFilePath === undefined) {
+                return;
+            }
+            let command = getFormatDataformFileCommand(relativeFilePath);
+            runCommandInTerminal(command);
+        });
+        context.subscriptions.push(formatCurrentFileDisposable);
 
         runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
