@@ -111,6 +111,14 @@ export function isNotUndefined(value: unknown): any {
     if (typeof value === undefined) { throw new Error("Not a string"); }
 }
 
+function getFullTableIdFromDjDryRunJson(dryRunJson:any):string{
+    let fileName = dryRunJson.FileName;
+    let schema = dryRunJson.Schema;
+    let database = dryRunJson.Database;
+    let fullTableId = `${database}.${schema}.${fileName}`
+    return fullTableId
+}
+
 
 export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
     if (!fs.existsSync(filePath)) {
@@ -273,9 +281,9 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
         let isError = dryRunJson.Error?.IsError;
         if (isError === false) {
             let GBProcessed = dryRunJson.GBProcessed;
-            let fileName = dryRunJson.FileName;
+            let fullTableId = getFullTableIdFromDjDryRunJson(dryRunJson)
             GBProcessed = GBProcessed.toFixed(4);
-            vscode.window.showInformationMessage(`GB ${GBProcessed}: File: ${fileName}`);
+            vscode.window.showInformationMessage(`GB ${GBProcessed} : ${fullTableId}`);
             return;
         }
 
