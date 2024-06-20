@@ -303,7 +303,7 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
         let isError = dryRunJson.Error?.IsError;
         if (isError === false) {
             let GBProcessed = dryRunJson.GBProcessed;
-            let fullTableId = getFullTableIdFromDjDryRunJson(dryRunJson)
+            let fullTableId = getFullTableIdFromDjDryRunJson(dryRunJson);
             GBProcessed = GBProcessed.toFixed(4);
             vscode.window.showInformationMessage(`GB ${GBProcessed} : ${fullTableId}`);
             return;
