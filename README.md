@@ -19,29 +19,23 @@
 
 1. [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
-   `npm i -g @dataform/cli@^3.0.0-beta`
+   `npm i -g @dataform/cli`
 
 2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
-3. [dj cli](https://github.com/ashish10alex/dataform_json_parser)
+3. [dj cli](https://github.com/ashish10alex/dj)
 
-   ```bash
-   git clone https://github.com/ashish10alex/dataform_json_parser.git
+    **Latest release** ( supports MacOS / Linux / WSL )
 
-   cd dataform_json_parser
+    ```
+    curl -sSfL https://raw.githubusercontent.com/ashish10alex/dj/main/install_latest.sh | bash
+    ```
+    You can verify if `dj` is installed correctly by running
+    ```bash
+    dj --help
+    ```
 
-   # ensure go is installed in your system
-   go build . -o dj
-
-   # copy the binary to a place is visible from your system path e.g
-   cp dj /usr/bin
-   ```
-
-4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
-
-5. To enable syntax highlighting and auto-complete ( **automatically enabled from version [0.0.21](https://github.com/ashish10alex/vscode-dataform-tools/releases/tag/v0.0.21)** )
-   * In vscode: <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> -> Change language mode -> Configure file association for `.sqlx` -> Select `SQL`
-
+4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
 
 ## Features
 
