@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import {exec as exec} from 'child_process';
+import { exec as exec } from 'child_process';
 
 let isEnabled = true;
 
@@ -9,6 +9,7 @@ export let declarationsAndTargets: string[] = [];
 export let dataformTags: string[] = [];
 
 let onSaveDisposable: vscode.Disposable | null = null;
+let fixErrorCommandDisposable: vscode.Disposable | null = null;
 let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
 let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
 let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
@@ -21,6 +22,7 @@ let runTagWtDepsDisposable: vscode.Disposable | null = null;
 let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
+let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 
 //TODO:
 /*
@@ -30,10 +32,11 @@ let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 2. Add docs to functions
 */
 
+import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './utils';
-import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun } from './utils';
+import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, extractFixFromDiagnosticMessage } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
@@ -94,6 +97,24 @@ export async function activate(context: vscode.ExtensionContext) {
             new DataformRefDefinitionProvider()
         );
         context.subscriptions.push(dataformRefDefinitionProviderDisposable);
+
+        fixErrorCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.fixError',
+            async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
+                applyCodeActionUsingDiagnosticMessage(range, diagnosticMessage);
+
+                // recompile the file after the suggestion is applied based on user configuration
+                let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
+                if (recompileAfterCodeAction) {
+                    let showCompiledQueryInVerticalSplitOnSave = undefined;
+                    await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                }
+
+            });
+
+        context.subscriptions.push(fixErrorCommandDisposable);
+
+        _dataformCodeActionProviderDisposable = dataformCodeActionProviderDisposable();
+        context.subscriptions.push(_dataformCodeActionProviderDisposable);
 
         _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
         context.subscriptions.push(_sourcesAutoCompletionDisposable);
@@ -262,6 +283,12 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (dataformRefDefinitionProviderDisposable) {
                 dataformRefDefinitionProviderDisposable.dispose();
+            }
+            if (fixErrorCommandDisposable) {
+                fixErrorCommandDisposable.dispose();
+            }
+            if (_dataformCodeActionProviderDisposable) {
+                _dataformCodeActionProviderDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
