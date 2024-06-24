@@ -10,12 +10,12 @@ export function getTagsCommand(workspaceFolder: string): string {
 
 export function getDryRunCommand(workspaceFolder: string, filename: string): string {
     return `dataform compile ${workspaceFolder} --json \
-		| dj table-ops cost --compact=true --include-assertions=true -t ${filename}`;
+		| dj table-ops cost --compact=true --include-assertions=true --file ${filename}`;
 }
 
 export function compiledQueryCommand(workspaceFolder: string, filename: string): string {
     return `dataform compile ${workspaceFolder} --json \
-		| dj table-ops query -t ${filename}`;
+		| dj table-ops query --file ${filename}`;
 }
 
 export function getRunTagsCommand(workspaceFolder: string, tag: string): string {
