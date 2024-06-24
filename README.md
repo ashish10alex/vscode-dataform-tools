@@ -8,9 +8,10 @@
 
 | Feature | Description |
 |---------|-------------|
-| [Auto-complete support](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
+| [Auto-completion](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Go to definition](#definition) | Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
+| [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
 | [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
 | [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
 
@@ -19,43 +20,23 @@
 
 1. [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
-   `npm i -g @dataform/cli@^3.0.0-beta`
+   `npm i -g @dataform/cli`
 
 2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
 3. [dj cli](https://github.com/ashish10alex/dj)
 
-   ```bash
-   git clone https://github.com/ashish10alex/dj.git
+    **Latest release** ( supports MacOS / Linux / WSL )
 
-   cd dj
-
-   # ensure go is installed in your system
-   go build . -o dj
-
-   # copy the binary to a place is visible from your system path e.g
-   cp dj /usr/bin
-   ```
-
-   **OR**
-
-   Install the [latest release](https://github.com/ashish10alex/dj/releases) to your $GOBIN, which defaults to $GOPATH/bin.
-
-    ```bash
-    go install github.com/ashish10alex/dj@latest
     ```
-    Then you can optionally manually move this binary to anywhere which is visible from your system path
-
+    curl -sSfL https://raw.githubusercontent.com/ashish10alex/dj/main/install_latest.sh | bash
+    ```
     You can verify if `dj` is installed correctly by running
     ```bash
     dj --help
     ```
 
-4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [optional]
-
-5. To enable syntax highlighting and auto-complete ( **automatically enabled from version [0.0.21](https://github.com/ashish10alex/vscode-dataform-tools/releases/tag/v0.0.21)** )
-   * In vscode: <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> -> Change language mode -> Configure file association for `.sqlx` -> Select `SQL`
-
+4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
 
 ## Features
 
@@ -109,11 +90,9 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
-- [ ] Code suggestions on error
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 - [ ] Optimize code. Use async/await where we can. e.g get autocompletion sources for tags & definitions
 - [ ] Add a pre-check to see if the current worksapce is Dataform worksapce & catch compilation errors to avoid executing subsequent commands
-- [ ] Streamline installation process - script / build process for dependencies ( e.g. dataform / dj clis )
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
 
 

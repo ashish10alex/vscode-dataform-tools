@@ -1,7 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-const path = require('path');
 import { exec as exec } from 'child_process';
 
 let isEnabled = true;
