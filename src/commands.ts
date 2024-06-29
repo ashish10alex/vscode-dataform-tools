@@ -32,5 +32,5 @@ export function getRunTagsWtDownstreamDepsCommand(workspaceFolder: string, tag: 
 
 
 export function getFormatDataformFileCommand(relativeFilePath: string): string {
-    return `goformatdataform --sqlfluff_config_path ci/sqlfluff_dataform/.sqlfluff -file ${relativeFilePath} --inplace=true`;
+    return `formatdataform format ${relativeFilePath}`;
 }

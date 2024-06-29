@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { getDryRunCommand, getSourcesCommand, getTagsCommand, compiledQueryCommand } from './commands';
+import { setDefaultResultOrder } from 'dns';
+import { stdout } from 'process';
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -13,7 +15,15 @@ const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 export function executableIsAvailable(name: string) {
     try { shell(`which ${name}`); return true; }
     catch (error) {
-        vscode.window.showErrorMessage((error as Error).message);
+        if (name === 'sqlfluff'){
+            vscode.window.showWarningMessage('Install sqlfluff to enable formatting via formatdataform cli');
+            return;
+        } else if (name === 'formatdataform'){
+            vscode.window.showWarningMessage('Install formatdataform to enable sqlfluff formatting');
+            return;
+        } else {
+            vscode.window.showErrorMessage(`${name} cli not found in path`);
+        }
         return false;
     }
 }
@@ -156,16 +166,17 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
+    // const workingDirectory = path.dirname(vscode.window.activeTextEditor?.document.uri.fsPath);
+    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+
+    if (!workspaceFolder){
+        return;
+    }
+
     return new Promise((resolve, reject) => {
 
-        exec(cmd, (err: any, stdout: any, stderr: any) => {
-            if (err) {
-                vscode.window.showErrorMessage(`Error sourcesProcess: ${err}`);
-                reject(err);
-                return;
-            }
+        exec(cmd, { cwd: workspaceFolder }, (err: any, stdout: any, stderr: any) => {
             if (stderr) {
-                vscode.window.showErrorMessage(`Error sourcesProcess: ${stderr}`);
                 reject(new Error(stderr));
                 return;
             }

@@ -140,8 +140,15 @@ export async function activate(context: vscode.ExtensionContext) {
             if (relativeFilePath === undefined) {
                 return;
             }
-            let command = getFormatDataformFileCommand(relativeFilePath);
-            runCommandInTerminal(command);
+
+            let formatCmd = getFormatDataformFileCommand(relativeFilePath);
+            getStdoutFromCliRun(exec, formatCmd).then((sources) => {
+                vscode.window.showInformationMessage(`Formatted: ${relativeFilePath}`);
+            }
+            ).catch((err) => {
+                vscode.window.showErrorMessage(`Error formatting: ${err}`);
+                return;
+            });
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
