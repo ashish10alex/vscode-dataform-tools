@@ -15,10 +15,7 @@ const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 export function executableIsAvailable(name: string) {
     try { shell(`which ${name}`); return true; }
     catch (error) {
-        if (name === 'sqlfluff'){
-            vscode.window.showWarningMessage('Install sqlfluff to enable formatting via formatdataform cli');
-            return;
-        } else if (name === 'formatdataform'){
+        if (name === 'formatdataform') {
             vscode.window.showWarningMessage('Install formatdataform to enable sqlfluff formatting');
             return;
         } else {
@@ -87,7 +84,7 @@ export function runCommandInTerminal(command: string) {
     From the above string the function attempts to extract the suggestion which we assumed based on observations to be separated by ";"
     followed by `Did you mean **fix**? at [lineNumber:columnNumber]`
 **/
-export function extractFixFromDiagnosticMessage(diagnosticMessage:string) {
+export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
     const diagnosticSuggestion = diagnosticMessage.split(';')[1];
 
     if (!diagnosticSuggestion) {
@@ -143,7 +140,7 @@ export function isNotUndefined(value: unknown): any {
     if (typeof value === undefined) { throw new Error("Not a string"); }
 }
 
-function getFullTableIdFromDjDryRunJson(dryRunJson:any):string{
+function getFullTableIdFromDjDryRunJson(dryRunJson: any): string {
     let fileName = dryRunJson.FileName;
     let schema = dryRunJson.Schema;
     let database = dryRunJson.Database;
@@ -169,7 +166,7 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
     // const workingDirectory = path.dirname(vscode.window.activeTextEditor?.document.uri.fsPath);
     let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 
-    if (!workspaceFolder){
+    if (!workspaceFolder) {
         return;
     }
 
