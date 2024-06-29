@@ -144,8 +144,8 @@ function getFullTableIdFromDjDryRunJson(dryRunJson: any): string {
     let fileName = dryRunJson.FileName;
     let schema = dryRunJson.Schema;
     let database = dryRunJson.Database;
-    let fullTableId = `${database}.${schema}.${fileName}`
-    return fullTableId
+    let fullTableId = `${database}.${schema}.${fileName}`;
+    return fullTableId;
 }
 
 
