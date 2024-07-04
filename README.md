@@ -18,6 +18,7 @@
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
 | [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
 | [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
+| [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files based on [sqlfluff](https://github.com/sqlfluff/sqlfluff) config using [formatdataform](https://github.com/ashish10alex/formatdataform) cli |
 
 
 ## Requirements
@@ -39,6 +40,22 @@
     ```bash
     dj --help
     ```
+
+4. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
+
+   ```bash
+   # install python and run
+   pip install sqlfluff
+
+   # install formatdataform cli
+   curl -sSfL https://raw.githubusercontent.com/ashish10alex/formatdataform/main/install_latest.sh | bash
+   ```
+
+    You can verify if `formatdataform` is installed correctly by running
+    ```bash
+    formatdataform --help
+    ```
+
 
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
 
