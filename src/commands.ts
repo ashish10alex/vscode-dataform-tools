@@ -30,3 +30,7 @@ export function getRunTagsWtDownstreamDepsCommand(workspaceFolder: string, tag: 
     return `dataform run ${workspaceFolder} --tags=${tag} --include-dependents`;
 }
 
+
+export function getFormatDataformFileCommand(relativeFilePath: string): string {
+    return `formatdataform format ${relativeFilePath}`;
+}

@@ -39,7 +39,7 @@ import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './u
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, extractFixFromDiagnosticMessage } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
+import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -129,6 +129,29 @@ export async function activate(context: vscode.ExtensionContext) {
 
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
+
+        let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', () => {
+            let document = vscode.window.activeTextEditor?.document;
+            document?.save();
+            let fileUri = document?.uri;
+            if (fileUri === undefined) {
+                return;
+            }
+            let relativeFilePath = vscode.workspace.asRelativePath(fileUri);
+            if (relativeFilePath === undefined) {
+                return;
+            }
+
+            let formatCmd = getFormatDataformFileCommand(relativeFilePath);
+            getStdoutFromCliRun(exec, formatCmd).then((sources) => {
+                vscode.window.showInformationMessage(`Formatted: ${relativeFilePath}`);
+            }
+            ).catch((err) => {
+                vscode.window.showErrorMessage(`Error formatting: ${err}`);
+                return;
+            });
+        });
+        context.subscriptions.push(formatCurrentFileDisposable);
 
         runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);

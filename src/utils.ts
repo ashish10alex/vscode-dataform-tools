@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { getDryRunCommand, getSourcesCommand, getTagsCommand, compiledQueryCommand } from './commands';
+import { setDefaultResultOrder } from 'dns';
+import { stdout } from 'process';
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -13,7 +15,12 @@ const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 export function executableIsAvailable(name: string) {
     try { shell(`which ${name}`); return true; }
     catch (error) {
-        vscode.window.showErrorMessage((error as Error).message);
+        if (name === 'formatdataform') {
+            vscode.window.showWarningMessage('Install formatdataform to enable sqlfluff formatting');
+            return;
+        } else {
+            vscode.window.showErrorMessage(`${name} cli not found in path`);
+        }
         return false;
     }
 }
@@ -77,7 +84,7 @@ export function runCommandInTerminal(command: string) {
     From the above string the function attempts to extract the suggestion which we assumed based on observations to be separated by ";"
     followed by `Did you mean **fix**? at [lineNumber:columnNumber]`
 **/
-export function extractFixFromDiagnosticMessage(diagnosticMessage:string) {
+export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
     const diagnosticSuggestion = diagnosticMessage.split(';')[1];
 
     if (!diagnosticSuggestion) {
@@ -133,12 +140,12 @@ export function isNotUndefined(value: unknown): any {
     if (typeof value === undefined) { throw new Error("Not a string"); }
 }
 
-function getFullTableIdFromDjDryRunJson(dryRunJson:any):string{
+function getFullTableIdFromDjDryRunJson(dryRunJson: any): string {
     let fileName = dryRunJson.FileName;
     let schema = dryRunJson.Schema;
     let database = dryRunJson.Database;
-    let fullTableId = `${database}.${schema}.${fileName}`
-    return fullTableId
+    let fullTableId = `${database}.${schema}.${fileName}`;
+    return fullTableId;
 }
 
 
@@ -156,16 +163,17 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
+    // const workingDirectory = path.dirname(vscode.window.activeTextEditor?.document.uri.fsPath);
+    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+
+    if (!workspaceFolder) {
+        return;
+    }
+
     return new Promise((resolve, reject) => {
 
-        exec(cmd, (err: any, stdout: any, stderr: any) => {
-            if (err) {
-                vscode.window.showErrorMessage(`Error sourcesProcess: ${err}`);
-                reject(err);
-                return;
-            }
+        exec(cmd, { cwd: workspaceFolder }, (err: any, stdout: any, stderr: any) => {
             if (stderr) {
-                vscode.window.showErrorMessage(`Error sourcesProcess: ${stderr}`);
                 reject(new Error(stderr));
                 return;
             }
@@ -303,7 +311,7 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
         let isError = dryRunJson.Error?.IsError;
         if (isError === false) {
             let GBProcessed = dryRunJson.GBProcessed;
-            let fullTableId = getFullTableIdFromDjDryRunJson(dryRunJson)
+            let fullTableId = getFullTableIdFromDjDryRunJson(dryRunJson);
             GBProcessed = GBProcessed.toFixed(4);
             vscode.window.showInformationMessage(`GB ${GBProcessed} : ${fullTableId}`);
             return;
