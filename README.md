@@ -1,5 +1,9 @@
 # Dataform tools - a vscode extension
 
+![version](https://img.shields.io/badge/version-0.0.23-blue)
+![Linux](https://img.shields.io/badge/Linux-supported-success)
+![macOS](https://img.shields.io/badge/macOS-supported-success)
+
 ⚠️ ***This is not an officially supported Google product.***
 
 

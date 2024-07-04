@@ -260,7 +260,7 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
     let configBlockRange = getLineNumberWhereConfigBlockTerminates();
     let configBlockStart = configBlockRange[0] || 0;
     let configBlockEnd = configBlockRange[1] || 0;
-    let configBlockOffset = (configBlockStart + configBlockEnd) - 1;
+    let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
     let configLineOffset = configBlockOffset - queryStringOffset;
 
     const sourcesCmd = getSourcesCommand(workspaceFolder);
