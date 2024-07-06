@@ -50,27 +50,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     let workspaceFolder = getWorkspaceFolder();
-    let sourcesCmd = getSourcesCommand(workspaceFolder);
-    let tagsCompletionCmd = getTagsCommand(workspaceFolder);
-
-
-    getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
-        let declarations = JSON.parse(sources).Declarations;
-        let targets = JSON.parse(sources).Targets;
-        declarationsAndTargets = [...new Set([...declarations, ...targets])];
-    }
-    ).catch((err) => {
-        vscode.window.showWarningMessage(`Error getting sources for project: ${err}`);
-    });
-
-    getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
-        let uniqueTags = JSON.parse(sources).tags;
-        dataformTags = uniqueTags;
-    }
-    ).catch((err) => {
-        vscode.window.showWarningMessage(`Error getting tags for project: ${err}`);
-    });
-
+    //TODO: Load tags and sources on extension activation
 
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
@@ -84,9 +64,10 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let uniqueTags = await compiledQueryWtDryRun(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        if (uniqueTags !== undefined) {
-            dataformTags = uniqueTags;
+        let completionItems = await compiledQueryWtDryRun(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        if (completionItems !== undefined) {
+            dataformTags = completionItems[0];
+            declarationsAndTargets = completionItems[1];
         }
     }
 

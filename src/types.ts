@@ -16,9 +16,15 @@ interface Target {
     name: string;
 }
 
+interface Declarations{
+    target: Target
+}
+
 export interface DataformCompiledJson {
     tables: Table[];
     assertions: Assertion[];
+    targets: Target[];
+    declarations: Declarations[];
 }
 
 export interface DryRunError {

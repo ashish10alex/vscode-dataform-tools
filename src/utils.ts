@@ -250,21 +250,6 @@ export function runCurrentFile(exec: any, includDependencies: boolean, includeDo
 
 };
 
-async function getProcessResult(childProcess: typeof ChildProcess) {
-    let stdout = "";
-    let stderr = "";
-    let error: any = null;
-    childProcess.stderr.pipe(process.stderr);
-    childProcess.stderr.on("data", (chunk: Buffer | string) => (stderr += String(chunk)));
-    childProcess.stdout.pipe(process.stdout);
-    childProcess.stdout.on("data", (chunk: Buffer | string) => (stdout += String(chunk)));
-    childProcess.on("error", (err: Error) => (error = err));
-    const exitCode: number = await new Promise(resolve => {
-        childProcess.on("close", resolve);
-    });
-    return { exitCode, stdout, stderr, error };
-}
-
 async function getDataformTags(compiledJson: DataformCompiledJson) {
     let dataformTags: string[] = [];
     let tables = compiledJson?.tables;
@@ -343,8 +328,28 @@ async function runCompilation() {
         const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
         return dataformCompiledJson;
     } catch (error) {
-        console.error('Compilation failed:', error);
+        vscode.window.showErrorMessage(`Error compiling Dataform: ${error}`);
     }
+}
+
+async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
+    let targets  = compiledJson.targets;
+    let declarations  = compiledJson.declarations;
+    let dependencies: string[] = [];
+    for (let i = 0; i < targets.length; i++){
+        let targetName = targets[i].name;
+       if (dependencies.includes(targetName) === false) {
+            dependencies.push(targetName);
+       }
+    }
+
+    for (let i = 0; i < declarations.length; i++){
+        let targetName = declarations[i].target.name;
+       if (dependencies.includes(targetName) === false) {
+            dependencies.push(targetName);
+       }
+    }
+    return dependencies;
 }
 
 
@@ -366,6 +371,8 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
 
     let dataformCompiledJson = await runCompilation();
     if (dataformCompiledJson) {
+        // TODO: Call them asyc and do wait for all promises to settle
+        let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
         let dataformTags = await getDataformTags(dataformCompiledJson);
         let tableMetadata = await getQueryForCurrentFile(filename, dataformCompiledJson);
 
@@ -388,21 +395,9 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
         }
         let targetTableId = tableMetadata.target.database + '.' + tableMetadata.target.schema + '.' + tableMetadata.target.name;
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${targetTableId}`);
-        return dataformTags;
+        return [dataformTags, declarationsAndTargets];
     } else {
-        vscode.window.showInformationMessage(`Could not compile Dataform ??`)
-        return
+        vscode.window.showInformationMessage(`Could not compile Dataform ??`);
+        return;
     }
-
-    //getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
-    //    let declarations = JSON.parse(sources).Declarations;
-    //    let targets = JSON.parse(sources).Targets;
-    //    declarationsAndTargets = [...new Set([...declarations, ...targets])];
-    //}
-    //).catch((err) => {
-    //    vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
-    //    return;
-    //});
-    //
-
 }
