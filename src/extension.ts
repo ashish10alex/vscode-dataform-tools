@@ -130,7 +130,7 @@ export async function activate(context: vscode.ExtensionContext) {
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
-        let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', () => {
+        let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
             let document = vscode.window.activeTextEditor?.document;
             document?.save();
             let fileUri = document?.uri;
@@ -143,13 +143,16 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             let formatCmd = getFormatDataformFileCommand(relativeFilePath);
-            getStdoutFromCliRun(exec, formatCmd).then((sources) => {
+            await getStdoutFromCliRun(exec, formatCmd).then((sources) => {
                 vscode.window.showInformationMessage(`Formatted: ${relativeFilePath}`);
             }
             ).catch((err) => {
                 vscode.window.showErrorMessage(`Error formatting: ${err}`);
                 return;
             });
+
+            let showCompiledQueryInVerticalSplitOnSave = undefined;
+            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
