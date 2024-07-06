@@ -8,6 +8,8 @@ export interface Table {
 
 interface Assertion {
     tags: string[];
+    fileName: string;
+    query: string;
 }
 
 interface Target {

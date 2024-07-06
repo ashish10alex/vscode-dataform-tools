@@ -276,16 +276,35 @@ async function getDataformTags(compiledJson: DataformCompiledJson) {
 
 
 async function getQueryForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<Table> {
+
     let tables = compiledJson.tables;
+    let assertions = compiledJson.assertions;
+    let finalQuery = "";
+    let tableTags: string[] = [];
+    let tableTarget = { database: "", schema: "", name: "" };
+
     for (let i = 0; i < tables.length; i++) {
         let table = tables[i];
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
-            let query = table.query;
-            return { tags: table.tags, fileName: fileName, query: query, target: table.target };
+            tableTags = table.tags;
+            tableTarget = table.target;
+            finalQuery = table.query;
+            break;
         }
     }
-    return { tags: [], fileName: "", query: "", target: { database: "", schema: "", name: "" } };
+
+    finalQuery += "; \n -- Assertions \n";
+
+    for (let i = 0; i < assertions.length; i++) {
+        //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
+        let assertion = assertions[i];
+        let assertionFileName = path.basename(assertion.fileName).split('.')[0];
+        if (assertionFileName === fileName){
+            finalQuery  += assertion.query;
+        }
+    }
+    return { tags: tableTags, fileName: fileName, query: finalQuery, target: tableTarget };
 };
 
 
