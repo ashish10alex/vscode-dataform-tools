@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const { execSync, ChildProcess, spawn } = require('child_process');
 import { DataformCompiledJson, ConfigBlockMetadata, Table } from './types';
-import { dataformTags } from './extension';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 
@@ -310,7 +309,12 @@ function compileDataform(workspaceFolder: string): Promise<string> {
             if (code === 0) {
                 resolve(output);
             } else {
-                reject(new Error(`Process exited with code ${code}: ${errorOutput}`));
+                let compiledJson = JSON.parse(output.toString());
+                let graphErrors = compiledJson.graphErrors.compilationErrors;
+                graphErrors.forEach((graphError:any) =>{
+                vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
+                });
+                reject(new Error(`Process exited with code ${code}`));
             }
         });
 
