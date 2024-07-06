@@ -191,5 +191,8 @@
         "@vscode/test-electron": "^2.4.0",
         "eslint": "^8.57.0",
         "typescript": "^5.4.5"
+    },
+    "dependencies": {
+        "@google-cloud/bigquery": "^7.8.0"
     }
 }

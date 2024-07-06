@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
-import { getDryRunCommand, getSourcesCommand, getTagsCommand, compiledQueryCommand } from './commands';
-import { setDefaultResultOrder } from 'dns';
-import { stdout } from 'process';
+import { getDryRunCommand, } from './commands';
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, ChildProcess, spawn } = require('child_process');
+import { DataformCompiledJson, ConfigBlockMetadata, Table } from './types';
+import { dataformTags } from './extension';
+import { queryDryRun } from './bigqueryDryRun';
+import { setDiagnostics } from './setDiagnostics';
 
 let supportedExtensions = ['sqlx'];
 
@@ -102,7 +104,7 @@ export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
 // This assumes that the user is using config { } block at the top of the .sqlx file
 //
 // @return [start_of_config_block: number, end_of_config_block: number]
-export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
+export const getLineNumberWhereConfigBlockTerminates = (): ConfigBlockMetadata => {
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
     let isInInnerConfigBlock = false;
@@ -110,7 +112,7 @@ export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
 
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        return [0, 0];
+        return { startLine: 0, endLine: 0 };
     }
 
     const document = editor.document;
@@ -129,11 +131,11 @@ export const getLineNumberWhereConfigBlockTerminates = (): [number, number] => {
             innerConfigBlockCount -= 1;
         } else if (lineContents.match("}") && innerConfigBlockCount === 0) {
             endOfConfigBlock = i + 1;
-            return [startOfConfigBlock, endOfConfigBlock];
+            return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
         }
     }
 
-    return [0, 0];
+    return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
 };
 
 export function isNotUndefined(value: unknown): any {
@@ -248,6 +250,104 @@ export function runCurrentFile(exec: any, includDependencies: boolean, includeDo
 
 };
 
+async function getProcessResult(childProcess: typeof ChildProcess) {
+    let stdout = "";
+    let stderr = "";
+    let error: any = null;
+    childProcess.stderr.pipe(process.stderr);
+    childProcess.stderr.on("data", (chunk: Buffer | string) => (stderr += String(chunk)));
+    childProcess.stdout.pipe(process.stdout);
+    childProcess.stdout.on("data", (chunk: Buffer | string) => (stdout += String(chunk)));
+    childProcess.on("error", (err: Error) => (error = err));
+    const exitCode: number = await new Promise(resolve => {
+        childProcess.on("close", resolve);
+    });
+    return { exitCode, stdout, stderr, error };
+}
+
+async function getDataformTags(compiledJson: DataformCompiledJson) {
+    let dataformTags: string[] = [];
+    let tables = compiledJson?.tables;
+    if (tables) {
+        tables.forEach((table) => {
+            table?.tags?.forEach((tag) => {
+                if (dataformTags.includes(tag) === false) {
+                    dataformTags.push(tag);
+                }
+            });
+        });
+    };
+    let assertions = compiledJson?.assertions;
+    if (assertions) {
+        assertions.forEach((assertion) => {
+            assertion?.tags?.forEach((tag) => {
+                if (dataformTags.includes(tag) === false) {
+                    dataformTags.push(tag);
+                }
+            });
+        });
+    }
+    return dataformTags;
+}
+
+
+async function getQueryForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<Table> {
+    let tables = compiledJson.tables;
+    for (let i = 0; i < tables.length; i++) {
+        let table = tables[i];
+        let tableFileName = path.basename(table.fileName).split('.')[0];
+        if (fileName === tableFileName) {
+            let query = table.query;
+            return { tags: table.tags, fileName: fileName, query: query, target: table.target };
+        }
+    }
+    return { tags: [], fileName: "", query: "", target: { database: "", schema: "", name: "" } };
+};
+
+
+function compileDataform(workspaceFolder: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const command = process.platform !== "win32" ? "dataform" : "dataform.cmd";
+        const spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
+
+        let output = '';
+        let errorOutput = '';
+
+        spawnedProcess.stdout.on('data', (data: string) => {
+            output += data.toString();
+        });
+
+        spawnedProcess.stderr.on('data', (data: string) => {
+            errorOutput += data.toString();
+        });
+
+        spawnedProcess.on('close', (code: number) => {
+            if (code === 0) {
+                resolve(output);
+            } else {
+                reject(new Error(`Process exited with code ${code}: ${errorOutput}`));
+            }
+        });
+
+        spawnedProcess.on('error', (err: Error) => {
+            reject(err);
+        });
+    });
+}
+
+// Usage
+async function runCompilation() {
+    try {
+        let workspaceFolder = getWorkspaceFolder();
+        let compileResult = await compileDataform(workspaceFolder);
+        const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
+        return dataformCompiledJson;
+    } catch (error) {
+        console.error('Compilation failed:', error);
+    }
+}
+
+
 export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
@@ -258,113 +358,51 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
     if (workspaceFolder === "") { return; }
 
     let configBlockRange = getLineNumberWhereConfigBlockTerminates();
-    let configBlockStart = configBlockRange[0] || 0;
-    let configBlockEnd = configBlockRange[1] || 0;
+    let configBlockStart = configBlockRange.startLine || 0;
+    let configBlockEnd = configBlockRange.endLine || 0;
     let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
     let configLineOffset = configBlockOffset - queryStringOffset;
 
-    const sourcesCmd = getSourcesCommand(workspaceFolder);
-    const tagsCompletionCmd = getTagsCommand(workspaceFolder);
-    const dryRunCmd = getDryRunCommand(workspaceFolder, filename);
-    const compiledQueryCmd = compiledQueryCommand(workspaceFolder, filename);
 
+    let dataformCompiledJson = await runCompilation();
+    if (dataformCompiledJson) {
+        let dataformTags = await getDataformTags(dataformCompiledJson);
+        let tableMetadata = await getQueryForCurrentFile(filename, dataformCompiledJson);
 
-    getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
-        let declarations = JSON.parse(sources).Declarations;
-        let targets = JSON.parse(sources).Targets;
-        declarationsAndTargets = [...new Set([...declarations, ...targets])];
-    }
-    ).catch((err) => {
-        vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
-        return;
-    });
-
-    // BUG: When user is not conneted to the internet not getting an error ???
-    if (showCompiledQueryInVerticalSplitOnSave !== true) {
-        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-    }
-    if (showCompiledQueryInVerticalSplitOnSave) {
-
-        getStdoutFromCliRun(exec, compiledQueryCmd).then((compiledQuery) => {
-            writeCompiledSqlToFile(compiledQuery, compiledSqlFilePath);
-        })
-            .catch((err) => {
-                vscode.window.showErrorMessage(`Compiled query error: ${err}`);
-                return;
-            });
-    }
-
-    const diagnostics: vscode.Diagnostic[] = [];
-
-    getStdoutFromCliRun(exec, dryRunCmd).then((dryRunString) => {
-        //TODO: Handle more elegantly where multiline json is returned
-        // this is a hack to handle multiline json by picking only the first json item
-        // separated by newline
-        let dryRunJson;
-        let strLen = dryRunString.split('\n').length;
-        if (strLen > 1) {
-            dryRunJson = JSON.parse(dryRunString.split('\n')[0]);
-        } else {
-            dryRunJson = JSON.parse(dryRunString);
-        }
-
-        let isError = dryRunJson.Error?.IsError;
-        if (isError === false) {
-            let GBProcessed = dryRunJson.GBProcessed;
-            let fullTableId = getFullTableIdFromDjDryRunJson(dryRunJson);
-            GBProcessed = GBProcessed.toFixed(4);
-            vscode.window.showInformationMessage(`GB ${GBProcessed} : ${fullTableId}`);
+        if (tableMetadata.query === "") {
+            vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
             return;
         }
 
-        let errLineNumber = dryRunJson.Error?.LineNumber + configLineOffset;
-        let errColumnNumber = dryRunJson.Error?.ColumnNumber;
-
-
-        const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-        const message = dryRunJson.Error?.ErrorMsg || '';
-        const severity = vscode.DiagnosticSeverity.Error;
-        const diagnostic = new vscode.Diagnostic(range, message, severity);
-        if (diagnostics.length === 0) { //NOTE: Did this because we are only showing first error ?
-            diagnostics.push(diagnostic);
-            if (document !== undefined) {
-                diagnosticCollection.set(document.uri, diagnostics);
-            }
+        if (showCompiledQueryInVerticalSplitOnSave !== true) {
+            showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        }
+        if (showCompiledQueryInVerticalSplitOnSave) {
+            writeCompiledSqlToFile(tableMetadata.query, compiledSqlFilePath);
         }
 
-        let showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        if (showCompiledQueryInVerticalSplitOnSave && isError === true) {
-            let compiledQueryDiagnostics: vscode.Diagnostic[] = [];
-            let errLineNumberForCompiledQuery = dryRunJson.Error?.LineNumber - 1;
-            let range = new vscode.Range(new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber), new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber + 5));
-            const testDiagnostic = new vscode.Diagnostic(range, message, severity);
-            compiledQueryDiagnostics.push(testDiagnostic);
-            let visibleEditors = vscode.window.visibleTextEditors;
-            visibleEditors.forEach((editor) => {
-                let documentUri = editor.document.uri;
-                if (documentUri.toString() === "file://" + compiledSqlFilePath) {
-                    diagnosticCollection.set(documentUri, compiledQueryDiagnostics);
-                }
-            });
-        }
-
-    })
-        .catch((err) => {
-            if (err.toString() === 'TypeError: message must be set') { // NOTE: not sure how to fix this one?
-                return;
-            }
-            vscode.window.showErrorMessage(`Dry run error: ${err}`);
+        let dryRunResult = await queryDryRun(tableMetadata.query);
+        if (dryRunResult.error.hasError) {
+            setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
             return;
-        });
-
-    let dataformTags: string[] = [];
-    await getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
-        let uniqueTags = JSON.parse(sources).tags;
-        dataformTags = uniqueTags;
+        }
+        let targetTableId = tableMetadata.target.database + '.' + tableMetadata.target.schema + '.' + tableMetadata.target.name;
+        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${targetTableId}`);
+        return dataformTags;
+    } else {
+        vscode.window.showInformationMessage(`Could not compile Dataform ??`)
+        return
     }
-    ).catch((err) => {
-        vscode.window.showErrorMessage(`Error getting tags for project: ${err}`);
-    });
 
-    return dataformTags;
+    //getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
+    //    let declarations = JSON.parse(sources).Declarations;
+    //    let targets = JSON.parse(sources).Targets;
+    //    declarationsAndTargets = [...new Set([...declarations, ...targets])];
+    //}
+    //).catch((err) => {
+    //    vscode.window.showErrorMessage(`Error getting sources for project: ${err}`);
+    //    return;
+    //});
+    //
+
 }
