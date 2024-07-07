@@ -80,14 +80,15 @@ Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sq
 
 Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and run one of the required commands
 
-| Commands                                             |
-|------------------------------------------------------|
+| Commands                                               |
+|------------------------------------------------------  |
 | `Dataform: Run current file`                           |
 | `Dataform: Run current file with dependencies`         |
 | `Dataform: Run current file with dependents`           |
 | `Dataform: Run current tag`                            |
 | `Dataform: Run current tag with dependencies`          |
 | `Dataform: Run current tag with dependents`            |
+| `Dataform: Format current file`                        |
 
 
 
