@@ -35,8 +35,8 @@ let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './utils';
-import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun} from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation } from './utils';
+import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags} from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import {  getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
@@ -51,6 +51,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let workspaceFolder = getWorkspaceFolder();
     //TODO: Load tags and sources on extension activation
+
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    if (dataformCompiledJson){
+        declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
+        dataformTags = await getDataformTags(dataformCompiledJson);
+    }
 
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);

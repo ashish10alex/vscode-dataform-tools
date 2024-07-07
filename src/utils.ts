@@ -236,7 +236,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     }
 }
 
-async function getDataformTags(compiledJson: DataformCompiledJson) {
+export async function getDataformTags(compiledJson: DataformCompiledJson) {
     let dataformTags: string[] = [];
     let tables = compiledJson?.tables;
     if (tables) {
@@ -347,7 +347,7 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 }
 
 // Usage
-async function runCompilation(workspaceFolder: string) {
+export async function runCompilation(workspaceFolder: string) {
     try {
         let compileResult = await compileDataform(workspaceFolder);
         const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
@@ -357,7 +357,7 @@ async function runCompilation(workspaceFolder: string) {
     }
 }
 
-async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
+export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
