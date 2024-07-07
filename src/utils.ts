@@ -6,7 +6,7 @@ import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } f
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 
-let supportedExtensions = ['sqlx'];
+let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
@@ -27,17 +27,17 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-export function getFileNameFromDocument(document: vscode.TextDocument): string {
+export function getFileNameFromDocument(document: vscode.TextDocument): string[] {
     var filename = document.uri.fsPath;
     let basenameSplit = path.basename(filename).split('.');
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
         // vscode.window.showWarningMessage(`vscode-dataform-tools extension currently only supports ${supportedExtensions} files`);
-        return "";
+        return ["", ""];
     }
     filename = basenameSplit[0];
-    return filename;
+    return [filename, extension];
 }
 
 export function getWorkspaceFolder(): string {
@@ -188,11 +188,11 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         vscode.window.showErrorMessage('No active document');
         return;
     }
-    var filename = getFileNameFromDocument(document);
+    var [filename, extension] = getFileNameFromDocument(document);
     let workspaceFolder = getWorkspaceFolder();
 
     if (COMPILED_DATAFORM_METADATA === undefined) {
-        let dataformCompiledJson = await runCompilation();
+        let dataformCompiledJson = await runCompilation(workspaceFolder);
         if (dataformCompiledJson) {
             let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
             COMPILED_DATAFORM_METADATA = tableMetadata;
@@ -280,10 +280,12 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                 finalQuery += table.query;
                 finalQuery += "; \n-- Incremental query \n";
                 finalQuery += table.incrementalQuery;
-                table.incrementalPreOps.forEach((query, idx) => {
-                    finalQuery += `; \n -- Incremental pre operations: [${idx}] \n`;
-                    finalQuery += query;
-                });
+                if (table?.incrementalPreOps){
+                    table.incrementalPreOps.forEach((query, idx) => {
+                        finalQuery += `; \n -- Incremental pre operations: [${idx}] \n`;
+                        finalQuery += query;
+                    });
+                }
             }
             let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? []};
             finalTables.push(tableFound);
@@ -345,9 +347,8 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 }
 
 // Usage
-async function runCompilation() {
+async function runCompilation(workspaceFolder: string) {
     try {
-        let workspaceFolder = getWorkspaceFolder();
         let compileResult = await compileDataform(workspaceFolder);
         const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
         return dataformCompiledJson;
@@ -380,20 +381,24 @@ async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiled
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
-    var filename = getFileNameFromDocument(document);
-    if (filename === "") { return; }
+    var [filename, extension] = getFileNameFromDocument(document);
+    if (filename === "" || extension === "") { return; }
 
     let workspaceFolder = getWorkspaceFolder();
     if (workspaceFolder === "") { return; }
 
-    let configBlockRange = getLineNumberWhereConfigBlockTerminates();
-    let configBlockStart = configBlockRange.startLine || 0;
-    let configBlockEnd = configBlockRange.endLine || 0;
-    let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
-    let configLineOffset = configBlockOffset - queryStringOffset;
+    let configLineOffset = 0;
 
+    // Currently inline 
+    if (extension === "sqlx"){
+        let configBlockRange = getLineNumberWhereConfigBlockTerminates();
+        let configBlockStart = configBlockRange.startLine || 0;
+        let configBlockEnd = configBlockRange.endLine || 0;
+        let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
+        configLineOffset = configBlockOffset - queryStringOffset;
+    }
 
-    let dataformCompiledJson = await runCompilation();
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
     if (dataformCompiledJson) {
         // TODO: Call them asyc and do wait for all promises to settle
         let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);

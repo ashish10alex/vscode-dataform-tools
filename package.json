@@ -21,6 +21,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
+        "workspaceContains:**/*.js",
         "onCommand:extension.enable",
         "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
@@ -127,31 +128,31 @@
             "editor/title": [
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.runCurrentFile",
                     "group": "navigation"
                 },
                 {
                     "command": "vscode-dataform-tools.compileWtDryRun",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.compileWtDryRun",
                     "group": "navigation@1"
                 },
                 {
                     "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.runCurrentFileWtDeps",
                     "group": "navigation@2"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.showCompiledQueryWtDryRun",
                     "group": "navigation@3"
                 },
                 {
                     "command": "vscode-dataform-tools.formatCurrentfile",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.formatCurrentfile",
                     "group": "navigation@0"
                 }
