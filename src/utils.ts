@@ -274,7 +274,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
             if (table.type === "table"){
-                finalQuery = table.query;
+                finalQuery = table.query + "\n ;";
             } else if (table.type === "incremental"){
                 finalQuery += "\n-- Non incremental query \n";
                 finalQuery += table.query;
@@ -303,8 +303,8 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
             let assertionFound = { type: "", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, incrementalQuery: "", incrementalPreOps: [] };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
-            finalQuery += `; \n -- Assertions: [${assertionCountForFile}] \n`;
-            finalQuery += assertion.query;
+            finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
+            finalQuery += assertion.query + "\n ;";
         }
     }
     return { tables: finalTables, fullQuery: finalQuery };
@@ -379,6 +379,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
 
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    // let startTime = new Date().getTime();
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
@@ -389,7 +390,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let configLineOffset = 0;
 
-    // Currently inline 
+    // Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx"){
         let configBlockRange = getLineNumberWhereConfigBlockTerminates();
         let configBlockStart = configBlockRange.startLine || 0;
@@ -401,6 +402,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     let dataformCompiledJson = await runCompilation(workspaceFolder);
     if (dataformCompiledJson) {
         // TODO: Call them asyc and do wait for all promises to settle
+
         let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
         let dataformTags = await getDataformTags(dataformCompiledJson);
         let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
@@ -426,6 +428,8 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         //TODO: make this more dynamic
         let targetTableId = tableMetadata.tables[0].target.database + '.' + tableMetadata.tables[0].target.schema + '.' + tableMetadata.tables[0].target.name;
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${targetTableId}`);
+        // let endTime = new Date().getTime();
+        // console.log(`Time taken to get metadata: ${endTime - startTime} ms`);
         return [dataformTags, declarationsAndTargets];
     } else {
         vscode.window.showInformationMessage(`Could not compile Dataform ??`);
