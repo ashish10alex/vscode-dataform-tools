@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { getDryRunCommand, } from './commands';
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawn } = require('child_process');
@@ -211,7 +210,7 @@ export async function runCurrentFile(includDependencies:boolean, includeDownstre
 
     if (COMPILED_DATAFORM_METADATA) {
         // TODO:
-        // get all the targets and create actions 
+        // get all the targets and create actions
         // run the dataform run command similar to runCurrentFile function below
         let actionsList: string[] = [];
         for (let i=0; i<COMPILED_DATAFORM_METADATA.tables.length; i++){
