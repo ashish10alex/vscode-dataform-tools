@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-const fs = require('fs');
-const path = require('path');
-const { execSync, spawn } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
@@ -12,9 +12,9 @@ export let declarationsAndTargets: string[] = [];
 
 let COMPILED_DATAFORM_METADATA: TablesWtFullQuery;
 
-const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 
 export function executableIsAvailable(name: string) {
+    const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
     try { shell(`which ${name}`); return true; }
     catch (error) {
         if (name === 'formatdataform') {
@@ -142,15 +142,6 @@ export function isNotUndefined(value: unknown): any {
     if (typeof value === undefined) { throw new Error("Not a string"); }
 }
 
-function getFullTableIdFromDjDryRunJson(dryRunJson: any): string {
-    let fileName = dryRunJson.FileName;
-    let schema = dryRunJson.Schema;
-    let database = dryRunJson.Database;
-    let fullTableId = `${database}.${schema}.${fileName}`;
-    return fullTableId;
-}
-
-
 export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, '', 'utf8');
@@ -190,7 +181,7 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
     });
 }
 
-export async function runCurrentFile(includDependencies:boolean, includeDownstreamDependents:boolean){
+export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
 
     let document = vscode.window.activeTextEditor?.document;
     if (document === undefined) {
@@ -213,7 +204,7 @@ export async function runCurrentFile(includDependencies:boolean, includeDownstre
         // get all the targets and create actions
         // run the dataform run command similar to runCurrentFile function below
         let actionsList: string[] = [];
-        for (let i=0; i<COMPILED_DATAFORM_METADATA.tables.length; i++){
+        for (let i = 0; i < COMPILED_DATAFORM_METADATA.tables.length; i++) {
             let table = COMPILED_DATAFORM_METADATA.tables[i];
             let fullTableId = `${table.target.database}.${table.target.schema}.${table.target.name}`;
             actionsList.push(fullTableId);
@@ -283,7 +274,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
             finalQuery = table.query;
-            let tableFound = {tags: table.tags, fileName: fileName, query:table.query, target:table.target};
+            let tableFound = { tags: table.tags, fileName: fileName, query: table.query, target: table.target };
             finalTables.push(tableFound);
             break;
         }
@@ -295,13 +286,13 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
-        if (assertionFileName === fileName){
-            let assertionFound = {tags: assertion.tags, fileName: fileName, query:assertion.query, target:assertion.target};
+        if (assertionFileName === fileName) {
+            let assertionFound = { tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target };
             finalTables.push(assertionFound);
-            finalQuery  += assertion.query;
+            finalQuery += assertion.query;
         }
     }
-    return {tables: finalTables, fullQuery: finalQuery};
+    return { tables: finalTables, fullQuery: finalQuery };
 };
 
 
@@ -327,8 +318,8 @@ function compileDataform(workspaceFolder: string): Promise<string> {
             } else {
                 let compiledJson = JSON.parse(output.toString());
                 let graphErrors = compiledJson.graphErrors.compilationErrors;
-                graphErrors.forEach((graphError:any) =>{
-                vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
+                graphErrors.forEach((graphError: any) => {
+                    vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
                 });
                 reject(new Error(`Process exited with code ${code}`));
             }
@@ -353,27 +344,27 @@ async function runCompilation() {
 }
 
 async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
-    let targets  = compiledJson.targets;
-    let declarations  = compiledJson.declarations;
+    let targets = compiledJson.targets;
+    let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
-    for (let i = 0; i < targets.length; i++){
+    for (let i = 0; i < targets.length; i++) {
         let targetName = targets[i].name;
-       if (dependencies.includes(targetName) === false) {
+        if (dependencies.includes(targetName) === false) {
             dependencies.push(targetName);
-       }
+        }
     }
 
-    for (let i = 0; i < declarations.length; i++){
+    for (let i = 0; i < declarations.length; i++) {
         let targetName = declarations[i].target.name;
-       if (dependencies.includes(targetName) === false) {
+        if (dependencies.includes(targetName) === false) {
             dependencies.push(targetName);
-       }
+        }
     }
     return dependencies;
 }
 
 
-export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
     var filename = getFileNameFromDocument(document);
