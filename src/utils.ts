@@ -2,14 +2,16 @@ import * as vscode from 'vscode';
 import { getDryRunCommand, } from './commands';
 const fs = require('fs');
 const path = require('path');
-const { execSync, ChildProcess, spawn } = require('child_process');
-import { DataformCompiledJson, ConfigBlockMetadata, Table } from './types';
+const { execSync, spawn } = require('child_process');
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 
 let supportedExtensions = ['sqlx'];
 
 export let declarationsAndTargets: string[] = [];
+
+let COMPILED_DATAFORM_METADATA: TablesWtFullQuery;
 
 const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
 
@@ -189,8 +191,8 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
     });
 }
 
+export async function runCurrentFile(includDependencies:boolean, includeDownstreamDependents:boolean){
 
-export function runCurrentFile(exec: any, includDependencies: boolean, includeDownstreamDependents: boolean) {
     let document = vscode.window.activeTextEditor?.document;
     if (document === undefined) {
         vscode.window.showErrorMessage('No active document');
@@ -199,24 +201,26 @@ export function runCurrentFile(exec: any, includDependencies: boolean, includeDo
     var filename = getFileNameFromDocument(document);
     let workspaceFolder = getWorkspaceFolder();
 
-    const getDryRunCmd = getDryRunCommand(workspaceFolder, filename);
-
-    getStdoutFromCliRun(exec, getDryRunCmd).then((dryRunString) => {
-
-        let allActions = dryRunString.split('\n');
-        let actionsList: string[] = [];
-        let dataformActionCmd = "";
-
-
-        // get a list of tables & assertions that will be ran
-        for (let i = 0; i < allActions.length - 1; i++) {
-            let dryRunJson = JSON.parse(allActions[i]);
-            let projectId = dryRunJson.Database;
-            let dataset = dryRunJson.Schema;
-            let table = dryRunJson.FileName;
-            let fullTableName = `${projectId}.${dataset}.${table}`;
-            actionsList.push(fullTableName);
+    if (COMPILED_DATAFORM_METADATA === undefined) {
+        let dataformCompiledJson = await runCompilation();
+        if (dataformCompiledJson) {
+            let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+            COMPILED_DATAFORM_METADATA = tableMetadata;
         }
+    }
+
+    if (COMPILED_DATAFORM_METADATA) {
+        // TODO:
+        // get all the targets and create actions 
+        // run the dataform run command similar to runCurrentFile function below
+        let actionsList: string[] = [];
+        for (let i=0; i<COMPILED_DATAFORM_METADATA.tables.length; i++){
+            let table = COMPILED_DATAFORM_METADATA.tables[i];
+            let fullTableId = `${table.target.database}.${table.target.schema}.${table.target.name}`;
+            actionsList.push(fullTableId);
+        }
+
+        let dataformActionCmd = "";
 
         // create the dataform run command for the list of actions from actionsList
         for (let i = 0; i < actionsList.length; i++) {
@@ -238,16 +242,9 @@ export function runCurrentFile(exec: any, includDependencies: boolean, includeDo
                 }
             }
         }
-
         runCommandInTerminal(dataformActionCmd);
-    })
-        .catch((err) => {
-            ;
-            vscode.window.showErrorMessage(`Error running file: ${err}`);
-            return;
-        });
-
-};
+    }
+}
 
 async function getDataformTags(compiledJson: DataformCompiledJson) {
     let dataformTags: string[] = [];
@@ -275,21 +272,20 @@ async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-async function getQueryForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<Table> {
+async function getMetadataForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let finalQuery = "";
-    let tableTags: string[] = [];
-    let tableTarget = { database: "", schema: "", name: "" };
+    let finalTables: Table[] = [];
 
     for (let i = 0; i < tables.length; i++) {
         let table = tables[i];
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
-            tableTags = table.tags;
-            tableTarget = table.target;
             finalQuery = table.query;
+            let tableFound = {tags: table.tags, fileName: fileName, query:table.query, target:table.target};
+            finalTables.push(tableFound);
             break;
         }
     }
@@ -301,10 +297,12 @@ async function getQueryForCurrentFile(fileName: string, compiledJson: DataformCo
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
         if (assertionFileName === fileName){
+            let assertionFound = {tags: assertion.tags, fileName: fileName, query:assertion.query, target:assertion.target};
+            finalTables.push(assertionFound);
             finalQuery  += assertion.query;
         }
     }
-    return { tags: tableTags, fileName: fileName, query: finalQuery, target: tableTarget };
+    return {tables: finalTables, fullQuery: finalQuery};
 };
 
 
@@ -397,9 +395,10 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
         // TODO: Call them asyc and do wait for all promises to settle
         let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
         let dataformTags = await getDataformTags(dataformCompiledJson);
-        let tableMetadata = await getQueryForCurrentFile(filename, dataformCompiledJson);
+        let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+        COMPILED_DATAFORM_METADATA = tableMetadata;
 
-        if (tableMetadata.query === "") {
+        if (tableMetadata.fullQuery === "") {
             vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
             return;
         }
@@ -408,15 +407,16 @@ export async function compiledQueryWtDryRun(exec: any, document: vscode.TextDocu
             showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         }
         if (showCompiledQueryInVerticalSplitOnSave) {
-            writeCompiledSqlToFile(tableMetadata.query, compiledSqlFilePath);
+            writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath);
         }
 
-        let dryRunResult = await queryDryRun(tableMetadata.query);
+        let dryRunResult = await queryDryRun(tableMetadata.fullQuery);
         if (dryRunResult.error.hasError) {
             setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
             return;
         }
-        let targetTableId = tableMetadata.target.database + '.' + tableMetadata.target.schema + '.' + tableMetadata.target.name;
+        //TODO: make this more dynamic
+        let targetTableId = tableMetadata.tables[0].target.database + '.' + tableMetadata.tables[0].target.schema + '.' + tableMetadata.tables[0].target.name;
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${targetTableId}`);
         return [dataformTags, declarationsAndTargets];
     } else {

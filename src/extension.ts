@@ -39,7 +39,7 @@ import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './u
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, extractFixFromDiagnosticMessage } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
+import {  getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -108,7 +108,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false, false); });
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
@@ -137,10 +137,10 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true, false); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
 
-        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(exec, false, true); });
+        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true); });
         context.subscriptions.push(runCurrentFileWtDownstreamDepsCommandDisposable);
 
 

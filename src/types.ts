@@ -6,10 +6,16 @@ export interface Table {
     target: Target;
 }
 
+export interface TablesWtFullQuery{
+    tables: Table[];
+    fullQuery: string;
+}
+
 interface Assertion {
     tags: string[];
     fileName: string;
     query: string;
+    target: Target;
 }
 
 interface Target {
