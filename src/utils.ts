@@ -200,9 +200,6 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     }
 
     if (COMPILED_DATAFORM_METADATA) {
-        // TODO:
-        // get all the targets and create actions
-        // run the dataform run command similar to runCurrentFile function below
         let actionsList: string[] = [];
         for (let i = 0; i < COMPILED_DATAFORM_METADATA.tables.length; i++) {
             let table = COMPILED_DATAFORM_METADATA.tables[i];
@@ -425,9 +422,12 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
             setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
             return;
         }
-        //TODO: make this more dynamic
-        let targetTableId = tableMetadata.tables[0].target.database + '.' + tableMetadata.tables[0].target.schema + '.' + tableMetadata.tables[0].target.name;
-        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${targetTableId}`);
+        let combinedTableIds = "";
+        tableMetadata.tables.forEach((table) => {
+            let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
+            combinedTableIds += targetTableId;
+        });
+        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
         // let endTime = new Date().getTime();
         // console.log(`Time taken to get metadata: ${endTime - startTime} ms`);
         return [dataformTags, declarationsAndTargets];
