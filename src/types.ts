@@ -1,9 +1,12 @@
 
 export interface Table {
+    type: string;
     tags: string[];
     fileName: string;
     query: string;
     target: Target;
+    incrementalQuery: string;
+    incrementalPreOps: string[];
 }
 
 export interface TablesWtFullQuery{

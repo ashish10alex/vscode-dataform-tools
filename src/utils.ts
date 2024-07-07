@@ -273,22 +273,35 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let table = tables[i];
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
-            finalQuery = table.query;
-            let tableFound = { tags: table.tags, fileName: fileName, query: table.query, target: table.target };
+            if (table.type === "table"){
+                finalQuery = table.query;
+            } else if (table.type === "incremental"){
+                finalQuery += "\n-- Non incremental query \n";
+                finalQuery += table.query;
+                finalQuery += "; \n-- Incremental query \n";
+                finalQuery += table.incrementalQuery;
+                table.incrementalPreOps.forEach((query, idx) => {
+                    finalQuery += `; \n -- Incremental pre operations: [${idx}] \n`;
+                    finalQuery += query;
+                });
+            }
+            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? []};
             finalTables.push(tableFound);
             break;
         }
     }
 
-    finalQuery += "; \n -- Assertions \n";
 
+    let assertionCountForFile = 0;
     for (let i = 0; i < assertions.length; i++) {
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
         if (assertionFileName === fileName) {
-            let assertionFound = { tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target };
+            let assertionFound = { type: "", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, incrementalQuery: "", incrementalPreOps: [] };
             finalTables.push(assertionFound);
+            assertionCountForFile += 1;
+            finalQuery += `; \n -- Assertions: [${assertionCountForFile}] \n`;
             finalQuery += assertion.query;
         }
     }
