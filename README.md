@@ -27,19 +27,8 @@
 
    `npm i -g @dataform/cli`
 
-2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
-3. [dj cli](https://github.com/ashish10alex/dj)
-
-    **Latest release** ( supports MacOS / Linux / WSL )
-
-    ```
-    curl -sSfL https://raw.githubusercontent.com/ashish10alex/dj/main/install_latest.sh | bash
-    ```
-    You can verify if `dj` is installed correctly by running
-    ```bash
-    dj --help
-    ```
 
 4. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
 
