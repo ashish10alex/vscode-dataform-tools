@@ -322,11 +322,11 @@ function compileDataform(workspaceFolder: string): Promise<string> {
         const command = process.platform !== "win32" ? "dataform" : "dataform.cmd";
         const spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
 
-        let output = '';
+        let stdOut = '';
         let errorOutput = '';
 
         spawnedProcess.stdout.on('data', (data: string) => {
-            output += data.toString();
+            stdOut += data.toString();
         });
 
         spawnedProcess.stderr.on('data', (data: string) => {
@@ -335,14 +335,18 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 
         spawnedProcess.on('close', (code: number) => {
             if (code === 0) {
-                resolve(output);
+                resolve(stdOut);
             } else {
-                let compiledJson = JSON.parse(output.toString());
-                let graphErrors = compiledJson.graphErrors.compilationErrors;
-                graphErrors.forEach((graphError: any) => {
-                    vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
-                });
-                reject(new Error(`Process exited with code ${code}`));
+                if (stdOut !== ''){
+                    let compiledJson = JSON.parse(stdOut.toString());
+                    let graphErrors = compiledJson.graphErrors.compilationErrors;
+                    graphErrors.forEach((graphError: any) => {
+                        vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
+                    });
+                    reject(new Error(`Process exited with code ${code}`));
+                }else{
+                    vscode.window.showErrorMessage(`Error compiling Dataform: ${errorOutput}`);
+                }
             }
         });
 
