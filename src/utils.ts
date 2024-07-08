@@ -343,10 +343,10 @@ function compileDataform(workspaceFolder: string): Promise<string> {
                     graphErrors.forEach((graphError: any) => {
                         vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
                     });
-                    reject(new Error(`Process exited with code ${code}`));
                 }else{
                     vscode.window.showErrorMessage(`Error compiling Dataform: ${errorOutput}`);
                 }
+                reject(new Error(`Process exited with code ${code}`));
             }
         });
 
