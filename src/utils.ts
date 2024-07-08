@@ -266,6 +266,10 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     let finalQuery = "";
     let finalTables: Table[] = [];
 
+    if (tables === undefined){
+        return {tables: finalTables, fullQuery: finalQuery};
+    }
+
     for (let i = 0; i < tables.length; i++) {
         let table = tables[i];
         let tableFileName = path.basename(table.fileName).split('.')[0];
@@ -289,6 +293,11 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
             break;
         }
     }
+
+    if (assertions === undefined){
+        return { tables: finalTables, fullQuery: finalQuery };
+    }
+
 
 
     let assertionCountForFile = 0;
