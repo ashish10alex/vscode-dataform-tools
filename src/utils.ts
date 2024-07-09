@@ -104,7 +104,7 @@ export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
 // This assumes that the user is using config { } block at the top of the .sqlx file
 //
 // @return [start_of_config_block: number, end_of_config_block: number]
-export const getLineNumberWhereConfigBlockTerminates = (): ConfigBlockMetadata => {
+export const getLineNumberWhereConfigBlockTerminates = async (): Promise<ConfigBlockMetadata> => {
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
     let isInInnerConfigBlock = false;
@@ -152,7 +152,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 
     // Open the output file in a vertical split
     const outputDocument = await vscode.workspace.openTextDocument(filePath);
-    await vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+    vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
@@ -389,7 +389,6 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
 
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
-    // let startTime = new Date().getTime();
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
@@ -402,14 +401,14 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     // Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx"){
-        let configBlockRange = getLineNumberWhereConfigBlockTerminates();
+        let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms
         let configBlockStart = configBlockRange.startLine || 0;
         let configBlockEnd = configBlockRange.endLine || 0;
         let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
         configLineOffset = configBlockOffset - queryStringOffset;
     }
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
     if (dataformCompiledJson) {
         // TODO: Call them asyc and do wait for all promises to settle
 
@@ -430,7 +429,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
             writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath);
         }
 
-        let dryRunResult = await queryDryRun(tableMetadata.fullQuery);
+        let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
         if (dryRunResult.error.hasError) {
             setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
             return;
@@ -441,8 +440,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
             combinedTableIds += targetTableId;
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
-        // let endTime = new Date().getTime();
-        // console.log(`Time taken to get metadata: ${endTime - startTime} ms`);
         return [dataformTags, declarationsAndTargets];
     } else {
         vscode.window.showInformationMessage(`Could not compile Dataform ??`);
