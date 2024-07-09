@@ -27,7 +27,7 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
         let showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave && dryRunError.hasError === true) {
             let compiledQueryDiagnostics: vscode.Diagnostic[] = [];
-            let errLineNumberForCompiledQuery = errLineNumber - 1;
+            let errLineNumberForCompiledQuery = errLineNumber - (configLineOffset + 1);
             let range = new vscode.Range(new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber), new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber + 5));
             const testDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
             compiledQueryDiagnostics.push(testDiagnostic);
