@@ -24,14 +24,6 @@ let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = 
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 
-//TODO:
-/*
-1. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
-   to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
-   * Maybe we need to wait for the stdout to be read completely
-2. Add docs to functions
-*/
-
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
