@@ -36,6 +36,16 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "snippets": [
+            {
+              "language": "sql",
+              "path": "./snippets/dataform.code-snippets"
+            },
+            {
+              "language": "javascript",
+              "path": "./snippets/dataform.code-snippets"
+            }
+          ],
         "commands": [
             {
                 "command": "vscode-dataform-tools.enable",

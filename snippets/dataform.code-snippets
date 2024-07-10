@@ -1,0 +1,32 @@
+{
+	"Config block": {
+		"scope": "sql",
+        "prefix": "config",
+		"body": [
+			" config {",
+				"type: 'table'",
+				"schema: '${1}',",
+				"description: '${2}',",
+				"dependencies: ${3}",
+				"bigquery: {",
+				"  partitionBy: ${4},",
+				" clusterBy: [${5}]",
+				"},",
+				"tags: [${6}]",
+			  "}"
+		],
+		"description": "Generate config for sqlx files"
+	},
+	"source declarations": {
+		"scope": "javascript",
+        "prefix": "declare",
+		"body": [
+			"declare({",
+				"database: '${1}',",
+				"schema: '${2}',",
+				"name: '${3}',",
+			  "});"
+		],
+		"description": "Generate source declararions"
+	}
+}
