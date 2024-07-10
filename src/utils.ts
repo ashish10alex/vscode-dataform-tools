@@ -442,7 +442,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
         return [dataformTags, declarationsAndTargets];
     } else {
-        vscode.window.showInformationMessage(`Could not compile Dataform ??`);
         return;
     }
 }
