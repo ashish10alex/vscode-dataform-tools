@@ -39,7 +39,7 @@ function showTableMetadataInSideBar(tables) {
     fullTableIds = [];
 
     const tableHeader = document.createElement('h3');
-    tableHeader.innerHTML = "<br><b>Table Name</b><br>";
+    tableHeader.innerHTML = "<br><b>Table / view Name</b><br>";
 
     const tagHeader = document.createElement('h3');
     tagHeader.innerHTML = "<br><b>Tags</b><br>";
