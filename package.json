@@ -36,16 +36,36 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "dataform-sidebar-view",
+                    "title": "Dataform",
+                    "icon": "media/dataform.svg"
+                }
+            ]
+        },
+        "views": {
+            "dataform-sidebar-view": [
+                {
+                    "type": "webview",
+                    "id": "dataform-sidebar",
+                    "name": "Dataform",
+                    "icon": "media/dataform.svg",
+                    "contextualTitle": "Dataform"
+                }
+            ]
+        },
         "snippets": [
             {
-              "language": "sql",
-              "path": "./snippets/dataform.code-snippets"
+                "language": "sql",
+                "path": "./snippets/dataform.code-snippets"
             },
             {
-              "language": "javascript",
-              "path": "./snippets/dataform.code-snippets"
+                "language": "javascript",
+                "path": "./snippets/dataform.code-snippets"
             }
-          ],
+        ],
         "commands": [
             {
                 "command": "vscode-dataform-tools.enable",

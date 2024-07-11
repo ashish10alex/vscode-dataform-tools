@@ -288,7 +288,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                     });
                 }
             }
-            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? []};
+            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? []};
             finalTables.push(tableFound);
             break;
         }
@@ -306,7 +306,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
         if (assertionFileName === fileName) {
-            let assertionFound = { type: "", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, incrementalQuery: "", incrementalPreOps: [] };
+            let assertionFound = { type: "", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, dependencyTargets: assertion.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
             finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
@@ -321,7 +321,6 @@ function compileDataform(workspaceFolder: string): Promise<string> {
     return new Promise((resolve, reject) => {
         const command = process.platform !== "win32" ? "dataform" : "dataform.cmd";
         const spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
-
         let stdOut = '';
         let errorOutput = '';
 
@@ -385,6 +384,24 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
         }
     }
     return dependencies;
+}
+
+export async function getTableMetadata(document: vscode.TextDocument) {
+    let tableMetadata;
+    var [filename, extension] = getFileNameFromDocument(document);
+    if (filename === "" || extension === "") { return; }
+
+    let workspaceFolder = getWorkspaceFolder();
+    if (workspaceFolder === "") { return; }
+
+    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+    if (dataformCompiledJson) {
+        // let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
+        // let dataformTags = await getDataformTags(dataformCompiledJson);
+        tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+        // COMPILED_DATAFORM_METADATA = tableMetadata;
+    }
+    return tableMetadata;
 }
 
 

@@ -7,6 +7,7 @@ export interface Table {
     target: Target;
     incrementalQuery: string;
     incrementalPreOps: string[];
+    dependencyTargets: Target[];
 }
 
 export interface TablesWtFullQuery{
@@ -19,6 +20,7 @@ interface Assertion {
     fileName: string;
     query: string;
     target: Target;
+    dependencyTargets: Target[]; 
 }
 
 interface Target {
@@ -37,7 +39,6 @@ export interface DataformCompiledJson {
     targets: Target[];
     declarations: Declarations[];
 }
-
 export interface DryRunError {
     hasError: boolean;
     message: string;

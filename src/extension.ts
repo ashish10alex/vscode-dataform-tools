@@ -24,6 +24,7 @@ let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = 
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 
+import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
@@ -52,6 +53,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
+
+    registerWebViewProvider(context);
 
     async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (document === undefined) {
