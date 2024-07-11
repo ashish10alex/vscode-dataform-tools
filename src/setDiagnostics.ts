@@ -4,13 +4,13 @@ import {DryRunError} from './types';
 
 export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, compiledSqlFilePath: string, diagnosticCollection: vscode.DiagnosticCollection, configLineOffset: number){
 
-        let errLineNumber = dryRunError.location?.line
+        let errLineNumber = dryRunError.location?.line;
         let errColumnNumber = dryRunError.location?.column;
         if (errLineNumber === undefined || errColumnNumber === undefined) {
             vscode.window.showErrorMessage(`Error in setting diagnostics. Error location is undefined.`);
             return;
         }
-        errLineNumber = errLineNumber + configLineOffset + 1;
+        errLineNumber = errLineNumber + (configLineOffset + 1);
 
         const diagnostics: vscode.Diagnostic[] = [];
         const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));

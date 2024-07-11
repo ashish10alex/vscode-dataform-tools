@@ -27,7 +27,7 @@ let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
-import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
+import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags} from './utils';
 import { editorSyncDisposable } from './sync';
@@ -88,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
                 if (recompileAfterCodeAction) {
                     let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    await compileAndDryRunWtOpts(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                    await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
                 }
 
             });
@@ -134,7 +134,7 @@ export async function activate(context: vscode.ExtensionContext) {
             });
 
             let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
@@ -147,14 +147,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(onSaveDisposable);
 
         compileWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.compileWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
             let document = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(compileWtDryRunDisposable);
@@ -162,7 +162,7 @@ export async function activate(context: vscode.ExtensionContext) {
         showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(showCompiledQueryWtDryRunDisposable);

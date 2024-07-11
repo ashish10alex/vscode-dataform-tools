@@ -5,6 +5,7 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
+import { assertionQueryOffset } from './constants';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -266,35 +267,35 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     let finalQuery = "";
     let finalTables: Table[] = [];
 
-    if (tables === undefined){
-        return {tables: finalTables, fullQuery: finalQuery};
+    if (tables === undefined) {
+        return { tables: finalTables, fullQuery: finalQuery };
     }
 
     for (let i = 0; i < tables.length; i++) {
         let table = tables[i];
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
-            if (table.type === "table"){
+            if (table.type === "table") {
                 finalQuery = table.query + "\n ;";
-            } else if (table.type === "incremental"){
+            } else if (table.type === "incremental") {
                 finalQuery += "\n-- Non incremental query \n";
                 finalQuery += table.query;
                 finalQuery += "; \n-- Incremental query \n";
                 finalQuery += table.incrementalQuery;
-                if (table?.incrementalPreOps){
+                if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
                         finalQuery += `; \n -- Incremental pre operations: [${idx}] \n`;
                         finalQuery += query;
                     });
                 }
             }
-            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? []};
+            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? [] };
             finalTables.push(tableFound);
             break;
         }
     }
 
-    if (assertions === undefined){
+    if (assertions === undefined) {
         return { tables: finalTables, fullQuery: finalQuery };
     }
 
@@ -306,7 +307,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
         if (assertionFileName === fileName) {
-            let assertionFound = { type: "", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, dependencyTargets: assertion.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
+            let assertionFound = { type: "assertion", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, dependencyTargets: assertion.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
             finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
@@ -336,13 +337,13 @@ function compileDataform(workspaceFolder: string): Promise<string> {
             if (code === 0) {
                 resolve(stdOut);
             } else {
-                if (stdOut !== ''){
+                if (stdOut !== '') {
                     let compiledJson = JSON.parse(stdOut.toString());
                     let graphErrors = compiledJson.graphErrors.compilationErrors;
                     graphErrors.forEach((graphError: any) => {
                         vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
                     });
-                }else{
+                } else {
                     vscode.window.showErrorMessage(`Error compiling Dataform: ${errorOutput}`);
                 }
                 reject(new Error(`Process exited with code ${code}`));
@@ -405,7 +406,7 @@ export async function getTableMetadata(document: vscode.TextDocument) {
 }
 
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
@@ -416,14 +417,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let configLineOffset = 0;
 
-    // Currently inline diagnostics are only supported for .sqlx files
-    if (extension === "sqlx"){
-        let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms
-        let configBlockStart = configBlockRange.startLine || 0;
-        let configBlockEnd = configBlockRange.endLine || 0;
-        let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
-        configLineOffset = configBlockOffset - queryStringOffset;
-    }
 
     let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
     if (dataformCompiledJson) {
@@ -433,6 +426,20 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         let dataformTags = await getDataformTags(dataformCompiledJson);
         let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
         COMPILED_DATAFORM_METADATA = tableMetadata;
+
+        // Currently inline diagnostics are only supported for .sqlx files
+        if (extension === "sqlx") {
+            let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms
+            let configBlockStart = configBlockRange.startLine || 0;
+            let configBlockEnd = configBlockRange.endLine || 0;
+            let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
+
+            if (tableMetadata.tables[0].type === "table") {
+                configLineOffset = configBlockOffset - tableQueryOffset;
+            } else if (tableMetadata.tables[0].type === "assertion") {
+                configLineOffset = configBlockOffset - assertionQueryOffset;
+            }
+        }
 
         if (tableMetadata.fullQuery === "") {
             vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
