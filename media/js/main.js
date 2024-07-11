@@ -5,6 +5,10 @@ function removeLoadingMessage() {
     }
 }
 
+const getUrlToNavigateToTableInBigQuery = (gcpProjectId, datasetId, tableName) => {
+    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`
+}
+
 function showTableMetadataInSideBar(tables) {
     if (!tables) {
         return;
@@ -56,10 +60,11 @@ function showTableMetadataInSideBar(tables) {
         }
     }
 
-    const tableName = document.createElement('pre');
     let tableTarget = tables[0].target;
-    let tableId = `${tableTarget.database}.${tableTarget.schema}.${tableTarget.name}`;
-    tableName.innerHTML = `<pre><code class="language-bash">${tableId}<code></pre>`;
+    let tablelinkWtName = document.createElement('a');
+    tablelinkWtName.href = getUrlToNavigateToTableInBigQuery(tableTarget.database, tableTarget.schema, tableTarget.name);
+    tablelinkWtName.textContent = `${tableTarget.database}.${tableTarget.schema}.${tableTarget.name}`;
+
 
     const targetsHeader = document.createElement('h3');
 
@@ -77,7 +82,7 @@ function showTableMetadataInSideBar(tables) {
 
             // Create an anchor element
             const link = document.createElement('a');
-            link.href = '#'; // Set the href attribute as needed
+            link.href = getUrlToNavigateToTableInBigQuery(tableTargets[j].database, tableTargets[j].schema, tableTargets[j].name);
             link.textContent = fullTableId;
 
             // Append the link to the list item
@@ -91,7 +96,7 @@ function showTableMetadataInSideBar(tables) {
 
 
     newDiv.appendChild(tableHeader);
-    newDiv.appendChild(tableName);
+    newDiv.appendChild(tablelinkWtName);
     newDiv.appendChild(tagHeader);
     newDiv.appendChild(tagsList);
     newDiv.appendChild(targetsHeader);
