@@ -59,6 +59,11 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
+        let isFileOpen = vscode.window.activeTextEditor?.document.uri.fsPath;
+        if (isFileOpen) {
+            vscode.commands.executeCommand('vscode-dataform-tools.getTableMetadataForSidePanel');
+        }
+
         webviewView.webview.onDidReceiveMessage(async (data) => {
         });
 
