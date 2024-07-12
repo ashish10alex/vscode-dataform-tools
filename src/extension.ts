@@ -83,6 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
         fixErrorCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.fixError',
             async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
                 applyCodeActionUsingDiagnosticMessage(range, diagnosticMessage);
+                document.save();
 
                 // recompile the file after the suggestion is applied based on user configuration
                 let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
