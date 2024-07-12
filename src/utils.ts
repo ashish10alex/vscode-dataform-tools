@@ -11,9 +11,6 @@ let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
-let COMPILED_DATAFORM_METADATA: TablesWtFullQuery;
-
-
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
     try { shell(`which ${name}`); return true; }
@@ -192,18 +189,16 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     var [filename, extension] = getFileNameFromDocument(document);
     let workspaceFolder = getWorkspaceFolder();
 
-    if (COMPILED_DATAFORM_METADATA === undefined) {
-        let dataformCompiledJson = await runCompilation(workspaceFolder);
-        if (dataformCompiledJson) {
-            let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
-            COMPILED_DATAFORM_METADATA = tableMetadata;
-        }
+    let tableMetadata;
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    if (dataformCompiledJson) {
+        tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
     }
 
-    if (COMPILED_DATAFORM_METADATA) {
+    if (tableMetadata) {
         let actionsList: string[] = [];
-        for (let i = 0; i < COMPILED_DATAFORM_METADATA.tables.length; i++) {
-            let table = COMPILED_DATAFORM_METADATA.tables[i];
+        for (let i = 0; i < tableMetadata.tables.length; i++) {
+            let table = tableMetadata.tables[i];
             let fullTableId = `${table.target.database}.${table.target.schema}.${table.target.name}`;
             actionsList.push(fullTableId);
         }
@@ -425,7 +420,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
         let dataformTags = await getDataformTags(dataformCompiledJson);
         let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
-        COMPILED_DATAFORM_METADATA = tableMetadata;
 
         // Currently inline diagnostics are only supported for .sqlx files
         if (extension === "sqlx") {
