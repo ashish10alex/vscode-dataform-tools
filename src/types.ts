@@ -30,7 +30,8 @@ interface Target {
 }
 
 interface Declarations{
-    target: Target
+    target: Target;
+    fileName: string;
 }
 
 export interface DataformCompiledJson {

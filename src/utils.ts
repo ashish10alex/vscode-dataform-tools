@@ -6,6 +6,7 @@ import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } f
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
+export let CACHED_COMPILED_DATAFORM_JSON:DataformCompiledJson;
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -415,6 +416,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
     if (dataformCompiledJson) {
+        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         // TODO: Call them asyc and do wait for all promises to settle
 
         let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
