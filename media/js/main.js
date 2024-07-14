@@ -6,8 +6,8 @@ function removeLoadingMessage() {
 }
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId, datasetId, tableName) => {
-    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`
-}
+    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
+};
 
 function showTableMetadataInSideBar(tables) {
     if (!tables) {
@@ -25,7 +25,7 @@ function showTableMetadataInSideBar(tables) {
 
     // const highlightedCode = hljs.highlight(
     //     message.tableMetadata.fullQuery,
-    //     { language: 'sql' }
+    //     { language: 'sql'  }
     // ).value;
 
     // newDiv.innerHTML = `<pre><code class="language-sql">${highlightedCode}<code></pre>`;

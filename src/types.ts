@@ -10,17 +10,17 @@ export interface Table {
     dependencyTargets: Target[];
 }
 
-export interface TablesWtFullQuery{
+export interface TablesWtFullQuery {
     tables: Table[];
     fullQuery: string;
 }
 
-interface Assertion {
+export interface Assertion {
     tags: string[];
     fileName: string;
     query: string;
     target: Target;
-    dependencyTargets: Target[]; 
+    dependencyTargets: Target[];
 }
 
 interface Target {
@@ -29,17 +29,38 @@ interface Target {
     name: string;
 }
 
-interface Declarations{
+export interface Declarations {
     target: Target;
     fileName: string;
+}
+
+interface ProjectConfig {
+    warehouse: string;
+    defaultSchema: string;
+    assertionSchema: string;
+    defaultDatabase: string;
+    tablePrefix: string;
+    defualtLocation: string;
+}
+
+export interface Operation{
+    target: Target;
+    queries: string[];
+    fileName: string;
+    hasOutput: boolean;
+    tags: string[];
+    dependencyTargets: Target[];
 }
 
 export interface DataformCompiledJson {
     tables: Table[];
     assertions: Assertion[];
+    operations: Operation[];
     targets: Target[];
     declarations: Declarations[];
+    projectConfig: ProjectConfig;
 }
+
 export interface DryRunError {
     hasError: boolean;
     message: string;

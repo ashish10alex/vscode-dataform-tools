@@ -1,7 +1,22 @@
 import * as vscode from 'vscode';
 import { CACHED_COMPILED_DATAFORM_JSON, getWorkspaceFolder, runCompilation } from './utils';
-import { DataformCompiledJson } from './types';
+import { Assertion, DataformCompiledJson, Operation, Table } from './types';
 import path from 'path';
+
+function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[] | Assertion[] | Table[], workspaceFolder: string): vscode.Location | undefined {
+    let location: vscode.Location | undefined;
+    for (let i = 0; i < struct.length; i++) {
+        let tableName = struct[i].target.name;
+        if (searchTerm === tableName) {
+            let fullSourcePath = path.join(workspaceFolder, struct[i].fileName);
+            let sourcesJsUri = vscode.Uri.file(fullSourcePath);
+            const definitionPosition = new vscode.Position(0, 0);
+            location = new vscode.Location(sourcesJsUri, definitionPosition);
+            return location;
+        }
+    }
+    return location;
+}
 
 export class DataformRefDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(
@@ -9,7 +24,7 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
         position: vscode.Position,
         token: vscode.CancellationToken
     ) {
-        const word = document.getText(document.getWordRangeAtPosition(position));
+        let searchTerm = document.getText(document.getWordRangeAtPosition(position));
         const line = document.lineAt(position.line).text;
 
         // early return
@@ -27,12 +42,17 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
         } else {
             dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
         }
+
         let declarations = dataformCompiledJson?.declarations;
+        let tables = dataformCompiledJson?.tables;
+        let operations = dataformCompiledJson?.operations;
+        let assertions = dataformCompiledJson?.assertions;
+        let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
 
         if (declarations) {
             for (let i = 0; i < declarations.length; i++) {
                 let declarationName = declarations[i].target.name;
-                if (word === declarationName) {
+                if (searchTerm === declarationName) {
                     let fullSourcePath = path.join(workspaceFolder, declarations[i].fileName);
                     sourcesJsUri = vscode.Uri.file(fullSourcePath);
 
@@ -43,7 +63,7 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
 
                     for (let lineNum = 0; lineNum < sourcesDocument.lineCount; lineNum++) {
                         const lineText = sourcesDocument.lineAt(lineNum).text;
-                        const wordIndex = lineText.indexOf(word);
+                        const wordIndex = lineText.indexOf(searchTerm);
 
                         if (wordIndex !== -1) {
                             line = lineNum;
@@ -61,18 +81,20 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
 
             }
         }
+        if (tablePrefix) {
+            searchTerm = tablePrefix + "_" + searchTerm;
+        }
 
-        const fileUris = await vscode.workspace.findFiles('definitions/**/*');
-        for (let fileUri of fileUris) {
+        if (tables) {
+            return getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);
+        }
 
-            let fileNameWtExtension = fileUri.path.split('/').pop();
-            let fileName = fileNameWtExtension?.split('.')[0];
+        if (operations) {
+            return getSearchTermLocationFromStruct(searchTerm, operations, workspaceFolder);
+        }
 
-            if (fileName === word) {
-                const definitionPosition = new vscode.Position(0, 0);
-                const location = new vscode.Location(fileUri, definitionPosition);
-                return location;
-            }
+        if (assertions) {
+            return getSearchTermLocationFromStruct(searchTerm, assertions, workspaceFolder);
         }
     }
 }
