@@ -30,7 +30,7 @@
 2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
 
-4. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
+3. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
 
    ```bash
    # install python and run
