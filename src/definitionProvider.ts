@@ -6,8 +6,8 @@ import path from 'path';
 function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[] | Assertion[] | Table[], workspaceFolder: string): vscode.Location | undefined {
     let location: vscode.Location | undefined;
     for (let i = 0; i < struct.length; i++) {
-        let tableName = struct[i].target.name;
-        if (searchTerm === tableName) {
+        let targetName = struct[i].target.name;
+        if (searchTerm === targetName) {
             let fullSourcePath = path.join(workspaceFolder, struct[i].fileName);
             let sourcesJsUri = vscode.Uri.file(fullSourcePath);
             const definitionPosition = new vscode.Position(0, 0);
