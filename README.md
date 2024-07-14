@@ -102,8 +102,6 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 ## TODO
 
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
-- [ ] Optimize code. Use async/await where we can. e.g get autocompletion sources for tags & definitions
-- [ ] Add a pre-check to see if the current worksapce is Dataform worksapce & catch compilation errors to avoid executing subsequent commands
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
 
 
