@@ -260,6 +260,8 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
 
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
+    let operations = compiledJson.operations;
+    // let tablePrefix = compiledJson?.projectConfig?.tablePrefix;
     let finalQuery = "";
     let finalTables: Table[] = [];
 
@@ -271,7 +273,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let table = tables[i];
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
-            if (table.type === "table") {
+            if (table.type === "table" || table.type === "view") {
                 finalQuery = table.query + "\n ;";
             } else if (table.type === "incremental") {
                 finalQuery += "\n-- Non incremental query \n";
@@ -310,6 +312,26 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
             finalQuery += assertion.query + "\n ;";
         }
     }
+
+    for (let i = 0; i < operations.length; i++){
+        let operation = operations[i];
+        let operationFileName = path.basename(operation.fileName).split('.')[0];
+        if (operationFileName === fileName){
+            let operationsCountForFile = 0;
+            let opQueries = operation.queries;
+            let finalOperationQuery = "";
+            for (let i = 0; i < opQueries.length; i++){
+                operationsCountForFile += 1;
+                finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
+                finalOperationQuery += opQueries[i] + "\n ;";
+            }
+            finalQuery += finalOperationQuery;
+            let operationFound = { type: "operation", tags: operation.tags, fileName: fileName, query: finalOperationQuery, target: operation.target, dependencyTargets: operation.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
+            finalTables.push(operationFound);
+            break;
+        }
+    }
+
     return { tables: finalTables, fullQuery: finalQuery };
 };
 
