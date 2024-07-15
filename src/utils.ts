@@ -451,7 +451,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
             let configBlockEnd = configBlockRange.endLine || 0;
             let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
 
-            if (tableMetadata.tables[0].type === "table") {
+            if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
                 configLineOffset = configBlockOffset - tableQueryOffset;
             } else if (tableMetadata.tables[0].type === "assertion") {
                 configLineOffset = configBlockOffset - assertionQueryOffset;
