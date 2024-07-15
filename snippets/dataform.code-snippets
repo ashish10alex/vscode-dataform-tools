@@ -4,10 +4,10 @@
         "prefix": "config",
 		"body": [
 			" config {",
-				"type: 'table'",
+				"type: 'table',",
 				"schema: '${1}',",
 				"description: '${2}',",
-				"dependencies: ${3}",
+				"dependencies: [${3}],",
 				"bigquery: {",
 				"  partitionBy: ${4},",
 				" clusterBy: [${5}]",
