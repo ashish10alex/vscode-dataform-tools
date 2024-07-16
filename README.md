@@ -27,21 +27,10 @@
 
    `npm i -g @dataform/cli`
 
-2. [Setup default application credentails for gcp](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
-3. [dj cli](https://github.com/ashish10alex/dj)
 
-    **Latest release** ( supports MacOS / Linux / WSL )
-
-    ```
-    curl -sSfL https://raw.githubusercontent.com/ashish10alex/dj/main/install_latest.sh | bash
-    ```
-    You can verify if `dj` is installed correctly by running
-    ```bash
-    dj --help
-    ```
-
-4. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
+3. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
 
    ```bash
    # install python and run
@@ -91,14 +80,15 @@ Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sq
 
 Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and run one of the required commands
 
-| Commands                                             |
-|------------------------------------------------------|
+| Commands                                               |
+|------------------------------------------------------  |
 | `Dataform: Run current file`                           |
 | `Dataform: Run current file with dependencies`         |
 | `Dataform: Run current file with dependents`           |
 | `Dataform: Run current tag`                            |
 | `Dataform: Run current tag with dependencies`          |
 | `Dataform: Run current tag with dependents`            |
+| `Dataform: Format current file`                        |
 
 
 
@@ -111,9 +101,8 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+- [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
-- [ ] Optimize code. Use async/await where we can. e.g get autocompletion sources for tags & definitions
-- [ ] Add a pre-check to see if the current worksapce is Dataform worksapce & catch compilation errors to avoid executing subsequent commands
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
 
 

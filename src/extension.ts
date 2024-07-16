@@ -24,22 +24,15 @@ let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = 
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 
-//TODO:
-/*
-1. Currently we have to execute two shell commands one to get compiled query another to get dry run stats. This is due
-   to the inabilty to parse the Json data when it has query string as one of the keys. i.e when using --compact=false in dj cli
-   * Maybe we need to wait for the stdout to be read completely
-2. Add docs to functions
-*/
-
+import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
-import { executablesToCheck, compiledSqlFilePath, queryStringOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal } from './utils';
-import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, extractFixFromDiagnosticMessage } from './utils';
+import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation } from './utils';
+import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags} from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getTagsCommand, getSourcesCommand, getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
+import {  getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -50,32 +43,20 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     let workspaceFolder = getWorkspaceFolder();
-    let sourcesCmd = getSourcesCommand(workspaceFolder);
-    let tagsCompletionCmd = getTagsCommand(workspaceFolder);
+    //TODO: Load tags and sources on extension activation
 
-
-    getStdoutFromCliRun(exec, sourcesCmd).then((sources) => {
-        let declarations = JSON.parse(sources).Declarations;
-        let targets = JSON.parse(sources).Targets;
-        declarationsAndTargets = [...new Set([...declarations, ...targets])];
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    if (dataformCompiledJson){
+        declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
+        dataformTags = await getDataformTags(dataformCompiledJson);
     }
-    ).catch((err) => {
-        vscode.window.showWarningMessage(`Error getting sources for project: ${err}`);
-    });
-
-    getStdoutFromCliRun(exec, tagsCompletionCmd).then((sources) => {
-        let uniqueTags = JSON.parse(sources).tags;
-        dataformTags = uniqueTags;
-    }
-    ).catch((err) => {
-        vscode.window.showWarningMessage(`Error getting tags for project: ${err}`);
-    });
-
 
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
-    async function compileAndDryRunWtOpts(exec: any, document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    registerWebViewProvider(context);
+
+    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (document === undefined) {
             document = vscode.window.activeTextEditor?.document;
         }
@@ -84,9 +65,10 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let uniqueTags = await compiledQueryWtDryRun(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        if (uniqueTags !== undefined) {
-            dataformTags = uniqueTags;
+        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        if (completionItems !== undefined) {
+            dataformTags = completionItems[0];
+            declarationsAndTargets = completionItems[1];
         }
     }
 
@@ -101,12 +83,13 @@ export async function activate(context: vscode.ExtensionContext) {
         fixErrorCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.fixError',
             async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
                 applyCodeActionUsingDiagnosticMessage(range, diagnosticMessage);
+                document.save();
 
                 // recompile the file after the suggestion is applied based on user configuration
                 let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
                 if (recompileAfterCodeAction) {
                     let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                    await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
                 }
 
             });
@@ -127,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(exec, false, false); });
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
@@ -152,27 +135,27 @@ export async function activate(context: vscode.ExtensionContext) {
             });
 
             let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(exec, true, false); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
 
-        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(exec, false, true); });
+        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true); });
         context.subscriptions.push(runCurrentFileWtDownstreamDepsCommandDisposable);
 
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(onSaveDisposable);
 
         compileWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.compileWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
             let document = undefined;
-            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(compileWtDryRunDisposable);
@@ -180,7 +163,7 @@ export async function activate(context: vscode.ExtensionContext) {
         showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
-            await compileAndDryRunWtOpts(exec, document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(showCompiledQueryWtDryRunDisposable);

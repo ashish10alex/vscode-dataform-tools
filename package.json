@@ -21,6 +21,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
+        "workspaceContains:**/*.js",
         "onCommand:extension.enable",
         "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
@@ -35,6 +36,36 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "dataform-sidebar-view",
+                    "title": "Dataform",
+                    "icon": "media/dataform.svg"
+                }
+            ]
+        },
+        "views": {
+            "dataform-sidebar-view": [
+                {
+                    "type": "webview",
+                    "id": "dataform-sidebar",
+                    "name": "Dataform",
+                    "icon": "media/dataform.svg",
+                    "contextualTitle": "Dataform"
+                }
+            ]
+        },
+        "snippets": [
+            {
+                "language": "sql",
+                "path": "./snippets/dataform.code-snippets"
+            },
+            {
+                "language": "javascript",
+                "path": "./snippets/dataform.code-snippets"
+            }
+        ],
         "commands": [
             {
                 "command": "vscode-dataform-tools.enable",
@@ -127,31 +158,31 @@
             "editor/title": [
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.runCurrentFile",
                     "group": "navigation"
                 },
                 {
                     "command": "vscode-dataform-tools.compileWtDryRun",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.compileWtDryRun",
                     "group": "navigation@1"
                 },
                 {
                     "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.runCurrentFileWtDeps",
                     "group": "navigation@2"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.showCompiledQueryWtDryRun",
                     "group": "navigation@3"
                 },
                 {
                     "command": "vscode-dataform-tools.formatCurrentfile",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.formatCurrentfile",
                     "group": "navigation@0"
                 }
@@ -191,5 +222,8 @@
         "@vscode/test-electron": "^2.4.0",
         "eslint": "^8.57.0",
         "typescript": "^5.4.5"
+    },
+    "dependencies": {
+        "@google-cloud/bigquery": "^7.8.0"
     }
 }
