@@ -72,7 +72,10 @@ function showTableMetadataInSideBar(tables) {
 
     const dependencyList = document.createElement('ul'); // Create an unordered list
     for (let i = 0; i < tables.length; i++) {
-        let tableTargets = tables[i].dependencyTargets;
+        let tableTargets = tables[i]?.dependencyTargets;
+        if (!tableTargets){
+            continue;
+        }
         for (let j = 0; j < tableTargets.length; j++) {
             fullTableId = `${tableTargets[j].database}.${tableTargets[j].schema}.${tableTargets[j].name}`;
             fullTableIds.push(fullTableId);
