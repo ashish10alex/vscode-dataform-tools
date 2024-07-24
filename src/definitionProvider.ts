@@ -6,7 +6,7 @@ import path from 'path';
 function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[] | Assertion[] | Table[], workspaceFolder: string): vscode.Location | undefined {
     let location: vscode.Location | undefined;
     for (let i = 0; i < struct.length; i++) {
-        let targetName = struct[i].target.name;
+        let targetName = struct[i].canonicalTarget.name;
         if (searchTerm === targetName) {
             let fullSourcePath = path.join(workspaceFolder, struct[i].fileName);
             let sourcesJsUri = vscode.Uri.file(fullSourcePath);
@@ -49,6 +49,8 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
         let assertions = dataformCompiledJson?.assertions;
         let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
 
+        let location: vscode.Location | undefined;
+
         if (declarations) {
             for (let i = 0; i < declarations.length; i++) {
                 let declarationName = declarations[i].target.name;
@@ -74,9 +76,7 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
                         return undefined;
                     }
                     const definitionPosition = new vscode.Position(line, character);
-                    const location = new vscode.Location(sourcesJsUri, definitionPosition);
-                    return location;
-
+                    return new vscode.Location(sourcesJsUri, definitionPosition);
                 }
 
             }
@@ -85,13 +85,16 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
             searchTerm = tablePrefix + "_" + searchTerm;
         }
 
+
         if (tables) {
-            return getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);
+            location = getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);
         }
+        if (location){return location;}
 
         if (operations) {
-            return getSearchTermLocationFromStruct(searchTerm, operations, workspaceFolder);
+            location =  getSearchTermLocationFromStruct(searchTerm, operations, workspaceFolder);
         }
+        if (location){return location;}
 
         if (assertions) {
             return getSearchTermLocationFromStruct(searchTerm, assertions, workspaceFolder);

@@ -5,6 +5,7 @@ export interface Table {
     fileName: string;
     query: string;
     target: Target;
+    canonicalTarget: Target;
     incrementalQuery: string;
     incrementalPreOps: string[];
     dependencyTargets: Target[];
@@ -20,6 +21,7 @@ export interface Assertion {
     fileName: string;
     query: string;
     target: Target;
+    canonicalTarget: Target;
     dependencyTargets: Target[];
 }
 
@@ -45,6 +47,7 @@ interface ProjectConfig {
 
 export interface Operation{
     target: Target;
+    canonicalTarget: Target;
     queries: string[];
     fileName: string;
     hasOutput: boolean;

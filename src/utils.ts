@@ -263,7 +263,8 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     let operations = compiledJson.operations;
     // let tablePrefix = compiledJson?.projectConfig?.tablePrefix;
     let finalQuery = "";
-    let finalTables: Table[] = [];
+    // let finalTables: Table[] = [];
+    let finalTables: any[] = [];
 
     if (tables === undefined) {
         return { tables: finalTables, fullQuery: finalQuery };
