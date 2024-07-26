@@ -25,7 +25,7 @@ export interface Assertion {
     dependencyTargets: Target[];
 }
 
-interface Target {
+export interface Target {
     database: string;
     schema: string;
     name: string;
@@ -33,6 +33,8 @@ interface Target {
 
 export interface Declarations {
     target: Target;
+    canonicalTarget: Target;
+    dependencyTargets: Target[]; // WARN: This is not a valid object for Declarations adding this to avoid type errors when using abstractions
     fileName: string;
 }
 

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } from './types';
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
@@ -11,6 +11,16 @@ export let CACHED_COMPILED_DATAFORM_JSON:DataformCompiledJson;
 let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
+
+export function getNonce() {
+    let text = "";
+    const possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
@@ -406,6 +416,56 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
+async function populateDependancyTree(struct:Table[] | Operation[]| Assertion[] | Declarations[], dependancytreemetadata:any){
+    struct.forEach((table) => {
+        let tableName = `${table.canonicalTarget.name}`;
+
+        let dependancyTargets = table?.dependencyTargets;
+
+        let depedancyList: string[] = [];
+        if (dependancyTargets) {
+            dependancyTargets.forEach((dep:Target) => {
+                let dependancyTableName =  `${dep.name}`;
+                depedancyList.push(dependancyTableName);
+            });
+        }
+
+        if (depedancyList.length === 0 ){
+            dependancytreemetadata.push(
+                {
+                    "_name": tableName,
+                }
+            );
+        } else {
+            dependancytreemetadata.push(
+                {
+                    "_name": tableName,
+                    "_deps": depedancyList
+                }
+            );
+        }
+    });
+ return dependancytreemetadata;
+}
+
+export async function generateDependancyTreeMetada(){
+    let dependancyTreeMetadata:any = [];
+    let compiledJson: DataformCompiledJson;
+    if (CACHED_COMPILED_DATAFORM_JSON){
+        compiledJson = CACHED_COMPILED_DATAFORM_JSON;
+        let tables = compiledJson.tables;
+        let operations = compiledJson.operations;
+        let assertions = compiledJson.assertions;
+        let declarations = compiledJson.declarations;
+        dependancyTreeMetadata = await populateDependancyTree(tables, dependancyTreeMetadata);
+        dependancyTreeMetadata = await populateDependancyTree(operations, dependancyTreeMetadata);
+        dependancyTreeMetadata = await populateDependancyTree(assertions, dependancyTreeMetadata);
+        dependancyTreeMetadata = await populateDependancyTree(declarations, dependancyTreeMetadata);
+        // console.log(dependancyTreeMetadata);
+        return dependancyTreeMetadata;
+    }
+}
+
 export async function getTableMetadata(document: vscode.TextDocument) {
     let tableMetadata;
     var [filename, extension] = getFileNameFromDocument(document);
@@ -418,6 +478,7 @@ export async function getTableMetadata(document: vscode.TextDocument) {
     if (dataformCompiledJson) {
         // let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
         // let dataformTags = await getDataformTags(dataformCompiledJson);
+        // let dependancyTreeMetadata = await generateDependancyTreeMetada(dataformCompiledJson);
         tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
         // COMPILED_DATAFORM_METADATA = tableMetadata;
     }
