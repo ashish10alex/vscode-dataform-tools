@@ -1,6 +1,6 @@
 window.addEventListener('message', event => {
     const treeData = event?.data?.data;
-    if (!treeData){
+    if (!treeData) {
         return;
     }
     const sharedOptions = ({
@@ -28,18 +28,8 @@ window.addEventListener('message', event => {
     let currentEntity = '0500_DPR_BUILD_ABS_WIP_TABLEAU';
     let direction = 'upstream';
 
-    // Sets the entity on the tree, displays the upstream dependencies
-    // You can also pass 'downstream' to display downstream dependencies
-    // tree.setTree('0500_DPR_BUILD_ABS_WIP_TABLEAU', 'upstream');
-
-    // Getting each select dropdown
     const entitySelect = document.getElementById('list');
-    const directionSelect = document.getElementById('direction');
-    // const filterSelect = document.getElementById('filter');
 
-    // function to add options to our entitySelect
-    // We need to do this every time the user picks
-    // a new entity filter
     const populateEntitySelect = entityList => {
         entityList.forEach(name => {
             const option = document.createElement('option');
@@ -50,31 +40,32 @@ window.addEventListener('message', event => {
         });
     };
 
-    $(document).ready(function() {
+    $(document).ready(function () {
         $('.tree-metadata-selection').select2();
+        $('.tree-direction-selection').select2({
+            minimumResultsForSearch: Infinity
+        }
+        );
 
-        $('.tree-metadata-selection').on('change', function(e) {
-            var selectedValue = $(this).val();
-            currentEntity = $(this).find("option:selected").text();
+        $('.tree-metadata-selection').on('change', function (e) {
+            let currentEntity = $(this).find("option:selected").text();
             tree.setTree(currentEntity, direction);
         });
+
+        $('.tree-direction-selection').on('change', function (e) {
+            let direction = $(this).find("option:selected").text();
+            tree.setTree(currentEntity, direction);
+        });
+
     });
 
-    // populate the initial list of entities
     const allEntities = tree.getEntityList();
     populateEntitySelect(allEntities);
-
-    directionSelect.addEventListener('change', e => {
-        direction = e.target.value;
-        tree.setTree(currentEntity, direction);
-    });
 
     // expand and collapse all buttons
     // document.querySelector('button#form-expand').addEventListener('click', () => t.expandAll());
     // document.querySelector('button#form-collapse').addEventListener('click', () => t.collapseAll());
 
-    // set default values for the tree
-    // and the default tree
     tree.setTree(currentEntity, direction);
 
 });
