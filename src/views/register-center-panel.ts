@@ -70,8 +70,10 @@ export class CenterPanel {
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "reset.css"));
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
         const scriptUri2 = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "dependtree.js"));
-        const treeDataScript = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "royals.js"));
         const mainScript = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "treePanel.js"));
+        const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "jquery-3.7.1.slim.min.js"));
+        const select2MinJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "select2.min.js"));
+        const select2MinCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "select2.min.css"));
 
         const nonce = getNonce();
 
@@ -91,20 +93,20 @@ export class CenterPanel {
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <link href="${styleResetUri}" rel="stylesheet">
               <link href="${styleVSCodeUri}" rel="stylesheet">
-              <script nonce="${nonce}"></script>
+              <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
+              <link href="${select2MinCss}" rel="stylesheet">
+              <script nonce="${nonce}" type="text/javascript" src="${select2MinJs}"></script>
            </head>
            <body>
            <form>
-            <select id="list"></select>
+            <select id="list" class="tree-metadata-selection"></select>
             <select id="direction">
                 <option value="downstream">downstream</option>
                 <option value="upstream">upstream</option>
             </select>
             </form>
-             <p> This is my paragraph</p>
-             <body><div style="overflow: auto;" id="tree"></div></body>
+              <body><div style="overflow: auto;" id="tree"></div></body>
               <script nonce="${nonce}" type="text/javascript" src="${scriptUri2}"></script>
-              <script nonce="${nonce}" type="text/javascript" src="${treeDataScript}"></script>
               <script nonce="${nonce}" type="text/javascript" src="${mainScript}"></script>
            </body>
         </html>`;

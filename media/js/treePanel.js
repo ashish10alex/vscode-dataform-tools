@@ -35,7 +35,7 @@ window.addEventListener('message', event => {
     // Getting each select dropdown
     const entitySelect = document.getElementById('list');
     const directionSelect = document.getElementById('direction');
-    const filterSelect = document.getElementById('filter');
+    // const filterSelect = document.getElementById('filter');
 
     // function to add options to our entitySelect
     // We need to do this every time the user picks
@@ -50,17 +50,19 @@ window.addEventListener('message', event => {
         });
     };
 
+    $(document).ready(function() {
+        $('.tree-metadata-selection').select2();
+
+        $('.tree-metadata-selection').on('change', function(e) {
+            var selectedValue = $(this).val();
+            currentEntity = $(this).find("option:selected").text();
+            tree.setTree(currentEntity, direction);
+        });
+    });
+
     // populate the initial list of entities
     const allEntities = tree.getEntityList();
     populateEntitySelect(allEntities);
-
-    // the two event listeners below change which tree is displayed
-    // depending on entity name and upstream or downstream
-    entitySelect.addEventListener('change', e => {
-        if (e.target.value === '') {return;}
-        currentEntity = e.target.value;
-        tree.setTree(currentEntity, direction);
-    });
 
     directionSelect.addEventListener('change', e => {
         direction = e.target.value;

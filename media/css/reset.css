@@ -28,3 +28,7 @@ img {
 	max-width: 100%;
 	height: auto;
 }
+
+.select2-results__option {
+	color: black;
+}
