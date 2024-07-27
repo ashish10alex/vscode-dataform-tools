@@ -1,6 +1,7 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
 import { generateDependancyTreeMetada } from "../utils";
 import { getNonce } from '../utils';
+import * as vscode from 'vscode';
 
 /*
 export function registerCenterPanel(context: ExtensionContext) {
@@ -54,28 +55,15 @@ export class CenterPanel {
 
     private async updateView() {
         const webview = this.webviewPanel.webview;
-        let dataformTreeMetadata = await generateDependancyTreeMetada();
-        webview.postMessage({ "data" :dataformTreeMetadata});
-        this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
+        let document = vscode.window.activeTextEditor?.document;
+        if (document){
+            let dataformTreeMetadata = await generateDependancyTreeMetada(document);
+            webview.postMessage({ "data" : dataformTreeMetadata});
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
 
-        this.webviewPanel.webview.onDidReceiveMessage((data) => {
-            console.log("DATA WAS RECEIVED!!!!");
-            console.log(data);
-            /*
-            switch (data.type) {
-                case 'btn-second': {
-                    this.extensionContext.globalState.update('ipocCacheKey', data.value);
-                    window.showInformationMessage('Value saved in cache: ' + data.value);
-                    break;
-                }
-                case 'btn-third': {
-                    this.extensionContext.secrets.store('ipocCacheKey', data.value);
-                    window.showInformationMessage('Value saved in SecretStorage: ' + data.value);
-                    break;
-                }
-            }
-        */
-        });
+            this.webviewPanel.webview.onDidReceiveMessage((data) => {
+            });
+        }
     }
 
     private _getHtmlForWebview(webview: Webview) {

@@ -448,22 +448,32 @@ async function populateDependancyTree(struct:Table[] | Operation[]| Assertion[] 
  return dependancytreemetadata;
 }
 
-export async function generateDependancyTreeMetada(){
+export async function generateDependancyTreeMetada(document:vscode.TextDocument){
     let dependancyTreeMetadata:any = [];
-    let compiledJson: DataformCompiledJson;
-    if (CACHED_COMPILED_DATAFORM_JSON){
-        compiledJson = CACHED_COMPILED_DATAFORM_JSON;
-        let tables = compiledJson.tables;
-        let operations = compiledJson.operations;
-        let assertions = compiledJson.assertions;
-        let declarations = compiledJson.declarations;
-        dependancyTreeMetadata = await populateDependancyTree(tables, dependancyTreeMetadata);
-        dependancyTreeMetadata = await populateDependancyTree(operations, dependancyTreeMetadata);
-        dependancyTreeMetadata = await populateDependancyTree(assertions, dependancyTreeMetadata);
-        dependancyTreeMetadata = await populateDependancyTree(declarations, dependancyTreeMetadata);
-        // console.log(dependancyTreeMetadata);
-        return dependancyTreeMetadata;
-    }
+
+    if (!CACHED_COMPILED_DATAFORM_JSON){
+        var [filename, extension] = getFileNameFromDocument(document);
+        if (filename === "" || extension === "") { return; }
+
+        let workspaceFolder = getWorkspaceFolder();
+        if (workspaceFolder === "") { return; }
+
+        let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson){
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        }
+    } 
+
+    let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
+    let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
+    let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
+    let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
+
+    dependancyTreeMetadata = await populateDependancyTree(tables, dependancyTreeMetadata);
+    dependancyTreeMetadata = await populateDependancyTree(operations, dependancyTreeMetadata);
+    dependancyTreeMetadata = await populateDependancyTree(assertions, dependancyTreeMetadata);
+    dependancyTreeMetadata = await populateDependancyTree(declarations, dependancyTreeMetadata);
+    return dependancyTreeMetadata;
 }
 
 export async function getTableMetadata(document: vscode.TextDocument) {
