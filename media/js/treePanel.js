@@ -15,6 +15,8 @@ window.addEventListener('message', event => {
         marginLeft: 450,
         marginRight: 450,
         textStyleColor: "white",
+        // circleStrokeColor: "yellow",
+        // circleStrokeColor: "steelblue",
         // parentNodeTextOrientation: "right",
         // childNodeTextOrientation: "right"
     });
