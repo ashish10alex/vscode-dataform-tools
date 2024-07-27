@@ -102,7 +102,7 @@ export class CenterPanel {
             <select id="list" class="tree-metadata-selection"></select>
             <select id="direction" class="tree-direction-selection">
                 <option value="downstream">downstream</option>
-                <option value="upstream">upstream</option>
+                <option value="upstream" selected>upstream</option>
             </select>
             </form>
               <body><div style="overflow: auto;" id="tree"></div></body>

@@ -21,14 +21,10 @@ window.addEventListener('message', event => {
         // childNodeTextOrientation: "right"
     });
 
+    let direction = 'upstream';
 
     const tree = new DependenTree('div#tree', sharedOptions);
-
-    // Adds dependency data to the tree
     tree.addEntities(treeData);
-
-    let currentEntity = '0500_DPR_BUILD_ABS_WIP_TABLEAU';
-    let direction = 'upstream';
 
     const entitySelect = document.getElementById('list');
 
@@ -50,7 +46,7 @@ window.addEventListener('message', event => {
         );
 
         $('.tree-metadata-selection').on('change', function (e) {
-            let currentEntity = $(this).find("option:selected").text();
+            currentEntity = $(this).find("option:selected").text();
             tree.setTree(currentEntity, direction);
         });
 
@@ -68,6 +64,7 @@ window.addEventListener('message', event => {
     // document.querySelector('button#form-expand').addEventListener('click', () => t.expandAll());
     // document.querySelector('button#form-collapse').addEventListener('click', () => t.collapseAll());
 
+    let currentEntity = allEntities[0];
     tree.setTree(currentEntity, direction);
 
 });
