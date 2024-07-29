@@ -448,12 +448,10 @@ async function populateDependancyTree(struct:Table[] | Operation[]| Assertion[] 
  return dependancytreemetadata;
 }
 
-export async function generateDependancyTreeMetada(document:vscode.TextDocument){
+export async function generateDependancyTreeMetada(){
     let dependancyTreeMetadata:any = [];
 
     if (!CACHED_COMPILED_DATAFORM_JSON){
-        var [filename, extension] = getFileNameFromDocument(document);
-        if (filename === "" || extension === "") { return; }
 
         let workspaceFolder = getWorkspaceFolder();
         if (workspaceFolder === "") { return; }
