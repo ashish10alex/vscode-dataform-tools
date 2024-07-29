@@ -1,8 +1,14 @@
+const vscode = acquireVsCodeApi();
+
 window.addEventListener('message', event => {
-    const treeData = event?.data?.data;
+    const treeData = event?.data?.dataformTreeMetadata;
     if (!treeData) {
         return;
     }
+
+    const _treeRoot = event?.data?.treeRoot;
+    const _direction = event?.data?.direction;
+
     const sharedOptions = ({
         // circleStrokeWidth: 5,
         // circleSize: 10,
@@ -21,7 +27,7 @@ window.addEventListener('message', event => {
         // childNodeTextOrientation: "right"
     });
 
-    let direction = 'upstream';
+    let direction = _direction ?? 'upstream';
 
     const tree = new DependenTree('div#tree', sharedOptions);
     tree.addEntities(treeData);
@@ -44,14 +50,23 @@ window.addEventListener('message', event => {
             minimumResultsForSearch: Infinity
         }
         );
+        $('.tree-direction-selection').val(direction ?? "upstream").trigger('change');
 
         $('.tree-metadata-selection').on('change', function (e) {
             currentEntity = $(this).find("option:selected").text();
+            vscode.postMessage({
+                entity: 'treeRoot',
+                value: currentEntity
+            });
             tree.setTree(currentEntity, direction);
         });
 
         $('.tree-direction-selection').on('change', function (e) {
             let direction = $(this).find("option:selected").text();
+            vscode.postMessage({
+                entity: 'direction',
+                value: direction
+            });
             tree.setTree(currentEntity, direction);
         });
 
@@ -64,7 +79,7 @@ window.addEventListener('message', event => {
     // document.querySelector('button#form-expand').addEventListener('click', () => t.expandAll());
     // document.querySelector('button#form-collapse').addEventListener('click', () => t.collapseAll());
 
-    let currentEntity = allEntities[0];
+    let currentEntity = _treeRoot ?? allEntities[0];
     tree.setTree(currentEntity, direction);
 
 });

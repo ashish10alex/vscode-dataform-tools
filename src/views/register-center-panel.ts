@@ -3,6 +3,10 @@ import { generateDependancyTreeMetada } from "../utils";
 import { getNonce } from '../utils';
 //import * as vscode from 'vscode';
 
+// global variables to keep track of treeRoot and direction incase user switches active editor and intends to come back to dependancy tree the web panel
+let treeRoot:string;
+let direction:string;
+
 /*
 export function registerCenterPanel(context: ExtensionContext) {
     context.subscriptions.push(
@@ -56,7 +60,7 @@ export class CenterPanel {
                 const webview = panel.webview;
                 if (panel.visible) {
                     let dataformTreeMetadata = await generateDependancyTreeMetada();
-                    webview.postMessage({ "data": dataformTreeMetadata });
+                    await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
                     if (this.centerPanel) {
                         e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
                     }
@@ -72,9 +76,17 @@ export class CenterPanel {
     private async updateView() {
         const webview = this.webviewPanel.webview;
         let dataformTreeMetadata = await generateDependancyTreeMetada();
-        webview.postMessage({ "data": dataformTreeMetadata });
+        webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         this.webviewPanel.webview.onDidReceiveMessage((data) => {
+            switch (data.entity) {
+                case 'treeRoot':
+                    treeRoot = data.value;
+                    return;
+                case 'direction':
+                    direction = data.value;
+                    return;
+            }
         });
     }
 
@@ -114,7 +126,7 @@ export class CenterPanel {
             <select id="list" class="tree-metadata-selection"></select>
             <select id="direction" class="tree-direction-selection">
                 <option value="downstream">downstream</option>
-                <option value="upstream" selected>upstream</option>
+                <option value="upstream">upstream</option>
             </select>
             </form>
               <body><div style="overflow: auto;" id="tree"></div></body>
