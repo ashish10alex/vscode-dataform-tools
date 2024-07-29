@@ -76,7 +76,7 @@ export class CenterPanel {
     private async updateView() {
         const webview = this.webviewPanel.webview;
         let dataformTreeMetadata = await generateDependancyTreeMetada();
-        webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata });
+        await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         this.webviewPanel.webview.onDidReceiveMessage((data) => {
             switch (data.entity) {
