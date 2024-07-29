@@ -448,7 +448,7 @@ async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[
     return dependancytreemetadata;
 }
 
-export async function generateDependancyTreeMetada() {
+export async function generateDependancyTreeMetadata() {
     //FIX: Dependencies when table prefix is used
     let dependancyTreeMetadata: any = [];
 

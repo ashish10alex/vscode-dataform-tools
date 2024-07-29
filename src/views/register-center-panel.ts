@@ -1,5 +1,5 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
-import { generateDependancyTreeMetada } from "../utils";
+import { generateDependancyTreeMetadata } from "../utils";
 import { getNonce } from '../utils';
 //import * as vscode from 'vscode';
 
@@ -59,7 +59,7 @@ export class CenterPanel {
                 const panel = e.webviewPanel;
                 const webview = panel.webview;
                 if (panel.visible) {
-                    let dataformTreeMetadata = await generateDependancyTreeMetada();
+                    let dataformTreeMetadata = await generateDependancyTreeMetadata();
                     if (this.centerPanel) {
                         e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
                     }
@@ -77,7 +77,7 @@ export class CenterPanel {
 
     private async updateView() {
         const webview = this.webviewPanel.webview;
-        let dataformTreeMetadata = await generateDependancyTreeMetada();
+        let dataformTreeMetadata = await generateDependancyTreeMetadata();
         // TODO: check if treeRoot still exsists in dataformTreeMetadata
         await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
