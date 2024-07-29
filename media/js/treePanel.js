@@ -14,7 +14,7 @@ window.addEventListener('message', event => {
         // circleSize: 10,
         // textOffset: 10,
         verticalSpacBetweenNodes: 90,
-        horizontalSpaceBetweenNodes: 500,
+        horizontalSpaceBetweenNodes: 600,
         textStyleFont: '20px sans-serif',
         wrapNodeName: false,
         animationDuration: 0,

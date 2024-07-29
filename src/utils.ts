@@ -418,7 +418,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
 
 async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancytreemetadata: any) {
     struct.forEach((table) => {
-        let tableName = `${table.canonicalTarget.name}`;
+        let tableName = `${table.target.name}`;
 
         let dependancyTargets = table?.dependencyTargets;
 
