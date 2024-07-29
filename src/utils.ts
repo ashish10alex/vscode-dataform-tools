@@ -6,7 +6,7 @@ import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Op
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
-export let CACHED_COMPILED_DATAFORM_JSON:DataformCompiledJson;
+export let CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson;
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -324,14 +324,14 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         }
     }
 
-    for (let i = 0; i < operations.length; i++){
+    for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
         let operationFileName = path.basename(operation.fileName).split('.')[0];
-        if (operationFileName === fileName){
+        if (operationFileName === fileName) {
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";
-            for (let i = 0; i < opQueries.length; i++){
+            for (let i = 0; i < opQueries.length; i++) {
                 operationsCountForFile += 1;
                 finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
                 finalOperationQuery += opQueries[i] + "\n ;";
@@ -416,7 +416,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
-async function populateDependancyTree(struct:Table[] | Operation[]| Assertion[] | Declarations[], dependancytreemetadata:any){
+async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancytreemetadata: any) {
     struct.forEach((table) => {
         let tableName = `${table.canonicalTarget.name}`;
 
@@ -424,13 +424,13 @@ async function populateDependancyTree(struct:Table[] | Operation[]| Assertion[] 
 
         let depedancyList: string[] = [];
         if (dependancyTargets) {
-            dependancyTargets.forEach((dep:Target) => {
-                let dependancyTableName =  `${dep.name}`;
+            dependancyTargets.forEach((dep: Target) => {
+                let dependancyTableName = `${dep.name}`;
                 depedancyList.push(dependancyTableName);
             });
         }
 
-        if (depedancyList.length === 0 ){
+        if (depedancyList.length === 0) {
             dependancytreemetadata.push(
                 {
                     "_name": tableName,
@@ -445,22 +445,23 @@ async function populateDependancyTree(struct:Table[] | Operation[]| Assertion[] 
             );
         }
     });
- return dependancytreemetadata;
+    return dependancytreemetadata;
 }
 
-export async function generateDependancyTreeMetada(){
-    let dependancyTreeMetadata:any = [];
+export async function generateDependancyTreeMetada() {
+    //FIX: Dependencies when table prefix is used
+    let dependancyTreeMetadata: any = [];
 
-    if (!CACHED_COMPILED_DATAFORM_JSON){
+    if (!CACHED_COMPILED_DATAFORM_JSON) {
 
         let workspaceFolder = getWorkspaceFolder();
         if (workspaceFolder === "") { return; }
 
         let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson){
+        if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }
-    } 
+    }
 
     let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
     let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
