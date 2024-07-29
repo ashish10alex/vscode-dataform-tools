@@ -13,7 +13,7 @@ window.addEventListener('message', event => {
         // circleStrokeWidth: 5,
         // circleSize: 10,
         // textOffset: 10,
-        verticalSpacBetweenNodes: 90,
+        verticalSpacBetweenNodes: 140,
         horizontalSpaceBetweenNodes: 600,
         textStyleFont: '20px sans-serif',
         wrapNodeName: false,

@@ -417,6 +417,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
 }
 
 async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancytreemetadata: any) {
+    //NOTE: Modifies a gloabal variable `dependancytreemetadata` defined in `generateDependancyTreeMetadata` does not seems to cause a race condition/error on limited manual testing
     struct.forEach((table) => {
         let tableName = `${table.target.name}`;
 
@@ -445,7 +446,6 @@ async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[
             );
         }
     });
-    return dependancytreemetadata;
 }
 
 export async function generateDependancyTreeMetadata() {
@@ -468,10 +468,16 @@ export async function generateDependancyTreeMetadata() {
     let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
-    dependancyTreeMetadata = await populateDependancyTree(tables, dependancyTreeMetadata);
-    dependancyTreeMetadata = await populateDependancyTree(operations, dependancyTreeMetadata);
-    dependancyTreeMetadata = await populateDependancyTree(assertions, dependancyTreeMetadata);
-    dependancyTreeMetadata = await populateDependancyTree(declarations, dependancyTreeMetadata);
+    let promises = [];
+    promises.push(populateDependancyTree(tables, dependancyTreeMetadata));
+    promises.push(populateDependancyTree(operations, dependancyTreeMetadata));
+    promises.push(populateDependancyTree(assertions, dependancyTreeMetadata));
+    promises.push(populateDependancyTree(declarations, dependancyTreeMetadata));
+    try {
+        await Promise.all(promises);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating metadata for Dataform dependancy tree`);
+      }
     return dependancyTreeMetadata;
 }
 
