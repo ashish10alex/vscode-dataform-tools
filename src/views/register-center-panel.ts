@@ -60,6 +60,7 @@ export class CenterPanel {
                 const webview = panel.webview;
                 if (panel.visible) {
                     let dataformTreeMetadata = await generateDependancyTreeMetada();
+                    // TODO: Use tableName of the last active editor when possible to use as treeRoot
                     // TODO: check if treeRoot still exsists in dataformTreeMetadata
                     await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
                     if (this.centerPanel) {
