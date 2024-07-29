@@ -80,6 +80,7 @@ window.addEventListener('message', event => {
     // document.querySelector('button#form-collapse').addEventListener('click', () => t.collapseAll());
 
     let currentEntity = _treeRoot ?? allEntities[0];
+    $('.tree-metadata-selection').val(currentEntity ).trigger('change');
     tree.setTree(currentEntity, direction);
 
 });
