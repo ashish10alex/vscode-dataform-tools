@@ -60,6 +60,7 @@ export class CenterPanel {
                 const webview = panel.webview;
                 if (panel.visible) {
                     let dataformTreeMetadata = await generateDependancyTreeMetada();
+                    // TODO: check if treeRoot still exsists in dataformTreeMetadata
                     await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
                     if (this.centerPanel) {
                         e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
@@ -76,6 +77,7 @@ export class CenterPanel {
     private async updateView() {
         const webview = this.webviewPanel.webview;
         let dataformTreeMetadata = await generateDependancyTreeMetada();
+        // TODO: check if treeRoot still exsists in dataformTreeMetadata
         await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         this.webviewPanel.webview.onDidReceiveMessage((data) => {
