@@ -416,10 +416,22 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
-async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancytreemetadata: any) {
+function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancytreemetadata: any, schemaDict:any, schemaIdx:number) {
     //NOTE: Modifies a gloabal variable `dependancytreemetadata` defined in `generateDependancyTreeMetadata` does not seems to cause a race condition/error on limited manual testing
     struct.forEach((table) => {
         let tableName = `${table.target.name}`;
+        let schema = `${table.target.schema}`;
+
+        // NOTE: Only adding colors for tables declared in declarations
+        if (!table.hasOwnProperty("type")){
+            if (schemaDict.hasOwnProperty(schema)){
+                schemaIdx = schemaDict[schema];
+            }else{
+                schemaDict[schema] = schemaIdx + 1;
+                schemaIdx +=1;
+                schemaIdx = schemaDict[schema];
+            }
+        }
 
         let dependancyTargets = table?.dependencyTargets;
 
@@ -435,22 +447,29 @@ async function populateDependancyTree(struct: Table[] | Operation[] | Assertion[
             dependancytreemetadata.push(
                 {
                     "_name": tableName,
+                    "_schema": tableName,
+                    "_schema_idx": (table.hasOwnProperty("type")) ? 0: schemaIdx
                 }
             );
         } else {
             dependancytreemetadata.push(
                 {
                     "_name": tableName,
-                    "_deps": depedancyList
+                    "_schema": tableName,
+                    "_deps": depedancyList,
+                    "_schema_idx": (table.hasOwnProperty("type")) ? 0: schemaIdx
                 }
             );
         }
     });
+    return {"dependancytreemetadata": dependancytreemetadata, "schemaIdx": schemaIdx};
 }
 
 export async function generateDependancyTreeMetadata() {
     //FIX: Dependencies when table prefix is used
     let dependancyTreeMetadata: any = [];
+    let schemaDict = {};
+    let schemaIdx = 0;
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
 
@@ -468,17 +487,11 @@ export async function generateDependancyTreeMetadata() {
     let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
-    let promises = [];
-    promises.push(populateDependancyTree(tables, dependancyTreeMetadata));
-    promises.push(populateDependancyTree(operations, dependancyTreeMetadata));
-    promises.push(populateDependancyTree(assertions, dependancyTreeMetadata));
-    promises.push(populateDependancyTree(declarations, dependancyTreeMetadata));
-    try {
-        await Promise.all(promises);
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error generating metadata for Dataform dependancy tree`);
-      }
-    return dependancyTreeMetadata;
+    let output = populateDependancyTree(tables, dependancyTreeMetadata, schemaDict, schemaIdx);
+    output = populateDependancyTree(operations, output["dependancytreemetadata"], schemaDict, output["schemaIdx"]);
+    output = populateDependancyTree(assertions, output["dependancytreemetadata"], schemaDict, output["schemaIdx"]);
+    output = populateDependancyTree(declarations, output["dependancytreemetadata"], schemaDict, output["schemaIdx"]);
+    return output["dependancytreemetadata"];
 }
 
 export async function getTableMetadata(document: vscode.TextDocument) {
