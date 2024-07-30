@@ -63,9 +63,19 @@ export class CenterPanel {
                     if (this.centerPanel) {
                         e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
                     }
-                    // TODO: Use tableName of the last active editor when possible to use as treeRoot
-                    // TODO: check if treeRoot still exsists in dataformTreeMetadata
-                    await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
+                    let treeRootExsistInLatestCompilation = false;
+                    if (treeRoot){
+                        for (let i=0; i<dataformTreeMetadata.length; i++){
+                            if (dataformTreeMetadata[i]._name === treeRoot){
+                                treeRootExsistInLatestCompilation = true;
+                                await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
+                                break;
+                            }
+                        }
+                    }
+                    if (!treeRootExsistInLatestCompilation){
+                        await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": undefined, "direction": direction });
+                    }
                 }
             },
             null, // TODO: verify this option
