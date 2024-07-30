@@ -59,22 +59,27 @@ export class CenterPanel {
                 const panel = e.webviewPanel;
                 const webview = panel.webview;
                 if (panel.visible) {
-                    let dataformTreeMetadata = await generateDependancyTreeMetadata();
+                    let output = await generateDependancyTreeMetadata();
+                    if (!output){
+                        return;
+                    }
+                    let dependancyTreeMetadata = output.dependancyTreeMetadata;
+                    let declarationsLegendMetadata = output.declarationsLegendMetadata;
                     if (this.centerPanel) {
                         e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
                     }
                     let treeRootExsistInLatestCompilation = false;
                     if (treeRoot){
-                        for (let i=0; i<dataformTreeMetadata.length; i++){
-                            if (dataformTreeMetadata[i]._name === treeRoot){
+                        for (let i=0; i<dependancyTreeMetadata.length; i++){
+                            if (dependancyTreeMetadata[i]._name === treeRoot){
                                 treeRootExsistInLatestCompilation = true;
-                                await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
+                                await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
                                 break;
                             }
                         }
                     }
                     if (!treeRootExsistInLatestCompilation){
-                        await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": undefined, "direction": direction });
+                        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
                     }
                 }
             },
@@ -87,9 +92,15 @@ export class CenterPanel {
 
     private async updateView() {
         const webview = this.webviewPanel.webview;
-        let dataformTreeMetadata = await generateDependancyTreeMetadata();
+        let output = await generateDependancyTreeMetadata();
+        if (!output){
+            return;
+        }
+        let dependancyTreeMetadata = output.dependancyTreeMetadata;
+        let declarationsLegendMetadata = output.declarationsLegendMetadata;
+
         // TODO: check if treeRoot still exsists in dataformTreeMetadata
-        await webview.postMessage({ "dataformTreeMetadata": dataformTreeMetadata, "treeRoot": treeRoot, "direction": direction });
+        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         this.webviewPanel.webview.onDidReceiveMessage((data) => {
             switch (data.entity) {
@@ -111,6 +122,8 @@ export class CenterPanel {
         const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "jquery-3.7.1.slim.min.js"));
         const select2MinJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "select2.min.js"));
         const select2MinCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "select2.min.css"));
+        const d3minJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "d3.v7.min.js"));
+        const colorsJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "colors.js"));
 
         const nonce = getNonce();
 
@@ -133,8 +146,17 @@ export class CenterPanel {
               <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
               <link href="${select2MinCss}" rel="stylesheet">
               <script nonce="${nonce}" type="text/javascript" src="${select2MinJs}"></script>
+              <script nonce="${nonce}" type="text/javascript" src="${d3minJs}"></script>
+              <script nonce="${nonce}" type="text/javascript" src="${colorsJs}"></script>
            </head>
            <body>
+
+        <div id="svg-legends">
+            <p style="color: black;">Dataset lengend</p>
+            <svg id="my-svg"></svg>
+        </div>
+
+           <div class="content">
            <form>
             <select id="list" class="tree-metadata-selection"></select>
             <select id="direction" class="tree-direction-selection">
@@ -145,6 +167,7 @@ export class CenterPanel {
               <body><div style="overflow: auto;" id="tree"></div></body>
               <script nonce="${nonce}" type="text/javascript" src="${scriptUri2}"></script>
               <script nonce="${nonce}" type="text/javascript" src="${mainScript}"></script>
+            </div>
            </body>
         </html>`;
     }

@@ -416,14 +416,19 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
-function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancytreemetadata: any, schemaDict:any, schemaIdx:number) {
+function populateDependancyTree(type: string, struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: any, schemaDict:any, schemaIdx:number) {
     //NOTE: Modifies a gloabal variable `dependancytreemetadata` defined in `generateDependancyTreeMetadata` does not seems to cause a race condition/error on limited manual testing
+    //TODO: Add real types for these lists
+    let declarationsLegendMetadata:any = [];
+    let addedSchemas:any = [];
+
     struct.forEach((table) => {
         let tableName = `${table.target.name}`;
         let schema = `${table.target.schema}`;
 
         // NOTE: Only adding colors for tables declared in declarations
-        if (!table.hasOwnProperty("type")){
+        // if (!table.hasOwnProperty("type")){
+        if (type === "declarations"){
             if (schemaDict.hasOwnProperty(schema)){
                 schemaIdx = schemaDict[schema];
             }else{
@@ -444,28 +449,38 @@ function populateDependancyTree(struct: Table[] | Operation[] | Assertion[] | De
         }
 
         if (depedancyList.length === 0) {
-            dependancytreemetadata.push(
+            dependancyTreeMetadata.push(
                 {
                     "_name": tableName,
-                    "_schema": tableName,
+                    "_schema": schema,
                     "_schema_idx": (table.hasOwnProperty("type")) ? 0: schemaIdx
                 }
             );
         } else {
-            dependancytreemetadata.push(
+            dependancyTreeMetadata.push(
                 {
                     "_name": tableName,
-                    "_schema": tableName,
+                    "_schema": schema,
                     "_deps": depedancyList,
                     "_schema_idx": (table.hasOwnProperty("type")) ? 0: schemaIdx
                 }
             );
         }
+
+        if (type === "declarations"){
+            if (!addedSchemas.includes(schema)){
+                declarationsLegendMetadata.push({
+                        "_schema": schema,
+                        "_schema_idx": schemaIdx
+                });
+                addedSchemas.push(schema);
+            }
+        }
     });
-    return {"dependancytreemetadata": dependancytreemetadata, "schemaIdx": schemaIdx};
+    return {"dependancyTreeMetadata": dependancyTreeMetadata, "schemaIdx": schemaIdx, "declarationsLegendMetadata": declarationsLegendMetadata};
 }
 
-export async function generateDependancyTreeMetadata() {
+export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: any, declarationsLegendMetadata: any } | undefined> {
     //FIX: Dependencies when table prefix is used
     let dependancyTreeMetadata: any = [];
     let schemaDict = {};
@@ -487,11 +502,11 @@ export async function generateDependancyTreeMetadata() {
     let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
-    let output = populateDependancyTree(tables, dependancyTreeMetadata, schemaDict, schemaIdx);
-    output = populateDependancyTree(operations, output["dependancytreemetadata"], schemaDict, output["schemaIdx"]);
-    output = populateDependancyTree(assertions, output["dependancytreemetadata"], schemaDict, output["schemaIdx"]);
-    output = populateDependancyTree(declarations, output["dependancytreemetadata"], schemaDict, output["schemaIdx"]);
-    return output["dependancytreemetadata"];
+    let output = populateDependancyTree("tables", tables, dependancyTreeMetadata, schemaDict, schemaIdx);
+    output = populateDependancyTree("operations", operations, output["dependancyTreeMetadata"], schemaDict, output["schemaIdx"]);
+    output = populateDependancyTree("assertions", assertions, output["dependancyTreeMetadata"], schemaDict, output["schemaIdx"]);
+    output = populateDependancyTree("declarations", declarations, output["dependancyTreeMetadata"], schemaDict, output["schemaIdx"]);
+    return {"dependancyTreeMetadata": output["dependancyTreeMetadata"], "declarationsLegendMetadata": output["declarationsLegendMetadata"]};
 }
 
 export async function getTableMetadata(document: vscode.TextDocument) {

@@ -36,3 +36,17 @@ img {
 .select2-results__options {
     max-height: 400px !important;
 }
+
+#svg-legends {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	width: 400px; 
+	height: 500px; /* TODO: can we make this dynamic  */
+	background-color: whitesmoke; 
+}
+
+
+  .content {
+	margin-top: 510px; /* TODO: can we make this dynamic  */
+  }
