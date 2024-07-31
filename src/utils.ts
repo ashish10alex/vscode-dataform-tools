@@ -483,15 +483,18 @@ function populateDependancyTree(type: string, struct: Table[] | Operation[] | As
     return {"dependancyTreeMetadata": dependancyTreeMetadata, "schemaIdx": schemaIdx, "declarationsLegendMetadata": declarationsLegendMetadata};
 }
 
-export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: any, declarationsLegendMetadata: any } | undefined> {
+export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: DependancyTreeMetadata[], declarationsLegendMetadata: DeclarationsLegendMetadata[] } | undefined> {
     let dependancyTreeMetadata: DependancyTreeMetadata[] = [];
-    let schemaDict = {};
-    let schemaIdx = 0;
+    let schemaDict = {}; // used to keep track of unique schema names ( gcp dataset name ) already seen in the compiled json declarations
+    let schemaIdx = 0;   // used to assign a unique index to each unique schema name for color coding dataset in the web panel
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
 
         let workspaceFolder = getWorkspaceFolder();
-        if (workspaceFolder === "") { return; }
+        if (workspaceFolder === "") {
+            vscode.window.showErrorMessage('No active workspace');
+            return;
+        }
 
         let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {

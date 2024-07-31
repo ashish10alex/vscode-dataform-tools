@@ -3,7 +3,7 @@ import { generateDependancyTreeMetadata } from "../utils";
 import { getNonce } from '../utils';
 //import * as vscode from 'vscode';
 
-// global variables to keep track of treeRoot and direction incase user switches active editor and intends to come back to dependancy tree the web panel
+//NOTE: global variables to keep track of treeRoot and direction incase user switches active editor and intends to come back to dependancy tree the web panel
 let treeRoot:string;
 let direction:string;
 
