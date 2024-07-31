@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata } from './types';
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
@@ -417,10 +417,8 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
 }
 
 function populateDependancyTree(type: string, struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict:any, schemaIdx:number) {
-    //NOTE: Modifies a gloabal variable `dependancytreemetadata` defined in `generateDependancyTreeMetadata` does not seems to cause a race condition/error on limited manual testing
-    //TODO: Add real types for these lists
-    let declarationsLegendMetadata:any = [];
-    let addedSchemas:any = [];
+    let declarationsLegendMetadata:DeclarationsLegendMetadata[] = [];
+    let addedSchemas:string[] = [];
     let schemaIdxTracker = 0;
 
     declarationsLegendMetadata.push({
@@ -432,8 +430,7 @@ function populateDependancyTree(type: string, struct: Table[] | Operation[] | As
         let tableName = `${table.target.name}`;
         let schema = `${table.target.schema}`;
 
-        // NOTE: Only adding colors for tables declared in declarations
-        // if (!table.hasOwnProperty("type")){
+        // NOTE: Only adding colors in web panel for tables declared in declarations
         if (type === "declarations"){
             if (schemaDict.hasOwnProperty(schema)){
                 schemaIdx = schemaDict[schema];

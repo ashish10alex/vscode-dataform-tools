@@ -32,6 +32,13 @@ export interface DependancyTreeMetadata {
     _deps?: string[];
 }
 
+
+export interface DeclarationsLegendMetadata {
+    _schema: string;
+    _schema_idx: number;
+}
+
+
 export interface Target {
     database: string;
     schema: string;
