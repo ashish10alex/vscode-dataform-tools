@@ -25,6 +25,13 @@ export interface Assertion {
     dependencyTargets: Target[];
 }
 
+export interface DependancyTreeMetadata {
+    _name: string;
+    _schema: string;
+    _schema_idx: number;
+    _deps?: string[];
+}
+
 export interface Target {
     database: string;
     schema: string;
@@ -47,7 +54,7 @@ interface ProjectConfig {
     defualtLocation: string;
 }
 
-export interface Operation{
+export interface Operation {
     target: Target;
     canonicalTarget: Target;
     queries: string[];

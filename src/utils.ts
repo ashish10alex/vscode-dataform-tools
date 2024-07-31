@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target } from './types';
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
@@ -416,7 +416,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
-function populateDependancyTree(type: string, struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: any, schemaDict:any, schemaIdx:number) {
+function populateDependancyTree(type: string, struct: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict:any, schemaIdx:number) {
     //NOTE: Modifies a gloabal variable `dependancytreemetadata` defined in `generateDependancyTreeMetadata` does not seems to cause a race condition/error on limited manual testing
     //TODO: Add real types for these lists
     let declarationsLegendMetadata:any = [];
@@ -487,7 +487,7 @@ function populateDependancyTree(type: string, struct: Table[] | Operation[] | As
 }
 
 export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: any, declarationsLegendMetadata: any } | undefined> {
-    let dependancyTreeMetadata: any = [];
+    let dependancyTreeMetadata: DependancyTreeMetadata[] = [];
     let schemaDict = {};
     let schemaIdx = 0;
 
