@@ -42,11 +42,11 @@ img {
 	top: 20px;
 	right: 20px;
 	width: 400px; 
-	height: 500px; /* TODO: can we make this dynamic  */
+	height: 550px; /* TODO: can we make this dynamic  */
 	background-color: whitesmoke; 
 }
 
 
   .content {
-	margin-top: 510px; /* TODO: can we make this dynamic  */
+	margin-top: 560px; /* TODO: can we make this dynamic  */
   }

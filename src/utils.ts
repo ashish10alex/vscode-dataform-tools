@@ -421,6 +421,12 @@ function populateDependancyTree(type: string, struct: Table[] | Operation[] | As
     //TODO: Add real types for these lists
     let declarationsLegendMetadata:any = [];
     let addedSchemas:any = [];
+    let schemaIdxTracker = 0;
+
+    declarationsLegendMetadata.push({
+            "_schema": "dataform",
+            "_schema_idx": 0
+    });
 
     struct.forEach((table) => {
         let tableName = `${table.target.name}`;
@@ -432,9 +438,9 @@ function populateDependancyTree(type: string, struct: Table[] | Operation[] | As
             if (schemaDict.hasOwnProperty(schema)){
                 schemaIdx = schemaDict[schema];
             }else{
-                schemaDict[schema] = schemaIdx + 1;
-                schemaIdx +=1;
-                schemaIdx = schemaDict[schema];
+                schemaDict[schema] = schemaIdxTracker + 1;
+                schemaIdxTracker +=1;
+                schemaIdx = schemaIdxTracker;
             }
         }
 
@@ -506,6 +512,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     output = populateDependancyTree("operations", operations, output["dependancyTreeMetadata"], schemaDict, output["schemaIdx"]);
     output = populateDependancyTree("assertions", assertions, output["dependancyTreeMetadata"], schemaDict, output["schemaIdx"]);
     output = populateDependancyTree("declarations", declarations, output["dependancyTreeMetadata"], schemaDict, output["schemaIdx"]);
+
     return {"dependancyTreeMetadata": output["dependancyTreeMetadata"], "declarationsLegendMetadata": output["declarationsLegendMetadata"]};
 }
 
