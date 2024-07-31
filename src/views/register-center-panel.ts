@@ -152,7 +152,7 @@ export class CenterPanel {
            <body>
 
         <div id="svg-legends">
-            <p style="color: black;">Dataset lengend</p>
+            <p style="color: black; margin-top: 5px; margin-left: 40px;"> <b>Dataset lengend</b> </p>
             <svg id="my-svg"></svg>
         </div>
 
