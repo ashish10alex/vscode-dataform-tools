@@ -487,7 +487,6 @@ function populateDependancyTree(type: string, struct: Table[] | Operation[] | As
 }
 
 export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: any, declarationsLegendMetadata: any } | undefined> {
-    //FIX: Dependencies when table prefix is used
     let dependancyTreeMetadata: any = [];
     let schemaDict = {};
     let schemaIdx = 0;

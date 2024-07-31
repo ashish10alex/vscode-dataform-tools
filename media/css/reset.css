@@ -41,12 +41,14 @@ img {
 	position: fixed;
 	top: 20px;
 	right: 20px;
-	width: 400px; 
+	width: 400px;
 	height: 550px; /* TODO: can we make this dynamic  */
-	background-color: whitesmoke; 
+	background-color: whitesmoke;
 }
 
 
-  .content {
-	margin-top: 560px; /* TODO: can we make this dynamic  */
-  }
+/*starting position of the dependancy tree graph from the top
+ current hardcoded to be more than the height of #svg-legends #*/
+.content {
+    margin-top: 560px; /* TODO: can we make this dynamic  */
+}
