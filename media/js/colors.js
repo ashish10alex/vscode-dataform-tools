@@ -1,3 +1,5 @@
+//NOTE: The order in which the colors are defined here determines the order in which
+// colors will be assigned to dataset legnends
 const schema_idx_colors = {
     steelblue: 0x4682b4,
     salmon: 0xfa8072,
