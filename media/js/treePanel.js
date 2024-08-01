@@ -1,5 +1,15 @@
 const vscode = acquireVsCodeApi();
 
+const isDarkTheme = document.body.classList.contains('vscode-dark');
+const isLightTheme = document.body.classList.contains('vscode-light');
+
+let textStyleColor = "white";
+if (isDarkTheme) {
+    pass;
+} else if (isLightTheme) {
+    textStyleColor = "black";
+}
+
 const sharedOptions = ({
     circleStrokeWidth: 5,
     circleSize: 10,
@@ -11,7 +21,7 @@ const sharedOptions = ({
     animationDuration: 0,
     marginLeft: 450,
     marginRight: 450,
-    textStyleColor: "white",
+    textStyleColor: textStyleColor
     // circleStrokeColor: "yellow",
     // circleStrokeColor: "steelblue",
     // parentNodeTextOrientation: "right",
