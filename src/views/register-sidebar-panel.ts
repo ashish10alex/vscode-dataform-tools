@@ -58,7 +58,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
 
         webviewView.webview.onDidReceiveMessage(async (data) => {
             switch (data.type) {
-                case "center-panel-button": {
+                case "load-dependancy-graph-button": {
                     CenterPanel.getInstance(this.extensionContext.extensionUri, this.extensionContext);
                     break;
                 }
@@ -95,7 +95,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
               <br>
               <h3 id="loadingMessage"> Loading metadata ... </h3>
               <br>
-              <button type="button" class="center-panel-button">Load dependancy graph</button><br>
+              <button type="button" class="load-dependancy-graph-button">Load dependancy graph</button><br>
               <script nonce="${nonce}" src="${scriptUri}"></script>
               <script nonce="${nonce}" src="${scriptPanel}"></script>
            </body>

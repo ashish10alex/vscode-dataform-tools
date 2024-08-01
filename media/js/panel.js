@@ -1,14 +1,14 @@
 (function () {
     const vscode = acquireVsCodeApi();
 
-    const btnfourth = document.querySelector('.center-panel-button');
+    const loadDepGraphButton = document.querySelector('.load-dependancy-graph-button');
 
-    btnfourth.addEventListener('click', fourthBtnClicked);
+    loadDepGraphButton.addEventListener('click', loadDepGraphButtonClicked);
 
-    function fourthBtnClicked() {
+    function loadDepGraphButtonClicked() {
         vscode.postMessage({
-            type: 'center-panel-button',
-            value: 'center-panel-button clicked'
+            type: 'load-dependancy-graph-button',
+            value: 'load-dependancy-graph-button clicked'
         });
     }
 }());
