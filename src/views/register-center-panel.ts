@@ -101,17 +101,36 @@ export class CenterPanel {
 
         // TODO: check if treeRoot still exsists in dataformTreeMetadata
         await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
-        this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
-        this.webviewPanel.webview.onDidReceiveMessage((data) => {
-            switch (data.entity) {
-                case 'treeRoot':
-                    treeRoot = data.value;
-                    return;
-                case 'direction':
-                    direction = data.value;
-                    return;
-            }
-        });
+        if (dependancyTreeMetadata.length === 0){
+            this.webviewPanel.webview.html = this._getHtmlForWebviewNoTreeMetadata();
+        } else {
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
+            this.webviewPanel.webview.onDidReceiveMessage((data) => {
+                switch (data.entity) {
+                    case 'treeRoot':
+                        treeRoot = data.value;
+                        return;
+                    case 'direction':
+                        direction = data.value;
+                        return;
+                }
+            });
+        }
+    }
+
+    private _getHtmlForWebviewNoTreeMetadata(){
+        return `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body>
+        <h3>No nodes to create compilation graph or you have a compilation error<h3>
+        <p>Please run "dataform compile" to check for errors</p>
+        </body>
+        </html>`;
+
     }
 
     private _getHtmlForWebview(webview: Webview) {

@@ -400,17 +400,22 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
-    for (let i = 0; i < targets.length; i++) {
-        let targetName = targets[i].name;
-        if (dependencies.includes(targetName) === false) {
-            dependencies.push(targetName);
+
+    if (targets?.length){
+        for (let i = 0; i < targets.length; i++) {
+            let targetName = targets[i].name;
+            if (dependencies.includes(targetName) === false) {
+                dependencies.push(targetName);
+            }
         }
     }
 
-    for (let i = 0; i < declarations.length; i++) {
-        let targetName = declarations[i].target.name;
-        if (dependencies.includes(targetName) === false) {
-            dependencies.push(targetName);
+    if (declarations?.length){
+        for (let i = 0; i < declarations.length; i++) {
+            let targetName = declarations[i].target.name;
+            if (dependencies.includes(targetName) === false) {
+                dependencies.push(targetName);
+            }
         }
     }
     return dependencies;
@@ -502,12 +507,15 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
         }
     }
 
+    let output;
+    if (!CACHED_COMPILED_DATAFORM_JSON){
+        return {"dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"]: []};
+    }
     let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
     let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
     let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
-    let output;
     if (tables){
         output = populateDependancyTree("tables", tables, dependancyTreeMetadata, schemaDict, schemaIdx);
     }
