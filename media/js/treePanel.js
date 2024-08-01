@@ -4,8 +4,9 @@ const isDarkTheme = document.body.classList.contains('vscode-dark');
 const isLightTheme = document.body.classList.contains('vscode-light');
 
 let textStyleColor = "white";
+
 if (isDarkTheme) {
-    pass;
+    //NOTE: leaving this if we need to handle anything specific in the future
 } else if (isLightTheme) {
     textStyleColor = "black";
 }
