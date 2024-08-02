@@ -3,12 +3,51 @@ const vscode = acquireVsCodeApi();
 const isDarkTheme = document.body.classList.contains('vscode-dark');
 const isLightTheme = document.body.classList.contains('vscode-light');
 
+/** This function creates a legend for the datasets that are present in the graph
+    @param {Array} uniqueDatasets - An array of unique datasets
+    @param {Number} circleSize - The size of the circle
+    @param {Number} circleStrokeWidth - The width of the circle stroke
+    @param {Object} schema_idx_colors - A dictionary that maps schema index to color
+ */
+function createDatasetSvgLegend(uniqueDatasets, circleSize, circleStrokeWidth, schema_idx_colors){
+    let svg = d3.select('#my-svg')
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("overflow", "visible");
+
+    let circles = svg.selectAll("g")
+    .data(uniqueDatasets)
+    .enter()
+    .append("g");
+
+    circles.append("circle")
+    .attr("cx", 50)
+    .attr("cy", function(d, i) {
+        return (i / 3) * 100 + 50;
+    })
+    .attr("r", circleSize)
+    .attr("stroke-width", circleStrokeWidth)
+    .style("stroke", function(d) {
+        // return getRandomColor();
+        return Object.keys(schema_idx_colors)[d._schema_idx];
+    })
+    .style("fill", "white");
+
+    circles.append("text")
+    .attr("x", 90)
+    .attr("y", function(d, i) { return (i / 3) * 100 + 60; })
+    .text(function(d) { return d._schema;});
+    // .text(function(d) { return "aaaaaa"})
+}
+
+/** sets the height of the the dataset lengend svg
+    @param {Number} newHeight - The new height of the svg
+*/
 function updateSvgLegendsHeight(newHeight) {
     document.documentElement.style.setProperty('--svg-legends-height', newHeight + 'px');
 }
 
 let textStyleColor = "white";
-
 if (isDarkTheme) {
     //NOTE: leaving this if we need to handle anything specific in the future
 } else if (isLightTheme) {
@@ -25,7 +64,7 @@ const sharedOptions = ({
     wrapNodeName: false,
     animationDuration: 0,
     marginLeft: 450,
-    marginRight: 450,
+    marginRight: 600,
     textStyleColor: textStyleColor
     // circleStrokeColor: "yellow",
     // circleStrokeColor: "steelblue",
@@ -72,35 +111,7 @@ window.addEventListener('message', event => {
          let heightOfDatasetsLegend = 40 * (uniqueDatasets.length + 1); //NOTE: The number 40 is approximate multiple that was descided based on observation of how much space a single dataset takes
          updateSvgLegendsHeight(heightOfDatasetsLegend);
 
-        let svg = d3.select('#my-svg')
-        .attr("width", "100%")
-        .attr("height", "100%")
-        .attr("overflow", "visible");
-
-        let circles = svg.selectAll("g")
-        .data(uniqueDatasets)
-        .enter()
-        .append("g");
-
-        circles.append("circle")
-        .attr("cx", 50)
-        .attr("cy", function(d, i) {
-            return (i / 3) * 100 + 50;
-        })
-        .attr("r", sharedOptions.circleSize)
-        .attr("stroke-width", sharedOptions.circleStrokeWidth)
-        .style("stroke", function(d) {
-            // return getRandomColor();
-            return Object.keys(schema_idx_colors)[d._schema_idx];
-        })
-        .style("fill", "white");
-
-        circles.append("text")
-        .attr("x", 90)
-        .attr("y", function(d, i) { return (i / 3) * 100 + 60; })
-        .text(function(d) { return d._schema })
-        // .text(function(d) { return "aaaaaa"})
-
+        createDatasetSvgLegend(uniqueDatasets, sharedOptions.circleSize, sharedOptions.circleStrokeWidth, schema_idx_colors);
 
         $('.tree-metadata-selection').select2();
         $('.tree-direction-selection').select2({
@@ -141,5 +152,3 @@ window.addEventListener('message', event => {
     tree.setTree(currentEntity, direction);
 
 });
-
-
