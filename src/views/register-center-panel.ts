@@ -170,6 +170,9 @@ export class CenterPanel {
            </head>
            <body>
 
+        <h1>Dataform dependancy graph</h1>
+        <div id="dataform-stats" style="padding-top: 20px;"></div>
+
         <div id="svg-legends">
             <p style="color: black; margin-top: 5px; margin-left: 40px;"> <b>Dataset lengend</b> </p>
             <svg id="my-svg"></svg>

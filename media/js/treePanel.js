@@ -41,6 +41,12 @@ window.addEventListener('message', event => {
     let direction = _direction ?? 'upstream';
 
     const tree = new DependenTree('div#tree', sharedOptions);
+
+    let statsDiv = document.getElementById("dataform-stats");
+    let newParagraph = document.createElement("p");
+    newParagraph.textContent = `Total nodes in the graph: ${treeData.length}`;
+    statsDiv.appendChild(newParagraph);
+
     tree.addEntities(treeData);
 
     const entitySelect = document.getElementById('list');
