@@ -24,7 +24,8 @@ export function getNonce() {
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
-    try { shell(`which ${name}`); return true; }
+    const command = process.platform !== "win32" ? "which" : "where.exe";
+    try { shell(`${command} ${name}`); return true; }
     catch (error) {
         if (name === 'formatdataform') {
             vscode.window.showWarningMessage('Install formatdataform to enable sqlfluff formatting');
@@ -349,8 +350,16 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
 
 function compileDataform(workspaceFolder: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        const command = process.platform !== "win32" ? "dataform" : "dataform.cmd";
-        const spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
+        let spawnedProcess;
+        if (process.platform !== "win32") {
+            const command = "dataform";
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
+        } else {
+            const command = "dataform.cmd";
+            // windows seems to require shell: true
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"], { shell: true });
+        }
+
         let stdOut = '';
         let errorOutput = '';
 
