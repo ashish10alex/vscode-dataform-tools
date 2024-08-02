@@ -37,12 +37,16 @@ img {
     max-height: 400px !important;
 }
 
+:root {
+    --svg-legends-height: 550px;
+}
+
 #svg-legends {
 	position: fixed;
 	top: 20px;
 	right: 20px;
 	width: 400px;
-	height: 550px; /* TODO: can we make this dynamic  */
+	height: var(--svg-legends-height);
 	background-color: whitesmoke;
 }
 
@@ -50,5 +54,5 @@ img {
 /*starting position of the dependancy tree graph from the top
  current hardcoded to be more than the height of #svg-legends #*/
 .content {
-    margin-top: 560px; /* TODO: can we make this dynamic  */
+	margin-top: calc(var(--svg-legends-height) + 10px);
 }

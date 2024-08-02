@@ -3,6 +3,10 @@ const vscode = acquireVsCodeApi();
 const isDarkTheme = document.body.classList.contains('vscode-dark');
 const isLightTheme = document.body.classList.contains('vscode-light');
 
+function updateSvgLegendsHeight(newHeight) {
+    document.documentElement.style.setProperty('--svg-legends-height', newHeight + 'px');
+}
+
 let textStyleColor = "white";
 
 if (isDarkTheme) {
@@ -64,6 +68,9 @@ window.addEventListener('message', event => {
     $(document).ready(function () {
 
         let uniqueDatasets = event?.data?.declarationsLegendMetadata;
+
+         let heightOfDatasetsLegend = 40 * (uniqueDatasets.length + 1); //NOTE: The number 40 is approximate multiple that was descided based on observation of how much space a single dataset takes
+         updateSvgLegendsHeight(heightOfDatasetsLegend);
 
         let svg = d3.select('#my-svg')
         .attr("width", "100%")
