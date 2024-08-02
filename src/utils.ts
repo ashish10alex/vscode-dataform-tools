@@ -6,7 +6,7 @@ import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } f
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
-export let CACHED_COMPILED_DATAFORM_JSON:DataformCompiledJson;
+export let CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson;
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -14,7 +14,8 @@ export let declarationsAndTargets: string[] = [];
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
-    try { shell(`which ${name}`); return true; }
+    const command = process.platform !== "win32" ? "which" : "where.exe";
+    try { shell(`${command} ${name}`); return true; }
     catch (error) {
         if (name === 'formatdataform') {
             vscode.window.showWarningMessage('Install formatdataform to enable sqlfluff formatting');
@@ -314,14 +315,14 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         }
     }
 
-    for (let i = 0; i < operations.length; i++){
+    for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
         let operationFileName = path.basename(operation.fileName).split('.')[0];
-        if (operationFileName === fileName){
+        if (operationFileName === fileName) {
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";
-            for (let i = 0; i < opQueries.length; i++){
+            for (let i = 0; i < opQueries.length; i++) {
                 operationsCountForFile += 1;
                 finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
                 finalOperationQuery += opQueries[i] + "\n ;";
@@ -339,8 +340,16 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
 
 function compileDataform(workspaceFolder: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        const command = process.platform !== "win32" ? "dataform" : "dataform.cmd";
-        const spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
+        let spawnedProcess;
+        if (process.platform !== "win32") {
+            const command = "dataform";
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
+        } else {
+            const command = "dataform.cmd";
+            // windows seems to require shell: true
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"], { shell: true });
+        }
+
         let stdOut = '';
         let errorOutput = '';
 
