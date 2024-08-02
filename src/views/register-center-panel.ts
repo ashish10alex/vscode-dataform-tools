@@ -136,13 +136,18 @@ export class CenterPanel {
     private _getHtmlForWebview(webview: Webview) {
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "reset.css"));
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
-        const scriptUri2 = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "dependtree.js"));
-        const mainScript = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "treePanel.js"));
-        const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "jquery-3.7.1.slim.min.js"));
-        const select2MinJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "select2.min.js"));
-        const select2MinCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "select2.min.css"));
-        const d3minJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "d3.v7.min.js"));
-        const colorsJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "colors.js"));
+
+        /**Used for searchable dropdowns */
+        const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));
+        const select2MinCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "select2.min.css"));
+        const select2MinJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "select2.min.js"));
+
+        /**Dependencies for generating the tree using dependtree */
+        const d3minJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "d3.v7.min.js"));
+        const dependTreeScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "dependtree.js"));
+
+        const colorsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "colors.js"));
+        const treePanelScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "treePanel.js"));
 
         const nonce = getNonce();
 
@@ -166,7 +171,7 @@ export class CenterPanel {
               <link href="${select2MinCss}" rel="stylesheet">
               <script nonce="${nonce}" type="text/javascript" src="${select2MinJs}"></script>
               <script nonce="${nonce}" type="text/javascript" src="${d3minJs}"></script>
-              <script nonce="${nonce}" type="text/javascript" src="${colorsJs}"></script>
+              <script nonce="${nonce}" type="text/javascript" src="${colorsScriptUri}"></script>
            </head>
            <body>
 
@@ -187,8 +192,8 @@ export class CenterPanel {
             </select>
             </form>
               <body><div style="overflow: auto;" id="tree"></div></body>
-              <script nonce="${nonce}" type="text/javascript" src="${scriptUri2}"></script>
-              <script nonce="${nonce}" type="text/javascript" src="${mainScript}"></script>
+              <script nonce="${nonce}" type="text/javascript" src="${dependTreeScriptUri}"></script>
+              <script nonce="${nonce}" type="text/javascript" src="${treePanelScriptUri}"></script>
             </div>
            </body>
         </html>`;

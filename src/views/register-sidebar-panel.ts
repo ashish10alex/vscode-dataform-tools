@@ -68,9 +68,10 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
 
     private _getHtmlForWebview(webview: Webview) {
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "reset.css"));
-        const scriptPanel = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "panel.js"));
-        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "sidePanel.js"));
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
+
+        const scriptPanel = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "panel.js"));
+        const sidePanelScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "sidePanel.js"));
 
         const nonce = getNonce();
 
@@ -95,7 +96,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
               <h3 id="loadingMessage"> Loading metadata ... </h3>
               <br>
               <button type="button" class="load-dependancy-graph-button">Load dependancy graph</button><br>
-              <script nonce="${nonce}" src="${scriptUri}"></script>
+              <script nonce="${nonce}" src="${sidePanelScriptUri}"></script>
               <script nonce="${nonce}" src="${scriptPanel}"></script>
            </body>
         </html>`;
