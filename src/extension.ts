@@ -114,6 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
+            executableIsAvailable("formatdataform");
             let document = vscode.window.activeTextEditor?.document;
             document?.save();
             let fileUri = document?.uri;

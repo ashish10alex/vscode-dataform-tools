@@ -28,7 +28,13 @@ export function executableIsAvailable(name: string) {
     try { shell(`${command} ${name}`); return true; }
     catch (error) {
         if (name === 'formatdataform') {
-            vscode.window.showWarningMessage('Install formatdataform to enable sqlfluff formatting');
+            const message = 'Install formatdataform to enable sqlfluff formatting';
+            const linkText = "Learn More";
+            vscode.window.showWarningMessage(message, linkText).then(selection => {
+                if (selection === linkText) {
+                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
+                }
+            });
             return;
         } else {
             vscode.window.showErrorMessage(`${name} cli not found in path`);
