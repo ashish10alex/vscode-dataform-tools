@@ -22,11 +22,13 @@ let runTagWtDepsDisposable: vscode.Disposable | null = null;
 let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
+let dataformHoverProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
+import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags} from './utils';
@@ -79,6 +81,12 @@ export async function activate(context: vscode.ExtensionContext) {
             new DataformRefDefinitionProvider()
         );
         context.subscriptions.push(dataformRefDefinitionProviderDisposable);
+
+        dataformHoverProviderDisposable = vscode.languages.registerHoverProvider(
+            { language: 'sql' },
+            new DataformHoverProvider()
+        );
+        context.subscriptions.push(dataformHoverProviderDisposable);
 
         fixErrorCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.fixError',
             async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
@@ -293,6 +301,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (dataformRefDefinitionProviderDisposable) {
                 dataformRefDefinitionProviderDisposable.dispose();
+            }
+            if (dataformHoverProviderDisposable){
+                dataformHoverProviderDisposable.dispose();
             }
             if (fixErrorCommandDisposable) {
                 fixErrorCommandDisposable.dispose();
