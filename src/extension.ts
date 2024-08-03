@@ -26,6 +26,7 @@ let dataformHoverProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 
 import { registerWebViewProvider } from './views/register-sidebar-panel';
+import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
@@ -57,6 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(diagnosticCollection);
 
     registerWebViewProvider(context);
+    registerCenterPanel(context);
 
     async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (document === undefined) {

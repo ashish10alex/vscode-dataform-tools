@@ -25,6 +25,7 @@
         "onCommand:extension.enable",
         "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
+        "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
         "onCommand:extension.runCurrentFileWtDownstreamDeps",
         "onCommand:extension.compileWtDryRun",
@@ -136,6 +137,11 @@
                 "title": "Show compiled query in vertical split",
                 "icon": "$(layout-centered)",
                 "group": "navigation@3"
+            },
+            {
+                "command": "vscode-dataform-tools.showDependentsInGraph",
+                "category": "Dataform",
+                "title": "Show dependents in graph"
             }
         ],
         "languages": [
@@ -186,7 +192,13 @@
                     "alt": "vscode-dataform-tools.formatCurrentfile",
                     "group": "navigation@0"
                 }
-            ]
+            ],
+            "editor/context": [
+                {
+                  "command": "vscode-dataform-tools.showDependentsInGraph",
+                   "when": "(resourceExtname == .sqlx || resourceExtname == .js) && editorTextFocus"
+                }
+              ]
         },
         "configuration": {
             "title": "Dataform",

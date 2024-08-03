@@ -1,27 +1,36 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
-import { generateDependancyTreeMetadata } from "../utils";
-import { getNonce } from '../utils';
-//import * as vscode from 'vscode';
+import { generateDependancyTreeMetadata, getWordUnderCursor } from "../utils";
+import { getNonce, getLineUnderCursor } from '../utils';
+import * as vscode from 'vscode';
 
 //NOTE: global variables to keep track of treeRoot and direction incase user switches active editor and intends to come back to dependancy tree the web panel
-let treeRoot:string;
-let direction:string;
+let treeRoot: string;
+let direction: string;
 
-/*
 export function registerCenterPanel(context: ExtensionContext) {
     context.subscriptions.push(
-        commands.registerCommand('ipoc.show.center.panel', () => {
+        commands.registerCommand('vscode-dataform-tools.showDependentsInGraph', () => {
+
+            let line = getLineUnderCursor();
+
+            if (!line || line.indexOf("${ref(") === -1) {
+                return;
+            }
+
+            let wordUnderCursor = getWordUnderCursor();
+
+            if (!wordUnderCursor) {
+                vscode.window.showErrorMessage("Could not determine word under the crusor");
+                return;
+            }
+
+            treeRoot = wordUnderCursor;
+            direction = "downstream";
+
             CenterPanel.getInstance(context.extensionUri, context);
         })
     );
-
-    context.subscriptions.push(
-        commands.registerCommand('ipoc.send.data', (data) => {
-            window.showInformationMessage('ipoc.send.data: ' + data.data);
-        })
-    );
 }
-*/
 
 export class CenterPanel {
     public static centerPanel: CenterPanel | undefined;
@@ -60,7 +69,7 @@ export class CenterPanel {
                 const webview = panel.webview;
                 if (panel.visible) {
                     let output = await generateDependancyTreeMetadata();
-                    if (!output){
+                    if (!output) {
                         return;
                     }
                     let dependancyTreeMetadata = output.dependancyTreeMetadata;
@@ -69,17 +78,17 @@ export class CenterPanel {
                         e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
                     }
                     let treeRootExsistInLatestCompilation = false;
-                    if (treeRoot){
-                        for (let i=0; i<dependancyTreeMetadata.length; i++){
-                            if (dependancyTreeMetadata[i]._name === treeRoot){
+                    if (treeRoot) {
+                        for (let i = 0; i < dependancyTreeMetadata.length; i++) {
+                            if (dependancyTreeMetadata[i]._name === treeRoot) {
                                 treeRootExsistInLatestCompilation = true;
-                                await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
+                                await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
                                 break;
                             }
                         }
                     }
-                    if (!treeRootExsistInLatestCompilation){
-                        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
+                    if (!treeRootExsistInLatestCompilation) {
+                        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
                     }
                 }
             },
@@ -93,15 +102,15 @@ export class CenterPanel {
     private async updateView() {
         const webview = this.webviewPanel.webview;
         let output = await generateDependancyTreeMetadata();
-        if (!output){
+        if (!output) {
             return;
         }
         let dependancyTreeMetadata = output.dependancyTreeMetadata;
         let declarationsLegendMetadata = output.declarationsLegendMetadata;
 
         // TODO: check if treeRoot still exsists in dataformTreeMetadata
-        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata":declarationsLegendMetadata  });
-        if (dependancyTreeMetadata.length === 0){
+        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
+        if (dependancyTreeMetadata.length === 0) {
             this.webviewPanel.webview.html = this._getHtmlForWebviewNoTreeMetadata();
         } else {
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
@@ -118,7 +127,7 @@ export class CenterPanel {
         }
     }
 
-    private _getHtmlForWebviewNoTreeMetadata(){
+    private _getHtmlForWebviewNoTreeMetadata() {
         return `<!DOCTYPE html>
         <html lang="en">
         <head>

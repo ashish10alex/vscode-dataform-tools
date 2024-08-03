@@ -22,6 +22,39 @@ export function getNonce() {
     return text;
 }
 
+export function getWordUnderCursor(): string | undefined {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        const position = editor.selection.active;
+        const wordRange = editor.document.getWordRangeAtPosition(position);
+        if (wordRange) {
+            const word = editor.document.getText(wordRange);
+            return word;
+        }
+    }
+    return undefined;
+}
+
+export function getLineUnderCursor(): string | undefined {
+    let document = vscode.window.activeTextEditor?.document;
+
+    if (!document) {
+        vscode.window.showErrorMessage("VsCode document object was undefined");
+        return;
+    }
+
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage("No active editor");
+        return;
+    }
+
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line).text;
+    return line;
+
+}
+
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
     const command = process.platform !== "win32" ? "which" : "where.exe";
@@ -32,7 +65,7 @@ export function executableIsAvailable(name: string) {
             const linkText = "Learn More";
             vscode.window.showWarningMessage(message, linkText).then(selection => {
                 if (selection === linkText) {
-                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
+                    vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
                 }
             });
             return;
@@ -416,7 +449,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
 
-    if (targets?.length){
+    if (targets?.length) {
         for (let i = 0; i < targets.length; i++) {
             let targetName = targets[i].name;
             if (dependencies.includes(targetName) === false) {
@@ -425,7 +458,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
         }
     }
 
-    if (declarations?.length){
+    if (declarations?.length) {
         for (let i = 0; i < declarations.length; i++) {
             let targetName = declarations[i].target.name;
             if (dependencies.includes(targetName) === false) {
@@ -436,14 +469,14 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
-function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict:any, schemaIdx:number) {
-    let declarationsLegendMetadata:DeclarationsLegendMetadata[] = [];
-    let addedSchemas:string[] = [];
+function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict: any, schemaIdx: number) {
+    let declarationsLegendMetadata: DeclarationsLegendMetadata[] = [];
+    let addedSchemas: string[] = [];
     let schemaIdxTracker = 0;
 
     declarationsLegendMetadata.push({
-            "_schema": "dataform",
-            "_schema_idx": 0
+        "_schema": "dataform",
+        "_schema_idx": 0
     });
 
     structs.forEach((struct) => {
@@ -451,12 +484,12 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
         let schema = `${struct.target.schema}`;
 
         // NOTE: Only adding colors in web panel for tables declared in declarations
-        if (type === "declarations"){
-            if (schemaDict.hasOwnProperty(schema)){
+        if (type === "declarations") {
+            if (schemaDict.hasOwnProperty(schema)) {
                 schemaIdx = schemaDict[schema];
-            }else{
+            } else {
                 schemaDict[schema] = schemaIdxTracker + 1;
-                schemaIdxTracker +=1;
+                schemaIdxTracker += 1;
                 schemaIdx = schemaIdxTracker;
             }
         }
@@ -476,7 +509,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                 {
                     "_name": tableName,
                     "_schema": schema,
-                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0: schemaIdx
+                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
                 }
             );
         } else {
@@ -485,22 +518,22 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     "_name": tableName,
                     "_schema": schema,
                     "_deps": depedancyList,
-                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0: schemaIdx
+                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
                 }
             );
         }
 
-        if (type === "declarations"){
-            if (!addedSchemas.includes(schema)){
+        if (type === "declarations") {
+            if (!addedSchemas.includes(schema)) {
                 declarationsLegendMetadata.push({
-                        "_schema": schema,
-                        "_schema_idx": schemaIdx
+                    "_schema": schema,
+                    "_schema_idx": schemaIdx
                 });
                 addedSchemas.push(schema);
             }
         }
     });
-    return {"dependancyTreeMetadata": dependancyTreeMetadata, "schemaIdx": schemaIdx, "declarationsLegendMetadata": declarationsLegendMetadata};
+    return { "dependancyTreeMetadata": dependancyTreeMetadata, "schemaIdx": schemaIdx, "declarationsLegendMetadata": declarationsLegendMetadata };
 }
 
 export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: DependancyTreeMetadata[], declarationsLegendMetadata: DeclarationsLegendMetadata[] } | undefined> {
@@ -523,27 +556,27 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     }
 
     let output;
-    if (!CACHED_COMPILED_DATAFORM_JSON){
-        return {"dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"]: []};
+    if (!CACHED_COMPILED_DATAFORM_JSON) {
+        return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
     }
     let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
     let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
     let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
-    if (tables){
+    if (tables) {
         output = populateDependancyTree("tables", tables, dependancyTreeMetadata, schemaDict, schemaIdx);
     }
-    if (operations){
-        output = populateDependancyTree("operations", operations,  output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata , schemaDict, output ? output["schemaIdx"] :  schemaIdx);
+    if (operations) {
+        output = populateDependancyTree("operations", operations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
     }
-    if (assertions){
-        output = populateDependancyTree("assertions", assertions, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata , schemaDict, output ? output["schemaIdx"] :  schemaIdx);
+    if (assertions) {
+        output = populateDependancyTree("assertions", assertions, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
     }
-    if (declarations){
-        output = populateDependancyTree("declarations", declarations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata , schemaDict, output ? output["schemaIdx"] :  schemaIdx);
+    if (declarations) {
+        output = populateDependancyTree("declarations", declarations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
     }
-    return {"dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"]: []};
+    return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
 }
 
 export async function getTableMetadata(document: vscode.TextDocument) {
