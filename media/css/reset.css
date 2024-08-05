@@ -28,3 +28,31 @@ img {
 	max-width: 100%;
 	height: auto;
 }
+
+.select2-results__option {
+	color: black;
+}
+
+.select2-results__options {
+    max-height: 400px !important;
+}
+
+:root {
+    --svg-legends-height: 550px;
+}
+
+#svg-legends {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	width: 400px;
+	height: var(--svg-legends-height);
+	background-color: whitesmoke;
+}
+
+
+/*starting position of the dependancy tree graph from the top
+ current hardcoded to be more than the height of #svg-legends #*/
+.content {
+	margin-top: calc(var(--svg-legends-height) + 10px);
+}

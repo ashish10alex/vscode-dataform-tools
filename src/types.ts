@@ -25,7 +25,21 @@ export interface Assertion {
     dependencyTargets: Target[];
 }
 
-interface Target {
+export interface DependancyTreeMetadata {
+    _name: string;
+    _schema: string;
+    _schema_idx: number;
+    _deps?: string[];
+}
+
+
+export interface DeclarationsLegendMetadata {
+    _schema: string;
+    _schema_idx: number;
+}
+
+
+export interface Target {
     database: string;
     schema: string;
     name: string;
@@ -33,6 +47,8 @@ interface Target {
 
 export interface Declarations {
     target: Target;
+    canonicalTarget: Target;
+    dependencyTargets: Target[]; // WARN: This is not a valid object for Declarations adding this to avoid type errors when using abstractions
     fileName: string;
 }
 
@@ -45,7 +61,7 @@ interface ProjectConfig {
     defualtLocation: string;
 }
 
-export interface Operation{
+export interface Operation {
     target: Target;
     canonicalTarget: Target;
     queries: string[];

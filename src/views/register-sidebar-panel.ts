@@ -1,17 +1,9 @@
 import { CancellationToken, commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext, window, workspace } from "vscode";
 import * as vscode from 'vscode';
-import { getTableMetadata } from '../utils';
-import { dataformTags } from "../extension";
+import { getTableMetadata, getNonce } from '../utils';
+import { CenterPanel } from "./register-center-panel";
+// import { dataformTags } from "../extension";
 
-function getNonce() {
-    let text = "";
-    const possible =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
-}
 
 export async function registerWebViewProvider(context: ExtensionContext) {
     const provider = new SidebarWebViewProvider(context.extensionUri, context);
@@ -19,9 +11,8 @@ export async function registerWebViewProvider(context: ExtensionContext) {
 
     context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.getTableMetadataForSidePanel', async () => {
         let document = vscode.window.activeTextEditor?.document;
-        document = vscode.window.activeTextEditor?.document;
         if (document) {
-            let tableMetadata = await getTableMetadata(document);
+            let tableMetadata = await getTableMetadata(document, false);
             if (tableMetadata) {
                 provider.view?.webview.postMessage({ "tableMetadata": tableMetadata });
             }
@@ -65,14 +56,22 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
         }
 
         webviewView.webview.onDidReceiveMessage(async (data) => {
+            switch (data.type) {
+                case "load-dependancy-graph-button": {
+                    CenterPanel.getInstance(this.extensionContext.extensionUri, this.extensionContext);
+                    break;
+                }
+            }
         });
 
     }
 
     private _getHtmlForWebview(webview: Webview) {
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "reset.css"));
-        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "main.js"));
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
+
+        const scriptPanel = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "panel.js"));
+        const sidePanelScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "sidePanel.js"));
 
         const nonce = getNonce();
 
@@ -96,7 +95,9 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
               <br>
               <h3 id="loadingMessage"> Loading metadata ... </h3>
               <br>
-              <script nonce="${nonce}" src="${scriptUri}"></script>
+              <button type="button" class="load-dependancy-graph-button">Load dependancy graph</button><br>
+              <script nonce="${nonce}" src="${sidePanelScriptUri}"></script>
+              <script nonce="${nonce}" src="${scriptPanel}"></script>
            </body>
         </html>`;
     }

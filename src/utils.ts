@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery } from './types';
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
@@ -11,6 +11,49 @@ export let CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson;
 let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
+
+export function getNonce() {
+    let text = "";
+    const possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
+
+export function getWordUnderCursor(): string | undefined {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        const position = editor.selection.active;
+        const wordRange = editor.document.getWordRangeAtPosition(position);
+        if (wordRange) {
+            const word = editor.document.getText(wordRange);
+            return word;
+        }
+    }
+    return undefined;
+}
+
+export function getLineUnderCursor(): string | undefined {
+    let document = vscode.window.activeTextEditor?.document;
+
+    if (!document) {
+        vscode.window.showErrorMessage("VsCode document object was undefined");
+        return;
+    }
+
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage("No active editor");
+        return;
+    }
+
+    const position = editor.selection.active;
+    const line = editor.document.lineAt(position.line).text;
+    return line;
+
+}
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
@@ -22,7 +65,7 @@ export function executableIsAvailable(name: string) {
             const linkText = "Learn More";
             vscode.window.showWarningMessage(message, linkText).then(selection => {
                 if (selection === linkText) {
-                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
+                    vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
                 }
             });
             return;
@@ -405,23 +448,138 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
-    for (let i = 0; i < targets.length; i++) {
-        let targetName = targets[i].name;
-        if (dependencies.includes(targetName) === false) {
-            dependencies.push(targetName);
+
+    if (targets?.length) {
+        for (let i = 0; i < targets.length; i++) {
+            let targetName = targets[i].name;
+            if (dependencies.includes(targetName) === false) {
+                dependencies.push(targetName);
+            }
         }
     }
 
-    for (let i = 0; i < declarations.length; i++) {
-        let targetName = declarations[i].target.name;
-        if (dependencies.includes(targetName) === false) {
-            dependencies.push(targetName);
+    if (declarations?.length) {
+        for (let i = 0; i < declarations.length; i++) {
+            let targetName = declarations[i].target.name;
+            if (dependencies.includes(targetName) === false) {
+                dependencies.push(targetName);
+            }
         }
     }
     return dependencies;
 }
 
-export async function getTableMetadata(document: vscode.TextDocument) {
+function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict: any, schemaIdx: number) {
+    let declarationsLegendMetadata: DeclarationsLegendMetadata[] = [];
+    let addedSchemas: string[] = [];
+    let schemaIdxTracker = 0;
+
+    declarationsLegendMetadata.push({
+        "_schema": "dataform",
+        "_schema_idx": 0
+    });
+
+    structs.forEach((struct) => {
+        let tableName = `${struct.target.name}`;
+        let schema = `${struct.target.schema}`;
+
+        // NOTE: Only adding colors in web panel for tables declared in declarations
+        if (type === "declarations") {
+            if (schemaDict.hasOwnProperty(schema)) {
+                schemaIdx = schemaDict[schema];
+            } else {
+                schemaDict[schema] = schemaIdxTracker + 1;
+                schemaIdxTracker += 1;
+                schemaIdx = schemaIdxTracker;
+            }
+        }
+
+        let dependancyTargets = struct?.dependencyTargets;
+
+        let depedancyList: string[] = [];
+        if (dependancyTargets) {
+            dependancyTargets.forEach((dep: Target) => {
+                let dependancyTableName = `${dep.name}`;
+                depedancyList.push(dependancyTableName);
+            });
+        }
+
+        if (depedancyList.length === 0) {
+            dependancyTreeMetadata.push(
+                {
+                    "_name": tableName,
+                    "_schema": schema,
+                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
+                }
+            );
+        } else {
+            dependancyTreeMetadata.push(
+                {
+                    "_name": tableName,
+                    "_schema": schema,
+                    "_deps": depedancyList,
+                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
+                }
+            );
+        }
+
+        if (type === "declarations") {
+            if (!addedSchemas.includes(schema)) {
+                declarationsLegendMetadata.push({
+                    "_schema": schema,
+                    "_schema_idx": schemaIdx
+                });
+                addedSchemas.push(schema);
+            }
+        }
+    });
+    return { "dependancyTreeMetadata": dependancyTreeMetadata, "schemaIdx": schemaIdx, "declarationsLegendMetadata": declarationsLegendMetadata };
+}
+
+export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: DependancyTreeMetadata[], declarationsLegendMetadata: DeclarationsLegendMetadata[] } | undefined> {
+    let dependancyTreeMetadata: DependancyTreeMetadata[] = [];
+    let schemaDict = {}; // used to keep track of unique schema names ( gcp dataset name ) already seen in the compiled json declarations
+    let schemaIdx = 0;   // used to assign a unique index to each unique schema name for color coding dataset in the web panel
+
+    if (!CACHED_COMPILED_DATAFORM_JSON) {
+
+        let workspaceFolder = getWorkspaceFolder();
+        if (workspaceFolder === "") {
+            vscode.window.showErrorMessage('No active workspace');
+            return;
+        }
+
+        let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson) {
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        }
+    }
+
+    let output;
+    if (!CACHED_COMPILED_DATAFORM_JSON) {
+        return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
+    }
+    let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
+    let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
+    let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
+    let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
+
+    if (tables) {
+        output = populateDependancyTree("tables", tables, dependancyTreeMetadata, schemaDict, schemaIdx);
+    }
+    if (operations) {
+        output = populateDependancyTree("operations", operations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
+    }
+    if (assertions) {
+        output = populateDependancyTree("assertions", assertions, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
+    }
+    if (declarations) {
+        output = populateDependancyTree("declarations", declarations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
+    }
+    return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
+}
+
+export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
     let tableMetadata;
     var [filename, extension] = getFileNameFromDocument(document);
     if (filename === "" || extension === "") { return; }
@@ -429,12 +587,18 @@ export async function getTableMetadata(document: vscode.TextDocument) {
     let workspaceFolder = getWorkspaceFolder();
     if (workspaceFolder === "") { return; }
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+    let dataformCompiledJson;
+    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson){
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        }
+    } else {
+        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+    }
+
     if (dataformCompiledJson) {
-        // let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
-        // let dataformTags = await getDataformTags(dataformCompiledJson);
         tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
-        // COMPILED_DATAFORM_METADATA = tableMetadata;
     }
     return tableMetadata;
 }

@@ -60,10 +60,12 @@ function showTableMetadataInSideBar(tables) {
         }
     }
 
-    let tableTarget = tables[0].target;
+    let tableTarget = tables[0]?.target;
     let tablelinkWtName = document.createElement('a');
-    tablelinkWtName.href = getUrlToNavigateToTableInBigQuery(tableTarget.database, tableTarget.schema, tableTarget.name);
-    tablelinkWtName.textContent = `${tableTarget.database}.${tableTarget.schema}.${tableTarget.name}`;
+    if (tableTarget){
+        tablelinkWtName.href = getUrlToNavigateToTableInBigQuery(tableTarget.database, tableTarget.schema, tableTarget.name);
+        tablelinkWtName.textContent = `${tableTarget.database}.${tableTarget.schema}.${tableTarget.name}`;
+    }
 
 
     const targetsHeader = document.createElement('h3');
@@ -99,7 +101,9 @@ function showTableMetadataInSideBar(tables) {
 
 
     newDiv.appendChild(tableHeader);
-    newDiv.appendChild(tablelinkWtName);
+    if (tableTarget){
+        newDiv.appendChild(tablelinkWtName);
+    }
     newDiv.appendChild(tagHeader);
     newDiv.appendChild(tagsList);
     newDiv.appendChild(targetsHeader);
