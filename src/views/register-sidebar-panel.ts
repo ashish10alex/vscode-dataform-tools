@@ -12,7 +12,7 @@ export async function registerWebViewProvider(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.getTableMetadataForSidePanel', async () => {
         let document = vscode.window.activeTextEditor?.document;
         if (document) {
-            let tableMetadata = await getTableMetadata(document);
+            let tableMetadata = await getTableMetadata(document, false);
             if (tableMetadata) {
                 provider.view?.webview.postMessage({ "tableMetadata": tableMetadata });
             }

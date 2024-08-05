@@ -1,5 +1,5 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
-import { generateDependancyTreeMetadata, getWordUnderCursor } from "../utils";
+import { generateDependancyTreeMetadata, getWordUnderCursor, getTableMetadata } from "../utils";
 import { getNonce, getLineUnderCursor } from '../utils';
 import * as vscode from 'vscode';
 
@@ -100,6 +100,16 @@ export class CenterPanel {
     }
 
     private async updateView() {
+
+        // Use current table/view created by current file as root
+        let document = vscode.window.activeTextEditor?.document;
+        if (document) {
+            let tableMetadata = await getTableMetadata(document, false);
+            if (tableMetadata) {
+                treeRoot = tableMetadata?.tables[0]?.target?.name;
+            }
+        }
+
         const webview = this.webviewPanel.webview;
         let output = await generateDependancyTreeMetadata();
         if (!output) {

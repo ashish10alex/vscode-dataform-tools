@@ -579,7 +579,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
 }
 
-export async function getTableMetadata(document: vscode.TextDocument) {
+export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
     let tableMetadata;
     var [filename, extension] = getFileNameFromDocument(document);
     if (filename === "" || extension === "") { return; }
@@ -587,13 +587,18 @@ export async function getTableMetadata(document: vscode.TextDocument) {
     let workspaceFolder = getWorkspaceFolder();
     if (workspaceFolder === "") { return; }
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+    let dataformCompiledJson;
+    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson){
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        }
+    } else {
+        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+    }
+
     if (dataformCompiledJson) {
-        // let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
-        // let dataformTags = await getDataformTags(dataformCompiledJson);
-        // let dependancyTreeMetadata = await generateDependancyTreeMetada(dataformCompiledJson);
         tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
-        // COMPILED_DATAFORM_METADATA = tableMetadata;
     }
     return tableMetadata;
 }
