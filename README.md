@@ -3,6 +3,7 @@
 [![Version](https://img.shields.io/github/v/release/ashish10alex/vscode-dataform-tools)](https://github.com/ashish10alex/vscode-dataform-tools/releases)
 ![Linux](https://img.shields.io/badge/Linux-supported-success)
 ![macOS](https://img.shields.io/badge/macOS-supported-success)
+![Windows](https://img.shields.io/badge/windows-supported-success)
 
 ⚠️ ***This is not an officially supported Google product.***
 
@@ -12,9 +13,10 @@
 
 | Feature | Description |
 |---------|-------------|
-| [Auto-completion](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
+| [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Go to definition](#definition) | Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
+| [Auto-completion](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
 | [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
 | [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
@@ -50,6 +52,10 @@
 
 ## Features
 
+### <a id="depgraph">Dependency graph</a>
+![depgraph](/media/images/dependancy_tree.png)
+
+
 ### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
 Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
@@ -74,6 +80,10 @@ Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sq
 ### <a id="compilation">Compilation & Dry run stats</a>
 * Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file. Data processed by query on bottom right on successful dry run
 ![compilation](media/images/compilation.gif)
+
+### <a id="formatting">Formatting using sqlfluff</a>
+![formatting](media/images/formatting.gif)
+
 
 
 ### <a id="filetagruns">Run file/tag with dependencies/dependents</a>
