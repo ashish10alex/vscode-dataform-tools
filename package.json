@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.0.27",
+    "version": "0.0.28",
     "engines": {
         "vscode": "^1.89.0"
     },
@@ -195,10 +195,10 @@
             ],
             "editor/context": [
                 {
-                  "command": "vscode-dataform-tools.showDependentsInGraph",
-                   "when": "(resourceExtname == .sqlx || resourceExtname == .js) && editorTextFocus"
+                    "command": "vscode-dataform-tools.showDependentsInGraph",
+                    "when": "(resourceExtname == .sqlx || resourceExtname == .js) && editorTextFocus"
                 }
-              ]
+            ]
         },
         "configuration": {
             "title": "Dataform",
