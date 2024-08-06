@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 
 //NOTE: global variables to keep track of treeRoot and direction incase user switches active editor and intends to come back to dependancy tree the web panel
 let treeRoot: string;
+let treeRootFromRef: string | undefined;
 let direction: string;
 
 export function registerCenterPanel(context: ExtensionContext) {
@@ -24,7 +25,7 @@ export function registerCenterPanel(context: ExtensionContext) {
                 return;
             }
 
-            treeRoot = wordUnderCursor;
+            treeRootFromRef = wordUnderCursor;
             direction = "downstream";
 
             CenterPanel.getInstance(context.extensionUri, context);
@@ -103,12 +104,17 @@ export class CenterPanel {
 
         // Use current table/view created by current file as root
         let document = vscode.window.activeTextEditor?.document;
-        if (document) {
+        if (treeRootFromRef){
+            treeRoot = treeRootFromRef;
+        }
+
+        if (document && !treeRootFromRef) {
             let tableMetadata = await getTableMetadata(document, false);
             if (tableMetadata) {
                 treeRoot = tableMetadata?.tables[0]?.target?.name;
             }
         }
+        treeRootFromRef = undefined;
 
         const webview = this.webviewPanel.webview;
         let output = await generateDependancyTreeMetadata();
@@ -120,6 +126,7 @@ export class CenterPanel {
 
         // TODO: check if treeRoot still exsists in dataformTreeMetadata
         await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
+
         if (dependancyTreeMetadata.length === 0) {
             this.webviewPanel.webview.html = this._getHtmlForWebviewNoTreeMetadata();
         } else {
