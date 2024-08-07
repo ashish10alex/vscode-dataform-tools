@@ -1,5 +1,10 @@
 const vscode = acquireVsCodeApi();
 
+function toggleNavbar() {
+    var navbar = document.querySelector('.navbar');
+    navbar.classList.toggle('collapsed');
+}
+
 const isDarkTheme = document.body.classList.contains('vscode-dark');
 const isLightTheme = document.body.classList.contains('vscode-light');
 
@@ -108,7 +113,9 @@ window.addEventListener('message', event => {
 
         let uniqueDatasets = event?.data?.declarationsLegendMetadata;
 
-         let heightOfDatasetsLegend = 40 * (uniqueDatasets.length + 1); //NOTE: The number 40 is approximate multiple that was descided based on observation of how much space a single dataset takes
+         let spaceOccupiedByNavButton = 50;
+         let approxSpaceForSingleDatasetInLegend = 40;
+         let heightOfDatasetsLegend = approxSpaceForSingleDatasetInLegend * (uniqueDatasets.length + 1) + spaceOccupiedByNavButton; 
          updateSvgLegendsHeight(heightOfDatasetsLegend);
 
         createDatasetSvgLegend(uniqueDatasets, sharedOptions.circleSize, sharedOptions.circleStrokeWidth, schema_idx_colors);

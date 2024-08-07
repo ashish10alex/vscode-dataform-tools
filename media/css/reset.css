@@ -41,18 +41,40 @@ img {
     --svg-legends-height: 550px;
 }
 
-#svg-legends {
-	position: fixed;
-	top: 20px;
-	right: 20px;
-	width: 400px;
-	height: var(--svg-legends-height);
-	background-color: whitesmoke;
-}
-
-
 /*starting position of the dependancy tree graph from the top
  current hardcoded to be more than the height of #svg-legends #*/
 .content {
-	margin-top: calc(var(--svg-legends-height) + 10px);
+	margin-top: calc(var(--svg-legends-height) + 5px);
 }
+
+.navbar {
+	position: fixed;
+	right: 0;
+	top: 0;
+	height:  var(--svg-legends-height);
+	background-color:whitesmoke;
+	overflow-x: hidden;
+	transition: 0.5s;
+  }
+  
+  .navbar-content {
+	padding: 20px;
+	width: 450px;
+  }
+  
+  .toggle-btn {
+	font-size: 20px;
+	cursor: pointer;
+	background-color: #111;
+	color: whitesmoke;
+	border: none;
+	padding: 10px 15px;
+  }
+  
+  .collapsed {
+	width: 50px;
+  }
+  
+  .collapsed .navbar-content {
+	display: none;
+  }
