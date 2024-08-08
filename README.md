@@ -66,10 +66,10 @@ please see [FAQ section](#faq), if you are still stuck, please [raise an issue h
 Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
 ![auto-completion](media/images/dependencies_autocompletion.gif)
 
-* declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
+Declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
 ![auto-completion](media/images/sources_autocompletion.gif)
 
-* Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
+Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
 ![auto-completion](media/images/tags_autocompletion.gif)
 
 
@@ -80,7 +80,7 @@ Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sq
 
 
 ### <a id="compilation">Compilation & Dry run stats</a>
-* Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file. Data processed by query on bottom right on successful dry run
+Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your sqlx file. Data processed by query on bottom right on successful dry run
 ![compilation](media/images/compilation.gif)
 
 ### <a id="formatting">Formatting using sqlfluff</a>
@@ -119,7 +119,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
    * In case you need to install a specific dataform cli version by running `npm i -g @dataform/cli@2.9.0`. Make sure you verify the version by running the `dataform --version`
    * In case the error is not due to all the above reasons it is likely that you have a compilation error in your pipeline
 
-3. [Dataform encountered an error: Missing credentials JSON file; not found at path <your_project_path>/.df-credentials.json]
+3. [Dataform encountered an error: Missing credentials JSON file; not found at path <your_project_path>/.df-credentials.json]()
    * Run `dataform init-creds` from the from the root of your dataform project in your terminal
    * You will be promted to pick the location and type of authentication `json/adc`. Choosing adc will be use your default gcp credentials that you had setup using `gcloud`
 
