@@ -54,7 +54,7 @@ img {
 	height:  var(--svg-legends-height);
 	background-color:whitesmoke;
 	overflow-x: hidden;
-	transition: 0.5s;
+	/* transition: 0.1s; */
   }
   
   .navbar-content {

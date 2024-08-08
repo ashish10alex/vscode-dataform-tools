@@ -111,7 +111,8 @@ export class CenterPanel {
         if (document && !treeRootFromRef) {
             let tableMetadata = await getTableMetadata(document, false);
             if (tableMetadata) {
-                treeRoot = tableMetadata?.tables[0]?.target?.name;
+                let treeRootTarget = tableMetadata?.tables[0]?.target;
+                treeRoot = `${treeRootTarget?.database}.${treeRootTarget?.schema}.${treeRootTarget?.name}`;
             }
         }
         treeRootFromRef = undefined;

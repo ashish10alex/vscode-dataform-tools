@@ -480,7 +480,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
     });
 
     structs.forEach((struct) => {
-        let tableName = `${struct.target.name}`;
+        let tableName = `${struct.target.database}.${struct.target.schema}.${struct.target.name}`;
         let schema = `${struct.target.schema}`;
 
         // NOTE: Only adding colors in web panel for tables declared in declarations
@@ -499,7 +499,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
         let depedancyList: string[] = [];
         if (dependancyTargets) {
             dependancyTargets.forEach((dep: Target) => {
-                let dependancyTableName = `${dep.name}`;
+                let dependancyTableName = `${dep.database}.${dep.schema}.${dep.name}`;
                 depedancyList.push(dependancyTableName);
             });
         }

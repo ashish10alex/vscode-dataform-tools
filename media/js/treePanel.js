@@ -59,6 +59,18 @@ if (isDarkTheme) {
     textStyleColor = "black";
 }
 
+/**
+    take an entity with a _name in the format of "project_id.database.table" and return just "table" to be displayed without modifying the _name property itself.
+    this facilitates the display of the entity name in the tree without cluttering it with the project_id and database.
+    @param {Object} nodeData - The node data Object
+    @returns {String} - The modified entity name
+*/
+const modifyEntityName = nodeData => {
+    const { _name } = nodeData;
+    const i = _name.lastIndexOf('.');
+    return _name.slice(i + 1);
+};
+
 const sharedOptions = ({
     circleStrokeWidth: 5,
     circleSize: 10,
@@ -70,7 +82,8 @@ const sharedOptions = ({
     animationDuration: 0,
     marginLeft: 450,
     marginRight: 600,
-    textStyleColor: textStyleColor
+    textStyleColor: textStyleColor,
+    modifyEntityName: modifyEntityName,
     // circleStrokeColor: "yellow",
     // circleStrokeColor: "steelblue",
     // parentNodeTextOrientation: "right",
@@ -115,7 +128,7 @@ window.addEventListener('message', event => {
 
          let spaceOccupiedByNavButton = 50;
          let approxSpaceForSingleDatasetInLegend = 40;
-         let heightOfDatasetsLegend = approxSpaceForSingleDatasetInLegend * (uniqueDatasets.length + 1) + spaceOccupiedByNavButton; 
+         let heightOfDatasetsLegend = approxSpaceForSingleDatasetInLegend * (uniqueDatasets.length + 1) + spaceOccupiedByNavButton;
          updateSvgLegendsHeight(heightOfDatasetsLegend);
 
         createDatasetSvgLegend(uniqueDatasets, sharedOptions.circleSize, sharedOptions.circleStrokeWidth, schema_idx_colors);
