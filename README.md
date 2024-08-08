@@ -128,9 +128,6 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
    ![disable_save_on_compile](/media/images/disable_save_on_compile.png)
 
 
-## Extension Settings
-
-
 ## Known Issues
 
 - [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}`
