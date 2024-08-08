@@ -24,6 +24,7 @@ let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = 
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 let dataformHoverProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
+let formatCurrentFileDisposable: vscode.Disposable | null = null;
 
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { registerCenterPanel } from './views/register-center-panel';
@@ -123,7 +124,7 @@ export async function activate(context: vscode.ExtensionContext) {
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
-        let formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
+        formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
             executableIsAvailable("formatdataform");
             let document = vscode.window.activeTextEditor?.document;
             document?.save();
@@ -312,6 +313,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (_dataformCodeActionProviderDisposable) {
                 _dataformCodeActionProviderDisposable.dispose();
+            }
+            if (formatCurrentFileDisposable){
+                formatCurrentFileDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
         } else {
