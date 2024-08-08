@@ -123,11 +123,17 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
    * Run `dataform init-creds` from the from the root of your dataform project in your terminal
    * You will be promted to pick the location and type of authentication `json/adc`. Choosing adc will be use your default gcp credentials that you had setup using `gcloud`
 
+3. [I do not want to see compiled query each time I save it]()
+   * Open vscode settings and search for Dataform and uncheck the following setting 
+   ![disable_save_on_compile](/media/images/disable_save_on_compile.png)
+
+
 ## Extension Settings
 
 
 ## Known Issues
 
+- [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}`
 - [ ] sync feature flickers when user tries to scroll a non-active editor. Fixes when user selects the active editor by clicking on it
 
 ## TODO
