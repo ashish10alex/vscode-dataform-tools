@@ -25,6 +25,7 @@ export function registerCenterPanel(context: ExtensionContext) {
                 return;
             }
 
+            //FIX: This now needs to be `project.database.table`
             treeRootFromRef = wordUnderCursor;
             direction = "downstream";
 

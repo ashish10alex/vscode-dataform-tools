@@ -445,24 +445,46 @@ export async function runCompilation(workspaceFolder: string) {
 }
 
 export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
+
+    let sourceAutoCompletionPreference = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sourceAutoCompletionPreference');
+
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
 
-    if (targets?.length) {
-        for (let i = 0; i < targets.length; i++) {
-            let targetName = targets[i].name;
-            if (dependencies.includes(targetName) === false) {
-                dependencies.push(targetName);
+    if (sourceAutoCompletionPreference === "${ref('table_name')}"){
+        if (targets?.length) {
+            for (let i = 0; i < targets.length; i++) {
+                let targetName = targets[i].name;
+                if (dependencies.includes(targetName) === false) {
+                    dependencies.push(targetName);
+                }
             }
         }
-    }
 
-    if (declarations?.length) {
-        for (let i = 0; i < declarations.length; i++) {
-            let targetName = declarations[i].target.name;
-            if (dependencies.includes(targetName) === false) {
-                dependencies.push(targetName);
+        if (declarations?.length) {
+            for (let i = 0; i < declarations.length; i++) {
+                let targetName = declarations[i].target.name;
+                if (dependencies.includes(targetName) === false) {
+                    dependencies.push(targetName);
+                }
+            }
+        }
+    } else {
+        if (targets?.length) {
+            for (let i = 0; i < targets.length; i++) {
+                let targetName = `${targets[i].schema}.${targets[i].name}`;
+                if (dependencies.includes(targetName) === false) {
+                    dependencies.push(targetName);
+                }
+            }
+        }
+        if (declarations?.length) {
+            for (let i = 0; i < declarations.length; i++) {
+                let targetName = `${declarations[i].target.schema}.${declarations[i].target.name}`;
+                if (dependencies.includes(targetName) === false) {
+                    dependencies.push(targetName);
+                }
             }
         }
     }
