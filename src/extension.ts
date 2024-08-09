@@ -15,7 +15,6 @@ let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
 let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
 let runCurrentFileCommandDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDepsCommandDisposable: vscode.Disposable | null = null;
-let compileWtDryRunDisposable: vscode.Disposable | null = null;
 let showCompiledQueryWtDryRunDisposable: vscode.Disposable | null = null;
 let runTagDisposable: vscode.Disposable | null = null;
 let runTagWtDepsDisposable: vscode.Disposable | null = null;
@@ -164,14 +163,6 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(onSaveDisposable);
 
-        compileWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.compileWtDryRun', async () => {
-            let showCompiledQueryInVerticalSplitOnSave = undefined;
-            let document = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        });
-
-        context.subscriptions.push(compileWtDryRunDisposable);
-
         showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
@@ -283,9 +274,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runCurrentFileWtDepsCommandDisposable !== null) {
                 runCurrentFileWtDepsCommandDisposable.dispose();
-            }
-            if (compileWtDryRunDisposable !== null) {
-                compileWtDryRunDisposable.dispose();
             }
             if (showCompiledQueryWtDryRunDisposable !== null) {
                 showCompiledQueryWtDryRunDisposable.dispose();

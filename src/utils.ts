@@ -39,7 +39,6 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
         return undefined;
     }
     const position = editor.selection.active;
-
     const wordRange = editor.document.getWordRangeAtPosition(position);
     if (!wordRange){
         return undefined;
@@ -49,6 +48,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     let workspaceFolder = getWorkspaceFolder();
     let dataformCompiledJson: DataformCompiledJson | undefined;
+
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
         dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -139,7 +139,6 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string[]
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-        // vscode.window.showWarningMessage(`vscode-dataform-tools extension currently only supports ${supportedExtensions} files`);
         return ["", ""];
     }
     filename = basenameSplit[0];

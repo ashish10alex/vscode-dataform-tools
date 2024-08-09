@@ -28,7 +28,6 @@
         "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
         "onCommand:extension.runCurrentFileWtDownstreamDeps",
-        "onCommand:extension.compileWtDryRun",
         "onCommand:extension.showCompiledQueryWtDryRun",
         "onCommand:extension.runTag",
         "onCommand:extension.runTagWtDeps",
@@ -118,13 +117,6 @@
                 "group": "navigation@0"
             },
             {
-                "command": "vscode-dataform-tools.compileWtDryRun",
-                "category": "Dataform",
-                "title": "Compile followed by dry run",
-                "icon": "$(sync)",
-                "group": "navigation@1"
-            },
-            {
                 "command": "vscode-dataform-tools.runCurrentFileWtDeps",
                 "category": "Dataform",
                 "title": "Run current file with dependencies",
@@ -167,12 +159,6 @@
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.runCurrentFile",
                     "group": "navigation"
-                },
-                {
-                    "command": "vscode-dataform-tools.compileWtDryRun",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
-                    "alt": "vscode-dataform-tools.compileWtDryRun",
-                    "group": "navigation@1"
                 },
                 {
                     "command": "vscode-dataform-tools.runCurrentFileWtDeps",
