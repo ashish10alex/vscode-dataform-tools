@@ -684,7 +684,7 @@ export async function getTableMetadata(document: vscode.TextDocument, freshCompi
 
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
-    diagnosticCollection.clear();
+    diagnosticCollection.clear(); //TODO: this might be only needed once the dataform compiles
 
     var [filename, extension] = getFileNameFromDocument(document);
     if (filename === "" || extension === "") { return; }
@@ -692,56 +692,57 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     let workspaceFolder = getWorkspaceFolder();
     if (workspaceFolder === "") { return; }
 
-    let configLineOffset = 0;
+    let configLineOffset = 0; //TODO: check if this is constant ?
 
+    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-    if (dataformCompiledJson) {
-        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+    if (!dataformCompiledJson){
+        return undefined;
+    }
 
-        let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
-        let dataformTags = await getDataformTags(dataformCompiledJson);
-        let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
 
-        // Currently inline diagnostics are only supported for .sqlx files
-        if (extension === "sqlx") {
-            let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms
-            let configBlockStart = configBlockRange.startLine || 0;
-            let configBlockEnd = configBlockRange.endLine || 0;
-            let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
+    // all 3 of these togather take ~0.37ms (dataform wt 285 nodes)
+    let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
+    let dataformTags = await getDataformTags(dataformCompiledJson);
+    let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
 
-            if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
-                configLineOffset = configBlockOffset - tableQueryOffset;
-            } else if (tableMetadata.tables[0].type === "assertion") {
-                configLineOffset = configBlockOffset - assertionQueryOffset;
-            }
+    //NOTE: Currently inline diagnostics are only supported for .sqlx files
+    if (extension === "sqlx") {
+        let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms (dataform wt 285 nodes)
+        let configBlockStart = configBlockRange.startLine || 0;
+        let configBlockEnd = configBlockRange.endLine || 0;
+        let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
+
+        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
+            configLineOffset = configBlockOffset - tableQueryOffset;
+        } else if (tableMetadata.tables[0].type === "assertion") {
+            configLineOffset = configBlockOffset - assertionQueryOffset;
         }
+    }
 
-        if (tableMetadata.fullQuery === "") {
-            vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
-            return;
-        }
-
-        if (showCompiledQueryInVerticalSplitOnSave !== true) {
-            showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        }
-        if (showCompiledQueryInVerticalSplitOnSave) {
-            writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath);
-        }
-
-        let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-        if (dryRunResult.error.hasError) {
-            setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
-            return;
-        }
-        let combinedTableIds = "";
-        tableMetadata.tables.forEach((table) => {
-            let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
-            combinedTableIds += targetTableId;
-        });
-        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
-        return [dataformTags, declarationsAndTargets];
-    } else {
+    if (tableMetadata.fullQuery === "") {
+        vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
         return;
     }
+
+    if (showCompiledQueryInVerticalSplitOnSave !== true) {
+        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+    }
+    if (showCompiledQueryInVerticalSplitOnSave) {
+        writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath);
+    }
+
+    let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
+    if (dryRunResult.error.hasError) {
+        setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
+        return;
+    }
+    let combinedTableIds = "";
+    tableMetadata.tables.forEach((table) => {
+        let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
+        combinedTableIds += targetTableId;
+    });
+    vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
+    return [dataformTags, declarationsAndTargets];
 }
