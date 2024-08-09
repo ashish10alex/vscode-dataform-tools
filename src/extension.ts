@@ -46,12 +46,13 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     let workspaceFolder = getWorkspaceFolder();
-    //TODO: Load tags and sources on extension activation
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
-    if (dataformCompiledJson){
-        declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
-        dataformTags = await getDataformTags(dataformCompiledJson);
+    if (workspaceFolder !== ""){
+        let dataformCompiledJson = await runCompilation(workspaceFolder);
+        if (dataformCompiledJson){
+            declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
+            dataformTags = await getDataformTags(dataformCompiledJson);
+        }
     }
 
     let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');

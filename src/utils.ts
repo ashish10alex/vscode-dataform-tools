@@ -161,7 +161,7 @@ export function isDataformWorkspace(workspacePath: string) {
     const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
     let fileExists = false;
 
-    for (let i = 0; dataformSignatureFiles.length; i++) {
+    for (let i = 0; i < dataformSignatureFiles.length; i++) {
         const filePath = path.join(workspacePath, dataformSignatureFiles[i]);
         let fileExists = fs.existsSync(filePath);
         if (fileExists) {
