@@ -710,10 +710,12 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
 
-    // all 3 of these togather take ~0.37ms (dataform wt 285 nodes)
-    let declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
-    let dataformTags = await getDataformTags(dataformCompiledJson);
-    let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+    // all 3 of these togather take less than 0.35ms (dataform wt 285 nodes)
+    let [declarationsAndTargets, dataformTags, tableMetadata] = await Promise.all([
+        getDependenciesAutoCompletionItems(dataformCompiledJson),
+        getDataformTags(dataformCompiledJson),
+        getMetadataForCurrentFile(filename, dataformCompiledJson)
+    ]);
 
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
