@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.0.29",
+    "version": "0.0.30",
     "engines": {
         "vscode": "^1.89.0"
     },
@@ -215,7 +215,10 @@
                 },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
-                    "enum": ["${ref('table_name')}", "${ref('dataset_name', 'table_name')}"],
+                    "enum": [
+                        "${ref('table_name')}",
+                        "${ref('dataset_name', 'table_name')}"
+                    ],
                     "default": "${ref('table_name')}",
                     "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name')}`"
                 }
