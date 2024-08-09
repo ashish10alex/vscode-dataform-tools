@@ -22,14 +22,69 @@ export function getNonce() {
     return text;
 }
 
-export function getWordUnderCursor(): string | undefined {
+function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | undefined{
+    if (struct){
+        for (let i = 0; i < struct.length; i++) {
+            let declarationName = struct[i].target.name;
+            if (searchTerm === declarationName) {
+                return `${struct[i].target.database}.${struct[i].target.schema}.${struct[i].target.name}`;
+            }
+        }
+    }
+}
+
+export async function getTreeRootFromRef(): Promise<string | undefined> {
     const editor = vscode.window.activeTextEditor;
     if (editor) {
         const position = editor.selection.active;
         const wordRange = editor.document.getWordRangeAtPosition(position);
         if (wordRange) {
-            const word = editor.document.getText(wordRange);
-            return word;
+            let searchTerm = editor.document.getText(wordRange);
+
+            let workspaceFolder = getWorkspaceFolder();
+            let dataformCompiledJson: DataformCompiledJson | undefined;
+            if (!CACHED_COMPILED_DATAFORM_JSON) {
+                vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
+                dataformCompiledJson = await runCompilation(workspaceFolder);
+                if (dataformCompiledJson){
+                    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+                }
+            } else {
+                dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+            }
+
+            let declarations = dataformCompiledJson?.declarations;
+            let tables = dataformCompiledJson?.tables;
+            let operations = dataformCompiledJson?.operations;
+            let assertions = dataformCompiledJson?.assertions;
+            let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
+
+            let treeRoot: string | undefined;
+            if (declarations) {
+                treeRoot = getTreeRootFromWordInStruct(declarations, searchTerm);
+            }
+            if (treeRoot){return treeRoot;};
+
+            if (tablePrefix) {
+                searchTerm = tablePrefix + "_" + searchTerm;
+            }
+
+            if (tables) {
+                treeRoot = getTreeRootFromWordInStruct(tables, searchTerm);
+            }
+            if (treeRoot){return treeRoot;};
+
+            if (operations) {
+                treeRoot = getTreeRootFromWordInStruct(operations, searchTerm);
+            }
+            if (treeRoot){return treeRoot;};
+
+            if (assertions) {
+                treeRoot = getTreeRootFromWordInStruct(assertions, searchTerm);
+            }
+            if (treeRoot){return treeRoot;};
+
+            return undefined;
         }
     }
     return undefined;

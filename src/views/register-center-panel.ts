@@ -1,5 +1,5 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
-import { generateDependancyTreeMetadata, getWordUnderCursor, getTableMetadata } from "../utils";
+import { generateDependancyTreeMetadata, getTreeRootFromRef, getTableMetadata } from "../utils";
 import { getNonce, getLineUnderCursor } from '../utils';
 import * as vscode from 'vscode';
 
@@ -10,23 +10,24 @@ let direction: string;
 
 export function registerCenterPanel(context: ExtensionContext) {
     context.subscriptions.push(
-        commands.registerCommand('vscode-dataform-tools.showDependentsInGraph', () => {
+        commands.registerCommand('vscode-dataform-tools.showDependentsInGraph', async() => {
 
             let line = getLineUnderCursor();
 
             if (!line || line.indexOf("${ref(") === -1) {
+                vscode.window.showWarningMessage("Could not determine tree root || Expects reference to be in the format ${ref('table_name')}");
                 return;
             }
 
-            let wordUnderCursor = getWordUnderCursor();
+            let _treeRootFromRef = await getTreeRootFromRef();
 
-            if (!wordUnderCursor) {
-                vscode.window.showErrorMessage("Could not determine word under the crusor");
+            if (!_treeRootFromRef) {
+                vscode.window.showErrorMessage("Could not determine tree root || Expects reference to be in the format ${ref('table_name')}");
                 return;
             }
 
             //FIX: This now needs to be `project.database.table`
-            treeRootFromRef = wordUnderCursor;
+            treeRootFromRef = _treeRootFromRef;
             direction = "downstream";
 
             CenterPanel.getInstance(context.extensionUri, context);
