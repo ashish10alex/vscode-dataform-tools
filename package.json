@@ -215,9 +215,9 @@
                 },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
-                    "enum": ["${ref('table_name')}", "${ref('dataset_name', 'table_name)}"],
-                    "default": "${ref('table_name)}",
-                    "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name)}`"
+                    "enum": ["${ref('table_name')}", "${ref('dataset_name', 'table_name')}"],
+                    "default": "${ref('table_name')}",
+                    "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name')}`"
                 }
             }
         }

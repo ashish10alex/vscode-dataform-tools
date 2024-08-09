@@ -127,6 +127,10 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
    * Open vscode settings and search for Dataform and uncheck the following setting 
    ![disable_save_on_compile](/media/images/disable_save_on_compile.png)
 
+3. [I want the autocompletion to be of the format  `${ref('dataset_name', 'table_name)}` instead of `${ref('table_name')}` ]()
+   * Open vscode settings and search for Dataform and select the prefered autocompletion format
+   ![disable_save_on_compile](/media/images/preferred_autocompletion.png)
+
 
 ## Known Issues
 
