@@ -35,10 +35,17 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
                     source = `{ref("${source}")}`;
                     sourceCompletionItems.push(sourceCompletionItem(source));
                 });
-            } else {
+            } else if (sourceAutoCompletionPreference === "${ref('dataset_name', 'table_name')}") {
                 declarationsAndTargets.forEach((source: string) => {
                     let [database, table] = source.split('.');
                     source = `{ref("${database}", "${table}")}`;
+                    sourceCompletionItems.push(sourceCompletionItem(source));
+                });
+            }
+            else {
+                declarationsAndTargets.forEach((source: string) => {
+                    let [database, table] = source.split('.');
+                    source = `{ref({schema: "${database}", name: "${table}"})}`;
                     sourceCompletionItems.push(sourceCompletionItem(source));
                 });
             }
