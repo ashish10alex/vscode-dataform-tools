@@ -47,6 +47,9 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     let searchTerm = editor.document.getText(wordRange);
 
     let workspaceFolder = getWorkspaceFolder();
+    if(!workspaceFolder){
+        return;
+    }
     let dataformCompiledJson: DataformCompiledJson | undefined;
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
@@ -145,16 +148,19 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string[]
     return [filename, extension];
 }
 
-export function getWorkspaceFolder(): string {
+export function getWorkspaceFolder(): string | undefined {
+    //TODO: we are taking the first workspace from the active workspaces.
+    //  Is it possible to handle cases where there are multiple workspaces in the same window ?
     let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-    if (workspaceFolder !== undefined) {
-        if (isDataformWorkspace(workspaceFolder) === false) {
-            vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
-            return "";
-        }
+    if (workspaceFolder === undefined) {
+        vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
+        return undefined;
+    }
+    if (isDataformWorkspace(workspaceFolder)) {
         return workspaceFolder;
     }
-    return "";
+    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
+    return undefined;
 }
 
 export function isDataformWorkspace(workspacePath: string) {
@@ -295,6 +301,10 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     }
     var [filename, extension] = getFileNameFromDocument(document);
     let workspaceFolder = getWorkspaceFolder();
+
+    if (!workspaceFolder){
+        return;
+    }
 
     let tableMetadata;
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -622,8 +632,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     if (!CACHED_COMPILED_DATAFORM_JSON) {
 
         let workspaceFolder = getWorkspaceFolder();
-        if (workspaceFolder === "") {
-            vscode.window.showErrorMessage('No active workspace');
+        if (!workspaceFolder) {
             return;
         }
 
@@ -663,7 +672,7 @@ export async function getTableMetadata(document: vscode.TextDocument, freshCompi
     if (filename === "" || extension === "") { return; }
 
     let workspaceFolder = getWorkspaceFolder();
-    if (workspaceFolder === "") { return; }
+    if (!workspaceFolder) { return; }
 
     let dataformCompiledJson;
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
@@ -689,7 +698,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     if (filename === "" || extension === "") { return; }
 
     let workspaceFolder = getWorkspaceFolder();
-    if (workspaceFolder === "") { return; }
+    if (!workspaceFolder) { return; }
 
     let configLineOffset = 0; //TODO: check if this is constant ?
 

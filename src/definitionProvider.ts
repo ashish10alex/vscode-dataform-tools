@@ -35,6 +35,7 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
         let sourcesJsUri: vscode.Uri = document.uri;
 
         let workspaceFolder = getWorkspaceFolder();
+        if (!workspaceFolder){return;}
         let dataformCompiledJson: DataformCompiledJson | undefined;
         if (!CACHED_COMPILED_DATAFORM_JSON) {
             vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
@@ -84,7 +85,6 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
         if (tablePrefix) {
             searchTerm = tablePrefix + "_" + searchTerm;
         }
-
 
         if (tables) {
             location = getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);

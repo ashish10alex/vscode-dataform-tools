@@ -43,6 +43,8 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     let hoverMeta: vscode.Hover | undefined;
 
     let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder){return;}
+
     let dataformCompiledJson: DataformCompiledJson | undefined;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
       vscode.window.showWarningMessage(

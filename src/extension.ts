@@ -38,7 +38,6 @@ import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, 
 import {  getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
 
 // This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
 
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -47,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let workspaceFolder = getWorkspaceFolder();
 
-    if (workspaceFolder !== ""){
+    if (workspaceFolder){
         let dataformCompiledJson = await runCompilation(workspaceFolder);
         if (dataformCompiledJson){
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
@@ -186,6 +185,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
+                if (!workspaceFolder){return;}
                 let runTagsCmd = getRunTagsCommand(workspaceFolder, selection);
 
                 runCommandInTerminal(runTagsCmd);
@@ -207,6 +207,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
+                if (!workspaceFolder){return;}
                 let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection);
 
                 runCommandInTerminal(runTagsWtDepsCommand);
@@ -228,6 +229,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
+                if (!workspaceFolder){return;}
                 let runTagsWtDownstreamDepsCommand = getRunTagsWtDownstreamDepsCommand(workspaceFolder, selection);
 
                 runCommandInTerminal(runTagsWtDownstreamDepsCommand);
