@@ -21,7 +21,6 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
-        "workspaceContains:**/*.js",
         "onCommand:extension.enable",
         "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
