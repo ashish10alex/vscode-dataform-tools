@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.34](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.33...v0.0.34) (2024-08-10)
+
+
+### Bug Fixes
+
+* for windows if path to executable is specified `where.exe` is not able to verify that ([f6f77d7](https://github.com/ashish10alex/vscode-dataform-tools/commit/f6f77d7a46542b1295f6bec65187297261d3c93d))
+
 ### [0.0.33](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.32...v0.0.33) (2024-08-10)
 
 
