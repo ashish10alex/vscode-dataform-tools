@@ -61,6 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
     if (workspaceFolder) {
         let dataformCompiledJson = await runCompilation(workspaceFolder);
         if (dataformCompiledJson) {
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
             dataformTags = await getDataformTags(dataformCompiledJson);
         }
