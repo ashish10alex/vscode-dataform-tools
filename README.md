@@ -50,8 +50,8 @@
 
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
 
-#### Trouble installing !
-please see [FAQ section](#faq), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
+> [!NOTE]
+Trouble installing ? Please see [FAQ section](#faq), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 
 ## Features
 
