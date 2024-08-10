@@ -8,7 +8,7 @@
 ⚠️ ***This is not an officially supported Google product.***
 
 
-[Dataform vscode extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) which supports
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform) with following features
 
 
 | Feature | Description |
