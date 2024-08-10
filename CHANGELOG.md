@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.35](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.34...v0.0.35) (2024-08-10)
+
+
+### Bug Fixes
+
+* on initial extension activation if extension path is specified donot verify that with `where` / `which` command as we have already checked the filepath before ([c4f1db9](https://github.com/ashish10alex/vscode-dataform-tools/commit/c4f1db94631d2a9b2956493aa466591c9ab0adf6))
+
 ### [0.0.34](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.33...v0.0.34) (2024-08-10)
 
 
