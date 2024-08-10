@@ -8,7 +8,7 @@ let isEnabled = true;
 export let declarationsAndTargets: string[] = [];
 export let dataformTags: string[] = [];
 
-import {DataformCompiledJson} from './types';
+import { DataformCompiledJson } from './types';
 
 let onSaveDisposable: vscode.Disposable | null = null;
 let fixErrorCommandDisposable: vscode.Disposable | null = null;
@@ -34,10 +34,10 @@ import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath } from './utils';
-import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags} from './utils';
+import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import {  getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
+import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -46,9 +46,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
-        if (executable === "formatdataform"){
+        if (executable === "formatdataform") {
             let formatDataformCustomPath = getFormatDataformExecutablePath();
-            if (formatDataformCustomPath){
+            if (formatDataformCustomPath) {
                 executable = formatDataformCustomPath;
             }
         }
@@ -57,9 +57,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let workspaceFolder = getWorkspaceFolder();
 
-    if (workspaceFolder){
+    if (workspaceFolder) {
         let dataformCompiledJson = await runCompilation(workspaceFolder);
-        if (dataformCompiledJson){
+        if (dataformCompiledJson) {
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
             dataformTags = await getDataformTags(dataformCompiledJson);
         }
@@ -137,10 +137,10 @@ export async function activate(context: vscode.ExtensionContext) {
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
             let executable = "formatdataform";
             let formatDataformCustomPath = getFormatDataformExecutablePath();
-            if (formatDataformCustomPath){
+            if (formatDataformCustomPath) {
                 executable = formatDataformCustomPath;
             }
-            executableIsAvailable(executable);
+            if (executable === "formatdataform") { executableIsAvailable(executable) };
             let document = vscode.window.activeTextEditor?.document;
             document?.save();
             let fileUri = document?.uri;
@@ -201,7 +201,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                if (!workspaceFolder){return;}
+                if (!workspaceFolder) { return; }
                 let runTagsCmd = getRunTagsCommand(workspaceFolder, selection);
 
                 runCommandInTerminal(runTagsCmd);
@@ -223,7 +223,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                if (!workspaceFolder){return;}
+                if (!workspaceFolder) { return; }
                 let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection);
 
                 runCommandInTerminal(runTagsWtDepsCommand);
@@ -245,7 +245,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                if (!workspaceFolder){return;}
+                if (!workspaceFolder) { return; }
                 let runTagsWtDownstreamDepsCommand = getRunTagsWtDownstreamDepsCommand(workspaceFolder, selection);
 
                 runCommandInTerminal(runTagsWtDownstreamDepsCommand);
@@ -312,7 +312,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (dataformRefDefinitionProviderDisposable) {
                 dataformRefDefinitionProviderDisposable.dispose();
             }
-            if (dataformHoverProviderDisposable){
+            if (dataformHoverProviderDisposable) {
                 dataformHoverProviderDisposable.dispose();
             }
             if (fixErrorCommandDisposable) {
@@ -321,7 +321,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (_dataformCodeActionProviderDisposable) {
                 _dataformCodeActionProviderDisposable.dispose();
             }
-            if (formatCurrentFileDisposable){
+            if (formatCurrentFileDisposable) {
                 formatCurrentFileDisposable.dispose();
             }
             vscode.window.showInformationMessage('Extension disabled');
