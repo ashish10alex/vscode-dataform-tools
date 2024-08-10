@@ -33,7 +33,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation } from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath } from './utils';
 import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags} from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -45,7 +45,14 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
-        executableIsAvailable(executablesToCheck[i]);
+        let executable = executablesToCheck[i];
+        if (executable === "formatdataform"){
+            let formatDataformCustomPath = getFormatDataformExecutablePath();
+            if (formatDataformCustomPath){
+                executable = formatDataformCustomPath;
+            }
+        }
+        executableIsAvailable(executable);
     }
 
     let workspaceFolder = getWorkspaceFolder();
@@ -128,7 +135,12 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-            executableIsAvailable("formatdataform");
+            let executable = "formatdataform";
+            let formatDataformCustomPath = getFormatDataformExecutablePath();
+            if (formatDataformCustomPath){
+                executable = formatDataformCustomPath;
+            }
+            executableIsAvailable(executable);
             let document = vscode.window.activeTextEditor?.document;
             document?.save();
             let fileUri = document?.uri;
@@ -140,7 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            let formatCmd = getFormatDataformFileCommand(relativeFilePath);
+            let formatCmd = getFormatDataformFileCommand(executable, relativeFilePath);
             await getStdoutFromCliRun(exec, formatCmd).then((sources) => {
                 vscode.window.showInformationMessage(`Formatted: ${relativeFilePath}`);
             }

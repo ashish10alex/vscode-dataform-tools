@@ -21,6 +21,17 @@ export function getNonce() {
     return text;
 }
 
+export function getFormatDataformExecutablePath(): string|undefined {
+    let formatDataformCustomPath:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('formatdataformExecutablePath');
+    if (formatDataformCustomPath && formatDataformCustomPath !== ""){
+        if (fs.existsSync(formatDataformCustomPath)){
+            return formatDataformCustomPath;
+        }else{
+            vscode.window.showErrorMessage(`formatdataform cli does exsist at: ${formatDataformCustomPath}`);
+        }
+    }
+}
+
 function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | undefined{
     if (struct){
         for (let i = 0; i < struct.length; i++) {

@@ -198,6 +198,12 @@
                     "default": true,
                     "markdownDescription": "Automatically recompiles the file after code action is applied"
                 },
+                  "vscode-dataform-tools.formatdataformExecutablePath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to formatdataform executable",
+                    "pattern": "^$|.*(formatdataform\\.exe|formatdataform)$"
+                },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
                     "enum": [
