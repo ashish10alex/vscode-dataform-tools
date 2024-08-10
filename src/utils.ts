@@ -169,22 +169,16 @@ export function getWorkspaceFolder(): string | undefined {
     if (isDataformWorkspace(workspaceFolder)) {
         return workspaceFolder;
     }
-    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json`);
+    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
     return undefined;
 }
 
 export function isDataformWorkspace(workspacePath: string) {
     const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
-    let fileExists = false;
-
-    for (let i = 0; i < dataformSignatureFiles.length; i++) {
-        const filePath = path.join(workspacePath, dataformSignatureFiles[i]);
-        let fileExists = fs.existsSync(filePath);
-        if (fileExists) {
-            return fileExists;
-        }
-    }
-    return fileExists;
+    return dataformSignatureFiles.some(file => {
+        let filePath = path.join(workspacePath, file);
+        return fs.existsSync(filePath);
+    });
 }
 
 export function runCommandInTerminal(command: string) {
@@ -323,12 +317,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     }
 
     if (tableMetadata) {
-        let actionsList: string[] = [];
-        for (let i = 0; i < tableMetadata.tables.length; i++) {
-            let table = tableMetadata.tables[i];
-            let fullTableId = `${table.target.database}.${table.target.schema}.${table.target.name}`;
-            actionsList.push(fullTableId);
-        }
+        let actionsList: string[] = tableMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
 
         let dataformActionCmd = "";
 
