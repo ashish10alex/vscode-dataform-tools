@@ -50,6 +50,7 @@ export async function activate(context: vscode.ExtensionContext) {
             let formatDataformCustomPath = getFormatDataformExecutablePath();
             if (formatDataformCustomPath) {
                 executable = formatDataformCustomPath;
+                continue;
             }
         }
         executableIsAvailable(executable);
