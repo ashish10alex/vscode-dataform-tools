@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CACHED_COMPILED_DATAFORM_JSON, getWorkspaceFolder, runCompilation } from './utils';
+import { getWorkspaceFolder, runCompilation } from './utils';
 import { Assertion, DataformCompiledJson, Operation, Table } from './types';
 import path from 'path';
 

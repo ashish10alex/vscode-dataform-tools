@@ -6,7 +6,6 @@ import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Op
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset } from './constants';
-export let CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson;
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -504,6 +503,7 @@ export async function runCompilation(workspaceFolder: string) {
     try {
         let compileResult = await compileDataform(workspaceFolder);
         const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
+        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         return dataformCompiledJson;
     } catch (error) {
         vscode.window.showErrorMessage(`Error compiling Dataform: ${error}`);
@@ -692,7 +692,7 @@ export async function getTableMetadata(document: vscode.TextDocument, freshCompi
 
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
-    diagnosticCollection.clear(); //TODO: this might be only needed once the dataform compiles
+    diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
     if (filename === "" || extension === "") { return; }

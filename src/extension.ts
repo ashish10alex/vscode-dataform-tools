@@ -8,6 +8,8 @@ let isEnabled = true;
 export let declarationsAndTargets: string[] = [];
 export let dataformTags: string[] = [];
 
+import {DataformCompiledJson} from './types';
+
 let onSaveDisposable: vscode.Disposable | null = null;
 let fixErrorCommandDisposable: vscode.Disposable | null = null;
 let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
@@ -39,6 +41,8 @@ import {  getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDeps
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
+
+    globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         executableIsAvailable(executablesToCheck[i]);

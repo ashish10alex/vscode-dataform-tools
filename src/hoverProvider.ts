@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import {
-  CACHED_COMPILED_DATAFORM_JSON,
   getWorkspaceFolder,
   runCompilation,
 } from "./utils";
