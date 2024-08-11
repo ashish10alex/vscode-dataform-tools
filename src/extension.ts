@@ -5,8 +5,6 @@ import { exec as exec } from 'child_process';
 
 let isEnabled = true;
 
-export let declarationsAndTargets: string[] = [];
-export let dataformTags: string[] = [];
 
 import { DataformCompiledJson } from './types';
 
@@ -43,6 +41,9 @@ import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsC
 export async function activate(context: vscode.ExtensionContext) {
 
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
+    globalThis.declarationsAndTargets = [] as string[];
+    globalThis.dataformTags = [] as string[];
+
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];

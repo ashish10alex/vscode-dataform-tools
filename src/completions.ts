@@ -1,7 +1,4 @@
 import * as vscode from 'vscode';
-import { declarationsAndTargets , dataformTags } from './extension';
-
-
 
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
