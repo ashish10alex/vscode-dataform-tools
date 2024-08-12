@@ -393,13 +393,13 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                 finalQuery = table.query + "\n ;";
             } else if (table.type === "incremental") {
                 finalQuery += "\n-- Non incremental query \n";
-                finalQuery += table.query;
-                finalQuery += "; \n-- Incremental query \n";
-                finalQuery += table.incrementalQuery;
+                finalQuery += table.query + ";";
+                finalQuery += "\n-- Incremental query \n";
+                finalQuery += table.incrementalQuery + ";\n";
                 if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
-                        finalQuery += `; \n -- Incremental pre operations: [${idx}] \n`;
-                        finalQuery += query;
+                        finalQuery += `\n-- Incremental pre operations: [${idx}] \n`;
+                        finalQuery += query + "\n ;";
                     });
                 }
             }
@@ -427,6 +427,10 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
             finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
             finalQuery += assertion.query + "\n ;";
         }
+    }
+
+    if (operations === undefined) {
+        return { tables: finalTables, fullQuery: finalQuery };
     }
 
     for (let i = 0; i < operations.length; i++) {
