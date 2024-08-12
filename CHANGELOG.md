@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.36](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.35...v0.0.36) (2024-08-12)
+
+
+### Features
+
+* cache compiled json during activation of the extension if available ([1179509](https://github.com/ashish10alex/vscode-dataform-tools/commit/1179509328a8d21c4d320fbf395e180b73ffc76b))
+
+
+### Bug Fixes
+
+* incremental tables & failing operations when undefined ([4857eb9](https://github.com/ashish10alex/vscode-dataform-tools/commit/4857eb9b43e4938747410f0dacfacdbba561e7f8))
+
 ### [0.0.35](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.34...v0.0.35) (2024-08-10)
 
 
