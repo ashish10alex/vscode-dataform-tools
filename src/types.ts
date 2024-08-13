@@ -102,3 +102,14 @@ export interface ConfigBlockMetadata {
     endLine: number;
 }
 
+
+export interface SqlxBlockMetadata {
+    configBlock: {
+        startLine: number;
+        endLine: number;
+    },
+    preOpsBlock: {
+        startLine: number;
+        endLine: number;
+    },
+}

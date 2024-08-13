@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import fs from 'fs';
+import { exec as exec } from 'child_process';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata } from './types';
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset } from './constants';
+import { assertionQueryOffset, sqlFileToFormatPath } from './constants';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -219,19 +220,27 @@ export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
 // This assumes that the user is using config { } block at the top of the .sqlx file
 //
 // @return [start_of_config_block: number, end_of_config_block: number]
-export const getLineNumberWhereConfigBlockTerminates = async (): Promise<ConfigBlockMetadata> => {
+export const getLineNumberWhereConfigBlockTerminates = async (): Promise<SqlxBlockMetadata> => {
+    /**vars for config block tracking */
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
+    let configBlockEnded = false;
+
+    /**vars for pre_operations block tracking */
+    let startOfPreOperationsBlock = 0;
+    let endOfPreOperationsBlock = 0;
+    let preOperationBlockEnded = true;
+
+    /**vars for inner blocks (defined by curley braces {} ) tracking */
     let isInInnerConfigBlock = false;
     let innerConfigBlockCount = 0;
 
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        return { startLine: 0, endLine: 0 };
+        return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
     }
 
     const document = editor.document;
-    document.save();
     const totalLines = document.lineCount;
 
     for (let i = 0; i < totalLines; i++) {
@@ -239,35 +248,49 @@ export const getLineNumberWhereConfigBlockTerminates = async (): Promise<ConfigB
 
         if (lineContents.match("config")) {
             startOfConfigBlock = i + 1;
-        } else if (lineContents.match("{")) {
+        } else if (lineContents.match("{") && !configBlockEnded) {
             isInInnerConfigBlock = true;
             innerConfigBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1) {
+        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && !configBlockEnded) {
             innerConfigBlockCount -= 1;
-        } else if (lineContents.match("}") && innerConfigBlockCount === 0) {
+        } else if (lineContents.match("}") && innerConfigBlockCount === 0 && !configBlockEnded) {
             endOfConfigBlock = i + 1;
-            return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
+            configBlockEnded = true;
+            // return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
+        } else if (lineContents.match("pre_operations") && configBlockEnded){
+            startOfPreOperationsBlock = i+1;
+        } else if (lineContents.match("{") && configBlockEnded) {
+            if(lineContents.match("}")){
+                continue;
+            }
+            isInInnerConfigBlock = true;
+            innerConfigBlockCount += 1;
+        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && configBlockEnded) {
+            innerConfigBlockCount -= 1;
+        } else if (lineContents.match("}") && innerConfigBlockCount === 0 && configBlockEnded) {
+            endOfPreOperationsBlock = i + 1;
+            preOperationBlockEnded = true;
+            return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
         }
     }
-
-    return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
+    return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
 };
 
 export function isNotUndefined(value: unknown): any {
     if (typeof value === undefined) { throw new Error("Not a string"); }
 }
 
-export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
+export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string, showOutputInVerticalSplit: boolean) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, '', 'utf8');
     }
 
-    // Write the compiled output to the file
     fs.writeFileSync(filePath, compiledQuery, 'utf8');
 
-    // Open the output file in a vertical split
-    const outputDocument = await vscode.workspace.openTextDocument(filePath);
-    vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+    if (showOutputInVerticalSplit){
+        const outputDocument = await vscode.workspace.openTextDocument(filePath);
+        vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+    }
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
@@ -694,6 +717,70 @@ export async function getTableMetadata(document: vscode.TextDocument, freshCompi
     return tableMetadata;
 }
 
+function readFile(filePath:string) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
+
+async function getConfigBlockText(document: vscode.TextDocument, configBlockStart:number, configBlockEndLineNumber:number): Promise<string>{
+    const startPosition = new vscode.Position(configBlockStart-1, 0);
+    const endPosition = new vscode.Position(configBlockEndLineNumber, document.lineAt(configBlockEndLineNumber).text.length);
+    let range = new vscode.Range(startPosition, endPosition);
+    return document.getText(range);
+}
+
+function getActiveFilePath() {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+      return activeEditor.document.uri.fsPath;
+    }
+    return undefined;
+  }
+
+async function getSqlBlockFromActiveEditor(document:vscode.TextDocument, configBlockStart:number, configBlockEndLineNumber:number, ){
+
+        const lastLine = document.lineCount - 1;
+        const startPosition = new vscode.Position(configBlockEndLineNumber + 1, 0);
+        const endPosition = new vscode.Position(lastLine, document.lineAt(lastLine).text.length);
+        let mySqlRange = new vscode.Range(startPosition, endPosition);
+        let sqlText =  document.getText(mySqlRange);
+
+        let configBlockText = await getConfigBlockText(document, configBlockStart, configBlockEndLineNumber);
+
+        writeCompiledSqlToFile(sqlText, sqlFileToFormatPath, false);
+        let formatCmd = `sqlfluff fix -q --config .formatdataform/.sqlfluff ${sqlFileToFormatPath}`;
+
+        await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
+            vscode.window.showInformationMessage(`Formatted: ${sqlFileToFormatPath}`);
+            let formattedSql = await readFile(sqlFileToFormatPath);
+            if (typeof formattedSql === 'string'){
+                let finalFormattedSqlx = configBlockText + '\n\n' + formattedSql + '\n';
+                let currentActiveEditorFilePath = getActiveFilePath();
+                if (!currentActiveEditorFilePath){
+                    //TODO: show err to user here
+                    return;
+                }
+                // const data = new Uint8Array(Buffer.from(formattedText));
+                fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err) => {
+                if (err) {throw err;};
+                    console.log('The file has been saved!');
+                    return;
+                });
+            }
+        }
+        ).catch((err) => {
+            vscode.window.showErrorMessage(`Error formatting: ${err}`);
+            return;
+        });
+}
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
@@ -723,10 +810,12 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms (dataform wt 285 nodes)
+        let configBlockRange = (await getLineNumberWhereConfigBlockTerminates()).configBlock; // Takes less than 2ms (dataform wt 285 nodes)
         let configBlockStart = configBlockRange.startLine || 0;
         let configBlockEnd = configBlockRange.endLine || 0;
         let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
+
+        await getSqlBlockFromActiveEditor(document, configBlockStart, configBlockEnd);
 
         if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
             configLineOffset = configBlockOffset - tableQueryOffset;
@@ -744,7 +833,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
     }
     if (showCompiledQueryInVerticalSplitOnSave) {
-        writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath);
+        writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath, true);
     }
 
     let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
