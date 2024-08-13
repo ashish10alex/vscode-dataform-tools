@@ -231,7 +231,6 @@ export const getLineNumberWhereConfigBlockTerminates = async (): Promise<ConfigB
     }
 
     const document = editor.document;
-    document.save();
     const totalLines = document.lineCount;
 
     for (let i = 0; i < totalLines; i++) {
@@ -457,15 +456,19 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
 
 
 function compileDataform(workspaceFolder: string): Promise<string> {
+    let defaultDataformCompileTime: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
+    if(!defaultDataformCompileTime){
+        defaultDataformCompileTime = "5m";
+    }
     return new Promise((resolve, reject) => {
         let spawnedProcess;
         if (process.platform !== "win32") {
             const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"]);
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${defaultDataformCompileTime}`]);
         } else {
             const command = "dataform.cmd";
             // windows seems to require shell: true
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json"], { shell: true });
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", "--json", `--timeout=${defaultDataformCompileTime}`], { shell: true });
         }
 
         let stdOut = '';
