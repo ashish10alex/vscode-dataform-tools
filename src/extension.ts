@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { exec as exec } from 'child_process';
+// import { exec as exec } from 'child_process';
 
 let isEnabled = true;
 
@@ -31,8 +31,8 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath } from './utils';
-import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags } from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath, formatSqlxFile } from './utils';
+import { getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags,  getMetadataForSqlxFileBlocks } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
@@ -138,34 +138,15 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-            let executable = "formatdataform";
-            let formatDataformCustomPath = getFormatDataformExecutablePath();
-            if (formatDataformCustomPath) {
-                executable = formatDataformCustomPath;
-            }
-            if (executable === "formatdataform") { executableIsAvailable(executable); };
             let document = vscode.window.activeTextEditor?.document;
-            document?.save();
-            let fileUri = document?.uri;
-            if (fileUri === undefined) {
+            if(!document){
+                vscode.window.showErrorMessage("VS Code document object was undefined");
                 return;
             }
-            let relativeFilePath = vscode.workspace.asRelativePath(fileUri);
-            if (relativeFilePath === undefined) {
-                return;
-            }
-
-            let formatCmd = getFormatDataformFileCommand(executable, relativeFilePath);
-            await getStdoutFromCliRun(exec, formatCmd).then((sources) => {
-                vscode.window.showInformationMessage(`Formatted: ${relativeFilePath}`);
-            }
-            ).catch((err) => {
-                vscode.window.showErrorMessage(`Error formatting: ${err}`);
-                return;
-            });
-
-            let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            let metadataForSqlxFileBlocks = await getMetadataForSqlxFileBlocks("format");
+            await formatSqlxFile(document, metadataForSqlxFileBlocks);
+            // document?.save();
+            // await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 

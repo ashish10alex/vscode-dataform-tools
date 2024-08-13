@@ -220,7 +220,7 @@ export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
 // This assumes that the user is using config { } block at the top of the .sqlx file
 //
 // @return [start_of_config_block: number, end_of_config_block: number]
-export const getLineNumberWhereConfigBlockTerminates = async (): Promise<SqlxBlockMetadata> => {
+export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlockMetadata> => {
     /**vars for config block tracking */
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
@@ -256,7 +256,9 @@ export const getLineNumberWhereConfigBlockTerminates = async (): Promise<SqlxBlo
         } else if (lineContents.match("}") && innerConfigBlockCount === 0 && !configBlockEnded) {
             endOfConfigBlock = i + 1;
             configBlockEnded = true;
-            // return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
+            if (task === "dryRun"){
+                return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
+            }
         } else if (lineContents.match("pre_operations") && configBlockEnded){
             startOfPreOperationsBlock = i+1;
         } else if (lineContents.match("{") && configBlockEnded) {
@@ -749,41 +751,43 @@ function getActiveFilePath() {
     return undefined;
   }
 
-async function getSqlBlockFromActiveEditor(document:vscode.TextDocument, configBlockStart:number, configBlockEndLineNumber:number, ){
+export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata ){
+    let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
+    let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock;
 
-        const lastLine = document.lineCount - 1;
-        const startPosition = new vscode.Position(configBlockEndLineNumber + 1, 0);
-        const endPosition = new vscode.Position(lastLine, document.lineAt(lastLine).text.length);
-        let mySqlRange = new vscode.Range(startPosition, endPosition);
-        let sqlText =  document.getText(mySqlRange);
+    const lastLineOfActiveEditor = document.lineCount - 1;
+    const configBlockEndPosition = new vscode.Position(configBlockMeta.endLine + 1, 0);
+    const endOfDocumentPosition = new vscode.Position(lastLineOfActiveEditor, document.lineAt(lastLineOfActiveEditor).text.length);
+    let sqlBlockRange = new vscode.Range(configBlockEndPosition, endOfDocumentPosition);
+    let sqlText =  document.getText(sqlBlockRange);
 
-        let configBlockText = await getConfigBlockText(document, configBlockStart, configBlockEndLineNumber);
+    let configBlockText = await getConfigBlockText(document, configBlockMeta.startLine, configBlockMeta.endLine);
 
-        writeCompiledSqlToFile(sqlText, sqlFileToFormatPath, false);
-        let formatCmd = `sqlfluff fix -q --config .formatdataform/.sqlfluff ${sqlFileToFormatPath}`;
+    writeCompiledSqlToFile(sqlText, sqlFileToFormatPath, false);
 
-        await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
-            vscode.window.showInformationMessage(`Formatted: ${sqlFileToFormatPath}`);
-            let formattedSql = await readFile(sqlFileToFormatPath);
-            if (typeof formattedSql === 'string'){
-                let finalFormattedSqlx = configBlockText + '\n\n' + formattedSql + '\n';
-                let currentActiveEditorFilePath = getActiveFilePath();
-                if (!currentActiveEditorFilePath){
-                    //TODO: show err to user here
-                    return;
-                }
-                // const data = new Uint8Array(Buffer.from(formattedText));
-                fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err) => {
-                if (err) {throw err;};
-                    console.log('The file has been saved!');
-                    return;
-                });
+    let formatCmd = `sqlfluff fix -q --config .formatdataform/.sqlfluff ${sqlFileToFormatPath}`;
+
+    await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
+        let formattedSql = await readFile(sqlFileToFormatPath);
+        if (typeof formattedSql === 'string'){
+            let finalFormattedSqlx = configBlockText + '\n\n' + formattedSql + '\n';
+            let currentActiveEditorFilePath = getActiveFilePath();
+            if (!currentActiveEditorFilePath){
+                vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
+                return;
             }
+            // const data = new Uint8Array(Buffer.from(formattedText));
+            fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err) => {
+            if (err) {throw err;};
+                vscode.window.showInformationMessage(`Formatted: ${path.basename(currentActiveEditorFilePath)}`);
+                return;
+            });
         }
-        ).catch((err) => {
-            vscode.window.showErrorMessage(`Error formatting: ${err}`);
-            return;
-        });
+    }
+    ).catch((err) => {
+        vscode.window.showErrorMessage(`Error formatting: ${err}`);
+        return;
+    });
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
@@ -814,12 +818,10 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        let configBlockRange = (await getLineNumberWhereConfigBlockTerminates()).configBlock; // Takes less than 2ms (dataform wt 285 nodes)
+        let configBlockRange = (await getMetadataForSqlxFileBlocks("dryRun")).configBlock; // Takes less than 2ms (dataform wt 285 nodes)
         let configBlockStart = configBlockRange.startLine || 0;
         let configBlockEnd = configBlockRange.endLine || 0;
         let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
-
-        await getSqlBlockFromActiveEditor(document, configBlockStart, configBlockEnd);
 
         if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
             configLineOffset = configBlockOffset - tableQueryOffset;
