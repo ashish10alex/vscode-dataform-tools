@@ -105,18 +105,22 @@ export interface ConfigBlockMetadata {
 
 export interface SqlxBlockMetadata {
     configBlock: {
+        exsists: boolean;
         startLine: number;
         endLine: number;
     },
     preOpsBlock: {
+        exsists: boolean;
         startLine: number;
         endLine: number;
     },
     postOpsBlock: {
+        exsists: boolean;
         startLine: number;
         endLine: number;
     },
     sqlBlock: {
+        exsists: boolean;
         startLine: number;
         endLine: number;
     },

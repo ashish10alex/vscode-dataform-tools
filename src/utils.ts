@@ -227,21 +227,22 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
     /**vars for config block tracking */
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
-    let configBlockEnded = false;
+    let configBlockExsists = false;
 
     /**vars for pre_operations block tracking */
     let startOfPreOperationsBlock = 0;
     let endOfPreOperationsBlock = 0;
-    let preOperationBlockEnded = false;
+    let preOpsBlockExsists = false;
 
-    /**vars for pre_operations block tracking */
+    /**vars for post_operations block tracking */
     let startOfPostOperationsBlock = 0;
     let endOfPostOperationsBlock = 0;
-    let postOperationBlockEnded = false;
+    let postOpsBlockExsists = false;
 
     /**vars for sql code block tracking */
     let startOfSqlBlock = 0;
     let endOfSqlBlock = 0;
+    let sqlBlockExsists = false;
 
     /**vars for inner blocks (defined by curley braces {} ) tracking */
     let isInInnerConfigBlock = false;
@@ -251,7 +252,12 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
 
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
+        return {
+               configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exsists: configBlockExsists}
+             , preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock, exsists: preOpsBlockExsists}
+             , postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock, exsists: postOpsBlockExsists}
+             , sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock, exsists: sqlBlockExsists}
+        };
     }
 
     const document = editor.document;
@@ -283,32 +289,43 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
         } else if (lineContents.match("}") && innerConfigBlockCount === 0 && inMajorBlock) {
             if (currentBlock === "config"){
                 endOfConfigBlock = i + 1;
-                configBlockEnded = true;
+                configBlockExsists = true;
                 currentBlock = "";
             } else if (currentBlock === "pre_operations") {
                 endOfPreOperationsBlock = i + 1;
-                preOperationBlockEnded = true;
+                preOpsBlockExsists = true;
                 currentBlock = "";
             } else if (currentBlock === "post_operations") {
                 endOfPostOperationsBlock = i + 1;
-                postOperationBlockEnded = true;
+                postOpsBlockExsists = true;
                 currentBlock = "";
             }
             inMajorBlock = false;
             if (task === "dryRun"){
-                return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
+                return {
+                    configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exsists: configBlockExsists}
+                    , preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock, exsists: preOpsBlockExsists}
+                    , postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock, exsists: postOpsBlockExsists}
+                    , sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock, exsists: sqlBlockExsists}
+                };
             }
         } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && !inMajorBlock) {
             innerConfigBlockCount -= 1;
         } else if (lineContents !== "" && !inMajorBlock){
             if (startOfSqlBlock === 0){
                 startOfSqlBlock = i + 1;
+                sqlBlockExsists = true;
             }else{
                 endOfSqlBlock = i + 1;
             }
         }
     }
-    return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
+    return {
+        configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exsists: configBlockExsists}
+        , preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock, exsists: preOpsBlockExsists}
+        , postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock, exsists: postOpsBlockExsists}
+        , sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock, exsists: sqlBlockExsists}
+    };
 };
 
 export function isNotUndefined(value: unknown): any {
@@ -769,7 +786,10 @@ function readFile(filePath:string) {
 }
 
 
-async function getTextForBlock(document: vscode.TextDocument, startLine:number, endLine:number): Promise<string>{
+async function getTextForBlock(document: vscode.TextDocument, startLine:number, endLine:number, exsists:boolean): Promise<string>{
+    if(!exsists){
+        return "";
+    }
     const startPosition = new vscode.Position(startLine-1, 0);
     const endPosition = new vscode.Position(endLine-1, document.lineAt(endLine-1).text.length);
     let range = new vscode.Range(startPosition, endPosition);
@@ -785,26 +805,34 @@ function getActiveFilePath() {
   }
 
 export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata ){
+
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock;
     let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock;
     let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
 
-    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta.startLine, sqlBlockMeta.endLine);
+    let spaceBetweenBlocks = '\n\n\n';
+
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta.startLine, sqlBlockMeta.endLine, sqlBlockMeta.exsists);
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
 
-    let [preOpsBlockText, postOpsBlockText, configBlockText ] = await Promise.all([
-        getTextForBlock(document, preOpsBlockMeta.startLine, preOpsBlockMeta.endLine),
-        getTextForBlock(document, postOpsBlockMeta.startLine, postOpsBlockMeta.endLine),
-        getTextForBlock(document, configBlockMeta.startLine, configBlockMeta.endLine)
+    let [configBlockText, preOpsBlockText, postOpsBlockText] = await Promise.all([
+        getTextForBlock(document, configBlockMeta.startLine, configBlockMeta.endLine, configBlockMeta.exsists),
+        getTextForBlock(document, preOpsBlockMeta.startLine, preOpsBlockMeta.endLine, preOpsBlockMeta.exsists),
+        getTextForBlock(document, postOpsBlockMeta.startLine, postOpsBlockMeta.endLine, postOpsBlockMeta.exsists),
     ]);
+
+    (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  spaceBetweenBlocks + preOpsBlockText;
+    (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = spaceBetweenBlocks + postOpsBlockText;
 
     let formatCmd = `sqlfluff fix -q --config .formatdataform/.sqlfluff ${sqlFileToFormatPath}`;
 
     await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
         let formattedSql = await readFile(sqlFileToFormatPath);
+        (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
+
         if (typeof formattedSql === 'string'){
-            let finalFormattedSqlx = configBlockText + '\n\n' + preOpsBlockText + '\n\n' + postOpsBlockText + '\n\n' +  formattedSql + '\n';
+            let finalFormattedSqlx = configBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
             let currentActiveEditorFilePath = getActiveFilePath();
             if (!currentActiveEditorFilePath){
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
