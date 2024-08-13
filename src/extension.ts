@@ -143,7 +143,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (formatDataformCustomPath) {
                 executable = formatDataformCustomPath;
             }
-            if (executable === "formatdataform") { executableIsAvailable(executable) };
+            if (executable === "formatdataform") { executableIsAvailable(executable); };
             let document = vscode.window.activeTextEditor?.document;
             document?.save();
             let fileUri = document?.uri;
