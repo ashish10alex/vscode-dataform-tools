@@ -306,7 +306,6 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
             }else{
                 endOfSqlBlock = i + 1;
             }
-            console.log(lineContents);
         }
     }
     return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
@@ -770,9 +769,9 @@ function readFile(filePath:string) {
 }
 
 
-async function getConfigBlockText(document: vscode.TextDocument, configBlockStart:number, configBlockEndLineNumber:number): Promise<string>{
-    const startPosition = new vscode.Position(configBlockStart-1, 0);
-    const endPosition = new vscode.Position(configBlockEndLineNumber, document.lineAt(configBlockEndLineNumber).text.length);
+async function getTextForBlock(document: vscode.TextDocument, startLine:number, endLine:number): Promise<string>{
+    const startPosition = new vscode.Position(startLine-1, 0);
+    const endPosition = new vscode.Position(endLine-1, document.lineAt(endLine-1).text.length);
     let range = new vscode.Range(startPosition, endPosition);
     return document.getText(range);
 }
@@ -788,23 +787,24 @@ function getActiveFilePath() {
 export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata ){
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock;
+    let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock;
+    let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
 
-    const lastLineOfActiveEditor = document.lineCount - 1;
-    const configBlockEndPosition = new vscode.Position(configBlockMeta.endLine + 1, 0);
-    const endOfDocumentPosition = new vscode.Position(lastLineOfActiveEditor, document.lineAt(lastLineOfActiveEditor).text.length);
-    let sqlBlockRange = new vscode.Range(configBlockEndPosition, endOfDocumentPosition);
-    let sqlText =  document.getText(sqlBlockRange);
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta.startLine, sqlBlockMeta.endLine);
+    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
 
-    let configBlockText = await getConfigBlockText(document, configBlockMeta.startLine, configBlockMeta.endLine);
-
-    writeCompiledSqlToFile(sqlText, sqlFileToFormatPath, false);
+    let [preOpsBlockText, postOpsBlockText, configBlockText ] = await Promise.all([
+        getTextForBlock(document, preOpsBlockMeta.startLine, preOpsBlockMeta.endLine),
+        getTextForBlock(document, postOpsBlockMeta.startLine, postOpsBlockMeta.endLine),
+        getTextForBlock(document, configBlockMeta.startLine, configBlockMeta.endLine)
+    ]);
 
     let formatCmd = `sqlfluff fix -q --config .formatdataform/.sqlfluff ${sqlFileToFormatPath}`;
 
     await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
         let formattedSql = await readFile(sqlFileToFormatPath);
         if (typeof formattedSql === 'string'){
-            let finalFormattedSqlx = configBlockText + '\n\n' + formattedSql + '\n';
+            let finalFormattedSqlx = configBlockText + '\n\n' + preOpsBlockText + '\n\n' + postOpsBlockText + '\n\n' +  formattedSql + '\n';
             let currentActiveEditorFilePath = getActiveFilePath();
             if (!currentActiveEditorFilePath){
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
