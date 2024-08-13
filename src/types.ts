@@ -112,4 +112,12 @@ export interface SqlxBlockMetadata {
         startLine: number;
         endLine: number;
     },
+    postOpsBlock: {
+        startLine: number;
+        endLine: number;
+    },
+    sqlBlock: {
+        startLine: number;
+        endLine: number;
+    },
 }

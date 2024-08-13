@@ -221,6 +221,9 @@ export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
 //
 // @return [start_of_config_block: number, end_of_config_block: number]
 export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlockMetadata> => {
+
+    let inMajorBlock = false;
+
     /**vars for config block tracking */
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
@@ -229,15 +232,26 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
     /**vars for pre_operations block tracking */
     let startOfPreOperationsBlock = 0;
     let endOfPreOperationsBlock = 0;
-    let preOperationBlockEnded = true;
+    let preOperationBlockEnded = false;
+
+    /**vars for pre_operations block tracking */
+    let startOfPostOperationsBlock = 0;
+    let endOfPostOperationsBlock = 0;
+    let postOperationBlockEnded = false;
+
+    /**vars for sql code block tracking */
+    let startOfSqlBlock = 0;
+    let endOfSqlBlock = 0;
 
     /**vars for inner blocks (defined by curley braces {} ) tracking */
     let isInInnerConfigBlock = false;
     let innerConfigBlockCount = 0;
 
+    let currentBlock = "";
+
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
+        return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
     }
 
     const document = editor.document;
@@ -247,35 +261,55 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
         const lineContents = document.lineAt(i).text;
 
         if (lineContents.match("config")) {
+            inMajorBlock = true;
+            currentBlock = "config";
             startOfConfigBlock = i + 1;
-        } else if (lineContents.match("{") && !configBlockEnded) {
-            isInInnerConfigBlock = true;
-            innerConfigBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && !configBlockEnded) {
-            innerConfigBlockCount -= 1;
-        } else if (lineContents.match("}") && innerConfigBlockCount === 0 && !configBlockEnded) {
-            endOfConfigBlock = i + 1;
-            configBlockEnded = true;
-            if (task === "dryRun"){
-                return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
-            }
-        } else if (lineContents.match("pre_operations") && configBlockEnded){
+        } else if (lineContents.match("post_operations") && !inMajorBlock){
+            startOfPostOperationsBlock = i+1;
+            inMajorBlock = true;
+            currentBlock = "post_operations";
+        } else if (lineContents.match("pre_operations") && !inMajorBlock){
             startOfPreOperationsBlock = i+1;
-        } else if (lineContents.match("{") && configBlockEnded) {
+            inMajorBlock = true;
+            currentBlock = "pre_operations";
+        } else if (lineContents.match("{") && inMajorBlock) {
             if(lineContents.match("}")){
                 continue;
             }
             isInInnerConfigBlock = true;
             innerConfigBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && configBlockEnded) {
+        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && inMajorBlock) {
             innerConfigBlockCount -= 1;
-        } else if (lineContents.match("}") && innerConfigBlockCount === 0 && configBlockEnded) {
-            endOfPreOperationsBlock = i + 1;
-            preOperationBlockEnded = true;
-            return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
+        } else if (lineContents.match("}") && innerConfigBlockCount === 0 && inMajorBlock) {
+            if (currentBlock === "config"){
+                endOfConfigBlock = i + 1;
+                configBlockEnded = true;
+                currentBlock = "";
+            } else if (currentBlock === "pre_operations") {
+                endOfPreOperationsBlock = i + 1;
+                preOperationBlockEnded = true;
+                currentBlock = "";
+            } else if (currentBlock === "post_operations") {
+                endOfPostOperationsBlock = i + 1;
+                postOperationBlockEnded = true;
+                currentBlock = "";
+            }
+            inMajorBlock = false;
+            if (task === "dryRun"){
+                return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
+            }
+        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && !inMajorBlock) {
+            innerConfigBlockCount -= 1;
+        } else if (lineContents !== "" && !inMajorBlock){
+            if (startOfSqlBlock === 0){
+                startOfSqlBlock = i + 1;
+            }else{
+                endOfSqlBlock = i + 1;
+            }
+            console.log(lineContents);
         }
     }
-    return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}};
+    return {configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock}, preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock}, postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock}, sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock}};
 };
 
 export function isNotUndefined(value: unknown): any {
@@ -776,7 +810,6 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
                 return;
             }
-            // const data = new Uint8Array(Buffer.from(formattedText));
             fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err) => {
             if (err) {throw err;};
                 vscode.window.showInformationMessage(`Formatted: ${path.basename(currentActiveEditorFilePath)}`);
