@@ -139,6 +139,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+- [ ] Show pre and post operation queries in compiled query
 - [ ] Use `.sqlx` specific grammar. [Docs on how to do it](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)
 - [ ] Preview query results
 - [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
