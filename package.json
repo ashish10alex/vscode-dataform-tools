@@ -202,7 +202,7 @@
                     "type": "string",
                     "default": "5m",
                     "pattern": "^(\\d+[sm])+$",
-                     "markdownDescription": "Duration to allow project compilation to complete. Use format like '5m', '60s' etc. Passed to `dataform compile --json --timeout=<value>`"
+                    "markdownDescription": "Duration to allow project compilation to complete. Use format like '5m', '60s' etc. Passed to `dataform compile --json --timeout=<value>`"
                 },
                 "vscode-dataform-tools.formatdataformExecutablePath": {
                     "type": "string",
