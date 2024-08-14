@@ -864,6 +864,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
 
     let spaceBetweenBlocks = '\n\n\n';
+    let spaceBetweenSameOps = '\n\n';
 
     let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
@@ -882,11 +883,11 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     });
     let postOpsBlockTextList = await Promise.all(myPromises);
 
-    let preOpsBlockText: string = preOpsBlockTextList.map((text: string) => text + spaceBetweenBlocks).join('');
-    let postOpsBlockText: string = postOpsBlockTextList.map((text: string) => text + spaceBetweenBlocks).join('');
+    let preOpsBlockText: string = preOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
+    let postOpsBlockText: string = postOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
 
-    (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  spaceBetweenBlocks + preOpsBlockText;
-    (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = spaceBetweenBlocks + postOpsBlockText;
+    (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
+    (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
 
     let formatCmd = `sqlfluff fix -q --config=.sqlfluff ${sqlFileToFormatPath}`;
 
