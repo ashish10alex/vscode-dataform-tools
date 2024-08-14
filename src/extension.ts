@@ -143,8 +143,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
                 return;
             }
-            let metadataForSqlxFileBlocks = await getMetadataForSqlxFileBlocks("format");
-            await formatSqlxFile(document, metadataForSqlxFileBlocks);
+            let metadataForSqlxFileBlocks = await getMetadataForSqlxFileBlocks("format"); // take ~1.3ms to parse 200 lines
+            await formatSqlxFile(document, metadataForSqlxFileBlocks); // takes ~ 700ms to format 200 lines
             // document?.save();
             // await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
