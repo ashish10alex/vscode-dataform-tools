@@ -1,5 +1,26 @@
 import * as vscode from 'vscode';
-import { extractFixFromDiagnosticMessage } from './utils';
+
+/**
+    Suggestion if provided from dry is expected to along the lines of
+
+    `googleapi: Error 400: Unrecognized name: MODELID; Did you mean MODEL_ID? at [27:28], invalidQuery`
+
+    From the above string the function attempts to extract the suggestion which we assumed based on observations to be separated by ";"
+    followed by `Did you mean **fix**? at [lineNumber:columnNumber]`
+*/
+function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
+    const diagnosticSuggestion = diagnosticMessage.split(';')[1];
+
+    if (!diagnosticSuggestion) {
+        return null;
+    }
+
+    const regex = /Did you mean (\w+)\?/;
+    const match = diagnosticSuggestion.match(regex);
+    const fix = match ? match[1] : null;
+    return fix;
+}
+
 
 export let dataformCodeActionProviderDisposable = () => vscode.languages.registerCodeActionsProvider('sql', {
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context, token) {

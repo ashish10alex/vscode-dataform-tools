@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import {DryRunError} from './types';
 
+
 export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, compiledSqlFilePath: string, diagnosticCollection: vscode.DiagnosticCollection, configLineOffset: number){
 
         let errLineNumber = dryRunError.location?.line;

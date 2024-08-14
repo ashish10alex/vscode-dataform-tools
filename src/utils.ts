@@ -7,6 +7,7 @@ import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Op
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, sqlFileToFormatPath } from './constants';
+import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -20,17 +21,6 @@ export function getNonce() {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
-}
-
-export function getFormatDataformExecutablePath(): string|undefined {
-    let formatDataformCustomPath:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('formatdataformExecutablePath');
-    if (formatDataformCustomPath && formatDataformCustomPath !== ""){
-        if (fs.existsSync(formatDataformCustomPath)){
-            return formatDataformCustomPath;
-        }else{
-            vscode.window.showErrorMessage(`formatdataform cli does exsist at: ${formatDataformCustomPath}`);
-        }
-    }
 }
 
 function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | undefined{
@@ -159,9 +149,11 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string[]
     return [filename, extension];
 }
 
+//
+//WARN: What if user has multiple workspaces open in the same window
+//TODO: we are taking the first workspace from the active workspaces. Is it possible to handle cases where there are multiple workspaces in the same window ?
+//
 export function getWorkspaceFolder(): string | undefined {
-    //TODO: we are taking the first workspace from the active workspaces.
-    //  Is it possible to handle cases where there are multiple workspaces in the same window ?
     let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
     if (workspaceFolder === undefined) {
         vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
@@ -194,160 +186,6 @@ export function runCommandInTerminal(command: string) {
     }
 }
 
-/**
-    Suggestion if provided from dry is expected to along the lines of
-
-    `googleapi: Error 400: Unrecognized name: MODELID; Did you mean MODEL_ID? at [27:28], invalidQuery`
-
-    From the above string the function attempts to extract the suggestion which we assumed based on observations to be separated by ";"
-    followed by `Did you mean **fix**? at [lineNumber:columnNumber]`
-**/
-export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
-    const diagnosticSuggestion = diagnosticMessage.split(';')[1];
-
-    if (!diagnosticSuggestion) {
-        return null;
-    }
-
-    const regex = /Did you mean (\w+)\?/;
-    const match = diagnosticSuggestion.match(regex);
-    const fix = match ? match[1] : null;
-    return fix;
-}
-
-
-// Get start and end line number of the config block in the .sqlx file
-// This assumes that the user is using config { } block at the top of the .sqlx file
-//
-// @return [start_of_config_block: number, end_of_config_block: number]
-export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlockMetadata> => {
-
-    let inMajorBlock = false;
-
-    /**vars for config block tracking */
-    let startOfConfigBlock = 0;
-    let endOfConfigBlock = 0;
-    let configBlockExsists = false;
-
-    /**vars for pre_operations block tracking */
-    let preOpsBlockMeta: PreOpsBlockMeta = {preOpsList: []};
-    let startOfPreOperationsBlock = 0;
-    let endOfPreOperationsBlock = 0;
-    let preOpsBlockExsists = false;
-
-    /**vars for post_operations block tracking */
-    let postOpsBlockMeta: PostOpsBlockMeta = {postOpsList: []};
-    let startOfPostOperationsBlock = 0;
-    let endOfPostOperationsBlock = 0;
-    let postOpsBlockExsists = false;
-
-    /**vars for sql code block tracking */
-    let startOfSqlBlock = 0;
-    let endOfSqlBlock = 0;
-    let sqlBlockExsists = false;
-
-    /**vars for inner blocks (defined by curley braces {} ) tracking */
-    let isInInnerConfigBlock = false;
-    let innerConfigBlockCount = 0;
-
-    let currentBlock = "";
-
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        return {
-               configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
-             , preOpsBlock: preOpsBlockMeta
-             , postOpsBlock: postOpsBlockMeta
-             , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
-        };
-    }
-
-    const document = editor.document;
-    const totalLines = document.lineCount;
-
-    for (let i = 0; i < totalLines; i++) {
-        const lineContents = document.lineAt(i).text;
-
-        if (lineContents.match("config")) {
-            inMajorBlock = true;
-            currentBlock = "config";
-            startOfConfigBlock = i + 1;
-        } else if (lineContents.match("post_operations") && !inMajorBlock){
-            startOfPostOperationsBlock = i+1;
-            inMajorBlock = true;
-            currentBlock = "post_operations";
-        } else if (lineContents.match("pre_operations") && !inMajorBlock){
-            startOfPreOperationsBlock = i+1;
-            inMajorBlock = true;
-            currentBlock = "pre_operations";
-        } else if (lineContents.match("{") && inMajorBlock) {
-            if(lineContents.match("}")){
-                continue;
-            }
-            isInInnerConfigBlock = true;
-            innerConfigBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && inMajorBlock) {
-            innerConfigBlockCount -= 1;
-        } else if (lineContents.match("}") && innerConfigBlockCount === 0 && inMajorBlock) {
-            if (currentBlock === "config"){
-                endOfConfigBlock = i + 1;
-                configBlockExsists = true;
-                currentBlock = "";
-            } else if (currentBlock === "pre_operations") {
-                endOfPreOperationsBlock = i + 1;
-                preOpsBlockMeta.preOpsList.push(
-                    {
-                        startLine: startOfPreOperationsBlock,
-                        endLine: endOfPreOperationsBlock,
-                        exists: true
-                    },
-                );
-                preOpsBlockExsists = true;
-                currentBlock = "";
-            } else if (currentBlock === "post_operations") {
-                endOfPostOperationsBlock = i + 1;
-                postOpsBlockMeta.postOpsList.push(
-                    {
-                        startLine: startOfPostOperationsBlock,
-                        endLine: endOfPostOperationsBlock,
-                        exists: true
-                    },
-                );
-                postOpsBlockExsists = true;
-                currentBlock = "";
-            }
-            inMajorBlock = false;
-            if (task === "dryRun"){
-                return {
-                    configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
-                    , preOpsBlock: preOpsBlockMeta
-                    , postOpsBlock: postOpsBlockMeta
-                    , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
-                };
-            }
-        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && !inMajorBlock) {
-            innerConfigBlockCount -= 1;
-        } else if (lineContents !== "" && !inMajorBlock){
-            if (startOfSqlBlock === 0){
-                startOfSqlBlock = i + 1;
-                sqlBlockExsists = true;
-            }else{
-                endOfSqlBlock = i + 1;
-            }
-        }
-    }
-    return {
-        configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
-        , preOpsBlock: preOpsBlockMeta
-        , postOpsBlock: postOpsBlockMeta
-        , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
-    };
-};
-
-export function isNotUndefined(value: unknown): any {
-    if (typeof value === undefined) { throw new Error("Not a string"); }
-}
-
 export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string, showOutputInVerticalSplit: boolean) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, '', 'utf8');
@@ -361,9 +199,8 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
     }
 }
 
-export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
-    // const workingDirectory = path.dirname(vscode.window.activeTextEditor?.document.uri.fsPath);
-    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
+    let workspaceFolder = getWorkspaceFolder();
 
     if (!workspaceFolder) {
         return;
@@ -553,7 +390,7 @@ export function getDataformCompilationTimeoutFromConfig(){
     let dataformCompilationTimeoutVal: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
     if (dataformCompilationTimeoutVal){
         return dataformCompilationTimeoutVal;
-    } 
+    }
     return "5m";
 }
 

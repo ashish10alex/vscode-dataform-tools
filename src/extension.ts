@@ -31,11 +31,12 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags,  getMetadataForSqlxFileBlocks } from './utils';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath, getDataformCompilationTimeoutFromConfig } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags } from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
+import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand} from './commands';
+import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -47,12 +48,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
-        if (executable === "formatdataform") {
-            let formatDataformCustomPath = getFormatDataformExecutablePath();
-            if (formatDataformCustomPath) {
-                executable = formatDataformCustomPath;
-                continue;
-            }
+        if (executable === "sqlfluff") {
+            vscode.window.showWarningMessage("Install sqlfluff to enable formatting of sqlx files");
         }
         executableIsAvailable(executable);
     }
@@ -139,7 +136,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
             let document = vscode.window.activeTextEditor?.document;
-            if(!document){
+            if (!document) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
                 return;
             }

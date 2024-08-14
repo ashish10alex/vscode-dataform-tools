@@ -1,4 +1,3 @@
-
 export interface Table {
     type: string;
     tags: string[];
@@ -32,12 +31,10 @@ export interface DependancyTreeMetadata {
     _deps?: string[];
 }
 
-
 export interface DeclarationsLegendMetadata {
     _schema: string;
     _schema_idx: number;
 }
-
 
 export interface Target {
     database: string;
@@ -89,7 +86,6 @@ export interface DryRunError {
     };
 }
 
-
 export interface BigQueryDryRunResponse {
     statistics: {
         totalBytesProcessed: string;
@@ -103,32 +99,23 @@ export interface ConfigBlockMetadata {
     exists: boolean;
 }
 
-interface BlockRange{
+interface BlockMeta{
     startLine: number;
     endLine: number;
     exists: boolean;
 }
 
 export interface PreOpsBlockMeta {
-    preOpsList: BlockRange[];
+    preOpsList: BlockMeta[];
 }
 
 export interface PostOpsBlockMeta {
-    postOpsList: BlockRange[];
+    postOpsList: BlockMeta[];
 }
 
-
 export interface SqlxBlockMetadata {
-    configBlock: {
-        exists: boolean;
-        startLine: number;
-        endLine: number;
-    },
+    configBlock: BlockMeta;
     preOpsBlock: PreOpsBlockMeta;
     postOpsBlock: PostOpsBlockMeta;
-    sqlBlock: {
-        exists: boolean;
-        startLine: number;
-        endLine: number;
-    },
+    sqlBlock: BlockMeta;
 }
