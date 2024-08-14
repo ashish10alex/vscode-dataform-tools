@@ -297,6 +297,8 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
 
+    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+
     let document = vscode.window.activeTextEditor?.document;
     if (document === undefined) {
         vscode.window.showErrorMessage('No active document');
@@ -325,12 +327,12 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
             let fullTableName = actionsList[i];
             if (i === 0) {
                 if (includDependencies) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-deps`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
                 } else if (includeDownstreamDependents) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --actions "${fullTableName}" --include-dependents`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
                 }
                 else {
-                    dataformActionCmd = `dataform run ${workspaceFolder} --actions "${fullTableName}"`;
+                    dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
                 }
             } else {
                 if (includDependencies) {
@@ -455,20 +457,25 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
 };
 
 
+export function getDataformCompilationTimeoutFromConfig(){
+    let dataformCompilationTimeoutVal: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
+    if (dataformCompilationTimeoutVal){
+        return dataformCompilationTimeoutVal;
+    } 
+    return "5m";
+}
+
 function compileDataform(workspaceFolder: string): Promise<string> {
-    let defaultDataformCompileTime: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
-    if(!defaultDataformCompileTime){
-        defaultDataformCompileTime = "5m";
-    }
+    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     return new Promise((resolve, reject) => {
         let spawnedProcess;
         if (process.platform !== "win32") {
             const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${defaultDataformCompileTime}`]);
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
         } else {
             const command = "dataform.cmd";
             // windows seems to require shell: true
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", "--json", `--timeout=${defaultDataformCompileTime}`], { shell: true });
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         }
 
         let stdOut = '';
