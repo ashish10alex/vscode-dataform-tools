@@ -3,7 +3,7 @@ import fs from 'fs';
 import { exec as exec } from 'child_process';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata } from './types';
+import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata, PostOpsBlockMeta, PreOpsBlockMeta } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, sqlFileToFormatPath } from './constants';
@@ -230,11 +230,13 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
     let configBlockExsists = false;
 
     /**vars for pre_operations block tracking */
+    let preOpsBlockMeta: PreOpsBlockMeta = {preOpsList: []};
     let startOfPreOperationsBlock = 0;
     let endOfPreOperationsBlock = 0;
     let preOpsBlockExsists = false;
 
     /**vars for post_operations block tracking */
+    let postOpsBlockMeta: PostOpsBlockMeta = {postOpsList: []};
     let startOfPostOperationsBlock = 0;
     let endOfPostOperationsBlock = 0;
     let postOpsBlockExsists = false;
@@ -253,10 +255,10 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         return {
-               configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exsists: configBlockExsists}
-             , preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock, exsists: preOpsBlockExsists}
-             , postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock, exsists: postOpsBlockExsists}
-             , sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock, exsists: sqlBlockExsists}
+               configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
+             , preOpsBlock: preOpsBlockMeta
+             , postOpsBlock: postOpsBlockMeta
+             , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
         };
     }
 
@@ -293,20 +295,34 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
                 currentBlock = "";
             } else if (currentBlock === "pre_operations") {
                 endOfPreOperationsBlock = i + 1;
+                preOpsBlockMeta.preOpsList.push(
+                    {
+                        startLine: startOfPreOperationsBlock,
+                        endLine: endOfPreOperationsBlock,
+                        exists: true
+                    },
+                );
                 preOpsBlockExsists = true;
                 currentBlock = "";
             } else if (currentBlock === "post_operations") {
                 endOfPostOperationsBlock = i + 1;
+                postOpsBlockMeta.postOpsList.push(
+                    {
+                        startLine: startOfPostOperationsBlock,
+                        endLine: endOfPostOperationsBlock,
+                        exists: true
+                    },
+                );
                 postOpsBlockExsists = true;
                 currentBlock = "";
             }
             inMajorBlock = false;
             if (task === "dryRun"){
                 return {
-                    configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exsists: configBlockExsists}
-                    , preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock, exsists: preOpsBlockExsists}
-                    , postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock, exsists: postOpsBlockExsists}
-                    , sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock, exsists: sqlBlockExsists}
+                    configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
+                    , preOpsBlock: preOpsBlockMeta
+                    , postOpsBlock: postOpsBlockMeta
+                    , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
                 };
             }
         } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1 && !inMajorBlock) {
@@ -321,10 +337,10 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
         }
     }
     return {
-        configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exsists: configBlockExsists}
-        , preOpsBlock: {startLine: startOfPreOperationsBlock , endLine: endOfPreOperationsBlock, exsists: preOpsBlockExsists}
-        , postOpsBlock: {startLine: startOfPostOperationsBlock, endLine: endOfPostOperationsBlock, exsists: postOpsBlockExsists}
-        , sqlBlock:{startLine: startOfSqlBlock, endLine: endOfSqlBlock, exsists: sqlBlockExsists}
+        configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
+        , preOpsBlock: preOpsBlockMeta
+        , postOpsBlock: postOpsBlockMeta
+        , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
     };
 };
 
@@ -793,12 +809,12 @@ function readFile(filePath:string) {
 }
 
 
-async function getTextForBlock(document: vscode.TextDocument, startLine:number, endLine:number, exsists:boolean): Promise<string>{
-    if(!exsists){
+async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta:{startLine:number, endLine:number, exists: boolean}): Promise<string>{
+    if(!blockRangeWtMeta.exists){
         return "";
     }
-    const startPosition = new vscode.Position(startLine-1, 0);
-    const endPosition = new vscode.Position(endLine-1, document.lineAt(endLine-1).text.length);
+    const startPosition = new vscode.Position(blockRangeWtMeta.startLine-1, 0);
+    const endPosition = new vscode.Position(blockRangeWtMeta.endLine-1, document.lineAt(blockRangeWtMeta.endLine-1).text.length);
     let range = new vscode.Range(startPosition, endPosition);
     return document.getText(range);
 }
@@ -840,20 +856,34 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     }
 
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
-    let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock;
-    let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock;
+
+    let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
+
+    let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock.postOpsList;
+
     let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
 
     let spaceBetweenBlocks = '\n\n\n';
 
-    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta.startLine, sqlBlockMeta.endLine, sqlBlockMeta.exsists);
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
 
-    let [configBlockText, preOpsBlockText, postOpsBlockText] = await Promise.all([
-        getTextForBlock(document, configBlockMeta.startLine, configBlockMeta.endLine, configBlockMeta.exsists),
-        getTextForBlock(document, preOpsBlockMeta.startLine, preOpsBlockMeta.endLine, preOpsBlockMeta.exsists),
-        getTextForBlock(document, postOpsBlockMeta.startLine, postOpsBlockMeta.endLine, postOpsBlockMeta.exsists),
-    ]);
+    let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
+
+    let myPromises:any = [];
+    preOpsBlockMeta.forEach((block:any) => {
+        myPromises.push(getTextForBlock(document, block));
+    });
+    let preOpsBlockTextList: string[] = await Promise.all(myPromises);
+
+    myPromises = [];
+    postOpsBlockMeta.forEach((block:any) => {
+        myPromises.push(getTextForBlock(document, block));
+    });
+    let postOpsBlockTextList = await Promise.all(myPromises);
+
+    let preOpsBlockText: string = preOpsBlockTextList.map((text: string) => text + spaceBetweenBlocks).join('');
+    let postOpsBlockText: string = postOpsBlockTextList.map((text: string) => text + spaceBetweenBlocks).join('');
 
     (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  spaceBetweenBlocks + preOpsBlockText;
     (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = spaceBetweenBlocks + postOpsBlockText;

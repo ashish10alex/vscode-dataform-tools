@@ -100,27 +100,34 @@ export interface BigQueryDryRunResponse {
 export interface ConfigBlockMetadata {
     startLine: number;
     endLine: number;
+    exists: boolean;
+}
+
+interface BlockRange{
+    startLine: number;
+    endLine: number;
+    exists: boolean;
+}
+
+export interface PreOpsBlockMeta {
+    preOpsList: BlockRange[];
+}
+
+export interface PostOpsBlockMeta {
+    postOpsList: BlockRange[];
 }
 
 
 export interface SqlxBlockMetadata {
     configBlock: {
-        exsists: boolean;
+        exists: boolean;
         startLine: number;
         endLine: number;
     },
-    preOpsBlock: {
-        exsists: boolean;
-        startLine: number;
-        endLine: number;
-    },
-    postOpsBlock: {
-        exsists: boolean;
-        startLine: number;
-        endLine: number;
-    },
+    preOpsBlock: PreOpsBlockMeta;
+    postOpsBlock: PostOpsBlockMeta;
     sqlBlock: {
-        exsists: boolean;
+        exists: boolean;
         startLine: number;
         endLine: number;
     },
