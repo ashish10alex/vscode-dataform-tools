@@ -809,9 +809,35 @@ function getActiveFilePath() {
       return activeEditor.document.uri.fsPath;
     }
     return undefined;
-  }
+}
+
+function checkIfFileExsists(filePath:string){
+    if(fs.existsSync(filePath)){
+        return true;
+    }
+    return false;
+}
 
 export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata ){
+
+
+
+    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    if(!workspaceFolder){
+        vscode.window.showErrorMessage("Could not determine workspace");
+        return;
+    }
+    let sqlfluffConfigFilePath = path.join(workspaceFolder, ".sqlfluff");
+    if (!checkIfFileExsists(sqlfluffConfigFilePath)){
+        const message = 'No .sqlfluff file found at the root of project. Please download a valid template for .sqlx files using the link';
+        const linkText = "Learn More";
+        vscode.window.showErrorMessage(message, linkText).then(selection => {
+            if (selection === linkText) {
+                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform/blob/main/assets/.sqlfluff"));
+            }
+        });
+        return;
+    }
 
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock;
@@ -832,7 +858,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  spaceBetweenBlocks + preOpsBlockText;
     (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = spaceBetweenBlocks + postOpsBlockText;
 
-    let formatCmd = `sqlfluff fix -q --config .formatdataform/.sqlfluff ${sqlFileToFormatPath}`;
+    let formatCmd = `sqlfluff fix -q --config=.sqlfluff ${sqlFileToFormatPath}`;
 
     await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
         let formattedSql = await readFile(sqlFileToFormatPath);
