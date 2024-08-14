@@ -31,8 +31,8 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath, formatSqlxFile } from './utils';
-import { getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags,  getMetadataForSqlxFileBlocks } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags,  getMetadataForSqlxFileBlocks } from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath, getDataformCompilationTimeoutFromConfig } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
@@ -186,7 +186,9 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
 
                 if (!workspaceFolder) { return; }
-                let runTagsCmd = getRunTagsCommand(workspaceFolder, selection);
+
+                let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+                let runTagsCmd = getRunTagsCommand(workspaceFolder, selection, defaultDataformCompileTime);
 
                 runCommandInTerminal(runTagsCmd);
             });
@@ -208,7 +210,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
 
                 if (!workspaceFolder) { return; }
-                let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection);
+                let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+                let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection, defaultDataformCompileTime);
 
                 runCommandInTerminal(runTagsWtDepsCommand);
             });
@@ -230,7 +233,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
 
                 if (!workspaceFolder) { return; }
-                let runTagsWtDownstreamDepsCommand = getRunTagsWtDownstreamDepsCommand(workspaceFolder, selection);
+                let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+                let runTagsWtDownstreamDepsCommand = getRunTagsWtDownstreamDepsCommand(workspaceFolder, selection, defaultDataformCompileTime);
 
                 runCommandInTerminal(runTagsWtDownstreamDepsCommand);
             });
