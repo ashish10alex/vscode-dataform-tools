@@ -7,7 +7,7 @@ import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
     * @param task string - Can be one of the following: "dryRun", "formatting"
     return SqlxBlockMetadata
 */
-export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlockMetadata> => {
+export const getMetadataForSqlxFileBlocks = (task:string, document:vscode.TextDocument): SqlxBlockMetadata => {
 
     let inMajorBlock = false;
 
@@ -37,17 +37,6 @@ export const getMetadataForSqlxFileBlocks = async (task:string): Promise<SqlxBlo
 
     let currentBlock = "";
 
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        return {
-               configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
-             , preOpsBlock: preOpsBlockMeta
-             , postOpsBlock: postOpsBlockMeta
-             , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
-        };
-    }
-
-    const document = editor.document;
     const totalLines = document.lineCount;
 
     for (let i = 0; i < totalLines; i++) {

@@ -780,7 +780,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        let configBlockRange = (await getMetadataForSqlxFileBlocks("dryRun")).configBlock; // Takes less than 2ms (dataform wt 285 nodes)
+        let configBlockRange = getMetadataForSqlxFileBlocks("dryRun", document).configBlock; // Takes less than 2ms (dataform wt 285 nodes)
         let configBlockStart = configBlockRange.startLine || 0;
         let configBlockEnd = configBlockRange.endLine || 0;
         let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
