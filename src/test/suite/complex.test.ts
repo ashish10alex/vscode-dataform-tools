@@ -17,25 +17,29 @@ suite('SqlxFileBlockMetaParsing', async() => {
 		assert.ok(doc);
 		let sqlxBlockMetadata = getMetadataForSqlxFileBlocks("format", doc);
 
+		/**config block */
 		assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
 		assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 10);
 
-		assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 49);
-		assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 64);
-
+		/** Post ops block */
 		assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 2);
-		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
-
 		assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 31);
 		assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 40);
 		assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].startLine, 42);
 		assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].endLine, 46);
 
+		/** Pre ops block */
+		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
 		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
 		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 13);
 		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 22);
 		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].startLine, 24);
 		assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].endLine, 28);
+
+		/** sql block */
+		assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 49);
+		assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 64);
+
 
 		} catch (error:any) {
             console.error('Test failed:', error);
