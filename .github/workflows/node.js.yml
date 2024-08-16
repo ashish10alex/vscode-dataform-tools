@@ -20,4 +20,4 @@ jobs:
         cache: 'npm'
     - run: npm ci
     - run: npm run compile
-    - run: npm test
+    - run: xvfb-run -a npm test
