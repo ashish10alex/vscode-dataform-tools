@@ -2,10 +2,8 @@ import * as vscode from "vscode";
 import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
 
 /**
-    * This function is used to get the metadata for the sqlx file blocks
-    * An sqlx file can have a config block followed by pre_operations / post_operations and an sql block 
-    * @param task string - Can be one of the following: "dryRun", "formatting"
-    return SqlxBlockMetadata
+    * This function is used to get start / end points for different blocks in an sqlx file
+    * An sqlx file can have a config block followed by pre_operations / post_operations and an sql block
 */
 export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): SqlxBlockMetadata => {
 

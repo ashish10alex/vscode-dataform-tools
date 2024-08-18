@@ -703,11 +703,8 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     }
 
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
-
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
-
     let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock.postOpsList;
-
     let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
 
     let spaceBetweenBlocks = '\n\n\n';
