@@ -1,9 +1,6 @@
 
 import * as vscode from 'vscode';
 import {DryRunError, SqlxBlockMetadata} from './types';
-// import { tableQueryOffset } from './constants';
-// import { off } from 'process';
-
 
 export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, compiledSqlFilePath: string, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
 

@@ -121,3 +121,8 @@ export interface SqlxBlockMetadata {
     postOpsBlock: PostOpsBlockMeta;
     sqlBlock: BlockMeta;
 }
+
+export interface GitHubContentResponse {
+    content: string;
+    encoding: string;
+  }

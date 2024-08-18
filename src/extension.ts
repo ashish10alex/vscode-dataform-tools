@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import path from 'path';
 // import { exec as exec } from 'child_process';
 
 let isEnabled = true;
@@ -31,8 +32,8 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags } from './utils';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags , writeContentsToFile, fetchGitHubFileContent} from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand} from './commands';
@@ -135,13 +136,29 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
+            //TODO: Check if `sqlfluff` cli is available in path
+
             let document = vscode.window.activeTextEditor?.document;
             if (!document) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
                 return;
             }
             let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
+            let workspaceFolder = getWorkspaceFolder();
+            if(!workspaceFolder){
+                return;
+            }
+
+            let sqlfluffConfigFilePath = path.join(workspaceFolder, ".vscode-dataform-tools" , ".sqlfluff");
+            if(!checkIfFileExsists(sqlfluffConfigFilePath)){
+                vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
+                let sqlfluffConfigFileContents = await fetchGitHubFileContent();
+                writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
+                vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
+            }
             await formatSqlxFile(document, metadataForSqlxFileBlocks); // takes ~ 700ms to format 200 lines
+
+            //TODO: Remove before release
             // document?.save();
             // await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });

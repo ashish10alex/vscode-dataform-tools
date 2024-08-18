@@ -8,6 +8,7 @@ import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
+import { GitHubContentResponse } from './types';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -115,6 +116,19 @@ export function getLineUnderCursor(): string | undefined {
     return line;
 
 }
+
+export async function fetchGitHubFileContent(): Promise<string> {
+    const repo = 'formatdataform';
+    const filePath = 'assets/.sqlfluff';
+    const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json() as GitHubContentResponse;
+    return Buffer.from(data.content, 'base64').toString('utf-8');
+  }
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
@@ -674,33 +688,30 @@ function getActiveFilePath() {
     return undefined;
 }
 
-function checkIfFileExsists(filePath:string){
+export function checkIfFileExsists(filePath:string){
     if(fs.existsSync(filePath)){
         return true;
     }
     return false;
 }
 
+const ensureDirectoryExistence = (filePath:string) => {
+    const dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) {
+      return true;
+    }
+    fs.mkdirSync(dirname, { recursive: true });
+  };
+
+export function writeContentsToFile(filePath:string, content:string){
+    ensureDirectoryExistence(filePath);
+    fs.writeFile(filePath, content, (err) => {
+    if (err) {throw err;};
+        return;
+    });
+}
+
 export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata ){
-
-
-
-    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-    if(!workspaceFolder){
-        vscode.window.showErrorMessage("Could not determine workspace");
-        return;
-    }
-    let sqlfluffConfigFilePath = path.join(workspaceFolder, ".sqlfluff");
-    if (!checkIfFileExsists(sqlfluffConfigFilePath)){
-        const message = 'No .sqlfluff file found at the root of project. Please download a valid template for .sqlx files using the link';
-        const linkText = "Learn More";
-        vscode.window.showErrorMessage(message, linkText).then(selection => {
-            if (selection === linkText) {
-                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform/blob/main/assets/.sqlfluff"));
-            }
-        });
-        return;
-    }
 
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
@@ -733,7 +744,9 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
     (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
 
-    let formatCmd = `sqlfluff fix -q --config=.sqlfluff ${sqlFileToFormatPath}`;
+    //TODO: Optionally read configFilePath from settings
+    let sqlfluffConfigFilePath = ".vscode-dataform-tools/.sqlfluff";
+    let formatCmd = `sqlfluff fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
 
     await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
         let formattedSql = await readFile(sqlFileToFormatPath);
