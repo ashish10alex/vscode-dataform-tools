@@ -22,7 +22,8 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
         const severity = vscode.DiagnosticSeverity.Error;
         const diagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
 
-        if (diagnostics.length === 0) { //NOTE: Did this because we are only showing first error ?
+        //NOTE: Did this because we are only showing first error ?
+        if (diagnostics.length === 0) {
             diagnostics.push(diagnostic);
             if (document !== undefined) {
                 diagnosticCollection.set(document.uri, diagnostics);
@@ -32,8 +33,7 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
         let showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave && dryRunError.hasError === true) {
             let compiledQueryDiagnostics: vscode.Diagnostic[] = [];
-            let errLineNumberForCompiledQuery = errLineNumber;
-            let range = new vscode.Range(new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber), new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber + 5));
+            let range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
             const testDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
             compiledQueryDiagnostics.push(testDiagnostic);
             let visibleEditors = vscode.window.visibleTextEditors;
