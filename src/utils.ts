@@ -791,9 +791,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        console.time("getMetadataForSqlxFileBlocks");
         sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: this needs updating Takes less than 2ms (dataform wt 285 nodes)
-        console.timeEnd("getMetadataForSqlxFileBlocks");
     }
 
     let offSet = 0;
