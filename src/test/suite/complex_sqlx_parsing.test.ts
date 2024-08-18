@@ -4,8 +4,8 @@ import * as vscode from 'vscode';
 import { getMetadataForSqlxFileBlocks } from "../../sqlxFileParser";
 
 
-suite('SqlxFileBlockMetaParsing', async () => {
-    test('ConfigBlockWtMultiplePrePostOpsBlocks', async () => {
+suite('GetMetadataForSqlxFileBlocks', async () => {
+    test('When config, multiple pre/post operation blocks are present', async () => {
         try {
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
 

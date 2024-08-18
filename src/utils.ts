@@ -6,7 +6,7 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, sqlFileToFormatPath } from './constants';
+import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -762,7 +762,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     });
 }
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);

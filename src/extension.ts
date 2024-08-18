@@ -80,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         if (completionItems !== undefined) {
             dataformTags = completionItems[0];
             declarationsAndTargets = completionItems[1];
