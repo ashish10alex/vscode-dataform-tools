@@ -1,0 +1,160 @@
+[sqlfluff]
+templater = placeholder
+dialect = bigquery
+output_line_length = 120
+
+# EXCLUDED RULES
+# ==============
+# AL07 - Avoid table aliases in from clauses and join conditions.
+# ST06 - Select wildcards then simple targets before calculations and aggregates.
+# ST07 - Prefer specifying join keys instead of using USING.
+# AM03 - Ambiguous ordering directions for columns in order by clause.
+# ST04 - Dont mess up nested CASE statement
+# LT05 - Line is too long
+# AL05 - Tables should not be aliased if that alias is not used.
+exclude_rules = AL07, ST06, ST07, AM03, ST04, LT05, AL05
+
+[sqlfluff:rules]
+allow_scalar = False
+
+[sqlfluff:indentation]
+# See https://docs.sqlfluff.com/en/stable/layout.html#configuring-indent-locations
+indent_unit = space
+tab_space_size = 2
+indented_joins = False
+indented_ctes = False
+indented_using_on = True
+indented_on_contents = True
+indented_then = True
+indented_then_contents = True
+allow_implicit_indents = False
+template_blocks_indent = True
+# This is a comma separated list of elements to skip
+# indentation edits to.
+skip_indentation_in = script_content
+# If comments are found at the end of long lines, we default to moving
+# them to the line _before_ their current location as the convention is
+# that a comment precedes the line it describes. However if you prefer
+# comments moved _after_, this configuration setting can be set to "after".
+trailing_comments = before
+# To exclude comment lines from indentation entirely set this to "True".
+ignore_comment_lines = False
+
+[sqlfluff:layout:type:where_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:binary_operator]
+line_position = leading
+
+[sqlfluff:layout:type:comparison_operator]
+line_position = trailing
+
+[sqlfluff:layout:type:alias_expression]
+# We want non-default spacing _before_ the alias expressions.
+spacing_before = align
+align_within = select_clause
+align_scope = bracketed
+
+[sqlfluff:rules:capitalisation.keywords]
+# Keywords must be capitalised
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.literals]
+# Null & Boolean Literals eg: NULL, TRUE, FALSE
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+# Data Types eg: INT, STR
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+# Unquoted identifiers
+extended_capitalisation_policy = upper
+unquoted_identifiers_policy=all
+
+[sqlfluff:rules:capitalisation.functions]
+# Function names
+capitalisation_policy = upper
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:ambiguous.join]
+# Fully qualify JOIN clause
+fully_qualify_join_types = inner
+
+[sqlfluff:rules:aliasing.length]
+# Minimum string length when creating an alias
+min_alias_length = 3
+
+[sqlfluff:rules:aliasing.table]
+# Aliasing preference for tables, ie needs an AS
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.column]
+# Aliasing preference for columns, ie needs an AS
+aliasing = explicit
+
+[sqlfluff:rules:layout.commas]
+# Leading or trailing commas
+line_position = leading
+
+[sqlfluff:layout:type:comma]
+line_position = leading
+
+
+[sqlfluff:rules:convention.select_trailing_comma]
+# No trailing comma at end of SELECT, ie before FROM (after last column name)
+select_clause_trailing_comma = forbid
+
+[sqlfluff:rules:ambiguous.column_references]
+# GROUP BY/ORDER BY column references (i.e. implicit by position or explicit by name)
+group_by_and_order_by_style = explicit
+
+[sqlfluff:rules:references.special_chars]
+# Special characters in identifiers
+unquoted_identifiers_policy = all
+quoted_identifiers_policy = all
+allow_space_in_identifier = False
+additional_allowed_characters = ["", $]
+
+[sqlfluff:rules:references.keywords]
+# Keywords should not be used as identifiers.
+unquoted_identifiers_policy = all
+quoted_identifiers_policy = none
+
+
+# 1 is used by sqlfluff to replace the regex match with the value of the placeholder
+# if you have multiple placeholders, you can add more lines with the same format
+# e.g. 2 = `gcp_project_id.my_dataset.my_table`
+# NOTE: when using formatdataform cli it automatically generates multiple lines for you (defaulted to 30 atm)
+[sqlfluff:templater:placeholder]
+param_regex = \$\{self\(\)\}|\${ref\(\"\d*([\w]+)"\)\}|\${ref\(\'\d*([\w]+)'\)\}|\$\{[^}]*\}
+1 = my_table_or_replacement
+2 = my_table_or_replacement
+3 = my_table_or_replacement
+4 = my_table_or_replacement
+5 = my_table_or_replacement
+6 = my_table_or_replacement
+7 = my_table_or_replacement
+8 = my_table_or_replacement
+9 = my_table_or_replacement
+10 = my_table_or_replacement
+11 = my_table_or_replacement
+12 = my_table_or_replacement
+13 = my_table_or_replacement
+14 = my_table_or_replacement
+15 = my_table_or_replacement
+16 = my_table_or_replacement
+17 = my_table_or_replacement
+18 = my_table_or_replacement
+19 = my_table_or_replacement
+20 = my_table_or_replacement
+21 = my_table_or_replacement
+22 = my_table_or_replacement
+23 = my_table_or_replacement
+24 = my_table_or_replacement
+25 = my_table_or_replacement
+26 = my_table_or_replacement
+27 = my_table_or_replacement
+28 = my_table_or_replacement
+29 = my_table_or_replacement
+30 = my_table_or_replacement

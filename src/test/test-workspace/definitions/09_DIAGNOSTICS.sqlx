@@ -1,0 +1,22 @@
+config {
+    type: "table",
+    dependencies: "0100_TEST",
+    tags: "TAG_2",
+}
+
+pre_operations {
+  SELECT 42 AS A
+  UNION ALL
+  SELECT 78 AS A
+}
+
+post_operations {
+  SELECT 10 AS B
+  UNION ALL
+  SELECT 8 AS B
+}
+
+
+SELECT 1 AS A
+NION ALL
+SELECT 1 AS A

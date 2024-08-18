@@ -80,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         if (completionItems !== undefined) {
             dataformTags = completionItems[0];
             declarationsAndTargets = completionItems[1];
@@ -140,7 +140,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
                 return;
             }
-            let metadataForSqlxFileBlocks = await getMetadataForSqlxFileBlocks("format"); // take ~1.3ms to parse 200 lines
+            let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
             await formatSqlxFile(document, metadataForSqlxFileBlocks); // takes ~ 700ms to format 200 lines
             // document?.save();
             // await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);

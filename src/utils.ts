@@ -3,10 +3,10 @@ import fs from 'fs';
 import { exec as exec } from 'child_process';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata, PostOpsBlockMeta, PreOpsBlockMeta } from './types';
+import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, sqlFileToFormatPath } from './constants';
+import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -306,9 +306,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
-    // let tablePrefix = compiledJson?.projectConfig?.tablePrefix;
     let finalQuery = "";
-    // let finalTables: Table[] = [];
     let finalTables: any[] = [];
 
     if (tables === undefined) {
@@ -320,7 +318,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
             if (table.type === "table" || table.type === "view") {
-                finalQuery = table.query + "\n ;";
+                finalQuery = table.query.trimStart() + "\n ;";
             } else if (table.type === "incremental") {
                 finalQuery += "\n-- Non incremental query \n";
                 finalQuery += table.query + ";";
@@ -333,7 +331,19 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                     });
                 }
             }
-            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? [] };
+            if (table.preOps){
+                table.preOps.forEach((query, idx) => {
+                    finalQuery += `\n-- Pre operations: [${idx}] \n`;
+                    finalQuery += query + ";\n";
+                });
+            }
+            if (table.postOps){
+                table.postOps.forEach((query, idx) => {
+                    finalQuery += `\n-- Post operations: [${idx}] \n`;
+                    finalQuery += query + ";\n";
+                });
+            }
+            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: finalQuery, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? [] };
             finalTables.push(tableFound);
             break;
         }
@@ -355,7 +365,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
             finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
-            finalQuery += assertion.query + "\n ;";
+            finalQuery += assertion.query.trimStart() + "; \n";
         }
     }
 
@@ -752,7 +762,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     });
 }
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
@@ -778,18 +788,17 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         getMetadataForCurrentFile(filename, dataformCompiledJson)
     ]);
 
+    let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        let configBlockRange = (await getMetadataForSqlxFileBlocks("dryRun")).configBlock; // Takes less than 2ms (dataform wt 285 nodes)
-        let configBlockStart = configBlockRange.startLine || 0;
-        let configBlockEnd = configBlockRange.endLine || 0;
-        let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
+        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: this needs updating Takes less than 2ms (dataform wt 285 nodes)
+    }
 
-        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
-            configLineOffset = configBlockOffset - tableQueryOffset;
-        } else if (tableMetadata.tables[0].type === "assertion") {
-            configLineOffset = configBlockOffset - assertionQueryOffset;
-        }
+    let offSet = 0;
+    if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
+        offSet = tableQueryOffset;
+    } else if (tableMetadata.tables[0].type === "assertion") {
+        offSet = assertionQueryOffset;
     }
 
     if (tableMetadata.fullQuery === "") {
@@ -806,7 +815,11 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     if (dryRunResult.error.hasError) {
-        setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
+        if (!sqlxBlockMetadata){
+            vscode.window.showErrorMessage("Could not parse sqlx file");
+            return;
+        }
+        setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
         return;
     }
     let combinedTableIds = "";

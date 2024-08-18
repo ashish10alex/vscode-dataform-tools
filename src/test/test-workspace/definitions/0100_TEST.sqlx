@@ -1,0 +1,45 @@
+config {
+    type: "table",
+    schema: "electric_cars",
+    dependencies: 'ALL_EV_CARS_DATA',
+    tags: ["TAG_1"]
+}
+
+
+WITH CTE1 AS (
+  SELECT
+    MAKE
+    , COUNTY
+    , CITY
+    , STATE
+    , POSTAL_CODE
+    , MODEL
+    , MODEL_YEAR
+    , COUNT(VIN) AS CNT_VIN
+  FROM ${ref("ALL_EV_CARS_DATA")}
+  GROUP BY MAKE, COUNTY, CITY, STATE, POSTAL_CODE, MODEL, MODEL_YEAR
+  HAVING MAKE = ${constants.make}
+)
+
+, CTE2 AS (
+  SELECT
+    MAKE
+    , COUNTY
+    , CITY
+    , STATE
+    , POSTAL_CODE
+    , MODEL
+    , MODEL_YEAR
+    , COUNT(VIN) AS CNT_VIN
+  FROM ${ref("ALL_EV_CARS_DATA")}
+  GROUP BY MAKE, COUNTY, CITY, STATE, POSTAL_CODE, MODEL, MODEL_YEAR
+  HAVING MAKE = ${constants.make}
+)
+
+, FINAL_TABLE AS (
+  SELECT * FROM CTE1
+  UNION ALL
+  SELECT * FROM CTE2
+)
+
+SELECT * FROM FINAL_TABLE

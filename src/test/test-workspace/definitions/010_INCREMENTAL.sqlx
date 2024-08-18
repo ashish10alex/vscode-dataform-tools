@@ -1,0 +1,64 @@
+config {
+  type: "incremental",
+  protected: true,
+  disabled: true,
+  description: "Some description",
+  tags: ["TEST_FORMATTING"],
+  bigquery: {
+    partitionExpirationDays: 30
+  },
+}
+
+
+pre_operations {
+  ${when(incremental(),
+  `DELETE
+  FROM
+    ${self()}
+  WHERE
+    1=1`
+    )
+  }
+}
+
+pre_operations {
+  SELECT 42 AS A
+  UNION ALL
+  SELECT 78 AS A
+}
+
+
+post_operations {
+  ${when(incremental(),
+  `DELETE
+  FROM
+    ${self()}
+  WHERE
+    1=1`
+    )
+  }
+}
+
+post_operations {
+  SELECT 10 AS B
+  UNION ALL
+  SELECT 8 AS B
+}
+
+
+WITH CTE1 AS (
+  SELECT
+    MAKE
+    , COUNTY
+    , CITY
+    , STATE
+    , POSTAL_CODE
+    , MODEL
+    , MODEL_YEAR
+    , COUNT(VIN) AS CNT_VIN
+  FROM ${ref("ALL_EV_CARS_DATA")}
+  GROUP BY MAKE, COUNTY, CITY, STATE, POSTAL_CODE, MODEL, MODEL_YEAR
+  HAVING MAKE = ${constants.make}
+)
+
+SELECT * FROM CTE1
