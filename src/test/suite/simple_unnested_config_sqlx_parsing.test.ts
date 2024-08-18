@@ -15,7 +15,7 @@ suite('SqlxFileBlockMetaParsing', async () => {
             let uri = path.join(workspacePath, 'definitions/0200_TEST.sqlx');
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
-            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks("format", doc);
+            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
 
             assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
             assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 5);

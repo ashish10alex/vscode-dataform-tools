@@ -7,7 +7,7 @@ import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
     * @param task string - Can be one of the following: "dryRun", "formatting"
     return SqlxBlockMetadata
 */
-export const getMetadataForSqlxFileBlocks = (task:string, document:vscode.TextDocument): SqlxBlockMetadata => {
+export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): SqlxBlockMetadata => {
 
     let inMajorBlock = false;
 
@@ -89,14 +89,6 @@ export const getMetadataForSqlxFileBlocks = (task:string, document:vscode.TextDo
                 currentBlock = "";
             }
             inMajorBlock = false;
-            if (task === "dryRun"){
-                return {
-                    configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
-                    , preOpsBlock: preOpsBlockMeta
-                    , postOpsBlock: postOpsBlockMeta
-                    , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
-                };
-            }
         } else if (lineContents.match("}") && isInInnerMajorBlock && innerMajorBlockCount >= 1 && !inMajorBlock) {
             innerMajorBlockCount -= 1;
         } else if (lineContents !== "" && !inMajorBlock){

@@ -6,6 +6,8 @@ export interface Table {
     target: Target;
     canonicalTarget: Target;
     incrementalQuery: string;
+    preOps: string[];
+    postOps: string[];
     incrementalPreOps: string[];
     dependencyTargets: Target[];
 }
