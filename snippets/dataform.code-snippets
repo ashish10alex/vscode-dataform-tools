@@ -3,16 +3,16 @@
 		"scope": "sql",
         "prefix": "config",
 		"body": [
-			" config {",
-				"type: 'table',",
-				"schema: '${1}',",
-				"description: '${2}',",
-				"dependencies: [${3}],",
-				"bigquery: {",
+			"config {",
+				"  type: 'table',",
+				"  schema: '${1}',",
+				"  description: '${2}',",
+				"  dependencies: [${3}],",
+				"  bigquery: {",
 				"  partitionBy: ${4},",
-				" clusterBy: [${5}]",
-				"},",
-				"tags: [${6}]",
+				"  clusterBy: [${5}]",
+				"  },",
+				"  tags: [${6}]",
 			  "}"
 		],
 		"description": "Generate config for sqlx files"
@@ -28,5 +28,25 @@
 			  "});"
 		],
 		"description": "Generate source declararions"
+	},
+	"pre operations": {
+		"scope": "sql",
+        "prefix": "pre_operations",
+		"body": [
+			"pre_operations {",
+				"  ${1}",
+			  "}"
+		],
+		"description": "Generate pre_operation block"
+	},
+	"post operations": {
+		"scope": "sql",
+        "prefix": "post_operations",
+		"body": [
+			"post_operations {",
+				"  ${1}",
+			  "}"
+		],
+		"description": "Generate post_operation block"
 	}
 }
