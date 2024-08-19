@@ -33,7 +33,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags , writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings} from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags , writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument} from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -137,10 +137,19 @@ export async function activate(context: vscode.ExtensionContext) {
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
+        /**
+         * Takes ~2 seconds as we compile the project and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
+         */
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
             let document = vscode.window.activeTextEditor?.document;
             if (!document) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
+                return;
+            }
+
+            var [filename, extension] = getFileNameFromDocument(document);
+            if (filename === "" || extension !== "sqlx") {
+                vscode.window.showErrorMessage("Formatting is only supported for .sqlx files");
                 return;
             }
 
@@ -169,8 +178,7 @@ export async function activate(context: vscode.ExtensionContext) {
             await formatSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 
             //TODO: Remove before release
-            // document?.save();
-            // await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            document?.save();
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
