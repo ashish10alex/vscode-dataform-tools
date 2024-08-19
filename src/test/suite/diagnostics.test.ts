@@ -30,6 +30,24 @@ suite('setDiagnostics', () => {
                     }
                 };
 
+                let mockPreOpsDryRunError =   {
+                    hasError: false,
+                    message: "",
+                    location: {
+                        line: 0,
+                        column: 0
+                    }
+                };
+
+                let mockPostOpsDryRunError =   {
+                    hasError: false,
+                    message: "",
+                    location: {
+                        line: 0,
+                        column: 0
+                    }
+                };
+
                 let configBlockMeta = {
                     startLine: 1,
                     endLine: 5,
@@ -50,7 +68,7 @@ suite('setDiagnostics', () => {
                 };
 
                 let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
-                setDiagnostics(document, mockDryRunError, compiledSqlFilePath, diagnosticCollection, mockSqlxBlockMetadata, offSet);
+                setDiagnostics(document, mockDryRunError, mockPreOpsDryRunError, mockPostOpsDryRunError, compiledSqlFilePath, diagnosticCollection, mockSqlxBlockMetadata, offSet);
                 let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
                 assert.deepEqual(allDiagnostics.length, 1);
                 let diagnosticRange = allDiagnostics[0].range;

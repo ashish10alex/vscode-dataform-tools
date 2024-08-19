@@ -52,7 +52,7 @@ export async function activate(context: vscode.ExtensionContext) {
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
         if (executable === "sqlfluff") {
-            vscode.window.showWarningMessage("Install sqlfluff to enable formatting of sqlx files");
+            vscode.window.showWarningMessage("Install sqlfluff using `pip install sqlfluff` to enable formatting of sqlx files");
         }
         executableIsAvailable(executable);
     }

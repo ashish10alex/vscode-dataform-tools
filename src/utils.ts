@@ -320,11 +320,12 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
-    let finalQuery = "";
+    let queryToDisplay = "";
+    let queryToDryRun = "";
     let finalTables: any[] = [];
 
     if (tables === undefined) {
-        return { tables: finalTables, fullQuery: finalQuery };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
 
     for (let i = 0; i < tables.length; i++) {
@@ -332,59 +333,83 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
             if (table.type === "table" || table.type === "view") {
-                finalQuery = table.query.trimStart() + "\n ;";
+                queryToDisplay = table.query.trimStart() + "\n ;";
             } else if (table.type === "incremental") {
-                finalQuery += "\n-- Non incremental query \n";
-                finalQuery += table.query + ";";
-                finalQuery += "\n-- Incremental query \n";
-                finalQuery += table.incrementalQuery + ";\n";
+                queryToDisplay += "\n-- Non incremental query \n";
+                queryToDisplay += table.query + ";";
+                queryToDisplay += "\n-- Incremental query \n";
+                queryToDisplay += table.incrementalQuery + ";\n";
                 if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
-                        finalQuery += `\n-- Incremental pre operations: [${idx}] \n`;
-                        finalQuery += query + "\n ;";
+                        queryToDisplay += `\n-- Incremental pre operations: [${idx}] \n`;
+                        queryToDisplay += query + "\n ;";
                     });
                 }
             }
+
+            queryToDryRun += queryToDisplay;
             if (table.preOps){
                 table.preOps.forEach((query, idx) => {
-                    finalQuery += `\n-- Pre operations: [${idx}] \n`;
-                    finalQuery += query + ";\n";
+                    queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
+                    queryToDisplay += query + ";\n";
                 });
             }
             if (table.postOps){
                 table.postOps.forEach((query, idx) => {
-                    finalQuery += `\n-- Post operations: [${idx}] \n`;
-                    finalQuery += query + ";\n";
+                    queryToDisplay += `\n-- Post operations: [${idx}] \n`;
+                    queryToDisplay += query + ";\n";
                 });
             }
-            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: finalQuery, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? [] };
+            let tableFound = {
+                              type: table.type,
+                              tags: table.tags,
+                              fileName: fileName,
+                              query: queryToDisplay,
+                              target: table.target,
+                              preOps: table.preOps,
+                              postOps: table.postOps,
+                              dependencyTargets: table.dependencyTargets,
+                              incrementalQuery: table?.incrementalQuery ?? "",
+                              incrementalPreOps: table?.incrementalPreOps ?? [] 
+                            };
             finalTables.push(tableFound);
             break;
         }
     }
 
     if (assertions === undefined) {
-        return { tables: finalTables, fullQuery: finalQuery };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
 
 
 
     let assertionCountForFile = 0;
+    let assertionQuery = "";
     for (let i = 0; i < assertions.length; i++) {
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
         if (assertionFileName === fileName) {
-            let assertionFound = { type: "assertion", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, dependencyTargets: assertion.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
+            let assertionFound = {
+                        type: "assertion",
+                        tags: assertion.tags,
+                        fileName: fileName,
+                        query: assertion.query,
+                        target: assertion.target,
+                        dependencyTargets: assertion.dependencyTargets,
+                        incrementalQuery: "", incrementalPreOps: [] 
+                    };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
-            finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
-            finalQuery += assertion.query.trimStart() + "; \n";
+            assertionQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
+            assertionQuery += assertion.query.trimStart() + "; \n";
         }
     }
+    queryToDisplay += assertionQuery;
+    queryToDryRun += assertionQuery;
 
     if (operations === undefined) {
-        return { tables: finalTables, fullQuery: finalQuery };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
 
     for (let i = 0; i < operations.length; i++) {
@@ -399,14 +424,24 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                 finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
                 finalOperationQuery += opQueries[i] + "\n ;";
             }
-            finalQuery += finalOperationQuery;
-            let operationFound = { type: "operation", tags: operation.tags, fileName: fileName, query: finalOperationQuery, target: operation.target, dependencyTargets: operation.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
+            queryToDisplay += finalOperationQuery;
+            queryToDryRun += finalOperationQuery;
+            let operationFound = {
+                    type: "operation",
+                    tags: operation.tags,
+                    fileName: fileName,
+                    query: finalOperationQuery,
+                    target: operation.target,
+                    dependencyTargets: operation.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: [] 
+                };
             finalTables.push(operationFound);
             break;
         }
     }
 
-    return { tables: finalTables, fullQuery: finalQuery };
+    return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
 };
 
 
@@ -794,8 +829,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
 
-    let configLineOffset = 0; //TODO: check if this is constant ?
-
     let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
 
     if (!dataformCompiledJson){
@@ -835,14 +868,20 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     if (showCompiledQueryInVerticalSplitOnSave) {
         writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath, true);
     }
+    // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
+    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
+        queryDryRun(tableMetadata.queryToDryRun),
+        //TODO: check if tables[0] is valid ??
+        queryDryRun(tableMetadata?.tables[0]?.preOps ? tableMetadata?.tables[0]?.preOps[0]: ""),
+        queryDryRun(tableMetadata?.tables[0]?.postOps ? tableMetadata?.tables[0]?.postOps[0]: "")
+    ]);
 
-    let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    if (dryRunResult.error.hasError) {
+    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata){
             vscode.window.showErrorMessage("Could not parse sqlx file");
             return;
         }
-        setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
+        setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
         return;
     }
     let combinedTableIds = "";

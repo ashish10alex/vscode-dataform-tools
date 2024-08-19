@@ -15,6 +15,7 @@ export interface Table {
 export interface TablesWtFullQuery {
     tables: Table[];
     fullQuery: string;
+    queryToDryRun: string;
 }
 
 export interface Assertion {
