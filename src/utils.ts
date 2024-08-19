@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import os from 'os';
 import fs from 'fs';
 import { exec as exec } from 'child_process';
 import path from 'path';
@@ -416,6 +417,22 @@ export function getDataformCompilationTimeoutFromConfig(){
         return dataformCompilationTimeoutVal;
     }
     return "5m";
+}
+
+export function getSqlfluffConfigPathFromSettings(){
+    const isWindows = os.platform() === 'win32';
+    let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
+    let sqlfluffConfigPath: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
+    if (sqlfluffConfigPath){
+        if(isWindows){
+            sqlfluffConfigPath = path.win32.normalize(sqlfluffConfigPath);
+        }
+        return sqlfluffConfigPath;
+    }
+    if(!isWindows){
+        return defaultSqlfluffConfigPath;
+    }
+    return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
 function compileDataform(workspaceFolder: string): Promise<string> {

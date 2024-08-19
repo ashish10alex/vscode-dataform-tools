@@ -32,7 +32,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags , writeContentsToFile, fetchGitHubFileContent} from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags , writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings} from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -136,20 +136,22 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-            //TODO: Check if `sqlfluff` cli is available in path
+            let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
 
             let document = vscode.window.activeTextEditor?.document;
             if (!document) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
                 return;
             }
-            let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
+
             let workspaceFolder = getWorkspaceFolder();
             if(!workspaceFolder){
                 return;
             }
 
-            let sqlfluffConfigFilePath = path.join(workspaceFolder, ".vscode-dataform-tools" , ".sqlfluff");
+            let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
+
+            let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
             if(!checkIfFileExsists(sqlfluffConfigFilePath)){
                 vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
                 let sqlfluffConfigFileContents = await fetchGitHubFileContent();
