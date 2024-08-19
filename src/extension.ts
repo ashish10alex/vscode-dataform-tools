@@ -149,6 +149,13 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
+            let completionItems  = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, false);
+            let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+            if(allDiagnostics.length > 0 || !completionItems){
+                vscode.window.showErrorMessage("Please resolve the errors on the current file before formatting");
+                return;
+            }
+
             let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
             let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
 
