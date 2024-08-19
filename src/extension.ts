@@ -138,8 +138,6 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-            let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
-
             let document = vscode.window.activeTextEditor?.document;
             if (!document) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
@@ -151,6 +149,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
+            let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
             let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
 
             let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
@@ -160,7 +159,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
                 vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
             }
-            await formatSqlxFile(document, metadataForSqlxFileBlocks); // takes ~ 700ms to format 200 lines
+            await formatSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 
             //TODO: Remove before release
             // document?.save();

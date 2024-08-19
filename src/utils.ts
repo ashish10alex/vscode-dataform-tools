@@ -726,7 +726,7 @@ export function writeContentsToFile(filePath:string, content:string){
     });
 }
 
-export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata ){
+export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
 
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
@@ -759,8 +759,6 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
     (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
 
-    //TODO: Optionally read configFilePath from settings
-    let sqlfluffConfigFilePath = ".vscode-dataform-tools/.sqlfluff";
     let formatCmd = `sqlfluff fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
 
     await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
