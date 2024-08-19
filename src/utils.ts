@@ -850,13 +850,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
         sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: this needs updating Takes less than 2ms (dataform wt 285 nodes)
     }
 
-    let offSet = 0;
-    if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
-        offSet = tableQueryOffset;
-    } else if (tableMetadata.tables[0].type === "assertion") {
-        offSet = assertionQueryOffset;
-    }
-
     if (tableMetadata.fullQuery === "") {
         vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
         return;
@@ -881,6 +874,14 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
             vscode.window.showErrorMessage("Could not parse sqlx file");
             return;
         }
+
+        let offSet = 0;
+        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
+            offSet = tableQueryOffset;
+        } else if (tableMetadata.tables[0].type === "assertion") {
+            offSet = assertionQueryOffset;
+        }
+
         setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
         return;
     }

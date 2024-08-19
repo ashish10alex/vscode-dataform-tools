@@ -28,12 +28,14 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
         if(preOpsError.hasError){
             errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+            preOpsError.message = "(preOps): " + preOpsError.message;
             const preOpsDiagnostic = new vscode.Diagnostic(range, preOpsError.message, severity);
             diagnostics.push(preOpsDiagnostic);
         }
         if(postOpsError.hasError){
             errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+            postOpsError.message = "(postOps): " + postOpsError.message;
             const postOpsDiagnostic = new vscode.Diagnostic(range, postOpsError.message, severity);
             diagnostics.push(postOpsDiagnostic);
         }
