@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import path from 'path';
+import os from 'os';
 // import { exec as exec } from 'child_process';
 
 let isEnabled = true;
@@ -45,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
+    globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {

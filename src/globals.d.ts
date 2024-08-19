@@ -12,4 +12,8 @@ declare global {
     var dataformTags: string[]
 }
 
+declare global {
+  var isRunningOnWindows: boolean
+}
+
 export {};

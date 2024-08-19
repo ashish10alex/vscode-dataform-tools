@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import os from 'os';
 import fs from 'fs';
 import { exec as exec } from 'child_process';
 import path from 'path';
@@ -133,7 +132,7 @@ export async function fetchGitHubFileContent(): Promise<string> {
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
-    const command = process.platform !== "win32" ? "which" : "where.exe";
+    const command = isRunningOnWindows ? "where.exe" : "which";
     try { shell(`${command} ${name}`); return true; }
     catch (error) {
         if (name === 'formatdataform') {
@@ -420,16 +419,15 @@ export function getDataformCompilationTimeoutFromConfig(){
 }
 
 export function getSqlfluffConfigPathFromSettings(){
-    const isWindows = os.platform() === 'win32';
     let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
     let sqlfluffConfigPath: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
     if (sqlfluffConfigPath){
-        if(isWindows){
+        if(isRunningOnWindows){
             sqlfluffConfigPath = path.win32.normalize(sqlfluffConfigPath);
         }
         return sqlfluffConfigPath;
     }
-    if(!isWindows){
+    if(!isRunningOnWindows){
         return defaultSqlfluffConfigPath;
     }
     return path.win32.normalize(defaultSqlfluffConfigPath);
@@ -439,13 +437,13 @@ function compileDataform(workspaceFolder: string): Promise<string> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     return new Promise((resolve, reject) => {
         let spawnedProcess;
-        if (process.platform !== "win32") {
-            const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
-        } else {
+        if (isRunningOnWindows) {
             const command = "dataform.cmd";
             // windows seems to require shell: true
             spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+        } else {
+            const command = "dataform";
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
         }
 
         let stdOut = '';
