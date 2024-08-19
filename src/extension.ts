@@ -74,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerWebViewProvider(context);
     registerCenterPanel(context);
 
-    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection,  compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (document === undefined) {
             document = vscode.window.activeTextEditor?.document;
         }
@@ -113,7 +113,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
                 if (recompileAfterCodeAction) {
                     let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                    await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
                 }
 
             });
@@ -176,14 +176,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(onSaveDisposable);
 
         showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(showCompiledQueryWtDryRunDisposable);
