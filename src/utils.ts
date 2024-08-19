@@ -118,6 +118,7 @@ export function getLineUnderCursor(): string | undefined {
 }
 
 export async function fetchGitHubFileContent(): Promise<string> {
+    //TODO: Use current repository
     const repo = 'formatdataform';
     const filePath = 'assets/.sqlfluff';
     const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
@@ -135,18 +136,7 @@ export function executableIsAvailable(name: string) {
     const command = isRunningOnWindows ? "where.exe" : "which";
     try { shell(`${command} ${name}`); return true; }
     catch (error) {
-        if (name === 'formatdataform') {
-            const message = 'Install formatdataform to enable sqlfluff formatting';
-            const linkText = "Learn More";
-            vscode.window.showWarningMessage(message, linkText).then(selection => {
-                if (selection === linkText) {
-                    vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
-                }
-            });
-            return;
-        } else {
-            vscode.window.showErrorMessage(`${name} cli not found in path`);
-        }
+        vscode.window.showErrorMessage(`${name} cli not found in path`);
         return false;
     }
 }
