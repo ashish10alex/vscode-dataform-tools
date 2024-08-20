@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.40](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.39...v0.0.40) (2024-08-20)
+
+
+### Bug Fixes
+
+* unable to parse sqlx end line when single line sql block is present ([0a7d241](https://github.com/ashish10alex/vscode-dataform-tools/commit/0a7d2417a3b8d4340f042901195683a154f1a432))
+
 ### [0.0.39](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.38...v0.0.39) (2024-08-20)
 
 
