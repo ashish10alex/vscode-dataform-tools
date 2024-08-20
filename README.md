@@ -131,9 +131,8 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
-- [ ] Show pre and post operation queries in compiled query
 - [ ] Use `.sqlx` specific grammar. [Docs on how to do it](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)
-- [ ] Preview query results
+- [ ] Preview query results in a table
 - [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
