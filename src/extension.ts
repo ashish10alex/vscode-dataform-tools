@@ -33,11 +33,11 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags , writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument} from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument } from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand} from './commands';
+import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 // This method is called when your extension is activated
@@ -74,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerWebViewProvider(context);
     registerCenterPanel(context);
 
-    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection,  compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (document === undefined) {
             document = vscode.window.activeTextEditor?.document;
         }
@@ -154,22 +154,30 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             let workspaceFolder = getWorkspaceFolder();
-            if(!workspaceFolder){
+            if (!workspaceFolder) {
                 return;
             }
 
-            let completionItems  = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, false);
-            let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
-            if(allDiagnostics.length > 0 || !completionItems){
-                vscode.window.showErrorMessage("Please resolve the errors on the current file before formatting");
-                return;
+
+            let compileAndDryRunBeforeFormatting = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compileAndDryRunBeforeFormatting');
+            if (compileAndDryRunBeforeFormatting === undefined) {
+                compileAndDryRunBeforeFormatting = true;
+            }
+
+            if (compileAndDryRunBeforeFormatting) {
+                let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, false);
+                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+                if (allDiagnostics.length > 0 || !completionItems) {
+                    vscode.window.showErrorMessage("Please resolve the errors on the current file before formatting");
+                    return;
+                }
             }
 
             let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
             let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
 
             let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
-            if(!checkIfFileExsists(sqlfluffConfigFilePath)){
+            if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
                 vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
                 let sqlfluffConfigFileContents = await fetchGitHubFileContent();
                 writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);

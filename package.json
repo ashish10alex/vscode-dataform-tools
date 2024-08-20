@@ -219,6 +219,11 @@
                     ],
                     "default": "${ref('table_name')}",
                     "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name')}` or ${ref({schema:'dataset_name', name:'table_name'})}"
+                },
+                "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "WARNING!!: only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
                 }
             }
         }
