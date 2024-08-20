@@ -93,6 +93,7 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
             if (startOfSqlBlock === 0){
                 startOfSqlBlock = i + 1;
                 sqlBlockExsists = true;
+                endOfSqlBlock = i + 1;
             }else{
                 endOfSqlBlock = i + 1;
             }
