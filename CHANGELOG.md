@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.39](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.38...v0.0.39) (2024-08-20)
+
+
+### Features
+
+* add snippets for pre and post operation blocks ([2b0743b](https://github.com/ashish10alex/vscode-dataform-tools/commit/2b0743b253914772d3462a98f914c1c5f68f9bac))
+
 ### [0.0.38](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.37...v0.0.38) (2024-08-14)
 
 
