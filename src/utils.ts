@@ -1,11 +1,14 @@
 import * as vscode from 'vscode';
 import fs from 'fs';
+import { exec as exec } from 'child_process';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, ConfigBlockMetadata, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata } from './types';
+import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset } from './constants';
+import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
+import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
+import { GitHubContentResponse } from './types';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -19,17 +22,6 @@ export function getNonce() {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
-}
-
-export function getFormatDataformExecutablePath(): string|undefined {
-    let formatDataformCustomPath:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('formatdataformExecutablePath');
-    if (formatDataformCustomPath && formatDataformCustomPath !== ""){
-        if (fs.existsSync(formatDataformCustomPath)){
-            return formatDataformCustomPath;
-        }else{
-            vscode.window.showErrorMessage(`formatdataform cli does exsist at: ${formatDataformCustomPath}`);
-        }
-    }
 }
 
 function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | undefined{
@@ -125,23 +117,26 @@ export function getLineUnderCursor(): string | undefined {
 
 }
 
+export async function fetchGitHubFileContent(): Promise<string> {
+    //TODO: Use current repository
+    const repo = 'formatdataform';
+    const filePath = 'assets/.sqlfluff';
+    const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json() as GitHubContentResponse;
+    return Buffer.from(data.content, 'base64').toString('utf-8');
+  }
+
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
-    const command = process.platform !== "win32" ? "which" : "where.exe";
+    const command = isRunningOnWindows ? "where.exe" : "which";
     try { shell(`${command} ${name}`); return true; }
     catch (error) {
-        if (name === 'formatdataform') {
-            const message = 'Install formatdataform to enable sqlfluff formatting';
-            const linkText = "Learn More";
-            vscode.window.showWarningMessage(message, linkText).then(selection => {
-                if (selection === linkText) {
-                    vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/formatdataform"));
-                }
-            });
-            return;
-        } else {
-            vscode.window.showErrorMessage(`${name} cli not found in path`);
-        }
+        vscode.window.showErrorMessage(`${name} cli not found in path`);
         return false;
     }
 }
@@ -158,9 +153,11 @@ export function getFileNameFromDocument(document: vscode.TextDocument): string[]
     return [filename, extension];
 }
 
+//
+//WARN: What if user has multiple workspaces open in the same window
+//TODO: we are taking the first workspace from the active workspaces. Is it possible to handle cases where there are multiple workspaces in the same window ?
+//
 export function getWorkspaceFolder(): string | undefined {
-    //TODO: we are taking the first workspace from the active workspaces.
-    //  Is it possible to handle cases where there are multiple workspaces in the same window ?
     let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
     if (workspaceFolder === undefined) {
         vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
@@ -193,85 +190,21 @@ export function runCommandInTerminal(command: string) {
     }
 }
 
-/**
-    Suggestion if provided from dry is expected to along the lines of
-
-    `googleapi: Error 400: Unrecognized name: MODELID; Did you mean MODEL_ID? at [27:28], invalidQuery`
-
-    From the above string the function attempts to extract the suggestion which we assumed based on observations to be separated by ";"
-    followed by `Did you mean **fix**? at [lineNumber:columnNumber]`
-**/
-export function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
-    const diagnosticSuggestion = diagnosticMessage.split(';')[1];
-
-    if (!diagnosticSuggestion) {
-        return null;
-    }
-
-    const regex = /Did you mean (\w+)\?/;
-    const match = diagnosticSuggestion.match(regex);
-    const fix = match ? match[1] : null;
-    return fix;
-}
-
-
-// Get start and end line number of the config block in the .sqlx file
-// This assumes that the user is using config { } block at the top of the .sqlx file
-//
-// @return [start_of_config_block: number, end_of_config_block: number]
-export const getLineNumberWhereConfigBlockTerminates = async (): Promise<ConfigBlockMetadata> => {
-    let startOfConfigBlock = 0;
-    let endOfConfigBlock = 0;
-    let isInInnerConfigBlock = false;
-    let innerConfigBlockCount = 0;
-
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        return { startLine: 0, endLine: 0 };
-    }
-
-    const document = editor.document;
-    const totalLines = document.lineCount;
-
-    for (let i = 0; i < totalLines; i++) {
-        const lineContents = document.lineAt(i).text;
-
-        if (lineContents.match("config")) {
-            startOfConfigBlock = i + 1;
-        } else if (lineContents.match("{")) {
-            isInInnerConfigBlock = true;
-            innerConfigBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerConfigBlock && innerConfigBlockCount >= 1) {
-            innerConfigBlockCount -= 1;
-        } else if (lineContents.match("}") && innerConfigBlockCount === 0) {
-            endOfConfigBlock = i + 1;
-            return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
-        }
-    }
-
-    return { startLine: startOfConfigBlock, endLine: endOfConfigBlock };
-};
-
-export function isNotUndefined(value: unknown): any {
-    if (typeof value === undefined) { throw new Error("Not a string"); }
-}
-
-export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
+export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string, showOutputInVerticalSplit: boolean) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, '', 'utf8');
     }
 
-    // Write the compiled output to the file
     fs.writeFileSync(filePath, compiledQuery, 'utf8');
 
-    // Open the output file in a vertical split
-    const outputDocument = await vscode.workspace.openTextDocument(filePath);
-    vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+    if (showOutputInVerticalSplit){
+        const outputDocument = await vscode.workspace.openTextDocument(filePath);
+        vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+    }
 }
 
-export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
-    // const workingDirectory = path.dirname(vscode.window.activeTextEditor?.document.uri.fsPath);
-    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
+    let workspaceFolder = getWorkspaceFolder();
 
     if (!workspaceFolder) {
         return;
@@ -377,13 +310,12 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
-    // let tablePrefix = compiledJson?.projectConfig?.tablePrefix;
-    let finalQuery = "";
-    // let finalTables: Table[] = [];
+    let queryToDisplay = "";
+    let queryToDryRun = "";
     let finalTables: any[] = [];
 
     if (tables === undefined) {
-        return { tables: finalTables, fullQuery: finalQuery };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
 
     for (let i = 0; i < tables.length; i++) {
@@ -391,47 +323,83 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
         let tableFileName = path.basename(table.fileName).split('.')[0];
         if (fileName === tableFileName) {
             if (table.type === "table" || table.type === "view") {
-                finalQuery = table.query + "\n ;";
+                queryToDisplay = table.query.trimStart() + "\n ;";
             } else if (table.type === "incremental") {
-                finalQuery += "\n-- Non incremental query \n";
-                finalQuery += table.query + ";";
-                finalQuery += "\n-- Incremental query \n";
-                finalQuery += table.incrementalQuery + ";\n";
+                queryToDisplay += "\n-- Non incremental query \n";
+                queryToDisplay += table.query + ";";
+                queryToDisplay += "\n-- Incremental query \n";
+                queryToDisplay += table.incrementalQuery + ";\n";
                 if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
-                        finalQuery += `\n-- Incremental pre operations: [${idx}] \n`;
-                        finalQuery += query + "\n ;";
+                        queryToDisplay += `\n-- Incremental pre operations: [${idx}] \n`;
+                        queryToDisplay += query + "\n ;";
                     });
                 }
             }
-            let tableFound = { type: table.type, tags: table.tags, fileName: fileName, query: table.query, target: table.target, dependencyTargets: table.dependencyTargets, incrementalQuery: table?.incrementalQuery ?? "", incrementalPreOps: table?.incrementalPreOps ?? [] };
+
+            queryToDryRun += queryToDisplay;
+            if (table.preOps){
+                table.preOps.forEach((query, idx) => {
+                    queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
+                    queryToDisplay += query + ";\n";
+                });
+            }
+            if (table.postOps){
+                table.postOps.forEach((query, idx) => {
+                    queryToDisplay += `\n-- Post operations: [${idx}] \n`;
+                    queryToDisplay += query + ";\n";
+                });
+            }
+            let tableFound = {
+                              type: table.type,
+                              tags: table.tags,
+                              fileName: fileName,
+                              query: queryToDisplay,
+                              target: table.target,
+                              preOps: table.preOps,
+                              postOps: table.postOps,
+                              dependencyTargets: table.dependencyTargets,
+                              incrementalQuery: table?.incrementalQuery ?? "",
+                              incrementalPreOps: table?.incrementalPreOps ?? [] 
+                            };
             finalTables.push(tableFound);
             break;
         }
     }
 
     if (assertions === undefined) {
-        return { tables: finalTables, fullQuery: finalQuery };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
 
 
 
     let assertionCountForFile = 0;
+    let assertionQuery = "";
     for (let i = 0; i < assertions.length; i++) {
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
         if (assertionFileName === fileName) {
-            let assertionFound = { type: "assertion", tags: assertion.tags, fileName: fileName, query: assertion.query, target: assertion.target, dependencyTargets: assertion.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
+            let assertionFound = {
+                        type: "assertion",
+                        tags: assertion.tags,
+                        fileName: fileName,
+                        query: assertion.query,
+                        target: assertion.target,
+                        dependencyTargets: assertion.dependencyTargets,
+                        incrementalQuery: "", incrementalPreOps: [] 
+                    };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
-            finalQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
-            finalQuery += assertion.query + "\n ;";
+            assertionQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
+            assertionQuery += assertion.query.trimStart() + "; \n";
         }
     }
+    queryToDisplay += assertionQuery;
+    queryToDryRun += assertionQuery;
 
     if (operations === undefined) {
-        return { tables: finalTables, fullQuery: finalQuery };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
 
     for (let i = 0; i < operations.length; i++) {
@@ -446,14 +414,24 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                 finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
                 finalOperationQuery += opQueries[i] + "\n ;";
             }
-            finalQuery += finalOperationQuery;
-            let operationFound = { type: "operation", tags: operation.tags, fileName: fileName, query: finalOperationQuery, target: operation.target, dependencyTargets: operation.dependencyTargets, incrementalQuery: "", incrementalPreOps: [] };
+            queryToDisplay += finalOperationQuery;
+            queryToDryRun += finalOperationQuery;
+            let operationFound = {
+                    type: "operation",
+                    tags: operation.tags,
+                    fileName: fileName,
+                    query: finalOperationQuery,
+                    target: operation.target,
+                    dependencyTargets: operation.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: [] 
+                };
             finalTables.push(operationFound);
             break;
         }
     }
 
-    return { tables: finalTables, fullQuery: finalQuery };
+    return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
 };
 
 
@@ -461,21 +439,36 @@ export function getDataformCompilationTimeoutFromConfig(){
     let dataformCompilationTimeoutVal: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
     if (dataformCompilationTimeoutVal){
         return dataformCompilationTimeoutVal;
-    } 
+    }
     return "5m";
+}
+
+export function getSqlfluffConfigPathFromSettings(){
+    let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
+    let sqlfluffConfigPath: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
+    if (sqlfluffConfigPath){
+        if(isRunningOnWindows){
+            sqlfluffConfigPath = path.win32.normalize(sqlfluffConfigPath);
+        }
+        return sqlfluffConfigPath;
+    }
+    if(!isRunningOnWindows){
+        return defaultSqlfluffConfigPath;
+    }
+    return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
 function compileDataform(workspaceFolder: string): Promise<string> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     return new Promise((resolve, reject) => {
         let spawnedProcess;
-        if (process.platform !== "win32") {
-            const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
-        } else {
+        if (isRunningOnWindows) {
             const command = "dataform.cmd";
             // windows seems to require shell: true
             spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+        } else {
+            const command = "dataform";
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
         }
 
         let stdOut = '';
@@ -704,8 +697,120 @@ export async function getTableMetadata(document: vscode.TextDocument, freshCompi
     return tableMetadata;
 }
 
+function readFile(filePath:string) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, tableQueryOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+
+async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta:{startLine:number, endLine:number, exists: boolean}): Promise<string>{
+    if(!blockRangeWtMeta.exists){
+        return "";
+    }
+    const startPosition = new vscode.Position(blockRangeWtMeta.startLine-1, 0);
+    const endPosition = new vscode.Position(blockRangeWtMeta.endLine-1, document.lineAt(blockRangeWtMeta.endLine-1).text.length);
+    let range = new vscode.Range(startPosition, endPosition);
+    return document.getText(range);
+}
+
+function getActiveFilePath() {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+      return activeEditor.document.uri.fsPath;
+    }
+    return undefined;
+}
+
+export function checkIfFileExsists(filePath:string){
+    if(fs.existsSync(filePath)){
+        return true;
+    }
+    return false;
+}
+
+const ensureDirectoryExistence = (filePath:string) => {
+    const dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) {
+      return true;
+    }
+    fs.mkdirSync(dirname, { recursive: true });
+  };
+
+export function writeContentsToFile(filePath:string, content:string){
+    ensureDirectoryExistence(filePath);
+    fs.writeFile(filePath, content, (err) => {
+    if (err) {throw err;};
+        return;
+    });
+}
+
+export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
+
+    let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
+    let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
+    let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock.postOpsList;
+    let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
+
+    let spaceBetweenBlocks = '\n\n\n';
+    let spaceBetweenSameOps = '\n\n';
+
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
+    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
+
+    let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
+
+    let myPromises:any = [];
+    preOpsBlockMeta.forEach((block:any) => {
+        myPromises.push(getTextForBlock(document, block));
+    });
+    let preOpsBlockTextList: string[] = await Promise.all(myPromises);
+
+    myPromises = [];
+    postOpsBlockMeta.forEach((block:any) => {
+        myPromises.push(getTextForBlock(document, block));
+    });
+    let postOpsBlockTextList = await Promise.all(myPromises);
+
+    let preOpsBlockText: string = preOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
+    let postOpsBlockText: string = postOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
+
+    (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
+    (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
+
+    let formatCmd = `sqlfluff fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
+
+    await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
+        let formattedSql = await readFile(sqlFileToFormatPath);
+        (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
+
+        if (typeof formattedSql === 'string'){
+            let finalFormattedSqlx = configBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
+            let currentActiveEditorFilePath = getActiveFilePath();
+            if (!currentActiveEditorFilePath){
+                vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
+                return;
+            }
+            fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err) => {
+            if (err) {throw err;};
+                vscode.window.showInformationMessage(`Formatted: ${path.basename(currentActiveEditorFilePath)}`);
+                return;
+            });
+        }
+    }
+    ).catch((err) => {
+        vscode.window.showErrorMessage(`Error formatting: ${err}`);
+        return;
+    });
+}
+
+export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
@@ -713,8 +818,6 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
-
-    let configLineOffset = 0; //TODO: check if this is constant ?
 
     let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
 
@@ -731,18 +834,10 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         getMetadataForCurrentFile(filename, dataformCompiledJson)
     ]);
 
+    let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        let configBlockRange = await getLineNumberWhereConfigBlockTerminates(); // Takes less than 2ms (dataform wt 285 nodes)
-        let configBlockStart = configBlockRange.startLine || 0;
-        let configBlockEnd = configBlockRange.endLine || 0;
-        let configBlockOffset = (configBlockEnd - configBlockStart) + 1;
-
-        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
-            configLineOffset = configBlockOffset - tableQueryOffset;
-        } else if (tableMetadata.tables[0].type === "assertion") {
-            configLineOffset = configBlockOffset - assertionQueryOffset;
-        }
+        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: this needs updating Takes less than 2ms (dataform wt 285 nodes)
     }
 
     if (tableMetadata.fullQuery === "") {
@@ -754,12 +849,30 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
     }
     if (showCompiledQueryInVerticalSplitOnSave) {
-        writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath);
+        writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath, true);
     }
+    // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
+    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
+        queryDryRun(tableMetadata.queryToDryRun),
+        //TODO: check if tables[0] is valid ??
+        queryDryRun(tableMetadata?.tables[0]?.preOps ? tableMetadata?.tables[0]?.preOps[0]: ""),
+        queryDryRun(tableMetadata?.tables[0]?.postOps ? tableMetadata?.tables[0]?.postOps[0]: "")
+    ]);
 
-    let dryRunResult = await queryDryRun(tableMetadata.fullQuery); // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    if (dryRunResult.error.hasError) {
-        setDiagnostics(document, dryRunResult.error, compiledSqlFilePath, diagnosticCollection, configLineOffset);
+    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
+        if (!sqlxBlockMetadata){
+            vscode.window.showErrorMessage("Could not parse sqlx file");
+            return;
+        }
+
+        let offSet = 0;
+        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
+            offSet = tableQueryOffset;
+        } else if (tableMetadata.tables[0].type === "assertion") {
+            offSet = assertionQueryOffset;
+        }
+
+        setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
         return;
     }
     let combinedTableIds = "";

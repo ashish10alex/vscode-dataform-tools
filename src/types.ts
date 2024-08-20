@@ -1,4 +1,3 @@
-
 export interface Table {
     type: string;
     tags: string[];
@@ -7,6 +6,8 @@ export interface Table {
     target: Target;
     canonicalTarget: Target;
     incrementalQuery: string;
+    preOps: string[];
+    postOps: string[];
     incrementalPreOps: string[];
     dependencyTargets: Target[];
 }
@@ -14,6 +15,7 @@ export interface Table {
 export interface TablesWtFullQuery {
     tables: Table[];
     fullQuery: string;
+    queryToDryRun: string;
 }
 
 export interface Assertion {
@@ -32,12 +34,10 @@ export interface DependancyTreeMetadata {
     _deps?: string[];
 }
 
-
 export interface DeclarationsLegendMetadata {
     _schema: string;
     _schema_idx: number;
 }
-
 
 export interface Target {
     database: string;
@@ -89,7 +89,6 @@ export interface DryRunError {
     };
 }
 
-
 export interface BigQueryDryRunResponse {
     statistics: {
         totalBytesProcessed: string;
@@ -100,5 +99,31 @@ export interface BigQueryDryRunResponse {
 export interface ConfigBlockMetadata {
     startLine: number;
     endLine: number;
+    exists: boolean;
 }
 
+interface BlockMeta{
+    startLine: number;
+    endLine: number;
+    exists: boolean;
+}
+
+export interface PreOpsBlockMeta {
+    preOpsList: BlockMeta[];
+}
+
+export interface PostOpsBlockMeta {
+    postOpsList: BlockMeta[];
+}
+
+export interface SqlxBlockMetadata {
+    configBlock: BlockMeta;
+    preOpsBlock: PreOpsBlockMeta;
+    postOpsBlock: PostOpsBlockMeta;
+    sqlBlock: BlockMeta;
+}
+
+export interface GitHubContentResponse {
+    content: string;
+    encoding: string;
+  }

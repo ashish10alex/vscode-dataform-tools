@@ -1,0 +1,10 @@
+config {
+    type: "table",
+    dependencies: "0100_TEST",
+    tags: "TAG_2",
+}
+
+
+SELECT *
+FROM ${ref("0100_TEST")}
+

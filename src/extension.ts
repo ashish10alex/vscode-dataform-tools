@@ -1,7 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { exec as exec } from 'child_process';
+import path from 'path';
+import os from 'os';
+// import { exec as exec } from 'child_process';
 
 let isEnabled = true;
 
@@ -31,11 +33,12 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getFormatDataformExecutablePath, getDataformCompilationTimeoutFromConfig } from './utils';
-import { getStdoutFromCliRun, getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument } from './utils';
+import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand, getFormatDataformFileCommand } from './commands';
+import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
+import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -43,16 +46,13 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
+    globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
-        if (executable === "formatdataform") {
-            let formatDataformCustomPath = getFormatDataformExecutablePath();
-            if (formatDataformCustomPath) {
-                executable = formatDataformCustomPath;
-                continue;
-            }
+        if (executable === "sqlfluff") {
+            vscode.window.showWarningMessage("Install sqlfluff using `pip install sqlfluff` to enable formatting of sqlx files");
         }
         executableIsAvailable(executable);
     }
@@ -74,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerWebViewProvider(context);
     registerCenterPanel(context);
 
-    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, queryStringOffset: number, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (document === undefined) {
             document = vscode.window.activeTextEditor?.document;
         }
@@ -83,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, queryStringOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         if (completionItems !== undefined) {
             dataformTags = completionItems[0];
             declarationsAndTargets = completionItems[1];
@@ -113,7 +113,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
                 if (recompileAfterCodeAction) {
                     let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                    await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
                 }
 
             });
@@ -137,35 +137,56 @@ export async function activate(context: vscode.ExtensionContext) {
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
+        /**
+         * Takes ~2 seconds as we compile the project and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
+         */
         formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-            let executable = "formatdataform";
-            let formatDataformCustomPath = getFormatDataformExecutablePath();
-            if (formatDataformCustomPath) {
-                executable = formatDataformCustomPath;
-            }
-            if (executable === "formatdataform") { executableIsAvailable(executable); };
             let document = vscode.window.activeTextEditor?.document;
+            if (!document) {
+                vscode.window.showErrorMessage("VS Code document object was undefined");
+                return;
+            }
+
+            var [filename, extension] = getFileNameFromDocument(document);
+            if (filename === "" || extension !== "sqlx") {
+                vscode.window.showErrorMessage("Formatting is only supported for .sqlx files");
+                return;
+            }
+
+            let workspaceFolder = getWorkspaceFolder();
+            if (!workspaceFolder) {
+                return;
+            }
+
+
+            let compileAndDryRunBeforeFormatting = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compileAndDryRunBeforeFormatting');
+            if (compileAndDryRunBeforeFormatting === undefined) {
+                compileAndDryRunBeforeFormatting = true;
+            }
+
+            if (compileAndDryRunBeforeFormatting) {
+                let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, false);
+                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+                if (allDiagnostics.length > 0 || !completionItems) {
+                    vscode.window.showErrorMessage("Please resolve the errors on the current file before formatting");
+                    return;
+                }
+            }
+
+            let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
+            let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
+
+            let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
+            if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
+                vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
+                let sqlfluffConfigFileContents = await fetchGitHubFileContent();
+                writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
+                vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
+            }
+            await formatSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
+
+            //TODO: Remove before release
             document?.save();
-            let fileUri = document?.uri;
-            if (fileUri === undefined) {
-                return;
-            }
-            let relativeFilePath = vscode.workspace.asRelativePath(fileUri);
-            if (relativeFilePath === undefined) {
-                return;
-            }
-
-            let formatCmd = getFormatDataformFileCommand(executable, relativeFilePath);
-            await getStdoutFromCliRun(exec, formatCmd).then((sources) => {
-                vscode.window.showInformationMessage(`Formatted: ${relativeFilePath}`);
-            }
-            ).catch((err) => {
-                vscode.window.showErrorMessage(`Error formatting: ${err}`);
-                return;
-            });
-
-            let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
@@ -178,14 +199,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
         onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
         context.subscriptions.push(onSaveDisposable);
 
         showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, tableQueryOffset, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         });
 
         context.subscriptions.push(showCompiledQueryWtDryRunDisposable);

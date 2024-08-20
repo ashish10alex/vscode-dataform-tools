@@ -20,7 +20,7 @@
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
 | [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
 | [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
-| [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files based on [sqlfluff](https://github.com/sqlfluff/sqlfluff) config using [formatdataform](https://github.com/ashish10alex/formatdataform) cli |
+| [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
 
 
 ## Requirements
@@ -32,20 +32,12 @@
 2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
 
-3. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) config install [formatdataform](https://github.com/ashish10alex/formatdataform) extension [ **optional** ]
+3. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) install [sqlfluff](https://github.com/sqlfluff/sqlfluff)
 
    ```bash
    # install python and run
    pip install sqlfluff
-
-   # install formatdataform cli
-   curl -sSfL https://raw.githubusercontent.com/ashish10alex/formatdataform/main/install_latest.sh | bash
    ```
-
-    You can verify if `formatdataform` is installed correctly by running
-    ```bash
-    formatdataform --help
-    ```
 
 
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
@@ -139,9 +131,8 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
-- [ ] Show pre and post operation queries in compiled query
 - [ ] Use `.sqlx` specific grammar. [Docs on how to do it](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)
-- [ ] Preview query results
+- [ ] Preview query results in a table
 - [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 - [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)

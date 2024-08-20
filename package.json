@@ -204,11 +204,11 @@
                     "pattern": "^(\\d+[sm])+$",
                     "markdownDescription": "Duration to allow project compilation to complete. Use format like '5m', '60s' etc. Passed to `dataform compile --json --timeout=<value>`"
                 },
-                "vscode-dataform-tools.formatdataformExecutablePath": {
+                "vscode-dataform-tools.sqlfluffConfigPath": {
                     "type": "string",
-                    "default": "",
-                    "description": "Path to formatdataform executable",
-                    "pattern": "^$|.*(formatdataform\\.exe|formatdataform)$"
+                    "default": ".vscode-dataform-tools/.sqlfluff",
+                    "description": "Path to sqlfluff config file. Please make sure your .sqlfluff is compatible with .sqlx files",
+                    "pattern": ".*\\/\\.sqlfluff$"
                 },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
@@ -219,6 +219,11 @@
                     ],
                     "default": "${ref('table_name')}",
                     "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name')}` or ${ref({schema:'dataset_name', name:'table_name'})}"
+                },
+                "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "WARNING!!: only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
                 }
             }
         }
@@ -229,10 +234,10 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "vscode-test"
+        "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
-        "@types/mocha": "^10.0.6",
+        "@types/mocha": "^10.0.7",
         "@types/node": "18.x",
         "@types/vscode": "^1.89.0",
         "@typescript-eslint/eslint-plugin": "^7.7.1",

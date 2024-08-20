@@ -18,6 +18,20 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
 }
 
 export async function queryDryRun(query: string) {
+
+    if (query === "" || !query){
+        let dryRunResponse: BigQueryDryRunResponse = {
+            statistics: {
+                totalBytesProcessed: "0 GB",
+            },
+            error: {
+                hasError: false,
+                message: ""
+            }
+        };
+        return dryRunResponse;
+    }
+
     // For all options, see https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
     const options = {
         query: query,

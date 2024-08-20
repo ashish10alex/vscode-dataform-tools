@@ -1,42 +1,46 @@
 
 import * as vscode from 'vscode';
-import {DryRunError} from './types';
+import {DryRunError, SqlxBlockMetadata} from './types';
 
-export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, compiledSqlFilePath: string, diagnosticCollection: vscode.DiagnosticCollection, configLineOffset: number){
-
-        let errLineNumber = dryRunError.location?.line;
-        let errColumnNumber = dryRunError.location?.column;
-        if (errLineNumber === undefined || errColumnNumber === undefined) {
-            vscode.window.showErrorMessage(`Error in setting diagnostics. Error location is undefined.`);
-            return;
-        }
-        errLineNumber = errLineNumber + (configLineOffset + 1);
+export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, preOpsError:DryRunError, postOpsError:DryRunError, compiledSqlFilePath: string, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
 
         const diagnostics: vscode.Diagnostic[] = [];
-        const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
         const severity = vscode.DiagnosticSeverity.Error;
-        const diagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
 
-        if (diagnostics.length === 0) { //NOTE: Did this because we are only showing first error ?
-            diagnostics.push(diagnostic);
-            if (document !== undefined) {
-                diagnosticCollection.set(document.uri, diagnostics);
+        let errLineNumber;
+        let errColumnNumber = 0;
+
+        if (dryRunError.hasError){
+            let errLineNumber = dryRunError.location?.line;
+            let errColumnNumber = dryRunError.location?.column;
+            if (errLineNumber === undefined || errColumnNumber === undefined) {
+                vscode.window.showErrorMessage(`Error in setting diagnostics. Error location is undefined.`);
+                return;
             }
+            let sqlQueryStartLineNumber = sqlxBlockMetadata.sqlBlock.startLine;
+            errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet));
+
+            const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+            const regularBlockDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
+            diagnostics.push(regularBlockDiagnostic);
         }
 
-        let showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        if (showCompiledQueryInVerticalSplitOnSave && dryRunError.hasError === true) {
-            let compiledQueryDiagnostics: vscode.Diagnostic[] = [];
-            let errLineNumberForCompiledQuery = errLineNumber - (configLineOffset + 1);
-            let range = new vscode.Range(new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber), new vscode.Position(errLineNumberForCompiledQuery, errColumnNumber + 5));
-            const testDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
-            compiledQueryDiagnostics.push(testDiagnostic);
-            let visibleEditors = vscode.window.visibleTextEditors;
-            visibleEditors.forEach((editor) => {
-                let documentUri = editor.document.uri;
-                if (documentUri.toString() === "file://" + compiledSqlFilePath) {
-                    diagnosticCollection.set(documentUri, compiledQueryDiagnostics);
-                }
-            });
+        if(preOpsError.hasError){
+            errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
+            const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+            preOpsError.message = "(preOps): " + preOpsError.message;
+            const preOpsDiagnostic = new vscode.Diagnostic(range, preOpsError.message, severity);
+            diagnostics.push(preOpsDiagnostic);
+        }
+        if(postOpsError.hasError){
+            errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
+            const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+            postOpsError.message = "(postOps): " + postOpsError.message;
+            const postOpsDiagnostic = new vscode.Diagnostic(range, postOpsError.message, severity);
+            diagnostics.push(postOpsDiagnostic);
+        }
+
+        if (document !== undefined) {
+            diagnosticCollection.set(document.uri, diagnostics);
         }
 }
