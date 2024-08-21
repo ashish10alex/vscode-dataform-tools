@@ -57,7 +57,7 @@
         },
         "snippets": [
             {
-                "language": "sql",
+                "language": "sqlx",
                 "path": "./snippets/dataform.code-snippets"
             },
             {
