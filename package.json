@@ -57,7 +57,7 @@
         },
         "snippets": [
             {
-                "language": "sql",
+                "language": "sqlx",
                 "path": "./snippets/dataform.code-snippets"
             },
             {
@@ -137,17 +137,25 @@
         ],
         "languages": [
             {
-                "id": "sql",
+                "id": "sqlx",
                 "extensions": [
                     ".sqlx"
-                ]
+                ],
+                "configuration": "language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "sqlx",
+                "scopeName": "source.sqlx",
+                "path": "sqlx.grammar.json"
             }
         ],
         "codeActions": [
             {
                 "kind": "quickfix",
                 "languages": [
-                    "sql"
+                    "sqlx"
                 ]
             }
         ],

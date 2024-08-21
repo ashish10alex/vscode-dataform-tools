@@ -7,7 +7,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
     sql should be added as a file association for sqlx
     this will enable both sufficient syntax highlighting and auto-completion
     */
-    { language: 'sql', scheme: 'file' },
+    { language: 'sqlx', scheme: 'file' },
     {
         provideCompletionItems(document, position, token, context) {
 
@@ -54,7 +54,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
 
 export const dependenciesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
-    { language: 'sql', scheme: 'file' },
+    { language: 'sqlx', scheme: 'file' },
     {
         provideCompletionItems(document, position, token, context) {
 
@@ -83,7 +83,7 @@ export const dependenciesAutoCompletionDisposable = () => vscode.languages.regis
 
 export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
-    { language: 'sql', scheme: 'file' },
+    { language: 'sqlx', scheme: 'file' },
     {
         provideCompletionItems(document, position, token, context) {
 
