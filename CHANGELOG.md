@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.43](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.42...v0.0.43) (2024-08-21)
+
+
+### Features
+
+* native syntax highlighting for sqlx ([#16](https://github.com/ashish10alex/vscode-dataform-tools/issues/16)) ([88338b9](https://github.com/ashish10alex/vscode-dataform-tools/commit/88338b93f0f64b3fce2a45e2c8f8fd92010b5c57))
+
 ### [0.0.42](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.40...v0.0.42) (2024-08-21)
 
 
