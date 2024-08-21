@@ -2,13 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [0.0.41](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.40...v0.0.41) (2024-08-21)
+### [0.0.42](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.40...v0.0.42) (2024-08-21)
 
 
 ### Features
 
-* native syntax highlighting for sqlx, copied from original repo https://github.com/dataform-co/dataform ([5bcdbd9](https://github.com/ashish10alex/vscode-dataform-tools/commit/5bcdbd9be4535824e7f9c7868515749ac3596404))
-* point providers to sqlx instead of sql ([abc571a](https://github.com/ashish10alex/vscode-dataform-tools/commit/abc571a38720802a87bcaef9808a9f2806100e26))
+* update sqlfluff config file to support `${ref({schema:'dataset_name', name:'table_name'})}` ([15bb443](https://github.com/ashish10alex/vscode-dataform-tools/commit/15bb443521e2ccf362f953a724d489e74688559c))
 
 
 ### Bug Fixes
