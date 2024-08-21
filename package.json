@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.0.40",
+    "version": "0.0.41",
     "engines": {
         "vscode": "^1.89.0"
     },
@@ -137,20 +137,20 @@
         ],
         "languages": [
             {
-              "id": "sqlx",
-              "extensions": [
-                ".sqlx"
-              ],
-              "configuration": "language-configuration.json"
+                "id": "sqlx",
+                "extensions": [
+                    ".sqlx"
+                ],
+                "configuration": "language-configuration.json"
             }
-          ],
-          "grammars": [
+        ],
+        "grammars": [
             {
-              "language": "sqlx",
-              "scopeName": "source.sqlx",
-              "path": "sqlx.grammar.json"
+                "language": "sqlx",
+                "scopeName": "source.sqlx",
+                "path": "sqlx.grammar.json"
             }
-         ],
+        ],
         "codeActions": [
             {
                 "kind": "quickfix",
