@@ -93,13 +93,13 @@ export async function activate(context: vscode.ExtensionContext) {
     function registerAllCommands(context: vscode.ExtensionContext) {
 
         dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
-            { language: 'sql' },
+            { language: 'sqlx' },
             new DataformRefDefinitionProvider()
         );
         context.subscriptions.push(dataformRefDefinitionProviderDisposable);
 
         dataformHoverProviderDisposable = vscode.languages.registerHoverProvider(
-            { language: 'sql' },
+            { language: 'sqlx' },
             new DataformHoverProvider()
         );
         context.subscriptions.push(dataformHoverProviderDisposable);
