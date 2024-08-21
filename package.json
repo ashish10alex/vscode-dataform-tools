@@ -155,7 +155,7 @@
             {
                 "kind": "quickfix",
                 "languages": [
-                    "sql"
+                    "sqlx"
                 ]
             }
         ],
