@@ -131,7 +131,6 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
-- [ ] Use `.sqlx` specific grammar. [Docs on how to do it](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)
 - [ ] Preview query results in a table
 - [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
