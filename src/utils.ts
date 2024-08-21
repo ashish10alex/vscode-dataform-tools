@@ -119,8 +119,8 @@ export function getLineUnderCursor(): string | undefined {
 
 export async function fetchGitHubFileContent(): Promise<string> {
     //TODO: Use current repository
-    const repo = 'formatdataform';
-    const filePath = 'assets/.sqlfluff';
+    const repo = 'vscode-dataform-tools';
+    const filePath = 'src/test/test-workspace/.sqlfluff';
     const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
     
     if (!response.ok) {
