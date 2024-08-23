@@ -240,6 +240,12 @@ export class CenterPanel {
         </div>
 
            <div class="content">
+
+           <div style="padding-bottom: 20px;">
+            <p>Click node to expand graph</p>
+            <p>Click on text object to navigate to where the node is defined</p>
+           </div>
+
            <form>
             <select id="list" class="tree-metadata-selection"></select>
             <select id="direction" class="tree-direction-selection">
