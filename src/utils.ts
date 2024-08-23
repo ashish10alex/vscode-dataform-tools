@@ -97,12 +97,19 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     return undefined;
 }
 
-export function getLineUnderCursor(): string | undefined {
-    let document = vscode.window.activeTextEditor?.document;
+export function getVSCodeDocument(): vscode.TextDocument | undefined {
+  let document = vscode.window.activeTextEditor?.document;
+  if (!document) {
+    vscode.window.showErrorMessage("VsCode document object was undefined");
+    return;
+  }
+  return document;
+}
 
-    if (!document) {
-        vscode.window.showErrorMessage("VsCode document object was undefined");
-        return;
+export function getLineUnderCursor(): string | undefined {
+    let document = getVSCodeDocument();
+    if(!document){
+      return;
     }
 
     const editor = vscode.window.activeTextEditor;
@@ -122,11 +129,11 @@ export async function fetchGitHubFileContent(): Promise<string> {
     const repo = 'vscode-dataform-tools';
     const filePath = 'src/test/test-workspace/.sqlfluff';
     const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
-    
+
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data = await response.json() as GitHubContentResponse;
     return Buffer.from(data.content, 'base64').toString('utf-8');
   }
@@ -141,13 +148,14 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-export function getFileNameFromDocument(document: vscode.TextDocument): string[] {
+export function getFileNameFromDocument(document: vscode.TextDocument): string[] | [undefined, undefined] {
     var filename = document.uri.fsPath;
     let basenameSplit = path.basename(filename).split('.');
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-        return ["", ""];
+      vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
+        return [undefined, undefined];
     }
     filename = basenameSplit[0];
     return [filename, extension];
@@ -232,12 +240,14 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
 
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
-    let document = vscode.window.activeTextEditor?.document;
-    if (document === undefined) {
-        vscode.window.showErrorMessage('No active document');
+    let document = getVSCodeDocument()
+    if (!document) {
         return;
     }
     var [filename, extension] = getFileNameFromDocument(document);
+    if (!filename || !extension){
+      return;
+    }
     let workspaceFolder = getWorkspaceFolder();
 
     if (!workspaceFolder){
@@ -360,7 +370,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                               postOps: table.postOps,
                               dependencyTargets: table.dependencyTargets,
                               incrementalQuery: table?.incrementalQuery ?? "",
-                              incrementalPreOps: table?.incrementalPreOps ?? [] 
+                              incrementalPreOps: table?.incrementalPreOps ?? []
                             };
             finalTables.push(tableFound);
             break;
@@ -370,8 +380,6 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
     if (assertions === undefined) {
         return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
     }
-
-
 
     let assertionCountForFile = 0;
     let assertionQuery = "";
@@ -387,7 +395,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                         query: assertion.query,
                         target: assertion.target,
                         dependencyTargets: assertion.dependencyTargets,
-                        incrementalQuery: "", incrementalPreOps: [] 
+                        incrementalQuery: "", incrementalPreOps: []
                     };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
@@ -424,7 +432,7 @@ async function getMetadataForCurrentFile(fileName: string, compiledJson: Datafor
                     target: operation.target,
                     dependencyTargets: operation.dependencyTargets,
                     incrementalQuery: "",
-                    incrementalPreOps: [] 
+                    incrementalPreOps: []
                 };
             finalTables.push(operationFound);
             break;
@@ -676,7 +684,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
 export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
     let tableMetadata;
     var [filename, extension] = getFileNameFromDocument(document);
-    if (filename === "" || extension === "") { return; }
+    if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
@@ -814,7 +822,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     diagnosticCollection.clear();
 
     var [filename, extension] = getFileNameFromDocument(document);
-    if (filename === "" || extension === "") { return; }
+    if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }

@@ -33,7 +33,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument } from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -54,6 +54,8 @@ export async function activate(context: vscode.ExtensionContext) {
         executableIsAvailable(executable);
     }
 
+    //TODO: check if user has multiple workspace folders open
+    //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
     let workspaceFolder = getWorkspaceFolder();
 
     if (workspaceFolder) {
@@ -72,11 +74,11 @@ export async function activate(context: vscode.ExtensionContext) {
     registerCenterPanel(context);
 
     async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
-        if (document === undefined) {
-            document = vscode.window.activeTextEditor?.document;
+        if (!document) {
+            document = getVSCodeDocument()
         }
 
-        if (document === undefined) {
+        if (!document) {
             return;
         }
 
@@ -364,5 +366,3 @@ export async function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     console.log('Extension "enable-disable-extension" is now deactivated.');
 }
-
-
