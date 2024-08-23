@@ -29,6 +29,7 @@ export interface Assertion {
 
 export interface DependancyTreeMetadata {
     _name: string;
+    _fileName: string;
     _schema: string;
     _schema_idx: number;
     _deps?: string[];

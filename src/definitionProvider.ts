@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getWorkspaceFolder, runCompilation } from './utils';
+import { getPostionOfSourceDeclaration, getWorkspaceFolder, runCompilation } from './utils';
 import { Assertion, DataformCompiledJson, Operation, Table } from './types';
 import path from 'path';
 
@@ -59,24 +59,10 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
                     let fullSourcePath = path.join(workspaceFolder, declarations[i].fileName);
                     sourcesJsUri = vscode.Uri.file(fullSourcePath);
 
-                    let sourcesDocument = await vscode.workspace.openTextDocument(sourcesJsUri);
-
-                    let line = null;
-                    let character = null;
-
-                    for (let lineNum = 0; lineNum < sourcesDocument.lineCount; lineNum++) {
-                        const lineText = sourcesDocument.lineAt(lineNum).text;
-                        const wordIndex = lineText.indexOf(searchTerm);
-
-                        if (wordIndex !== -1) {
-                            line = lineNum;
-                            character = wordIndex;
-                        }
+                    const definitionPosition = await getPostionOfSourceDeclaration(sourcesJsUri, searchTerm);
+                    if(!definitionPosition){
+                        return;
                     }
-                    if (line === null || character === null) {
-                        return undefined;
-                    }
-                    const definitionPosition = new vscode.Position(line, character);
                     return new vscode.Location(sourcesJsUri, definitionPosition);
                 }
 
