@@ -28,6 +28,7 @@ let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 let formatCurrentFileDisposable: vscode.Disposable | null = null;
 
 import { registerWebViewProvider } from './views/register-sidebar-panel';
+import { CustomViewProvider } from './views/customViewProvider';
 import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
@@ -75,7 +76,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (!document) {
-            document = getVSCodeDocument()
+            document = getVSCodeDocument();
         }
 
         if (!document) {
@@ -90,6 +91,16 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     function registerAllCommands(context: vscode.ExtensionContext) {
+
+        const provider = new CustomViewProvider(context.extensionUri);
+        context.subscriptions.push( vscode.window.registerWebviewViewProvider('myCustomView', provider));
+
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('myExtension.showCustomView', () => {
+              vscode.commands.executeCommand('myCustomView.focus');
+            })
+          );
 
         dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
             { language: 'sqlx' },
