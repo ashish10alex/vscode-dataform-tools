@@ -1,6 +1,20 @@
 import * as vscode from "vscode";
 import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
 
+
+function countCurlyBraces(str:string): {
+    openBraces: number;
+    closedBraces: number;
+} {
+    const openBraces = (str.match(/\{/g) || []).length;
+    const closedBraces = (str.match(/\}/g) || []).length;
+
+    return {
+      openBraces: openBraces,
+      closedBraces: closedBraces
+    };
+  }
+
 /**
     * This function is used to get start / end points for different blocks in an sqlx file
     * An sqlx file can have a config block followed by pre_operations / post_operations and an sql block
@@ -40,18 +54,47 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
     for (let i = 0; i < totalLines; i++) {
         const lineContents = document.lineAt(i).text;
 
-        if (lineContents.match("config")) {
+        if (lineContents.match("config {")) {
             inMajorBlock = true;
             currentBlock = "config";
             startOfConfigBlock = i + 1;
-        } else if (lineContents.match("post_operations") && !inMajorBlock){
+        } else if (lineContents.match("post_operations {") && !inMajorBlock){
             startOfPostOperationsBlock = i+1;
             inMajorBlock = true;
             currentBlock = "post_operations";
-        } else if (lineContents.match("pre_operations") && !inMajorBlock){
+
+            const curleyBraceMeta = countCurlyBraces(lineContents);
+            if((curleyBraceMeta.openBraces === curleyBraceMeta.closedBraces) && (curleyBraceMeta.openBraces !== 1)){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfPostOperationsBlock = i + 1;
+                postOpsBlockMeta.postOpsList.push(
+                    {
+                        startLine: startOfPostOperationsBlock,
+                        endLine: endOfPostOperationsBlock,
+                        exists: true
+                    },
+                );
+            }
+
+        } else if (lineContents.match("pre_operations {") && !inMajorBlock){
             startOfPreOperationsBlock = i+1;
             inMajorBlock = true;
             currentBlock = "pre_operations";
+
+            const curleyBraceMeta = countCurlyBraces(lineContents);
+            if((curleyBraceMeta.openBraces === curleyBraceMeta.closedBraces)){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfPreOperationsBlock = i + 1;
+                preOpsBlockMeta.preOpsList.push(
+                    {
+                        startLine: startOfPreOperationsBlock,
+                        endLine: endOfPreOperationsBlock,
+                        exists: true
+                    },
+                );
+            }
         } else if (lineContents.match("{") && inMajorBlock) {
             if(lineContents.match("}")){
                 continue;
