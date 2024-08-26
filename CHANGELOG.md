@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.44](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.43...v0.0.44) (2024-08-26)
+
+
+### Bug Fixes
+
+* Multiline ref block not getting formatted & single line pre/post ops block ([#18](https://github.com/ashish10alex/vscode-dataform-tools/issues/18)) ([208f9cc](https://github.com/ashish10alex/vscode-dataform-tools/commit/208f9ccd767f64f88753e3da4f11d3583df92fad))
+
 ### [0.0.43](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.42...v0.0.43) (2024-08-21)
 
 
