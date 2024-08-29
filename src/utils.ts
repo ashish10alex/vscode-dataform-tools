@@ -148,13 +148,15 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-export function getFileNameFromDocument(document: vscode.TextDocument): string[] | [undefined, undefined] {
+export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined] {
     var filename = document.uri.fsPath;
     let basenameSplit = path.basename(filename).split('.');
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-      vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
+        if (showErrorMessage){
+            vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
+        }
         return [undefined, undefined];
     }
     filename = basenameSplit[0];
@@ -240,11 +242,11 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
 
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
-    let document = getVSCodeDocument()
+    let document = getVSCodeDocument();
     if (!document) {
         return;
     }
-    var [filename, extension] = getFileNameFromDocument(document);
+    var [filename, extension] = getFileNameFromDocument(document, true);
     if (!filename || !extension){
       return;
     }
@@ -683,7 +685,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
 
 export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
     let tableMetadata;
-    var [filename, extension] = getFileNameFromDocument(document);
+    var [filename, extension] = getFileNameFromDocument(document, true);
     if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
@@ -821,7 +823,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
-    var [filename, extension] = getFileNameFromDocument(document);
+    var [filename, extension] = getFileNameFromDocument(document, true);
     if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();

@@ -32,7 +32,7 @@ import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
-import { executablesToCheck, compiledSqlFilePath, tableQueryOffset } from './constants';
+import { executablesToCheck, compiledSqlFilePath} from './constants';
 import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument } from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (!document) {
-            document = getVSCodeDocument()
+            document = getVSCodeDocument();
         }
 
         if (!document) {
@@ -146,7 +146,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            var [filename, extension] = getFileNameFromDocument(document);
+            var [filename, extension] = getFileNameFromDocument(document, true);
             if (filename === "" || extension !== "sqlx") {
                 vscode.window.showErrorMessage("Formatting is only supported for .sqlx files");
                 return;
