@@ -69,6 +69,7 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                 currentBlock = "";
                 inMajorBlock = false;
                 endOfConfigBlock = i + 1;
+                configBlockExsists = true;
             }
 
         } else if (lineContents.match("post_operations {") && !inMajorBlock){
