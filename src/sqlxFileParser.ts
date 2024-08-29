@@ -44,8 +44,8 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
     let sqlBlockExsists = false;
 
     /**vars for inner blocks (defined by curley braces {} ) tracking */
-    let isInInnerMajorBlock = false;
-    let innerMajorBlockCount = 0;
+    let openBracesCount = 0;
+    let closedBracesCount = 0;
 
     let currentBlock = "";
 
@@ -53,18 +53,30 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
 
     for (let i = 0; i < totalLines; i++) {
         const lineContents = document.lineAt(i).text;
+            const curleyBraceMeta = countCurlyBraces(lineContents);
+            const openBraces = curleyBraceMeta.openBraces;
+            const closedBraces = curleyBraceMeta.closedBraces;
+        
+        openBracesCount += openBraces;
+        closedBracesCount += closedBraces;
 
-        if (lineContents.match("config {")) {
-            inMajorBlock = true;
+        if (lineContents.match("config {") && !inMajorBlock) {
             currentBlock = "config";
             startOfConfigBlock = i + 1;
+            inMajorBlock = true;
+
+            if(openBracesCount === closedBracesCount && inMajorBlock){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfConfigBlock = i + 1;
+            }
+
         } else if (lineContents.match("post_operations {") && !inMajorBlock){
+            currentBlock = "post_operations";
             startOfPostOperationsBlock = i+1;
             inMajorBlock = true;
-            currentBlock = "post_operations";
 
-            const curleyBraceMeta = countCurlyBraces(lineContents);
-            if((curleyBraceMeta.openBraces === curleyBraceMeta.closedBraces) && (curleyBraceMeta.openBraces !== 1)){
+            if((openBraces === closedBraces) && inMajorBlock){
                 currentBlock = "";
                 inMajorBlock = false;
                 endOfPostOperationsBlock = i + 1;
@@ -78,12 +90,11 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
             }
 
         } else if (lineContents.match("pre_operations {") && !inMajorBlock){
+            currentBlock = "pre_operations";
             startOfPreOperationsBlock = i+1;
             inMajorBlock = true;
-            currentBlock = "pre_operations";
 
-            const curleyBraceMeta = countCurlyBraces(lineContents);
-            if((curleyBraceMeta.openBraces === curleyBraceMeta.closedBraces)){
+            if((openBraces === closedBraces) && inMajorBlock){
                 currentBlock = "";
                 inMajorBlock = false;
                 endOfPreOperationsBlock = i + 1;
@@ -95,15 +106,7 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                     },
                 );
             }
-        } else if (lineContents.match("{") && inMajorBlock) {
-            if(lineContents.match("}")){
-                continue;
-            }
-            isInInnerMajorBlock = true;
-            innerMajorBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerMajorBlock && innerMajorBlockCount >= 1 && inMajorBlock) {
-            innerMajorBlockCount -= 1;
-        } else if (lineContents.match("}") && innerMajorBlockCount === 0 && inMajorBlock) {
+        } else if (inMajorBlock && (openBracesCount === closedBracesCount)) {
             if (currentBlock === "config"){
                 endOfConfigBlock = i + 1;
                 configBlockExsists = true;
@@ -130,8 +133,6 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                 currentBlock = "";
             }
             inMajorBlock = false;
-        } else if (lineContents.match("}") && isInInnerMajorBlock && innerMajorBlockCount >= 1 && !inMajorBlock) {
-            innerMajorBlockCount -= 1;
         } else if (lineContents !== "" && !inMajorBlock){
             if (startOfSqlBlock === 0){
                 startOfSqlBlock = i + 1;
