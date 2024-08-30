@@ -59,6 +59,7 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
 
     for (let i = 0; i < totalLines; i++) {
         const lineContents = document.lineAt(i).text;
+        //TODO: Maybe we do not need to call this function if we are in a sql block ?
         const curleyBraceMeta = countCurlyBraces(lineContents);
         const openBraces = curleyBraceMeta.openBraces;
         const closedBraces = curleyBraceMeta.closedBraces;

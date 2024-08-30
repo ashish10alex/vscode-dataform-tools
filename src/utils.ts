@@ -779,7 +779,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
     try {
         if (configBlockText && configBlockText !== ""){
-            configBlockText = beautify.js(configBlockText);
+            configBlockText = beautify.js(configBlockText, { "indent_size": 2 });
         }
     } catch (error) {
         vscode.window.showErrorMessage("Could to format config block");
