@@ -245,6 +245,7 @@
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
+        "@types/js-beautify": "^1.14.3",
         "@types/mocha": "^10.0.7",
         "@types/node": "18.x",
         "@types/vscode": "^1.89.0",
@@ -256,6 +257,7 @@
         "typescript": "^5.4.5"
     },
     "dependencies": {
-        "@google-cloud/bigquery": "^7.8.0"
+        "@google-cloud/bigquery": "^7.8.0",
+        "js-beautify": "^1.15.1"
     }
 }

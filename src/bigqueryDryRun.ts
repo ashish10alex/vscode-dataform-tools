@@ -1,4 +1,4 @@
-const { BigQuery } = require('@google-cloud/bigquery');
+import { BigQuery } from '@google-cloud/bigquery';
 const bigquery = new BigQuery();
 import {  BigQueryDryRunResponse } from './types';
 

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import { exec as exec } from 'child_process';
 import path from 'path';
+import beautify from 'js-beautify';
 import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
@@ -100,7 +101,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 export function getVSCodeDocument(): vscode.TextDocument | undefined {
   let document = vscode.window.activeTextEditor?.document;
   if (!document) {
-    vscode.window.showErrorMessage("VsCode document object was undefined");
+    vscode.window.showErrorMessage("VS Code document object was undefined");
     return;
   }
   return document;
@@ -125,7 +126,7 @@ export function getLineUnderCursor(): string | undefined {
 }
 
 export async function fetchGitHubFileContent(): Promise<string> {
-    //TODO: Use current repository
+    //TODO: Should we move .sqlfluff to assets folder?
     const repo = 'vscode-dataform-tools';
     const filePath = 'src/test/test-workspace/.sqlfluff';
     const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
@@ -240,7 +241,6 @@ async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     let document = getVSCodeDocument();
     if (!document) {
@@ -251,6 +251,8 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
       return;
     }
     let workspaceFolder = getWorkspaceFolder();
+
+    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     if (!workspaceFolder){
         return;
@@ -775,6 +777,13 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
 
     let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
+    try {
+        if (configBlockText && configBlockText !== ""){
+            configBlockText = beautify.js(configBlockText);
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage("Could to format config block");
+    }
 
     let myPromises:any = [];
     preOpsBlockMeta.forEach((block:any) => {
@@ -823,7 +832,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
-    var [filename, extension] = getFileNameFromDocument(document, true);
+    var [filename, extension] = getFileNameFromDocument(document, false);
     if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
