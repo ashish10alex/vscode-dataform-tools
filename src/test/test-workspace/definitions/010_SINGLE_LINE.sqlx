@@ -1,0 +1,7 @@
+config { type: "table" }
+
+pre_operations { select 1 }
+
+post_operations { select 1 }
+
+select 5 as a
