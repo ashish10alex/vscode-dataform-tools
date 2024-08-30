@@ -1,18 +1,24 @@
 import * as vscode from "vscode";
 import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
 
+function countCurlyBraces(str: string): {
+      openBraces: number;
+      closedBraces: number;
+  } {
+      let openBraces = 0;
+      let closedBraces = 0;
 
-function countCurlyBraces(str:string): {
-    openBraces: number;
-    closedBraces: number;
-} {
-    const openBraces = (str.match(/\{/g) || []).length;
-    const closedBraces = (str.match(/\}/g) || []).length;
-
-    return {
-      openBraces: openBraces,
-      closedBraces: closedBraces
-    };
+      for (let i = 0; i < str.length; i++) {
+          if (str[i] === '{') {
+              openBraces++;
+          } else if (str[i] === '}') {
+              closedBraces++;
+          }
+      }
+      return {
+          openBraces: openBraces,
+          closedBraces: closedBraces
+      };
   }
 
 /**
@@ -53,10 +59,10 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
 
     for (let i = 0; i < totalLines; i++) {
         const lineContents = document.lineAt(i).text;
-            const curleyBraceMeta = countCurlyBraces(lineContents);
-            const openBraces = curleyBraceMeta.openBraces;
-            const closedBraces = curleyBraceMeta.closedBraces;
-        
+        const curleyBraceMeta = countCurlyBraces(lineContents);
+        const openBraces = curleyBraceMeta.openBraces;
+        const closedBraces = curleyBraceMeta.closedBraces;
+
         openBracesCount += openBraces;
         closedBracesCount += closedBraces;
 
