@@ -239,6 +239,37 @@ async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     });
 }
 
+export async function getAllFilesWtAnExtension(workspaceFolder:string, extension:string){
+    const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
+    let files = await vscode.workspace.findFiles(globPattern);
+    const fileList = files.map(file => vscode.workspace.asRelativePath(file));
+    return fileList;
+}
+
+export function getDataformActionCmdFromActionList(actionsList:string[], workspaceFolder:string, dataformCompilationTimeoutVal:string, includDependencies:boolean, includeDownstreamDependents:boolean, ){
+        let dataformActionCmd = "";
+        for (let i = 0; i < actionsList.length; i++) {
+            let fullTableName = actionsList[i];
+            if (i === 0) {
+                if (includDependencies) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
+                } else if (includeDownstreamDependents) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
+                }
+                else {
+                    dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
+                }
+            } else {
+                if (includDependencies) {
+                    dataformActionCmd += ` --actions "${fullTableName}"`;
+                } else {
+                    dataformActionCmd += ` --actions "${fullTableName}"`;
+                }
+            }
+        }
+        return dataformActionCmd;
+}
+
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
 
 
@@ -270,25 +301,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         let dataformActionCmd = "";
 
         // create the dataform run command for the list of actions from actionsList
-        for (let i = 0; i < actionsList.length; i++) {
-            let fullTableName = actionsList[i];
-            if (i === 0) {
-                if (includDependencies) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
-                } else if (includeDownstreamDependents) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
-                }
-                else {
-                    dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
-                }
-            } else {
-                if (includDependencies) {
-                    dataformActionCmd += ` --actions "${fullTableName}"`;
-                } else {
-                    dataformActionCmd += ` --actions "${fullTableName}"`;
-                }
-            }
-        }
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents);
         runCommandInTerminal(dataformActionCmd);
     }
 }
@@ -319,7 +332,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-async function getMetadataForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
+export async function getMetadataForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
