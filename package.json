@@ -43,14 +43,7 @@
                     "title": "Dataform",
                     "icon": "media/dataform.svg"
                 }
-            ],
-        "panel": [
-            {
-            "id": "myCustomViewContainer",
-            "title": "My Custom View",
-            "icon": "path/to/icon.svg"
-            }
-      ]
+            ]
         },
         "views": {
             "dataform-sidebar-view": [
@@ -61,14 +54,7 @@
                     "icon": "media/dataform.svg",
                     "contextualTitle": "Dataform"
                 }
-            ],
-            "myCustomViewContainer": [
-                {
-                  "type": "webview",
-                  "id": "myCustomView",
-                  "name": "My Custom View"
-                }
-              ]
+            ]
         },
         "snippets": [
             {
@@ -81,10 +67,6 @@
             }
         ],
         "commands": [
-            {
-                "command": "vscode-dataform-tools.showCustomView",
-                "title": "Show Custom View"
-            },
             {
                 "command": "vscode-dataform-tools.enable",
                 "category": "Dataform",

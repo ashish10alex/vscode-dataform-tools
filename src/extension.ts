@@ -93,16 +93,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     function registerAllCommands(context: vscode.ExtensionContext) {
 
-        const provider = new CustomViewProvider(context.extensionUri);
-        context.subscriptions.push( vscode.window.registerWebviewViewProvider('myCustomView', provider));
-
-
-        context.subscriptions.push(
-            vscode.commands.registerCommand('vscode-dataform-tools.showCustomView', () => {
-              vscode.commands.executeCommand('myCustomView.focus');
-            })
-          );
-
         dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
             { language: 'sqlx' },
             new DataformRefDefinitionProvider()
