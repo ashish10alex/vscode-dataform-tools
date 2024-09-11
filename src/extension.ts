@@ -98,7 +98,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('myExtension.showCustomView', () => {
+            vscode.commands.registerCommand('vscode-dataform-tools.showCustomView', () => {
               vscode.commands.executeCommand('myCustomView.focus');
             })
           );
