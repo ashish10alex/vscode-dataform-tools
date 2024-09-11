@@ -60,44 +60,12 @@ export class CenterPanel {
             "Dataform dependancy tree",
             column || ViewColumn.One,
             {
+                retainContextWhenHidden: true,
                 enableScripts: true,
                 localResourceRoots: [
                     Uri.joinPath(extensionUri, "media")
                 ],
             }
-        );
-
-        panel.onDidChangeViewState(
-            async e => {
-                const panel = e.webviewPanel;
-                const webview = panel.webview;
-                if (panel.visible) {
-                    let output = await generateDependancyTreeMetadata();
-                    if (!output) {
-                        return;
-                    }
-                    let dependancyTreeMetadata = output.dependancyTreeMetadata;
-                    let declarationsLegendMetadata = output.declarationsLegendMetadata;
-                    if (this.centerPanel) {
-                        e.webviewPanel.webview.html = this.centerPanel?._getHtmlForWebview(webview);
-                    }
-                    let treeRootExsistInLatestCompilation = false;
-                    if (treeRoot) {
-                        for (let i = 0; i < dependancyTreeMetadata.length; i++) {
-                            if (dependancyTreeMetadata[i]._name === treeRoot) {
-                                treeRootExsistInLatestCompilation = true;
-                                await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
-                                break;
-                            }
-                        }
-                    }
-                    if (!treeRootExsistInLatestCompilation) {
-                        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
-                    }
-                }
-            },
-            null, // TODO: verify this option
-            undefined // TODO: verify this option
         );
 
         CenterPanel.centerPanel = new CenterPanel(panel, extensionUri, extensionContext);
