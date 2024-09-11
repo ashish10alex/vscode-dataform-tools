@@ -71,6 +71,17 @@ const modifyEntityName = nodeData => {
     return _name.slice(i + 1);
 };
 
+const textClick = async (event, nodeData) => {
+    vscode.postMessage({
+        entity: 'openNodeSource',
+        value: {
+            _name: nodeData._name,
+            _fileName: nodeData._fileName,
+            _schema: nodeData._schema_idx
+        }
+    });
+};
+
 const sharedOptions = ({
     circleStrokeWidth: 5,
     circleSize: 10,
@@ -84,6 +95,7 @@ const sharedOptions = ({
     marginRight: 600,
     textStyleColor: textStyleColor,
     modifyEntityName: modifyEntityName,
+    textClick: textClick
     // circleStrokeColor: "yellow",
     // circleStrokeColor: "steelblue",
     // parentNodeTextOrientation: "right",
