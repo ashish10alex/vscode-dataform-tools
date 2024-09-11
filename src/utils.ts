@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import { exec as exec } from 'child_process';
 import path from 'path';
+import beautify from 'js-beautify';
 import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
@@ -121,7 +122,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 export function getVSCodeDocument(): vscode.TextDocument | undefined {
   let document = vscode.window.activeTextEditor?.document;
   if (!document) {
-    vscode.window.showErrorMessage("VsCode document object was undefined");
+    vscode.window.showErrorMessage("VS Code document object was undefined");
     return;
   }
   return document;
@@ -146,7 +147,7 @@ export function getLineUnderCursor(): string | undefined {
 }
 
 export async function fetchGitHubFileContent(): Promise<string> {
-    //TODO: Use current repository
+    //TODO: Should we move .sqlfluff to assets folder?
     const repo = 'vscode-dataform-tools';
     const filePath = 'src/test/test-workspace/.sqlfluff';
     const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
@@ -169,13 +170,15 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-export function getFileNameFromDocument(document: vscode.TextDocument): string[] | [undefined, undefined] {
+export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined] {
     var filename = document.uri.fsPath;
     let basenameSplit = path.basename(filename).split('.');
     let extension = basenameSplit[1];
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-      vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
+        if (showErrorMessage){
+            vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
+        }
         return [undefined, undefined];
     }
     filename = basenameSplit[0];
@@ -257,36 +260,15 @@ async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     });
 }
 
-export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
+export async function getAllFilesWtAnExtension(workspaceFolder:string, extension:string){
+    const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
+    let files = await vscode.workspace.findFiles(globPattern);
+    const fileList = files.map(file => vscode.workspace.asRelativePath(file));
+    return fileList;
+}
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-
-    let document = getVSCodeDocument();
-    if (!document) {
-        return;
-    }
-    var [filename, extension] = getFileNameFromDocument(document);
-    if (!filename || !extension){
-      return;
-    }
-    let workspaceFolder = getWorkspaceFolder();
-
-    if (!workspaceFolder){
-        return;
-    }
-
-    let tableMetadata;
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
-    if (dataformCompiledJson) {
-        tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
-    }
-
-    if (tableMetadata) {
-        let actionsList: string[] = tableMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
-
+export function getDataformActionCmdFromActionList(actionsList:string[], workspaceFolder:string, dataformCompilationTimeoutVal:string, includDependencies:boolean, includeDownstreamDependents:boolean, ){
         let dataformActionCmd = "";
-
-        // create the dataform run command for the list of actions from actionsList
         for (let i = 0; i < actionsList.length; i++) {
             let fullTableName = actionsList[i];
             if (i === 0) {
@@ -306,6 +288,41 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
                 }
             }
         }
+        return dataformActionCmd;
+}
+
+export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
+
+
+    let document = getVSCodeDocument();
+    if (!document) {
+        return;
+    }
+    var [filename, extension] = getFileNameFromDocument(document, true);
+    if (!filename || !extension){
+      return;
+    }
+    let workspaceFolder = getWorkspaceFolder();
+
+    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+
+    if (!workspaceFolder){
+        return;
+    }
+
+    let tableMetadata;
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    if (dataformCompiledJson) {
+        tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+    }
+
+    if (tableMetadata) {
+        let actionsList: string[] = tableMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
+
+        let dataformActionCmd = "";
+
+        // create the dataform run command for the list of actions from actionsList
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents);
         runCommandInTerminal(dataformActionCmd);
     }
 }
@@ -336,7 +353,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-async function getMetadataForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
+export async function getMetadataForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
@@ -708,7 +725,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
 
 export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
     let tableMetadata;
-    var [filename, extension] = getFileNameFromDocument(document);
+    var [filename, extension] = getFileNameFromDocument(document, true);
     if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
@@ -798,6 +815,13 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
 
     let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
+    try {
+        if (configBlockText && configBlockText !== ""){
+            configBlockText = beautify.js(configBlockText, { "indent_size": 2 });
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage("Could to format config block");
+    }
 
     let myPromises:any = [];
     preOpsBlockMeta.forEach((block:any) => {
@@ -846,7 +870,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
-    var [filename, extension] = getFileNameFromDocument(document);
+    var [filename, extension] = getFileNameFromDocument(document, false);
     if (!filename || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
@@ -870,7 +894,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: this needs updating Takes less than 2ms (dataform wt 285 nodes)
+        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: Takes less than 2ms (dataform wt 285 nodes)
     }
 
     if (tableMetadata.fullQuery === "") {

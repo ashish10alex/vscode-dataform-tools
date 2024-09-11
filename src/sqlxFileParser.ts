@@ -1,6 +1,26 @@
 import * as vscode from "vscode";
 import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
 
+function countCurlyBraces(str: string): {
+      openBraces: number;
+      closedBraces: number;
+  } {
+      let openBraces = 0;
+      let closedBraces = 0;
+
+      for (let i = 0; i < str.length; i++) {
+          if (str[i] === '{') {
+              openBraces++;
+          } else if (str[i] === '}') {
+              closedBraces++;
+          }
+      }
+      return {
+          openBraces: openBraces,
+          closedBraces: closedBraces
+      };
+  }
+
 /**
     * This function is used to get start / end points for different blocks in an sqlx file
     * An sqlx file can have a config block followed by pre_operations / post_operations and an sql block
@@ -30,8 +50,8 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
     let sqlBlockExsists = false;
 
     /**vars for inner blocks (defined by curley braces {} ) tracking */
-    let isInInnerMajorBlock = false;
-    let innerMajorBlockCount = 0;
+    let openBracesCount = 0;
+    let closedBracesCount = 0;
 
     let currentBlock = "";
 
@@ -39,28 +59,62 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
 
     for (let i = 0; i < totalLines; i++) {
         const lineContents = document.lineAt(i).text;
+        //TODO: Maybe we do not need to call this function if we are in a sql block ?
+        const curleyBraceMeta = countCurlyBraces(lineContents);
+        const openBraces = curleyBraceMeta.openBraces;
+        const closedBraces = curleyBraceMeta.closedBraces;
 
-        if (lineContents.match("config")) {
-            inMajorBlock = true;
+        openBracesCount += openBraces;
+        closedBracesCount += closedBraces;
+
+        if (lineContents.match("config {") && !inMajorBlock) {
             currentBlock = "config";
             startOfConfigBlock = i + 1;
-        } else if (lineContents.match("post_operations") && !inMajorBlock){
+            inMajorBlock = true;
+
+            if(openBracesCount === closedBracesCount && inMajorBlock){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfConfigBlock = i + 1;
+                configBlockExsists = true;
+            }
+
+        } else if (lineContents.match("post_operations {") && !inMajorBlock){
+            currentBlock = "post_operations";
             startOfPostOperationsBlock = i+1;
             inMajorBlock = true;
-            currentBlock = "post_operations";
-        } else if (lineContents.match("pre_operations") && !inMajorBlock){
+
+            if((openBraces === closedBraces) && inMajorBlock){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfPostOperationsBlock = i + 1;
+                postOpsBlockMeta.postOpsList.push(
+                    {
+                        startLine: startOfPostOperationsBlock,
+                        endLine: endOfPostOperationsBlock,
+                        exists: true
+                    },
+                );
+            }
+
+        } else if (lineContents.match("pre_operations {") && !inMajorBlock){
+            currentBlock = "pre_operations";
             startOfPreOperationsBlock = i+1;
             inMajorBlock = true;
-            currentBlock = "pre_operations";
-        } else if (lineContents.match("{") && inMajorBlock) {
-            if(lineContents.match("}")){
-                continue;
+
+            if((openBraces === closedBraces) && inMajorBlock){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfPreOperationsBlock = i + 1;
+                preOpsBlockMeta.preOpsList.push(
+                    {
+                        startLine: startOfPreOperationsBlock,
+                        endLine: endOfPreOperationsBlock,
+                        exists: true
+                    },
+                );
             }
-            isInInnerMajorBlock = true;
-            innerMajorBlockCount += 1;
-        } else if (lineContents.match("}") && isInInnerMajorBlock && innerMajorBlockCount >= 1 && inMajorBlock) {
-            innerMajorBlockCount -= 1;
-        } else if (lineContents.match("}") && innerMajorBlockCount === 0 && inMajorBlock) {
+        } else if (inMajorBlock && (openBracesCount === closedBracesCount)) {
             if (currentBlock === "config"){
                 endOfConfigBlock = i + 1;
                 configBlockExsists = true;
@@ -87,8 +141,6 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                 currentBlock = "";
             }
             inMajorBlock = false;
-        } else if (lineContents.match("}") && isInInnerMajorBlock && innerMajorBlockCount >= 1 && !inMajorBlock) {
-            innerMajorBlockCount -= 1;
         } else if (lineContents !== "" && !inMajorBlock){
             if (startOfSqlBlock === 0){
                 startOfSqlBlock = i + 1;

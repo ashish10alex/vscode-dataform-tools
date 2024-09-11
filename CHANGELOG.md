@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.49](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.48...v0.0.49) (2024-09-05)
+
+
+### Features
+
+* Ability to execute multiple files ([b7bb14a](https://github.com/ashish10alex/vscode-dataform-tools/commit/b7bb14a9858b2e574e904b42ccc64b92286b5716))
+
+### [0.0.48](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.47...v0.0.48) (2024-08-30)
+
+
+### Features
+
+* format config block using js-beautify ([2d5897b](https://github.com/ashish10alex/vscode-dataform-tools/commit/2d5897b473d4d595d948ee58091ac10b8fc1c863))
+
+### [0.0.47](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.46...v0.0.47) (2024-08-29)
+
+
+### Bug Fixes
+
+* config block exists property not marked as true when it is single line ([a41bc8a](https://github.com/ashish10alex/vscode-dataform-tools/commit/a41bc8a0e90bdb9d0b03f367c6716cf2527e47ae))
+
+### [0.0.46](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.45...v0.0.46) (2024-08-29)
+
+
+### Bug Fixes
+
+* sqlx parser did not support when multiple curley braces in single line in config/pre/post ops block ([884c74e](https://github.com/ashish10alex/vscode-dataform-tools/commit/884c74eb82d316d424e2529f9fc2cf6b9f9bc068))
+
+### [0.0.45](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.44...v0.0.45) (2024-08-26)
+
+
+### Features
+
+* add sqlfluff file to support multi line ref & single line pre/post ops ([277fda9](https://github.com/ashish10alex/vscode-dataform-tools/commit/277fda98ebc3d82fe4606c7ad8d93655d5ca90dc))
+
+### [0.0.44](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.43...v0.0.44) (2024-08-26)
+
+
+### Bug Fixes
+
+* Multiline ref block not getting formatted & single line pre/post ops block ([#18](https://github.com/ashish10alex/vscode-dataform-tools/issues/18)) ([208f9cc](https://github.com/ashish10alex/vscode-dataform-tools/commit/208f9ccd767f64f88753e3da4f11d3583df92fad))
+
 ### [0.0.43](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.42...v0.0.43) (2024-08-21)
 
 

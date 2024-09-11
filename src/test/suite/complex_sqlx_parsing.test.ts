@@ -30,7 +30,6 @@ suite('GetMetadataForSqlxFileBlocks', async () => {
 
             /** Pre ops block */
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
-            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 13);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 22);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].startLine, 24);
@@ -48,4 +47,3 @@ suite('GetMetadataForSqlxFileBlocks', async () => {
         }
     });
 });
-

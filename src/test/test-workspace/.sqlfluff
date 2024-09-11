@@ -127,7 +127,7 @@ quoted_identifiers_policy = none
 # e.g. 2 = `gcp_project_id.my_dataset.my_table`
 # NOTE: when using formatdataform cli it automatically generates multiple lines for you (defaulted to 30 atm)
 [sqlfluff:templater:placeholder]
-param_regex = \$\{self\(\)\}|\$\{ref\((\"?\w+\"?|\{[^}]+\})\)\}|\${ref\(\'\d*([\w]+)'\)\}|\$\{[^}]*\}
+param_regex = (?s)\$\{\s*self\s*\(\s*\)\s*\}|\$\{\s*ref\s*\(\s*(\"?\w+\"?|\{[^}]+\})\s*\)\s*\}|\$\{\s*ref\s*\(\s*\'\s*\d*\s*([\w]+)\s*\'\s*\)\s*\}|\$\{\s*[^}]*\s*\}
 1 = my_table_or_replacement
 2 = my_table_or_replacement
 3 = my_table_or_replacement
