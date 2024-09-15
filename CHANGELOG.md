@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.50](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.49...v0.0.50) (2024-09-11)
+
+
+### Features
+
+* Go to code by clicking on text objects of dependancy graph ([#17](https://github.com/ashish10alex/vscode-dataform-tools/issues/17)) ([0808cae](https://github.com/ashish10alex/vscode-dataform-tools/commit/0808cae52b50703ede3dd8f23359ab81e6573daa))
+
 ### [0.0.49](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.48...v0.0.49) (2024-09-05)
 
 
