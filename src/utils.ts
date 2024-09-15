@@ -10,6 +10,7 @@ import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
+import { queryBigQuery } from './bigqueryRunQuery';
 
 let supportedExtensions = ['sqlx', 'js'];
 

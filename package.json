@@ -46,8 +46,8 @@
             ],
         "panel": [
             {
-            "id": "myCustomViewContainer",
-            "title": "My Custom View",
+            "id": "queryResultsContainer",
+            "title": "Dataform tools",
             "icon": "path/to/icon.svg"
             }
       ]
@@ -62,11 +62,11 @@
                     "contextualTitle": "Dataform"
                 }
             ],
-            "myCustomViewContainer": [
+            "queryResultsContainer": [
                 {
                   "type": "webview",
-                  "id": "myCustomView",
-                  "name": "My Custom View"
+                  "id": "queryResultsView",
+                  "name": "Dataform tools"
                 }
               ]
         },
@@ -82,8 +82,9 @@
         ],
         "commands": [
             {
-                "command": "vscode-dataform-tools.showCustomView",
-                "title": "Show Custom View"
+                "command": "vscode-dataform-tools.runQuery",
+                "category": "Dataform",
+                "title": "Run query"
             },
             {
                 "command": "vscode-dataform-tools.enable",
