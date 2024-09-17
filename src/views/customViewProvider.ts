@@ -24,6 +24,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
 
       webviewView.onDidChangeVisibility(() => {
+        // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
         if (webviewView.visible && this._cachedResults) {
           this._view?.webview.postMessage(this._cachedResults);
         }
@@ -37,7 +38,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           return;
       }
 
-    this._view.show(true);
     this._view.webview.html = this._getHtmlForWebview(this._view.webview);
 
     let document = vscode.window.activeTextEditor?.document;
@@ -65,6 +65,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           const { columns, results } = await queryBigQuery(query);
           this._cachedResults = { results, columns };
           this._view.webview.postMessage({"results": results, "columns": columns});
+          this._view.show(true);
       } catch (error) {
           console.error(error);
       }
@@ -88,7 +89,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
         </head>
         <body>
-          <h3>Query results - <span id="datetime"></span></h3>
+          <p>Query results - <span id="datetime"></span></p>
           <table id="example" class="display" width="100%"></table>
           <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
         </body>
