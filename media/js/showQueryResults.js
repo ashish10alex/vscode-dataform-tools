@@ -32,7 +32,8 @@ window.addEventListener('message', event => {
         // Initialize DataTable
         new DataTable('#example', {
             columns: columns,
-            data: results
+            data: results,
+            pageLength: 50
         });
     }
 });

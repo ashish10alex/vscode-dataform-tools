@@ -5,6 +5,7 @@ import { queryBigQuery } from '../bigqueryRunQuery';
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
+    private _cachedResults?: { results: any[], columns: any[] };
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
   
@@ -16,10 +17,17 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       this._view = webviewView;
       webviewView.webview.options = {
         enableScripts: true,
-        localResourceRoots: [this._extensionUri]
+        localResourceRoots: [Uri.joinPath(this._extensionUri, "media")]
       };
       webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
       // await this.updateContent();
+
+
+      webviewView.onDidChangeVisibility(() => {
+        if (webviewView.visible && this._cachedResults) {
+          this._view?.webview.postMessage(this._cachedResults);
+        }
+      });
     }
 
     public async updateContent() {
@@ -55,6 +63,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     let query = tableMetadata.queryToDryRun;
       try {
           const { columns, results } = await queryBigQuery(query);
+          this._cachedResults = { results, columns };
           this._view.webview.postMessage({"results": results, "columns": columns});
       } catch (error) {
           console.error(error);
