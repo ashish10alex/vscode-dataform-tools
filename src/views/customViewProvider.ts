@@ -81,7 +81,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Custom View</title>
 
           <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
           <link rel="stylesheet" href="https://cdn.datatables.net/2.1.4/css/dataTables.dataTables.css" />
@@ -89,7 +88,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
         </head>
         <body>
-          <h3>Query results</h3>
+          <h3>Query results - <span id="datetime"></span></h3>
           <table id="example" class="display" width="100%"></table>
           <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
         </body>

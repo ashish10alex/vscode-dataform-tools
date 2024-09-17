@@ -1,3 +1,18 @@
+function updateDateTime() {
+    const now = new Date();
+    const options = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit'
+    };
+    document.getElementById('datetime').textContent = now.toLocaleString('en-US', options);
+}
+
+
 // Create a loading message element
 const loadingMessage = document.createElement('div');
 loadingMessage.id = 'loading-message';
@@ -24,6 +39,7 @@ window.addEventListener('message', event => {
 
     if (columns && results) {
         // Remove the loading message
+        updateDateTime();
         document.body.removeChild(loadingMessage);
 
         // Show the table
