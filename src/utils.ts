@@ -171,19 +171,26 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined] {
-    var filename = document.uri.fsPath;
-    let basenameSplit = path.basename(filename).split('.');
+function getRelativePath(filePath:string) {
+    const fileUri = vscode.Uri.file(filePath);
+    const relativePath = vscode.workspace.asRelativePath(fileUri);
+    return relativePath;
+  }
+
+export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined, undefined] {
+    var filePath = document.uri.fsPath;
+    let basenameSplit = path.basename(filePath).split('.');
     let extension = basenameSplit[1];
+    let relativeFilePath = getRelativePath(filePath);
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
         if (showErrorMessage){
             vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
         }
-        return [undefined, undefined];
+        return [undefined, undefined, undefined];
     }
-    filename = basenameSplit[0];
-    return [filename, extension];
+    let rawFileName = basenameSplit[0];
+    return [rawFileName, relativeFilePath, extension];
 }
 
 //
@@ -299,8 +306,8 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     if (!document) {
         return;
     }
-    var [filename, extension] = getFileNameFromDocument(document, true);
-    if (!filename || !extension){
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    if (!filename || !relativeFilePath || !extension){
       return;
     }
     let workspaceFolder = getWorkspaceFolder();
@@ -314,7 +321,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     let tableMetadata;
     let dataformCompiledJson = await runCompilation(workspaceFolder);
     if (dataformCompiledJson) {
-        tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+        tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
     }
 
     if (tableMetadata) {
@@ -354,7 +361,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-export async function getMetadataForCurrentFile(fileName: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
+export async function getMetadataForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
@@ -369,8 +376,8 @@ export async function getMetadataForCurrentFile(fileName: string, compiledJson: 
 
     for (let i = 0; i < tables.length; i++) {
         let table = tables[i];
-        let tableFileName = path.basename(table.fileName).split('.')[0];
-        if (fileName === tableFileName) {
+        let tableRelativeFilePath = table.fileName;
+        if (relativeFilePath === tableRelativeFilePath) {
             if (table.type === "table" || table.type === "view") {
                 queryToDisplay = table.query.trimStart() + "\n ;";
             } else if (table.type === "incremental") {
@@ -402,7 +409,7 @@ export async function getMetadataForCurrentFile(fileName: string, compiledJson: 
             let tableFound = {
                               type: table.type,
                               tags: table.tags,
-                              fileName: fileName,
+                              fileName: relativeFilePath,
                               query: queryToDisplay,
                               target: table.target,
                               preOps: table.preOps,
@@ -426,11 +433,11 @@ export async function getMetadataForCurrentFile(fileName: string, compiledJson: 
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         let assertionFileName = path.basename(assertion.fileName).split('.')[0];
-        if (assertionFileName === fileName) {
+        if (assertionFileName === relativeFilePath) {
             let assertionFound = {
                         type: "assertion",
                         tags: assertion.tags,
-                        fileName: fileName,
+                        fileName: relativeFilePath,
                         query: assertion.query,
                         target: assertion.target,
                         dependencyTargets: assertion.dependencyTargets,
@@ -452,7 +459,7 @@ export async function getMetadataForCurrentFile(fileName: string, compiledJson: 
     for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
         let operationFileName = path.basename(operation.fileName).split('.')[0];
-        if (operationFileName === fileName) {
+        if (operationFileName === relativeFilePath) {
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";
@@ -466,7 +473,7 @@ export async function getMetadataForCurrentFile(fileName: string, compiledJson: 
             let operationFound = {
                     type: "operation",
                     tags: operation.tags,
-                    fileName: fileName,
+                    fileName: relativeFilePath,
                     query: finalOperationQuery,
                     target: operation.target,
                     dependencyTargets: operation.dependencyTargets,
@@ -726,8 +733,8 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
 
 export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
     let tableMetadata;
-    var [filename, extension] = getFileNameFromDocument(document, true);
-    if (!filename || !extension) { return; }
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    if (!filename || !relativeFilePath || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
@@ -871,8 +878,8 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
-    var [filename, extension] = getFileNameFromDocument(document, false);
-    if (!filename || !extension) { return; }
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    if (!filename || !relativeFilePath || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
@@ -889,7 +896,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     let [declarationsAndTargets, dataformTags, tableMetadata] = await Promise.all([
         getDependenciesAutoCompletionItems(dataformCompiledJson),
         getDataformTags(dataformCompiledJson),
-        getMetadataForCurrentFile(filename, dataformCompiledJson)
+        getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson)
     ]);
 
     let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
