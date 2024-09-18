@@ -42,8 +42,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
     let document = vscode.window.activeTextEditor?.document;
     if (!document){ return; }
-    var [filename, extension] = getFileNameFromDocument(document, false);
-    if (!filename || !extension) { return; }
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    if (!filename || !relativeFilePath || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
@@ -53,7 +53,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         return undefined;
     }
     CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-    let tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+    let tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
 
     if (!document) {
         vscode.window.showErrorMessage("VS Code document object was undefined");
@@ -70,7 +70,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           console.error(error);
       }
   }
-  
+
     private _getHtmlForWebview(webview: vscode.Webview) {
         const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));
         const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
