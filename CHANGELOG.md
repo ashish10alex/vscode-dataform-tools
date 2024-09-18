@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.51](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.50...v0.0.51) (2024-09-18)
+
+
+### Features
+
+* add language config to improve basic editing experience ([76aaab4](https://github.com/ashish10alex/vscode-dataform-tools/commit/76aaab4dd65beaed538e62c2d5fa4fcb4559d262))
+
 ### [0.0.50](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.49...v0.0.50) (2024-09-11)
 
 
