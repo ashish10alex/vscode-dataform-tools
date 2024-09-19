@@ -190,7 +190,11 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            var [filename, extension] = getFileNameFromDocument(document, true);
+            var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+            if (!filename || !relativeFilePath || !extension){
+              return;
+            }
+
             if (filename === "" || extension !== "sqlx") {
                 vscode.window.showErrorMessage("Formatting is only supported for .sqlx files");
                 return;
