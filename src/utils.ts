@@ -750,7 +750,7 @@ export async function getTableMetadata(document: vscode.TextDocument, freshCompi
     }
 
     if (dataformCompiledJson) {
-        tableMetadata = await getMetadataForCurrentFile(filename, dataformCompiledJson);
+        tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
     }
     return tableMetadata;
 }

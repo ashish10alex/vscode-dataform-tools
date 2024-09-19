@@ -12,8 +12,10 @@ export async function registerWebViewProvider(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.getTableMetadataForSidePanel', async () => {
         let document = vscode.window.activeTextEditor?.document;
         if(!document){return;}
-        var [filename, extension] = getFileNameFromDocument(document, false);
-        if (!filename || !extension) { return; }
+        var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+        if (!filename || !relativeFilePath || !extension){
+          return;
+        }
         if (document) {
             let tableMetadata = await getTableMetadata(document, false);
             if (tableMetadata) {

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.54](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.53...v0.0.54) (2024-09-19)
+
+
+### Bug Fixes
+
+* sidepanel not showing metadata ([1f2b524](https://github.com/ashish10alex/vscode-dataform-tools/commit/1f2b5245307769832dc61b47afef549f54829116))
+
 ### [0.0.53](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.52...v0.0.53) (2024-09-19)
 
 
