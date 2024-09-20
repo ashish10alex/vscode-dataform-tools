@@ -29,7 +29,7 @@ let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
 let formatCurrentFileDisposable: vscode.Disposable | null = null;
 
 import { registerWebViewProvider } from './views/register-sidebar-panel';
-import { CustomViewProvider } from './views/customViewProvider';
+import { CustomViewProvider } from './views/register-query-results-panel';
 import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';

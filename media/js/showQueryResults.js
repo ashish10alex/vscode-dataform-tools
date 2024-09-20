@@ -49,7 +49,8 @@ window.addEventListener('message', event => {
         new DataTable('#example', {
             columns: columns,
             data: results,
-            pageLength: 50
+            pageLength: 50,
+            responsive: true,
         });
     }
 });

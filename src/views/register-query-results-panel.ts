@@ -84,8 +84,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
           <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
-          <link rel="stylesheet" href="https://cdn.datatables.net/2.1.4/css/dataTables.dataTables.css" />
-          <script src="https://cdn.datatables.net/2.1.4/js/dataTables.js"></script>
+          <link href="https://cdn.datatables.net/v/dt/dt-2.1.6/r-3.0.3/datatables.min.css" rel="stylesheet">
+          <script src="https://cdn.datatables.net/v/dt/dt-2.1.6/r-3.0.3/datatables.min.js"></script>
 
         </head>
         <body>
