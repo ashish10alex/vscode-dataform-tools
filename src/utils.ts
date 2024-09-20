@@ -925,7 +925,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     ]);
 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
-        if (!sqlxBlockMetadata){
+        if (!sqlxBlockMetadata && extension === ".sqlx"){
             vscode.window.showErrorMessage("Could not parse sqlx file");
             return;
         }
@@ -937,7 +937,9 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
             offSet = assertionQueryOffset;
         }
 
-        setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
+        if (sqlxBlockMetadata){
+            setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
+        }
         return;
     }
     let combinedTableIds = "";
