@@ -172,9 +172,12 @@ export function executableIsAvailable(name: string) {
 
 function getRelativePath(filePath:string) {
     const fileUri = vscode.Uri.file(filePath);
-    const relativePath = vscode.workspace.asRelativePath(fileUri);
+    let relativePath = vscode.workspace.asRelativePath(fileUri);
+    if (isRunningOnWindows){
+        relativePath = path.win32.normalize(relativePath);
+    }
     return relativePath;
-  }
+}
 
 export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined, undefined] {
     var filePath = document.uri.fsPath;
