@@ -460,8 +460,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
 
     for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
-        let operationFileName = path.basename(operation.fileName).split('.')[0];
-        if (operationFileName === relativeFilePath) {
+        if (operation.fileName === relativeFilePath) {
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";
