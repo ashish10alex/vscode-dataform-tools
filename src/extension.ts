@@ -40,6 +40,7 @@ import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
+import { multiStageSelectionHandler } from './multiStageSelector';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -136,6 +137,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('vscode-dataform-tools.multiStageSelection', multiStageSelectionHandler)
+        );
 
         runMultipleFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runMultipleFiles', async() => {
             workspaceFolder = getWorkspaceFolder();

@@ -32,7 +32,8 @@
         "onCommand:extension.runTag",
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
-        "onCommand:extension.formatCurrentfile"
+        "onCommand:extension.formatCurrentfile",
+        "onCommand:extension.multiStageSelection"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -71,6 +72,11 @@
                 "command": "vscode-dataform-tools.enable",
                 "category": "Dataform",
                 "title": "Enable extension"
+            },
+            {
+                "command": "vscode-dataform-tools.multiStageSelection",
+                "category": "Dataform",
+                "title": "Multi-Stage Selection"
             },
             {
                 "command": "vscode-dataform-tools.formatCurrentfile",
