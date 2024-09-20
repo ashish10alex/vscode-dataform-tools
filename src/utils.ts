@@ -173,9 +173,12 @@ export function executableIsAvailable(name: string) {
 
 function getRelativePath(filePath:string) {
     const fileUri = vscode.Uri.file(filePath);
-    const relativePath = vscode.workspace.asRelativePath(fileUri);
+    let relativePath = vscode.workspace.asRelativePath(fileUri);
+    if (isRunningOnWindows){
+        relativePath = path.win32.normalize(relativePath);
+    }
     return relativePath;
-  }
+}
 
 export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined, undefined] {
     var filePath = document.uri.fsPath;
@@ -458,8 +461,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
 
     for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
-        let operationFileName = path.basename(operation.fileName).split('.')[0];
-        if (operationFileName === relativeFilePath) {
+        if (operation.fileName === relativeFilePath) {
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";

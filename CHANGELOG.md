@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.56](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.55...v0.0.56) (2024-09-20)
+
+
+### Bug Fixes
+
+* path issue with sqlx files of type operations ([42b330c](https://github.com/ashish10alex/vscode-dataform-tools/commit/42b330cc7ed7605931b6af07940cd769c9bead1f))
+
+### [0.0.55](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.54...v0.0.55) (2024-09-20)
+
+
+### Bug Fixes
+
+* dry run stats not showing for js files ([f8f9595](https://github.com/ashish10alex/vscode-dataform-tools/commit/f8f95954f021d66325ae08e80727d1b73c0cafbc))
+* relative file path issue on windows ([48563de](https://github.com/ashish10alex/vscode-dataform-tools/commit/48563de33294b9d3d6333abefd8d6d194288b8ce))
+
 ### [0.0.54](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.53...v0.0.54) (2024-09-19)
 
 
