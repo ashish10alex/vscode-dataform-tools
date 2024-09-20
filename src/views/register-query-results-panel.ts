@@ -4,7 +4,8 @@ import { getFileNameFromDocument, getMetadataForCurrentFile, getNonce, getWorksp
 import { queryBigQuery } from '../bigqueryRunQuery';
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
-    private _view?: vscode.WebviewView;
+    public _view?: vscode.WebviewView;
+    private _invokedByCommand: boolean = false; 
     private _cachedResults?: { results: any[], columns: any[] };
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -20,8 +21,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         localResourceRoots: [Uri.joinPath(this._extensionUri, "media")]
       };
       webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-      // await this.updateContent();
-
+      if (this._invokedByCommand){
+        await this.updateContent();
+      }
 
       webviewView.onDidChangeVisibility(() => {
         // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
@@ -31,12 +33,16 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       });
     }
 
+    public focusWebview() {
+      this._invokedByCommand = true;
+      vscode.commands.executeCommand('queryResultsView.focus');
+    }
+
     public async updateContent() {
-      if (!this._view) {
-          // TODO: If view does not exsist can we create it ?
-          vscode.window.showWarningMessage("Open query editor once");
-          return;
-      }
+    if (!this._view) {
+        vscode.window.showErrorMessage("Query panel does not exsist");
+        return;
+    }
 
     this._view.webview.html = this._getHtmlForWebview(this._view.webview);
 

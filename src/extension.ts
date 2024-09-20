@@ -99,7 +99,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-dataform-tools.runQuery', () => {
-              provider.updateContent();
+              if (!provider._view){
+                provider.focusWebview();
+              } else {
+                provider.updateContent();
+              }
             })
           );
 
