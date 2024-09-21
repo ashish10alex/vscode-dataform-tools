@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformCompilationTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, runCurrentFile } from './utils';
+import { getDataformCompilationTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, runCurrentFile, runMultipleFiles } from './utils';
 import { getRunTagsWtDepsCommand } from './commands';
 
 export async function multiStageSelectionHandler() {
@@ -76,5 +76,7 @@ export async function multiStageSelectionHandler() {
         let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
         let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime);
         runCommandInTerminal(runTagsWtDepsCommand);
+    } else if (firstStageSelection === "run multiple files"){
+      runMultipleFiles(includeDependencies, includeDependents, fullRefresh);
     }
 }

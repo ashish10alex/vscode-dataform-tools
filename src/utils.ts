@@ -885,7 +885,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     });
 }
 
-export async function runMultipleFiles(){
+export async function runMultipleFiles(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean){
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder){
         return;
@@ -919,7 +919,7 @@ export async function runMultipleFiles(){
     });
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformActionCmd = "";
-    dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, false, false, false);
+    dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);
     runCommandInTerminal(dataformActionCmd);
 }
 

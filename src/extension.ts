@@ -143,7 +143,7 @@ export async function activate(context: vscode.ExtensionContext) {
         );
 
         runMultipleFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runMultipleFiles', async() => {
-            runMultipleFiles();
+            runMultipleFiles(false, false, false);
         });
         context.subscriptions.push(runMultipleFileCommandDisposable);
 
