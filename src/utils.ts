@@ -277,31 +277,40 @@ export async function getAllFilesWtAnExtension(workspaceFolder:string, extension
     return fileList;
 }
 
-export function getDataformActionCmdFromActionList(actionsList:string[], workspaceFolder:string, dataformCompilationTimeoutVal:string, includDependencies:boolean, includeDownstreamDependents:boolean, ){
+export function getDataformActionCmdFromActionList(actionsList:string[], workspaceFolder:string, dataformCompilationTimeoutVal:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
         let dataformActionCmd = "";
         for (let i = 0; i < actionsList.length; i++) {
             let fullTableName = actionsList[i];
             if (i === 0) {
                 if (includDependencies) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
+                    if (fullRefresh) {
+                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps --full-refresh`);
+                    } else {
+                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
+                    }
                 } else if (includeDownstreamDependents) {
+                    if (fullRefresh) {
+                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents --full-refresh`);
+                    } else {
                     dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
+                    }
                 }
                 else {
-                    dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
+                    if (fullRefresh) {
+                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --full-refresh`);
+                    } else {
+                        dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
+                    }
                 }
             } else {
-                if (includDependencies) {
-                    dataformActionCmd += ` --actions "${fullTableName}"`;
-                } else {
-                    dataformActionCmd += ` --actions "${fullTableName}"`;
-                }
+                // TODO: Not sure what is this doing ?
+                dataformActionCmd += ` --actions "${fullTableName}"`;
             }
         }
         return dataformActionCmd;
 }
 
-export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean) {
+export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
 
 
     let document = getVSCodeDocument();
@@ -332,7 +341,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         let dataformActionCmd = "";
 
         // create the dataform run command for the list of actions from actionsList
-        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents);
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);
         runCommandInTerminal(dataformActionCmd);
     }
 }

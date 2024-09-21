@@ -135,7 +135,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
         context.subscriptions.push(
@@ -159,13 +159,9 @@ export async function activate(context: vscode.ExtensionContext) {
             let selectedFiles = await vscode.window.showQuickPick(fileList, options);
             if (selectedFiles){
                 for (let i = 0; i < selectedFiles.length; i ++){
-                    let filepath = selectedFiles[i];
-                    if (!filepath) {
-                        return;
-                    }
-                    let filename = path.basename(filepath).split('.')[0];
-                    if (dataformCompiledJson){
-                        tableMetadatas.push(await getMetadataForCurrentFile(filename, dataformCompiledJson));
+                    let relativeFilepath = selectedFiles[i];
+                    if (dataformCompiledJson && relativeFilepath){
+                        tableMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
                     }
                 }
             }
@@ -180,7 +176,7 @@ export async function activate(context: vscode.ExtensionContext) {
             });
             let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
             let dataformActionCmd = "";
-            dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, false, false);
+            dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, false, false, false);
             runCommandInTerminal(dataformActionCmd);
             });
         context.subscriptions.push(runMultipleFileCommandDisposable);
@@ -242,10 +238,10 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
 
-        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true); });
+        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); });
         context.subscriptions.push(runCurrentFileWtDownstreamDepsCommandDisposable);
 
 
