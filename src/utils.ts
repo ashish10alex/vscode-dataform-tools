@@ -885,6 +885,44 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     });
 }
 
+export async function runMultipleFiles(){
+    let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder){
+        return;
+    }
+
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
+
+    let tableMetadatas:any[] = [];
+    const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
+    let options  = {
+        canPickMany: true,
+        ignoreFocusOut: true,
+    };
+    let selectedFiles = await vscode.window.showQuickPick(fileList, options);
+    if (selectedFiles){
+        for (let i = 0; i < selectedFiles.length; i ++){
+            let relativeFilepath = selectedFiles[i];
+            if (dataformCompiledJson && relativeFilepath){
+                tableMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
+            }
+        }
+    }
+    let actionsList: string[] = [];
+    tableMetadatas.forEach(tableMetadata => {
+        if (tableMetadata) {
+            tableMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
+                actionsList.push(action);
+            });
+        }
+    });
+    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+    let dataformActionCmd = "";
+    dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, false, false, false);
+    runCommandInTerminal(dataformActionCmd);
+}
+
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 

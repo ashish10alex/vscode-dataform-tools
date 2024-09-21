@@ -34,7 +34,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath} from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument, getMetadataForCurrentFile, getDataformActionCmdFromActionList, getAllFilesWtAnExtension } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument, getMetadataForCurrentFile, getDataformActionCmdFromActionList, getAllFilesWtAnExtension, runMultipleFiles } from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -143,42 +143,8 @@ export async function activate(context: vscode.ExtensionContext) {
         );
 
         runMultipleFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runMultipleFiles', async() => {
-            workspaceFolder = getWorkspaceFolder();
-            if (!workspaceFolder){
-                return;
-            }
-
-            let dataformCompiledJson = await runCompilation(workspaceFolder);
-
-            let tableMetadatas:any[] = [];
-            const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
-            let options  = {
-              canPickMany: true,
-              ignoreFocusOut: true,
-            };
-            let selectedFiles = await vscode.window.showQuickPick(fileList, options);
-            if (selectedFiles){
-                for (let i = 0; i < selectedFiles.length; i ++){
-                    let relativeFilepath = selectedFiles[i];
-                    if (dataformCompiledJson && relativeFilepath){
-                        tableMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
-                    }
-                }
-            }
-            let actionsList: string[] = [];
-            tableMetadatas.forEach(tableMetadata => {
-                if (tableMetadata) {
-                    tableMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                        const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
-                        actionsList.push(action);
-                    });
-                }
-            });
-            let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-            let dataformActionCmd = "";
-            dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, false, false, false);
-            runCommandInTerminal(dataformActionCmd);
-            });
+            runMultipleFiles();
+        });
         context.subscriptions.push(runMultipleFileCommandDisposable);
 
         /**

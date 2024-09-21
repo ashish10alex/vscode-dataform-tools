@@ -4,7 +4,7 @@ import { getRunTagsWtDepsCommand } from './commands';
 
 export async function multiStageSelectionHandler() {
     // First stage selection
-    const firstStageOptions = ["run current file", "run a tag"];
+    const firstStageOptions = ["run current file", "run multiple files" , "run a tag"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
     });
