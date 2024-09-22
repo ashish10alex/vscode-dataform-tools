@@ -34,12 +34,13 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath} from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument, getMetadataForCurrentFile, getDataformActionCmdFromActionList, getAllFilesWtAnExtension } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument} from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
+import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -134,51 +135,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false); });
+        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
-        runMultipleFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runMultipleFiles', async() => {
-            workspaceFolder = getWorkspaceFolder();
-            if (!workspaceFolder){
-                return;
-            }
-
-            let dataformCompiledJson = await runCompilation(workspaceFolder);
-
-            let tableMetadatas:any[] = [];
-            const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
-            let options  = {
-              canPickMany: true,
-              ignoreFocusOut: true,
-            };
-            let selectedFiles = await vscode.window.showQuickPick(fileList, options);
-            if (selectedFiles){
-                for (let i = 0; i < selectedFiles.length; i ++){
-                    let filepath = selectedFiles[i];
-                    if (!filepath) {
-                        return;
-                    }
-                    let filename = path.basename(filepath).split('.')[0];
-                    if (dataformCompiledJson){
-                        tableMetadatas.push(await getMetadataForCurrentFile(filename, dataformCompiledJson));
-                    }
-                }
-            }
-            let actionsList: string[] = [];
-            tableMetadatas.forEach(tableMetadata => {
-                if (tableMetadata) {
-                    tableMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                        const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
-                        actionsList.push(action);
-                    });
-                }
-            });
-            let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-            let dataformActionCmd = "";
-            dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, false, false);
-            runCommandInTerminal(dataformActionCmd);
-            });
-        context.subscriptions.push(runMultipleFileCommandDisposable);
+        //TODO: Do we need to create a disposable variable ?
+        context.subscriptions.push(
+            vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
+        );
 
         /**
          * Takes ~2 seconds as we compile the project and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
@@ -237,10 +200,10 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         context.subscriptions.push(formatCurrentFileDisposable);
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false); });
+        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false); });
         context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
 
-        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true); });
+        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); });
         context.subscriptions.push(runCurrentFileWtDownstreamDepsCommandDisposable);
 
 
@@ -365,9 +328,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runCurrentFileCommandDisposable !== null) {
                 runCurrentFileCommandDisposable.dispose();
-            }
-            if (runMultipleFileCommandDisposable !== null){
-                runMultipleFileCommandDisposable.dispose();
             }
             if (runCurrentFileWtDepsCommandDisposable !== null) {
                 runCurrentFileWtDepsCommandDisposable.dispose();

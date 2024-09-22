@@ -24,7 +24,6 @@
         "onCommand:extension.enable",
         "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
-        "onCommand:extension.rurunMultipleFiles",
         "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
         "onCommand:extension.runCurrentFileWtDownstreamDeps",
@@ -32,7 +31,8 @@
         "onCommand:extension.runTag",
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
-        "onCommand:extension.formatCurrentfile"
+        "onCommand:extension.formatCurrentfile",
+    "onCommand:extension.runFilesTagsWtOptions"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -73,6 +73,11 @@
                 "title": "Enable extension"
             },
             {
+                "command": "vscode-dataform-tools.runFilesTagsWtOptions",
+                "category": "Dataform",
+                "title": "Run file(s) / tag(s) with options"
+            },
+            {
                 "command": "vscode-dataform-tools.formatCurrentfile",
                 "category": "Dataform",
                 "title": "Format current file"
@@ -107,12 +112,6 @@
                 "category": "Dataform",
                 "title": "Run current file",
                 "icon": "$(play)",
-                "group": "navigation"
-            },
-            {
-                "command": "vscode-dataform-tools.runMultipleFiles",
-                "category": "Dataform",
-                "title": "Run multiple files",
                 "group": "navigation"
             },
             {
