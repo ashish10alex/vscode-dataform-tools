@@ -3,14 +3,13 @@ import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getW
 import { getRunTagsWtDepsCommand } from './commands';
 
 export async function multiStageSelectionHandler() {
-    // First stage selection
     const firstStageOptions = ["run current file", "run multiple files" , "run a tag"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
     });
 
     if (!firstStageSelection) {
-        return; // User cancelled the selection
+        return;
     }
 
     let tagSelection: string | undefined;
@@ -29,7 +28,6 @@ export async function multiStageSelectionHandler() {
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
     }
 
-    // Second stage selection based on first stage
     let secondStageOptions: string[];
     if (firstStageSelection || tagSelection) {
         secondStageOptions = ["default", "include dependents", "include dependencies"];
@@ -42,10 +40,9 @@ export async function multiStageSelectionHandler() {
     });
 
     if (!secondStageSelection) {
-        return; // User cancelled the selection
+        return;
     }
 
-    // Second stage selection based on first stage
     let thirdStageOptions: string[];
     if (firstStageSelection) {
         thirdStageOptions = ["no", "yes"];
@@ -61,8 +58,6 @@ export async function multiStageSelectionHandler() {
         return;
     }
 
-    // Handle the final selection
-    vscode.window.showInformationMessage(`You selected: ${firstStageSelection} > ${tagSelection} > ${secondStageSelection} > ${thirdStageSelection}`);
     let includeDependents = false;
     let includeDependencies = false;
     let fullRefresh = false;
