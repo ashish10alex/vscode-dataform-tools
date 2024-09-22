@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.59](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.58...v0.0.59) (2024-09-22)
+
+
+### Bug Fixes
+
+* assertions not showing in the compiled query ([ece9340](https://github.com/ashish10alex/vscode-dataform-tools/commit/ece9340d2f06d5421c96a20848b33b56dc8d7932))
+
 ### [0.0.58](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.57...v0.0.58) (2024-09-22)
 
 
