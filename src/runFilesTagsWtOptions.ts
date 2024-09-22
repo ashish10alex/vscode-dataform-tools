@@ -77,8 +77,8 @@ export async function runFilesTagsWtOptions() {
 
     if (firstStageSelection === "run current file") {
         runCurrentFile(includeDependencies, includeDependents, fullRefresh);
-    } else if (firstStageSelection === "run a tag" && tagSelection) {
-        // TODO: make this a function and also use the abstraction in extension.ts
+    } else if (firstStageSelection === "run a tag") {
+        if(!tagSelection){return;};
         let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
         let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime);
         runCommandInTerminal(runTagsWtDepsCommand);
