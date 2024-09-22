@@ -1,15 +1,15 @@
-function updateDateTime() {
+function updateDateTime(elapsedTime) {
     const now = new Date();
-    const options = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
+    const options = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
       day: 'numeric',
-      hour: '2-digit', 
+      hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
     };
-    document.getElementById('datetime').textContent = now.toLocaleString('en-US', options);
+    document.getElementById('datetime').textContent = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds)';
 }
 
 
@@ -22,9 +22,23 @@ loadingMessage.style.cssText = `
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 12px;
 `;
+
+let startTime = Date.now();
+let elapsedTime = 0;
+
+function updateLoadingMessage() {
+    elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+    loadingMessage.textContent = `Loading data... (${elapsedTime} seconds)`;
+    return elapsedTime;
+}
+
+// Initial message update
+elapsedTime = updateLoadingMessage();
+
+// Update the message every second
+const timerInterval = setInterval(updateLoadingMessage, 1000);
 
 // Add the loading message to the document body
 document.body.appendChild(loadingMessage);
@@ -39,12 +53,13 @@ window.addEventListener('message', event => {
 
     if (columns && results) {
         // Remove the loading message
-        updateDateTime();
+        updateDateTime(elapsedTime);
+        clearInterval(timerInterval);
         document.body.removeChild(loadingMessage);
 
         // Show the table
         document.getElementById('example').style.display = 'table';
-        
+
         const table = new DataTable('#example', {
             data: results,
             columns: columns,
@@ -60,7 +75,7 @@ window.addEventListener('message', event => {
             ],
             order: [[1, 'asc']]
         });
-        
+
         function updateIndex() {
             table
                 .column(0, { search: 'applied', order: 'applied' })
@@ -71,7 +86,7 @@ window.addEventListener('message', event => {
                     cell.innerHTML = index;
                 });
         }
-        
+
         table
             .on('order.dt search.dt draw.dt', updateIndex)
             .draw();

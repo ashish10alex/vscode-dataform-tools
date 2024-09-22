@@ -95,7 +95,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
         </head>
         <body>
-          <p>Query results - <span id="datetime"></span></p>
+          <p>Query results ran at: <span id="datetime"></span></p>
           <table id="example" class="display" width="100%"></table>
           <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
         </body>
