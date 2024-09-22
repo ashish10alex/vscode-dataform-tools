@@ -444,8 +444,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     for (let i = 0; i < assertions.length; i++) {
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
-        let assertionFileName = path.basename(assertion.fileName).split('.')[0];
-        if (assertionFileName === relativeFilePath) {
+        if (assertion.fileName === relativeFilePath) {
             let assertionFound = {
                         type: "assertion",
                         tags: assertion.tags,
