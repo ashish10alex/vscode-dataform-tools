@@ -1,7 +1,7 @@
 {
-	"Config block": {
-		"scope": "sql",
-        "prefix": "config",
+	"Config block table": {
+		"scope": "sqlx",
+        "prefix": "config-table",
 		"body": [
 			"config {",
 				"  type: 'table',",
@@ -15,7 +15,35 @@
 				"  tags: [${6}]",
 			  "}"
 		],
-		"description": "Generate config for sqlx files"
+		"description": "Generate table config for sqlx files"
+	},
+	"Config block view": {
+		"scope": "sqlx",
+        "prefix": "config-view",
+		"body": [
+			"config {",
+				"  type: 'view',",
+				"  schema: '${1}',",
+				"  description: '${2}',",
+				"  dependencies: [${3}],",
+				"  tags: [${6}]",
+			  "}"
+		],
+		"description": "Generate view config for sqlx files"
+	},
+	"Config block operations": {
+		"scope": "sqlx",
+        "prefix": "config-operations",
+		"body": [
+			"config {",
+				"  type: 'operations',",
+				"  schema: '${1}',",
+				"  description: '${2}',",
+				"  dependencies: [${3}],",
+				"  tags: [${6}]",
+			  "}"
+		],
+		"description": "Generate operations config for sqlx files"
 	},
 	"source declarations": {
 		"scope": "javascript",
@@ -30,7 +58,7 @@
 		"description": "Generate source declararions"
 	},
 	"pre operations": {
-		"scope": "sql",
+		"scope": "sqlx",
         "prefix": "pre_operations",
 		"body": [
 			"pre_operations {",
@@ -40,7 +68,7 @@
 		"description": "Generate pre_operation block"
 	},
 	"post operations": {
-		"scope": "sql",
+		"scope": "sqlx",
         "prefix": "post_operations",
 		"body": [
 			"post_operations {",
