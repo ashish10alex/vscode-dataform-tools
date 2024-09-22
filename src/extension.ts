@@ -40,7 +40,7 @@ import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import { multiStageSelectionHandler } from './multiStageSelector';
+import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -138,8 +138,9 @@ export async function activate(context: vscode.ExtensionContext) {
         runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); });
         context.subscriptions.push(runCurrentFileCommandDisposable);
 
+        //TODO: Do we need to create a disposable variable ?
         context.subscriptions.push(
-            vscode.commands.registerCommand('vscode-dataform-tools.multiStageSelection', multiStageSelectionHandler)
+            vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
         );
 
         /**

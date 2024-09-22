@@ -10,6 +10,7 @@ import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
+import { getRunMultipleTagsCommand } from './commands';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -883,6 +884,21 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
         vscode.window.showErrorMessage(`Error formatting: ${err}`);
         return;
     });
+}
+
+export async function  getMultipleTagsSelection(){
+    let options  = {
+        canPickMany: true,
+        ignoreFocusOut: true,
+    };
+    let selectedTags = await vscode.window.showQuickPick(dataformTags, options);
+    return selectedTags;
+}
+
+export async function runMultipleTagsFromSelection(workspaceFolder:string, selectedTags:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
+    let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+    let runmultitagscommand = getRunMultipleTagsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
+    runCommandInTerminal(runmultitagscommand);
 }
 
 export async function  getMultipleFileSelection(workspaceFolder:string){

@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getWorkspaceFolder, runCommandInTerminal, runCurrentFile, runMultipleFilesFromSelection } from './utils';
+import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getMultipleTagsSelection, getWorkspaceFolder, runCommandInTerminal, runCurrentFile, runMultipleFilesFromSelection, runMultipleTagsFromSelection } from './utils';
 import { getRunTagsWtDepsCommand } from './commands';
 
-export async function multiStageSelectionHandler() {
-    const firstStageOptions = ["run current file", "run multiple files" , "run a tag"];
+export async function runFilesTagsWtOptions() {
+    const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
     });
@@ -21,11 +21,15 @@ export async function multiStageSelectionHandler() {
     }
 
     let multipleFileSelection: string | undefined;
-    let workspaceFolder: string | undefined;
+    let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder){ return; }
     if (firstStageSelection === "run multiple files"){
-        workspaceFolder = getWorkspaceFolder();
-        if (!workspaceFolder){ return; }
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
+    }
+
+    let multipleTagsSelection: string | undefined;
+    if (firstStageSelection === "run multiple tags"){
+        multipleTagsSelection = await getMultipleTagsSelection();
     }
 
     let secondStageOptions: string[];
@@ -70,17 +74,19 @@ export async function multiStageSelectionHandler() {
     if (thirdStageSelection === "yes") {
         fullRefresh = true;
     }
+
     if (firstStageSelection === "run current file") {
         runCurrentFile(includeDependencies, includeDependents, fullRefresh);
     } else if (firstStageSelection === "run a tag" && tagSelection) {
         // TODO: make this a function and also use the abstraction in extension.ts
-        if (!workspaceFolder){ return; }
         let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
         let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime);
         runCommandInTerminal(runTagsWtDepsCommand);
     } else if (firstStageSelection === "run multiple files"){
         if(!multipleFileSelection){return;};
-        if(!workspaceFolder){return;};
         runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh);
+    } else if (firstStageSelection === "run multiple tags"){
+        if(!multipleTagsSelection){return;};
+        runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
     }
 }
