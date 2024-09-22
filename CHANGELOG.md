@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.57](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.56...v0.0.57) (2024-09-22)
+
+
+### Features
+
+* Ability to choose more options when running file(s) / tag(s) ([#26](https://github.com/ashish10alex/vscode-dataform-tools/issues/26)) ([3729b8b](https://github.com/ashish10alex/vscode-dataform-tools/commit/3729b8bf18c0624fb4ac8e6b8ccc237b41d16287))
+
 ### [0.0.56](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.55...v0.0.56) (2024-09-20)
 
 
