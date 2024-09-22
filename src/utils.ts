@@ -945,7 +945,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder:string, sele
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
     if (!filename || !relativeFilePath || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
