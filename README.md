@@ -93,6 +93,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 | `Dataform: Run current tag with dependencies`          |
 | `Dataform: Run current tag with dependents`            |
 | `Dataform: Format current file`                        |
+| `Dataform: Run file(s) / tag(s) with options`          |
 
 
 
