@@ -44,13 +44,37 @@ window.addEventListener('message', event => {
 
         // Show the table
         document.getElementById('example').style.display = 'table';
-
-        // Initialize DataTable
-        new DataTable('#example', {
-            columns: columns,
+        
+        const table = new DataTable('#example', {
             data: results,
-            pageLength: 50,
-            responsive: true,
+            columns: columns,
+            pageLength: 25,
+            // responsive: true,
+            columnDefs: [
+                {
+                    searchable: false,
+                    orderable: false,
+                    width: 2,
+                    targets: 0
+                }
+            ],
+            order: [[1, 'asc']]
         });
+        
+        function updateIndex() {
+            table
+                .column(0, { search: 'applied', order: 'applied' })
+                .nodes()
+                .each(function (cell, i) {
+                    const info = table.page.info();
+                    const index = info.start + i + 1;
+                    cell.innerHTML = index;
+                });
+        }
+        
+        table
+            .on('order.dt search.dt draw.dt', updateIndex)
+            .draw();
+
     }
 });
