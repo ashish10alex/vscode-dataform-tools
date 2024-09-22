@@ -22,7 +22,6 @@ let runTagDisposable: vscode.Disposable | null = null;
 let runTagWtDepsDisposable: vscode.Disposable | null = null;
 let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
 let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
-let runMultipleFileCommandDisposable: vscode.Disposable | null = null;
 let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
 let dataformHoverProviderDisposable: vscode.Disposable | null = null;
 let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
