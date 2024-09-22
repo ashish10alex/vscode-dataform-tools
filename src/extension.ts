@@ -34,7 +34,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath} from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument, getMetadataForCurrentFile, getDataformActionCmdFromActionList, getAllFilesWtAnExtension, runMultipleFiles } from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument} from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
@@ -141,11 +141,6 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-dataform-tools.multiStageSelection', multiStageSelectionHandler)
         );
-
-        runMultipleFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runMultipleFiles', async() => {
-            runMultipleFiles(false, false, false);
-        });
-        context.subscriptions.push(runMultipleFileCommandDisposable);
 
         /**
          * Takes ~2 seconds as we compile the project and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
@@ -332,9 +327,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             if (runCurrentFileCommandDisposable !== null) {
                 runCurrentFileCommandDisposable.dispose();
-            }
-            if (runMultipleFileCommandDisposable !== null){
-                runMultipleFileCommandDisposable.dispose();
             }
             if (runCurrentFileWtDepsCommandDisposable !== null) {
                 runCurrentFileWtDepsCommandDisposable.dispose();

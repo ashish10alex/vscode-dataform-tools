@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformCompilationTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, runCurrentFile, runMultipleFiles } from './utils';
+import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getWorkspaceFolder, runCommandInTerminal, runCurrentFile, runMultipleFilesFromSelection } from './utils';
 import { getRunTagsWtDepsCommand } from './commands';
 
 export async function multiStageSelectionHandler() {
@@ -19,6 +19,14 @@ export async function multiStageSelectionHandler() {
         tagSelection = await vscode.window.showQuickPick(tagOptions, {
             placeHolder: 'Select a tag'
         });
+    }
+
+    let multipleFileSelection: string | undefined;
+    let workspaceFolder: string | undefined;
+    if (firstStageSelection === "run multiple files"){
+        workspaceFolder = getWorkspaceFolder();
+        if (!workspaceFolder){ return; }
+        multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
     }
 
     // Second stage selection based on first stage
@@ -71,12 +79,13 @@ export async function multiStageSelectionHandler() {
         runCurrentFile(includeDependencies, includeDependents, fullRefresh);
     } else if (firstStageSelection === "run a tag" && tagSelection) {
         // TODO: make this a function and also use the abstraction in extension.ts
-        let workspaceFolder = getWorkspaceFolder();
-        if (!workspaceFolder) { return; }
+        if (!workspaceFolder){ return; }
         let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
         let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime);
         runCommandInTerminal(runTagsWtDepsCommand);
     } else if (firstStageSelection === "run multiple files"){
-      runMultipleFiles(includeDependencies, includeDependents, fullRefresh);
+        if(!multipleFileSelection){return;};
+        if(!workspaceFolder){return;};
+        runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh);
     }
 }

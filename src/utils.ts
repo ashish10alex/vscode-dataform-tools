@@ -885,21 +885,22 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     });
 }
 
-export async function runMultipleFiles(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean){
-    let workspaceFolder = getWorkspaceFolder();
-    if (!workspaceFolder){
-        return;
-    }
-
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
-
-    let tableMetadatas:any[] = [];
+export async function  getMultipleFileSelection(workspaceFolder:string){
     const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
     let options  = {
         canPickMany: true,
         ignoreFocusOut: true,
     };
     let selectedFiles = await vscode.window.showQuickPick(fileList, options);
+    return selectedFiles;
+}
+
+export async function runMultipleFilesFromSelection(workspaceFolder:string, selectedFiles:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
+    let tableMetadatas:any[] = [];
+
+    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+
     if (selectedFiles){
         for (let i = 0; i < selectedFiles.length; i ++){
             let relativeFilepath = selectedFiles[i];
@@ -908,6 +909,7 @@ export async function runMultipleFiles(includDependencies: boolean, includeDowns
             }
         }
     }
+
     let actionsList: string[] = [];
     tableMetadatas.forEach(tableMetadata => {
         if (tableMetadata) {
@@ -917,6 +919,7 @@ export async function runMultipleFiles(includDependencies: boolean, includeDowns
             });
         }
     });
+
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformActionCmd = "";
     dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);

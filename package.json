@@ -24,7 +24,6 @@
         "onCommand:extension.enable",
         "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
-        "onCommand:extension.rurunMultipleFiles",
         "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
         "onCommand:extension.runCurrentFileWtDownstreamDeps",
@@ -113,12 +112,6 @@
                 "category": "Dataform",
                 "title": "Run current file",
                 "icon": "$(play)",
-                "group": "navigation"
-            },
-            {
-                "command": "vscode-dataform-tools.runMultipleFiles",
-                "category": "Dataform",
-                "title": "Run multiple files",
                 "group": "navigation"
             },
             {
