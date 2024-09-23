@@ -48,7 +48,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
     public async updateContent(query:string) {
     if (!this._view) {
-        vscode.window.showErrorMessage("Query panel does not exsist");
         return;
     }
       try {
