@@ -37,6 +37,29 @@ function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | un
     }
 }
 
+export async function getCurrentFileMetadata(){
+    //TODO: add error messages here
+    let document = vscode.window.activeTextEditor?.document;
+    if (!document) {
+        vscode.window.showErrorMessage("VS Code document object was undefined");
+        return;
+    }
+
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    if (!filename || !relativeFilePath || !extension) { return; }
+
+    let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder) { return; }
+
+    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
+    if (!dataformCompiledJson){
+        return undefined;
+    }
+    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+    let fileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
+    return fileMetadata;
+}
+
 export async function getPostionOfSourceDeclaration(sourcesJsUri:vscode.Uri, searchTerm:string){
     let sourcesDocument = await vscode.workspace.openTextDocument(sourcesJsUri);
 

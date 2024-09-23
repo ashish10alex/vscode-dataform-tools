@@ -34,13 +34,14 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath} from './constants';
-import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument} from './utils';
+import { getWorkspaceFolder, formatSqlxFile, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, writeContentsToFile, fetchGitHubFileContent, getSqlfluffConfigPathFromSettings, getFileNameFromDocument, getVSCodeDocument, getCurrentFileMetadata} from './utils';
 import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig, checkIfFileExsists } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
+import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -93,19 +94,54 @@ export async function activate(context: vscode.ExtensionContext) {
 
     function registerAllCommands(context: vscode.ExtensionContext) {
 
-        const provider = new CustomViewProvider(context.extensionUri);
-        context.subscriptions.push( vscode.window.registerWebviewViewProvider('queryResultsView', provider));
+        const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
+        context.subscriptions.push( vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider));
 
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('vscode-dataform-tools.runQuery', () => {
-              if (!provider._view){
-                provider.focusWebview();
+            vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async() => {
+                let fileMetadata = await getCurrentFileMetadata();
+                if(!fileMetadata){
+                return;
+                }
+                let tableOrViewOrOperationsQuery = fileMetadata.queryMeta.tableOrViewQuery + fileMetadata.queryMeta.operationsQuery;
+                let assertionsQuery = fileMetadata.queryMeta.assertionQuery;
+                if (tableOrViewOrOperationsQuery==="" && assertionsQuery === ""){
+                vscode.window.showWarningMessage("No query to run");
+                return;
+                }
+                let query = tableOrViewOrOperationsQuery || assertionsQuery;
+                queryResultsViewProvider.updateContent(query);
+              if (!queryResultsViewProvider._view){
+                queryResultsViewProvider.focusWebview(query);
               } else {
-                provider.updateContent();
+                queryResultsViewProvider.updateContent(query);
               }
             })
           );
+
+        const codeLensProvider = new AssertionRunnerCodeLensProvider();
+        context.subscriptions.push(
+            vscode.languages.registerCodeLensProvider(
+            { language: 'sqlx' }, // Adjust for your target language
+            codeLensProvider
+            )
+        );
+
+        context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async(uri: vscode.Uri, line: number) => {
+            let fileMetadata = await getCurrentFileMetadata();
+            if(!fileMetadata){
+                return;
+            }
+            let query = fileMetadata.queryMeta.assertionQuery;
+            if (!queryResultsViewProvider._view){
+            queryResultsViewProvider.focusWebview(query);
+            } else {
+            queryResultsViewProvider.updateContent(query);
+            }
+        })
+        );
 
         dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
             { language: 'sqlx' },
