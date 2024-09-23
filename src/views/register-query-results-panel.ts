@@ -66,7 +66,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         return;
     }
 
-    let query = tableMetadata.queryToDryRun;
+    let query = tableMetadata.queryMeta.tableOrViewQuery + tableMetadata.queryMeta.operationsQuery;
+    //TODO: We would want to run the query if the table type is assertion ? 
+    if (query===""){
+      vscode.window.showWarningMessage("No query to run");
+    }
       try {
           const { columns, results } = await queryBigQuery(query);
           this._cachedResults = { results, columns };

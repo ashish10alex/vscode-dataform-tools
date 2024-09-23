@@ -378,12 +378,19 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
+    //TODO: This can be deprecated in favour of queryMetadata
     let queryToDisplay = "";
-    let queryToDryRun = "";
+    let queryMeta = {
+        tableOrViewQuery: "",
+        preOpsQuery: "",
+        postOpsQuery: "",
+        assertionQuery: "",
+        operationsQuery: "",
+    };
     let finalTables: any[] = [];
 
     if (tables === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
     }
 
     for (let i = 0; i < tables.length; i++) {
@@ -405,17 +412,19 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                 }
             }
 
-            queryToDryRun += queryToDisplay;
+            queryMeta.tableOrViewQuery = queryToDisplay;
             if (table.preOps){
                 table.preOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
+                    queryMeta.preOpsQuery += query + ";\n";
                 });
             }
             if (table.postOps){
                 table.postOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Post operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
+                    queryMeta.postOpsQuery += query + ";\n";
                 });
             }
             let tableFound = {
@@ -436,7 +445,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     }
 
     if (assertions === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
     }
 
     let assertionCountForFile = 0;
@@ -461,10 +470,10 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         }
     }
     queryToDisplay += assertionQuery;
-    queryToDryRun += assertionQuery;
+    queryMeta.assertionQuery = assertionQuery;
 
     if (operations === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
     }
 
     for (let i = 0; i < operations.length; i++) {
@@ -479,7 +488,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                 finalOperationQuery += opQueries[i] + "\n ;";
             }
             queryToDisplay += finalOperationQuery;
-            queryToDryRun += finalOperationQuery;
+            queryMeta.operationsQuery += finalOperationQuery;
             let operationFound = {
                     type: "operation",
                     tags: operation.tags,
@@ -495,7 +504,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         }
     }
 
-    return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+    return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
 };
 
 
@@ -984,10 +993,11 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     }
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
-        queryDryRun(tableMetadata.queryToDryRun),
-        //TODO: check if tables[0] is valid ??
-        queryDryRun(tableMetadata?.tables[0]?.preOps ? tableMetadata?.tables[0]?.preOps[0]: ""),
-        queryDryRun(tableMetadata?.tables[0]?.postOps ? tableMetadata?.tables[0]?.postOps[0]: "")
+        //TODO: verify that this is correct ?
+        queryDryRun(tableMetadata.queryMeta.tableOrViewQuery + tableMetadata.queryMeta.operationsQuery),
+        //TODO: check when there is pre/post ops query it puts error at correct spot
+        queryDryRun(tableMetadata.queryMeta.preOpsQuery),
+        queryDryRun(tableMetadata.queryMeta.postOpsQuery)
     ]);
 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
