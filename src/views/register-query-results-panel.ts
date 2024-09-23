@@ -20,9 +20,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         enableScripts: true,
         localResourceRoots: [Uri.joinPath(this._extensionUri, "media")]
       };
-      webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
       if (this._invokedByCommand){
+        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         await this.updateContent();
+      }else {
+        webviewView.webview.html = this._getHtmlForWebviewGeneric(webviewView.webview);
       }
 
       webviewView.onDidChangeVisibility(() => {
@@ -85,6 +88,21 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           console.error(error);
       }
   }
+    private _getHtmlForWebviewGeneric(webview: vscode.Webview) {
+      return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body>
+          <p>Query results will be dispalyed here</p>
+        </body>
+        </html>
+      `;
+    }
+
 
     private _getHtmlForWebview(webview: vscode.Webview) {
         const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));

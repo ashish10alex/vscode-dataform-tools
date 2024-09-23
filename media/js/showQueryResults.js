@@ -34,13 +34,8 @@ function updateLoadingMessage() {
     return elapsedTime;
 }
 
-// Initial message update
 elapsedTime = updateLoadingMessage();
-
-// Update the message every second
 const timerInterval = setInterval(updateLoadingMessage, 1000);
-
-// Add the loading message to the document body
 document.body.appendChild(loadingMessage);
 
 // Hide the table initially
