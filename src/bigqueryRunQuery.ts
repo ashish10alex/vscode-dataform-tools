@@ -6,23 +6,8 @@ export async function queryBigQuery(query:string) {
   const [rows] = await bigqueryClient.query(query);
 
   if (rows.length === 0){
-    return { columns: undefined, results: undefined };
+    return { results: undefined };
   }
-
-  // Transform columns to the desired format for Datatables
-  // const columns = [
-  //   { title: "Index", data: null },
-  //   { title: "Column 1", data: 0 },
-  //   { title: "Column 2", data: 1 },
-  //   { title: "Column 3", data: 2 }
-  // ];
-  const columns = [
-    { title: "", data: null },
-    ...Object.keys(rows[0]).map((key, index) => ({ 
-      title: key, 
-      data: index.toString() 
-    }))
-  ];
 
   // Function to recursively extract values from nested objects and handle Big objects
   const extractValue:any = (value:any) => {
@@ -41,13 +26,17 @@ export async function queryBigQuery(query:string) {
 
   // Transform rows into the desired format for Datatables
   // const results = [
-  //   ['data', 'data', 'data'],
-  //   ['data', 'data', 'data'],
-  //   // ... more rows
+  //    {col1:col1_val, col2:col2_val, ...},
+  //    ...
   // ];
-  const results = rows.map((row: { [s: string]: unknown; } | ArrayLike<unknown>) => 
-    Object.values(row).map(value => extractValue(value))
-  );
 
-  return { columns: columns, results: results };
+  const results = rows.map((row: { [s: string]: unknown }) => {
+    const obj: { [key: string]: any } = {};
+    Object.entries(row).forEach(([key, value]) => {
+      obj[key] = extractValue(value);
+    });
+    return obj;
+  });
+
+  return { results: results };
 }

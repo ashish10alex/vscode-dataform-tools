@@ -41,13 +41,10 @@ document.body.appendChild(loadingMessage);
 // Hide the table initially
 document.getElementById('example').style.display = 'none';
 
-// Listen for the message event
 window.addEventListener('message', event => {
-    const columns = event?.data?.columns;
     const results = event?.data?.results;
 
-    if (columns && results) {
-        // Remove the loading message
+    if (results) {
         updateDateTime(elapsedTime);
         clearInterval(timerInterval);
         document.body.removeChild(loadingMessage);
@@ -55,36 +52,13 @@ window.addEventListener('message', event => {
         // Show the table
         document.getElementById('example').style.display = 'table';
 
-        const table = new DataTable('#example', {
-            data: results,
-            columns: columns,
-            pageLength: 25,
-            // responsive: true,
-            columnDefs: [
-                {
-                    searchable: false,
-                    orderable: false,
-                    width: 2,
-                    targets: 0
-                }
-            ],
-            order: [[1, 'asc']]
+        new Tabulator("#example", {
+            data:results, //assign data to table
+            autoColumns:true, //create columns from data field names
+            rowHeader:{formatter:"rownum", headerSort:false, hozAlign:"center", resizable:false, frozen:true},
+            pagination:"local",       //paginate the data
+            paginationSize:20,         //allow 7 rows per page of data
+            paginationCounter:"rows", //display count of paginated rows in footer
         });
-
-        function updateIndex() {
-            table
-                .column(0, { search: 'applied', order: 'applied' })
-                .nodes()
-                .each(function (cell, i) {
-                    const info = table.page.info();
-                    const index = info.start + i + 1;
-                    cell.innerHTML = index;
-                });
-        }
-
-        table
-            .on('order.dt search.dt draw.dt', updateIndex)
-            .draw();
-
     }
 });

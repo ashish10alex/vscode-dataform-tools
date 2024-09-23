@@ -6,7 +6,7 @@ import { queryBigQuery } from '../bigqueryRunQuery';
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
-    private _cachedResults?: { results: any[], columns: any[] };
+    private _cachedResults?: { results: any[] };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -52,10 +52,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     }
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          const { columns, results } = await queryBigQuery(query);
-          if(columns && results){
-            this._cachedResults = { results, columns };
-            this._view.webview.postMessage({"results": results, "columns": columns});
+          const { results } = await queryBigQuery(query);
+          if(results){
+            this._cachedResults = { results };
+            this._view.webview.postMessage({"results": results });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
           }else{
@@ -120,8 +120,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
         <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
-        <link href="https://cdn.datatables.net/v/dt/dt-2.1.6/r-3.0.3/datatables.min.css" rel="stylesheet">
-        <script src="https://cdn.datatables.net/v/dt/dt-2.1.6/r-3.0.3/datatables.min.js"></script>
+        <link href="https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
+        <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
 
       </head>
       <body>
