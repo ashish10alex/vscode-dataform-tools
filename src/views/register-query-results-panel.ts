@@ -44,10 +44,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         return;
     }
 
-    this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-
     let document = vscode.window.activeTextEditor?.document;
-    if (!document){ return; }
+    if (!document) {
+        vscode.window.showErrorMessage("VS Code document object was undefined");
+        return;
+    }
+
     var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
     if (!filename || !relativeFilePath || !extension) { return; }
 
@@ -61,21 +63,24 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
     let tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
 
-    if (!document) {
-        vscode.window.showErrorMessage("VS Code document object was undefined");
-        return;
-    }
-
-    let query = tableMetadata.queryMeta.tableOrViewQuery + tableMetadata.queryMeta.operationsQuery;
-    //TODO: We would want to run the query if the table type is assertion ? 
-    if (query===""){
+    let tableOrViewOrOperationsQuery = tableMetadata.queryMeta.tableOrViewQuery + tableMetadata.queryMeta.operationsQuery;
+    let assertionsQuery = tableMetadata.queryMeta.assertionQuery;
+    if (tableOrViewOrOperationsQuery==="" && assertionsQuery === ""){
       vscode.window.showWarningMessage("No query to run");
+      return;
     }
+    let query = tableOrViewOrOperationsQuery || assertionsQuery;
       try {
+          this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           const { columns, results } = await queryBigQuery(query);
-          this._cachedResults = { results, columns };
-          this._view.webview.postMessage({"results": results, "columns": columns});
-          this._view.show(true);
+          if(columns && results){
+            this._cachedResults = { results, columns };
+            this._view.webview.postMessage({"results": results, "columns": columns});
+            this._view.show(true);
+          }else{
+            //TODO: If assertion is ran and no rows are returned perhaps show that assertion has passed
+            vscode.window.showWarningMessage("Query returned no results");
+          }
       } catch (error) {
           console.error(error);
       }

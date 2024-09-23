@@ -5,6 +5,10 @@ export async function queryBigQuery(query:string) {
 
   const [rows] = await bigqueryClient.query(query);
 
+  if (rows.length === 0){
+    return { columns: undefined, results: undefined };
+  }
+
   // Transform columns to the desired format for Datatables
   // const columns = [
   //   { title: "Index", data: null },
@@ -45,5 +49,5 @@ export async function queryBigQuery(query:string) {
     Object.values(row).map(value => extractValue(value))
   );
 
-  return { columns, results };
+  return { columns: columns, results: results };
 }
