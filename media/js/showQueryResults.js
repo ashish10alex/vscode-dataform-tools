@@ -1,3 +1,5 @@
+const vscode = acquireVsCodeApi();
+
 function updateDateTime(elapsedTime, totalGbBilled) {
     const now = new Date();
     const options = {
@@ -12,6 +14,12 @@ function updateDateTime(elapsedTime, totalGbBilled) {
     let queryStatsText = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | GB billed:  ' + totalGbBilled ;
     document.getElementById('datetime').textContent = queryStatsText;
 }
+
+document.getElementById('cancelBigQueryJobButton').addEventListener('click', function() {
+    vscode.postMessage({
+        command: 'cancelBigQueryJob'
+    });
+});
 
 
 // Create a loading message element
@@ -49,6 +57,7 @@ window.addEventListener('message', event => {
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
     if (results) {
+        document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, totalGbBilled);
         clearInterval(timerInterval);
         document.body.removeChild(loadingMessage);

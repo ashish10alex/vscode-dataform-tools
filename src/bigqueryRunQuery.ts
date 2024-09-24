@@ -1,16 +1,28 @@
+import * as vscode from 'vscode';
 const {BigQuery} = require('@google-cloud/bigquery');
 
 export async function queryBigQuery(query:string) {
   const bigqueryClient = new BigQuery();
 
-  const [job] = await bigqueryClient.createQueryJob(query);
-  const [rows] = await job.getQueryResults();
+  if (cancelBigQueryJobSignal){
+    vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
+    cancelBigQueryJobSignal = false;
+    return { results: undefined, jobStats: {totalBytesBilled: undefined} };
+  }
 
-  let jobMetadata = await job.getMetadata();
+  [bigQueryJob] = await bigqueryClient.createQueryJob(query);
+
+  if (cancelBigQueryJobSignal){
+      cancelBigQueryJob(); 
+      cancelBigQueryJobSignal = false;
+  };
+
+  const [rows] = await bigQueryJob.getQueryResults();
+
+  let jobMetadata = await bigQueryJob.getMetadata();
   let jobStats = jobMetadata[0].statistics.query;
-
-  // console.log(`Total bytes billed: ${jobStats.totalBytesBilled}`);
   let totalBytesBilled = jobStats.totalBytesBilled;
+  bigQueryJob = undefined;
 
   if (rows.length === 0){
     return { results: undefined, jobStats: {totalBytesBilled: totalBytesBilled} };
@@ -46,4 +58,16 @@ export async function queryBigQuery(query:string) {
   });
 
   return { results: results, jobStats: {totalBytesBilled: totalBytesBilled} };
+}
+
+export async function cancelBigQueryJob() {
+  if (!cancelBigQueryJobSignal){
+    vscode.window.showInformationMessage(`Trying to cacel query execution`);
+  }
+  cancelBigQueryJobSignal = true;
+  if (bigQueryJob) {
+    let bigQueryJobId = bigQueryJob.id;
+    await bigQueryJob.cancel();
+    vscode.window.showInformationMessage(`Cancelled BigQuery job with id ${bigQueryJobId}`);
+  }
 }

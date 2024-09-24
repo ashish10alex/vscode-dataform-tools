@@ -87,6 +87,11 @@
                 "title": "Run query"
             },
             {
+                "command": "vscode-dataform-tools.cancelQuery",
+                "category": "Dataform",
+                "title": "Cancel query"
+            },
+            {
                 "command": "vscode-dataform-tools.enable",
                 "category": "Dataform",
                 "title": "Enable extension"

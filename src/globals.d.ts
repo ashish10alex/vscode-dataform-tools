@@ -16,4 +16,13 @@ declare global {
   var isRunningOnWindows: boolean
 }
 
+declare global {
+  var bigQueryJob: any
+}
+
+declare global {
+  var cancelBigQueryJobSignal: boolean
+}
+
+
 export {};

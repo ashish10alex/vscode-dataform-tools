@@ -42,6 +42,7 @@ import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsC
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
+import { cancelBigQueryJob } from './bigqueryRunQuery';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -50,6 +51,8 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
+    globalThis.bigQueryJob = undefined;
+    globalThis.cancelBigQueryJobSignal = false;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -118,7 +121,6 @@ export async function activate(context: vscode.ExtensionContext) {
                     vscode.window.showWarningMessage("No query to run");
                     return;
                 }
-                queryResultsViewProvider.updateContent(query);
               if (!queryResultsViewProvider._view){
                 queryResultsViewProvider.focusWebview(query);
               } else {
@@ -126,6 +128,8 @@ export async function activate(context: vscode.ExtensionContext) {
               }
             })
           );
+
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async() => { await cancelBigQueryJob() ; }));
 
         const codeLensProvider = new AssertionRunnerCodeLensProvider();
         context.subscriptions.push(

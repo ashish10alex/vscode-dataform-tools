@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getCurrentFileMetadata, getFileNameFromDocument, getMetadataForCurrentFile, getNonce, getWorkspaceFolder, runCompilation } from '../utils';
-import { queryBigQuery } from '../bigqueryRunQuery';
+import { getNonce } from '../utils';
+import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
@@ -38,6 +38,19 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           this._view?.webview.postMessage(this._cachedResults);
         }
       });
+
+      webviewView.webview.onDidReceiveMessage(
+          async message => {
+            switch (message.command) {
+              case 'cancelBigQueryJob':
+                await cancelBigQueryJob();
+                cancelBigQueryJobSignal = false;
+                return;
+            }
+          },
+          undefined,
+          undefined,
+      );
     }
 
     public focusWebview(query:string) {
@@ -124,8 +137,34 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <link href="https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
         <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
 
+        <style>
+          #cancelBigQueryJobButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+          }
+          
+          .cancelBigQueryJobButton {
+            background-color: #007acc;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+          }
+          
+          .cancelBigQueryJobButton:disabled {
+            background-color: #d3d3d3;
+            color: #808080;
+            cursor: not-allowed;
+          }
+        </style>
+
       </head>
       <body>
+        <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
         <p>Query results ran at: <span id="datetime"></span></p>
         <table id="example" class="display" width="100%"></table>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
