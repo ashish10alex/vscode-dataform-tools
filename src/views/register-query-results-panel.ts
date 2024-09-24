@@ -76,8 +76,13 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             this._view.webview.html = this._getHtmlForWebviewNoResultsToDisplay(this._view.webview);
             this._view.show(true);
           }
-      } catch (error) {
-          console.error(error);
+      } catch (error:any) {
+        let errorMessage = error?.message;
+        if(errorMessage){
+          this._view.webview.html = this._getHtmlForWebviewError(this._view.webview);
+          this._view.webview.postMessage({"errorMessage": errorMessage });
+          this._view.show(true);
+        }
       }
   }
 
@@ -114,6 +119,25 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           </svg>
           There is no data to display
         </span>
+      </body>
+      </html>
+    `;
+  }
+
+  private _getHtmlForWebviewError(webview: vscode.Webview) {
+    const showBigQueryErrorScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showBigQueryError.js"));
+    const nonce = getNonce();
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+      </head>
+      <body>
+        <p style="color: red"><span id="bigqueryerror"></span></p>
+        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryErrorScriptUri}"></script>
       </body>
       </html>
     `;
