@@ -18,6 +18,7 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
                 return;
             }
             let sqlQueryStartLineNumber = sqlxBlockMetadata.sqlBlock.startLine;
+            //TODO: This will not work if pre_operation block is placed after main sql query. unlikely that is coding pattern used ?
             let preOpsOffset = 0;
             if (sqlxBlockMetadata.preOpsBlock.preOpsList.length > 0){
                 preOpsOffset = (sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine - sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine) + 1;
