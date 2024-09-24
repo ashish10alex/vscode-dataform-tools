@@ -1,4 +1,4 @@
-function updateDateTime(elapsedTime) {
+function updateDateTime(elapsedTime, totalGbBilled) {
     const now = new Date();
     const options = {
       weekday: 'long',
@@ -9,7 +9,8 @@ function updateDateTime(elapsedTime) {
       minute: '2-digit',
       second: '2-digit'
     };
-    document.getElementById('datetime').textContent = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds)';
+    let queryStatsText = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | GB billed:  ' + totalGbBilled ;
+    document.getElementById('datetime').textContent = queryStatsText;
 }
 
 
@@ -43,9 +44,12 @@ document.getElementById('example').style.display = 'none';
 
 window.addEventListener('message', event => {
     const results = event?.data?.results;
+    const jobStats = event?.data?.jobStats;
+    const totalBytesBilled = jobStats.totalBytesBilled;
+    let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
     if (results) {
-        updateDateTime(elapsedTime);
+        updateDateTime(elapsedTime, totalGbBilled);
         clearInterval(timerInterval);
         document.body.removeChild(loadingMessage);
 

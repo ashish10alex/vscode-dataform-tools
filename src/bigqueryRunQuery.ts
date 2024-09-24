@@ -3,10 +3,17 @@ const {BigQuery} = require('@google-cloud/bigquery');
 export async function queryBigQuery(query:string) {
   const bigqueryClient = new BigQuery();
 
-  const [rows] = await bigqueryClient.query(query);
+  const [job] = await bigqueryClient.createQueryJob(query);
+  const [rows] = await job.getQueryResults();
+
+  let jobMetadata = await job.getMetadata();
+  let jobStats = jobMetadata[0].statistics.query;
+
+  // console.log(`Total bytes billed: ${jobStats.totalBytesBilled}`);
+  let totalBytesBilled = jobStats.totalBytesBilled;
 
   if (rows.length === 0){
-    return { results: undefined };
+    return { results: undefined, jobStats: {totalBytesBilled: totalBytesBilled} };
   }
 
   // Function to recursively extract values from nested objects and handle Big objects
@@ -38,5 +45,5 @@ export async function queryBigQuery(query:string) {
     return obj;
   });
 
-  return { results: results };
+  return { results: results, jobStats: {totalBytesBilled: totalBytesBilled} };
 }

@@ -6,7 +6,7 @@ import { queryBigQuery } from '../bigqueryRunQuery';
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
-    private _cachedResults?: { results: any[] };
+    private _cachedResults?: { results: any[], jobStats: any };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -52,13 +52,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     }
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          const { results } = await queryBigQuery(query);
+          const { results, jobStats } = await queryBigQuery(query);
           if(results){
-            this._cachedResults = { results };
-            this._view.webview.postMessage({"results": results });
+            this._cachedResults = { results, jobStats };
+            this._view.webview.postMessage({"results": results, "jobStats": jobStats });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
           }else{
+            //TODO: even when there is no results we could shows billed bytes 
             this._view.webview.html = this._getHtmlForWebviewNoResultsToDisplay(this._view.webview);
             this._view.show(true);
           }
