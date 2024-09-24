@@ -21,6 +21,14 @@ document.getElementById('cancelBigQueryJobButton').addEventListener('click', fun
     });
 });
 
+document.getElementById('runQueryButton').addEventListener('click', function() {
+    document.getElementById("runQueryButton").disabled = true;
+    vscode.postMessage({
+        command: 'runBigQueryJob'
+    });
+});
+
+
 
 // Create a loading message element
 const loadingMessage = document.createElement('div');
@@ -57,6 +65,7 @@ window.addEventListener('message', event => {
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
     if (results) {
+        document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, totalGbBilled);
         clearInterval(timerInterval);

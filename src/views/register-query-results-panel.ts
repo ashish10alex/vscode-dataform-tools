@@ -46,6 +46,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 await cancelBigQueryJob();
                 cancelBigQueryJobSignal = false;
                 return;
+              case 'runBigQueryJob':
+                await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+                return;
             }
           },
           undefined,
@@ -88,6 +91,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebviewGeneric(webview: vscode.Webview) {
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
+    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
+    const nonce = getNonce();
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -99,6 +104,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <body>
         <p>Query results will be dispalyed here</p>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
+        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
       </html>
     `;
@@ -107,6 +113,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebviewNoResultsToDisplay(webview: vscode.Webview) {
     // TODO: Can we not use external url ?
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
+    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
+    const nonce = getNonce();
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -125,6 +133,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           There is no data to display
         </span>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
+        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
       </html>
     `;
