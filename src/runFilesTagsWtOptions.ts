@@ -80,7 +80,7 @@ export async function runFilesTagsWtOptions() {
     } else if (firstStageSelection === "run a tag") {
         if(!tagSelection){return;};
         let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-        let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime);
+        let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime, includeDependencies, includeDependents, fullRefresh);
         runCommandInTerminal(runTagsWtDepsCommand);
     } else if (firstStageSelection === "run multiple files"){
         if(!multipleFileSelection){return;};

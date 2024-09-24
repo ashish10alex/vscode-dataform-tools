@@ -311,7 +311,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
                 if (!workspaceFolder) { return; }
                 let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-                let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection, defaultDataformCompileTime);
+                let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, false, false);
 
                 runCommandInTerminal(runTagsWtDepsCommand);
             });
