@@ -18,7 +18,11 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
                 return;
             }
             let sqlQueryStartLineNumber = sqlxBlockMetadata.sqlBlock.startLine;
-            errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet));
+            let preOpsOffset = 0;
+            if (sqlxBlockMetadata.preOpsBlock.preOpsList.length > 0){
+                preOpsOffset = (sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine - sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine) + 1;
+            }
+            errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
             const regularBlockDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
