@@ -23,6 +23,7 @@ export function getRunMultipleTagsCommand(workspaceFolder: string, tags: string,
 
 export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string, includeDependencies:boolean, includeDependents:boolean, fullRefresh:boolean): string {
     let runTagsCommand = `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal}`;
+    runTagsCommand += ` --tags=${tag}`;
     if (includeDependencies) {
         runTagsCommand += ` --include-deps`;
     }
