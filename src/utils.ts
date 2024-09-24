@@ -11,6 +11,7 @@ import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './c
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { getRunMultipleTagsCommand } from './commands';
+import { table } from 'console';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -404,7 +405,11 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     //TODO: This can be deprecated in favour of queryMetadata
     let queryToDisplay = "";
     let queryMeta = {
+        type: "",
         tableOrViewQuery: "",
+        nonIncrementalQuery: "",
+        incrementalQuery: "",
+        incrementalPreOpsQuery: "",
         preOpsQuery: "",
         postOpsQuery: "",
         assertionQuery: "",
@@ -421,21 +426,26 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         let tableRelativeFilePath = table.fileName;
         if (relativeFilePath === tableRelativeFilePath) {
             if (table.type === "table" || table.type === "view") {
+                queryMeta.type = table.type;
                 queryToDisplay = table.query.trimStart() + "\n ;";
+                queryMeta.tableOrViewQuery = queryToDisplay;
             } else if (table.type === "incremental") {
+                queryMeta.type = table.type;
                 queryToDisplay += "\n-- Non incremental query \n";
+                queryMeta.nonIncrementalQuery = table.query + ";";
                 queryToDisplay += table.query + ";";
                 queryToDisplay += "\n-- Incremental query \n";
                 queryToDisplay += table.incrementalQuery + ";\n";
+                queryMeta.incrementalQuery = table.incrementalQuery + ";";
                 if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
                         queryToDisplay += `\n-- Incremental pre operations: [${idx}] \n`;
                         queryToDisplay += query + "\n ;";
+                        queryMeta.incrementalPreOpsQuery += query + "\n ;";
                     });
                 }
             }
 
-            queryMeta.tableOrViewQuery = queryToDisplay;
             if (table.preOps){
                 table.preOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
@@ -477,6 +487,9 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         if (assertion.fileName === relativeFilePath) {
+            if (queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === ""){
+                queryMeta.type = "assertion";
+            }
             let assertionFound = {
                         type: "assertion",
                         tags: assertion.tags,
@@ -502,6 +515,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
         if (operation.fileName === relativeFilePath) {
+            queryMeta.type = "operation";
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";
@@ -1014,10 +1028,24 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     if (showCompiledQueryInVerticalSplitOnSave) {
         writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath, true);
     }
+
+    let queryToDryRun = "";
+    if (tableMetadata.queryMeta.type === "table" || tableMetadata.queryMeta.type === "view"){
+        queryToDryRun = tableMetadata.queryMeta.preOpsQuery + tableMetadata.queryMeta.tableOrViewQuery;
+    } else if (tableMetadata.queryMeta.type === "assertion") {
+        queryToDryRun = tableMetadata.queryMeta.assertionQuery;
+    } else if (tableMetadata.queryMeta.type === "operation"){
+        queryToDryRun =  tableMetadata.queryMeta.preOpsQuery + tableMetadata.queryMeta.operationsQuery;
+    } else if (tableMetadata.queryMeta.type === "incremental"){
+        //TODO: defaulting to using incremental query to dry run for now
+        // let nonIncrementalQuery = tableMetadata.queryMeta.preOpsQuery + tableMetadata.queryMeta.nonIncrementalQuery;
+        let incrementalQuery = tableMetadata.queryMeta.incrementalPreOpsQuery + tableMetadata.queryMeta.incrementalQuery;
+        queryToDryRun = incrementalQuery;
+    }
+
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
-        //TODO: verify that this is correct ?
-        queryDryRun(tableMetadata.queryMeta.tableOrViewQuery + tableMetadata.queryMeta.operationsQuery),
+        queryDryRun(queryToDryRun),
         //TODO: check when there is pre/post ops query it puts error at correct spot
         queryDryRun(tableMetadata.queryMeta.preOpsQuery),
         queryDryRun(tableMetadata.queryMeta.postOpsQuery)

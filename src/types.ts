@@ -16,7 +16,11 @@ export interface TablesWtFullQuery {
     tables: Table[];
     fullQuery: string;
     queryMeta: {
+        type:string,
         tableOrViewQuery: string
+        nonIncrementalQuery: string
+        incrementalQuery: string
+        incrementalPreOpsQuery: string
         preOpsQuery: string
         postOpsQuery: string
         assertionQuery: string
