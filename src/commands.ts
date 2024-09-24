@@ -21,8 +21,18 @@ export function getRunMultipleTagsCommand(workspaceFolder: string, tags: string,
     return runMultiTagsCommand;
 }
 
-export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string ): string {
-    return `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal} --tags=${tag} --include-deps`;
+export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string, includeDependencies:boolean, includeDependents:boolean, fullRefresh:boolean): string {
+    let runTagsCommand = `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal}`;
+    if (includeDependencies) {
+        runTagsCommand += ` --include-deps`;
+    }
+    if (includeDependents) {
+        runTagsCommand += ` --include-dependents`;
+    }
+    if (fullRefresh) {
+        runTagsCommand += ` --full-refresh`;
+    }
+    return runTagsCommand;
 }
 
 export function getRunTagsWtDownstreamDepsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string): string {
