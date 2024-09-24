@@ -1,0 +1,46 @@
+
+#runQueryButton {
+	position: absolute;
+	top: 10px;
+	right: 130px;
+	padding: 5px 10px;
+	border: none;
+	cursor: pointer;
+}
+
+.runQueryButton {
+	background-color: #007acc;
+	color: white;
+	padding: 5px 10px;
+	border: none;
+	cursor: pointer;
+}
+
+.runQueryButton:disabled {
+	background-color: #d3d3d3;
+	color: #808080;
+	cursor: not-allowed;
+}
+
+#cancelBigQueryJobButton {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	padding: 5px 10px;
+	border: none;
+	cursor: pointer;
+}
+
+.cancelBigQueryJobButton {
+	background-color: #cc8100;
+	color: white;
+	padding: 5px 10px;
+	border: none;
+	cursor: pointer;
+}
+
+.cancelBigQueryJobButton:disabled {
+	background-color: #d3d3d3;
+	color: #808080;
+	cursor: not-allowed;
+}

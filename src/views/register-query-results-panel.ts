@@ -87,15 +87,18 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebviewGeneric(webview: vscode.Webview) {
+    const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     return `
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="${styleResetUri}" rel="stylesheet">
       </head>
       <body>
         <p>Query results will be dispalyed here</p>
+        <button id="runQueryButton" class="runQueryButton">RUN</button>
       </body>
       </html>
     `;
@@ -103,12 +106,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebviewNoResultsToDisplay(webview: vscode.Webview) {
     // TODO: Can we not use external url ?
+    const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     return `
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="${styleResetUri}" rel="stylesheet">
       </head>
       <body>
         <span class="warning">
@@ -119,6 +124,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           </svg>
           There is no data to display
         </span>
+        <button id="runQueryButton" class="runQueryButton">RUN</button>
       </body>
       </html>
     `;
@@ -126,6 +132,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebviewError(webview: vscode.Webview) {
     const showBigQueryErrorScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showBigQueryError.js"));
+    const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const nonce = getNonce();
     return `
       <!DOCTYPE html>
@@ -133,9 +140,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="${styleResetUri}" rel="stylesheet">
 
       </head>
       <body>
+        <button id="runQueryButton" class="runQueryButton">RUN</button>
         <p style="color: red"><span id="bigqueryerror"></span></p>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryErrorScriptUri}"></script>
       </body>
@@ -148,6 +157,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview) {
       const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));
       const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
+      const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
       const nonce = getNonce();
 
     return `
@@ -160,34 +170,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
         <link href="https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
         <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
-
-        <style>
-          #cancelBigQueryJobButton {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 5px 10px;
-            border: none;
-            cursor: pointer;
-          }
-          
-          .cancelBigQueryJobButton {
-            background-color: #007acc;
-            color: white;
-            padding: 5px 10px;
-            border: none;
-            cursor: pointer;
-          }
-          
-          .cancelBigQueryJobButton:disabled {
-            background-color: #d3d3d3;
-            color: #808080;
-            cursor: not-allowed;
-          }
-        </style>
-
+        <link href="${styleResetUri}" rel="stylesheet">
       </head>
       <body>
+        <button id="runQueryButton" class="runQueryButton">RUN</button>
         <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
         <p>Query results ran at: <span id="datetime"></span></p>
         <table id="example" class="display" width="100%"></table>
