@@ -132,14 +132,11 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## Known Issues
 
-- [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}`
-- [ ] sync feature flickers when user tries to scroll a non-active editor. Fixes when user selects the active editor by clicking on it
+- [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}` or when it is multiline or a different format works best with `${ref('table_name')}` format
 
 ## TODO
 
-- [ ] Preview query results in a table
 - [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
-- [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
 
 

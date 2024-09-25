@@ -38,7 +38,6 @@ function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | un
 }
 
 export async function getCurrentFileMetadata(){
-    //TODO: add error messages here
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
         vscode.window.showErrorMessage("VS Code document object was undefined");
@@ -401,7 +400,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
-    //TODO: This can be deprecated in favour of queryMetadata
+    //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryToDisplay = "";
     let queryMeta = {
         type: "",
@@ -1013,7 +1012,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: Takes less than 2ms (dataform wt 285 nodes)
+        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
     }
 
     if (tableMetadata.fullQuery === "") {
@@ -1045,7 +1044,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
-        //TODO: check when there is pre/post ops query it puts error at correct spot
+        //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(tableMetadata.queryMeta.preOpsQuery),
         queryDryRun(tableMetadata.queryMeta.postOpsQuery)
     ]);

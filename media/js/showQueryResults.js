@@ -75,12 +75,12 @@ window.addEventListener('message', event => {
         document.getElementById('example').style.display = 'table';
 
         new Tabulator("#example", {
-            data:results, //assign data to table
-            autoColumns:true, //create columns from data field names
+            data:results,
+            autoColumns:true,
             rowHeader:{formatter:"rownum", headerSort:false, hozAlign:"center", resizable:false, frozen:true},
-            pagination:"local",       //paginate the data
-            paginationSize:20,         //allow 7 rows per page of data
-            paginationCounter:"rows", //display count of paginated rows in footer
+            pagination:"local",
+            paginationSize:20,
+            paginationCounter:"rows",
         });
     }
 });

@@ -134,7 +134,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const codeLensProvider = new AssertionRunnerCodeLensProvider();
         context.subscriptions.push(
             vscode.languages.registerCodeLensProvider(
-            { language: 'sqlx' }, // Adjust for your target language
+            { language: 'sqlx' },
             codeLensProvider
             )
         );
@@ -256,7 +256,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             await formatSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 
-            //TODO: Remove before release
             document?.save();
         });
         context.subscriptions.push(formatCurrentFileDisposable);

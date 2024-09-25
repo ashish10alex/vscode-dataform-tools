@@ -4,7 +4,6 @@ export class AssertionRunnerCodeLensProvider implements vscode.CodeLensProvider 
   async provideCodeLenses(document: vscode.TextDocument): Promise<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
     
-    // Scan the document for test functions
     for (let i = 0; i < document.lineCount; i++) {
       const line = document.lineAt(i);
       if (line.text.includes('assertions')) {

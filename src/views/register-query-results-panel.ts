@@ -24,7 +24,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       if (this._invokedByCommand){
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        //TODO: check this
         if(this._query){
           await this.updateContent(this._query);
         }
