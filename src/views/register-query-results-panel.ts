@@ -129,14 +129,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <div class="beta-button-container">
                <button class="beta-button" disabled>BETA</button>
         </div>
-        <span class="warning">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-            <path fill="yellow" d="M8 1.45l6.705 13.363H1.295L8 1.45z"/>
-            <path fill="black" d="M8 4l4.593 9.186H3.407L8 4z"/>
-            <path fill="yellow" d="M7.25 11h1.5v1.5h-1.5V11zm0-5h1.5v4h-1.5V6z"/>
-          </svg>
-          There is no data to display
-        </span>
+        <span class="warning">❕ There is no data to display</span>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
