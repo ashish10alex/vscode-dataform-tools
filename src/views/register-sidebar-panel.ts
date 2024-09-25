@@ -1,6 +1,6 @@
 import { CancellationToken, commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext, window, workspace } from "vscode";
 import * as vscode from 'vscode';
-import { getTableMetadata, getNonce, getFileNameFromDocument } from '../utils';
+import {getNonce, getFileNameFromDocument, getCurrentFileMetadata } from '../utils';
 import { CenterPanel } from "./register-center-panel";
 // import { dataformTags } from "../extension";
 
@@ -10,17 +10,9 @@ export async function registerWebViewProvider(context: ExtensionContext) {
     context.subscriptions.push(window.registerWebviewViewProvider('dataform-sidebar', provider));
 
     context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.getTableMetadataForSidePanel', async () => {
-        let document = vscode.window.activeTextEditor?.document;
-        if(!document){return;}
-        var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
-        if (!filename || !relativeFilePath || !extension){
-          return;
-        }
-        if (document) {
-            let tableMetadata = await getTableMetadata(document, false);
-            if (tableMetadata) {
-                provider.view?.webview.postMessage({ "tableMetadata": tableMetadata });
-            }
+        let tableMetadata = await getCurrentFileMetadata(false);
+        if (tableMetadata) {
+            provider.view?.webview.postMessage({ "tableMetadata": tableMetadata });
         }
     }));
 

@@ -103,7 +103,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async() => {
-                let fileMetadata = await getCurrentFileMetadata();
+                let fileMetadata = await getCurrentFileMetadata(false);
                 if(!fileMetadata){
                 return;
                 }
@@ -141,7 +141,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async(uri: vscode.Uri, line: number) => {
-            let fileMetadata = await getCurrentFileMetadata();
+            let fileMetadata = await getCurrentFileMetadata(false);
             if(!fileMetadata){
                 return;
             }

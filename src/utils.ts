@@ -37,7 +37,7 @@ function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | un
     }
 }
 
-export async function getCurrentFileMetadata(){
+export async function getCurrentFileMetadata(freshCompilation: boolean){
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
         vscode.window.showErrorMessage("VS Code document object was undefined");
@@ -50,13 +50,21 @@ export async function getCurrentFileMetadata(){
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return; }
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
-    if (!dataformCompiledJson){
-        return undefined;
+
+    let dataformCompiledJson;
+    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson){
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        }
+    } else {
+        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
     }
-    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-    let fileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
-    return fileMetadata;
+
+    if (dataformCompiledJson){
+        let fileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
+        return fileMetadata;
+    }
 }
 
 export async function getPostionOfSourceDeclaration(sourcesJsUri:vscode.Uri, searchTerm:string){
@@ -785,30 +793,6 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
 }
 
-export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
-    let tableMetadata;
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
-    if (!filename || !relativeFilePath || !extension) { return; }
-
-    let workspaceFolder = getWorkspaceFolder();
-    if (!workspaceFolder) { return; }
-
-    let dataformCompiledJson;
-    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson){
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
-    } else {
-        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-    }
-
-    if (dataformCompiledJson) {
-        tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
-    }
-    return tableMetadata;
-}
-
 function readFile(filePath:string) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, data) => {
@@ -988,6 +972,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder:string, sele
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
+    //TODO: We can probably use `getCurrentFileMetadata` function
     var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
     if (!filename || !relativeFilePath || !extension) { return; }
 
