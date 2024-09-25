@@ -7,11 +7,10 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
+import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { getRunMultipleTagsCommand } from './commands';
-import { table } from 'console';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -441,7 +440,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                     table.incrementalPreOps.forEach((query, idx) => {
                         queryToDisplay += `\n-- Incremental pre operations: [${idx}] \n`;
                         queryToDisplay += query + "\n ;";
-                        queryMeta.incrementalPreOpsQuery += query + "\n ;";
+                        queryMeta.incrementalPreOpsQuery += query + ";\n";
                     });
                 }
             }
@@ -1039,7 +1038,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     } else if (tableMetadata.queryMeta.type === "incremental"){
         //TODO: defaulting to using incremental query to dry run for now
         // let nonIncrementalQuery = tableMetadata.queryMeta.preOpsQuery + tableMetadata.queryMeta.nonIncrementalQuery;
-        let incrementalQuery = tableMetadata.queryMeta.incrementalPreOpsQuery + tableMetadata.queryMeta.incrementalQuery;
+        let incrementalQuery = tableMetadata.queryMeta.incrementalPreOpsQuery.trimStart() + tableMetadata.queryMeta.incrementalQuery.trimStart();
         queryToDryRun = incrementalQuery;
     }
 
@@ -1058,14 +1057,16 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
         }
 
         let offSet = 0;
-        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
+        if (tableMetadata.queryMeta.type === "table" || tableMetadata.queryMeta.type === "view") {
             offSet = tableQueryOffset;
-        } else if (tableMetadata.tables[0].type === "assertion") {
+        } else if (tableMetadata.queryMeta.type === "assertion") {
             offSet = assertionQueryOffset;
+        } else if (tableMetadata.queryMeta.type === "incremental"){
+            offSet = incrementalTableOffset;
         }
 
         if (sqlxBlockMetadata){
-            setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
+            setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
         return;
     }

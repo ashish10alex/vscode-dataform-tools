@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import {DryRunError, SqlxBlockMetadata} from './types';
 
-export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, preOpsError:DryRunError, postOpsError:DryRunError, compiledSqlFilePath: string, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
+export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, preOpsError:DryRunError, postOpsError:DryRunError, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
 
         const diagnostics: vscode.Diagnostic[] = [];
         const severity = vscode.DiagnosticSeverity.Error;
