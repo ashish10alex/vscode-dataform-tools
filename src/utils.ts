@@ -44,7 +44,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean){
         return;
     }
 
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
     if (!filename || !relativeFilePath || !extension) { return; }
 
     let workspaceFolder = getWorkspaceFolder();
