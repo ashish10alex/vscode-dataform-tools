@@ -102,8 +102,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <link href="${styleResetUri}" rel="stylesheet">
       </head>
       <body>
-        <p>Query results will be dispalyed here</p>
-        <button id="runQueryButton" class="runQueryButton">RUN</button>
+        <div class="beta-button-container">
+               <button class="beta-button" disabled>BETA</button>
+        </div>
+        <p class="top-left">Query results will be dispalyed here</p>
+        <button id="runQueryButton" class="runQueryButton" title="Runs current file">RUN</button>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
       </html>
@@ -124,6 +127,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <link href="${styleResetUri}" rel="stylesheet">
       </head>
       <body>
+        <div class="beta-button-container">
+               <button class="beta-button" disabled>BETA</button>
+        </div>
         <span class="warning">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
             <path fill="yellow" d="M8 1.45l6.705 13.363H1.295L8 1.45z"/>
@@ -153,8 +159,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       </head>
       <body>
+        <div class="beta-button-container">
+               <button class="beta-button" disabled>BETA</button>
+        </div>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
-        <p style="color: red"><span id="bigqueryerror"></span></p>
+        <p class="top-left" style="color: red"><span id="bigqueryerror"></span></p>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryErrorScriptUri}"></script>
       </body>
       </html>
@@ -182,9 +191,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <link href="${styleResetUri}" rel="stylesheet">
       </head>
       <body>
+        <div class="beta-button-container">
+               <button class="beta-button" disabled>BETA</button>
+        </div>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
-        <p>Query results ran at: <span id="datetime"></span></p>
+        <p class="top-left">Query results ran at: <span id="datetime"></span></p>
         <table id="example" class="display" width="100%"></table>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </body>

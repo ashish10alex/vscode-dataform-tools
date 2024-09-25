@@ -32,7 +32,7 @@
 }
 
 .cancelBigQueryJobButton {
-	background-color: #cc8100;
+	background-color: #b8860b; 
 	color: white;
 	padding: 5px 10px;
 	border: none;
@@ -43,4 +43,32 @@
 	background-color: #d3d3d3;
 	color: #808080;
 	cursor: not-allowed;
+}
+
+.beta-button-container {
+	display: flex;
+	justify-content: center;
+	margin-top: 10px;
+}
+
+.beta-button {
+	background-color: #b8860b; 
+	color: white;
+	border: none;
+	padding: 5px 10px;
+	font-size: 10px;
+	border-radius: 50px; /* Rounded corners */
+	cursor: not-allowed; /* Disabled state */
+}
+
+.top-left {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  margin: 0;
+  padding: 5px 10px;
+}
+
+#example {
+	margin-top: 20px; /* Adjust this value as needed */
 }
