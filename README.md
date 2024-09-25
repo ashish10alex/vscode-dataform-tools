@@ -15,6 +15,7 @@
 |---------|-------------|
 | [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
+| [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
 | [Go to definition](#definition) | Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined |
 | [Auto-completion](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
@@ -52,6 +53,10 @@ Trouble installing ? Please see [FAQ section](#faq), if you are still stuck, ple
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
 ![diagnostics](media/images/diagnostics.png)
+
+### <a id="preview_query_results">Preview query results</a>
+![preview_query_results](/media/images/preview_query_results.png)
+
 
 ### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
