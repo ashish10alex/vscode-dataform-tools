@@ -95,24 +95,28 @@ export async function queryBigQuery(query:string) {
 function parseObject(obj:any, _childrens: any){
   let _children:any = {};
     Object.entries(obj).forEach(([key, value]:[any, any]) => {
-      if (value.constructor && value.constructor.name === 'Big') {
-          _children[key] = value.toString();
-      }
-      else if(value.constructor.name === 'Object'){
-        _childrens.push({..._children, ...value});
-      }
-      else if(value.constructor.name === 'Array'){
-        let new_children = parseObject(value, _childrens); 
-        if (new_children.constructor.name === "Array"){
-          new_children.forEach((c:any, idx:any) => {
-            new_children[idx] = transformBigValues(new_children[idx]);
-            new_children[idx] = {..._children, ...new_children[idx]};
-          });
+      if (typeof value === 'object' && value !== null) {
+        if (value.constructor && value.constructor.name === 'Big') {
+            _children[key] = value.toString();
         }
-      }
-      else {
-          _childrens = Object.values(value).map(extractValue).join(', ');
-      }
+        else if(value.constructor.name === 'Object'){
+          _childrens.push({..._children, ...value});
+        }
+        else if(value.constructor.name === 'Array'){
+          let new_children = parseObject(value, _childrens); 
+          if (new_children.constructor.name === "Array"){
+            new_children.forEach((c:any, idx:any) => {
+              new_children[idx] = transformBigValues(new_children[idx]);
+              new_children[idx] = {..._children, ...new_children[idx]};
+            });
+          }
+        }
+        else {
+            _childrens = Object.values(value).map(extractValue).join(', ');
+        }
+    } else {
+      _children[key] = value;
+    }
     });
     return _childrens;
 }
