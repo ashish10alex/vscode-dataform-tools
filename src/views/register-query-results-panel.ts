@@ -6,7 +6,7 @@ import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
-    private _cachedResults?: { results: any[], jobStats: any };
+    private _cachedResults?: { results: any[], columns:any, jobStats: any };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -67,10 +67,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     }
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          const { results, jobStats } = await queryBigQuery(query);
+          const { results, columns, jobStats } = await queryBigQuery(query);
           if(results){
-            this._cachedResults = { results, jobStats };
-            this._view.webview.postMessage({"results": results, "jobStats": jobStats });
+            this._cachedResults = { results, columns, jobStats };
+            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
           }else{

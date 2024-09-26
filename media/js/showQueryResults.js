@@ -60,11 +60,12 @@ document.getElementById('example').style.display = 'none';
 
 window.addEventListener('message', event => {
     const results = event?.data?.results;
+    const columns = event?.data?.columns;
     const jobStats = event?.data?.jobStats;
     const totalBytesBilled = jobStats.totalBytesBilled;
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
-    if (results) {
+    if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, totalGbBilled);
@@ -76,7 +77,10 @@ window.addEventListener('message', event => {
 
         new Tabulator("#example", {
             data:results,
-            autoColumns:true,
+            columns:columns,
+            // autoColumns:true,
+            dataTree:true,
+            dataTreeStartExpanded:false,
             rowHeader:{formatter:"rownum", headerSort:false, hozAlign:"center", resizable:false, frozen:true},
             pagination:"local",
             paginationSize:20,
