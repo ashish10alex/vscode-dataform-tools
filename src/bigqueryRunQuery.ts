@@ -105,7 +105,8 @@ export async function queryBigQuery(query: string) {
         cancelBigQueryJobSignal = false;
     };
 
-    // TOOD: even when the job has been cancelled it might return results, handle this
+    //TODO: even when the job has been cancelled it might return results, handle this
+    //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
     const [rows] = await bigQueryJob.getQueryResults();
 
     let totalBytesBilled;
