@@ -30,6 +30,8 @@
 
    `npm i -g @dataform/cli`
 
+   Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli
+
 2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
 
