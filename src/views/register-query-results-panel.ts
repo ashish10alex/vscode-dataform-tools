@@ -42,8 +42,13 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           async message => {
             switch (message.command) {
               case 'cancelBigQueryJob':
-                await cancelBigQueryJob();
+                let resp = await cancelBigQueryJob();
                 cancelBigQueryJobSignal = false;
+                if (resp.cancelled && this._view){
+                  this._view.webview.html = this._getHtmlForWebviewJobCancelled(this._view.webview);
+                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId});
+                  this._view.show(true);
+                }
                 return;
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
@@ -112,8 +117,31 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     `;
   }
 
+  private _getHtmlForWebviewJobCancelled(webview: vscode.Webview) {
+    const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
+    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
+    const nonce = getNonce();
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="${styleResetUri}" rel="stylesheet">
+      </head>
+      <body>
+        <div class="beta-button-container">
+               <button class="beta-button" disabled>BETA</button>
+        </div>
+        <span class="bigquery-job-cancelled"></span>
+        <button id="runQueryButton" class="runQueryButton">RUN</button>
+        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
+      </body>
+      </html>
+    `;
+  }
+
   private _getHtmlForWebviewNoResultsToDisplay(webview: vscode.Webview) {
-    // TODO: Can we not use external url ?
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
     const nonce = getNonce();

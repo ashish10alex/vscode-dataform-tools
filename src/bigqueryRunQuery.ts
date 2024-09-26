@@ -105,12 +105,17 @@ export async function queryBigQuery(query: string) {
         cancelBigQueryJobSignal = false;
     };
 
+    // TOOD: even when the job has been cancelled it might return results, handle this
     const [rows] = await bigQueryJob.getQueryResults();
 
-    let jobMetadata = await bigQueryJob.getMetadata();
-    let jobStats = jobMetadata[0].statistics.query;
-    let totalBytesBilled = jobStats.totalBytesBilled;
-    bigQueryJob = undefined;
+    let totalBytesBilled;
+
+    if (bigQueryJob) {
+        let jobMetadata = await bigQueryJob.getMetadata();
+        let jobStats = jobMetadata[0].statistics.query;
+        totalBytesBilled = jobStats.totalBytesBilled;
+        bigQueryJob = undefined;
+    }
 
     if (rows.length === 0) {
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
@@ -150,6 +155,10 @@ export async function cancelBigQueryJob() {
     if (bigQueryJob) {
         let bigQueryJobId = bigQueryJob.id;
         await bigQueryJob.cancel();
+        bigQueryJob = undefined;
         vscode.window.showInformationMessage(`Cancelled BigQuery job with id ${bigQueryJobId}`);
+        return {cancelled: true, bigQueryJobId: bigQueryJobId};
+    } else {
+        return {cancelled: undefined, bigQueryJobId: undefined};
     }
 }
