@@ -65,7 +65,7 @@ export async function queryBigQuery(query: string) {
     if (cancelBigQueryJobSignal) {
         vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
         cancelBigQueryJobSignal = false;
-        return { results: undefined, jobStats: { totalBytesBilled: undefined } };
+        return { results: undefined, columns:undefined, jobStats: { totalBytesBilled: undefined } };
     }
 
     [bigQueryJob] = await bigqueryClient.createQueryJob(query);
