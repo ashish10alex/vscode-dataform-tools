@@ -56,7 +56,7 @@ const timerInterval = setInterval(updateLoadingMessage, 1000);
 document.body.appendChild(loadingMessage);
 
 // Hide the table initially
-document.getElementById('example').style.display = 'none';
+document.getElementById('bigqueryResults').style.display = 'none';
 
 window.addEventListener('message', event => {
     const results = event?.data?.results;
@@ -73,9 +73,9 @@ window.addEventListener('message', event => {
         document.body.removeChild(loadingMessage);
 
         // Show the table
-        document.getElementById('example').style.display = 'table';
+        document.getElementById('bigqueryResults').style.display = 'table';
 
-        new Tabulator("#example", {
+        new Tabulator("#bigqueryResults", {
             data:results,
             columns:columns,
             // autoColumns:true,

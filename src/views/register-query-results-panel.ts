@@ -189,7 +189,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
         <p class="top-left">Query results ran at: <span id="datetime"></span></p>
-        <table id="example" class="display" width="100%"></table>
+        <table id="bigqueryResults" class="display" width="100%"></table>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </body>
       </html>
