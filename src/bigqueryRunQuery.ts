@@ -51,7 +51,7 @@ function transformBigValues(obj: any) {
             const value = obj[key];
             if (value && value.constructor && value.constructor.name === 'Big') {
                 obj[key] = value.toString();
-            } else if (value && value.constructor && ["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp"].includes(value?.constructor?.name)) {
+            } else if (value && value.constructor && ["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
                 obj[key] = Object.values(value).map(extractValue).join(', ');
             }
         }
@@ -124,7 +124,7 @@ export async function queryBigQuery(query: string) {
     const results = rows.map((row: { [s: string]: unknown }) => {
         const obj: { [key: string]: any } = {};
         Object.entries(row).forEach(([key, value]: [any, any]) => {
-            if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp"].includes(value?.constructor?.name)) {
+            if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
                 let _childrens: any = [];
                 _childrens = parseObject(value, _childrens);
                 obj["_children"] = _childrens;
