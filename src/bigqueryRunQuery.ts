@@ -15,6 +15,35 @@ const extractValue: any = (value: any) => {
     return value;
 };
 
+function parseObject(obj: any, _childrens: any) {
+    let _children: any = {};
+    Object.entries(obj).forEach(([key, value]: [any, any]) => {
+        if (typeof value === 'object' && value !== null) {
+            if (value.constructor && value.constructor.name === 'Big') {
+                _children[key] = value.toString();
+            }
+            else if (value.constructor.name === 'Object') {
+                _childrens.push({ ..._children, ...value });
+            }
+            else if (value.constructor.name === 'Array') {
+                let new_children = parseObject(value, _childrens);
+                if (new_children.constructor.name === "Array") {
+                    new_children.forEach((c: any, idx: any) => {
+                        new_children[idx] = transformBigValues(new_children[idx]);
+                        new_children[idx] = { ..._children, ...new_children[idx] };
+                    });
+                }
+            }
+            else {
+                _childrens = Object.values(value).map(extractValue).join(', ');
+            }
+        } else {
+            _children[key] = value;
+        }
+    });
+    return _childrens;
+}
+
 
 function createTabulatorColumns(data: any) {
     if (!data) {
@@ -70,6 +99,7 @@ export async function queryBigQuery(query: string) {
 
     [bigQueryJob] = await bigqueryClient.createQueryJob(query);
 
+    //TODO: Not sure if this is needed as if the job is created the job id should be removed when cancelBigQueryJob() is called
     if (cancelBigQueryJobSignal) {
         cancelBigQueryJob();
         cancelBigQueryJobSignal = false;
@@ -83,36 +113,7 @@ export async function queryBigQuery(query: string) {
     bigQueryJob = undefined;
 
     if (rows.length === 0) {
-        return { results: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
-    }
-
-    function parseObject(obj: any, _childrens: any) {
-        let _children: any = {};
-        Object.entries(obj).forEach(([key, value]: [any, any]) => {
-            if (typeof value === 'object' && value !== null) {
-                if (value.constructor && value.constructor.name === 'Big') {
-                    _children[key] = value.toString();
-                }
-                else if (value.constructor.name === 'Object') {
-                    _childrens.push({ ..._children, ...value });
-                }
-                else if (value.constructor.name === 'Array') {
-                    let new_children = parseObject(value, _childrens);
-                    if (new_children.constructor.name === "Array") {
-                        new_children.forEach((c: any, idx: any) => {
-                            new_children[idx] = transformBigValues(new_children[idx]);
-                            new_children[idx] = { ..._children, ...new_children[idx] };
-                        });
-                    }
-                }
-                else {
-                    _childrens = Object.values(value).map(extractValue).join(', ');
-                }
-            } else {
-                _children[key] = value;
-            }
-        });
-        return _childrens;
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
     }
 
     // Transform rows into the desired format for Datatables
@@ -124,9 +125,11 @@ export async function queryBigQuery(query: string) {
     const results = rows.map((row: { [s: string]: unknown }) => {
         const obj: { [key: string]: any } = {};
         Object.entries(row).forEach(([key, value]: [any, any]) => {
+            //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
                 let _childrens: any = [];
                 _childrens = parseObject(value, _childrens);
+                //Nested object in Tabulator are displayed by adding the key _children to the exsisting array
                 obj["_children"] = _childrens;
             } else {
                 obj[key] = extractValue(value);
