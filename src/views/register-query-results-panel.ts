@@ -97,7 +97,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
     const nonce = getNonce();
-    return `
+    return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -121,7 +121,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
     const nonce = getNonce();
-    return `
+    return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -145,7 +145,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
     const nonce = getNonce();
-    return `
+    return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -169,7 +169,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     const showBigQueryErrorScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showBigQueryError.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const nonce = getNonce();
-    return `
+    return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -198,7 +198,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
       const nonce = getNonce();
 
-    return `
+    return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
       <head>

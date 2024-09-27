@@ -72,7 +72,8 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
 
         const nonce = getNonce();
 
-        return `<!DOCTYPE html>
+        return /*html*/ `
+        <!DOCTYPE html>
         <html lang="en">
             <head>
               <meta charset="UTF-8">

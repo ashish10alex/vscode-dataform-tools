@@ -139,7 +139,8 @@ export class CenterPanel {
     }
 
     private _getHtmlForWebviewNoTreeMetadata() {
-        return `<!DOCTYPE html>
+        return /*html*/ `
+        <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
@@ -171,7 +172,8 @@ export class CenterPanel {
 
         const nonce = getNonce();
 
-        return `<!DOCTYPE html>
+        return /*html*/ `
+        <!DOCTYPE html>
         <html lang="en">
             <head>
               <meta charset="UTF-8">
