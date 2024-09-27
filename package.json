@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.0.61",
+    "version": "0.1.0",
     "engines": {
         "vscode": "^1.89.0"
     },
@@ -44,13 +44,13 @@
                     "icon": "media/dataform.svg"
                 }
             ],
-        "panel": [
-            {
-            "id": "queryResultsContainer",
-            "title": "Dataform tools",
-            "icon": "path/to/icon.svg"
-            }
-      ]
+            "panel": [
+                {
+                    "id": "queryResultsContainer",
+                    "title": "Dataform tools",
+                    "icon": "path/to/icon.svg"
+                }
+            ]
         },
         "views": {
             "dataform-sidebar-view": [
@@ -64,11 +64,11 @@
             ],
             "queryResultsContainer": [
                 {
-                  "type": "webview",
-                  "id": "queryResultsView",
-                  "name": "Dataform tools"
+                    "type": "webview",
+                    "id": "queryResultsView",
+                    "name": "Dataform tools"
                 }
-              ]
+            ]
         },
         "snippets": [
             {
