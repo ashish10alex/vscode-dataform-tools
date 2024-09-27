@@ -158,12 +158,12 @@ export class CenterPanel {
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
 
         /**Used for searchable dropdowns */
-        const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));
-        const select2MinCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "select2.min.css"));
-        const select2MinJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "select2.min.js"));
+        const jqueryMinified = "https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js";
+        const select2MinCss = "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css";
+        const select2MinJs = "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js";
 
         /**Dependencies for generating the tree using dependtree */
-        const d3minJs = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "d3.v7.min.js"));
+        const d3minJs = "https://cdn.jsdelivr.net/npm/d3@7";
         const dependTreeScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "dependtree.js"));
 
         const colorsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "colors.js"));
@@ -187,10 +187,10 @@ export class CenterPanel {
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <link href="${styleResetUri}" rel="stylesheet">
               <link href="${styleVSCodeUri}" rel="stylesheet">
-              <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
-              <link href="${select2MinCss}" rel="stylesheet">
-              <script nonce="${nonce}" type="text/javascript" src="${select2MinJs}"></script>
-              <script nonce="${nonce}" type="text/javascript" src="${d3minJs}"></script>
+              <script src="${jqueryMinified}"></script>
+              <link href="${select2MinCss}" rel="stylesheet" />
+              <script src="${select2MinJs}"></script>
+              <script src="${d3minJs}"></script>
               <script nonce="${nonce}" type="text/javascript" src="${colorsScriptUri}"></script>
            </head>
            <body>
