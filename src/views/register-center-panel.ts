@@ -1,5 +1,5 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
-import { generateDependancyTreeMetadata, getTreeRootFromRef, getTableMetadata, getWorkspaceFolder, getPostionOfSourceDeclaration } from "../utils";
+import { generateDependancyTreeMetadata, getTreeRootFromRef, getWorkspaceFolder, getPostionOfSourceDeclaration, getCurrentFileMetadata } from "../utils";
 import { getNonce, getLineUnderCursor } from '../utils';
 import * as vscode from 'vscode';
 import path from 'path';
@@ -74,15 +74,14 @@ export class CenterPanel {
     private async updateView() {
 
         // Use current table/view created by current file as root
-        let document = vscode.window.activeTextEditor?.document;
         if (treeRootFromRef){
             treeRoot = treeRootFromRef;
         }
 
-        if (document && !treeRootFromRef) {
-            let tableMetadata = await getTableMetadata(document, false);
-            if (tableMetadata) {
-                let treeRootTarget = tableMetadata?.tables[0]?.target;
+        if (!treeRootFromRef) {
+            let currFileMetadata = await getCurrentFileMetadata(false);
+            if (currFileMetadata) {
+                let treeRootTarget = currFileMetadata?.tables[0]?.target;
                 treeRoot = `${treeRootTarget?.database}.${treeRootTarget?.schema}.${treeRootTarget?.name}`;
             }
         }

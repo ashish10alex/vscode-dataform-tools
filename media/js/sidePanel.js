@@ -9,7 +9,7 @@ const getUrlToNavigateToTableInBigQuery = (gcpProjectId, datasetId, tableName) =
     return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
 };
 
-function showTableMetadataInSideBar(tables) {
+function showCurrFileMetadataInSideBar(tables) {
     if (!tables) {
         return;
     }
@@ -21,20 +21,6 @@ function showTableMetadataInSideBar(tables) {
 
     const newDiv = document.createElement('div');
     newDiv.id = 'newDiv';
-
-
-    // const highlightedCode = hljs.highlight(
-    //     message.tableMetadata.fullQuery,
-    //     { language: 'sql'  }
-    // ).value;
-
-    // newDiv.innerHTML = `<pre><code class="language-sql">${highlightedCode}<code></pre>`;
-    // document.body.appendChild(newDiv);
-
-    // paragraph.textContent = highlightedCode;
-    // newDiv.appendChild(paragraph);
-    // document.body.appendChild(newDiv);
-
 
     fullTableIds = [];
 
@@ -117,8 +103,8 @@ function showTableMetadataInSideBar(tables) {
 
 window.addEventListener('message', event => {
     const message = event.data;
-    let tables = message.tableMetadata.tables;
-    showTableMetadataInSideBar(tables);
+    let tables = message.currFileMetadata.tables;
+    showCurrFileMetadataInSideBar(tables);
     removeLoadingMessage();
 });
 

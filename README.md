@@ -15,11 +15,12 @@
 |---------|-------------|
 | [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
+| [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
 | [Go to definition](#definition) | Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined |
 | [Auto-completion](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
 | [Compilation & Dry run stats](#compilation) | - Live compiled query in a vertical split **on save** which is in sync with the current cursor position of your `.sqlx` file <br><br> - Data processed by query on bottom right on successful dry run |
-| [Run a specific file/tag](#filetagruns) | Run a file/tag, optionally with dependencies/dependents with vscode command pallet / menu icons |
+| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet / menu icons |
 | [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
 
 
@@ -28,6 +29,8 @@
 1. [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
    `npm i -g @dataform/cli`
+
+   Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli
 
 2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 
@@ -52,6 +55,10 @@ Trouble installing ? Please see [FAQ section](#faq), if you are still stuck, ple
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
 ![diagnostics](media/images/diagnostics.png)
+
+### <a id="preview_query_results">Preview query results</a>
+![preview_query_results](/media/images/preview_query_results.png)
+
 
 ### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
@@ -127,14 +134,11 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## Known Issues
 
-- [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}`
-- [ ] sync feature flickers when user tries to scroll a non-active editor. Fixes when user selects the active editor by clicking on it
+- [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}` or when it is multiline or a different format works best with `${ref('table_name')}` format
 
 ## TODO
 
-- [ ] Preview query results in a table
 - [ ] Bundle javascript files in the extension using [esbuild or webpack](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
-- [ ] Add proper logging, [winston-transport-vscode](https://github.com/loderunner/winston-transport-vscode)
 
 

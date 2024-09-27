@@ -7,7 +7,7 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath } from './constants';
+import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { getRunMultipleTagsCommand } from './commands';
@@ -34,6 +34,35 @@ function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | un
                 return `${struct[i].target.database}.${struct[i].target.schema}.${struct[i].target.name}`;
             }
         }
+    }
+}
+
+export async function getCurrentFileMetadata(freshCompilation: boolean){
+    let document = vscode.window.activeTextEditor?.document;
+    if (!document) {
+        return;
+    }
+
+    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
+    if (!filename || !relativeFilePath || !extension) { return; }
+
+    let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder) { return; }
+
+
+    let dataformCompiledJson;
+    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson){
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        }
+    } else {
+        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+    }
+
+    if (dataformCompiledJson){
+        let fileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
+        return fileMetadata;
     }
 }
 
@@ -330,14 +359,14 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         return;
     }
 
-    let tableMetadata;
+    let currFileMetadata;
     let dataformCompiledJson = await runCompilation(workspaceFolder);
     if (dataformCompiledJson) {
-        tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
+        currFileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
     }
 
-    if (tableMetadata) {
-        let actionsList: string[] = tableMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
+    if (currFileMetadata) {
+        let actionsList: string[] = currFileMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
 
         let dataformActionCmd = "";
 
@@ -378,12 +407,23 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
+    //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryToDisplay = "";
-    let queryToDryRun = "";
+    let queryMeta = {
+        type: "",
+        tableOrViewQuery: "",
+        nonIncrementalQuery: "",
+        incrementalQuery: "",
+        incrementalPreOpsQuery: "",
+        preOpsQuery: "",
+        postOpsQuery: "",
+        assertionQuery: "",
+        operationsQuery: "",
+    };
     let finalTables: any[] = [];
 
     if (tables === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
     }
 
     for (let i = 0; i < tables.length; i++) {
@@ -391,31 +431,38 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         let tableRelativeFilePath = table.fileName;
         if (relativeFilePath === tableRelativeFilePath) {
             if (table.type === "table" || table.type === "view") {
+                queryMeta.type = table.type;
                 queryToDisplay = table.query.trimStart() + "\n ;";
+                queryMeta.tableOrViewQuery = queryToDisplay;
             } else if (table.type === "incremental") {
+                queryMeta.type = table.type;
                 queryToDisplay += "\n-- Non incremental query \n";
+                queryMeta.nonIncrementalQuery = table.query + ";";
                 queryToDisplay += table.query + ";";
                 queryToDisplay += "\n-- Incremental query \n";
                 queryToDisplay += table.incrementalQuery + ";\n";
+                queryMeta.incrementalQuery = table.incrementalQuery + ";";
                 if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
                         queryToDisplay += `\n-- Incremental pre operations: [${idx}] \n`;
                         queryToDisplay += query + "\n ;";
+                        queryMeta.incrementalPreOpsQuery += query + ";\n";
                     });
                 }
             }
 
-            queryToDryRun += queryToDisplay;
             if (table.preOps){
                 table.preOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
+                    queryMeta.preOpsQuery += query + ";\n";
                 });
             }
             if (table.postOps){
                 table.postOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Post operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
+                    queryMeta.postOpsQuery += query + ";\n";
                 });
             }
             let tableFound = {
@@ -436,7 +483,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     }
 
     if (assertions === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
     }
 
     let assertionCountForFile = 0;
@@ -445,6 +492,9 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         if (assertion.fileName === relativeFilePath) {
+            if (queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === ""){
+                queryMeta.type = "assertion";
+            }
             let assertionFound = {
                         type: "assertion",
                         tags: assertion.tags,
@@ -461,15 +511,16 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         }
     }
     queryToDisplay += assertionQuery;
-    queryToDryRun += assertionQuery;
+    queryMeta.assertionQuery = assertionQuery;
 
     if (operations === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
     }
 
     for (let i = 0; i < operations.length; i++) {
         let operation = operations[i];
         if (operation.fileName === relativeFilePath) {
+            queryMeta.type = "operation";
             let operationsCountForFile = 0;
             let opQueries = operation.queries;
             let finalOperationQuery = "";
@@ -479,7 +530,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                 finalOperationQuery += opQueries[i] + "\n ;";
             }
             queryToDisplay += finalOperationQuery;
-            queryToDryRun += finalOperationQuery;
+            queryMeta.operationsQuery += finalOperationQuery;
             let operationFound = {
                     type: "operation",
                     tags: operation.tags,
@@ -495,7 +546,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         }
     }
 
-    return { tables: finalTables, fullQuery: queryToDisplay, queryToDryRun: queryToDryRun };
+    return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
 };
 
 
@@ -741,30 +792,6 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
 }
 
-export async function getTableMetadata(document: vscode.TextDocument, freshCompilation: boolean) {
-    let tableMetadata;
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
-    if (!filename || !relativeFilePath || !extension) { return; }
-
-    let workspaceFolder = getWorkspaceFolder();
-    if (!workspaceFolder) { return; }
-
-    let dataformCompiledJson;
-    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson){
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
-    } else {
-        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-    }
-
-    if (dataformCompiledJson) {
-        tableMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
-    }
-    return tableMetadata;
-}
-
 function readFile(filePath:string) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, data) => {
@@ -911,7 +938,7 @@ export async function  getMultipleFileSelection(workspaceFolder:string){
 }
 
 export async function runMultipleFilesFromSelection(workspaceFolder:string, selectedFiles:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
-    let tableMetadatas:any[] = [];
+    let fileMetadatas:any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
     CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
@@ -920,15 +947,15 @@ export async function runMultipleFilesFromSelection(workspaceFolder:string, sele
         for (let i = 0; i < selectedFiles.length; i ++){
             let relativeFilepath = selectedFiles[i];
             if (dataformCompiledJson && relativeFilepath){
-                tableMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
+                fileMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
             }
         }
     }
 
     let actionsList: string[] = [];
-    tableMetadatas.forEach(tableMetadata => {
-        if (tableMetadata) {
-            tableMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+    fileMetadatas.forEach(fileMetadata => {
+        if (fileMetadata) {
+            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
                 const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
                 actionsList.push(action);
             });
@@ -944,6 +971,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder:string, sele
 export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
+    //TODO: We can probably use `getCurrentFileMetadata` function
     var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
     if (!filename || !relativeFilePath || !extension) { return; }
 
@@ -959,7 +987,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
 
     // all 3 of these togather take less than 0.35ms (dataform wt 285 nodes)
-    let [declarationsAndTargets, dataformTags, tableMetadata] = await Promise.all([
+    let [declarationsAndTargets, dataformTags, currFileMetadata] = await Promise.all([
         getDependenciesAutoCompletionItems(dataformCompiledJson),
         getDataformTags(dataformCompiledJson),
         getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson)
@@ -968,10 +996,10 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //TODO: Takes less than 2ms (dataform wt 285 nodes)
+        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
     }
 
-    if (tableMetadata.fullQuery === "") {
+    if (currFileMetadata.fullQuery === "") {
         vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
         return;
     }
@@ -980,14 +1008,29 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
         showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
     }
     if (showCompiledQueryInVerticalSplitOnSave) {
-        writeCompiledSqlToFile(tableMetadata.fullQuery, compiledSqlFilePath, true);
+        writeCompiledSqlToFile(currFileMetadata.fullQuery, compiledSqlFilePath, true);
     }
+
+    let queryToDryRun = "";
+    if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view"){
+        queryToDryRun = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.tableOrViewQuery;
+    } else if (currFileMetadata.queryMeta.type === "assertion") {
+        queryToDryRun = currFileMetadata.queryMeta.assertionQuery;
+    } else if (currFileMetadata.queryMeta.type === "operation"){
+        queryToDryRun =  currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.operationsQuery;
+    } else if (currFileMetadata.queryMeta.type === "incremental"){
+        //TODO: defaulting to using incremental query to dry run for now
+        // let nonIncrementalQuery = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.nonIncrementalQuery;
+        let incrementalQuery = currFileMetadata.queryMeta.incrementalPreOpsQuery.trimStart() + currFileMetadata.queryMeta.incrementalQuery.trimStart();
+        queryToDryRun = incrementalQuery;
+    }
+
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
-        queryDryRun(tableMetadata.queryToDryRun),
-        //TODO: check if tables[0] is valid ??
-        queryDryRun(tableMetadata?.tables[0]?.preOps ? tableMetadata?.tables[0]?.preOps[0]: ""),
-        queryDryRun(tableMetadata?.tables[0]?.postOps ? tableMetadata?.tables[0]?.postOps[0]: "")
+        queryDryRun(queryToDryRun),
+        //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
+        queryDryRun(currFileMetadata.queryMeta.preOpsQuery),
+        queryDryRun(currFileMetadata.queryMeta.postOpsQuery)
     ]);
 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
@@ -997,19 +1040,21 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
         }
 
         let offSet = 0;
-        if (tableMetadata.tables[0].type === "table" || tableMetadata.tables[0].type === "view") {
+        if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view") {
             offSet = tableQueryOffset;
-        } else if (tableMetadata.tables[0].type === "assertion") {
+        } else if (currFileMetadata.queryMeta.type === "assertion") {
             offSet = assertionQueryOffset;
+        } else if (currFileMetadata.queryMeta.type === "incremental"){
+            offSet = incrementalTableOffset;
         }
 
         if (sqlxBlockMetadata){
-            setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, compiledSqlFilePath, diagnosticCollection, sqlxBlockMetadata, offSet);
+            setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
         return;
     }
     let combinedTableIds = "";
-    tableMetadata.tables.forEach((table) => {
+    currFileMetadata.tables.forEach((table) => {
         let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
         combinedTableIds += targetTableId;
     });

@@ -1,6 +1,6 @@
 import { CancellationToken, commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext, window, workspace } from "vscode";
 import * as vscode from 'vscode';
-import { getTableMetadata, getNonce, getFileNameFromDocument } from '../utils';
+import {getNonce, getFileNameFromDocument, getCurrentFileMetadata } from '../utils';
 import { CenterPanel } from "./register-center-panel";
 // import { dataformTags } from "../extension";
 
@@ -9,25 +9,17 @@ export async function registerWebViewProvider(context: ExtensionContext) {
     const provider = new SidebarWebViewProvider(context.extensionUri, context);
     context.subscriptions.push(window.registerWebviewViewProvider('dataform-sidebar', provider));
 
-    context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.getTableMetadataForSidePanel', async () => {
-        let document = vscode.window.activeTextEditor?.document;
-        if(!document){return;}
-        var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
-        if (!filename || !relativeFilePath || !extension){
-          return;
-        }
-        if (document) {
-            let tableMetadata = await getTableMetadata(document, false);
-            if (tableMetadata) {
-                provider.view?.webview.postMessage({ "tableMetadata": tableMetadata });
-            }
+    context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.getCurrFileMetadataForSidePanel', async () => {
+        let currFileMetadata = await getCurrentFileMetadata(false);
+        if (currFileMetadata) {
+            provider.view?.webview.postMessage({ "currFileMetadata": currFileMetadata });
         }
     }));
 
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) {
-            vscode.commands.executeCommand('vscode-dataform-tools.getTableMetadataForSidePanel');
+            vscode.commands.executeCommand('vscode-dataform-tools.getCurrFileMetadataForSidePanel');
         }
     }, null, context.subscriptions);
 
@@ -44,7 +36,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
 
         webviewView.onDidChangeVisibility(() => {
             if (webviewView.visible) {
-                vscode.commands.executeCommand('vscode-dataform-tools.getTableMetadataForSidePanel');
+                vscode.commands.executeCommand('vscode-dataform-tools.getCurrFileMetadataForSidePanel');
             }
         });
 
@@ -57,7 +49,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
 
         let isFileOpen = vscode.window.activeTextEditor?.document.uri.fsPath;
         if (isFileOpen) {
-            vscode.commands.executeCommand('vscode-dataform-tools.getTableMetadataForSidePanel');
+            vscode.commands.executeCommand('vscode-dataform-tools.getCurrFileMetadataForSidePanel');
         }
 
         webviewView.webview.onDidReceiveMessage(async (data) => {

@@ -43,7 +43,14 @@
                     "title": "Dataform",
                     "icon": "media/dataform.svg"
                 }
-            ]
+            ],
+        "panel": [
+            {
+            "id": "queryResultsContainer",
+            "title": "Dataform tools",
+            "icon": "path/to/icon.svg"
+            }
+      ]
         },
         "views": {
             "dataform-sidebar-view": [
@@ -54,7 +61,14 @@
                     "icon": "media/dataform.svg",
                     "contextualTitle": "Dataform"
                 }
-            ]
+            ],
+            "queryResultsContainer": [
+                {
+                  "type": "webview",
+                  "id": "queryResultsView",
+                  "name": "Dataform tools"
+                }
+              ]
         },
         "snippets": [
             {
@@ -67,6 +81,16 @@
             }
         ],
         "commands": [
+            {
+                "command": "vscode-dataform-tools.runQuery",
+                "category": "Dataform",
+                "title": "Run query"
+            },
+            {
+                "command": "vscode-dataform-tools.cancelQuery",
+                "category": "Dataform",
+                "title": "Cancel query"
+            },
             {
                 "command": "vscode-dataform-tools.enable",
                 "category": "Dataform",

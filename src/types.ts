@@ -15,7 +15,17 @@ export interface Table {
 export interface TablesWtFullQuery {
     tables: Table[];
     fullQuery: string;
-    queryToDryRun: string;
+    queryMeta: {
+        type:string,
+        tableOrViewQuery: string
+        nonIncrementalQuery: string
+        incrementalQuery: string
+        incrementalPreOpsQuery: string
+        preOpsQuery: string
+        postOpsQuery: string
+        assertionQuery: string
+        operationsQuery: string
+    }
 }
 
 export interface Assertion {

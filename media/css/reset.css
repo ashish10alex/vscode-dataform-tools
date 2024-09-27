@@ -78,3 +78,13 @@ img {
   .collapsed .navbar-content {
 	display: none;
   }
+
+  .warning {
+	display: flex;
+	align-items: center;
+	color: #333;
+  }
+  
+  .warning svg {
+	margin-right: 5px;
+  }
