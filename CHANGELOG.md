@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.1.0...v0.1.1) (2024-09-30)
+
+
+### Features
+
+* explicitly add limit to only preview query results ([af83c83](https://github.com/ashish10alex/vscode-dataform-tools/commit/af83c83d8038f531246de36bf7fd04dd750150e3))
+
 ## [0.1.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.0.61...v0.1.0) (2024-09-27)
 
 
