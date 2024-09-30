@@ -191,5 +191,5 @@ export async function activate(context: vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated
 export function deactivate() {
-    console.log('Extension "enable-disable-extension" is now deactivated.');
+    console.log('Extension "vscode-dataform-tools" is now deactivated.');
 }
