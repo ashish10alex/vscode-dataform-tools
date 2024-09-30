@@ -140,13 +140,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); }));
 
-    //TODO: Do we need to create a disposable variable ?
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
     );
 
     /**
-     * Takes ~2 seconds as we compile the project and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
+     * NOTE: Takes ~2 seconds as we compile the project (~200 nodes ) and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
      */
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
         await formatCurrentFile(diagnosticCollection);
