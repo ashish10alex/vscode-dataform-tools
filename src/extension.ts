@@ -53,6 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
     globalThis.bigQueryJob = undefined;
     globalThis.cancelBigQueryJobSignal = false;
+    globalThis.queryLimit = 1000;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {

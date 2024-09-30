@@ -53,6 +53,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 return;
+              case 'queryLimit':
+                if (message.value){
+                  queryLimit = message.value;
+                }
+                return;
             }
           },
           undefined,
@@ -110,6 +115,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                <button class="beta-button" disabled>BETA</button>
         </div>
         <p class="top-left">Query results will be dispalyed here</p>
+        <select id="queryLimit">
+          <option value="1000" selected>Limit: 1000</option>
+          <option value="2000">Limit: 2000</option>
+          <option value="5000">Limit: 5000</option>
+        </select>
         <button id="runQueryButton" class="runQueryButton" title="Runs current file">RUN</button>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
@@ -134,6 +144,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                <button class="beta-button" disabled>BETA</button>
         </div>
         <span class="bigquery-job-cancelled"></span>
+        <select id="queryLimit">
+          <option value="1000" selected>Limit: 1000</option>
+          <option value="2000">Limit: 2000</option>
+          <option value="5000">Limit: 5000</option>
+        </select>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
@@ -158,6 +173,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                <button class="beta-button" disabled>BETA</button>
         </div>
         <span class="warning">❕ There is no data to display</span>
+        <select id="queryLimit">
+          <option value="1000" selected>Limit: 1000</option>
+          <option value="2000">Limit: 2000</option>
+          <option value="5000">Limit: 5000</option>
+        </select>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
@@ -166,7 +186,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebviewError(webview: vscode.Webview) {
-    const showBigQueryErrorScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showBigQueryError.js"));
+    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const nonce = getNonce();
     return /*html*/ `
@@ -182,9 +202,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <div class="beta-button-container">
                <button class="beta-button" disabled>BETA</button>
         </div>
+        <select id="queryLimit">
+          <option value="1000" selected>Limit: 1000</option>
+          <option value="2000">Limit: 2000</option>
+          <option value="5000">Limit: 5000</option>
+        </select>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <p class="top-left" style="color: red"><span id="bigqueryerror"></span></p>
-        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryErrorScriptUri}"></script>
+        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
       </body>
       </html>
     `;
@@ -194,6 +219,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebview(webview: vscode.Webview) {
       const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));
+      const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
       const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
       const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
       const nonce = getNonce();
@@ -214,10 +240,16 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <div class="beta-button-container">
                <button class="beta-button" disabled>BETA</button>
         </div>
+        <select id="queryLimit">
+          <option value="1000" selected>Limit: 1000</option>
+          <option value="2000">Limit: 2000</option>
+          <option value="5000">Limit: 5000</option>
+        </select>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
         <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
         <p class="top-left">Query results ran at: <span id="datetime"></span></p>
         <table id="bigqueryResults" class="display" width="100%"></table>
+        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </body>
       </html>

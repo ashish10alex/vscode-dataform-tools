@@ -105,9 +105,14 @@ export async function queryBigQuery(query: string) {
         cancelBigQueryJobSignal = false;
     };
 
+    const options = {
+        maxResults: queryLimit
+    };
+
     //TODO: even when the job has been cancelled it might return results, handle this
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
-    const [rows] = await bigQueryJob.getQueryResults();
+    const [rows] = await bigQueryJob.getQueryResults(options);
+    queryLimit = 1000; // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
 
     let totalBytesBilled;
 

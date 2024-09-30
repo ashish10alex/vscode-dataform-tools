@@ -72,3 +72,12 @@
 #bigqueryResults {
 	margin-top: 20px;
 }
+
+#queryLimit {
+	position: absolute;
+	top: 10px;
+	right: 200px;
+	padding: 5px 10px;
+	border: none;
+	cursor: pointer;
+}

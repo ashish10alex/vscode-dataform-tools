@@ -84,7 +84,7 @@
             {
                 "command": "vscode-dataform-tools.runQuery",
                 "category": "Dataform",
-                "title": "Run query"
+                "title": "Preview query results"
             },
             {
                 "command": "vscode-dataform-tools.cancelQuery",

@@ -24,5 +24,9 @@ declare global {
   var cancelBigQueryJobSignal: boolean
 }
 
+declare global {
+  var queryLimit: number
+}
+
 
 export {};
