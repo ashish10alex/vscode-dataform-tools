@@ -21,8 +21,6 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
-        "onCommand:extension.enable",
-        "onCommand:extension.disable",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
@@ -92,11 +90,6 @@
                 "title": "Cancel query"
             },
             {
-                "command": "vscode-dataform-tools.enable",
-                "category": "Dataform",
-                "title": "Enable extension"
-            },
-            {
                 "command": "vscode-dataform-tools.runFilesTagsWtOptions",
                 "category": "Dataform",
                 "title": "Run file(s) / tag(s) with options"
@@ -105,11 +98,6 @@
                 "command": "vscode-dataform-tools.formatCurrentfile",
                 "category": "Dataform",
                 "title": "Format current file"
-            },
-            {
-                "command": "vscode-dataform-tools.disable",
-                "category": "Dataform",
-                "title": "Disable extension"
             },
             {
                 "command": "vscode-dataform-tools.runTag",

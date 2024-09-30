@@ -1,32 +1,10 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import path from 'path';
 import os from 'os';
-// import { exec as exec } from 'child_process';
 
 let isEnabled = true;
 
-
 import { DataformCompiledJson } from './types';
-
-let onSaveDisposable: vscode.Disposable | null = null;
-let fixErrorCommandDisposable: vscode.Disposable | null = null;
-let _sourcesAutoCompletionDisposable: vscode.Disposable | null = null;
-let _dependenciesAutoCompletionDisposable: vscode.Disposable | null = null;
-let _tagsAutoCompletionDisposable: vscode.Disposable | null = null;
-let runCurrentFileCommandDisposable: vscode.Disposable | null = null;
-let runCurrentFileWtDepsCommandDisposable: vscode.Disposable | null = null;
-let showCompiledQueryWtDryRunDisposable: vscode.Disposable | null = null;
-let runTagDisposable: vscode.Disposable | null = null;
-let runTagWtDepsDisposable: vscode.Disposable | null = null;
-let runTagWtDownstreamDepsDisposable: vscode.Disposable | null = null;
-let runCurrentFileWtDownstreamDepsCommandDisposable: vscode.Disposable | null = null;
-let dataformRefDefinitionProviderDisposable: vscode.Disposable | null = null;
-let dataformHoverProviderDisposable: vscode.Disposable | null = null;
-let _dataformCodeActionProviderDisposable: vscode.Disposable | null = null;
-let formatCurrentFileDisposable: vscode.Disposable | null = null;
-
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { registerCenterPanel } from './views/register-center-panel';
@@ -155,19 +133,18 @@ export async function activate(context: vscode.ExtensionContext) {
         })
         );
 
-        dataformRefDefinitionProviderDisposable = vscode.languages.registerDefinitionProvider(
+        context.subscriptions.push(vscode.languages.registerDefinitionProvider(
             { language: 'sqlx' },
             new DataformRefDefinitionProvider()
-        );
-        context.subscriptions.push(dataformRefDefinitionProviderDisposable);
+        ));
 
-        dataformHoverProviderDisposable = vscode.languages.registerHoverProvider(
+        context.subscriptions.push(vscode.languages.registerHoverProvider(
             { language: 'sqlx' },
             new DataformHoverProvider()
-        );
-        context.subscriptions.push(dataformHoverProviderDisposable);
+        ));
 
-        fixErrorCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.fixError',
+        context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.fixError',
             async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
                 applyCodeActionUsingDiagnosticMessage(range, diagnosticMessage);
                 document.save();
@@ -179,26 +156,20 @@ export async function activate(context: vscode.ExtensionContext) {
                     await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
                 }
 
-            });
+            })
+        );
 
-        context.subscriptions.push(fixErrorCommandDisposable);
+        context.subscriptions.push(dataformCodeActionProviderDisposable());
 
-        _dataformCodeActionProviderDisposable = dataformCodeActionProviderDisposable();
-        context.subscriptions.push(_dataformCodeActionProviderDisposable);
+        context.subscriptions.push(sourcesAutoCompletionDisposable());
 
-        _sourcesAutoCompletionDisposable = sourcesAutoCompletionDisposable();
-        context.subscriptions.push(_sourcesAutoCompletionDisposable);
+        context.subscriptions.push(dependenciesAutoCompletionDisposable());
 
-        _dependenciesAutoCompletionDisposable = dependenciesAutoCompletionDisposable();
-        context.subscriptions.push(_dependenciesAutoCompletionDisposable);
-
-        _tagsAutoCompletionDisposable = tagsAutoCompletionDisposable();
-        context.subscriptions.push(_tagsAutoCompletionDisposable);
+        context.subscriptions.push(tagsAutoCompletionDisposable());
 
         context.subscriptions.push(editorSyncDisposable);
 
-        runCurrentFileCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); });
-        context.subscriptions.push(runCurrentFileCommandDisposable);
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false) }));
 
         //TODO: Do we need to create a disposable variable ?
         context.subscriptions.push(
@@ -208,7 +179,7 @@ export async function activate(context: vscode.ExtensionContext) {
         /**
          * Takes ~2 seconds as we compile the project and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
          */
-        formatCurrentFileDisposable = vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
             let document = vscode.window.activeTextEditor?.document;
             if (!document) {
                 vscode.window.showErrorMessage("VS Code document object was undefined");
@@ -258,31 +229,26 @@ export async function activate(context: vscode.ExtensionContext) {
             await formatSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 
             document?.save();
-        });
-        context.subscriptions.push(formatCurrentFileDisposable);
+        }));
 
-        runCurrentFileWtDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false); });
-        context.subscriptions.push(runCurrentFileWtDepsCommandDisposable);
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false);}));
 
-        runCurrentFileWtDownstreamDepsCommandDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); });
-        context.subscriptions.push(runCurrentFileWtDownstreamDepsCommandDisposable);
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); }));
 
 
-        onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
+        context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             let showCompiledQueryInVerticalSplitOnSave = undefined;
             await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        });
-        context.subscriptions.push(onSaveDisposable);
+        }));
 
-        showCompiledQueryWtDryRunDisposable = vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
+        context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
             await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        });
+        }));
 
-        context.subscriptions.push(showCompiledQueryWtDryRunDisposable);
-
-        runTagDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
             if (dataformTags.length === 0) {
                 vscode.window.showInformationMessage('No tags found in project');
                 return;
@@ -303,10 +269,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
                 runCommandInTerminal(runTagsCmd);
             });
-        });
-        context.subscriptions.push(runTagDisposable);
+        }));
 
-        runTagWtDepsDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
             if (dataformTags.length === 0) {
                 vscode.window.showInformationMessage('No tags found in project');
                 return;
@@ -326,10 +291,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
                 runCommandInTerminal(runTagsWtDepsCommand);
             });
-        });
-        context.subscriptions.push(runTagWtDepsDisposable);
+        }));
 
-        runTagWtDownstreamDepsDisposable = vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
+        context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
             if (dataformTags.length === 0) {
                 vscode.window.showInformationMessage('No tags found in project');
                 return;
@@ -349,8 +313,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
                 runCommandInTerminal(runTagsWtDownstreamDepsCommand);
             });
-        });
-        context.subscriptions.push(runTagWtDownstreamDepsDisposable);
+        }));
 
     }
 
@@ -358,80 +321,6 @@ export async function activate(context: vscode.ExtensionContext) {
     if (isEnabled) {
         registerAllCommands(context);
     }
-
-    let enableCommand = vscode.commands.registerCommand('vscode-dataform-tools.enable', () => {
-        if (!isEnabled) {
-            isEnabled = true;
-            registerAllCommands(context);
-            vscode.window.showInformationMessage('Extension enabled');
-        } else {
-            vscode.window.showInformationMessage('Extension is already enabled');
-        }
-    });
-
-    let disableCommand = vscode.commands.registerCommand('vscode-dataform-tools.disable', () => {
-        if (isEnabled) {
-            isEnabled = false;
-            if (onSaveDisposable !== null) {
-                onSaveDisposable.dispose();
-            }
-            if (editorSyncDisposable !== null) {
-                editorSyncDisposable.dispose();
-            }
-            if (_sourcesAutoCompletionDisposable !== null) {
-                _sourcesAutoCompletionDisposable.dispose();
-            }
-            if (_dependenciesAutoCompletionDisposable !== null) {
-                _dependenciesAutoCompletionDisposable.dispose();
-            }
-            if (_tagsAutoCompletionDisposable !== null) {
-                _tagsAutoCompletionDisposable.dispose();
-            }
-            if (runCurrentFileCommandDisposable !== null) {
-                runCurrentFileCommandDisposable.dispose();
-            }
-            if (runCurrentFileWtDepsCommandDisposable !== null) {
-                runCurrentFileWtDepsCommandDisposable.dispose();
-            }
-            if (showCompiledQueryWtDryRunDisposable !== null) {
-                showCompiledQueryWtDryRunDisposable.dispose();
-            }
-            if (runTagDisposable !== null) {
-                runTagDisposable.dispose();
-            }
-            if (runTagWtDepsDisposable !== null) {
-                runTagWtDepsDisposable.dispose();
-            }
-            if (runTagWtDownstreamDepsDisposable !== null) {
-                runTagWtDownstreamDepsDisposable.dispose();
-            }
-            if (runCurrentFileWtDownstreamDepsCommandDisposable !== null) {
-                runCurrentFileWtDownstreamDepsCommandDisposable.dispose();
-            }
-            if (dataformRefDefinitionProviderDisposable) {
-                dataformRefDefinitionProviderDisposable.dispose();
-            }
-            if (dataformHoverProviderDisposable) {
-                dataformHoverProviderDisposable.dispose();
-            }
-            if (fixErrorCommandDisposable) {
-                fixErrorCommandDisposable.dispose();
-            }
-            if (_dataformCodeActionProviderDisposable) {
-                _dataformCodeActionProviderDisposable.dispose();
-            }
-            if (formatCurrentFileDisposable) {
-                formatCurrentFileDisposable.dispose();
-            }
-            vscode.window.showInformationMessage('Extension disabled');
-        } else {
-            vscode.window.showInformationMessage('Extension is already disabled');
-        }
-    });
-
-    context.subscriptions.push(enableCommand);
-    context.subscriptions.push(disableCommand);
-
 }
 
 // This method is called when your extension is deactivated
