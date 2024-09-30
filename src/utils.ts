@@ -10,7 +10,7 @@ import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
-import { getRunMultipleTagsCommand } from './commands';
+import { getRunTagsWtOptsCommand } from './runTag';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -923,7 +923,7 @@ export async function  getMultipleTagsSelection(){
 
 export async function runMultipleTagsFromSelection(workspaceFolder:string, selectedTags:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-    let runmultitagscommand = getRunMultipleTagsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
+    let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
     runCommandInTerminal(runmultitagscommand);
 }
 

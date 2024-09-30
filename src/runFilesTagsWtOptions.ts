@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getMultipleTagsSelection, getWorkspaceFolder, runCommandInTerminal, runCurrentFile, runMultipleFilesFromSelection, runMultipleTagsFromSelection } from './utils';
-import { getRunTagsWtOptsCommand } from './commands';
+import { getRunTagsWtOptsCommand } from './runTag';
 
 export async function runFilesTagsWtOptions() {
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];

@@ -1,6 +1,28 @@
-import { getRunTagsWtOptsCommand } from "./commands";
 import { getDataformCompilationTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal } from "./utils";
 import * as vscode from 'vscode';
+
+
+export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
+    let cmd = `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal}`;
+    if (typeof tags === "object") {
+        for (let tag of tags) {
+            cmd += ` --tags=${tag}`;
+        }
+    } else {
+        cmd += ` --tags=${tags}`;
+    }
+
+    if (includDependencies) {
+        cmd += ` --include-deps`;
+    }
+    if (includeDownstreamDependents) {
+        cmd += ` --include-dependents`;
+    }
+    if (fullRefresh) {
+        cmd += ` --full-refresh`;
+    }
+    return cmd;
+}
 
 export async function runTag(includeDependencies: boolean, includeDependents: boolean) {
     if (dataformTags.length === 0) {
