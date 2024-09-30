@@ -17,6 +17,7 @@ import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { formatCurrentFile } from './formatCurrentFile';
+import { previewQueryResults } from './previewQueryResults';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -76,29 +77,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async () => {
-            let fileMetadata = await getCurrentFileMetadata(false);
-            if (!fileMetadata) {
-                return;
-            }
-            let query = "";
-            if (fileMetadata.queryMeta.type === "assertion") {
-                query = fileMetadata.queryMeta.assertionQuery;
-            } else if (fileMetadata.queryMeta.type === "table" || fileMetadata.queryMeta.type === "view") {
-                query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.tableOrViewQuery;
-            } else if (fileMetadata.queryMeta.type === "operations") {
-                query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
-            } else if (fileMetadata.queryMeta.type === "incremental") {
-                query = fileMetadata.queryMeta.incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery;
-            }
-            if (query === "") {
-                vscode.window.showWarningMessage("No query to run");
-                return;
-            }
-            if (!queryResultsViewProvider._view) {
-                queryResultsViewProvider.focusWebview(query);
-            } else {
-                queryResultsViewProvider.updateContent(query);
-            }
+            await previewQueryResults(queryResultsViewProvider);
         })
     );
 
