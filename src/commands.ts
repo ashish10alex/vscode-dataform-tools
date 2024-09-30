@@ -1,9 +1,4 @@
 
-
-export function getRunTagsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string): string {
-    return `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal} --tags=${tag}`;
-}
-
 export function getRunMultipleTagsCommand(workspaceFolder: string, tags: string, dataformCompilationTimeoutVal:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean ): string {
     let runMultiTagsCommand = `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal}`;
     for (let tag of tags) {
@@ -21,7 +16,7 @@ export function getRunMultipleTagsCommand(workspaceFolder: string, tags: string,
     return runMultiTagsCommand;
 }
 
-export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string, includeDependencies:boolean, includeDependents:boolean, fullRefresh:boolean): string {
+export function getRunTagsWtOptsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string, includeDependencies:boolean, includeDependents:boolean, fullRefresh:boolean): string {
     let runTagsCommand = `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal}`;
     runTagsCommand += ` --tags=${tag}`;
     if (includeDependencies) {
@@ -34,8 +29,4 @@ export function getRunTagsWtDepsCommand(workspaceFolder: string, tag: string, da
         runTagsCommand += ` --full-refresh`;
     }
     return runTagsCommand;
-}
-
-export function getRunTagsWtDownstreamDepsCommand(workspaceFolder: string, tag: string, dataformCompilationTimeoutVal:string): string {
-    return `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal} --tags=${tag} --include-dependents`;
 }

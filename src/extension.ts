@@ -9,15 +9,15 @@ import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath } from './constants';
 import { getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, getVSCodeDocument, getCurrentFileMetadata } from './utils';
-import { executableIsAvailable, runCurrentFile, runCommandInTerminal, runCompilation, getDataformCompilationTimeoutFromConfig } from './utils';
+import { executableIsAvailable, runCurrentFile, runCompilation } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
-import { getRunTagsCommand, getRunTagsWtDepsCommand, getRunTagsWtDownstreamDepsCommand } from './commands';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
+import { runTag } from './runTag';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -170,70 +170,21 @@ export async function activate(context: vscode.ExtensionContext) {
         }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
-        if (dataformTags.length === 0) {
-            vscode.window.showInformationMessage('No tags found in project');
-            return;
-        }
-        vscode.window.showQuickPick(dataformTags, {
-            onDidSelectItem: (tag) => {
-                // This is triggered as soon as a item is hovered over
-            }
-        }).then((selection) => {
-            if (!selection) {
-                return;
-            }
-
-            if (!workspaceFolder) { return; }
-
-            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-            let runTagsCmd = getRunTagsCommand(workspaceFolder, selection, defaultDataformCompileTime);
-
-            runCommandInTerminal(runTagsCmd);
-        });
+        let includeDependencies = false;
+        let includeDependents = false;
+        runTag(includeDependencies, includeDependents);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
-        if (dataformTags.length === 0) {
-            vscode.window.showInformationMessage('No tags found in project');
-            return;
-        }
-        vscode.window.showQuickPick(dataformTags, {
-            onDidSelectItem: (tag) => {
-                // This is triggered as soon as a item is hovered over
-            }
-        }).then((selection) => {
-            if (!selection) {
-                return;
-            }
-
-            if (!workspaceFolder) { return; }
-            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-            let runTagsWtDepsCommand = getRunTagsWtDepsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, false, false);
-
-            runCommandInTerminal(runTagsWtDepsCommand);
-        });
+        let includeDependencies = true;
+        let includeDependents = false;
+        runTag(includeDependencies, includeDependents);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
-        if (dataformTags.length === 0) {
-            vscode.window.showInformationMessage('No tags found in project');
-            return;
-        }
-        vscode.window.showQuickPick(dataformTags, {
-            onDidSelectItem: (tag) => {
-                // This is triggered as soon as a item is hovered over
-            }
-        }).then((selection) => {
-            if (!selection) {
-                return;
-            }
-
-            if (!workspaceFolder) { return; }
-            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-            let runTagsWtDownstreamDepsCommand = getRunTagsWtDownstreamDepsCommand(workspaceFolder, selection, defaultDataformCompileTime);
-
-            runCommandInTerminal(runTagsWtDownstreamDepsCommand);
-        });
+        let includeDependencies = false;
+        let includeDependents = true;
+        runTag(includeDependencies, includeDependents);
     }));
 
 }
