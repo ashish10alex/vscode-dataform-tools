@@ -1,9 +1,7 @@
-import { CancellationToken, commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext, window, workspace } from "vscode";
+import { CancellationToken, commands, ExtensionContext, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext, window } from "vscode";
 import * as vscode from 'vscode';
-import {getNonce, getFileNameFromDocument, getCurrentFileMetadata } from '../utils';
+import {getNonce, getCurrentFileMetadata } from '../utils';
 import { CenterPanel } from "./register-center-panel";
-// import { dataformTags } from "../extension";
-
 
 export async function registerWebViewProvider(context: ExtensionContext) {
     const provider = new SidebarWebViewProvider(context.extensionUri, context);

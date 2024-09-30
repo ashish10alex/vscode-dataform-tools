@@ -2,6 +2,14 @@ import * as vscode from 'vscode';
 import { getCurrentFileMetadata } from "./utils";
 import { CustomViewProvider } from './views/register-query-results-panel';
 
+export async function runQueryInPanel(query: string, queryResultsViewProvider: CustomViewProvider) {
+    if (!queryResultsViewProvider._view) {
+        queryResultsViewProvider.focusWebview(query);
+    } else {
+        queryResultsViewProvider.updateContent(query);
+    }
+}
+
 export async function previewQueryResults(queryResultsViewProvider: CustomViewProvider) {
     let fileMetadata = await getCurrentFileMetadata(false);
     if (!fileMetadata) {
@@ -21,9 +29,5 @@ export async function previewQueryResults(queryResultsViewProvider: CustomViewPr
         vscode.window.showWarningMessage("No query to run");
         return;
     }
-    if (!queryResultsViewProvider._view) {
-        queryResultsViewProvider.focusWebview(query);
-    } else {
-        queryResultsViewProvider.updateContent(query);
-    }
+    runQueryInPanel(query, queryResultsViewProvider);
 }

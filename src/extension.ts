@@ -17,7 +17,7 @@ import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { formatCurrentFile } from './formatCurrentFile';
-import { previewQueryResults } from './previewQueryResults';
+import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -98,11 +98,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
             let query = fileMetadata.queryMeta.assertionQuery;
-            if (!queryResultsViewProvider._view) {
-                queryResultsViewProvider.focusWebview(query);
-            } else {
-                queryResultsViewProvider.updateContent(query);
-            }
+            await runQueryInPanel(query, queryResultsViewProvider);
         })
     );
 
