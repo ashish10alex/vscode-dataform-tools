@@ -136,9 +136,7 @@
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDeps",
                 "category": "Dataform",
-                "title": "Run current file with dependencies",
-                "icon": "$(debug-rerun)",
-                "group": "navigation@2"
+                "title": "Run current file with dependencies"
             },
             {
                 "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
@@ -184,12 +182,6 @@
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "alt": "vscode-dataform-tools.runCurrentFile",
                     "group": "navigation"
-                },
-                {
-                    "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
-                    "alt": "vscode-dataform-tools.runCurrentFileWtDeps",
-                    "group": "navigation@2"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
