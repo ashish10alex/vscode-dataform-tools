@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -24,8 +24,8 @@ export function getNonce() {
     return text;
 }
 
-function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | undefined{
-    if (struct){
+function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | undefined {
+    if (struct) {
         for (let i = 0; i < struct.length; i++) {
             let declarationName = struct[i].target.name;
             if (searchTerm === declarationName) {
@@ -35,7 +35,7 @@ function getTreeRootFromWordInStruct(struct:any, searchTerm:string): string | un
     }
 }
 
-export async function getCurrentFileMetadata(freshCompilation: boolean){
+export async function getCurrentFileMetadata(freshCompilation: boolean) {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
         return;
@@ -51,20 +51,20 @@ export async function getCurrentFileMetadata(freshCompilation: boolean){
     let dataformCompiledJson;
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
         dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson){
+        if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }
     } else {
         dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
     }
 
-    if (dataformCompiledJson){
+    if (dataformCompiledJson) {
         let fileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
         return fileMetadata;
     }
 }
 
-export async function getPostionOfSourceDeclaration(sourcesJsUri:vscode.Uri, searchTerm:string){
+export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, searchTerm: string) {
     let sourcesDocument = await vscode.workspace.openTextDocument(sourcesJsUri);
 
     let line = null;
@@ -87,19 +87,19 @@ export async function getPostionOfSourceDeclaration(sourcesJsUri:vscode.Uri, sea
 
 export async function getTreeRootFromRef(): Promise<string | undefined> {
     const editor = vscode.window.activeTextEditor;
-    if (!editor){
+    if (!editor) {
         return undefined;
     }
     const position = editor.selection.active;
     const wordRange = editor.document.getWordRangeAtPosition(position);
-    if (!wordRange){
+    if (!wordRange) {
         return undefined;
     }
 
     let searchTerm = editor.document.getText(wordRange);
 
     let workspaceFolder = getWorkspaceFolder();
-    if(!workspaceFolder){
+    if (!workspaceFolder) {
         return;
     }
     let dataformCompiledJson: DataformCompiledJson | undefined;
@@ -107,7 +107,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
         dataformCompiledJson = await runCompilation(workspaceFolder);
-        if (dataformCompiledJson){
+        if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }
     } else {
@@ -124,7 +124,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     if (declarations) {
         treeRoot = getTreeRootFromWordInStruct(declarations, searchTerm);
     }
-    if (treeRoot){return treeRoot;};
+    if (treeRoot) { return treeRoot; };
 
     if (tablePrefix) {
         searchTerm = tablePrefix + "_" + searchTerm;
@@ -133,33 +133,33 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     if (tables) {
         treeRoot = getTreeRootFromWordInStruct(tables, searchTerm);
     }
-    if (treeRoot){return treeRoot;};
+    if (treeRoot) { return treeRoot; };
 
     if (operations) {
         treeRoot = getTreeRootFromWordInStruct(operations, searchTerm);
     }
-    if (treeRoot){return treeRoot;};
+    if (treeRoot) { return treeRoot; };
 
     if (assertions) {
         treeRoot = getTreeRootFromWordInStruct(assertions, searchTerm);
     }
-    if (treeRoot){return treeRoot;};
+    if (treeRoot) { return treeRoot; };
     return undefined;
 }
 
 export function getVSCodeDocument(): vscode.TextDocument | undefined {
-  let document = vscode.window.activeTextEditor?.document;
-  if (!document) {
-    vscode.window.showErrorMessage("VS Code document object was undefined");
-    return;
-  }
-  return document;
+    let document = vscode.window.activeTextEditor?.document;
+    if (!document) {
+        vscode.window.showErrorMessage("VS Code document object was undefined");
+        return;
+    }
+    return document;
 }
 
 export function getLineUnderCursor(): string | undefined {
     let document = getVSCodeDocument();
-    if(!document){
-      return;
+    if (!document) {
+        return;
     }
 
     const editor = vscode.window.activeTextEditor;
@@ -186,7 +186,7 @@ export async function fetchGitHubFileContent(): Promise<string> {
 
     const data = await response.json() as GitHubContentResponse;
     return Buffer.from(data.content, 'base64').toString('utf-8');
-  }
+}
 
 export function executableIsAvailable(name: string) {
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
@@ -198,10 +198,10 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-function getRelativePath(filePath:string) {
+function getRelativePath(filePath: string) {
     const fileUri = vscode.Uri.file(filePath);
     let relativePath = vscode.workspace.asRelativePath(fileUri);
-    if (isRunningOnWindows){
+    if (isRunningOnWindows) {
         relativePath = path.win32.normalize(relativePath);
     }
     return relativePath;
@@ -214,7 +214,7 @@ export function getFileNameFromDocument(document: vscode.TextDocument, showError
     let relativeFilePath = getRelativePath(filePath);
     let validFileType = supportedExtensions.includes(extension);
     if (!validFileType) {
-        if (showErrorMessage){
+        if (showErrorMessage) {
             vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
         }
         return [undefined, undefined, undefined];
@@ -267,7 +267,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 
     fs.writeFileSync(filePath, compiledQuery, 'utf8');
 
-    if (showOutputInVerticalSplit){
+    if (showOutputInVerticalSplit) {
         const outputDocument = await vscode.workspace.openTextDocument(filePath);
         vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
     }
@@ -298,44 +298,44 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
     });
 }
 
-export async function getAllFilesWtAnExtension(workspaceFolder:string, extension:string){
+export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
     const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
     let files = await vscode.workspace.findFiles(globPattern);
     const fileList = files.map(file => vscode.workspace.asRelativePath(file));
     return fileList;
 }
 
-export function getDataformActionCmdFromActionList(actionsList:string[], workspaceFolder:string, dataformCompilationTimeoutVal:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
-        let dataformActionCmd = "";
-        for (let i = 0; i < actionsList.length; i++) {
-            let fullTableName = actionsList[i];
-            if (i === 0) {
-                if (includDependencies) {
-                    if (fullRefresh) {
-                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps --full-refresh`);
-                    } else {
-                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
-                    }
-                } else if (includeDownstreamDependents) {
-                    if (fullRefresh) {
-                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents --full-refresh`);
-                    } else {
+export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    let dataformActionCmd = "";
+    for (let i = 0; i < actionsList.length; i++) {
+        let fullTableName = actionsList[i];
+        if (i === 0) {
+            if (includDependencies) {
+                if (fullRefresh) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps --full-refresh`);
+                } else {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
+                }
+            } else if (includeDownstreamDependents) {
+                if (fullRefresh) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents --full-refresh`);
+                } else {
                     dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
-                    }
                 }
-                else {
-                    if (fullRefresh) {
-                        dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --full-refresh`);
-                    } else {
-                        dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
-                    }
-                }
-            } else {
-                // TODO: Not sure what is this doing ?
-                dataformActionCmd += ` --actions "${fullTableName}"`;
             }
+            else {
+                if (fullRefresh) {
+                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --full-refresh`);
+                } else {
+                    dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
+                }
+            }
+        } else {
+            // TODO: Not sure what is this doing ?
+            dataformActionCmd += ` --actions "${fullTableName}"`;
         }
-        return dataformActionCmd;
+    }
+    return dataformActionCmd;
 }
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
@@ -346,14 +346,14 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         return;
     }
     var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
-    if (!filename || !relativeFilePath || !extension){
-      return;
+    if (!filename || !relativeFilePath || !extension) {
+        return;
     }
     let workspaceFolder = getWorkspaceFolder();
 
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
-    if (!workspaceFolder){
+    if (!workspaceFolder) {
         return;
     }
 
@@ -421,7 +421,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     let finalTables: any[] = [];
 
     if (tables === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
     }
 
     for (let i = 0; i < tables.length; i++) {
@@ -449,14 +449,14 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                 }
             }
 
-            if (table.preOps){
+            if (table.preOps) {
                 table.preOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
                     queryMeta.preOpsQuery += query + ";\n";
                 });
             }
-            if (table.postOps){
+            if (table.postOps) {
                 table.postOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Post operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
@@ -464,24 +464,24 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                 });
             }
             let tableFound = {
-                              type: table.type,
-                              tags: table.tags,
-                              fileName: relativeFilePath,
-                              query: queryToDisplay,
-                              target: table.target,
-                              preOps: table.preOps,
-                              postOps: table.postOps,
-                              dependencyTargets: table.dependencyTargets,
-                              incrementalQuery: table?.incrementalQuery ?? "",
-                              incrementalPreOps: table?.incrementalPreOps ?? []
-                            };
+                type: table.type,
+                tags: table.tags,
+                fileName: relativeFilePath,
+                query: queryToDisplay,
+                target: table.target,
+                preOps: table.preOps,
+                postOps: table.postOps,
+                dependencyTargets: table.dependencyTargets,
+                incrementalQuery: table?.incrementalQuery ?? "",
+                incrementalPreOps: table?.incrementalPreOps ?? []
+            };
             finalTables.push(tableFound);
             break;
         }
     }
 
     if (assertions === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
     }
 
     let assertionCountForFile = 0;
@@ -490,18 +490,18 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
         //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
         let assertion = assertions[i];
         if (assertion.fileName === relativeFilePath) {
-            if (queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === ""){
+            if (queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
                 queryMeta.type = "assertion";
             }
             let assertionFound = {
-                        type: "assertion",
-                        tags: assertion.tags,
-                        fileName: relativeFilePath,
-                        query: assertion.query,
-                        target: assertion.target,
-                        dependencyTargets: assertion.dependencyTargets,
-                        incrementalQuery: "", incrementalPreOps: []
-                    };
+                type: "assertion",
+                tags: assertion.tags,
+                fileName: relativeFilePath,
+                query: assertion.query,
+                target: assertion.target,
+                dependencyTargets: assertion.dependencyTargets,
+                incrementalQuery: "", incrementalPreOps: []
+            };
             finalTables.push(assertionFound);
             assertionCountForFile += 1;
             assertionQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
@@ -512,7 +512,7 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
     queryMeta.assertionQuery = assertionQuery;
 
     if (operations === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta};
+        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
     }
 
     for (let i = 0; i < operations.length; i++) {
@@ -530,15 +530,15 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
             queryToDisplay += finalOperationQuery;
             queryMeta.operationsQuery += finalOperationQuery;
             let operationFound = {
-                    type: "operation",
-                    tags: operation.tags,
-                    fileName: relativeFilePath,
-                    query: finalOperationQuery,
-                    target: operation.target,
-                    dependencyTargets: operation.dependencyTargets,
-                    incrementalQuery: "",
-                    incrementalPreOps: []
-                };
+                type: "operation",
+                tags: operation.tags,
+                fileName: relativeFilePath,
+                query: finalOperationQuery,
+                target: operation.target,
+                dependencyTargets: operation.dependencyTargets,
+                incrementalQuery: "",
+                incrementalPreOps: []
+            };
             finalTables.push(operationFound);
             break;
         }
@@ -548,24 +548,24 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
 };
 
 
-export function getDataformCompilationTimeoutFromConfig(){
-    let dataformCompilationTimeoutVal: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
-    if (dataformCompilationTimeoutVal){
+export function getDataformCompilationTimeoutFromConfig() {
+    let dataformCompilationTimeoutVal: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
+    if (dataformCompilationTimeoutVal) {
         return dataformCompilationTimeoutVal;
     }
     return "5m";
 }
 
-export function getSqlfluffConfigPathFromSettings(){
+export function getSqlfluffConfigPathFromSettings() {
     let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
-    let sqlfluffConfigPath: string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
-    if (sqlfluffConfigPath){
-        if(isRunningOnWindows){
+    let sqlfluffConfigPath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
+    if (sqlfluffConfigPath) {
+        if (isRunningOnWindows) {
             sqlfluffConfigPath = path.win32.normalize(sqlfluffConfigPath);
         }
         return sqlfluffConfigPath;
     }
-    if(!isRunningOnWindows){
+    if (!isRunningOnWindows) {
         return defaultSqlfluffConfigPath;
     }
     return path.win32.normalize(defaultSqlfluffConfigPath);
@@ -638,7 +638,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     let declarations = compiledJson.declarations;
     let dependencies: string[] = [];
 
-    if (sourceAutoCompletionPreference === "${ref('table_name')}"){
+    if (sourceAutoCompletionPreference === "${ref('table_name')}") {
         if (targets?.length) {
             for (let i = 0; i < targets.length; i++) {
                 let targetName = targets[i].name;
@@ -677,120 +677,7 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
     return dependencies;
 }
 
-function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict: any, schemaIdx: number) {
-    let declarationsLegendMetadata: DeclarationsLegendMetadata[] = [];
-    let addedSchemas: string[] = [];
-    let schemaIdxTracker = 0;
-
-    //_schema_idx 0 is reserved for nodes generated by Dataform pipeline
-    declarationsLegendMetadata.push({
-        "_schema": "dataform",
-        "_schema_idx": 0
-    });
-
-    structs.forEach((struct) => {
-        let tableName = `${struct.target.database}.${struct.target.schema}.${struct.target.name}`;
-        let fileName = struct.fileName;
-        let schema = `${struct.target.schema}`;
-
-        // NOTE: Only adding colors in web panel for tables declared in declarations
-        if (type === "declarations") {
-            if (schemaDict.hasOwnProperty(schema)) {
-                schemaIdx = schemaDict[schema];
-            } else {
-                schemaDict[schema] = schemaIdxTracker + 1;
-                schemaIdxTracker += 1;
-                schemaIdx = schemaIdxTracker;
-            }
-        }
-
-        let dependancyTargets = struct?.dependencyTargets;
-
-        let depedancyList: string[] = [];
-        if (dependancyTargets) {
-            dependancyTargets.forEach((dep: Target) => {
-                let dependancyTableName = `${dep.database}.${dep.schema}.${dep.name}`;
-                depedancyList.push(dependancyTableName);
-            });
-        }
-
-        if (depedancyList.length === 0) {
-            dependancyTreeMetadata.push(
-                {
-                    "_name": tableName,
-                    "_fileName": fileName,
-                    "_schema": schema,
-                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
-                }
-            );
-        } else {
-            dependancyTreeMetadata.push(
-                {
-                    "_name": tableName,
-                    "_fileName": fileName,
-                    "_schema": schema,
-                    "_deps": depedancyList,
-                    "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
-                }
-            );
-        }
-
-        if (type === "declarations") {
-            if (!addedSchemas.includes(schema)) {
-                declarationsLegendMetadata.push({
-                    "_schema": schema,
-                    "_schema_idx": schemaIdx
-                });
-                addedSchemas.push(schema);
-            }
-        }
-    });
-    return { "dependancyTreeMetadata": dependancyTreeMetadata, "schemaIdx": schemaIdx, "declarationsLegendMetadata": declarationsLegendMetadata };
-}
-
-export async function generateDependancyTreeMetadata(): Promise<{ dependancyTreeMetadata: DependancyTreeMetadata[], declarationsLegendMetadata: DeclarationsLegendMetadata[] } | undefined> {
-    let dependancyTreeMetadata: DependancyTreeMetadata[] = [];
-    let schemaDict = {}; // used to keep track of unique schema names ( gcp dataset name ) already seen in the compiled json declarations
-    let schemaIdx = 0;   // used to assign a unique index to each unique schema name for color coding dataset in the web panel
-
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
-
-        let workspaceFolder = getWorkspaceFolder();
-        if (!workspaceFolder) {
-            return;
-        }
-
-        let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
-    }
-
-    let output;
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
-        return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
-    }
-    let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
-    let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
-    let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
-    let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
-
-    if (tables) {
-        output = populateDependancyTree("tables", tables, dependancyTreeMetadata, schemaDict, schemaIdx);
-    }
-    if (operations) {
-        output = populateDependancyTree("operations", operations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
-    }
-    if (assertions) {
-        output = populateDependancyTree("assertions", assertions, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
-    }
-    if (declarations) {
-        output = populateDependancyTree("declarations", declarations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx);
-    }
-    return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
-}
-
-export function readFile(filePath:string) {
+export function readFile(filePath: string) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, data) => {
             if (err) {
@@ -803,12 +690,12 @@ export function readFile(filePath:string) {
 }
 
 
-export async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta:{startLine:number, endLine:number, exists: boolean}): Promise<string>{
-    if(!blockRangeWtMeta.exists){
+export async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta: { startLine: number, endLine: number, exists: boolean }): Promise<string> {
+    if (!blockRangeWtMeta.exists) {
         return "";
     }
-    const startPosition = new vscode.Position(blockRangeWtMeta.startLine-1, 0);
-    const endPosition = new vscode.Position(blockRangeWtMeta.endLine-1, document.lineAt(blockRangeWtMeta.endLine-1).text.length);
+    const startPosition = new vscode.Position(blockRangeWtMeta.startLine - 1, 0);
+    const endPosition = new vscode.Position(blockRangeWtMeta.endLine - 1, document.lineAt(blockRangeWtMeta.endLine - 1).text.length);
     let range = new vscode.Range(startPosition, endPosition);
     return document.getText(range);
 }
@@ -816,36 +703,36 @@ export async function getTextForBlock(document: vscode.TextDocument, blockRangeW
 export function getActiveFilePath() {
     const activeEditor = vscode.window.activeTextEditor;
     if (activeEditor) {
-      return activeEditor.document.uri.fsPath;
+        return activeEditor.document.uri.fsPath;
     }
     return undefined;
 }
 
-export function checkIfFileExsists(filePath:string){
-    if(fs.existsSync(filePath)){
+export function checkIfFileExsists(filePath: string) {
+    if (fs.existsSync(filePath)) {
         return true;
     }
     return false;
 }
 
-const ensureDirectoryExistence = (filePath:string) => {
+const ensureDirectoryExistence = (filePath: string) => {
     const dirname = path.dirname(filePath);
     if (fs.existsSync(dirname)) {
-      return true;
+        return true;
     }
     fs.mkdirSync(dirname, { recursive: true });
-  };
+};
 
-export function writeContentsToFile(filePath:string, content:string){
+export function writeContentsToFile(filePath: string, content: string) {
     ensureDirectoryExistence(filePath);
     fs.writeFile(filePath, content, (err) => {
-    if (err) {throw err;};
+        if (err) { throw err; };
         return;
     });
 }
 
-export async function  getMultipleTagsSelection(){
-    let options  = {
+export async function getMultipleTagsSelection() {
+    let options = {
         canPickMany: true,
         ignoreFocusOut: true,
     };
@@ -853,15 +740,15 @@ export async function  getMultipleTagsSelection(){
     return selectedTags;
 }
 
-export async function runMultipleTagsFromSelection(workspaceFolder:string, selectedTags:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
+export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
     let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
     runCommandInTerminal(runmultitagscommand);
 }
 
-export async function  getMultipleFileSelection(workspaceFolder:string){
+export async function getMultipleFileSelection(workspaceFolder: string) {
     const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
-    let options  = {
+    let options = {
         canPickMany: true,
         ignoreFocusOut: true,
     };
@@ -869,16 +756,16 @@ export async function  getMultipleFileSelection(workspaceFolder:string){
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder:string, selectedFiles:string, includDependencies:boolean, includeDownstreamDependents:boolean, fullRefresh:boolean){
-    let fileMetadatas:any[] = [];
+export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
     CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
 
-    if (selectedFiles){
-        for (let i = 0; i < selectedFiles.length; i ++){
+    if (selectedFiles) {
+        for (let i = 0; i < selectedFiles.length; i++) {
             let relativeFilepath = selectedFiles[i];
-            if (dataformCompiledJson && relativeFilepath){
+            if (dataformCompiledJson && relativeFilepath) {
                 fileMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
             }
         }
@@ -900,7 +787,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder:string, sele
     runCommandInTerminal(dataformActionCmd);
 }
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
     //TODO: We can probably use `getCurrentFileMetadata` function
@@ -912,7 +799,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
 
     let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
 
-    if (!dataformCompiledJson){
+    if (!dataformCompiledJson) {
         return undefined;
     }
 
@@ -925,10 +812,10 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
         getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson)
     ]);
 
-    let sqlxBlockMetadata:SqlxBlockMetadata|undefined = undefined;
+    let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (extension === "sqlx") {
-        sqlxBlockMetadata  = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
+        sqlxBlockMetadata = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
     }
 
     if (currFileMetadata.fullQuery === "") {
@@ -944,13 +831,13 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     }
 
     let queryToDryRun = "";
-    if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view"){
+    if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view") {
         queryToDryRun = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.tableOrViewQuery;
     } else if (currFileMetadata.queryMeta.type === "assertion") {
         queryToDryRun = currFileMetadata.queryMeta.assertionQuery;
-    } else if (currFileMetadata.queryMeta.type === "operation"){
-        queryToDryRun =  currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.operationsQuery;
-    } else if (currFileMetadata.queryMeta.type === "incremental"){
+    } else if (currFileMetadata.queryMeta.type === "operation") {
+        queryToDryRun = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.operationsQuery;
+    } else if (currFileMetadata.queryMeta.type === "incremental") {
         //TODO: defaulting to using incremental query to dry run for now
         // let nonIncrementalQuery = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.nonIncrementalQuery;
         let incrementalQuery = currFileMetadata.queryMeta.incrementalPreOpsQuery.trimStart() + currFileMetadata.queryMeta.incrementalQuery.trimStart();
@@ -966,7 +853,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
     ]);
 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
-        if (!sqlxBlockMetadata && extension === ".sqlx"){
+        if (!sqlxBlockMetadata && extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
             return;
         }
@@ -976,11 +863,11 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument,  diag
             offSet = tableQueryOffset;
         } else if (currFileMetadata.queryMeta.type === "assertion") {
             offSet = assertionQueryOffset;
-        } else if (currFileMetadata.queryMeta.type === "incremental"){
+        } else if (currFileMetadata.queryMeta.type === "incremental") {
             offSet = incrementalTableOffset;
         }
 
-        if (sqlxBlockMetadata){
+        if (sqlxBlockMetadata) {
             setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
         return;

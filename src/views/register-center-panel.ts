@@ -1,8 +1,9 @@
 import { commands, ExtensionContext, Uri, ViewColumn, Webview, WebviewPanel, window } from "vscode";
-import { generateDependancyTreeMetadata, getTreeRootFromRef, getWorkspaceFolder, getPostionOfSourceDeclaration, getCurrentFileMetadata } from "../utils";
+import { getTreeRootFromRef, getWorkspaceFolder, getPostionOfSourceDeclaration, getCurrentFileMetadata } from "../utils";
 import { getNonce, getLineUnderCursor } from '../utils';
 import * as vscode from 'vscode';
 import path from 'path';
+import { generateDependancyTreeMetadata } from "../dependancyTree";
 
 //NOTE: global variables to keep track of treeRoot and direction incase user switches active editor and intends to come back to dependancy tree the web panel
 let treeRoot: string;
