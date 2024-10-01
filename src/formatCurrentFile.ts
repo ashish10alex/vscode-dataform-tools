@@ -1,8 +1,79 @@
 import * as vscode from 'vscode';
+import fs from 'fs';
 import path from 'path';
-import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, formatSqlxFile, getFileNameFromDocument, getSqlfluffConfigPathFromSettings, getWorkspaceFolder, writeContentsToFile } from './utils';
+import beautify from 'js-beautify';
+import { exec as exec } from 'child_process';
+import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffConfigPathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile, getActiveFilePath } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import {compiledSqlFilePath} from './constants';
+import {compiledSqlFilePath, sqlFileToFormatPath} from './constants';
+import { SqlxBlockMetadata } from './types';
+
+
+export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
+
+    let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
+    let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
+    let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock.postOpsList;
+    let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
+
+    let spaceBetweenBlocks = '\n\n\n';
+    let spaceBetweenSameOps = '\n\n';
+
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
+    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
+
+    let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
+    try {
+        if (configBlockText && configBlockText !== ""){
+            configBlockText = beautify.js(configBlockText, { "indent_size": 2 });
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage("Could to format config block");
+    }
+
+    let myPromises:any = [];
+    preOpsBlockMeta.forEach((block:any) => {
+        myPromises.push(getTextForBlock(document, block));
+    });
+    let preOpsBlockTextList: string[] = await Promise.all(myPromises);
+
+    myPromises = [];
+    postOpsBlockMeta.forEach((block:any) => {
+        myPromises.push(getTextForBlock(document, block));
+    });
+    let postOpsBlockTextList = await Promise.all(myPromises);
+
+    let preOpsBlockText: string = preOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
+    let postOpsBlockText: string = postOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
+
+    (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
+    (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
+
+    let formatCmd = `sqlfluff fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
+
+    await getStdoutFromCliRun(exec, formatCmd).then(async (_) => {
+        let formattedSql = await readFile(sqlFileToFormatPath);
+        (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
+
+        if (typeof formattedSql === 'string'){
+            let finalFormattedSqlx = configBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
+            let currentActiveEditorFilePath = getActiveFilePath();
+            if (!currentActiveEditorFilePath){
+                vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
+                return;
+            }
+            fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err: any) => {
+            if (err) {throw err;};
+                vscode.window.showInformationMessage(`Formatted: ${path.basename(currentActiveEditorFilePath)}`);
+                return;
+            });
+        }
+    }
+    ).catch((err) => {
+        vscode.window.showErrorMessage(`Error formatting: ${err}`);
+        return;
+    });
+}
 
 export async function formatCurrentFile(diagnosticCollection:any) {
     let document = vscode.window.activeTextEditor?.document;

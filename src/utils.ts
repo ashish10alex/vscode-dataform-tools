@@ -1,13 +1,11 @@
 import * as vscode from 'vscode';
 import fs from 'fs';
-import { exec as exec } from 'child_process';
 import path from 'path';
-import beautify from 'js-beautify';
 import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, Table, TablesWtFullQuery, Operation, Assertion, Declarations, Target, DependancyTreeMetadata, DeclarationsLegendMetadata, SqlxBlockMetadata} from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, tableQueryOffset, sqlFileToFormatPath, incrementalTableOffset } from './constants';
+import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { getRunTagsWtOptsCommand } from './runTag';
@@ -275,7 +273,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
     }
 }
 
-async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
+export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
     let workspaceFolder = getWorkspaceFolder();
 
     if (!workspaceFolder) {
@@ -792,7 +790,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
 }
 
-function readFile(filePath:string) {
+export function readFile(filePath:string) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, data) => {
             if (err) {
@@ -805,7 +803,7 @@ function readFile(filePath:string) {
 }
 
 
-async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta:{startLine:number, endLine:number, exists: boolean}): Promise<string>{
+export async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta:{startLine:number, endLine:number, exists: boolean}): Promise<string>{
     if(!blockRangeWtMeta.exists){
         return "";
     }
@@ -815,7 +813,7 @@ async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta:{
     return document.getText(range);
 }
 
-function getActiveFilePath() {
+export function getActiveFilePath() {
     const activeEditor = vscode.window.activeTextEditor;
     if (activeEditor) {
       return activeEditor.document.uri.fsPath;
@@ -842,72 +840,6 @@ export function writeContentsToFile(filePath:string, content:string){
     ensureDirectoryExistence(filePath);
     fs.writeFile(filePath, content, (err) => {
     if (err) {throw err;};
-        return;
-    });
-}
-
-export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
-
-    let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
-    let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
-    let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock.postOpsList;
-    let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
-
-    let spaceBetweenBlocks = '\n\n\n';
-    let spaceBetweenSameOps = '\n\n';
-
-    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
-    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
-
-    let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
-    try {
-        if (configBlockText && configBlockText !== ""){
-            configBlockText = beautify.js(configBlockText, { "indent_size": 2 });
-        }
-    } catch (error) {
-        vscode.window.showErrorMessage("Could to format config block");
-    }
-
-    let myPromises:any = [];
-    preOpsBlockMeta.forEach((block:any) => {
-        myPromises.push(getTextForBlock(document, block));
-    });
-    let preOpsBlockTextList: string[] = await Promise.all(myPromises);
-
-    myPromises = [];
-    postOpsBlockMeta.forEach((block:any) => {
-        myPromises.push(getTextForBlock(document, block));
-    });
-    let postOpsBlockTextList = await Promise.all(myPromises);
-
-    let preOpsBlockText: string = preOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
-    let postOpsBlockText: string = postOpsBlockTextList.map((text: string) => text + spaceBetweenSameOps).join('');
-
-    (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
-    (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
-
-    let formatCmd = `sqlfluff fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
-
-    await getStdoutFromCliRun(exec, formatCmd).then(async (sources) => {
-        let formattedSql = await readFile(sqlFileToFormatPath);
-        (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
-
-        if (typeof formattedSql === 'string'){
-            let finalFormattedSqlx = configBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
-            let currentActiveEditorFilePath = getActiveFilePath();
-            if (!currentActiveEditorFilePath){
-                vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
-                return;
-            }
-            fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err) => {
-            if (err) {throw err;};
-                vscode.window.showInformationMessage(`Formatted: ${path.basename(currentActiveEditorFilePath)}`);
-                return;
-            });
-        }
-    }
-    ).catch((err) => {
-        vscode.window.showErrorMessage(`Error formatting: ${err}`);
         return;
     });
 }
