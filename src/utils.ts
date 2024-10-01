@@ -731,21 +731,6 @@ export function writeContentsToFile(filePath: string, content: string) {
     });
 }
 
-export async function getMultipleTagsSelection() {
-    let options = {
-        canPickMany: true,
-        ignoreFocusOut: true,
-    };
-    let selectedTags = await vscode.window.showQuickPick(dataformTags, options);
-    return selectedTags;
-}
-
-export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
-    let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-    let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
-    runCommandInTerminal(runmultitagscommand);
-}
-
 export async function getMultipleFileSelection(workspaceFolder: string) {
     const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
     let options = {
