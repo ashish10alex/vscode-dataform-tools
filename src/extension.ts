@@ -9,7 +9,7 @@ import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck, compiledSqlFilePath } from './constants';
 import { getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, getVSCodeDocument, getCurrentFileMetadata } from './utils';
-import { executableIsAvailable, runCurrentFile, runCompilation } from './utils';
+import { executableIsAvailable, runCompilation } from './utils';
 import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -18,6 +18,7 @@ import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
+import { runCurrentFile } from './runFiles';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
