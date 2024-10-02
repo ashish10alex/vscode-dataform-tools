@@ -1,7 +1,7 @@
 # Dataform tools - a vscode extension
 
 [![Version](https://img.shields.io/github/v/release/ashish10alex/vscode-dataform-tools)](https://github.com/ashish10alex/vscode-dataform-tools/releases)
-![Linux](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)
+![Installs](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)
 ![Linux](https://img.shields.io/badge/Linux-supported-success)
 ![macOS](https://img.shields.io/badge/macOS-supported-success)
 ![Windows](https://img.shields.io/badge/windows-supported-success)
