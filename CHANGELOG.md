@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.1.1...v0.1.2) (2024-10-03)
+
+
+### Features
+
+* deprecate enable/disable commands and stop creating disposable object ([01cff72](https://github.com/ashish10alex/vscode-dataform-tools/commit/01cff72ce0bad8ed69be37c84458956ff279a772))
+* deprecate menu to run file with deps ([3cb9ebe](https://github.com/ashish10alex/vscode-dataform-tools/commit/3cb9ebe99b9a1bed01a9f17e304fd841b3acd289))
+
+
+### Bug Fixes
+
+* query compilation error when pre/post ops have semicolon ([8fff62e](https://github.com/ashish10alex/vscode-dataform-tools/commit/8fff62e70aec63fd2b12fd2b87a0f7000165df0b))
+
 ### [0.1.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.1.0...v0.1.1) (2024-09-30)
 
 
