@@ -416,14 +416,14 @@ export async function getMetadataForCurrentFile(relativeFilePath: string, compil
                 table.preOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
-                    queryMeta.preOpsQuery += query + ";\n";
+                    queryMeta.preOpsQuery += query + "\n";
                 });
             }
             if (table.postOps) {
                 table.postOps.forEach((query, idx) => {
                     queryToDisplay += `\n-- Post operations: [${idx}] \n`;
                     queryToDisplay += query + ";\n";
-                    queryMeta.postOpsQuery += query + ";\n";
+                    queryMeta.postOpsQuery += query + "\n";
                 });
             }
             let tableFound = {
@@ -735,6 +735,20 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
     runCommandInTerminal(dataformActionCmd);
 }
 
+export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery){
+    const preOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.preOpsQuery);
+    const postOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.postOpsQuery);
+
+    if(!preOpsEndsWithSemicolon && fileMetadata.queryMeta.preOpsQuery !== "" ){
+        fileMetadata.queryMeta.preOpsQuery = fileMetadata.queryMeta.preOpsQuery + ";";
+    }
+
+    if(!postOpsEndsWithSemicolon && fileMetadata.queryMeta.postOpsQuery !== "" ){
+        fileMetadata.queryMeta.postOpsQuery = fileMetadata.queryMeta.postOpsQuery + ";";
+    }
+    return fileMetadata;
+}
+
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     diagnosticCollection.clear();
 
@@ -777,6 +791,8 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     if (showCompiledQueryInVerticalSplitOnSave) {
         writeCompiledSqlToFile(currFileMetadata.fullQuery, compiledSqlFilePath, true);
     }
+
+    currFileMetadata = handleSemicolonPrePostOps(currFileMetadata);
 
     let queryToDryRun = "";
     if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view") {

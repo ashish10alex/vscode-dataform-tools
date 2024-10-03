@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getCurrentFileMetadata } from "./utils";
+import { getCurrentFileMetadata, handleSemicolonPrePostOps } from "./utils";
 import { CustomViewProvider } from './views/register-query-results-panel';
 
 export async function runQueryInPanel(query: string, queryResultsViewProvider: CustomViewProvider) {
@@ -15,6 +15,9 @@ export async function previewQueryResults(queryResultsViewProvider: CustomViewPr
     if (!fileMetadata) {
         return;
     }
+
+    fileMetadata = handleSemicolonPrePostOps(fileMetadata);
+
     let query = "";
     if (fileMetadata.queryMeta.type === "assertion") {
         query = fileMetadata.queryMeta.assertionQuery;
