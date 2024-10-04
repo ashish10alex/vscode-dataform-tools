@@ -1,4 +1,36 @@
-// const vscode = acquireVsCodeApi();
+const vscode = acquireVsCodeApi();
+
+const runQueryButton = document.getElementById('runQueryButton');
+if (runQueryButton){
+    document.getElementById('runQueryButton').addEventListener('click', function() {
+        document.getElementById("runQueryButton").disabled = true;
+        vscode.postMessage({
+            command: 'runBigQueryJob'
+        });
+    });
+}
+
+const cancelBigQueryJobButton = document.getElementById('cancelBigQueryJobButton');
+if (cancelBigQueryJobButton){
+    document.getElementById('cancelBigQueryJobButton').addEventListener('click', function() {
+        vscode.postMessage({
+            command: 'cancelBigQueryJob'
+        });
+    });
+}
+
+const queryLimit = document.getElementById('queryLimit');
+if (queryLimit){
+    document.getElementById("queryLimit").addEventListener("change", function() {
+    var selectedValue = this.value;
+    vscode.postMessage({
+        command: 'queryLimit',
+        value: selectedValue
+    });
+    });
+}
+
+
 
 function updateDateTime(elapsedTime, totalGbBilled) {
     const now = new Date();
@@ -41,13 +73,21 @@ const timerInterval = setInterval(updateLoadingMessage, 1000);
 document.body.appendChild(loadingMessage);
 
 // Hide the table initially
-document.getElementById('bigqueryResults').style.display = 'none';
+const bigQueryResults = document.getElementById('bigqueryResults');
+if (bigQueryResults){
+    bigQueryResults.style.display = 'none';
+}
 
 window.addEventListener('message', event => {
     const results = event?.data?.results;
     const columns = event?.data?.columns;
     const jobStats = event?.data?.jobStats;
-    const totalBytesBilled = jobStats.totalBytesBilled;
+    const totalBytesBilled = jobStats?.totalBytesBilled;
+
+    const bigQueryJobId = event?.data?.bigQueryJobId;
+    const errorMessage = event?.data?.errorMessage;
+    const query = event?.data?.query;
+
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
     if (results && columns) {
@@ -71,5 +111,22 @@ window.addEventListener('message', event => {
             paginationSize:20,
             paginationCounter:"rows",
         });
+    }
+
+    if (bigQueryJobId){
+        document.querySelector('.bigquery-job-cancelled').textContent = `❕ BigQuery Job was cancelled, jobId: ${bigQueryJobId}`;
+    }
+    if (query){
+        // document.getElementById('bigqueryerror').textContent = errorMessage;
+        document.getElementById("sqlCodeBlock").textContent = query;
+        hljs.addPlugin( new CopyButtonPlugin({
+            autohide: false, // Always show the copy button
+        }));
+        hljs.highlightAll();
+        hljs.initLineNumbersOnLoad();
+        document.getElementById("codeBlock").style.display = "none";
+    }
+    if (errorMessage){
+        document.getElementById('bigqueryerror').textContent = errorMessage;
     }
 });

@@ -92,7 +92,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         let errorMessage = error?.message;
         if(errorMessage){
           this._view.webview.html = this._getHtmlForWebviewError(this._view.webview);
-          this._view.webview.postMessage({"errorMessage": errorMessage });
+          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query });
           this._view.show(true);
         }
       }
@@ -100,7 +100,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebviewGeneric(webview: vscode.Webview) {
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
+    const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const nonce = getNonce();
     return /*html*/ `
       <!DOCTYPE html>
@@ -121,7 +121,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <option value="5000">Limit: 5000</option>
         </select>
         <button id="runQueryButton" class="runQueryButton" title="Runs current file">RUN</button>
-        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
+        <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </body>
       </html>
     `;
@@ -129,7 +129,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebviewJobCancelled(webview: vscode.Webview) {
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
+    const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const nonce = getNonce();
     return /*html*/ `
       <!DOCTYPE html>
@@ -150,7 +150,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <option value="5000">Limit: 5000</option>
         </select>
         <button id="runQueryButton" class="runQueryButton">RUN</button>
-        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
+        <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </body>
       </html>
     `;
@@ -186,40 +186,80 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebviewError(webview: vscode.Webview) {
-    const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
+    const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     const nonce = getNonce();
     return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
       <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="${styleResetUri}" rel="stylesheet">
-
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+          <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+          <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+          <script src="https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js"></script>
+          <link href="${styleResetUri}" rel="stylesheet">
+          <style>
+      </style>
       </head>
       <body>
-        <div class="beta-button-container">
-               <button class="beta-button" disabled>BETA</button>
-        </div>
-        <select id="queryLimit">
-          <option value="1000" selected>Limit: 1000</option>
-          <option value="2000">Limit: 2000</option>
-          <option value="5000">Limit: 5000</option>
-        </select>
-        <button id="runQueryButton" class="runQueryButton">RUN</button>
-        <p class="top-left" style="color: red"><span id="bigqueryerror"></span></p>
-        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
+      <div class="topnav">
+        <a class="active" href="#results">Results</a>
+        <a href="#query">Query</a>
+      </div>
+      <script>
+        // Get all navigation links
+        const navLinks = document.querySelectorAll('.topnav a');
+
+        // Add click event listener to each link
+        navLinks.forEach(link => {
+          link.addEventListener('click', function(e) {
+            // Remove active class from all links
+            navLinks.forEach(link => link.classList.remove('active'));
+            
+            // Add active class to clicked link
+            this.classList.add('active');
+            console.log(this);
+            if (this.getAttribute('href') === '#results') {
+            document.getElementById("resultBlock").style.display = "";
+            document.getElementById("codeBlock").style.display = "none";
+            } else {
+            document.getElementById("codeBlock").style.display = "";
+            document.getElementById("resultBlock").style.display = "none";
+            }
+          });
+        });
+
+        // Set initial active link (optional)
+        document.querySelector('.topnav a').classList.add('active');
+      </script>
+
+          <div class="beta-button-container">
+            <button class="beta-button" disabled>BETA</button>
+          </div>
+          <select id="queryLimit">
+            <option value="1000" selected>Limit: 1000</option>
+            <option value="2000">Limit: 2000</option>
+            <option value="5000">Limit: 5000</option>
+          </select>
+          <button id="runQueryButton" class="runQueryButton">RUN</button>
+
+          <div id="codeBlock">
+            <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
+            <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
+          </div>
+          <div id="resultBlock">
+            <p  style="color: red"><span id="bigqueryerror"></span></p>
+          </div>
       </body>
       </html>
     `;
   }
 
-
-
   private _getHtmlForWebview(webview: vscode.Webview) {
-      const jqueryMinified = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "jquery-3.7.1.slim.min.js"));
-      const showBigQueryGenericScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryGeneric.js"));
       const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
       const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
       const nonce = getNonce();
@@ -231,7 +271,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <script nonce="${nonce}" type="text/javascript" src="${jqueryMinified}"></script>
         <link href="https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
         <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
         <link href="${styleResetUri}" rel="stylesheet">
@@ -249,7 +288,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
         <p class="top-left">Query results ran at: <span id="datetime"></span></p>
         <table id="bigqueryResults" class="display" width="100%"></table>
-        <script nonce="${nonce}" type="text/javascript" src="${showBigQueryGenericScriptUri}"></script>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </body>
       </html>
