@@ -67,7 +67,7 @@ function updateDateTime(elapsedTime, totalGbBilled) {
       second: '2-digit'
     };
     let queryStatsText = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | GB billed:  ' + totalGbBilled ;
-    document.getElementById('datetime').textContent = queryStatsText;
+    document.getElementById('datetime').textContent = "Query results ran at: " + queryStatsText;
 }
 
 // Hide the table initially
