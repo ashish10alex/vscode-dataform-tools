@@ -103,6 +103,13 @@ if (bigQueryResults){
     bigQueryResults.style.display = 'none';
 }
 
+function postRunCleanup(){
+    clearInterval(timerInterval);
+    document.body.removeChild(loadingMessage);
+    updateDateTime(elapsedTime, '0');
+    document.getElementById("cancelBigQueryJobButton").disabled = true;
+}
+
 window.addEventListener('message', event => {
     const results = event?.data?.results;
     const columns = event?.data?.columns;
@@ -140,9 +147,7 @@ window.addEventListener('message', event => {
     }
 
     if (bigQueryJobId){
-        clearInterval(timerInterval);
-        document.body.removeChild(loadingMessage);
-        updateDateTime(elapsedTime, '0');
+        postRunCleanup();
         const jobCancelled = document.querySelector('.bigquery-job-cancelled');
         if(jobCancelled){
             jobCancelled.textContent = `❕ BigQuery Job was cancelled, jobId: ${bigQueryJobId}`;
@@ -150,9 +155,7 @@ window.addEventListener('message', event => {
     }
 
     if(noResults){
-        clearInterval(timerInterval);
-        document.body.removeChild(loadingMessage);
-        updateDateTime(elapsedTime, '0');
+        postRunCleanup();
         const noResultsForQuery = document.getElementById('no-results');
         if (noResultsForQuery){
             noResultsForQuery.textContent = `❕ There is no data to display`;
@@ -170,9 +173,7 @@ window.addEventListener('message', event => {
         document.getElementById("codeBlock").style.display = "none";
     }
     if (errorMessage){
-        clearInterval(timerInterval);
-        document.body.removeChild(loadingMessage);
-        updateDateTime(elapsedTime, '0');
+        postRunCleanup();
         document.getElementById('bigqueryerror').textContent = errorMessage;
     }
 });
