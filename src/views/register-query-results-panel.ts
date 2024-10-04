@@ -123,64 +123,42 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <style>
       </style>
       </head>
+
       <body>
+
       <div class="topnav">
         <a class="active" href="#results">Results</a>
         <a href="#query">Query</a>
       </div>
-      <script>
-        // Get all navigation links
-        const navLinks = document.querySelectorAll('.topnav a');
 
-        // Add click event listener to each link
-        navLinks.forEach(link => {
-          link.addEventListener('click', function(e) {
-            // Remove active class from all links
-            navLinks.forEach(link => link.classList.remove('active'));
-            
-            // Add active class to clicked link
-            this.classList.add('active');
-            console.log(this);
-            if (this.getAttribute('href') === '#results') {
-              document.getElementById("resultBlock").style.display = "";
-              document.getElementById("codeBlock").style.display = "none";
-            } else {
-              document.getElementById("codeBlock").style.display = "";
-              document.getElementById("resultBlock").style.display = "none";
-            }
-          });
-        });
+      <div class="beta-button-container">
+        <button class="beta-button" disabled>BETA</button>
+      </div>
 
-        // Set initial active link (optional)
-        document.querySelector('.topnav a').classList.add('active');
-      </script>
+      <span class="bigquery-job-cancelled"></span>
 
-          <div class="beta-button-container">
-            <button class="beta-button" disabled>BETA</button>
-          </div>
+      <select id="queryLimit">
+        <option value="1000" selected>Limit: 1000</option>
+        <option value="2000">Limit: 2000</option>
+        <option value="5000">Limit: 5000</option>
+      </select>
 
-          <span class="bigquery-job-cancelled"></span>
+      <button id="runQueryButton" class="runQueryButton">RUN</button>
+      <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
 
-          <select id="queryLimit">
-            <option value="1000" selected>Limit: 1000</option>
-            <option value="2000">Limit: 2000</option>
-            <option value="5000">Limit: 5000</option>
-          </select>
+      <p>Query results ran at: <span id="datetime"></span></p>
+      <p><span id="no-results"></span></p>
 
-          <button id="runQueryButton" class="runQueryButton">RUN</button>
-          <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
+      <div id="codeBlock">
+        <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
+        <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
+      </div>
 
-          <p>Query results ran at: <span id="datetime"></span></p>
-          <p><span id="no-results"></span></p>
+      <div id="resultBlock">
+        <p  style="color: red"><span id="bigqueryerror"></span></p>
+        <table id="bigqueryResults" class="display" width="100%"></table>
+      </div>
 
-          <div id="codeBlock">
-            <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
-            <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
-          </div>
-          <div id="resultBlock">
-            <p  style="color: red"><span id="bigqueryerror"></span></p>
-            <table id="bigqueryResults" class="display" width="100%"></table>
-          </div>
       </body>
       </html>
     `;

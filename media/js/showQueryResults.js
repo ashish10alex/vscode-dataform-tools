@@ -1,5 +1,30 @@
 const vscode = acquireVsCodeApi();
 
+// Get all navigation links
+const navLinks = document.querySelectorAll('.topnav a');
+
+// Add click event listener to each link
+navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+    // Remove active class from all links
+    navLinks.forEach(link => link.classList.remove('active'));
+    
+    // Add active class to clicked link
+    this.classList.add('active');
+    console.log(this);
+    if (this.getAttribute('href') === '#results') {
+        document.getElementById("resultBlock").style.display = "";
+        document.getElementById("codeBlock").style.display = "none";
+    } else {
+        document.getElementById("codeBlock").style.display = "";
+        document.getElementById("resultBlock").style.display = "none";
+    }
+    });
+});
+
+// Set initial active link (optional)
+document.querySelector('.topnav a').classList.add('active');
+
 const runQueryButton = document.getElementById('runQueryButton');
 if (runQueryButton){
     document.getElementById('runQueryButton').addEventListener('click', function() {
