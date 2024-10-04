@@ -95,11 +95,9 @@ window.addEventListener('message', event => {
     const jobStats = event?.data?.jobStats;
     const noResults = event?.data?.noResults;
     const totalBytesBilled = jobStats?.totalBytesBilled;
-
     const bigQueryJobId = event?.data?.bigQueryJobId;
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
-
     const showLoadingMessage = event?.data?.showLoadingMessage;
 
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
