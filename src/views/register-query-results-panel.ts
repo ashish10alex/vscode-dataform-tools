@@ -77,6 +77,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     }
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+          this._view.webview.postMessage({"showLoadingMessage": true });
           const { results, columns, jobStats } = await queryBigQuery(query);
           if(results){
             this._cachedResults = { results, columns, jobStats };

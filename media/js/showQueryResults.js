@@ -55,8 +55,6 @@ if (queryLimit){
     });
 }
 
-
-
 function updateDateTime(elapsedTime, totalGbBilled) {
     const now = new Date();
     const options = {
@@ -72,40 +70,21 @@ function updateDateTime(elapsedTime, totalGbBilled) {
     document.getElementById('datetime').textContent = queryStatsText;
 }
 
-// Create a loading message element
-const loadingMessage = document.createElement('div');
-loadingMessage.id = 'loading-message';
-loadingMessage.textContent = 'Loading data...';
-loadingMessage.style.cssText = `
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 12px;
-`;
-
-let startTime = Date.now();
-let elapsedTime = 0;
-
-function updateLoadingMessage() {
-    elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-    loadingMessage.textContent = `Loading data... (${elapsedTime} seconds)`;
-    return elapsedTime;
-}
-
-elapsedTime = updateLoadingMessage();
-const timerInterval = setInterval(updateLoadingMessage, 1000);
-document.body.appendChild(loadingMessage);
-
 // Hide the table initially
 const bigQueryResults = document.getElementById('bigqueryResults');
 if (bigQueryResults){
     bigQueryResults.style.display = 'none';
 }
 
+let timerInterval = undefined;
+let elapsedTime = 0;
+let loadingMessage = undefined;
+
 function postRunCleanup(){
     clearInterval(timerInterval);
-    document.body.removeChild(loadingMessage);
+    if (loadingMessage){
+        document.body.removeChild(loadingMessage);
+    }
     updateDateTime(elapsedTime, '0');
     document.getElementById("cancelBigQueryJobButton").disabled = true;
 }
@@ -120,6 +99,8 @@ window.addEventListener('message', event => {
     const bigQueryJobId = event?.data?.bigQueryJobId;
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
+
+    const showLoadingMessage = event?.data?.showLoadingMessage;
 
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
@@ -172,8 +153,35 @@ window.addEventListener('message', event => {
         hljs.initLineNumbersOnLoad();
         document.getElementById("codeBlock").style.display = "none";
     }
+
     if (errorMessage){
         postRunCleanup();
         document.getElementById('bigqueryerror').textContent = errorMessage;
+    }
+
+    if (showLoadingMessage){
+        // Create a loading message element
+        loadingMessage = document.createElement('div');
+        loadingMessage.id = 'loading-message';
+        loadingMessage.textContent = 'Loading data...';
+        loadingMessage.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+        `;
+
+        let startTime = Date.now();
+
+        function updateLoadingMessage() {
+            elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            loadingMessage.textContent = `Loading data... (${elapsedTime} seconds)`;
+            return elapsedTime;
+        }
+
+        elapsedTime = updateLoadingMessage();
+        timerInterval = setInterval(updateLoadingMessage, 1000);
+        document.body.appendChild(loadingMessage);
     }
 });
