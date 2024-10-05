@@ -46,7 +46,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 cancelBigQueryJobSignal = false;
                 if (resp.cancelled && this._view){
                   this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId});
+                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true});
                   this._view.show(true);
                 }
                 return;

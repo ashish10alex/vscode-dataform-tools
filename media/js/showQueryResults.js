@@ -1,5 +1,7 @@
 const vscode = acquireVsCodeApi();
 
+document.getElementById("cancelBigQueryJobButton").disabled = true;
+
 // Get all navigation links
 const navLinks = document.querySelectorAll('.topnav a');
 
@@ -96,6 +98,7 @@ window.addEventListener('message', event => {
     const noResults = event?.data?.noResults;
     const totalBytesBilled = jobStats?.totalBytesBilled;
     const bigQueryJobId = event?.data?.bigQueryJobId;
+    const bigQueryJobCancelled = event?.data?.bigQueryJobCancelled;
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
     const showLoadingMessage = event?.data?.showLoadingMessage;
@@ -125,7 +128,7 @@ window.addEventListener('message', event => {
         });
     }
 
-    if (bigQueryJobId){
+    if (bigQueryJobCancelled && bigQueryJobId){
         postRunCleanup();
         const jobCancelled = document.querySelector('.bigquery-job-cancelled');
         if(jobCancelled){
@@ -158,6 +161,7 @@ window.addEventListener('message', event => {
     }
 
     if (showLoadingMessage){
+        document.getElementById("cancelBigQueryJobButton").disabled = false;
         // Create a loading message element
         loadingMessage = document.createElement('div');
         loadingMessage.id = 'loading-message';
