@@ -5,6 +5,20 @@ declare global {
   var CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson | undefined;
 }
 
+declare  global {
+  var cdnLinks : {
+      highlightJsCssUri: string;
+      highlightJsUri: string;
+      highlightJsCopyExtUri: string;
+      highlightJsCopyExtCssUri: string;
+      highlightJsLineNoExtUri: string;
+      tabulatorCssUri: string;
+      tabulatorUri: string;
+      highlightJsOneDarkThemeUri: string;
+      highlightJsOneLightThemeUri: string;
+  }
+}
+
 declare global {
     var declarationsAndTargets: string[]
 }

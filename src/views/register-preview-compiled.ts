@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
+import { dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
 
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
@@ -146,15 +146,9 @@ export class CompiledQueryPanel {
     private _getHtmlForWebview(webview: vscode.Webview) {
         const showCompiledQueryUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showCompiledQuery.js"));
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-        const highlightJsCssUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css";
-        const highlightJsUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js";
-        const highlightJsCopyExtUri = "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js";
-        const highlightJsCopyExtCssUri = "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css";
-        const highlightJsOneDarkThemeUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css";
-        const highlightJsLineNoExtUri = "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js";
-        const tabulatorCssUri = "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css";
-        const tabulatorUri = "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js";
         const nonce = getNonce();
+
+        let highlighJstThemeUri = getHighlightJsThemeUri();
 
         return /*html*/ `
         <!DOCTYPE html>
@@ -162,15 +156,12 @@ export class CompiledQueryPanel {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="stylesheet" href="${highlightJsCssUri}">
-            <script src="${highlightJsUri}"></script>
-            <script src="${highlightJsCopyExtUri}"></script>
-            <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
-            <link rel="stylesheet" href="${highlightJsOneDarkThemeUri}">
-            <script src="${highlightJsLineNoExtUri}"></script>
-
-            <link href="${tabulatorCssUri}" rel="stylesheet">
-            <script type="text/javascript" src="${tabulatorUri}"></script>
+            <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
+            <script src="${cdnLinks.highlightJsUri}"></script>
+            <script src="${cdnLinks.highlightJsCopyExtUri}"></script>
+            <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
+            <link rel="stylesheet" href="${highlighJstThemeUri}">
+            <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
 
             <link href="${styleResetUri}" rel="stylesheet">
             <style>

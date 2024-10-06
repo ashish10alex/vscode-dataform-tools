@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getNonce } from '../utils';
+import { getHighlightJsThemeUri, getNonce } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
@@ -103,15 +103,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview) {
     const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    const highlightJsCssUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css";
-    const highlightJsUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js";
-    const highlightJsCopyExtUri = "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js";
-    const highlightJsCopyExtCssUri = "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css";
-    const highlightJsOneDarkThemeUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css";
-    const highlightJsLineNoExtUri = "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js";
-    const tabulatorCssUri = "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css";
-    const tabulatorUri = "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js";
     const nonce = getNonce();
+    // TODO: light theme does not seem to get picked up
+    let highlighJstThemeUri = getHighlightJsThemeUri();
 
     return /*html*/ `
       <!DOCTYPE html>
@@ -119,15 +113,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link rel="stylesheet" href="${highlightJsCssUri}">
-          <script src="${highlightJsUri}"></script>
-          <script src="${highlightJsCopyExtUri}"></script>
-          <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
-          <link rel="stylesheet" href="${highlightJsOneDarkThemeUri}">
-          <script src="${highlightJsLineNoExtUri}"></script>
+          <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
+          <script src="${cdnLinks.highlightJsUri}"></script>
+          <script src="${cdnLinks.highlightJsCopyExtUri}"></script>
+          <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
+          <link rel="stylesheet" href="${highlighJstThemeUri}">
+          <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
 
-          <link href="${tabulatorCssUri}" rel="stylesheet">
-          <script type="text/javascript" src="${tabulatorUri}"></script>
+          <link href="${cdnLinks.tabulatorCssUri}" rel="stylesheet">
+          <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
           <link href="${styleResetUri}" rel="stylesheet">
           <style>

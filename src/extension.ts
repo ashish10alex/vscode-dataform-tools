@@ -19,7 +19,7 @@ import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
-import { registerCompiledQueryPanel } from './views/register-preview-compiled';
+import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -32,6 +32,17 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.cancelBigQueryJobSignal = false;
     globalThis.queryLimit = 1000;
     globalThis.diagnosticCollection = undefined;
+    globalThis.cdnLinks = {
+        highlightJsCssUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css",
+        highlightJsUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
+        highlightJsCopyExtUri : "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js",
+        highlightJsCopyExtCssUri : "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css",
+        highlightJsOneDarkThemeUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
+        highlightJsOneLightThemeUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
+        highlightJsLineNoExtUri : "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
+        tabulatorCssUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css",
+        tabulatorUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
+    };
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -164,10 +175,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
+        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
+        if(useWebViewToShowCompiledQuery){
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true);
+        } else{
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
-        if(diagnosticCollection){
-            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            if(diagnosticCollection){
+                await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            }
         }
     }));
 

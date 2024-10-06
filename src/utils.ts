@@ -23,6 +23,19 @@ export function getNonce() {
     return text;
 }
 
+export function getHighlightJsThemeUri(){
+    let themeKind = vscode.window.activeColorTheme.kind;
+    let highlighJstThemeUri = "";
+    switch(themeKind){
+        case 1:
+            highlighJstThemeUri = cdnLinks.highlightJsOneLightThemeUri;
+            break;
+        default:
+            highlighJstThemeUri = cdnLinks.highlightJsOneDarkThemeUri;
+    }
+    return highlighJstThemeUri;
+}
+
 function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | undefined {
     if (struct) {
         for (let i = 0; i < struct.length; i++) {
@@ -858,8 +871,12 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     if (!queryAutoCompMeta){
         return;
     }
-    let launchedFromWebView = false;
-    dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave, compiledSqlFilePath);
+
+    let useWebViewToShowCompiledQuery:boolean |undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
+    if(useWebViewToShowCompiledQuery === undefined){
+        return;
+    }
+    dryRunAndShowDiagnostics(useWebViewToShowCompiledQuery, curFileMeta, queryAutoCompMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave, compiledSqlFilePath);
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }
