@@ -19,6 +19,7 @@ import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
+import { registerCompiledQueryPanel } from './views/register-preview-compiled';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -55,6 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     registerWebViewProvider(context);
     registerCenterPanel(context);
+    registerCompiledQueryPanel(context);
 
     async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
         if (!document) {

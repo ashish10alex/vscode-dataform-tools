@@ -30,7 +30,8 @@
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
         "onCommand:extension.formatCurrentfile",
-        "onCommand:extension.runFilesTagsWtOptions"
+        "onCommand:extension.runFilesTagsWtOptions",
+        "onCommand:extension.showCompiledQuery"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -149,6 +150,11 @@
                 "command": "vscode-dataform-tools.showDependentsInGraph",
                 "category": "Dataform",
                 "title": "Show dependents in graph"
+            },
+            {
+                "command": "vscode-dataform-tools.showCompiledQuery",
+                "category": "Dataform",
+                "title": "Show compiled Query in web view"
             }
         ],
         "languages": [
