@@ -1,4 +1,5 @@
 
+
 window.addEventListener('message', event => {
     let data = {
         "preOperations": event?.data?.preOperations,
@@ -9,7 +10,10 @@ window.addEventListener('message', event => {
         "incrementalQuery": event?.data?.incrementalQuery,
         "nonIncrementalQuery": event?.data?.nonIncrementalQuery,
         "operationsQuery": event?.data?.operationsQuery,
+        "relativeFilePath": event?.data?.relativeFilePath,
     };
+
+    document.getElementById("relativeFilePath").textContent = data.relativeFilePath;
 
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);

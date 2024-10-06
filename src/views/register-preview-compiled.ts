@@ -80,6 +80,7 @@ export class CompiledQueryPanel {
             "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+            "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
         });
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
@@ -132,6 +133,8 @@ export class CompiledQueryPanel {
         </head>
 
         <body>
+
+        <p><span id="relativeFilePath"></span></p>
 
         <span class="bigquery-job-cancelled"></span>
 
