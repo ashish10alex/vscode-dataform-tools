@@ -1,4 +1,5 @@
 import { DataformCompiledJson } from "./types";
+import * as vscode from 'vscode';
 
 declare global {
   var CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson | undefined;
@@ -26,6 +27,10 @@ declare global {
 
 declare global {
   var queryLimit: number
+}
+
+declare global {
+  var diagnosticCollection: vscode.DiagnosticCollection | undefined;
 }
 
 

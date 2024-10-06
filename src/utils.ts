@@ -58,8 +58,16 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
     }
 
     if (dataformCompiledJson) {
-        let fileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
-        return fileMetadata;
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+        return {
+            fileMetadata: fileMetadata,
+            pathMeta: {
+                filename: filename,
+                extension: extension,
+                relativeFilePath: relativeFilePath
+            },
+            document: document
+        };
     }
 }
 
@@ -363,7 +371,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-export async function getMetadataForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
+export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     let tables = compiledJson.tables;
     let assertions = compiledJson.assertions;
@@ -714,7 +722,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         for (let i = 0; i < selectedFiles.length; i++) {
             let relativeFilepath = selectedFiles[i];
             if (dataformCompiledJson && relativeFilepath) {
-                fileMetadatas.push(await getMetadataForCurrentFile(relativeFilepath, dataformCompiledJson));
+                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson));
             }
         }
     }
@@ -749,50 +757,42 @@ export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery){
     return fileMetadata;
 }
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
-    diagnosticCollection.clear();
-
-    //TODO: We can probably use `getCurrentFileMetadata` function
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
-    if (!filename || !relativeFilePath || !extension) { return; }
-
-    let workspaceFolder = getWorkspaceFolder();
-    if (!workspaceFolder) { return; }
-
-    let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms (dataform wt 285 nodes)
-
-    if (!dataformCompiledJson) {
-        return undefined;
+export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
+    if (!CACHED_COMPILED_DATAFORM_JSON){
+        return;
     }
-
-    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-
     // all 3 of these togather take less than 0.35ms (dataform wt 285 nodes)
     let [declarationsAndTargets, dataformTags, currFileMetadata] = await Promise.all([
-        getDependenciesAutoCompletionItems(dataformCompiledJson),
-        getDataformTags(dataformCompiledJson),
-        getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson)
+        getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
+        getDataformTags(CACHED_COMPILED_DATAFORM_JSON),
+        getQueryMetaForCurrentFile(curFileMeta.pathMeta.relativeFilePath, CACHED_COMPILED_DATAFORM_JSON)
     ]);
+    return {
+        declarationsAndTargets: declarationsAndTargets, dataformTags: dataformTags, currFileMetadata: currFileMetadata
+    };
 
+}
+
+export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:any, diagnosticCollection:any){
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
-    if (extension === "sqlx") {
+    if (curFileMeta.pathMeta.extension === "sqlx") {
         sqlxBlockMetadata = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
     }
 
-    if (currFileMetadata.fullQuery === "") {
-        vscode.window.showErrorMessage(`Query for ${filename} not found in compiled json`);
+    if (queryAutoCompMeta.currFileMetadata.fullQuery === "") {
+        vscode.window.showErrorMessage(`Query for ${curFileMeta.pathMeta.filename} not found in compiled json`);
         return;
     }
 
-    if (showCompiledQueryInVerticalSplitOnSave !== true) {
-        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-    }
-    if (showCompiledQueryInVerticalSplitOnSave) {
-        writeCompiledSqlToFile(currFileMetadata.fullQuery, compiledSqlFilePath, true);
-    }
+    // if (showCompiledQueryInVerticalSplitOnSave !== true) {
+    //     showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+    // }
+    // if (showCompiledQueryInVerticalSplitOnSave) {
+    //     writeCompiledSqlToFile(qm.currFileMetadata.fullQuery, compiledSqlFilePath, true);
+    // }
 
-    currFileMetadata = handleSemicolonPrePostOps(currFileMetadata);
+    let currFileMetadata = handleSemicolonPrePostOps(queryAutoCompMeta.currFileMetadata);
 
     let queryToDryRun = "";
     if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view") {
@@ -817,7 +817,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     ]);
 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
-        if (!sqlxBlockMetadata && extension === ".sqlx") {
+        if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
             return;
         }
@@ -842,5 +842,23 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         combinedTableIds += targetTableId;
     });
     vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
-    return [dataformTags, declarationsAndTargets];
+
+}
+
+export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    diagnosticCollection.clear();
+
+    let curFileMeta = await getCurrentFileMetadata(true);
+
+    if(!CACHED_COMPILED_DATAFORM_JSON || !curFileMeta){
+        return;
+    }
+
+    let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
+    if (!queryAutoCompMeta){
+        return;
+    }
+    dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, document, diagnosticCollection);
+
+    return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }

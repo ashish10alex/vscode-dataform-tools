@@ -11,12 +11,12 @@ export async function runQueryInPanel(query: string, queryResultsViewProvider: C
 }
 
 export async function previewQueryResults(queryResultsViewProvider: CustomViewProvider) {
-    let fileMetadata = await getCurrentFileMetadata(false);
-    if (!fileMetadata) {
+    let curFileMeta = await getCurrentFileMetadata(false);
+    if (!curFileMeta?.fileMetadata) {
         return;
     }
 
-    fileMetadata = handleSemicolonPrePostOps(fileMetadata);
+    let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
 
     let query = "";
     if (fileMetadata.queryMeta.type === "assertion") {

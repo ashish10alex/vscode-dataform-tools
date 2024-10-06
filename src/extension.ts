@@ -31,6 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.bigQueryJob = undefined;
     globalThis.cancelBigQueryJobSignal = false;
     globalThis.queryLimit = 1000;
+    globalThis.diagnosticCollection = undefined;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -51,7 +52,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
+    diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
     registerWebViewProvider(context);
@@ -96,11 +97,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async (uri: vscode.Uri, line: number) => {
-            let fileMetadata = await getCurrentFileMetadata(false);
-            if (!fileMetadata) {
+            let curFileMeta = await getCurrentFileMetadata(false);
+            if (!curFileMeta?.fileMetadata) {
                 return;
             }
-            let query = fileMetadata.queryMeta.assertionQuery;
+            let query = curFileMeta.fileMetadata.queryMeta.assertionQuery;
             await runQueryInPanel(query, queryResultsViewProvider);
         })
     );
@@ -125,7 +126,9 @@ export async function activate(context: vscode.ExtensionContext) {
                 let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
                 if (recompileAfterCodeAction) {
                     let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                    if(diagnosticCollection){
+                        await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+                    }
                 }
 
             })
@@ -159,16 +162,20 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); }));
 
 
-    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-        let showCompiledQueryInVerticalSplitOnSave = undefined;
-        await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-    }));
+    // context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
+    //     let showCompiledQueryInVerticalSplitOnSave = undefined;
+    //     if(diagnosticCollection){
+    //         await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+    //     }
+    // }));
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
+        if(diagnosticCollection){
             await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        }
         }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {

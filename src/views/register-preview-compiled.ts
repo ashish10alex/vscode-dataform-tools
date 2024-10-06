@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { getCurrentFileMetadata, getNonce, handleSemicolonPrePostOps } from "../utils";
+import { dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
 
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
@@ -13,13 +13,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
             CompiledQueryPanel.getInstance(context.extensionUri, context, false);
-            // vscode.commands.executeCommand('vscode-dataform-tools.showCompiledQuery');
         }
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
             CompiledQueryPanel.getInstance(context.extensionUri, context, true);
-            // vscode.commands.executeCommand('vscode-dataform-tools.showCompiledQuery');
     }));
 
 }
@@ -44,7 +42,8 @@ export class CompiledQueryPanel {
             const panel = window.createWebviewPanel(
                 CompiledQueryPanel.viewType,
                 "Compiled query preview",
-                vscode.ViewColumn.Beside,
+                // vscode.ViewColumn.Beside,
+                { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
                 {
                     enableFindWidget: true,
                     retainContextWhenHidden: true,
@@ -65,12 +64,12 @@ export class CompiledQueryPanel {
     }
 
     private async sendUpdateToView(freshCompilation:boolean) {
-        let fileMetadata = await getCurrentFileMetadata(freshCompilation);
-        if (!fileMetadata) {
+        let curFileMeta = await getCurrentFileMetadata(freshCompilation);
+        if (!curFileMeta?.fileMetadata) {
             return;
         }
 
-        fileMetadata = handleSemicolonPrePostOps(fileMetadata);
+        let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
         const webview = this.webviewPanel.webview;
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -82,6 +81,12 @@ export class CompiledQueryPanel {
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
         });
+
+        let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
+        if (!queryAutoCompMeta){
+            return;
+        }
+        dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection);
         return webview;
     }
 
