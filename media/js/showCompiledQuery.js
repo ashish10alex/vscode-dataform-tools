@@ -15,6 +15,11 @@ window.addEventListener('message', event => {
 
     document.getElementById("relativeFilePath").textContent = data.relativeFilePath;
 
+
+    hljs.addPlugin(new CopyButtonPlugin({
+        autohide: false, // Always show the copy button
+    }));
+
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);
         const divElement = document.getElementById(key + "Div");
@@ -33,10 +38,6 @@ window.addEventListener('message', event => {
             hljs.highlightElement(element);
         }
     });
-
-    hljs.addPlugin(new CopyButtonPlugin({
-        autohide: false, // Always show the copy button
-    }));
 
     // Apply line numbers
     document.querySelectorAll('pre code').forEach((block) => {

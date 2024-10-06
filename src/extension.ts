@@ -59,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerCenterPanel(context);
     registerCompiledQueryPanel(context);
 
-    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean) {
         if (!document) {
             document = getVSCodeDocument();
         }
@@ -121,16 +121,6 @@ export async function activate(context: vscode.ExtensionContext) {
             async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
                 applyCodeActionUsingDiagnosticMessage(range, diagnosticMessage);
                 document.save();
-
-                // recompile the file after the suggestion is applied based on user configuration
-                let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
-                if (recompileAfterCodeAction) {
-                    let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    if(diagnosticCollection){
-                        await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-                    }
-                }
-
             })
     );
 
@@ -162,12 +152,15 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); }));
 
 
-    // context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-    //     let showCompiledQueryInVerticalSplitOnSave = undefined;
-    //     if(diagnosticCollection){
-    //         await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-    //     }
-    // }));
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
+        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
+        if(useWebViewToShowCompiledQuery){
+            return;
+        }
+        if(diagnosticCollection){
+            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, false);
+        }
+    }));
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
@@ -176,7 +169,7 @@ export async function activate(context: vscode.ExtensionContext) {
         if(diagnosticCollection){
             await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
         }
-        }));
+    }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
         let includeDependencies = false;

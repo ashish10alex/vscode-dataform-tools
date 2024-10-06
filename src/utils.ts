@@ -773,7 +773,7 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
 
 }
 
-export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:any, diagnosticCollection:any){
+export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curFileMeta:any, queryAutoCompMeta:any, document:any, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined, compiledSqlFilePath:string){
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (curFileMeta.pathMeta.extension === "sqlx") {
@@ -785,12 +785,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         return;
     }
 
-    // if (showCompiledQueryInVerticalSplitOnSave !== true) {
-    //     showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-    // }
-    // if (showCompiledQueryInVerticalSplitOnSave) {
-    //     writeCompiledSqlToFile(qm.currFileMetadata.fullQuery, compiledSqlFilePath, true);
-    // }
+    if (showCompiledQueryInVerticalSplitOnSave !== true) {
+        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+    }
+    if (showCompiledQueryInVerticalSplitOnSave && !launchedFromWebView) {
+        writeCompiledSqlToFile(queryAutoCompMeta.currFileMetadata.fullQuery, compiledSqlFilePath, true);
+    }
 
     let currFileMetadata = handleSemicolonPrePostOps(queryAutoCompMeta.currFileMetadata);
 
@@ -845,7 +845,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
 
 }
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean) {
     diagnosticCollection.clear();
 
     let curFileMeta = await getCurrentFileMetadata(true);
@@ -858,7 +858,8 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     if (!queryAutoCompMeta){
         return;
     }
-    dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, document, diagnosticCollection);
+    let launchedFromWebView = false;
+    dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave, compiledSqlFilePath);
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }
