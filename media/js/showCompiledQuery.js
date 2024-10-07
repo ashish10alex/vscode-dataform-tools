@@ -55,7 +55,8 @@ window.addEventListener('message', event => {
     // Apply line numbers
     document.querySelectorAll("pre code").forEach((block) => {
         const id = block.getAttribute('id');
-        if (id === "relativeFilePath" || id === "errorMessage") {
+        let skipElements = id === "relativeFilePath" || id === "errorMessage";
+        if (!skipElements) {
             hljs.lineNumbersBlock(block);
         }
     });
