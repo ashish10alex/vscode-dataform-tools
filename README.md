@@ -51,8 +51,7 @@ Trouble installing ? Please see [FAQ section](FAQ.md), if you are still stuck, p
 
 ## Features
 
-### <a id="compilation">Compilation & Dry run stats</a>
-Compiled query in a vertical split
+### <a id="compilation">Compiled query & Dry run stats</a>
 ![compilation](media/images/compiled_query_preview.png)
 
 ### <a id="depgraph">Dependency graph</a>
@@ -72,6 +71,7 @@ Auto completion support for `dependencies` when `"` or `'` is typed inside the c
 ![auto-completion](media/images/dependencies_autocompletion.gif)
 
 Declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
+
 ![auto-completion](media/images/sources_autocompletion.gif)
 
 Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
