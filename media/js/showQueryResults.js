@@ -147,13 +147,11 @@ window.addEventListener('message', event => {
     }
 
     if (query){
-        // document.getElementById('bigqueryerror').textContent = errorMessage;
         document.getElementById("sqlCodeBlock").textContent = query;
         hljs.addPlugin( new CopyButtonPlugin({
             autohide: false, // Always show the copy button
         }));
         hljs.highlightAll();
-        // document.getElementById("codeBlock").style.display = "none";
     }
 
     if (errorMessage){
