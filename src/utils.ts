@@ -872,6 +872,9 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
         return;
     }
 
+    dataformTags = queryAutoCompMeta.dataformTags;
+    declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
+
     let useWebViewToShowCompiledQuery:boolean |undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
     if(useWebViewToShowCompiledQuery === undefined){
         return;

@@ -61,6 +61,9 @@ export class CompiledQueryPanel {
                     return;
                 }
 
+                dataformTags = queryAutoCompMeta.dataformTags;
+                declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
+
                 let launchedFromWebView = true;
 
                 if(diagnosticCollection){
@@ -108,6 +111,9 @@ export class CompiledQueryPanel {
         if (!queryAutoCompMeta){
             return;
         }
+
+        dataformTags = queryAutoCompMeta.dataformTags;
+        declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
         const webview = this.webviewPanel.webview;
         await webview.postMessage({

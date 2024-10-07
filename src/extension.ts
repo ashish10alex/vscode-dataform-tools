@@ -79,11 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        if (completionItems !== undefined) {
-            dataformTags = completionItems[0];
-            declarationsAndTargets = completionItems[1];
-        }
+        await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
     }
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
