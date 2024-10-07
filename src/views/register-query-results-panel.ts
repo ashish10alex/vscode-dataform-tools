@@ -6,7 +6,7 @@ import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
-    private _cachedResults?: { results: any[], columns:any, jobStats: any };
+    private _cachedResults?: { results: any[], columns:any, jobStats: any, query:string };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -80,7 +80,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           this._view.webview.postMessage({"showLoadingMessage": true });
           const { results, columns, jobStats } = await queryBigQuery(query);
           if(results){
-            this._cachedResults = { results, columns, jobStats };
+            this._cachedResults = { results, columns, jobStats, query };
             this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
@@ -118,7 +118,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <script src="${cdnLinks.highlightJsCopyExtUri}"></script>
           <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
           <link rel="stylesheet" href="${highlighJstThemeUri}">
-          <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
 
           <link href="${cdnLinks.tabulatorCssUri}" rel="stylesheet">
           <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
@@ -153,7 +152,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <p><span id="datetime"></span></p>
       <p><span id="no-results"></span></p>
 
-      <div id="codeBlock">
+      <div id="codeBlock" style="display: none;">
         <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </div>

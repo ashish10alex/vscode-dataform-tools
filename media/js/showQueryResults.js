@@ -110,7 +110,9 @@ window.addEventListener('message', event => {
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, totalGbBilled);
         clearInterval(timerInterval);
-        document.body.removeChild(loadingMessage);
+        if (loadingMessage){
+            document.body.removeChild(loadingMessage);
+        }
 
         // Show the table
         document.getElementById('bigqueryResults').style.display = 'table';
@@ -151,8 +153,7 @@ window.addEventListener('message', event => {
             autohide: false, // Always show the copy button
         }));
         hljs.highlightAll();
-        hljs.initLineNumbersOnLoad();
-        document.getElementById("codeBlock").style.display = "none";
+        // document.getElementById("codeBlock").style.display = "none";
     }
 
     if (errorMessage){
