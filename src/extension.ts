@@ -19,7 +19,7 @@ import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
-import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled';
+import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {

@@ -847,7 +847,7 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
         if (sqlxBlockMetadata) {
             setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return;
+        return dryRunResult.error.message;
     }
     let combinedTableIds = "";
     currFileMetadata.tables.forEach((table) => {
@@ -855,7 +855,6 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
         combinedTableIds += targetTableId;
     });
     vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
-
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean) {

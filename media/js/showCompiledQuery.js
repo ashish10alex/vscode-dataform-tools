@@ -11,10 +11,8 @@ window.addEventListener('message', event => {
         "nonIncrementalQuery": event?.data?.nonIncrementalQuery,
         "operationsQuery": event?.data?.operationsQuery,
         "relativeFilePath": event?.data?.relativeFilePath,
+        "errorMessage": event?.data?.errorMessage,
     };
-
-    document.getElementById("relativeFilePath").textContent = data.relativeFilePath;
-
 
     hljs.addPlugin(new CopyButtonPlugin({
         autohide: false, // Always show the copy button
@@ -25,22 +23,41 @@ window.addEventListener('message', event => {
         const divElement = document.getElementById(key + "Div");
 
         if (value === undefined || value === null || value === "") {
-            divElement.style.display = "none";
+            if (divElement?.style){
+                divElement.style.display = "none";
+            }
         } else {
-            divElement.style.display = "";
-            element.textContent = value;
+            if(key === "errorMessage"){
+                // console.log(divElement);
+                // console.log(element);
+                if (value === " "){
+                    divElement.style.display = "none";
+                } else {
+                    divElement.style.display = "";
+                    element.textContent = value;
+                }
+            }else {
+                if (divElement?.style){
+                    divElement.style.display = "";
+                }
+                element.textContent = value;
 
-            // Reset highlighting
-            element.removeAttribute('data-highlighted');
-            element.className = element.className.replace(/\bhljs\b/, '');
+                // Reset highlighting
+                element.removeAttribute('data-highlighted');
+                element.className = element.className.replace(/\bhljs\b/, '');
 
-            // Re-apply highlighting
-            hljs.highlightElement(element);
+                // Re-apply highlighting
+                hljs.highlightElement(element);
+            }
         }
     });
 
     // Apply line numbers
-    document.querySelectorAll('pre code').forEach((block) => {
-        hljs.lineNumbersBlock(block);
+    document.querySelectorAll("pre code").forEach((block) => {
+        const id = block.getAttribute('id');
+        if (id === "relativeFilePath" || id === "errorMessage") {
+            hljs.lineNumbersBlock(block);
+        }
     });
+
 });

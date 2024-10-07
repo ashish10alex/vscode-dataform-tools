@@ -110,7 +110,11 @@ export class CompiledQueryPanel {
         if(diagnosticCollection){
             diagnosticCollection.clear();
         }
-        dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+        let errorMessage = await dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+        // console.log(`errorMessage: ${errorMessage}`);
+        if(!errorMessage){
+            errorMessage = " ";
+        }
 
         if(showCompiledQueryInVerticalSplitOnSave){
             const webview = this.webviewPanel.webview;
@@ -125,6 +129,7 @@ export class CompiledQueryPanel {
                 "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                 "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                "errorMessage": errorMessage || "",
             });
             return webview;
         } else {
@@ -171,6 +176,9 @@ export class CompiledQueryPanel {
         <body>
 
         <p><span id="relativeFilePath"></span></p>
+        <div class="error-message" id="errorMessageDiv" style="display: none;">
+            <p><span id="errorMessage" class="language-bash"></span></p>
+        </div>
 
         <span class="bigquery-job-cancelled"></span>
 
