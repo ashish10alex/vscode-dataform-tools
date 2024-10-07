@@ -126,8 +126,6 @@ export class CompiledQueryPanel {
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
-            "errorMessage":  " ",
-            "dryRunStat":  " ",
         });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
 
