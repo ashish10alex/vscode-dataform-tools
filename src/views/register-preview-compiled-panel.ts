@@ -127,6 +127,7 @@ export class CompiledQueryPanel {
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
             "errorMessage":  " ",
+            "dryRunStat":  " ",
         });
         this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
 
@@ -134,9 +135,14 @@ export class CompiledQueryPanel {
             diagnosticCollection.clear();
         }
         let launchedFromWebView = true;
-        let errorMessage = await dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+        let dryRunResult = await dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+        let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
+        let errorMessage = dryRunResult?.error.message;
         if(!errorMessage){
             errorMessage = " ";
+        }
+        if(!dryRunStat){
+            dryRunStat = "0 GB";
         }
         if(showCompiledQueryInVerticalSplitOnSave){
             await webview.postMessage({
@@ -150,12 +156,10 @@ export class CompiledQueryPanel {
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                 "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
                 "errorMessage": errorMessage,
+                "dryRunStat":  dryRunStat,
             });
             return webview;
-        } else {
-            return undefined;
-
-        }
+        } 
     }
 
     private async updateView() {
@@ -196,8 +200,13 @@ export class CompiledQueryPanel {
         <body>
 
         <p><span id="relativeFilePath"></span></p>
+
         <div class="error-message" id="errorMessageDiv" style="display: none;">
             <p><span id="errorMessage" class="language-bash"></span></p>
+        </div>
+
+        <div class="dry-run-stat" id="dryRunStatDiv" style="display: none;">
+            <p><span id="dryRunStat" class="language-bash"></span></p>
         </div>
 
         <span class="bigquery-job-cancelled"></span>

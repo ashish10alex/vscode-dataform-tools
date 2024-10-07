@@ -12,6 +12,7 @@ window.addEventListener('message', event => {
         "operationsQuery": event?.data?.operationsQuery,
         "relativeFilePath": event?.data?.relativeFilePath,
         "errorMessage": event?.data?.errorMessage,
+        "dryRunStat": event?.data?.dryRunStat,
     };
 
     hljs.addPlugin(new CopyButtonPlugin({
@@ -28,15 +29,21 @@ window.addEventListener('message', event => {
             }
         } else {
             if(key === "errorMessage"){
-                // console.log(divElement);
-                // console.log(element);
                 if (value === " "){
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
                     element.textContent = value;
                 }
-            }else {
+            }
+            else if (key === "dryRunStat"){
+                if (value === "0 GB"){
+                    divElement.style.display = "none";
+                } else {
+                    divElement.style.display = "";
+                    element.textContent = `This query will process ${value} when run.`;
+                }
+            } else {
                 if (divElement?.style){
                     divElement.style.display = "";
                 }
@@ -55,7 +62,7 @@ window.addEventListener('message', event => {
     // Apply line numbers
     document.querySelectorAll("pre code").forEach((block) => {
         const id = block.getAttribute('id');
-        let skipElements = id === "relativeFilePath" || id === "errorMessage";
+        let skipElements = id === "relativeFilePath" || id === "errorMessage" || id === "dryRunStat";
         if (!skipElements) {
             hljs.lineNumbersBlock(block);
         }
