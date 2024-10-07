@@ -54,10 +54,10 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
     }
 
     var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
-    if (!filename || !relativeFilePath || !extension) { return; }
+    if (!filename || !relativeFilePath || !extension) { return {isDataformWorkspace: false };};
 
     let workspaceFolder = getWorkspaceFolder();
-    if (!workspaceFolder) { return; }
+    if (!workspaceFolder) { return {isDataformWorkspace: false}; }
 
 
     let dataformCompiledJson;
@@ -73,6 +73,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
     if (dataformCompiledJson) {
         let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
         return {
+            isDataformWorkspace: true,
             fileMetadata: fileMetadata,
             pathMeta: {
                 filename: filename,
