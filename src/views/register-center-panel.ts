@@ -80,9 +80,9 @@ export class CenterPanel {
         }
 
         if (!treeRootFromRef) {
-            let currFileMetadata = await getCurrentFileMetadata(false);
-            if (currFileMetadata) {
-                let treeRootTarget = currFileMetadata?.tables[0]?.target;
+            let curFileMeta = await getCurrentFileMetadata(false);
+            if (curFileMeta?.fileMetadata) {
+                let treeRootTarget = curFileMeta.fileMetadata?.tables[0]?.target;
                 treeRoot = `${treeRootTarget?.database}.${treeRootTarget?.schema}.${treeRootTarget?.name}`;
             }
         }

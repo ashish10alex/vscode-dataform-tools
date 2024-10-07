@@ -103,7 +103,7 @@ function showCurrFileMetadataInSideBar(tables) {
 
 window.addEventListener('message', event => {
     const message = event.data;
-    let tables = message.currFileMetadata.tables;
+    let tables = message.currFileMetadata.fileMetadata.tables;
     showCurrFileMetadataInSideBar(tables);
     removeLoadingMessage();
 });

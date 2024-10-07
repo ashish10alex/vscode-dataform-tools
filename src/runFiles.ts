@@ -1,4 +1,4 @@
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getMetadataForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation } from "./utils";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation } from "./utils";
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
 
@@ -22,7 +22,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     let currFileMetadata;
     let dataformCompiledJson = await runCompilation(workspaceFolder);
     if (dataformCompiledJson) {
-        currFileMetadata = await getMetadataForCurrentFile(relativeFilePath, dataformCompiledJson);
+        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
     }
 
     if (currFileMetadata) {

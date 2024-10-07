@@ -19,6 +19,7 @@ import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
+import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -30,6 +31,18 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.bigQueryJob = undefined;
     globalThis.cancelBigQueryJobSignal = false;
     globalThis.queryLimit = 1000;
+    globalThis.diagnosticCollection = undefined;
+    globalThis.cdnLinks = {
+        highlightJsCssUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css",
+        highlightJsUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
+        highlightJsCopyExtUri : "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js",
+        highlightJsCopyExtCssUri : "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css",
+        highlightJsOneDarkThemeUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
+        highlightJsOneLightThemeUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
+        highlightJsLineNoExtUri : "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
+        tabulatorCssUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css",
+        tabulatorUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
+    };
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -50,13 +63,14 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
+    diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
     registerWebViewProvider(context);
     registerCenterPanel(context);
+    registerCompiledQueryPanel(context);
 
-    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean) {
         if (!document) {
             document = getVSCodeDocument();
         }
@@ -65,11 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        if (completionItems !== undefined) {
-            dataformTags = completionItems[0];
-            declarationsAndTargets = completionItems[1];
-        }
+        await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
     }
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
@@ -94,11 +104,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async (uri: vscode.Uri, line: number) => {
-            let fileMetadata = await getCurrentFileMetadata(false);
-            if (!fileMetadata) {
+            let curFileMeta = await getCurrentFileMetadata(false);
+            if (!curFileMeta?.fileMetadata) {
                 return;
             }
-            let query = fileMetadata.queryMeta.assertionQuery;
+            let query = curFileMeta.fileMetadata.queryMeta.assertionQuery;
             await runQueryInPanel(query, queryResultsViewProvider);
         })
     );
@@ -118,14 +128,6 @@ export async function activate(context: vscode.ExtensionContext) {
             async (document: vscode.TextDocument, range: vscode.Range, diagnosticMessage: string) => {
                 applyCodeActionUsingDiagnosticMessage(range, diagnosticMessage);
                 document.save();
-
-                // recompile the file after the suggestion is applied based on user configuration
-                let recompileAfterCodeAction = vscode.workspace.getConfiguration('vscode-dataform-tools').get('recompileAfterCodeAction');
-                if (recompileAfterCodeAction) {
-                    let showCompiledQueryInVerticalSplitOnSave = undefined;
-                    await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-                }
-
             })
     );
 
@@ -158,16 +160,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-        let showCompiledQueryInVerticalSplitOnSave = undefined;
-        await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
+        if(useWebViewToShowCompiledQuery){
+            return;
+        }
+        if(diagnosticCollection){
+            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, false);
+        }
     }));
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
+        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
+        if(useWebViewToShowCompiledQuery){
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true);
+        } else{
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;
-            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-        }));
+            if(diagnosticCollection){
+                await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
+            }
+        }
+    }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
         let includeDependencies = false;

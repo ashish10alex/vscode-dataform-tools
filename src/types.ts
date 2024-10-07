@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 export interface Table {
     type: string;
     tags: string[];
@@ -137,4 +138,4 @@ export interface SqlxBlockMetadata {
 export interface GitHubContentResponse {
     content: string;
     encoding: string;
-  }
+}

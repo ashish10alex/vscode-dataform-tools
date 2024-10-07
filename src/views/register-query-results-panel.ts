@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getNonce } from '../utils';
+import { getHighlightJsThemeUri, getNonce } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
-    private _cachedResults?: { results: any[], columns:any, jobStats: any };
+    private _cachedResults?: { results: any[], columns:any, jobStats: any, query:string };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -80,7 +80,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           this._view.webview.postMessage({"showLoadingMessage": true });
           const { results, columns, jobStats } = await queryBigQuery(query);
           if(results){
-            this._cachedResults = { results, columns, jobStats };
+            this._cachedResults = { results, columns, jobStats, query };
             this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
@@ -103,15 +103,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview) {
     const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    const highlightJsCssUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css";
-    const highlightJsUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js";
-    const highlightJsCopyExtUri = "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js";
-    const highlightJsCopyExtCssUri = "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css";
-    const highlightJsOneDarkThemeUri = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css";
-    const highlightJsLineNoExtUri = "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js";
-    const tabulatorCssUri = "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css";
-    const tabulatorUri = "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js";
     const nonce = getNonce();
+    // TODO: light theme does not seem to get picked up
+    let highlighJstThemeUri = getHighlightJsThemeUri();
 
     return /*html*/ `
       <!DOCTYPE html>
@@ -119,15 +113,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link rel="stylesheet" href="${highlightJsCssUri}">
-          <script src="${highlightJsUri}"></script>
-          <script src="${highlightJsCopyExtUri}"></script>
-          <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
-          <link rel="stylesheet" href="${highlightJsOneDarkThemeUri}">
-          <script src="${highlightJsLineNoExtUri}"></script>
+          <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
+          <script src="${cdnLinks.highlightJsUri}"></script>
+          <script src="${cdnLinks.highlightJsCopyExtUri}"></script>
+          <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
+          <link rel="stylesheet" href="${highlighJstThemeUri}">
 
-          <link href="${tabulatorCssUri}" rel="stylesheet">
-          <script type="text/javascript" src="${tabulatorUri}"></script>
+          <link href="${cdnLinks.tabulatorCssUri}" rel="stylesheet">
+          <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
           <link href="${styleResetUri}" rel="stylesheet">
           <style>
@@ -159,7 +152,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <p><span id="datetime"></span></p>
       <p><span id="no-results"></span></p>
 
-      <div id="codeBlock">
+      <div id="codeBlock" style="display: none;">
         <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </div>

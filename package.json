@@ -30,7 +30,8 @@
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
         "onCommand:extension.formatCurrentfile",
-        "onCommand:extension.runFilesTagsWtOptions"
+        "onCommand:extension.runFilesTagsWtOptions",
+        "onCommand:extension.showCompiledQueryInWebView"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -149,6 +150,11 @@
                 "command": "vscode-dataform-tools.showDependentsInGraph",
                 "category": "Dataform",
                 "title": "Show dependents in graph"
+            },
+            {
+                "command": "vscode-dataform-tools.showCompiledQueryInWebView",
+                "category": "Dataform",
+                "title": "Show compiled Query in web view"
             }
         ],
         "languages": [
@@ -206,15 +212,15 @@
         "configuration": {
             "title": "Dataform",
             "properties": {
+                "vscode-dataform-tools.useWebViewToShowCompiledQuery": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Uses web view to show compiled Query instead of showing it in a temporary file"
+                },
                 "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
-                },
-                "vscode-dataform-tools.recompileAfterCodeAction": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Automatically recompiles the file after code action is applied"
                 },
                 "vscode-dataform-tools.defaultDataformCompileTime": {
                     "type": "string",
