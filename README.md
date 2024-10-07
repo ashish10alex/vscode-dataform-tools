@@ -14,7 +14,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| [Compilation & Dry run stats](#compilation) | Compiled query in a vertical split |
+| [Compiled Query & Dry run stats](#compilation) | Compiled query in a vertical split |
 | [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
 | [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
