@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.2...v0.2.3) (2024-10-08)
+
+
+### Features
+
+* check for gcloud cli on installation ([01c2e6c](https://github.com/ashish10alex/vscode-dataform-tools/commit/01c2e6c0b8d6e6f5dcf3534772b2db9aa26bbe38))
+
 ### [0.2.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.1...v0.2.2) (2024-10-08)
 
 
