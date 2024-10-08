@@ -173,7 +173,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
         let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
         if(useWebViewToShowCompiledQuery){
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true);
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
         } else{
             let showCompiledQueryInVerticalSplitOnSave = true;
             let document = undefined;

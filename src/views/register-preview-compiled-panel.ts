@@ -7,21 +7,21 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryInWebView', async() => {
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true);
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, false);
         })
     );
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
         if (useWebViewToShowCompiledQuery && editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
-            CompiledQueryPanel.getInstance(context.extensionUri, context, false);
+            CompiledQueryPanel.getInstance(context.extensionUri, context, false, true);
         }
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
         let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if(useWebViewToShowCompiledQuery){
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true);
+        if(useWebViewToShowCompiledQuery || CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
         }
     }));
 
@@ -32,25 +32,27 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     private centerPanelDisposed: boolean = false;
     private static readonly viewType = "CenterPanel";
-    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext) {
-        this.updateView();
+    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean) {
+        this.updateView(forceShowVerticalSplit);
     }
 
-    public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean) {
+    public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean) {
         const column = window.activeTextEditor
             ? window.activeTextEditor.viewColumn
             : undefined;
 
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-            if(!showCompiledQueryInVerticalSplitOnSave){
-                CompiledQueryPanel.centerPanel.webviewPanel.dispose();
+            if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
+                if (CompiledQueryPanel?.centerPanel?.webviewPanel){
+                    CompiledQueryPanel.centerPanel.webviewPanel.dispose();
+                }
                 return;
             }
-            CompiledQueryPanel.centerPanel.sendUpdateToView(freshCompilation, showCompiledQueryInVerticalSplitOnSave);
+            CompiledQueryPanel.centerPanel.sendUpdateToView(freshCompilation, showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit);
         } else {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-            if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined){
+            if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let curFileMeta = await getCurrentFileMetadata(freshCompilation);
                 if (!curFileMeta?.isDataformWorkspace || !curFileMeta.fileMetadata) {
                     return;
@@ -89,7 +91,7 @@ export class CompiledQueryPanel {
                     ],
                 }
             );
-            CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext);
+            CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext, forceShowInVeritcalSplit);
         }
 
         this.centerPanel?.webviewPanel.onDidDispose(() => {
@@ -99,7 +101,7 @@ export class CompiledQueryPanel {
         });
     }
 
-    private async sendUpdateToView(freshCompilation:boolean, showCompiledQueryInVerticalSplitOnSave:boolean | undefined) {
+    private async sendUpdateToView(freshCompilation:boolean, showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean) {
         let curFileMeta = await getCurrentFileMetadata(freshCompilation);
         if (!curFileMeta?.isDataformWorkspace || !curFileMeta.fileMetadata) {
             return;
@@ -142,7 +144,7 @@ export class CompiledQueryPanel {
         if(!dryRunStat){
             dryRunStat = "0 GB";
         }
-        if(showCompiledQueryInVerticalSplitOnSave){
+        if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
                 "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
                 "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -160,9 +162,9 @@ export class CompiledQueryPanel {
         } 
     }
 
-    private async updateView() {
+    private async updateView(forceShowInVeritcalSplit:boolean) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        let webview = await this.sendUpdateToView(true, showCompiledQueryInVerticalSplitOnSave);
+        let webview = await this.sendUpdateToView(true, showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit);
         if(webview){
             // this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         } else {
