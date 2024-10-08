@@ -214,7 +214,7 @@
             "properties": {
                 "vscode-dataform-tools.useWebViewToShowCompiledQuery": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "markdownDescription": "Uses web view to show compiled Query instead of showing it in a temporary file"
                 },
                 "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
