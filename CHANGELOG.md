@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.4...v0.2.5) (2024-10-08)
+
+
+### Bug Fixes
+
+* flicker on reload ([4794c33](https://github.com/ashish10alex/vscode-dataform-tools/commit/4794c337144e6dd4a37679d930fa1ba9ffc95abd))
+
 ### [0.2.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.3...v0.2.4) (2024-10-08)
 
 ### [0.2.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.2...v0.2.3) (2024-10-08)
