@@ -102,6 +102,11 @@ export class CompiledQueryPanel {
     }
 
     private async sendUpdateToView(freshCompilation:boolean, showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean) {
+        const webview = this.webviewPanel.webview;
+        if (this.webviewPanel.webview.html === ""){
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
+        }
+
         let curFileMeta = await getCurrentFileMetadata(freshCompilation);
         if (!curFileMeta?.isDataformWorkspace || !curFileMeta.fileMetadata) {
             return;
@@ -117,7 +122,6 @@ export class CompiledQueryPanel {
         dataformTags = queryAutoCompMeta.dataformTags;
         declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
-        const webview = this.webviewPanel.webview;
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
             "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -129,7 +133,6 @@ export class CompiledQueryPanel {
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
         });
-        this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
 
         if(diagnosticCollection){
             diagnosticCollection.clear();
