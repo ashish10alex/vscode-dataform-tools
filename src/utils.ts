@@ -214,8 +214,12 @@ export function executableIsAvailable(name: string) {
     const command = isRunningOnWindows ? "where.exe" : "which";
     try { shell(`${command} ${name}`); return true; }
     catch (error) {
-        vscode.window.showErrorMessage(`${name} cli not found in path`);
-        return false;
+    vscode.window.showErrorMessage(`${name} cli not found in path`, "Installation steps").then(selection => {
+        if (selection === "Installation steps") {
+            vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#requirements"));
+        }
+    });
+    return false;
     }
 }
 
