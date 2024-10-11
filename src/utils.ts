@@ -331,28 +331,29 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
 }
 
 export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    let dataformCompilerOptions = getDataformCompilerOptions();
     let dataformActionCmd = "";
     for (let i = 0; i < actionsList.length; i++) {
         let fullTableName = actionsList[i];
         if (i === 0) {
             if (includDependencies) {
                 if (fullRefresh) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps --full-refresh`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps --full-refresh`);
                 } else {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
                 }
             } else if (includeDownstreamDependents) {
                 if (fullRefresh) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents --full-refresh`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents --full-refresh`);
                 } else {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
                 }
             }
             else {
                 if (fullRefresh) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --full-refresh`);
+                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --full-refresh`);
                 } else {
-                    dataformActionCmd = `dataform run ${workspaceFolder} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
+                    dataformActionCmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
                 }
             }
         } else {
@@ -545,6 +546,14 @@ export function getDataformCompilationTimeoutFromConfig() {
     return "5m";
 }
 
+export function getDataformCompilerOptions() {
+    let dataformCompilerOptions: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
+    if (dataformCompilerOptions) {
+        return dataformCompilerOptions;
+    }
+    return "";
+}
+
 export function getSqlfluffConfigPathFromSettings() {
     let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
     let sqlfluffConfigPath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
@@ -562,15 +571,21 @@ export function getSqlfluffConfigPathFromSettings() {
 
 function compileDataform(workspaceFolder: string): Promise<string> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+    let dataformCompilerOptions = getDataformCompilerOptions();
+    let compilerOptions:string[] = [];
+    if (dataformCompilerOptions !== ""){
+        compilerOptions.push(dataformCompilerOptions);
+    }
+
     return new Promise((resolve, reject) => {
         let spawnedProcess;
         if (isRunningOnWindows) {
             const command = "dataform.cmd";
             // windows seems to require shell: true
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         } else {
             const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
         }
 
         let stdOut = '';

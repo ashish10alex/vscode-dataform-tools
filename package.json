@@ -212,6 +212,11 @@
         "configuration": {
             "title": "Dataform",
             "properties": {
+                "vscode-dataform-tools.compilerOptions": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "Addition compiler options to pass to dataform cli commands e.g. --vars=someKey=someValue,a=b"
+                },
                 "vscode-dataform-tools.useWebViewToShowCompiledQuery": {
                     "type": "boolean",
                     "default": true,

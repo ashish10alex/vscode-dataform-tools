@@ -1,4 +1,4 @@
-import { getDataformCompilationTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal } from "./utils";
+import { getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getWorkspaceFolder, runCommandInTerminal } from "./utils";
 import * as vscode from 'vscode';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
@@ -20,7 +20,8 @@ export async function getMultipleTagsSelection() {
 
 
 export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
-    let cmd = `dataform run ${workspaceFolder} --timeout=${dataformCompilationTimeoutVal}`;
+    let dataformCompilerOptions = getDataformCompilerOptions();
+    let cmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
     if (typeof tags === "object") {
         for (let tag of tags) {
             cmd += ` --tags=${tag}`;
