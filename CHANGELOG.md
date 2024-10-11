@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.5...v0.2.6) (2024-10-11)
+
+
+### Features
+
+* ability to specify additional args, solves https://github.com/ashish10alex/vscode-dataform-tools/issues/31 ([66b6322](https://github.com/ashish10alex/vscode-dataform-tools/commit/66b6322121b164c55ee4f4ea15bba7274443c597))
+
 ### [0.2.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.4...v0.2.5) (2024-10-08)
 
 
