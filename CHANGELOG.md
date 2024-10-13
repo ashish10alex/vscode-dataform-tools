@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.7...v0.2.8) (2024-10-13)
+
+
+### Features
+
+* show assertion passed in webview when assertion is ran & passes ([9398d90](https://github.com/ashish10alex/vscode-dataform-tools/commit/9398d904a2a3ffe3e0d4f2209596a6851b686d54))
+
+
+### Bug Fixes
+
+* error when using line number plugin (highlight.js) on undefined div elements ([ab1b4a7](https://github.com/ashish10alex/vscode-dataform-tools/commit/ab1b4a7c2c9c3443b01475f01562c1224247cf6c))
+
 ### [0.2.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.6...v0.2.7) (2024-10-13)
 
 
