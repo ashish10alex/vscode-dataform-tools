@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, QueryMeta } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -396,7 +396,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     let assertions = compiledJson.assertions;
     let operations = compiledJson.operations;
     //TODO: This can be deprecated in favour of queryMetadata in future ?
-    let queryToDisplay = "";
     let queryMeta = {
         type: "",
         tableOrViewQuery: "",
@@ -411,7 +410,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     let finalTables: any[] = [];
 
     if (tables === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
+        return { tables: finalTables, queryMeta: queryMeta };
     }
 
     for (let i = 0; i < tables.length; i++) {
@@ -420,20 +419,13 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         if (relativeFilePath === tableRelativeFilePath) {
             if (table.type === "table" || table.type === "view") {
                 queryMeta.type = table.type;
-                queryToDisplay = table.query.trimStart() + "\n ;";
-                queryMeta.tableOrViewQuery = queryToDisplay;
+                queryMeta.tableOrViewQuery = table.query.trimStart() + "\n ;";
             } else if (table.type === "incremental") {
                 queryMeta.type = table.type;
-                queryToDisplay += "\n-- Non incremental query \n";
                 queryMeta.nonIncrementalQuery = table.query + ";";
-                queryToDisplay += table.query + ";";
-                queryToDisplay += "\n-- Incremental query \n";
-                queryToDisplay += table.incrementalQuery + ";\n";
                 queryMeta.incrementalQuery = table.incrementalQuery + ";";
                 if (table?.incrementalPreOps) {
                     table.incrementalPreOps.forEach((query, idx) => {
-                        queryToDisplay += `\n-- Incremental pre operations: [${idx}] \n`;
-                        queryToDisplay += query + "\n ;";
                         queryMeta.incrementalPreOpsQuery += query + "\n";
                     });
                 }
@@ -441,15 +433,11 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
             if (table.preOps) {
                 table.preOps.forEach((query, idx) => {
-                    queryToDisplay += `\n-- Pre operations: [${idx}] \n`;
-                    queryToDisplay += query + ";\n";
                     queryMeta.preOpsQuery += query + "\n";
                 });
             }
             if (table.postOps) {
                 table.postOps.forEach((query, idx) => {
-                    queryToDisplay += `\n-- Post operations: [${idx}] \n`;
-                    queryToDisplay += query + ";\n";
                     queryMeta.postOpsQuery += query + "\n";
                 });
             }
@@ -457,7 +445,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 type: table.type,
                 tags: table.tags,
                 fileName: relativeFilePath,
-                query: queryToDisplay,
                 target: table.target,
                 preOps: table.preOps,
                 postOps: table.postOps,
@@ -471,7 +458,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
 
     if (assertions === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
+        return { tables: finalTables, queryMeta: queryMeta };
     }
 
     let assertionCountForFile = 0;
@@ -498,11 +485,10 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             assertionQuery += assertion.query.trimStart() + "; \n";
         }
     }
-    queryToDisplay += assertionQuery;
     queryMeta.assertionQuery = assertionQuery;
 
     if (operations === undefined) {
-        return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
+        return { tables: finalTables, queryMeta: queryMeta };
     }
 
     for (let i = 0; i < operations.length; i++) {
@@ -517,7 +503,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
                 finalOperationQuery += opQueries[i] + "\n ;";
             }
-            queryToDisplay += finalOperationQuery;
             queryMeta.operationsQuery += finalOperationQuery;
             let operationFound = {
                 type: "operation",
@@ -534,7 +519,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         }
     }
 
-    return { tables: finalTables, fullQuery: queryToDisplay, queryMeta: queryMeta };
+    return { tables: finalTables, queryMeta: queryMeta };
 };
 
 
@@ -811,23 +796,56 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
 
 }
 
-export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curFileMeta:any, queryAutoCompMeta:any, document:any, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined, compiledSqlFilePath:string){
+export function getQueryToDisplay(queryMeta:QueryMeta): string {
+    let concatenatedString = "";
+
+    if (queryMeta.tableOrViewQuery && queryMeta.tableOrViewQuery !== "") {
+        concatenatedString += "----------\n -- Query\n ----------\n" + queryMeta.tableOrViewQuery + "\n\n";
+    }
+
+    if (queryMeta.assertionQuery && queryMeta.assertionQuery !== "") {
+        concatenatedString += "----------\n -- Assertion\n ----------\n" + queryMeta.assertionQuery + "\n\n";
+    }
+
+    if (queryMeta.preOpsQuery && queryMeta.preOpsQuery !== "") {
+        concatenatedString += "----------\n -- Pre Operation\n ----------\n" + queryMeta.preOpsQuery + "\n\n";
+    }
+
+    if (queryMeta.postOpsQuery && queryMeta.postOpsQuery !== "") {
+        concatenatedString += "----------\n -- Post Operation\n ----------\n" + queryMeta.postOpsQuery + "\n\n";
+    }
+
+    if (queryMeta.incrementalPreOpsQuery && queryMeta.incrementalPreOpsQuery !== "") {
+        concatenatedString += "----------\n -- Incremental Pre Operation\n ----------\n" + queryMeta.incrementalPreOpsQuery + "\n\n";
+    }
+
+    if (queryMeta.incrementalQuery && queryMeta.incrementalQuery !== "") {
+        concatenatedString += "----------\n -- Incremental Query\n ----------\n" + queryMeta.incrementalQuery + "\n\n";
+    }
+
+    if (queryMeta.nonIncrementalQuery && queryMeta.nonIncrementalQuery !== "") {
+        concatenatedString += "----------\n -- Non Incremental Query\n ----------\n" + queryMeta.nonIncrementalQuery + "\n\n";
+    }
+
+    if (queryMeta.operationsQuery && queryMeta.operationsQuery !== "") {
+        concatenatedString += "----------\n -- Operations Query\n ----------\n" + queryMeta.operationsQuery + "\n\n";
+    }
+    return concatenatedString;
+}
+
+export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined, compiledSqlFilePath:string){
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (curFileMeta.pathMeta.extension === "sqlx") {
         sqlxBlockMetadata = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
     }
 
-    if (queryAutoCompMeta.currFileMetadata.fullQuery === "") {
-        vscode.window.showErrorMessage(`Query for ${curFileMeta.pathMeta.filename} not found in compiled json`);
-        return;
-    }
-
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
         showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
     }
     if (showCompiledQueryInVerticalSplitOnSave && !launchedFromWebView) {
-        writeCompiledSqlToFile(queryAutoCompMeta.currFileMetadata.fullQuery, compiledSqlFilePath, true);
+        let queryToDisplay = getQueryToDisplay(curFileMeta.fileMetadata.queryMeta);
+        writeCompiledSqlToFile(queryToDisplay, compiledSqlFilePath, true);
     }
 
     let currFileMetadata = handleSemicolonPrePostOps(queryAutoCompMeta.currFileMetadata);
@@ -874,12 +892,15 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
         }
         return dryRunResult;
     }
-    let combinedTableIds = "";
-    currFileMetadata.tables.forEach((table) => {
-        let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
-        combinedTableIds += targetTableId;
-    });
-    vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
+
+    if (showCompiledQueryInVerticalSplitOnSave && !launchedFromWebView) {
+        let combinedTableIds = "";
+        currFileMetadata.tables.forEach((table) => {
+            let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
+            combinedTableIds += targetTableId;
+        });
+        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
+    }
     return dryRunResult;
 }
 

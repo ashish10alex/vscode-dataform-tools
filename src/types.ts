@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+
 export interface Table {
     type: string;
     tags: string[];
@@ -13,20 +13,21 @@ export interface Table {
     dependencyTargets: Target[];
 }
 
+export interface QueryMeta {
+    type:string,
+    tableOrViewQuery: string
+    nonIncrementalQuery: string
+    incrementalQuery: string
+    incrementalPreOpsQuery: string
+    preOpsQuery: string
+    postOpsQuery: string
+    assertionQuery: string
+    operationsQuery: string
+}
+
 export interface TablesWtFullQuery {
     tables: Table[];
-    fullQuery: string;
-    queryMeta: {
-        type:string,
-        tableOrViewQuery: string
-        nonIncrementalQuery: string
-        incrementalQuery: string
-        incrementalPreOpsQuery: string
-        preOpsQuery: string
-        postOpsQuery: string
-        assertionQuery: string
-        operationsQuery: string
-    }
+    queryMeta: QueryMeta
 }
 
 export interface Assertion {
