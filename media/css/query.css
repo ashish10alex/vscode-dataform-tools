@@ -133,7 +133,7 @@
 	color: white;
 }
 
-.error-message {
+.error-message-container {
   color: #d32f2f;
   font-weight: 500;
   background-color: #ffebee;
@@ -149,7 +149,7 @@
   transition: all 0.2s ease;
 }
 
-.error-message::before {
+.error-message-container::before {
   content: '⚠️';
   margin-right: 8px;
   font-size: 14px;

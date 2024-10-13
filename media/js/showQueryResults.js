@@ -114,6 +114,15 @@ window.addEventListener('message', event => {
             document.body.removeChild(loadingMessage);
         }
 
+        const errorMessageBlock = document.getElementById('errorMessage');
+        const errorMessageDiv = document.getElementById('errorsDiv');
+        if (errorMessageBlock){
+            errorMessageDiv.style.display = "";
+            if (type === "assertion"){
+                errorMessageBlock.textContent = `Assertion failed !`;
+            } 
+        }
+
         // Show the table
         document.getElementById('bigqueryResults').style.display = 'table';
 
@@ -140,7 +149,7 @@ window.addEventListener('message', event => {
 
     if(noResults){
         postRunCleanup();
-        const noResultsForQuery = document.getElementById('no-results');
+        const noResultsForQuery = document.getElementById('noResults');
         const noResultsDiv = document.getElementById('noResultsDiv');
         if (noResultsForQuery){
             noResultsDiv.style.display = "";

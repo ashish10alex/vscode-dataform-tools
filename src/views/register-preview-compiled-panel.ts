@@ -204,7 +204,7 @@ export class CompiledQueryPanel {
 
         <p><span id="relativeFilePath"></span></p>
 
-        <div class="error-message" id="errorMessageDiv" style="display: none;">
+        <div class="error-message-container" id="errorMessageDiv" style="display: none;">
             <p><span id="errorMessage" class="language-bash"></span></p>
         </div>
 

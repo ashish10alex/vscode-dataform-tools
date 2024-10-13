@@ -156,8 +156,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       <p><span id="datetime"></span></p>
 
+      <div class="error-message-container" id="errorsDiv" style="display: none;" >
+          <p><span id="errorMessage"></span></p>
+      </div>
+
       <div class="no-errors-container" id="noResultsDiv" style="display: none;" >
-          <p><span id="no-results"></span></p>
+          <p><span id="noResults"></span></p>
       </div>
 
       <div id="codeBlock" style="display: none;">
