@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.6...v0.2.7) (2024-10-13)
+
+
+### Features
+
+* improve default compiled query web view load time by removing redundant query computation ([dbe413c](https://github.com/ashish10alex/vscode-dataform-tools/commit/dbe413c933a1c67e1e132b1ed8530065945d5040))
+
 ### [0.2.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.5...v0.2.6) (2024-10-11)
 
 
