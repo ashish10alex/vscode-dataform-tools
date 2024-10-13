@@ -92,7 +92,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           }else{
             //TODO: even when there is no results we could shows billed bytes 
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-            this._view.webview.postMessage({"noResults": true, "query": query, "type":type });
+            this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats });
             this._view.show(true);
           }
       } catch (error:any) {

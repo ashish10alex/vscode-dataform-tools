@@ -55,17 +55,8 @@ window.addEventListener('message', event => {
 
                 // Re-apply highlighting
                 hljs.highlightElement(element);
+                hljs.lineNumbersBlock(element);
             }
         }
     });
-
-    // Apply line numbers
-    document.querySelectorAll("pre code").forEach((block) => {
-        const id = block.getAttribute('id');
-        let skipElements = id === "relativeFilePath" || id === "errorMessage" || id === "dryRunStat";
-        if (!skipElements) {
-            hljs.lineNumbersBlock(block);
-        }
-    });
-
 });

@@ -10,10 +10,9 @@ navLinks.forEach(link => {
     link.addEventListener('click', function(e) {
     // Remove active class from all links
     navLinks.forEach(link => link.classList.remove('active'));
-    
+
     // Add active class to clicked link
     this.classList.add('active');
-    console.log(this);
     if (this.getAttribute('href') === '#results') {
         document.getElementById("resultBlock").style.display = "";
         document.getElementById("codeBlock").style.display = "none";
@@ -143,7 +142,6 @@ window.addEventListener('message', event => {
         postRunCleanup();
         const noResultsForQuery = document.getElementById('no-results');
         const noResultsDiv = document.getElementById('noResultsDiv');
-        console.log(`type: ${type}`);
         if (noResultsForQuery){
             noResultsDiv.style.display = "";
             if (type === "assertion"){
