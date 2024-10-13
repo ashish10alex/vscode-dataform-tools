@@ -109,7 +109,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
             let query = curFileMeta.fileMetadata.queryMeta.assertionQuery;
-            await runQueryInPanel(query, queryResultsViewProvider);
+            await runQueryInPanel({query: query, type: "assertion"}, queryResultsViewProvider);
         })
     );
 

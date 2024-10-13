@@ -208,7 +208,7 @@ export class CompiledQueryPanel {
             <p><span id="errorMessage" class="language-bash"></span></p>
         </div>
 
-        <div class="dry-run-stat" id="dryRunStatDiv" style="display: none;">
+        <div class="no-errors-container" id="dryRunStatDiv" style="display: none;">
             <p><span id="dryRunStat" class="language-bash"></span></p>
         </div>
 

@@ -155,7 +155,7 @@
   font-size: 14px;
 }
 
-.dry-run-stat {
+.no-errors-container {
   color: #02131c;
   font-weight: 500;
   background-color: #bcc9d6;
@@ -171,7 +171,7 @@
   transition: all 0.2s ease;
 }
 
-.dry-run-stat::before {
+.no-errors-container::before {
   content: '️✅';
   margin-right: 8px;
   font-size: 14px;

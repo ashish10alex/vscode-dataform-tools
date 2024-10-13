@@ -102,6 +102,7 @@ window.addEventListener('message', event => {
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
     const showLoadingMessage = event?.data?.showLoadingMessage;
+    const type = event?.data?.type;
 
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 
@@ -141,8 +142,15 @@ window.addEventListener('message', event => {
     if(noResults){
         postRunCleanup();
         const noResultsForQuery = document.getElementById('no-results');
+        const noResultsDiv = document.getElementById('noResultsDiv');
+        console.log(`type: ${type}`);
         if (noResultsForQuery){
-            noResultsForQuery.textContent = `❕ There is no data to display`;
+            noResultsDiv.style.display = "";
+            if (type === "assertion"){
+                noResultsForQuery.textContent = `Assertion passed !`;
+            } else {
+                noResultsForQuery.textContent = `There is no data to display`;
+            }
         }
     }
 

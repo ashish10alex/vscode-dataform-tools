@@ -2,10 +2,12 @@ import * as vscode from 'vscode';
 import {  Uri } from "vscode";
 import { getHighlightJsThemeUri, getNonce } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
+import { QueryWtType } from '../types';
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
+    private queryType: string = "";
     private _cachedResults?: { results: any[], columns:any, jobStats: any, query:string };
     private _query?:string;
 
@@ -25,7 +27,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       if (this._invokedByCommand){
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         if(this._query){
-          await this.updateContent(this._query);
+          await this.updateContent({query: this._query, type:this.queryType});
         }
       }else {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
@@ -65,13 +67,16 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       );
     }
 
-    public focusWebview(query:string) {
-      this._query = query;
+    public focusWebview(queryWtType:QueryWtType) {
+      this._query = queryWtType.query;
       this._invokedByCommand = true;
+      this.queryType = queryWtType.type;
       vscode.commands.executeCommand('queryResultsView.focus');
     }
 
-    public async updateContent(query:string) {
+    public async updateContent(queryWtType:QueryWtType) {
+    let query = queryWtType.query;
+    let type = queryWtType.type;
     if (!this._view) {
         return;
     }
@@ -81,20 +86,20 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           const { results, columns, jobStats } = await queryBigQuery(query);
           if(results){
             this._cachedResults = { results, columns, jobStats, query };
-            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query });
+            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
           }else{
             //TODO: even when there is no results we could shows billed bytes 
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-            this._view.webview.postMessage({"noResults": true, "query": query });
+            this._view.webview.postMessage({"noResults": true, "query": query, "type":type });
             this._view.show(true);
           }
       } catch (error:any) {
         let errorMessage = error?.message;
         if(errorMessage){
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query });
+          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type });
           this._view.show(true);
         }
       }
@@ -150,7 +155,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
 
       <p><span id="datetime"></span></p>
-      <p><span id="no-results"></span></p>
+
+      <div class="no-errors-container" id="noResultsDiv" style="display: none;" >
+          <p><span id="no-results"></span></p>
+      </div>
 
       <div id="codeBlock" style="display: none;">
         <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>

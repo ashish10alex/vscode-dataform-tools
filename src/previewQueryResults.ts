@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import { getCurrentFileMetadata, handleSemicolonPrePostOps } from "./utils";
 import { CustomViewProvider } from './views/register-query-results-panel';
+import { QueryWtType } from './types';
 
-export async function runQueryInPanel(query: string, queryResultsViewProvider: CustomViewProvider) {
+export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsViewProvider: CustomViewProvider) {
     if (!queryResultsViewProvider._view) {
-        queryResultsViewProvider.focusWebview(query);
+        queryResultsViewProvider.focusWebview(queryWtType);
     } else {
-        queryResultsViewProvider.updateContent(query);
+        queryResultsViewProvider.updateContent(queryWtType);
     }
 }
 
@@ -32,5 +33,5 @@ export async function previewQueryResults(queryResultsViewProvider: CustomViewPr
         vscode.window.showWarningMessage("No query to run");
         return;
     }
-    runQueryInPanel(query, queryResultsViewProvider);
+    runQueryInPanel({query: query, type: fileMetadata.queryMeta.type}, queryResultsViewProvider);
 }

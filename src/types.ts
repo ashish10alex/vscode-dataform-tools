@@ -140,3 +140,8 @@ export interface GitHubContentResponse {
     content: string;
     encoding: string;
 }
+
+export interface QueryWtType {
+    query: string;
+    type: string;
+}
