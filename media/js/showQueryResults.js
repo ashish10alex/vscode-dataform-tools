@@ -117,8 +117,8 @@ window.addEventListener('message', event => {
         const errorMessageBlock = document.getElementById('errorMessage');
         const errorMessageDiv = document.getElementById('errorsDiv');
         if (errorMessageBlock){
-            errorMessageDiv.style.display = "";
             if (type === "assertion"){
+                errorMessageDiv.style.display = "";
                 errorMessageBlock.textContent = `Assertion failed !`;
             } 
         }
