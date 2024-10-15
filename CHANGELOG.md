@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.9...v0.2.10) (2024-10-15)
+
+
+### Bug Fixes
+
+* empty error div showing even if there no error ([095a5b7](https://github.com/ashish10alex/vscode-dataform-tools/commit/095a5b7d7cab655d7ff094e690c6fb4a1d861e23))
+* whitespace of non zero length causing incorrect diagnostics placement ([f071763](https://github.com/ashish10alex/vscode-dataform-tools/commit/f071763bfee143324f1bb26cf0f0ba7918f50eae))
+
 ### [0.2.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.8...v0.2.9) (2024-10-13)
 
 
