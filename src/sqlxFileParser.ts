@@ -21,6 +21,10 @@ function countCurlyBraces(str: string): {
       };
   }
 
+function isEmptyOrWhitespace(str:string) {
+  return str.trim().length === 0;
+}
+
 /**
     * This function is used to get start / end points for different blocks in an sqlx file
     * An sqlx file can have a config block followed by pre_operations / post_operations and an sql block
@@ -141,7 +145,7 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                 currentBlock = "";
             }
             inMajorBlock = false;
-        } else if (lineContents !== "" && !inMajorBlock){
+        } else if (!isEmptyOrWhitespace(lineContents) && !inMajorBlock){
             if (startOfSqlBlock === 0){
                 startOfSqlBlock = i + 1;
                 sqlBlockExsists = true;
