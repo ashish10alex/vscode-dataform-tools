@@ -261,12 +261,24 @@ export function getWorkspaceFolder(): string | undefined {
     if (isDataformWorkspace(workspaceFolder)) {
         return workspaceFolder;
     }
-    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
+    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json or node_modules at its root`);
     return undefined;
 }
 
 export function isDataformWorkspace(workspacePath: string) {
     const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
+
+    let nodeModulesPath = path.join(workspacePath, 'node_modules');
+    if (!fs.existsSync(nodeModulesPath)) {
+        vscode.window.showErrorMessage("Dataform workspace not setup", "click to setup").then(selection => {
+            if (selection === "click to setup") {
+                runCommandInTerminal(`dataform install`);
+                vscode.window.showInformationMessage(`Save file to see compiled query`);
+            }
+        });
+        return false;
+    }
+
     return dataformSignatureFiles.some(file => {
         let filePath = path.join(workspacePath, file);
         return fs.existsSync(filePath);
