@@ -1,4 +1,18 @@
+document.addEventListener('DOMContentLoaded', () => {
+    hljs.addPlugin(new CopyButtonPlugin({
+        autohide: false, // Always show the copy button
+    }));
+});
 
+// Function to update and rehighlight code blocks
+function removeExistingCopyElements() {
+    document.querySelectorAll('.hljs-copy-wrapper').forEach(el => {
+        el.classList.remove('hljs-copy-wrapper');
+    });
+    document.querySelectorAll('.hljs-copy-button').forEach(el => {
+        el.remove();
+    });
+}
 
 window.addEventListener('message', event => {
     let data = {
@@ -14,10 +28,8 @@ window.addEventListener('message', event => {
         "errorMessage": event?.data?.errorMessage,
         "dryRunStat": event?.data?.dryRunStat,
     };
+    removeExistingCopyElements();
 
-    hljs.addPlugin(new CopyButtonPlugin({
-        autohide: false, // Always show the copy button
-    }));
 
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);
