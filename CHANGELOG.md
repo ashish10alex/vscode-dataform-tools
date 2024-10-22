@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.12...v0.2.13) (2024-10-22)
+
+
+### Bug Fixes
+
+* copied code block does not update unless compiled query window is closed ([5788276](https://github.com/ashish10alex/vscode-dataform-tools/commit/5788276670d35f27718c4080fb584bf057b85f9b))
+
 ### [0.2.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.11...v0.2.12) (2024-10-21)
 
 ### [0.2.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.10...v0.2.11) (2024-10-20)
