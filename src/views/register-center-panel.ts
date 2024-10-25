@@ -217,15 +217,24 @@ export class CenterPanel {
            </div>
 
            <form>
-            <select id="list" class="tree-metadata-selection"></select>
+
+            <select id="list" class="tree-metadata-selection">
+                <option disabled selected>Root Node</option>
+            </select>
+
             <select id="tags" class="tree-tags-selection">
+                <option disabled selected>Tags</option>
                 <option value="all">all</option>
             </select>
+
             <select id="direction" class="tree-direction-selection">
+                <option disabled selected>Direction</option>
                 <option value="downstream">downstream</option>
                 <option value="upstream">upstream</option>
             </select>
+
             </form>
+
               <body><div style="overflow: auto;" id="tree"></div></body>
               <script nonce="${nonce}" type="text/javascript" src="${dependTreeScriptUri}"></script>
               <script nonce="${nonce}" type="text/javascript" src="${treePanelScriptUri}"></script>
