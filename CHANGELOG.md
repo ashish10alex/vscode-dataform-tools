@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.14](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.13...v0.2.14) (2024-10-25)
+
+
+### Features
+
+* add option to filter tags in dependency graph. solves: https://github.com/ashish10alex/vscode-dataform-tools/issues/36 ([cd269d2](https://github.com/ashish10alex/vscode-dataform-tools/commit/cd269d2de484eff875f6d8d10b4da22c76c70301))
+* show indicator on what dropdown options are ([3812bc0](https://github.com/ashish10alex/vscode-dataform-tools/commit/3812bc0502ed401305bb57b008b976f61d94552c))
+
 ### [0.2.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.12...v0.2.13) (2024-10-22)
 
 
