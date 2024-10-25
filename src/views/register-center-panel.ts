@@ -97,7 +97,7 @@ export class CenterPanel {
         let declarationsLegendMetadata = output.declarationsLegendMetadata;
 
         // TODO: check if treeRoot still exsists in dataformTreeMetadata
-        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata });
+        await webview.postMessage({ "dataformTreeMetadata": dependancyTreeMetadata, "treeRoot": treeRoot, "direction": direction, "declarationsLegendMetadata": declarationsLegendMetadata, "dataformTags": dataformTags  });
 
         if (dependancyTreeMetadata.length === 0) {
             this.webviewPanel.webview.html = this._getHtmlForWebviewNoTreeMetadata();
@@ -218,6 +218,9 @@ export class CenterPanel {
 
            <form>
             <select id="list" class="tree-metadata-selection"></select>
+            <select id="tags" class="tree-tags-selection">
+                <option value="all">all</option>
+            </select>
             <select id="direction" class="tree-direction-selection">
                 <option value="downstream">downstream</option>
                 <option value="upstream">upstream</option>

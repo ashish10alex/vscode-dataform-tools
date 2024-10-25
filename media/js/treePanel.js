@@ -110,6 +110,7 @@ window.addEventListener('message', event => {
 
     const _treeRoot = event?.data?.treeRoot;
     const _direction = event?.data?.direction;
+    const dataformTags = event?.data?.dataformTags;
 
     let direction = _direction ?? 'upstream';
 
@@ -123,16 +124,19 @@ window.addEventListener('message', event => {
     tree.addEntities(treeData);
 
     const entitySelect = document.getElementById('list');
+    const listSelect = document.getElementById('tags');
 
-    const populateEntitySelect = entityList => {
-        entityList.forEach(name => {
+    const populateOptions = (optionValues, optionElement) => {
+        optionValues.forEach(name => {
             const option = document.createElement('option');
             option.value = name;
             const text = document.createTextNode(name);
             option.appendChild(text);
-            entitySelect.appendChild(option);
+            optionElement.appendChild(option);
         });
     };
+
+    populateOptions(dataformTags, listSelect);
 
     $(document).ready(function () {
 
@@ -170,10 +174,26 @@ window.addEventListener('message', event => {
             tree.setTree(currentEntity, direction);
         });
 
+        $('.tree-tags-selection').select2();
+        $('.tree-tags-selection').on('change', function (e) {
+            let tag = $(this).find("option:selected").text();
+            let filteredList = [];
+            if (tag === "all") {
+                filteredList = tree.getEntityList();
+            }else{
+                filteredList = tree.getEntityList('_tags', tag);
+            }
+            entitySelect.innerHTML = ''; // clear exsisting options
+            console.log(filteredList);
+            populateOptions(filteredList, entitySelect);
+            let treeRoot = filteredList[0] ?? _treeRoot;
+            tree.setTree(treeRoot, direction);
+        });
+
     });
 
     const allEntities = tree.getEntityList();
-    populateEntitySelect(allEntities);
+    populateOptions(allEntities, entitySelect);
 
     // expand and collapse all buttons
     // document.querySelector('button#form-expand').addEventListener('click', () => t.expandAll());

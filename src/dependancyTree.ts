@@ -14,6 +14,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
 
     structs.forEach((struct) => {
         let tableName = `${struct.target.database}.${struct.target.schema}.${struct.target.name}`;
+        let tags = struct.tags;
         let fileName = struct.fileName;
         let schema = `${struct.target.schema}`;
 
@@ -44,6 +45,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     "_name": tableName,
                     "_fileName": fileName,
                     "_schema": schema,
+                    "_tags": tags,
                     "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
                 }
             );
@@ -54,6 +56,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     "_fileName": fileName,
                     "_schema": schema,
                     "_deps": depedancyList,
+                    "_tags": tags,
                     "_schema_idx": (struct.hasOwnProperty("type")) ? 0 : schemaIdx
                 }
             );

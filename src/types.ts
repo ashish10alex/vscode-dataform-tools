@@ -44,6 +44,7 @@ export interface DependancyTreeMetadata {
     _fileName: string;
     _schema: string;
     _schema_idx: number;
+    _tags: string[];
     _deps?: string[];
 }
 
@@ -60,6 +61,7 @@ export interface Target {
 
 export interface Declarations {
     target: Target;
+    tags: string[]; // WARN: This is not a valid object for Declarations adding this to avoid type errors when using abstractions
     canonicalTarget: Target;
     dependencyTargets: Target[]; // WARN: This is not a valid object for Declarations adding this to avoid type errors when using abstractions
     fileName: string;
