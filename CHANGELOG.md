@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.15](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.14...v0.2.15) (2024-10-26)
+
+
+### Features
+
+* command to show side panel ([6e02c6b](https://github.com/ashish10alex/vscode-dataform-tools/commit/6e02c6bc87def4c1e3f6c555ac40b7baceb4a6ad))
+
 ### [0.2.14](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.13...v0.2.14) (2024-10-25)
 
 
