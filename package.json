@@ -31,7 +31,8 @@
         "onCommand:extension.runTagWtDownstreamDeps",
         "onCommand:extension.formatCurrentfile",
         "onCommand:extension.runFilesTagsWtOptions",
-        "onCommand:extension.showCompiledQueryInWebView"
+        "onCommand:extension.showCompiledQueryInWebView",
+        "onCommand:extension.showFileMetadataForSidePanel"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -84,6 +85,11 @@
                 "command": "vscode-dataform-tools.runQuery",
                 "category": "Dataform",
                 "title": "Preview query results"
+            },
+            {
+                "command": "vscode-dataform-tools.showFileMetadataForSidePanel",
+                "category": "Dataform",
+                "title": "Show file metadata in side panel"
             },
             {
                 "command": "vscode-dataform-tools.cancelQuery",

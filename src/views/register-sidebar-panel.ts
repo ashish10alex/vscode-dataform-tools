@@ -14,13 +14,15 @@ export async function registerWebViewProvider(context: ExtensionContext) {
         }
     }));
 
+    context.subscriptions.push(commands.registerCommand('vscode-dataform-tools.showFileMetadataForSidePanel', async () => {
+        vscode.commands.executeCommand('dataform-sidebar.focus');
+    }));
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) {
             vscode.commands.executeCommand('vscode-dataform-tools.getCurrFileMetadataForSidePanel');
         }
     }, null, context.subscriptions);
-
 }
 
 export class SidebarWebViewProvider implements WebviewViewProvider {
