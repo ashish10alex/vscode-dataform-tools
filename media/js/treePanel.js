@@ -186,9 +186,9 @@ window.addEventListener('message', event => {
 
         $('.tree-tags-selection').select2();
         $('.tree-tags-selection').on('change', function (e) {
-            let tag = $(this).find("option:selected").text();
+            let tag = $(this).find("option:selected").val();
             let filteredList = [];
-            if (tag === "all") {
+            if (tag === "__all__") {
                 filteredList = tree.getEntityList();
             }else{
                 filteredList = tree.getEntityList('_tags', tag);

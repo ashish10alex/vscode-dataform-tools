@@ -230,7 +230,7 @@ export class CenterPanel {
 
             <select id="tags" class="tree-tags-selection">
                 <option disabled selected>Tags</option>
-                <option value="all">all</option>
+                <option value="__all__">all</option>
             </select>
 
             <select id="direction" class="tree-direction-selection">
