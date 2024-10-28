@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.16](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.15...v0.2.16) (2024-10-28)
+
+
+### Features
+
+* expand and collapse tree using button ([0fa9b13](https://github.com/ashish10alex/vscode-dataform-tools/commit/0fa9b13b5f10a6c5961380e62d23110a8300d308))
+
 ### [0.2.15](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.14...v0.2.15) (2024-10-26)
 
 
