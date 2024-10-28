@@ -176,3 +176,16 @@
   margin-right: 8px;
   font-size: 14px;
 }
+
+.button-container {
+	display: flex;
+	justify-content: flex-start;
+	gap: 10px;
+	width: 30%;
+	padding-top: 5px;
+	padding-bottom: 10px;
+}
+
+.button-container button {
+	flex: 0 1 auto;
+}

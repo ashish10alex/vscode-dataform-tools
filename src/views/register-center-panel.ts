@@ -157,6 +157,7 @@ export class CenterPanel {
 
     private _getHtmlForWebview(webview: Webview) {
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "reset.css"));
+        const styleButtonResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
 
         /**Used for searchable dropdowns */
@@ -189,6 +190,7 @@ export class CenterPanel {
                  script-src 'nonce-${nonce}';">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <link href="${styleResetUri}" rel="stylesheet">
+              <link href="${styleButtonResetUri}" rel="stylesheet">
               <link href="${styleVSCodeUri}" rel="stylesheet">
               <script src="${jqueryMinified}"></script>
               <link href="${select2MinCss}" rel="stylesheet" />
@@ -216,8 +218,12 @@ export class CenterPanel {
             <p>Click on text object to navigate to where the node is defined</p>
            </div>
 
-           <form>
+            <div class="button-container">
+                <button id="expandAll">expand all</button>
+                <button id="collapseAll">collapse all</button>
+            </div>
 
+           <form>
             <select id="list" class="tree-metadata-selection">
                 <option disabled selected>Root Node</option>
             </select>

@@ -116,6 +116,16 @@ window.addEventListener('message', event => {
 
     const tree = new DependenTree('div#tree', sharedOptions);
 
+    let expandAllButton = document.getElementById("expandAll");
+    expandAllButton.addEventListener( "click", function (e){
+         tree.expandAll(); 
+    });
+
+    let collapseAllButton = document.getElementById("collapseAll");
+    collapseAllButton.addEventListener( "click", function (e){
+         tree.collapseAll(); 
+    });
+
     let statsDiv = document.getElementById("dataform-stats");
     let newParagraph = document.createElement("p");
     newParagraph.textContent = `Total nodes in the graph: ${treeData.length}`;
