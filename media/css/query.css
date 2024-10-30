@@ -189,3 +189,69 @@
 .button-container button {
 	flex: 0 1 auto;
 }
+
+.select2-results__option {
+	color: black;
+}
+
+.select2-results__options {
+    max-height: 400px !important;
+}
+
+
+.container {
+	display: flex;
+	flex-direction: row-reverse;
+	width: 100%;
+	min-height: 100vh;
+}
+
+.navbar {
+	width: 420px;
+	position: sticky;
+	top: 0;
+	height: 100vh;
+	overflow-y: hidden;
+	overflow-x: hidden;
+	background-color:whitesmoke;
+}
+
+.navbar-content {
+	padding: 10px;
+	width: 420px;
+}
+
+.toggle-btn {
+	font-size: 20px;
+	cursor: pointer;
+	background-color: #111;
+	color: whitesmoke;
+	border: none;
+	padding: 10px 15px;
+}
+
+.collapsed {
+	width: 50px;
+}
+
+.collapsed .navbar-content {
+	display: none;
+}
+
+.content {
+	flex: 1;
+	padding: 20px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+#tree {
+	flex-grow: 1;
+	width: 100%;
+	min-height: 300px;
+}
+
+.button-container, form {
+	margin-bottom: 20px;
+}

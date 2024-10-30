@@ -29,14 +29,6 @@ img {
 	height: auto;
 }
 
-.select2-results__option {
-	color: black;
-}
-
-.select2-results__options {
-    max-height: 400px !important;
-}
-
 :root {
     --svg-legends-height: 550px;
 }
@@ -47,44 +39,12 @@ img {
 	margin-top: calc(var(--svg-legends-height) + 5px);
 }
 
-.navbar {
-	position: fixed;
-	right: 0;
-	top: 0;
-	height:  var(--svg-legends-height);
-	background-color:whitesmoke;
-	overflow-x: hidden;
-	/* transition: 0.1s; */
-  }
-  
-  .navbar-content {
-	padding: 20px;
-	width: 450px;
-  }
-  
-  .toggle-btn {
-	font-size: 20px;
-	cursor: pointer;
-	background-color: #111;
-	color: whitesmoke;
-	border: none;
-	padding: 10px 15px;
-  }
-  
-  .collapsed {
-	width: 50px;
-  }
-  
-  .collapsed .navbar-content {
-	display: none;
-  }
-
-  .warning {
+.warning {
 	display: flex;
 	align-items: center;
 	color: #333;
-  }
-  
-  .warning svg {
+}
+
+.warning svg {
 	margin-right: 5px;
-  }
+}

@@ -61,6 +61,7 @@ export class CenterPanel {
             "Dataform dependancy tree",
             column || ViewColumn.One,
             {
+                enableFindWidget: true,
                 retainContextWhenHidden: true,
                 enableScripts: true,
                 localResourceRoots: [
@@ -156,8 +157,7 @@ export class CenterPanel {
     }
 
     private _getHtmlForWebview(webview: Webview) {
-        const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "reset.css"));
-        const styleButtonResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
+        const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "vscode.css"));
 
         /**Used for searchable dropdowns */
@@ -189,62 +189,62 @@ export class CenterPanel {
                  style-src ${webview.cspSource}
                  script-src 'nonce-${nonce}';">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <link href="${styleResetUri}" rel="stylesheet">
-              <link href="${styleButtonResetUri}" rel="stylesheet">
               <link href="${styleVSCodeUri}" rel="stylesheet">
               <script src="${jqueryMinified}"></script>
               <link href="${select2MinCss}" rel="stylesheet" />
               <script src="${select2MinJs}"></script>
               <script src="${d3minJs}"></script>
               <script nonce="${nonce}" type="text/javascript" src="${colorsScriptUri}"></script>
+              <link href="${styleResetUri}" rel="stylesheet">
            </head>
            <body>
 
-        <h1>Dataform dependancy graph</h1>
-        <div id="dataform-stats" style="padding-top: 20px;"></div>
-
-        <div class="navbar">
-            <button class="toggle-btn" onclick="toggleNavbar()">☰</button>
-            <div class="navbar-content" id="navbar-content">
-                <p style="color: black; margin-top: 5px; margin-left: 40px;"><b>Dataset legend</b></p>
-                <svg id="my-svg"></svg>
+        <div class="container">
+            <div class="navbar">
+                <button class="toggle-btn" onclick="toggleNavbar()">☰</button>
+                <div class="navbar-content" id="navbar-content">
+                    <p style="color: black; margin-top: 5px; margin-left: 40px;"><b>Dataset legend</b></p>
+                    <svg id="my-svg"></svg>
+                </div>
             </div>
-        </div>
 
            <div class="content">
 
-           <div style="padding-bottom: 20px;">
-            <p>Click node to expand graph</p>
-            <p>Click on text object to navigate to where the node is defined</p>
+            <h1>Dataform dependancy graph</h1>
+            <div id="dataform-stats" style="padding-top: 20px;"></div>
+
+            <div style="padding-bottom: 2px;">
+                <p>Click node to expand graph or click on text object to navigate file to where the node is defined</p>
+            </div>
+
+                <div class="button-container">
+                    <button id="expandAll">expand all</button>
+                    <button id="collapseAll">collapse all</button>
+                </div>
+
+            <form>
+                <select id="list" class="tree-metadata-selection">
+                    <option disabled selected>Root Node</option>
+                </select>
+
+                <select id="tags" class="tree-tags-selection">
+                    <option disabled selected>Tags</option>
+                    <option value="__all__">all</option>
+                </select>
+
+                <select id="direction" class="tree-direction-selection">
+                    <option disabled selected>Direction</option>
+                    <option value="downstream">downstream</option>
+                    <option value="upstream">upstream</option>
+                </select>
+
+                </form>
+
+                <body><div style="overflow: auto;" id="tree"></div></body>
+                <script nonce="${nonce}" type="text/javascript" src="${dependTreeScriptUri}"></script>
+                <script nonce="${nonce}" type="text/javascript" src="${treePanelScriptUri}"></script>
+                </div>
            </div>
-
-            <div class="button-container">
-                <button id="expandAll">expand all</button>
-                <button id="collapseAll">collapse all</button>
-            </div>
-
-           <form>
-            <select id="list" class="tree-metadata-selection">
-                <option disabled selected>Root Node</option>
-            </select>
-
-            <select id="tags" class="tree-tags-selection">
-                <option disabled selected>Tags</option>
-                <option value="__all__">all</option>
-            </select>
-
-            <select id="direction" class="tree-direction-selection">
-                <option disabled selected>Direction</option>
-                <option value="downstream">downstream</option>
-                <option value="upstream">upstream</option>
-            </select>
-
-            </form>
-
-              <body><div style="overflow: auto;" id="tree"></div></body>
-              <script nonce="${nonce}" type="text/javascript" src="${dependTreeScriptUri}"></script>
-              <script nonce="${nonce}" type="text/javascript" src="${treePanelScriptUri}"></script>
-            </div>
            </body>
         </html>`;
     }
