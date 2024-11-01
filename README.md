@@ -6,6 +6,8 @@
 ![macOS](https://img.shields.io/badge/macOS-supported-success)
 ![Windows](https://img.shields.io/badge/windows-supported-success)
 
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://buymeacoffee.com/ashishalexj)
+
 ⚠️ ***This is not an officially supported Google product.***
 
 
