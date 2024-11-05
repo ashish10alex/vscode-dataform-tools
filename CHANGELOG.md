@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.19](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.18...v0.2.19) (2024-11-05)
+
+
+### Features
+
+* support for formatting js blocks in sqlx file. fixes: https://github.com/ashish10alex/vscode-dataform-tools/issues/38 ([161e07f](https://github.com/ashish10alex/vscode-dataform-tools/commit/161e07f349d8ea44d9cf98e9872f6b3244def5fd))
+
 ### [0.2.18](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.17...v0.2.18) (2024-10-30)
 
 
