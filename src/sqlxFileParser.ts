@@ -33,6 +33,11 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
 
     let inMajorBlock = false;
 
+    /**vars for tracking js block */
+    let startOfJsBlock = 0;
+    let endOfJsBlock = 0;
+    let jsBlockExsists = false;
+
     /**vars for config block tracking */
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
@@ -83,7 +88,19 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                 configBlockExsists = true;
             }
 
-        } else if (lineContents.match("post_operations {") && !inMajorBlock){
+        } else if (lineContents.match("js {") && !inMajorBlock){
+            currentBlock = "js";
+            startOfJsBlock = i + 1;
+            inMajorBlock = true;
+
+            if(openBracesCount === closedBracesCount && inMajorBlock){
+                currentBlock = "";
+                inMajorBlock = false;
+                endOfJsBlock = i + 1;
+                jsBlockExsists = true;
+            }
+        }
+         else if (lineContents.match("post_operations {") && !inMajorBlock){
             currentBlock = "post_operations";
             startOfPostOperationsBlock = i+1;
             inMajorBlock = true;
@@ -123,6 +140,10 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
                 endOfConfigBlock = i + 1;
                 configBlockExsists = true;
                 currentBlock = "";
+            } else if (currentBlock === "js") {
+                currentBlock = "";
+                endOfJsBlock = i + 1;
+                jsBlockExsists = true;
             } else if (currentBlock === "pre_operations") {
                 endOfPreOperationsBlock = i + 1;
                 preOpsBlockMeta.preOpsList.push(
@@ -160,5 +181,6 @@ export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): Sqlx
         , preOpsBlock: preOpsBlockMeta
         , postOpsBlock: postOpsBlockMeta
         , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
+        , jsBlock: {startLine: startOfJsBlock, endLine: endOfJsBlock, exists: jsBlockExsists}
     };
 };

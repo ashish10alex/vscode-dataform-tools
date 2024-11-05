@@ -136,6 +136,7 @@ export interface SqlxBlockMetadata {
     preOpsBlock: PreOpsBlockMeta;
     postOpsBlock: PostOpsBlockMeta;
     sqlBlock: BlockMeta;
+    jsBlock: BlockMeta;
 }
 
 export interface GitHubContentResponse {

@@ -60,11 +60,18 @@ suite('setDiagnostics', () => {
                     exists: true,
                 };
 
+                let jsBlockMeta = {
+                    startLine: 0,
+                    endLine: 0,
+                    exists: false,
+                };
+
                 let mockSqlxBlockMetadata =  {
                     configBlock: configBlockMeta,
                     preOpsBlock: {preOpsList: []},
                     postOpsBlock: {postOpsList: []},
-                    sqlBlock: sqlBlockMeta
+                    sqlBlock: sqlBlockMeta,
+                    jsBlock: jsBlockMeta,
                 };
 
                 let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');

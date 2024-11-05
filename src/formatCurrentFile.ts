@@ -11,6 +11,7 @@ import { SqlxBlockMetadata } from './types';
 
 export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
 
+    let jsBlockMeta = metadataForSqlxFileBlocks.jsBlock;
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
     let preOpsBlockMeta = metadataForSqlxFileBlocks.preOpsBlock.preOpsList;
     let postOpsBlockMeta = metadataForSqlxFileBlocks.postOpsBlock.postOpsList;
@@ -21,6 +22,15 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 
     let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
+
+    let [jsBlockText] = await Promise.all([ getTextForBlock(document, jsBlockMeta) ]);
+    try {
+        if (jsBlockText && jsBlockText !== ""){
+            jsBlockText = beautify.js(jsBlockText, { "indent_size": 2 });
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage("Could to format js block");
+    }
 
     let [configBlockText] = await Promise.all([ getTextForBlock(document, configBlockMeta) ]);
     try {
@@ -48,6 +58,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 
     (preOpsBlockText === "") ? preOpsBlockText: preOpsBlockText =  (spaceBetweenBlocks + preOpsBlockText).slice(0, -spaceBetweenSameOps.length);
     (postOpsBlockText === "") ? postOpsBlockText: postOpsBlockText = (spaceBetweenBlocks + postOpsBlockText).slice(0, -spaceBetweenSameOps.length);
+    (jsBlockText === "") ? jsBlockText: jsBlockText = (spaceBetweenBlocks + jsBlockText);
 
     let formatCmd = `sqlfluff fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
 
@@ -56,7 +67,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
         (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
 
         if (typeof formattedSql === 'string'){
-            let finalFormattedSqlx = configBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
+            let finalFormattedSqlx = configBlockText + jsBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
             let currentActiveEditorFilePath = getActiveFilePath();
             if (!currentActiveEditorFilePath){
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
