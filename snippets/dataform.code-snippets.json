@@ -17,6 +17,20 @@
 		],
 		"description": "Generate table config for sqlx files"
 	},
+	"Config block assertion": {
+		"scope": "sqlx",
+        "prefix": "config-assertion",
+		"body": [
+			"config {",
+				"  type: 'assertion',",
+				"  schema: '${1}',",
+				"  description: '${2}',",
+				"  dependencies: [${3}],",
+				"  tags: [${6}]",
+			  "}"
+		],
+		"description": "Generate assertion config for sqlx files"
+	},
 	"Config block view": {
 		"scope": "sqlx",
         "prefix": "config-view",

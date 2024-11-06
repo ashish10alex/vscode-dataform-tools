@@ -73,11 +73,15 @@
         "snippets": [
             {
                 "language": "sqlx",
-                "path": "./snippets/dataform.code-snippets"
+                "path": "./snippets/dataform.code-snippets.json"
+            },
+            {
+                "language": "sqlx",
+                "path": "./snippets/bigquery.code-snippets.json"
             },
             {
                 "language": "javascript",
-                "path": "./snippets/dataform.code-snippets"
+                "path": "./snippets/dataform.code-snippets.json"
             }
         ],
         "commands": [
