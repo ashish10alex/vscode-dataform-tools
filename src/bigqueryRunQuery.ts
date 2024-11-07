@@ -1,3 +1,4 @@
+import { result } from 'lodash';
 import * as vscode from 'vscode';
 const { BigQuery } = require('@google-cloud/bigquery');
 
@@ -23,7 +24,16 @@ function parseObject(obj: any, _childrens: any) {
                 _children[key] = value.toString();
             }
             else if (value.constructor.name === 'Object') {
-                _childrens.push({ ..._children, ...value });
+
+                for (const [key, val] of Object.entries(value)) {
+                    if (val && val.constructor.name === 'BigQueryDate') {
+                        const dateValue = (val as any).value;
+                        _childrens.push({ ..._children, [key]: dateValue });
+                    } else {
+                        _childrens.push({ ..._children, ...value });
+                    }
+                }
+
             }
             else if (value.constructor.name === 'Array') {
                 let new_children = parseObject(value, _childrens);
@@ -127,27 +137,69 @@ export async function queryBigQuery(query: string) {
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
     }
 
-    // Transform rows into the desired format for Datatables
-    // const results = [
-    //    {col1:col1_val, col2:col2_val, ...},
-    //    ...
-    // ];
+    // if a object is an empty array we will populate it after poputing all the other rows
+    let emptyObjects = new Set();
 
-    const results = rows.map((row: { [s: string]: unknown }) => {
+    function convertArrayToObject(array:any, columnName:string) {
+        return array.map((item:any) => ({ [columnName]: item }));
+    }
+
+    let results = rows.map((row: { [s: string]: unknown }) => {
         const obj: { [key: string]: any } = {};
         Object.entries(row).forEach(([key, value]: [any, any]) => {
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
+
+                if (value.length === 0){
+                    emptyObjects.add(key);
+                    return;
+                }
+
+                if (value[0] && typeof value[0] === "string"){
+                    value = convertArrayToObject(value, key);
+                }
+
                 let _childrens: any = [];
                 _childrens = parseObject(value, _childrens);
-                //Nested object in Tabulator are displayed by adding the key _children to the exsisting array
-                obj["_children"] = _childrens;
+
+                // Nested object in Tabulator are displayed by adding the key _children to the exsisting array
+                if (obj._children) {
+                    for (let i = 0; i < _childrens.length; i++) {
+                        if(obj._children[i]){
+                            obj._children[i] = { ...obj._children[i], ..._childrens[i] };
+                        } else {
+                            // we need to fill the _children to have all the data for each column so we will fill null values for the rest of the keys
+                            let keys = Object.keys(obj._children[0]);
+                            let newChildren = {};
+                            keys.forEach((_key: string)=>{
+                                if(_key !== key){
+                                    newChildren = {...newChildren, [_key]: null};
+                                }
+                            });
+                            obj._children[i] = { ...newChildren, ..._childrens[i] };
+                        }
+                    }
+                } else {
+                    obj._children = _childrens;
+                }
             } else {
                 obj[key] = extractValue(value);
             }
         });
         return obj;
     });
+
+    // fill the emptyColumns with null values
+    if (emptyObjects.size !== 0) {
+        emptyObjects.forEach((emptyObject: any) => {
+            results.forEach((result:any) => {
+                for (let i = 0; i < result._children.length; i++) {
+                    result._children[i] = { ...result._children[i], [emptyObject]: null };
+                }
+            });
+        });
+    }
+
     let columns = createTabulatorColumns(results[0]);
 
     return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled } };

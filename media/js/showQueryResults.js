@@ -132,7 +132,7 @@ window.addEventListener('message', event => {
             // autoColumns:true,
             dataTree:true,
             dataTreeStartExpanded:false,
-            rowHeader:{formatter:"rownum", headerSort:false, hozAlign:"center", resizable:false, frozen:true},
+            rowHeader: { formatter: "rownum", headerSort: false, hozAlign: "center", resizable: false, frozen: true, width: 60 },
             pagination:"local",
             paginationSize:20,
             paginationCounter:"rows",
