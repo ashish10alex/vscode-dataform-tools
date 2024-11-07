@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.22](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.21...v0.2.22) (2024-11-07)
+
+
+### Bug Fixes
+
+* table showing results preview missing columns and rows for non trivial data structures ([ae3e4ca](https://github.com/ashish10alex/vscode-dataform-tools/commit/ae3e4ca789d94af68997c7c4e00175630931b961))
+
 ### [0.2.21](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.20...v0.2.21) (2024-11-07)
 
 
