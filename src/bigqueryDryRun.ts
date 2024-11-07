@@ -21,6 +21,7 @@ export async function queryDryRun(query: string) {
 
     if (query === "" || !query){
         let dryRunResponse: BigQueryDryRunResponse = {
+            schema : undefined,
             statistics: {
                 totalBytesProcessed: "0 GB",
             },
@@ -43,6 +44,7 @@ export async function queryDryRun(query: string) {
     try {
         const [job] = await bigquery.createQueryJob(options);
         let dryRunResponse: BigQueryDryRunResponse = {
+            schema :  job.metadata.statistics.query.schema,
             statistics: {
                 totalBytesProcessed: (parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3) + " GB",
             },
@@ -55,6 +57,7 @@ export async function queryDryRun(query: string) {
     } catch (error: any) {
         let errorLocation  = getLineAndColumnNumberFromErrorMessage(error.message);
         let dryRunResponse: BigQueryDryRunResponse = {
+            schema : undefined,
             statistics: {
                 totalBytesProcessed: "",
             },

@@ -105,6 +105,7 @@ export interface DryRunError {
 }
 
 export interface BigQueryDryRunResponse {
+    schema : any;
     statistics: {
         totalBytesProcessed: string;
     };

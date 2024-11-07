@@ -128,8 +128,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
           <link href="${styleResetUri}" rel="stylesheet">
-          <style>
-      </style>
       </head>
 
       <body>

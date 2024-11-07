@@ -132,6 +132,7 @@ export class CompiledQueryPanel {
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+            "compiledQuerySchema": compiledQuerySchema,
         });
 
         if(diagnosticCollection){
@@ -160,6 +161,7 @@ export class CompiledQueryPanel {
                 "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
+                "compiledQuerySchema": compiledQuerySchema,
             });
             return webview;
         } 
@@ -195,6 +197,9 @@ export class CompiledQueryPanel {
             <link rel="stylesheet" href="${highlighJstThemeUri}">
             <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
 
+            <link href="${cdnLinks.tabulatorCssUri}" rel="stylesheet">
+            <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
+
             <link href="${styleResetUri}" rel="stylesheet">
             <style>
         </style>
@@ -202,58 +207,72 @@ export class CompiledQueryPanel {
 
         <body>
 
-        <p><span id="relativeFilePath"></span></p>
-
-        <div class="error-message-container" id="errorMessageDiv" style="display: none;">
-            <p><span id="errorMessage" class="language-bash"></span></p>
+        <div style="padding-bottom: 20px;">
+            <div class="topnav">
+                <a class="active" href="#compilation">Compiled Query</a>
+                <a href="#schema">Schema</a>
+            </div>
         </div>
 
-        <div class="no-errors-container" id="dryRunStatDiv" style="display: none;">
-            <p><span id="dryRunStat" class="language-bash"></span></p>
+        <div id="schemaBlock" style="display: none;">
+            <table id="schemaTable" class="display" width="100%"></table>
         </div>
 
-        <span class="bigquery-job-cancelled"></span>
 
-        <div id="codeBlock">
-            <div id="preOperationsDiv" style="display: none;">
-                <h4>Pre Operations</h4>
-                <pre><code  id="preOperations" class="language-sql"></code></pre>
-            </div>
+        <div id="compilationBlock" style="display: block;">
+            <p><span id="relativeFilePath"></span></p>
 
-            <div id="postOperationsDiv" style="display: none;">
-                <h4>Post Operations</h4>
-                <pre><code  id="postOperations" class="language-sql"></code></pre>
+            <div class="error-message-container" id="errorMessageDiv" style="display: none;">
+                <p><span id="errorMessage" class="language-bash"></span></p>
             </div>
 
-            <div id="tableOrViewQueryDiv" style="display: none;">
-                <h4>Query</h4>
-                <pre><code  id="tableOrViewQuery" class="language-sql"></code></pre>
-            </div>
-            <div id="assertionQueryDiv" style="display: none;">
-                <h4>Assertion</h4>
-                <pre><code  id="assertionQuery" class="language-sql"></code></pre>
+            <div class="no-errors-container" id="dryRunStatDiv" style="display: none;">
+                <p><span id="dryRunStat" class="language-bash"></span></p>
             </div>
 
-            <div id="incrementalPreOpsQueryDiv" style="display: none;" >
-                <h4>Incremental Pre Operations</h4>
-                <pre><code  id="incrementalPreOpsQuery" class="language-sql"></code></pre>
-            </div>
+            <span class="bigquery-job-cancelled"></span>
 
-            <div id="incrementalQueryDiv" style="display: none;">
-                <h4>Incremental Query</h4>
-                <pre><code  id="incrementalQuery" class="language-sql"></code></pre>
-            </div>
+            <div id="codeBlock">
+                <div id="preOperationsDiv" style="display: none;">
+                    <h4>Pre Operations</h4>
+                    <pre><code  id="preOperations" class="language-sql"></code></pre>
+                </div>
 
-            <div id="nonIncrementalQueryDiv" style="display: none;">
-                <h4>Non Incremental Query</h4>
-                <pre><code  id="nonIncrementalQuery" class="language-sql"></code></pre>
-            </div>
+                <div id="postOperationsDiv" style="display: none;">
+                    <h4>Post Operations</h4>
+                    <pre><code  id="postOperations" class="language-sql"></code></pre>
+                </div>
 
-            <div id="operationsQueryDiv" style="display: none;">
-                <h4>Operations</h4>
-                <pre><code  id="operationsQuery" class="language-sql"></code></pre>
+                <div id="tableOrViewQueryDiv" style="display: none;">
+                    <h4>Query</h4>
+                    <pre><code  id="tableOrViewQuery" class="language-sql"></code></pre>
+                </div>
+                <div id="assertionQueryDiv" style="display: none;">
+                    <h4>Assertion</h4>
+                    <pre><code  id="assertionQuery" class="language-sql"></code></pre>
+                </div>
+
+                <div id="incrementalPreOpsQueryDiv" style="display: none;" >
+                    <h4>Incremental Pre Operations</h4>
+                    <pre><code  id="incrementalPreOpsQuery" class="language-sql"></code></pre>
+                </div>
+
+                <div id="incrementalQueryDiv" style="display: none;">
+                    <h4>Incremental Query</h4>
+                    <pre><code  id="incrementalQuery" class="language-sql"></code></pre>
+                </div>
+
+                <div id="nonIncrementalQueryDiv" style="display: none;">
+                    <h4>Non Incremental Query</h4>
+                    <pre><code  id="nonIncrementalQuery" class="language-sql"></code></pre>
+                </div>
+
+                <div id="operationsQueryDiv" style="display: none;">
+                    <h4>Operations</h4>
+                    <pre><code  id="operationsQuery" class="language-sql"></code></pre>
+                </div>
+                <script nonce="${nonce}" type="text/javascript" src="${showCompiledQueryUri}"></script>
             </div>
-            <script nonce="${nonce}" type="text/javascript" src="${showCompiledQueryUri}"></script>
         </div>
 
         </body>

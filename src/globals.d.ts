@@ -48,4 +48,9 @@ declare global {
 }
 
 
+declare global {
+  var compiledQuerySchema: any | undefined;
+}
+
+
 export {};

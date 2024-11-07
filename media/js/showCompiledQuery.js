@@ -4,6 +4,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+
+const navLinks = document.querySelectorAll('.topnav a');
+
+navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+        // Remove active class from all links
+        navLinks.forEach(link => link.classList.remove('active'));
+
+        // Add active class to clicked link
+        this.classList.add('active');
+        if (this.getAttribute('href') === '#compilation') {
+            document.getElementById("compilationBlock").style.display = "";
+            document.getElementById("schemaBlock").style.display = "none";
+        } else {
+            document.getElementById("schemaBlock").style.display = "";
+            document.getElementById("compilationBlock").style.display = "none";
+        }
+    });
+});
+
+
 // Function to update and rehighlight code blocks
 function removeExistingCopyElements() {
     document.querySelectorAll('.hljs-copy-wrapper').forEach(el => {
@@ -30,6 +51,23 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
+    let compiledQuerySchema =  event?.data?.compiledQuerySchema;
+    if (compiledQuerySchema){
+        compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type }) => ({ name, type }));
+        new Tabulator("#schemaTable", {
+            data: compiledQuerySchema,
+            autoColumns: true,
+            layout: "fitColumns",
+            rowHeader: {
+                formatter: "rownum", 
+                headerSort: false, 
+                hozAlign: "center", 
+                resizable: false, 
+                frozen: true,
+                width: 40
+            },
+        });
+    }
 
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);

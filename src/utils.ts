@@ -872,6 +872,8 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
         queryDryRun(currFileMetadata.queryMeta.postOpsQuery)
     ]);
 
+    compiledQuerySchema = dryRunResult.schema;
+
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");

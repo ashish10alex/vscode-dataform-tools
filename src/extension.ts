@@ -43,6 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
         tabulatorCssUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css",
         tabulatorUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
     };
+    globalThis.compiledQuerySchema = undefined;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
