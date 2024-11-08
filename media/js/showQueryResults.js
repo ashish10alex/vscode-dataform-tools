@@ -1,5 +1,22 @@
 const vscode = acquireVsCodeApi();
 
+let incrementalCheckBoxDiv =  document.getElementById("incrementalCheckBoxDiv");
+
+const checkbox = document.getElementById('incrementalCheckbox');
+checkbox.addEventListener('change', function() {
+    if (this.checked) {
+        vscode.postMessage({
+            command: 'incrementalCheckBox',
+            value: true
+        });
+    } else {
+        vscode.postMessage({
+            command: 'incrementalCheckBox',
+            value: false
+        });
+    }
+});
+
 document.getElementById("cancelBigQueryJobButton").disabled = true;
 
 // Get all navigation links
@@ -102,6 +119,14 @@ window.addEventListener('message', event => {
     const query = event?.data?.query;
     const showLoadingMessage = event?.data?.showLoadingMessage;
     const type = event?.data?.type;
+    const incrementalCheckBox = event?.data?.incrementalCheckBox;
+    checkbox.checked = incrementalCheckBox;
+
+    if (type === "incremental"){
+       incrementalCheckBoxDiv.style.display = "";
+    } else {
+       incrementalCheckBoxDiv.style.display = "none";
+    }
 
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 

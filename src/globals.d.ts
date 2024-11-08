@@ -52,5 +52,9 @@ declare global {
   var compiledQuerySchema: any | undefined;
 }
 
+declare global {
+  var incrementalCheckBox: boolean
+}
+
 
 export {};

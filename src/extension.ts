@@ -44,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
         tabulatorUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
     };
     globalThis.compiledQuerySchema = undefined;
+    globalThis.incrementalCheckBox = false;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -92,6 +93,15 @@ export async function activate(context: vscode.ExtensionContext) {
             await previewQueryResults(queryResultsViewProvider);
         })
     );
+
+    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        if (editor && queryResultsViewProvider._view?.visible) {
+            let curFileMeta = await getCurrentFileMetadata(false);
+            let type = curFileMeta?.fileMetadata?.queryMeta.type;
+            queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
+
+        }
+    }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
 

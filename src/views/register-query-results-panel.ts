@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getHighlightJsThemeUri, getNonce } from '../utils';
+import { getCurrentFileMetadata, getHighlightJsThemeUri, getNonce } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
 
@@ -30,13 +30,20 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           await this.updateContent({query: this._query, type:this.queryType});
         }
       }else {
+        let curFileMeta = await getCurrentFileMetadata(false);
+        let type = curFileMeta?.fileMetadata?.queryMeta.type;
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+        this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
       }
 
-      webviewView.onDidChangeVisibility(() => {
+      webviewView.onDidChangeVisibility(async() => {
         // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
         if (webviewView.visible && this._cachedResults) {
           this._view?.webview.postMessage(this._cachedResults);
+        } else {
+          let curFileMeta = await getCurrentFileMetadata(false);
+          let type = curFileMeta?.fileMetadata?.queryMeta.type;
+          this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox});
         }
       });
 
@@ -59,6 +66,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 if (message.value){
                   queryLimit = message.value;
                 }
+              case 'incrementalCheckBox':
+                incrementalCheckBox = message.value;
                 return;
             }
           },
@@ -82,24 +91,24 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     }
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"showLoadingMessage": true });
+          this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
           const { results, columns, jobStats } = await queryBigQuery(query);
           if(results){
             this._cachedResults = { results, columns, jobStats, query };
-            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type });
+            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
           }else{
             //TODO: even when there is no results we could shows billed bytes 
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-            this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats });
+            this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
             this._view.show(true);
           }
       } catch (error:any) {
         let errorMessage = error?.message;
         if(errorMessage){
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type });
+          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
           this._view.show(true);
         }
       }
@@ -142,6 +151,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       </div>
 
       <span class="bigquery-job-cancelled"></span>
+
+      <div id="incrementalCheckBoxDiv" style="display: none;" >
+        <label class="checkbox-container">
+                <input type="checkbox" id="incrementalCheckbox" class="checkbox"> 
+                <span class="custom-checkbox"></span>
+                Incremental
+        </label>
+      </div>
 
       <select id="queryLimit">
         <option value="1000" selected>Limit: 1000</option>
