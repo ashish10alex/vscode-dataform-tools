@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getHighlightJsThemeUri, getNonce } from '../utils';
+import { getCurrentFileMetadata, getHighlightJsThemeUri, getNonce } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
 
@@ -30,13 +30,20 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           await this.updateContent({query: this._query, type:this.queryType});
         }
       }else {
+        let curFileMeta = await getCurrentFileMetadata(false);
+        let type = curFileMeta?.fileMetadata?.queryMeta.type;
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+        this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
       }
 
-      webviewView.onDidChangeVisibility(() => {
+      webviewView.onDidChangeVisibility(async() => {
         // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
         if (webviewView.visible && this._cachedResults) {
           this._view?.webview.postMessage(this._cachedResults);
+        } else {
+          let curFileMeta = await getCurrentFileMetadata(false);
+          let type = curFileMeta?.fileMetadata?.queryMeta.type;
+          this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox});
         }
       });
 
@@ -145,11 +152,13 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       <span class="bigquery-job-cancelled"></span>
 
-      <label class="checkbox-container">
-              <input type="checkbox" id="incrementalCheckbox" class="checkbox"> 
-              <span class="custom-checkbox"></span>
-              Incremental
-      </label>
+      <div id="incrementalCheckBoxDiv" style="display: none;" >
+        <label class="checkbox-container">
+                <input type="checkbox" id="incrementalCheckbox" class="checkbox"> 
+                <span class="custom-checkbox"></span>
+                Incremental
+        </label>
+      </div>
 
       <select id="queryLimit">
         <option value="1000" selected>Limit: 1000</option>

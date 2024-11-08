@@ -1,5 +1,7 @@
 const vscode = acquireVsCodeApi();
 
+let incrementalCheckBoxDiv =  document.getElementById("incrementalCheckBoxDiv");
+
 const checkbox = document.getElementById('incrementalCheckbox');
 checkbox.addEventListener('change', function() {
     if (this.checked) {
@@ -119,6 +121,12 @@ window.addEventListener('message', event => {
     const type = event?.data?.type;
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
     checkbox.checked = incrementalCheckBox;
+
+    if (type === "incremental"){
+       incrementalCheckBoxDiv.style.display = "";
+    } else {
+       incrementalCheckBoxDiv.style.display = "none";
+    }
 
     let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
 

@@ -94,6 +94,15 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        if (editor && queryResultsViewProvider._view?.visible) {
+            let curFileMeta = await getCurrentFileMetadata(false);
+            let type = curFileMeta?.fileMetadata?.queryMeta.type;
+            queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
+
+        }
+    }, null, context.subscriptions);
+
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
 
     const codeLensProvider = new AssertionRunnerCodeLensProvider();
