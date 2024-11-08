@@ -27,7 +27,11 @@ export async function previewQueryResults(queryResultsViewProvider: CustomViewPr
     } else if (fileMetadata.queryMeta.type === "operations") {
         query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (fileMetadata.queryMeta.type === "incremental") {
-        query = fileMetadata.queryMeta.incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery;
+        if (incrementalCheckBox === true){
+            query = fileMetadata.queryMeta.incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery;
+        } else {
+            query =  fileMetadata.queryMeta.nonIncrementalQuery;
+        }
     }
     if (query === "") {
         vscode.window.showWarningMessage("No query to run");

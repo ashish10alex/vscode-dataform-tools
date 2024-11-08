@@ -44,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
         tabulatorUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
     };
     globalThis.compiledQuerySchema = undefined;
+    globalThis.incrementalCheckBox = false;
 
 
     for (let i = 0; i < executablesToCheck.length; i++) {

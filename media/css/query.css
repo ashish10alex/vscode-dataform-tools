@@ -1,4 +1,3 @@
-
 #runQueryButton {
 	position: absolute;
 	top: 6px;
@@ -32,7 +31,7 @@
 }
 
 .cancelBigQueryJobButton {
-	background-color: #b8860b; 
+	background-color: #b8860b;
 	color: white;
 	padding: 5px 10px;
 	border: none;
@@ -52,14 +51,16 @@
 }
 
 .beta-button {
-	background-color: #b8860b; 
+	background-color: #b8860b;
 	position: absolute;
 	color: white;
 	top: 6px;
 	padding: 5px 10px;
 	font-size: 12px;
-	border-radius: 50px; /* Rounded corners */
-	cursor: not-allowed; /* Disabled state */
+	border-radius: 50px;
+	/* Rounded corners */
+	cursor: not-allowed;
+	/* Disabled state */
 }
 
 #runQueryButton {
@@ -72,11 +73,11 @@
 }
 
 .top-left {
-  position: absolute;
-  top: 6px;
-  left: 0;
-  margin: 0;
-  padding: 5px 10px;
+	position: absolute;
+	top: 6px;
+	left: 0;
+	margin: 0;
+	padding: 5px 10px;
 }
 
 #bigqueryResults {
@@ -95,36 +96,36 @@
 
 /* Increase space between line numbers and code */
 .hljs-ln-numbers {
-	padding-right: 15px !important; 
+	padding-right: 15px !important;
 	text-align: right;
 	border-right: 1px solid #ccc;
 }
 
 /* Add left padding to the code */
 .hljs-ln-code {
-	padding-left: 15px !important; 
+	padding-left: 15px !important;
 }
 
 /* Add a black background color to the top navigation */
 .topnav {
-  overflow: hidden;
+	overflow: hidden;
 }
 
 /* Style the links inside the navigation bar */
 .topnav a {
-  float: left;
-  color: #f2f2f2;
-  text-align: center;
-  padding: 4px 5px;
-  margin: 0 5px; 
-  text-decoration: none;
-  font-size: 17px;
+	float: left;
+	color: #f2f2f2;
+	text-align: center;
+	padding: 4px 5px;
+	margin: 0 5px;
+	text-decoration: none;
+	font-size: 17px;
 }
 
 /* Change the color of links on hover */
 .topnav a:hover {
-  background-color: #ddd;
-  color: black;
+	background-color: #ddd;
+	color: black;
 }
 
 /* Add a color to the active/current link */
@@ -134,47 +135,47 @@
 }
 
 .error-message-container {
-  color: #d32f2f;
-  font-weight: 500;
-  background-color: #ffebee;
-  border-left: 4px solid #d32f2f;
-  border-radius: 3px;
-  padding: 3px 5px;
-  margin: 4px 0;
-  font-size: 13px;
-  line-height: 1.3;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: center;
-  transition: all 0.2s ease;
+	color: #d32f2f;
+	font-weight: 500;
+	background-color: #ffebee;
+	border-left: 4px solid #d32f2f;
+	border-radius: 3px;
+	padding: 3px 5px;
+	margin: 4px 0;
+	font-size: 13px;
+	line-height: 1.3;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+	display: flex;
+	align-items: center;
+	transition: all 0.2s ease;
 }
 
 .error-message-container::before {
-  content: '⚠️';
-  margin-right: 8px;
-  font-size: 14px;
+	content: '⚠️';
+	margin-right: 8px;
+	font-size: 14px;
 }
 
 .no-errors-container {
-  color: #02131c;
-  font-weight: 500;
-  background-color: #bcc9d6;
-  border-left: 4px solid #007acc;
-  border-radius: 3px;
-  padding: 3px 5px;
-  margin: 4px 0;
-  font-size: 13px;
-  line-height: 1.3;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: center;
-  transition: all 0.2s ease;
+	color: #02131c;
+	font-weight: 500;
+	background-color: #bcc9d6;
+	border-left: 4px solid #007acc;
+	border-radius: 3px;
+	padding: 3px 5px;
+	margin: 4px 0;
+	font-size: 13px;
+	line-height: 1.3;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+	display: flex;
+	align-items: center;
+	transition: all 0.2s ease;
 }
 
 .no-errors-container::before {
-  content: '️✅';
-  margin-right: 8px;
-  font-size: 14px;
+	content: '️✅';
+	margin-right: 8px;
+	font-size: 14px;
 }
 
 .button-container {
@@ -195,7 +196,7 @@
 }
 
 .select2-results__options {
-    max-height: 400px !important;
+	max-height: 400px !important;
 }
 
 
@@ -213,7 +214,7 @@
 	height: 100vh;
 	overflow-y: hidden;
 	overflow-x: hidden;
-	background-color:whitesmoke;
+	background-color: whitesmoke;
 }
 
 .navbar-content {
@@ -254,4 +255,45 @@
 
 .button-container, form {
 	margin-bottom: 20px;
+}
+
+
+.checkbox {
+	display: none; /* Hide the default checkbox */
+}
+
+.checkbox-container {
+	position: absolute;
+	top: 5px;
+	right: 325px;
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+  }
+
+
+.custom-checkbox {
+	width: 20px;
+	height: 20px;
+	border: 2px solid #007BFF;
+	border-radius: 4px;
+	position: relative;
+	margin-right: 10px;
+}
+
+.checkbox:checked + .custom-checkbox {
+	background-color: #007BFF; /* Change background when checked */
+	border-color: #0056b3; /* Darker border when checked */
+}
+
+.checkbox:checked + .custom-checkbox::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 2px;
+	width: 5px;
+	height: 10px;
+	border: solid white; /* Checkmark color */
+	border-width: 0 2px 2px 0; /* Create checkmark shape */
+	transform: rotate(45deg);
 }
