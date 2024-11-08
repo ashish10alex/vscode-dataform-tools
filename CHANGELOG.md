@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.24](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.23...v0.2.24) (2024-11-08)
+
+
+### Bug Fixes
+
+* **preview:** duplication of rows when array has multiple objects ([820bc4e](https://github.com/ashish10alex/vscode-dataform-tools/commit/820bc4e26c8aa7649f97de18073af0e29b0e80f5))
+
 ### [0.2.23](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.22...v0.2.23) (2024-11-08)
 
 
