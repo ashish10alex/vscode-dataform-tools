@@ -24,6 +24,10 @@ navLinks.forEach(link => {
     });
 });
 
+const getUrlToNavigateToTableInBigQuery = (gcpProjectId, datasetId, tableName) => {
+    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
+};
+
 
 // Function to update and rehighlight code blocks
 function removeExistingCopyElements() {
@@ -52,6 +56,14 @@ window.addEventListener('message', event => {
     removeExistingCopyElements();
 
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
+    let targetTableOrView = event?.data?.targetTableOrView;
+
+    if (targetTableOrView){
+        const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+        targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
+        targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+    }
+
     if (compiledQuerySchema){
         compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type }) => ({ name, type }));
         new Tabulator("#schemaTable", {

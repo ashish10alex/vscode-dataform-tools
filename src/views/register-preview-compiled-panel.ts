@@ -113,6 +113,7 @@ export class CompiledQueryPanel {
         }
 
         let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
+        let targetTableOrView = curFileMeta.fileMetadata.tables[0]?.target;
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
         if (!queryAutoCompMeta){
@@ -133,6 +134,7 @@ export class CompiledQueryPanel {
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
             "compiledQuerySchema": compiledQuerySchema,
+            "targetTableOrView": targetTableOrView,
         });
 
         if(diagnosticCollection){
@@ -162,6 +164,7 @@ export class CompiledQueryPanel {
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
                 "compiledQuerySchema": compiledQuerySchema,
+                "targetTableOrView": targetTableOrView,
             });
             return webview;
         } 
@@ -214,14 +217,16 @@ export class CompiledQueryPanel {
             </div>
         </div>
 
+        <div style="padding-bottom: 20px;">
+            <a id="targetTableOrViewLink"></a>
+        </div>
+
         <div id="schemaBlock" style="display: none;">
             <table id="schemaTable" class="display" width="100%"></table>
         </div>
 
 
         <div id="compilationBlock" style="display: block;">
-            <p><span id="relativeFilePath"></span></p>
-
             <div class="error-message-container" id="errorMessageDiv" style="display: none;">
                 <p><span id="errorMessage" class="language-bash"></span></p>
             </div>
@@ -231,6 +236,8 @@ export class CompiledQueryPanel {
             </div>
 
             <span class="bigquery-job-cancelled"></span>
+
+            <p><span id="relativeFilePath"></span></p>
 
             <div id="codeBlock">
                 <div id="preOperationsDiv" style="display: none;">
