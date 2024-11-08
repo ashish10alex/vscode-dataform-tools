@@ -8,10 +8,11 @@
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://buymeacoffee.com/ashishalexj)
 
-⚠️ ***This is not an officially supported Google product.***
 
 
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform) with following features
+
+⚠️ ***This is not an officially supported Google product.***
 
 
 | Feature | Description |
