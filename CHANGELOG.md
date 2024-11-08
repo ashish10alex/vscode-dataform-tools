@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.23](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.22...v0.2.23) (2024-11-08)
+
+
+### Bug Fixes
+
+* **preview:** mix of empty and filled array in a column gives error ([babbcda](https://github.com/ashish10alex/vscode-dataform-tools/commit/babbcda91d8ce9027d31ff61384884dbaf6f18db))
+
 ### [0.2.22](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.21...v0.2.22) (2024-11-07)
 
 
