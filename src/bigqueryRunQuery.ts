@@ -24,15 +24,16 @@ function parseObject(obj: any, _childrens: any) {
                 _children[key] = value.toString();
             }
             else if (value.constructor.name === 'Object') {
-
+                let newValues:any = [];
                 for (const [key, val] of Object.entries(value)) {
-                    if (val && val.constructor.name === 'BigQueryDate') {
+                    if (val && (typeof val === "object" && val !== null)) {
                         const dateValue = (val as any).value;
-                        _childrens.push({ ..._children, [key]: dateValue });
+                        newValues = { ...newValues, [key]: dateValue };
                     } else {
-                        _childrens.push({ ..._children, ...value });
+                        newValues = { ...newValues, [key]: val };
                     }
                 }
+                _childrens.push({ ..._children, ...newValues });
 
             }
             else if (value.constructor.name === 'Array') {
