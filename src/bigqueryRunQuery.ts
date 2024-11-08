@@ -137,10 +137,10 @@ export async function queryBigQuery(query: string) {
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
     }
 
-    // if a object is an empty array we will populate it after poputing all the other rows
-    let emptyObjects = new Set();
-
     function convertArrayToObject(array:any, columnName:string) {
+        if (array.length === 0){
+            return [{[columnName]: null}];
+        }
         return array.map((item:any) => ({ [columnName]: item }));
     }
 
@@ -150,12 +150,7 @@ export async function queryBigQuery(query: string) {
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
 
-                if (value.length === 0){
-                    emptyObjects.add(key);
-                    return;
-                }
-
-                if (value[0] && typeof value[0] === "string"){
+                if ((value[0] && typeof value[0] === "string") || (value.length === 0)){
                     value = convertArrayToObject(value, key);
                 }
 
@@ -188,17 +183,6 @@ export async function queryBigQuery(query: string) {
         });
         return obj;
     });
-
-    // fill the emptyColumns with null values
-    if (emptyObjects.size !== 0) {
-        emptyObjects.forEach((emptyObject: any) => {
-            results.forEach((result:any) => {
-                for (let i = 0; i < result._children.length; i++) {
-                    result._children[i] = { ...result._children[i], [emptyObject]: null };
-                }
-            });
-        });
-    }
 
     let columns = createTabulatorColumns(results[0]);
 
