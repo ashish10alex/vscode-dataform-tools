@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.26](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.25...v0.2.26) (2024-11-08)
+
+
+### Features
+
+* toogle for incremental/non-incremental query execution ([#43](https://github.com/ashish10alex/vscode-dataform-tools/issues/43)) ([6b10a9f](https://github.com/ashish10alex/vscode-dataform-tools/commit/6b10a9f2244cd9ff7214f83123d9ced63d09adbb))
+
 ### [0.2.25](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.24...v0.2.25) (2024-11-08)
 
 
