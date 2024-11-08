@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.25](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.24...v0.2.25) (2024-11-08)
+
+
+### Features
+
+* show link to target model in compilation webview ([bf789af](https://github.com/ashish10alex/vscode-dataform-tools/commit/bf789af0c17f3121f46fc0ba4bc0e3cdd3e45245))
+
 ### [0.2.24](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.23...v0.2.24) (2024-11-08)
 
 
