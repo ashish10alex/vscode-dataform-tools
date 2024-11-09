@@ -210,7 +210,7 @@ export class CompiledQueryPanel {
 
         <body>
 
-        <div style="padding-bottom: 20px; padding-top: 2px;">
+        <div style="padding-bottom: 20px; padding-top: 10px;">
             <div class="topnav">
                 <a class="active" href="#compilation">Compiled Query</a>
                 <a href="#schema">Schema</a>
