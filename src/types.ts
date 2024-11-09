@@ -11,6 +11,7 @@ export interface Table {
     postOps: string[];
     incrementalPreOps: string[];
     dependencyTargets: Target[];
+    bigquery: TableBigQueryConfig;
 }
 
 export interface QueryMeta {
@@ -148,4 +149,10 @@ export interface GitHubContentResponse {
 export interface QueryWtType {
     query: string;
     type: string;
+}
+
+export interface TableBigQueryConfig {
+    partitionBy: string;
+    updatePartitionFilter: string;
+    clusterBy: string[];
 }
