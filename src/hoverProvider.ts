@@ -5,10 +5,35 @@ import {
 } from "./utils";
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
 
+function getTableInformationFromRef(
+  searchTerm: string,
+  struct: Table[]
+): vscode.Hover | undefined {
+  let hoverMeta: vscode.Hover | undefined;
+  for (let i = 0; i < struct.length; i++) {
+    let targetName = struct[i].target.name;
+    if (searchTerm === targetName) {
+
+      const content = `Table: ${struct[i].target.database}.${struct[i].target.schema}.${struct[i].target.name}` +
+                      `\nType: ${struct[i].type}` +
+                      (struct[i].bigquery?.partitionBy ? `\nPartition: ${struct[i].bigquery.partitionBy}` : ``) +
+                      (struct[i].dependencyTargets.length > 0
+                        ? `\nDependencies:\n${struct[i].dependencyTargets
+                            .map(dep => `- ${dep.database}.${dep.schema}.${dep.name}`)
+                            .join('\n')}`
+                        : ``);
+      hoverMeta = new vscode.Hover({
+        language: "bash", // bash because it stands out for the format `gcp_project_id.dataset.table`
+        value: content,
+      });
+    }
+  }
+  return hoverMeta;
+}
 
 function getFullTableNameFromRef(
   searchTerm: string,
-  struct: Operation[] | Assertion[] | Table[]
+  struct: Operation[] | Assertion[]
 ): vscode.Hover | undefined {
   let hoverMeta: vscode.Hover | undefined;
   for (let i = 0; i < struct.length; i++) {
@@ -76,7 +101,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       }
 
       if (tables) {
-        hoverMeta = getFullTableNameFromRef(searchTerm, tables);
+        hoverMeta = getTableInformationFromRef(searchTerm, tables);
       }
       if (hoverMeta) {
         return hoverMeta;
