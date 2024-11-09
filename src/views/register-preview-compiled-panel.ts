@@ -210,12 +210,24 @@ export class CompiledQueryPanel {
 
         <body>
 
-        <div style="padding-bottom: 20px;">
+        <div style="padding-bottom: 20px; padding-top: 2px;">
             <div class="topnav">
                 <a class="active" href="#compilation">Compiled Query</a>
                 <a href="#schema">Schema</a>
             </div>
         </div>
+
+        <div id="compiledQueryloadingIcon">
+            <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                        values="0 126;126 126;126 0"/>
+                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                        values="0;-126;-252"/>
+                    </circle>
+            </svg>
+        </div>
+
 
         <div style="padding-bottom: 20px;">
             <a id="targetTableOrViewLink"></a>
@@ -227,6 +239,19 @@ export class CompiledQueryPanel {
 
 
         <div id="compilationBlock" style="display: block;">
+
+            <div id="dryRunloadingIcon">
+                <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="25" cy="25" r="10" fill="none" stroke="#32cd32" stroke-width="4">
+                            <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                            values="0 126;126 126;126 0"/>
+                            <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                            values="0;-126;-252"/>
+                        </circle>
+                </svg>
+            </div>
+
+
             <div class="error-message-container" id="errorMessageDiv" style="display: none;">
                 <p><span id="errorMessage" class="language-bash"></span></p>
             </div>

@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
-
+const compiledQueryloadingIcon = document.getElementById("compiledQueryloadingIcon");
+const dryRunloadingIcon = document.getElementById("dryRunloadingIcon");
 const navLinks = document.querySelectorAll('.topnav a');
 
 navLinks.forEach(link => {
@@ -40,6 +41,7 @@ function removeExistingCopyElements() {
 }
 
 window.addEventListener('message', event => {
+    dryRunloadingIcon.style.display = "";
     let data = {
         "preOperations": event?.data?.preOperations,
         "postOperations": event?.data?.postOperations,
@@ -55,15 +57,14 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
-    let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     let targetTableOrView = event?.data?.targetTableOrView;
-
     if (targetTableOrView){
         const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
         targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
         targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
     }
 
+    let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
         compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type }) => ({ name, type }));
         new Tabulator("#schemaTable", {
@@ -81,6 +82,8 @@ window.addEventListener('message', event => {
         });
     }
 
+    compiledQueryloadingIcon.style.display = "none";
+   
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);
         const divElement = document.getElementById(key + "Div");
@@ -91,6 +94,7 @@ window.addEventListener('message', event => {
             }
         } else {
             if(key === "errorMessage"){
+                dryRunloadingIcon.style.display = "none";
                 if (value === " "){
                     divElement.style.display = "none";
                 } else {
@@ -99,6 +103,7 @@ window.addEventListener('message', event => {
                 }
             }
             else if (key === "dryRunStat"){
+                dryRunloadingIcon.style.display = "none";
                 if (value === "0 GB"){
                     divElement.style.display = "none";
                 } else {
