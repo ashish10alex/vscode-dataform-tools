@@ -5,6 +5,19 @@ import {
 } from "./utils";
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
 
+
+const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
+  return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
+};
+
+const getMarkdownTableIdWtLink = (fullTableIdStruct:{database:string, schema:string, name:string})  => {
+      let {database, schema, name } = fullTableIdStruct;
+      const fullTableId = `${database}.${schema}.${name}`;
+      const linkToTable = `${getUrlToNavigateToTableInBigQuery(database, schema, name)}`;
+      return `[${fullTableId}](${linkToTable})`;
+};
+
+
 function getTableInformationFromRef(
   searchTerm: string,
   struct: Table[]
@@ -14,18 +27,22 @@ function getTableInformationFromRef(
     let targetName = struct[i].target.name;
     if (searchTerm === targetName) {
 
-      const content = `Table: ${struct[i].target.database}.${struct[i].target.schema}.${struct[i].target.name}` +
-                      `\nType: ${struct[i].type}` +
+      const markdownTableIdWtLink = getMarkdownTableIdWtLink(struct[i].target);
+      const tableMetadata = `\nType: ${struct[i].type}` +
                       (struct[i].bigquery?.partitionBy ? `\nPartition: ${struct[i].bigquery.partitionBy}` : ``) +
                       (struct[i].dependencyTargets
                         ? `\nDependencies:\n${struct[i].dependencyTargets
                             .map(dep => `- ${dep.database}.${dep.schema}.${dep.name}`)
                             .join('\n')}`
                         : ``);
-      hoverMeta = new vscode.Hover({
-        language: "bash", // bash because it stands out for the format `gcp_project_id.dataset.table`
-        value: content,
-      });
+      const hoverMarkdownString = new vscode.MarkdownString(
+        markdownTableIdWtLink + "\n ```bash" + tableMetadata + "\n```"
+      );
+
+      hoverMarkdownString.isTrusted = true; // Allows command links
+      hoverMarkdownString.supportThemeIcons = true; // Allows ThemeIcons
+
+      hoverMeta = new vscode.Hover(hoverMarkdownString);
     }
   }
   return hoverMeta;
@@ -39,10 +56,10 @@ function getFullTableNameFromRef(
   for (let i = 0; i < struct.length; i++) {
     let targetName = struct[i].target.name;
     if (searchTerm === targetName) {
-      hoverMeta = new vscode.Hover({
-        language: "bash", // bash because it stands out for the format `gcp_project_id.dataset.table`
-        value: `${struct[i].target.database}.${struct[i].target.schema}.${struct[i].target.name}`,
-      });
+
+      const markdownTableIdWtLink = getMarkdownTableIdWtLink(struct[i].target);
+      const hoverData = new vscode.MarkdownString(markdownTableIdWtLink);
+      return new vscode.Hover(hoverData);
     }
   }
   return hoverMeta;
@@ -89,10 +106,10 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       for (let i = 0; i < declarations.length; i++) {
         let declarationName = declarations[i].target.name;
         if (searchTerm === declarationName) {
-          return new vscode.Hover({
-            language: "bash", // bash because it stands out for the format `gcp_project_id.dataset.table`
-            value: `${declarations[i].target.database}.${declarations[i].target.schema}.${declarations[i].target.name}`,
-          });
+          const markdownTableIdWtLink = getMarkdownTableIdWtLink(declarations[i].target);
+          const hoverData = new vscode.MarkdownString(markdownTableIdWtLink);
+          return new vscode.Hover(hoverData);
+
         }
       }
 
