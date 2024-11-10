@@ -885,7 +885,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         return dryRunResult;
     }
 
-    if (showCompiledQueryInVerticalSplitOnSave) {
+    if (!showCompiledQueryInVerticalSplitOnSave) {
         let combinedTableIds = "";
         currFileMetadata.tables.forEach((table) => {
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;

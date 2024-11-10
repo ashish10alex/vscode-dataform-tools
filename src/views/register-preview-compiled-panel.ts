@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
 
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
@@ -18,7 +18,14 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-        CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
+        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible)){
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
+        } else {
+            if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false){
+                compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
+            }
+        }
     }));
 
 }
@@ -26,7 +33,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
 export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
-    private centerPanelDisposed: boolean = false;
+    public centerPanelDisposed: boolean = false;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean) {
         this.updateView(forceShowVerticalSplit);
