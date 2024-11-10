@@ -18,6 +18,15 @@ function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[]
     return location;
 }
 
+function getSearchTermLocationFromPath(searchTerm: string, workspaceFolder: string): vscode.Location | undefined {
+    let location: vscode.Location | undefined;
+    let fullSourcePath = path.join(workspaceFolder, searchTerm);
+    let sourcesJsUri = vscode.Uri.file(fullSourcePath);
+    const definitionPosition = new vscode.Position(0, 0);
+    location = new vscode.Location(sourcesJsUri, definitionPosition);
+    return location;
+}
+
 export class DataformRefDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(
         document: vscode.TextDocument,
@@ -28,7 +37,7 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
         const line = document.lineAt(position.line).text;
 
         // early return
-        if (line.indexOf("${ref(") === -1) {
+        if (line.indexOf("${ref(") === -1 && line.indexOf("${resolve(") === -1) {
             return undefined;
         }
 
@@ -88,3 +97,51 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
     }
 }
 
+export class DataformRequireDefinitionProvider implements vscode.DefinitionProvider {
+    async provideDefinition(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken
+    ): Promise<vscode.LocationLink[] | undefined> {
+        const line = document.lineAt(position.line).text;
+        const requireRegex = /[const|var|let].+=.+require\(["'](.+?)["']\)/;
+        const match = line.match(requireRegex);
+
+        // Early return if no match is found
+        if (!match) {
+            return undefined;
+        }
+
+        const searchTerm = match[1];
+        const workspaceFolder = getWorkspaceFolder();
+
+        // Return if no workspace folder is available
+        if (!workspaceFolder) {
+            return undefined;
+        }
+
+        const startIndex = line.indexOf(searchTerm);
+        const endIndex = startIndex + searchTerm.length;
+
+        // Check if the click position is within the range of the require path
+        if (position.character < startIndex || position.character > endIndex) {
+            return undefined;
+        }
+
+        const targetLocation = getSearchTermLocationFromPath(searchTerm, workspaceFolder);
+
+        // Return if the target location is not found
+        if (!targetLocation) {
+            return undefined;
+        }
+
+        const range = new vscode.Range(position.line, startIndex, position.line, endIndex);
+
+        // Return a LocationLink to make the full path highlighted
+        return [{
+            originSelectionRange: range,
+            targetUri: targetLocation.uri,
+            targetRange: targetLocation.range,
+        }] as vscode.LocationLink[];
+    }
+}
