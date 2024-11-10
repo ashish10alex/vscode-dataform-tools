@@ -104,7 +104,7 @@ export class DataformRequireDefinitionProvider implements vscode.DefinitionProvi
         token: vscode.CancellationToken
     ): Promise<vscode.LocationLink[] | undefined> {
         const line = document.lineAt(position.line).text;
-        const requireRegex = /[const|var|let].+=.+require\(["'](.+?)["']\)/;
+        const requireRegex = /const.+=.+require\(["'](.+?)["']\)/;
         const match = line.match(requireRegex);
 
         // Early return if no match is found
@@ -164,7 +164,7 @@ export class DataformJsFunctionDefinitionProvider implements vscode.DefinitionPr
             return;
         }
 
-        const importRegex = /[const|var|let]\s+(\w+)\s*=\s*require\(["'](.+?)["']\)/g;
+        const importRegex = /const\s+(\w+)\s*=\s*require\(["'](.+?)["']\)/g;
         let match;
         const importedFunctions = new Map<string, string>();
 
