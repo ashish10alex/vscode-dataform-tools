@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.27](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.26...v0.2.27) (2024-11-10)
+
+
+### Features
+
+* add loading icon when query is compiling ([7af31d8](https://github.com/ashish10alex/vscode-dataform-tools/commit/7af31d844c89ed34b4212e45461eaa76f05cb7be))
+* additional table information on hover  ([#44](https://github.com/ashish10alex/vscode-dataform-tools/issues/44)) ([eefe4f7](https://github.com/ashish10alex/vscode-dataform-tools/commit/eefe4f7a8b1b9b97eb268a102e039453c5e8d519))
+
 ### [0.2.26](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.25...v0.2.26) (2024-11-08)
 
 
