@@ -104,7 +104,7 @@ export class DataformRequireDefinitionProvider implements vscode.DefinitionProvi
         token: vscode.CancellationToken
     ): Promise<vscode.LocationLink[] | undefined> {
         const line = document.lineAt(position.line).text;
-        const requireRegex = /const.+=.+require\(["'](.+?)["']\)/;
+        const requireRegex = /[const|var|let].+=.+require\(["'](.+?)["']\)/;
         const match = line.match(requireRegex);
 
         // Early return if no match is found
