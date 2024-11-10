@@ -6,6 +6,9 @@
         "include": "source.sql"
       },
       {
+        "include": "#functions"
+      },
+      {
         "name": "meta.section.configblock",
         "contentName": "markup.other.section.example",
         "begin": "(config)\\s+({)",
@@ -57,9 +60,671 @@
             "include": "source.js"
           }
         ]
+      },
+      {
+        "captures": {
+          "1": {
+            "name": "keyword.other.create.sql"
+          },
+          "2": {
+            "name": "keyword.other.sql"
+          },
+          "3": {
+            "name": "keyword.other.DML.sql"
+          },
+          "5": {
+            "name": "entity.name.function.sql"
+          },
+          "6": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          }
+        },
+        "match": "(?i:^\\s*(create(?:\\s+or\\s+replace)?(?:\\s+temporary|\\s+temp)?|drop|alter)\\s+(schema|table(?:\\s+function)?|view|materialized\\s+view|(?:external|snapshot)\\s+table|model|function|procedure|column)\\b(?:\\s+(if(?:\\s+not)?\\s+exists)\\b)?)(?:\\s+(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:[\\w\\{\\}]+|\\{\\{\\s*[\\w]+\\s*\\}\\}))\\4)?",
+        "name": "meta.create.sql"
+      },
+      {
+        "captures": {
+          "1": {
+            "name": "keyword.other.insert.sql"
+          },
+          "3": {
+            "name": "entity.name.function.table.standard.sql"
+          },
+          "4": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          },
+          "5": {
+            "name": "variable.parameter.table.partition_decorator.sql"
+          }
+        },
+        "match": "(?i:^\\b((?:insert|merge)(?:\\s+into)?|truncate\\s+table)(?:\\s+(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\2)?)",
+        "name": "meta.create.DML.insert.sql"
+      },
+      {
+        "captures": {
+          "1": {
+            "name": "keyword.other.select.sql"
+          },
+          "4": {
+            "name": "entity.name.function.table.standard.sql"
+          },
+          "5": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          },
+          "6": {
+            "name": "variable.parameter.table.partition_decorator.sql"
+          },
+          "7": {
+            "name": "entity.name.function.table.legacy.sql"
+          },
+          "8": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          },
+          "9": {
+            "name": "variable.parameter.table.partition_decorator.legacy.sql"
+          }
+        },
+        "match": "(?i)(from|join|delete\\s+from|delete(?!\\s+from)|update|using(?!\\s+message)|clone|on\\s+(?:schema|table|view))\\s+((`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:INFORMATION_SCHEMA\\.\\w+|\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\3?|\\[((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\:|(\\.)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\])",
+        "name": "meta.create.from.sql"
+      },
+      {
+        "captures": {
+          "1": {
+            "name": "keyword.other.insert.sql"
+          },
+          "3": {
+            "name": "entity.name.function.table.standard.sql"
+          },
+          "4": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          },
+          "5": {
+            "name": "variable.parameter.table.partition_decorator.sql"
+          }
+        },
+        "match": "(?i:\\b(model|call)\\s+(?:(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\2)?)",
+        "name": "meta.other.table.ml_procedure.sql"
+      },
+      {
+        "captures": {
+          "2": {
+            "name": "entity.name.function.table.standard.sql"
+          },
+          "3": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          },
+          "4": {
+            "name": "variable.parameter.table.partition_decorator.sql"
+          },
+          "5": {
+            "name": "entity.name.function.table.legacy.sql"
+          },
+          "6": {
+            "name": "invalid.illegal.table.delimiter.sql"
+          },
+          "7": {
+            "name": "variable.parameter.table.partition_decorator.legacy.sql"
+          }
+        },
+        "match": "^\\s*(?:(`)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:INFORMATION_SCHEMA\\.\\w+|(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)))(\\*|\\$\\w+)?\\1|\\[((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\:|(\\.)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\])",
+        "name": "meta.other.table.sql"
+      },
+      {
+        "captures": {
+          "1": {
+            "name": "keyword.other.merge.sql"
+          }
+        },
+        "match": "(?i)(\\b(?:by)\\s+(?:target|source)\\b)",
+        "name": "meta.create.DML.merge.sql"
+      },
+      {
+        "match": "(?i)\\b(array|boolean|bytes|date(?!\\s*\\()|datetime(?!\\s*\\()|geography|numeric|decimal|bignumeric|bigdecimal|float|float64|int64|int|smallint|integer|bigint|tinyint|byteint|bool|record|any\\s+type|string(?!\\s*\\()|struct|time(?!\\s*\\(|\\s+as\\s+of|\\s+zone)|timestamp(?!\\s*\\())\\b",
+        "name": "storage.type.sql"
+      },
+      {
+        "match": "\\b(\\d+\\.\\d+)|(\\d+\\.)|(\\.\\d+)|\\b(\\d+)|(?i:(true|false))\\b",
+        "name": "constant.numeric.sql"
+      },
+      {
+        "match": "(?i)\\bAS\\b",
+        "name": "keyword.other.alias.sql"
+      },
+      {
+        "match": "(?i)\\b(desc|asc)\\b",
+        "name": "keyword.other.order.sql"
+      },
+      {
+        "match": "(?i)\\b(case|when|then|else|end)\\b",
+        "name": "keyword.other.case.sql"
+      },
+      {
+        "match": "\\*",
+        "name": "keyword.operator.star.sql"
+      },
+      {
+        "match": "[!<>]?=|<>|<|>",
+        "name": "keyword.operator.comparison.sql"
+      },
+      {
+        "match": "-|\\+|/|~",
+        "name": "keyword.operator.math.sql"
+      },
+      {
+        "match": "\\|\\|",
+        "name": "keyword.operator.concatenator.sql"
+      },
+      {
+        "match": "<<|>>|\\&|\\^|\\|",
+        "name": "keyword.operator.byte.sql"
+      },
+      {
+        "match": "%",
+        "name": "invalid.deprecated.legacy.operator.sql"
+      },
+      {
+        "match": "(?i:\\b(select|all|distinct|except|replace|from|where|in|is|null|like|between|and|or|with|group|by|rollup|order|limit|having|window)\\b)",
+        "name": "keyword.other.select.sql"
+      },
+      {
+        "match": "(?i:\\b(union|intersect|for|system|time|of|offset|system_time|tablesample|percent)\\b)",
+        "name": "keyword.other.select.set_op.sql"
+      },
+      {
+        "match": "(?i:\\b(inner|cross|full|left|right|outer|join|on|using)\\b)",
+        "name": "keyword.other.select.join.sql"
+      },
+      {
+        "match": "(?i:\\bfor\\s+system\\s+time\\s+as\\s+of\\b)",
+        "name": "keyword.other.select.other.sql"
+      },
+      {
+        "match": "(?i:\\b(insert|into|values|delete|update|set)\\b)",
+        "name": "keyword.other.DML.sql"
+      },
+      {
+        "match": "(?i:\\b(create(\\s+(temporary|temp))?|drop(\\s+column)?|schema|table(?:\\s+function)?|view|materialized(\\s+view)?|external\\s+table|snapshot|clone|if|not|exists|partition|cluster|options|data\\s+type|rows|range|unbounded|preceding|following|current|row|returns|language|deterministic|(\\s*or\\s+replace\\s+)?(function|procedure|model)(\\s*if\\s+not\\s+exists\\s+)?|(add|drop)\\s+column|cascade|restrict|rename|to)\\b)",
+        "name": "keyword.other.DDL.sql"
+      },
+      {
+        "match": "(?i:\\b(grant|revoke)\\b)",
+        "name": "keyword.other.DCL.sql"
+      },
+      {
+        "match": "(?i:\\b(merge|matched|default|truncate)\\b)",
+        "name": "keyword.other.DML.merge.sql"
+      },
+      {
+        "match": "(?i:\\b(assert|export\\s+data|pivot|unpivot|qualify|include|exclude)\\b)",
+        "name": "keyword.other.statement.sql"
+      },
+      {
+        "match": "(?i:\\b(over|ignore|respect|nulls|first|last|interval|at|zone|at\\s+time\\s+zone)\\b)",
+        "name": "keyword.other.function.sql"
+      },
+      {
+        "match": "(?i:\\b(procedure|begin|exception|error[^\\.\\(]|out|inout|call|declare|if|elseif|end\\s+if|loop|while|do|break|leave|continue|iterate|return|execute|immediate|raise|message)\\b)",
+        "name": "keyword.other.procedure.sql"
+      },
+      {
+        "captures": {
+          "1": {
+            "name": "constant.other.database-name.sql"
+          },
+          "2": {
+            "name": "punctuation.separator.period.sql"
+          },
+          "3": {
+            "name": "constant.other.table-name.sql"
+          }
+        },
+        "match": "(\\w+?)(\\.)(\\w+)"
       }
     ],
-  
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "begin": "(^[ \\t]+)?(?=--)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.whitespace.comment.leading.sql"
+            }
+          },
+          "end": "(?!\\G)",
+          "patterns": [
+            {
+              "begin": "--",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.comment.sql"
+                }
+              },
+              "end": "\\n",
+              "name": "comment.line.double-dash.sql"
+            }
+          ]
+        },
+        {
+          "begin": "(^[ \\t]+)?(?=#)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.whitespace.comment.leading.sql"
+            }
+          },
+          "end": "(?!\\G)",
+          "patterns": [
+            {
+              "begin": "#",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.comment.sql"
+                }
+              },
+              "end": "\\n",
+              "name": "comment.line.number-sign.sql"
+            }
+          ]
+        },
+        {
+          "begin": "/\\*",
+          "captures": {
+            "0": {
+              "name": "punctuation.definition.comment.sql"
+            }
+          },
+          "end": "\\*/",
+          "name": "comment.block.c"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "begin": "\\(",
+          "end": "\\)",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.section.bracket.round.begin.sql"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.section.bracket.round.end.sql"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
+        },
+        {
+          "match": "\\)",
+          "name": "punctuation.unmatched.bracket.round.end.sql"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.comma.sql"
+        },
+        {
+          "match": "\\.",
+          "name": "punctuation.separator.period.sql"
+        },
+        {
+          "match": ";",
+          "name": "punctuation.terminator.statement.semicolon.sql"
+        }
+      ]
+    },
+    "regexps": {
+      "patterns": [
+        {
+          "begin": "r[\"]",
+          "beginCaptures": {
+            "0": {
+              "name": "storage.type.string.regex.begin.sql"
+            }
+          },
+          "end": "[\"]",
+          "endCaptures": {
+            "0": {
+              "name": "storage.type.string.regex.end.sql"
+            }
+          },
+          "name": "meta.regex.sql",
+          "contentName": "string.regexp.sql",
+          "patterns": [
+            {
+              "include": "#string_interpolation"
+            },
+            {
+              "include": "#string_escape"
+            }
+          ]
+        },
+        {
+          "begin": "r[']",
+          "beginCaptures": {
+            "0": {
+              "name": "storage.type.string.regex.begin.sql"
+            }
+          },
+          "end": "[']",
+          "endCaptures": {
+            "0": {
+              "name": "storage.type.string.regex.end.sql"
+            }
+          },
+          "name": "meta.regex.sql",
+          "contentName": "string.regexp.sql",
+          "patterns": [
+            {
+              "include": "#string_interpolation"
+            },
+            {
+              "include": "#string_escape"
+            }
+          ]
+        }
+      ]
+    },
+    "javascript": {
+      "patterns": [
+        {
+          "begin": "(?i:\\b(as)\\s+)r{0,1}(\"\"\")",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.alias.sql"
+            },
+            "2": {
+              "name": "string.quoted.double.begin.sql"
+            }
+          },
+          "end": "\"\"\"",
+          "endCaptures": {
+            "0": {
+              "name": "string.quoted.double.end.sql"
+            }
+          },
+          "name": "meta.embedded.js",
+          "contentName": "source.embedded.js",
+          "patterns": [
+            {
+              "include": "source.js"
+            }
+          ]
+        }
+      ]
+    },
+    "string_escape": {
+      "match": "\\\\.",
+      "name": "constant.character.escape.sql"
+    },
+    "string_interpolation": {
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.string.end.sql"
+        }
+      },
+      "match": "(#\\{)([^\\}]*)(\\})",
+      "name": "string.interpolated.sql"
+    },
+    "strings": {
+      "patterns": [
+        {
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.string.begin.sql"
+            },
+            "2": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "comment": "this is faster than the next begin/end rule since sub-pattern will match till end-of-line and SQL files tend to have very long lines.",
+          "match": "(')[^'\\\\]*(')",
+          "name": "string.quoted.single.sql"
+        },
+        {
+          "begin": "'",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.sql"
+            }
+          },
+          "end": "'",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "name": "string.quoted.single.sql",
+          "patterns": [
+            {
+              "include": "#string_escape"
+            }
+          ]
+        },
+        {
+          "begin": "\"",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.sql"
+            }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "name": "string.quoted.double.sql",
+          "patterns": [
+            {
+              "include": "#string_escape"
+            }
+          ]
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.string.begin.sql"
+            },
+            "2": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "comment": "this is faster than the next begin/end rule since sub-pattern will match till end-of-line and SQL files tend to have very long lines.",
+          "match": "(`)[^`\\\\]*(`)",
+          "name": "string.quoted.other.backtick.sql"
+        },
+        {
+          "begin": "`",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.sql"
+            }
+          },
+          "end": "`",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "name": "string.quoted.other.backtick.sql",
+          "patterns": [
+            {
+              "include": "#string_escape"
+            }
+          ]
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.string.begin.sql"
+            },
+            "2": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "comment": "this is faster than the next begin/end rule since sub-pattern will match till end-of-line and SQL files tend to have very long lines.",
+          "match": "(\")[^\"#]*(\")",
+          "name": "string.quoted.double.sql"
+        },
+        {
+          "begin": "%\\{",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.sql"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.sql"
+            }
+          },
+          "name": "string.other.quoted.brackets.sql",
+          "patterns": [
+            {
+              "include": "#string_interpolation"
+            }
+          ]
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "(?i)\\b(CURRENT_(DATE|DATETIME|TIME(STAMP)?|USER)|(SESSION|SYSTEM)_USER|EXTRACT|UNNEST)\\b",
+          "name": "support.function.scalar.sql"
+        },
+        {
+          "match": "(?i)\\b((SAFE_)?CAST|PARSE_(BIGNUMERIC|NUMERIC))\\b",
+          "name": "support.function.cast.sql"
+        },
+        {
+          "match": "(?i)\\b(DATE|DATETIME|TIME(STAMP)?|STRING|(DATE|DATETIME|TIME(STAMP)?)_(ADD|SUB|DIFF|TRUNC)|DATE_FROM_UNIX_DATE|(FORMAT|PARSE)_(DATE|DATETIME|TIME(STAMP)?)|UNIX_(DATE|SECONDS|MILLIS|MICROS)|TIMESTAMP_(SECONDS|MILLIS|MICROS)|LAST_DAY)(?=\\s*\\()",
+          "name": "support.function.date.sql"
+        },
+        {
+          "match": "(?i)\\b(NET\\.(IP_FROM_STRING|SAFE_IP_FROM_STRING|IP_TO_STRING|IP_NET_MASK|IP_TRUNC|IPV4_FROM_INT64|IPV4_TO_INT64|HOST|PUBLIC_SUFFIX|REG_DOMAIN))\\b",
+          "name": "support.function.net.sql"
+        },
+        {
+          "match": "(?i)\\b(ABS|SIGN|IS_(INF|NAN)|IEEE_DIVIDE|RAND|SQRT|POW|POWER|EXP|LN|LOG|LOG10|GREATEST|LEAST|DIV|SAFE_DIVIDE|MOD|ROUND|TRUNC|CEIL|CEILING|FLOOR|COS|COSH|ACOS|ACOSH|SIN|SINH|ASIN|ASINH|TAN|TANH|ATAN|ATANH|ATAN2|RANGE_BUCKET)\\b",
+          "name": "support.function.math.sql"
+        },
+        {
+          "match": "(?i)\\b(AVG|COUNT|MIN|MAX|SUM|ANY_VALUE|ARRAY_AGG|ARRAY_CONCAT_AGG|BIT_AND|BIT_OR|BIT_XOR|COUNTIF|LOGICAL_AND|LOGICAL_OR|STRING_AGG|CORR|COVAR_POP|COVAR_SAMP|STDDEV_POP|STDDEV_SAMP|STDDEV|VAR_POP|VAR_SAMP|VARIANCE|APPROX_COUNT_DISTINCT|APPROX_QUANTILES|APPROX_TOP_COUNT|APPROX_TOP_SUM|HLL_COUNT\\.\\w+)(?=\\s*\\()",
+          "name": "support.function.aggregate.sql"
+        },
+        {
+          "match": "(?i)\\b(ARRAY_(CONCAT|LENGTH|TO_STRING|REVERSE)|GENERATE_(ARRAY|DATE_ARRAY|TIMESTAMP_ARRAY)|(SAFE_)?(OFFSET|ORDINAL))(?=\\s*\\()",
+          "name": "support.function.aggregate.sql.array"
+        },
+        {
+          "match": "(?i)\\b(ASCII|(BYTE|CHAR|CHARACTER|OCTET)_LENGTH|CHR|CODE_POINTS_TO_(BYTES|STRING)|CONCAT|BYTE_LENGTH|CHAR_LENGTH|CHARACTER_LENGTH|CONCAT|ENDS_WITH|FORMAT|FROM_(BASE32|BASE64|HEX)|INITCAP|INSTR|LENGTH|LPAD|LOWER|LTRIM|NORMALIZE|NORMALIZE_AND_CASEFOLD|REGEXP_(CONTAINS|EXTRACT|EXTRACT_ALL|INSTR|REPLACE|SUBSTR)|REPLACE(?!\\]|\\s+(schema|table|view|materialized(\\s+view)?|external\\s+table|model|function|procedure))|REPEAT|REVERSE|RPAD|RTRIM|SAFE_CONVERT_BYTES_TO_STRING|SOUNDEX|SPLIT|STARTS_WITH|STRPOS|SUBSTR|SUBSTRING|TO_(BASE32|BASE64|CODE_POINTS|HEX)|TRANSLATE|TRIM|UNICODE|UPPER)\\b",
+          "name": "support.function.string.sql"
+        },
+        {
+          "match": "(?i)\\b(LEFT|RIGHT)(?=\\s*\\()",
+          "name": "support.function.string.param.sql"
+        },
+        {
+          "match": "(?i)\\b(FARM_FINGERPRINT|MD5|SHA(1|256|512))\\b",
+          "name": "support.function.string.sql.hash"
+        },
+        {
+          "match": "(?i)\\b(JSON_QUERY|JSON_VALUE|JSON_(QUERY|VALUE)_ARRAY|TO_JSON_STRING)\\b",
+          "name": "support.function.json.sql"
+        },
+        {
+          "match": "(?i)\\b(JSON_EXTRACT|JSON_EXTRACT_(SCALAR|ARRAY|STRING_ARRAY))\\b",
+          "name": "invalid.deprecated.legacy.function.sql.json"
+        },
+        {
+          "match": "(?i)\\b(ROW_NUMBER|RANK|DENSE_RANK|PERCENT_RANK|CUME_DIST|NTILE|LAG|LEAD|(FIRST|LAST|NTH)_VALUE|OVER|PERCENTILE_(CONT|DISC)|BIT_COUNT)\\b",
+          "name": "support.function.window.sql"
+        },
+        {
+          "match": "(?i)\\b(COALESCE|IF[^\\s]|NULLIF|IFNULL)\\b",
+          "name": "support.function.conditional.sql"
+        },
+        {
+          "match": "(?i)\\b(ERROR)(?=\\s*\\()",
+          "name": "support.function.debug.sql"
+        },
+        {
+          "match": "(?i)\\b(SAFE\\.\\w+)(?=\\s*\\()",
+          "name": "support.function.debug.sql"
+        },
+        {
+          "match": "(?i)\\b(ML\\.(EVALUATE|ROC_CURVE|CONFUSION_MATRIX|TRAINING_INFO|FEATURE_INFO|WEIGHTS|PREDICT))\\b",
+          "name": "support.function.ml.sql"
+        },
+        {
+          "match": "(?i)\\b(ST_(AREA|ASBINARY|ASGEOJSON|ASTEXT|BOUNDARY|CENTROID|CENTROID_AGG|CLOSESTPOINT|CLUSTERDBSCAN|CONTAINS|CONVEXHULL|COVEREDBY|COVERS|DIFFERENCE|DIMENSION|DISJOINT|DISTANCE|DUMP|DWITHIN|ENDPOINT|EQUALS|GEOGFROM|GEOGFROMGEOJSON|GEOGFROMTEXT|GEOGFROMWKB|GEOGPOINT|GEOGPOINTFROMGEOHASH|GEOHASH|INTERSECTION|INTERSECTS|INTERSECTSBOX|ISCOLLECTION|ISEMPTY|LENGTH|MAKELINE|MAKEPOLYGON|MAKEPOLYGONORIENTED|MAXDISTANCE|NPOINTS|NUMPOINTS|PERIMETER|POINTN|SIMPLIFY|SNAPTOGRID|STARTPOINT|TOUCHES|UNION|UNION_AGG|WITHIN|X|Y))\\b",
+          "name": "support.function.gis.sql"
+        },
+        {
+          "match": "(?i)\\b(KEYS\\.(NEW_KEYSET|ADD_KEY_FROM_RAW_BYTES|KEYSET_FROM_JSON|KEYSET_TO_JSON|ROTATE_KEYSET))\\b",
+          "name": "support.function.keys.sql"
+        },
+        {
+          "match": "(?i)\\b(AEAD\\.(DECRYPT_BYTES|DECRYPT_STRING|ENCRYPT))\\b",
+          "name": "support.function.aead.sql"
+        },
+        {
+          "match": "(?i)\\b(EXTERNAL_QUERY)\\b",
+          "name": "support.function.federated.sql"
+        },
+        {
+          "match": "(?i)\\b(EXACT_COUNT_DISTINCT|FIRST|GROUP_CONCAT(_UNQUOTED)?|LAST|NEST|NTH|QUANTILES|TOP|UNIQUE)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.aggregate.sql"
+        },
+        {
+          "match": "(?i)\\b(BOOLEAN|BYTES|FLOAT|HEX_STRING|INTEGER)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.cast.sql"
+        },
+        {
+          "match": "(?i)\\b(IS_EXPLICITLY_DEFINED|NVL)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.comparison.sql"
+        },
+        {
+          "match": "(?i)\\b(DATEDIFF|DAY(OFWEEK|OFYEAR)?|FORMAT_UTC_USEC|HOUR|MINUTE|MONTH|MSEC_TO_TIMESTAMP|NOW|PARSE_UTC_USEC|QUARTER|SEC_TO_TIMESTAMP|SECOND|STRFTIME_UTC_USEC|TIMESTAMP_TO_(MSEC|SEC|USEC)|USEC_TO_TIMESTAMP|UTC_USEC_TO_(DAY|HOUR|MONTH|WEEK|YEAR)|WEEK|YEAR)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.date.sql"
+        },
+        {
+          "match": "(?i)\\b((FORMAT|PARSE|(FORMAT|PARSE)_PACKED)_IP|HOST|DOMAIN|TLD)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.net.sql"
+        },
+        {
+          "match": "(?i)\\b(DEGREES|LOG2|PI|RADIANS)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.math.sql"
+        },
+        {
+          "match": "(?i)\\b(REGEXP_MATCH)\\b",
+          "name": "invalid.deprecated.legacy.regexp.sql"
+        },
+        {
+          "match": "(?i)\\bCONTAINS\\b",
+          "name": "invalid.deprecated.legacy.string.II.sql"
+        },
+        {
+          "match": "(?i)\\b(TABLE_(DATE_RANGE(_STRICT)?|QUERY))\\b",
+          "name": "invalid.deprecated.legacy.table.sql"
+        },
+        {
+          "match": "(?i)\\bRATIO_TO_REPORT\\b",
+          "name": "invalid.deprecated.legacy.window.sql"
+        },
+        {
+          "match": "(?i)\\b(EVERY|HASH|POSITION|SOME)(?=\\s*\\()",
+          "name": "invalid.deprecated.legacy.other.sql"
+        }
+      ]
+    }
+  },
     "scopeName": "source.sqlx"
   }
-  
