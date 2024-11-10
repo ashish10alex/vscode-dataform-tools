@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.28](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.27...v0.2.28) (2024-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* Deprecates the ability to toogle useWebViewToShowCompiledQuery which used to enable the user to see the compiled query as an sql file in vertical split instead of using the web view (current default)
+
+### Features
+
+* deprecate option to show compiled query in a temporary sql fle ([#45](https://github.com/ashish10alex/vscode-dataform-tools/issues/45)) ([75a7442](https://github.com/ashish10alex/vscode-dataform-tools/commit/75a7442ff534e1b0a35fb56d584c87b88106c7c2))
+
 ### [0.2.27](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.26...v0.2.27) (2024-11-10)
 
 
