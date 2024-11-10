@@ -7,10 +7,9 @@ import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRefDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
-import { executablesToCheck, compiledSqlFilePath } from './constants';
-import { getWorkspaceFolder, compiledQueryWtDryRun, getDependenciesAutoCompletionItems, getDataformTags, getVSCodeDocument, getCurrentFileMetadata } from './utils';
+import { executablesToCheck } from './constants';
+import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata } from './utils';
 import { executableIsAvailable, runCompilation } from './utils';
-import { editorSyncDisposable } from './sync';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
@@ -33,15 +32,15 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.queryLimit = 1000;
     globalThis.diagnosticCollection = undefined;
     globalThis.cdnLinks = {
-        highlightJsCssUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css",
-        highlightJsUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
-        highlightJsCopyExtUri : "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js",
-        highlightJsCopyExtCssUri : "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css",
-        highlightJsOneDarkThemeUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
-        highlightJsOneLightThemeUri : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
-        highlightJsLineNoExtUri : "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
-        tabulatorCssUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css",
-        tabulatorUri : "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
+        highlightJsCssUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css",
+        highlightJsUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
+        highlightJsCopyExtUri: "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js",
+        highlightJsCopyExtCssUri: "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css",
+        highlightJsOneDarkThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
+        highlightJsOneLightThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
+        highlightJsLineNoExtUri: "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
+        tabulatorCssUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css",
+        tabulatorUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
     };
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
@@ -71,18 +70,6 @@ export async function activate(context: vscode.ExtensionContext) {
     registerWebViewProvider(context);
     registerCenterPanel(context);
     registerCompiledQueryPanel(context);
-
-    async function compileAndDryRunWtOpts(document: vscode.TextDocument | undefined, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean) {
-        if (!document) {
-            document = getVSCodeDocument();
-        }
-
-        if (!document) {
-            return;
-        }
-
-        await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-    }
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider));
@@ -120,7 +107,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
             let query = curFileMeta.fileMetadata.queryMeta.assertionQuery;
-            await runQueryInPanel({query: query, type: "assertion"}, queryResultsViewProvider);
+            await runQueryInPanel({ query: query, type: "assertion" }, queryResultsViewProvider);
         })
     );
 
@@ -150,8 +137,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(tagsAutoCompletionDisposable());
 
-    context.subscriptions.push(editorSyncDisposable);
-
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); }));
 
     context.subscriptions.push(
@@ -169,30 +154,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); }));
 
-
-    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if(useWebViewToShowCompiledQuery){
-            return;
-        }
-        if(diagnosticCollection){
-            await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, false);
-        }
-    }));
-
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
-        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if(useWebViewToShowCompiledQuery){
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
-        } else{
-            let showCompiledQueryInVerticalSplitOnSave = true;
-            let document = undefined;
-            if(diagnosticCollection){
-                await compileAndDryRunWtOpts(document, diagnosticCollection, compiledSqlFilePath, showCompiledQueryInVerticalSplitOnSave);
-            }
-        }
-    }));
+        }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
         let includeDependencies = false;

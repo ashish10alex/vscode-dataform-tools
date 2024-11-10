@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
 
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
@@ -12,16 +12,19 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     );
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if (useWebViewToShowCompiledQuery && editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
+        if (editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true);
         }
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if(useWebViewToShowCompiledQuery || CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
+        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible)){
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
+        } else {
+            if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false){
+                compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
+            }
         }
     }));
 
@@ -30,7 +33,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
 export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
-    private centerPanelDisposed: boolean = false;
+    public centerPanelDisposed: boolean = false;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean) {
         this.updateView(forceShowVerticalSplit);
@@ -66,12 +69,10 @@ export class CompiledQueryPanel {
                 dataformTags = queryAutoCompMeta.dataformTags;
                 declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
-                let launchedFromWebView = true;
-
                 if(diagnosticCollection){
                     diagnosticCollection.clear();
                 }
-                dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+                dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
                 return;
             }
             let curFileMeta = await getCurrentFileMetadata(freshCompilation);
@@ -140,8 +141,7 @@ export class CompiledQueryPanel {
         if(diagnosticCollection){
             diagnosticCollection.clear();
         }
-        let launchedFromWebView = true;
-        let dryRunResult = await dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+        let dryRunResult = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
         let errorMessage = dryRunResult?.error.message;
         if(!errorMessage){
@@ -167,7 +167,7 @@ export class CompiledQueryPanel {
                 "targetTableOrView": targetTableOrView,
             });
             return webview;
-        } 
+        }
     }
 
     private async updateView(forceShowInVeritcalSplit:boolean) {

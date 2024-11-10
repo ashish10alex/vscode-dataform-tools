@@ -5,7 +5,7 @@ import beautify from 'js-beautify';
 import { exec as exec } from 'child_process';
 import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffConfigPathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile, getActiveFilePath } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import {compiledSqlFilePath, sqlFileToFormatPath} from './constants';
+import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
 
 
@@ -21,7 +21,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
     let spaceBetweenSameOps = '\n\n';
 
     let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
-    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath, false);
+    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath);
 
     let [jsBlockText] = await Promise.all([ getTextForBlock(document, jsBlockMeta) ]);
     try {
@@ -115,7 +115,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
     }
 
     if (compileAndDryRunBeforeFormatting) {
-        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, compiledSqlFilePath, false);
+        let completionItems = await compiledQueryWtDryRun(document, diagnosticCollection, false);
         let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
         if (allDiagnostics.length > 0 || !completionItems) {
             vscode.window.showErrorMessage("Please resolve the errors on the current file before formatting");
