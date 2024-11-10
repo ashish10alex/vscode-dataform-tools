@@ -7,20 +7,23 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryInWebView', async() => {
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true, false);
+            const currentFileMetadata = CompiledQueryPanel?.centerPanel?.currentFileMetadata;
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, false, currentFileMetadata);
         })
     );
 
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
+    vscode.window.onDidChangeActiveTextEditor(async(editor) => {
         if (editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
-            CompiledQueryPanel.getInstance(context.extensionUri, context, false, true);
+            let currentFileMetadata = await getCurrentFileMetadata(false);
+            CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
         }
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible)){
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
+            let currentFileMetadata = await getCurrentFileMetadata(true);
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
         } else {
             if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false){
                 compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
@@ -34,12 +37,13 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
+    public currentFileMetadata: any;
     private static readonly viewType = "CenterPanel";
-    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean) {
-        this.updateView(forceShowVerticalSplit);
+    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
+        this.updateView(forceShowVerticalSplit, currentFileMetadata);
     }
 
-    public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean) {
+    public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
         const column = window.activeTextEditor
             ? window.activeTextEditor.viewColumn
             : undefined;
@@ -52,16 +56,16 @@ export class CompiledQueryPanel {
                 }
                 return;
             }
-            CompiledQueryPanel.centerPanel.sendUpdateToView(freshCompilation, showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit);
+            CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata);
         } else {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
-                let curFileMeta = await getCurrentFileMetadata(freshCompilation);
-                if (!curFileMeta?.isDataformWorkspace || !curFileMeta.fileMetadata) {
+                let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
+                if (!currentFileMetadata?.isDataformWorkspace || !currentFileMetadata.fileMetadata) {
                     return;
                 }
 
-                let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
+                let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(currentFileMetadata);
                 if (!queryAutoCompMeta){
                     return;
                 }
@@ -72,13 +76,14 @@ export class CompiledQueryPanel {
                 if(diagnosticCollection){
                     diagnosticCollection.clear();
                 }
-                dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
+                dryRunAndShowDiagnostics(currentFileMetadata, queryAutoCompMeta, currentFileMetadata.document, diagnosticCollection, false);
                 return;
             }
-            let curFileMeta = await getCurrentFileMetadata(freshCompilation);
-            if (!curFileMeta?.isDataformWorkspace || !curFileMeta.fileMetadata) {
+
+            if (!currentFileMetadata?.isDataformWorkspace || !currentFileMetadata.fileMetadata) {
                 return;
             }
+
             const panel = window.createWebviewPanel(
                 CompiledQueryPanel.viewType,
                 "Compiled query preview",
@@ -92,7 +97,7 @@ export class CompiledQueryPanel {
                     ],
                 }
             );
-            CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext, forceShowInVeritcalSplit);
+            CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext, forceShowInVeritcalSplit, currentFileMetadata);
         }
 
         this.centerPanel?.webviewPanel.onDidDispose(() => {
@@ -102,15 +107,10 @@ export class CompiledQueryPanel {
         });
     }
 
-    private async sendUpdateToView(freshCompilation:boolean, showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean) {
+    private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:any) {
         const webview = this.webviewPanel.webview;
         if (this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
-        }
-
-        let curFileMeta = await getCurrentFileMetadata(freshCompilation);
-        if (!curFileMeta?.isDataformWorkspace || !curFileMeta.fileMetadata) {
-            return;
         }
 
         let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
@@ -170,9 +170,9 @@ export class CompiledQueryPanel {
         }
     }
 
-    private async updateView(forceShowInVeritcalSplit:boolean) {
+    private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        let webview = await this.sendUpdateToView(true, showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit);
+        let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata);
         if(webview){
             // this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         } else {

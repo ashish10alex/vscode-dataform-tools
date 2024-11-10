@@ -87,7 +87,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
             return;
         }
 
-        let dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson, error} = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }

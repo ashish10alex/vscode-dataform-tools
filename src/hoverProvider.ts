@@ -91,7 +91,8 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       vscode.window.showWarningMessage(
         "Compile the Dataform project once for faster go to definition"
       );
-      dataformCompiledJson = await runCompilation(workspaceFolder);
+      let {dataformCompiledJson, error} = await runCompilation(workspaceFolder); // Takes ~1100ms
+      dataformCompiledJson = dataformCompiledJson;
     } else {
       dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
     }

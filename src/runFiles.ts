@@ -20,7 +20,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     }
 
     let currFileMetadata;
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    let {dataformCompiledJson, error} = await runCompilation(workspaceFolder); // Takes ~1100ms
     if (dataformCompiledJson) {
         currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
     }

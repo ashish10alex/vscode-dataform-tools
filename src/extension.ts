@@ -56,9 +56,8 @@ export async function activate(context: vscode.ExtensionContext) {
     let workspaceFolder = getWorkspaceFolder();
 
     if (workspaceFolder) {
-        let dataformCompiledJson = await runCompilation(workspaceFolder);
+        let {dataformCompiledJson, error} = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
             dataformTags = await getDataformTags(dataformCompiledJson);
         }
@@ -160,7 +159,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
+            let currentFileMetadata = await getCurrentFileMetadata(true);
+            if (!currentFileMetadata?.isDataformWorkspace || !currentFileMetadata.fileMetadata) {
+                return;
+            }
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
         }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
