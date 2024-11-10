@@ -29,6 +29,7 @@ export class DataformRefDefinitionProvider implements vscode.DefinitionProvider 
 
         // early return
         if (line.indexOf("${ref(") === -1) {
+        if (line.indexOf("${ref(") === -1 && line.indexOf("${resolve(") === -1) {
             return undefined;
         }
 
