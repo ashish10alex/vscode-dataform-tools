@@ -227,11 +227,6 @@
                     "default": "",
                     "markdownDescription": "Addition compiler options to pass to dataform cli commands e.g. --vars=someKey=someValue,a=b"
                 },
-                "vscode-dataform-tools.useWebViewToShowCompiledQuery": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Uses web view to show compiled Query instead of showing it in a temporary file"
-                },
                 "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
                     "type": "boolean",
                     "default": true,

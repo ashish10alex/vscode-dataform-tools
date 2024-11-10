@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
-import { compiledSqlFilePath, tableQueryOffset } from "../../constants";
+import { tableQueryOffset } from "../../constants";
 import { setDiagnostics } from '../../setDiagnostics';
 
 suite('setDiagnostics', () => {

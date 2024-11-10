@@ -12,17 +12,13 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     );
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if (useWebViewToShowCompiledQuery && editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
+        if (editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true);
         }
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
-        let useWebViewToShowCompiledQuery = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-        if(useWebViewToShowCompiledQuery || CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
-        }
+        CompiledQueryPanel.getInstance(context.extensionUri, context, true, true);
     }));
 
 }
@@ -66,12 +62,10 @@ export class CompiledQueryPanel {
                 dataformTags = queryAutoCompMeta.dataformTags;
                 declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
-                let launchedFromWebView = true;
-
                 if(diagnosticCollection){
                     diagnosticCollection.clear();
                 }
-                dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+                dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
                 return;
             }
             let curFileMeta = await getCurrentFileMetadata(freshCompilation);
@@ -140,8 +134,7 @@ export class CompiledQueryPanel {
         if(diagnosticCollection){
             diagnosticCollection.clear();
         }
-        let launchedFromWebView = true;
-        let dryRunResult = await dryRunAndShowDiagnostics(launchedFromWebView, curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false, "");
+        let dryRunResult = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
         let errorMessage = dryRunResult?.error.message;
         if(!errorMessage){
@@ -167,7 +160,7 @@ export class CompiledQueryPanel {
                 "targetTableOrView": targetTableOrView,
             });
             return webview;
-        } 
+        }
     }
 
     private async updateView(forceShowInVeritcalSplit:boolean) {

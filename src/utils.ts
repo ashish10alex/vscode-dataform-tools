@@ -285,17 +285,11 @@ export function runCommandInTerminal(command: string) {
     }
 }
 
-export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string, showOutputInVerticalSplit: boolean) {
+export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, '', 'utf8');
     }
-
     fs.writeFileSync(filePath, compiledQuery, 'utf8');
-
-    if (showOutputInVerticalSplit) {
-        const outputDocument = await vscode.workspace.openTextDocument(filePath);
-        vscode.window.showTextDocument(outputDocument, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
-    }
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
@@ -833,7 +827,7 @@ export function getQueryToDisplay(queryMeta:QueryMeta): string {
     return concatenatedString;
 }
 
-export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined, compiledSqlFilePath:string){
+export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined){
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (curFileMeta.pathMeta.extension === "sqlx") {
@@ -842,10 +836,6 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
 
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
         showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-    }
-    if (showCompiledQueryInVerticalSplitOnSave && !launchedFromWebView) {
-        let queryToDisplay = getQueryToDisplay(curFileMeta.fileMetadata.queryMeta);
-        writeCompiledSqlToFile(queryToDisplay, compiledSqlFilePath, true);
     }
 
     let currFileMetadata = handleSemicolonPrePostOps(queryAutoCompMeta.currFileMetadata);
@@ -895,7 +885,7 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
         return dryRunResult;
     }
 
-    if (showCompiledQueryInVerticalSplitOnSave && !launchedFromWebView) {
+    if (showCompiledQueryInVerticalSplitOnSave) {
         let combinedTableIds = "";
         currFileMetadata.tables.forEach((table) => {
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
@@ -906,7 +896,7 @@ export async function dryRunAndShowDiagnostics(launchedFromWebView:boolean, curF
     return dryRunResult;
 }
 
-export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, compiledSqlFilePath: string, showCompiledQueryInVerticalSplitOnSave: boolean) {
+export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {
     diagnosticCollection.clear();
 
     let curFileMeta = await getCurrentFileMetadata(true);
@@ -923,11 +913,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     dataformTags = queryAutoCompMeta.dataformTags;
     declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
-    let useWebViewToShowCompiledQuery:boolean |undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('useWebViewToShowCompiledQuery');
-    if(useWebViewToShowCompiledQuery === undefined){
-        return;
-    }
-    dryRunAndShowDiagnostics(useWebViewToShowCompiledQuery, curFileMeta, queryAutoCompMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave, compiledSqlFilePath);
+    dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }
