@@ -61,11 +61,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
 
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        let {dataformCompiledJson, error} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
             if(dataformCompiledJson){
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
                 return {
                     isDataformWorkspace: true,
+                    dataformCompilationErrors:errors,
                     fileMetadata: fileMetadata,
                     pathMeta: {
                         filename: filename,
@@ -75,6 +76,20 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                     document: document
                 };
             }
+        else if (errors?.length!==0){
+                return {
+                    isDataformWorkspace: true,
+                    dataformCompilationErrors:errors,
+                    fileMetadata: undefined,
+                    pathMeta: {
+                        filename: filename,
+                        extension: extension,
+                        relativeFilePath: relativeFilePath
+                    },
+                    document: document
+                };
+
+        }
         } else {
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
                 return {
@@ -133,7 +148,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        let {dataformCompiledJson, error} = await runCompilation(workspaceFolder);
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder);
         if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }
@@ -554,7 +569,7 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
-function compileDataform(workspaceFolder: string): Promise<string> {
+function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions:string[] = [];
@@ -586,18 +601,19 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 
         spawnedProcess.on('close', (code: number) => {
             if (code === 0) {
-                resolve(stdOut);
+                resolve({compiledString: stdOut, errors:undefined});
             } else {
                 if (stdOut !== '') {
                     let compiledJson = JSON.parse(stdOut.toString());
                     let graphErrors = compiledJson.graphErrors.compilationErrors;
+                    let errors:string[] = [];
                     graphErrors.forEach((graphError: any) => {
-                        vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
+                        errors.push(`${graphError.message}:   at ${graphError.fileName}`);
                     });
+                    resolve({compiledString: undefined, errors:errors});
                 } else {
-                    vscode.window.showErrorMessage(`Error compiling Dataform: ${errorOutput}`);
+                    resolve({compiledString: undefined, errors:[`Error compiling Dataform: ${errorOutput}`]});
                 }
-                reject(new Error(`Process exited with code ${code}`));
             }
         });
 
@@ -608,16 +624,17 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 }
 
 // Usage
-export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, error:string}> {
+export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:string[]|undefined}> {
     try {
-        console.log(`compilation called`);
-        let compileResult = await compileDataform(workspaceFolder);
-        const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
-        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        return {dataformCompiledJson, error:""};
+        let {compiledString, errors} = await compileDataform(workspaceFolder);
+        if(compiledString){
+            const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            return {dataformCompiledJson: dataformCompiledJson, errors:errors};
+        }
+        return {dataformCompiledJson: undefined, errors:errors};
     } catch (error:any) {
-        // vscode.window.showErrorMessage(`Error compiling Dataform: ${error}`);
-        return {dataformCompiledJson: undefined, error:error.message};
+        return {dataformCompiledJson: undefined, errors:[`Error compiling Dataform`]};
     }
 }
 

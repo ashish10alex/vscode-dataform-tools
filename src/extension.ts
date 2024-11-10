@@ -56,7 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
     let workspaceFolder = getWorkspaceFolder();
 
     if (workspaceFolder) {
-        let {dataformCompiledJson, error} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
             dataformTags = await getDataformTags(dataformCompiledJson);

@@ -99,7 +99,7 @@ window.addEventListener('message', event => {
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
-                    element.textContent = value;
+                    element.innerHTML = value;
                 }
             }
             else if (key === "dryRunStat"){

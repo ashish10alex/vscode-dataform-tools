@@ -80,7 +80,8 @@ export class CompiledQueryPanel {
                 return;
             }
 
-            if (!currentFileMetadata?.isDataformWorkspace || !currentFileMetadata.fileMetadata) {
+            //TODO: Handle this later
+            if (!currentFileMetadata?.isDataformWorkspace) {
                 return;
             }
 
@@ -111,6 +112,20 @@ export class CompiledQueryPanel {
         const webview = this.webviewPanel.webview;
         if (this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
+        }
+
+        if (curFileMeta.isDataformWorkspace===false){
+            return;
+        }
+        
+        if(curFileMeta.dataformCompilationErrors){
+            let errorString = "<p>Error compiling Dataform:</p><ul>" + curFileMeta.dataformCompilationErrors.map((error:string) => `<li>${error}</li>`).join('') + "</ul>";
+            errorString += "Run `dataform compile` to see more details";
+
+            await webview.postMessage({
+                "errorMessage": errorString
+            });
+            return;
         }
 
         let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
