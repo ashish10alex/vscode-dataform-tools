@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.29](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.28...v0.2.29) (2024-11-11)
+
+
+### Features
+
+* definition provider with support for require and resolve  ([#46](https://github.com/ashish10alex/vscode-dataform-tools/issues/46)) ([63765ee](https://github.com/ashish10alex/vscode-dataform-tools/commit/63765eeda7af48f1abade60394c64429adea8b81))
+* extended language support for bigquery functions ([#47](https://github.com/ashish10alex/vscode-dataform-tools/issues/47)) ([c6d7b8d](https://github.com/ashish10alex/vscode-dataform-tools/commit/c6d7b8d3f0a988a5ce81cf3f0674c8fea6c19d26))
+* show dependencies in compilation web view ([#50](https://github.com/ashish10alex/vscode-dataform-tools/issues/50)) ([35bba42](https://github.com/ashish10alex/vscode-dataform-tools/commit/35bba42b54b406d34b8c6c16ece6e643f9d479e0))
+
 ### [0.2.28](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.27...v0.2.28) (2024-11-10)
 
 
