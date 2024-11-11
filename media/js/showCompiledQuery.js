@@ -4,6 +4,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+const depsDiv = document.getElementById("depsDiv");
+const dependencyHeader = document.querySelector('.dependency-header');
+const arrowToggle = document.querySelector('.arrow-toggle');
+
+dependencyHeader.addEventListener('click', () => {
+    arrowToggle.classList.toggle('open');
+    depsDiv.classList.toggle('open');
+});
+
 const compiledQueryloadingIcon = document.getElementById("compiledQueryloadingIcon");
 const dryRunloadingIcon = document.getElementById("dryRunloadingIcon");
 const navLinks = document.querySelectorAll('.topnav a');
@@ -57,6 +66,33 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
+    const models = event?.data?.models;
+    if (models){
+        fullTableIds = [];
+
+        const dependencyList = document.createElement('ul');
+        for (let i = 0; i < models.length; i++) {
+            let tableTargets = models[i]?.dependencyTargets;
+            if (!tableTargets){
+                continue;
+            }
+            for (let j = 0; j < tableTargets.length; j++) {
+                fullTableId = `${tableTargets[j].database}.${tableTargets[j].schema}.${tableTargets[j].name}`;
+                fullTableIds.push(fullTableId);
+
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = getUrlToNavigateToTableInBigQuery(tableTargets[j].database, tableTargets[j].schema, tableTargets[j].name);
+                link.textContent = fullTableId;
+                li.appendChild(link);
+                dependencyList.appendChild(li);
+            }
+        }
+
+        depsDiv.innerHTML = "";
+        depsDiv.appendChild(dependencyList);
+    }
+
     let targetTableOrView = event?.data?.targetTableOrView;
     if (targetTableOrView){
         const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
@@ -99,7 +135,7 @@ window.addEventListener('message', event => {
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
-                    element.textContent = value;
+                    element.innerHTML = value;
                 }
             }
             else if (key === "dryRunStat"){
