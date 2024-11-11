@@ -180,6 +180,7 @@ export class CompiledQueryPanel {
                 "dryRunStat":  dryRunStat,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTableOrView": targetTableOrView,
+                "models": curFileMeta.fileMetadata.tables,
             });
             return webview;
         }
@@ -243,10 +244,23 @@ export class CompiledQueryPanel {
             </svg>
         </div>
 
-
-        <div style="padding-bottom: 20px;">
-            <a id="targetTableOrViewLink"></a>
+        <div>
+           <a id="targetTableOrViewLink"></a>
         </div>
+
+        <div class="dependency-container" style="padding-bottom: 10px;">
+            <div class="dependency-header">
+                <div class="arrow-toggle">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                    </svg>
+                </div>
+                <span class="dependency-title">Dependencies</span>
+            </div>
+            <div id="depsDiv" class="dependency-list">
+            </div>
+        </div>
+
 
         <div id="schemaBlock" style="display: none;">
             <table id="schemaTable" class="display" width="100%"></table>

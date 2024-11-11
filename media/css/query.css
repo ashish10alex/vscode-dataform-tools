@@ -297,3 +297,61 @@
 	border-width: 0 2px 2px 0; /* Create checkmark shape */
 	transform: rotate(45deg);
 }
+
+.dependency-container {
+    margin-top: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.dependency-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+	background-color: #bcc9d6;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.dependency-header:hover {
+	background-color: #bcc9d6;
+}
+
+.dependency-title {
+    font-weight: bold;
+    margin-left: 15px;
+    font-size: 16px;
+    color: #333;
+}
+
+.arrow-toggle {
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.arrow-toggle svg {
+    fill: #555;
+    transition: fill 0.3s ease;
+}
+
+.dependency-header:hover .arrow-toggle svg {
+    fill: #333;
+}
+
+.arrow-toggle.open {
+    transform: rotate(90deg);
+}
+
+.dependency-list {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.dependency-list.open {
+    max-height: 1000px; /* Adjust this value based on your expected content size */
+    transition: max-height 0.5s ease-in;
+}
