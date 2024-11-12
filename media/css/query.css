@@ -347,12 +347,12 @@
 .dependency-list {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease-out;
+    transition: max-height 0.1s ease-out;
 }
 
 .dependency-list.open {
     max-height: 1000px; /* Adjust this value based on your expected content size */
-    transition: max-height 0.5s ease-in;
+    transition: max-height 0.2s ease-in;
 }
 
 #depsDiv ul, #depsDiv ol {

@@ -77,32 +77,31 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 };
             }
         else if (errors?.length!==0){
-                return {
-                    isDataformWorkspace: true,
-                    dataformCompilationErrors:errors,
-                    fileMetadata: undefined,
-                    pathMeta: {
-                        filename: filename,
-                        extension: extension,
-                        relativeFilePath: relativeFilePath
-                    },
-                    document: document
-                };
-
+            CACHED_COMPILED_DATAFORM_JSON = undefined;
+            return {
+                isDataformWorkspace: true,
+                dataformCompilationErrors:errors,
+                fileMetadata: undefined,
+                pathMeta: {
+                    filename: filename,
+                    extension: extension,
+                    relativeFilePath: relativeFilePath
+                },
+                document: document
+            };
         }
         } else {
-                let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
-                return {
-                    isDataformWorkspace: true,
-                    fileMetadata: fileMetadata,
-                    pathMeta: {
-                        filename: filename,
-                        extension: extension,
-                        relativeFilePath: relativeFilePath
-                    },
-                    document: document
-                };
-
+            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+            return {
+                isDataformWorkspace: true,
+                fileMetadata: fileMetadata,
+                pathMeta: {
+                    filename: filename,
+                    extension: extension,
+                    relativeFilePath: relativeFilePath
+                },
+                document: document
+            };
         }
     } 
 
