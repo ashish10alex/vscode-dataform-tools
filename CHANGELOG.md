@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.3.1...v0.3.2) (2024-11-12)
+
+
+### Features
+
+* custom dark theme for tables ([489cd5f](https://github.com/ashish10alex/vscode-dataform-tools/commit/489cd5f94222d280cfb1ad0c4cb08cb663208a7b))
+* make `preview results` table searchable ([33213e3](https://github.com/ashish10alex/vscode-dataform-tools/commit/33213e3d654f0d0a14fbd9208b63f680adb2b130))
+* make schema table searchable ([57b512a](https://github.com/ashish10alex/vscode-dataform-tools/commit/57b512a91b4f5ff54feb3a9c1712e5f7978d8de9))
+
 ### [0.3.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.2.29...v0.3.1) (2024-11-12)
 
 
