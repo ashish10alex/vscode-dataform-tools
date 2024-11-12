@@ -226,6 +226,7 @@ export class CompiledQueryPanel {
     private _getHtmlForWebview(webview: vscode.Webview) {
         const showCompiledQueryUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showCompiledQuery.js"));
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
+        const customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom.css"));
         const nonce = getNonce();
 
         let highlighJstThemeUri = getHighlightJsThemeUri();
@@ -247,6 +248,7 @@ export class CompiledQueryPanel {
             <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
             <link href="${styleResetUri}" rel="stylesheet">
+            <link href="${customTabulatorCss}" rel="stylesheet">
             <style>
         </style>
         </head>

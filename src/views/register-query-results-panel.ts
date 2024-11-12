@@ -117,6 +117,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview) {
     const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
+    const customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom.css"));
     const nonce = getNonce();
     // TODO: light theme does not seem to get picked up
     let highlighJstThemeUri = getHighlightJsThemeUri();
@@ -137,6 +138,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
           <link href="${styleResetUri}" rel="stylesheet">
+          <link href="${customTabulatorCss}" rel="stylesheet">
       </head>
 
       <body>
