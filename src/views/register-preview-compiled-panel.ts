@@ -24,7 +24,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible)){
+        if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
             let currentFileMetadata = await getCurrentFileMetadata(true);
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
         } else {
@@ -105,11 +105,14 @@ export class CompiledQueryPanel {
         }
 
         this.centerPanel?.webviewPanel.onDidDispose(() => {
-            if(this.centerPanel){
-                this.centerPanel.centerPanelDisposed  = true;
-            }
-        });
-    }
+                if(this.centerPanel){
+                    this.centerPanel.centerPanelDisposed  = true;
+                    this.centerPanel = undefined;
+                }
+            },
+            null,
+            );
+        }
 
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:any) {
         const webview = this.webviewPanel.webview;
@@ -122,29 +125,33 @@ export class CompiledQueryPanel {
         }
         
         if(curFileMeta.dataformCompilationErrors){
-            let errorString = "<p>Error compiling Dataform:</p><ul>" + curFileMeta.dataformCompilationErrors.map(({error, fileName}:GraphError) => `<li>${error} at ${fileName}</li><br>`).join('') + "</ul>";
-            errorString += "Run `dataform compile` to see more details";
-
-            await webview.postMessage({
-                "errorMessage": errorString
-            });
+            let errorString = "<p>Error compiling Dataform:</p><ul>";
 
             let workspaceFolder = getWorkspaceFolder();
-            if (!workspaceFolder){return;}
+            if (!workspaceFolder) {
+                return;
+            }
 
-            curFileMeta.dataformCompilationErrors.forEach(({error, fileName}:GraphError) => {
-                const diagnostic = new vscode.Diagnostic(
-                    new vscode.Range(0,0,0,0),
-                    `(** compilation error **): ${error}`,
-                    vscode.DiagnosticSeverity.Error
-                );
-                if(diagnosticCollection){
+            for (const { error, fileName } of curFileMeta.dataformCompilationErrors) {
+                errorString += `<li>${error} at ${fileName}</li><br>`;
+
+                if (diagnosticCollection) {
+                    const diagnostic = new vscode.Diagnostic(
+                        new vscode.Range(0, 0, 0, 0),
+                        `(** compilation error **): ${error}`,
+                        vscode.DiagnosticSeverity.Error
+                    );
                     let fullSourcePath = path.join(workspaceFolder, fileName);
                     let sourcesJsUri = vscode.Uri.file(fullSourcePath);
                     diagnosticCollection.set(sourcesJsUri, [diagnostic]);
                 }
-                }
-            );
+            }
+
+            errorString += "</ul>Run `dataform compile` to see more details";
+
+            await webview.postMessage({
+                "errorMessage": errorString
+            });
             return;
         }
 
