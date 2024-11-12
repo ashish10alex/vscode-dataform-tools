@@ -80,7 +80,9 @@ function createTabulatorColumns(data: any) {
     // Convert Set to array of column objects
     return Array.from(columns).map(key => ({
         title: key,
-        field: key
+        field: key,
+        headerFilter: "input",
+        headerFilterLive: true,
     }));
 }
 

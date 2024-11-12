@@ -39,7 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
         highlightJsOneDarkThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
         highlightJsOneLightThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
         highlightJsLineNoExtUri: "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
-        tabulatorCssUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css",
+        tabulatorCssUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator_midnight.min.css",
         tabulatorUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
     };
     globalThis.compiledQuerySchema = undefined;
