@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, QueryMeta } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -569,7 +569,7 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
-function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:string[]|undefined}> {
+function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions:string[] = [];
@@ -606,13 +606,14 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
                 if (stdOut !== '') {
                     let compiledJson = JSON.parse(stdOut.toString());
                     let graphErrors = compiledJson.graphErrors.compilationErrors;
-                    let errors:string[] = [];
-                    graphErrors.forEach((graphError: any) => {
-                        errors.push(`${graphError.message}:   at ${graphError.fileName}`);
+                    let errors:GraphError[] = [];
+                    graphErrors.forEach((graphError: {message:string, fileName:string}) => {
+                        errors.push({error: graphError.message, fileName: graphError.fileName});
                     });
                     resolve({compiledString: undefined, errors:errors});
                 } else {
-                    resolve({compiledString: undefined, errors:[`Error compiling Dataform: ${errorOutput}`]});
+                    resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}]});
+
                 }
             }
         });
@@ -624,7 +625,7 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
 }
 
 // Usage
-export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:string[]|undefined}> {
+export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined}> {
     try {
         let {compiledString, errors} = await compileDataform(workspaceFolder);
         if(compiledString){
@@ -634,7 +635,7 @@ export async function runCompilation(workspaceFolder: string): Promise<{dataform
         }
         return {dataformCompiledJson: undefined, errors:errors};
     } catch (error:any) {
-        return {dataformCompiledJson: undefined, errors:[`Error compiling Dataform`]};
+        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform`, fileName: ""}]};
     }
 }
 

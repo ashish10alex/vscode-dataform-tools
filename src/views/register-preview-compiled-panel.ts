@@ -1,6 +1,9 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
+import { GraphError} from "../types";
+import path from "path";
+
 
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
@@ -119,12 +122,29 @@ export class CompiledQueryPanel {
         }
         
         if(curFileMeta.dataformCompilationErrors){
-            let errorString = "<p>Error compiling Dataform:</p><ul>" + curFileMeta.dataformCompilationErrors.map((error:string) => `<li>${error}</li>`).join('') + "</ul>";
+            let errorString = "<p>Error compiling Dataform:</p><ul>" + curFileMeta.dataformCompilationErrors.map(({error, fileName}:GraphError) => `<li>${error} at ${fileName}</li><br>`).join('') + "</ul>";
             errorString += "Run `dataform compile` to see more details";
 
             await webview.postMessage({
                 "errorMessage": errorString
             });
+
+            let workspaceFolder = getWorkspaceFolder();
+            if (!workspaceFolder){return;}
+
+            curFileMeta.dataformCompilationErrors.forEach(({error, fileName}:GraphError) => {
+                const diagnostic = new vscode.Diagnostic(
+                    new vscode.Range(0,0,0,0),
+                    `(** compilation error **): ${error}`,
+                    vscode.DiagnosticSeverity.Error
+                );
+                if(diagnosticCollection){
+                    let fullSourcePath = path.join(workspaceFolder, fileName);
+                    let sourcesJsUri = vscode.Uri.file(fullSourcePath);
+                    diagnosticCollection.set(sourcesJsUri, [diagnostic]);
+                }
+                }
+            );
             return;
         }
 
@@ -192,7 +212,7 @@ export class CompiledQueryPanel {
         if(webview){
             // this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         } else {
-            console.log(`Dont show webview`);
+            // console.log(`Dont show webview`);
         }
     }
 
