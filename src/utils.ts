@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, QueryMeta } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -60,30 +60,50 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
 
 
-    let dataformCompiledJson;
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        dataformCompiledJson = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+            if(dataformCompiledJson){
+                let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                return {
+                    isDataformWorkspace: true,
+                    dataformCompilationErrors:errors,
+                    fileMetadata: fileMetadata,
+                    pathMeta: {
+                        filename: filename,
+                        extension: extension,
+                        relativeFilePath: relativeFilePath
+                    },
+                    document: document
+                };
+            }
+        else if (errors?.length!==0){
+            CACHED_COMPILED_DATAFORM_JSON = undefined;
+            return {
+                isDataformWorkspace: true,
+                dataformCompilationErrors:errors,
+                fileMetadata: undefined,
+                pathMeta: {
+                    filename: filename,
+                    extension: extension,
+                    relativeFilePath: relativeFilePath
+                },
+                document: document
+            };
         }
-    } else {
-        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-    }
-
-    if (dataformCompiledJson) {
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
-        return {
-            isDataformWorkspace: true,
-            fileMetadata: fileMetadata,
-            pathMeta: {
-                filename: filename,
-                extension: extension,
-                relativeFilePath: relativeFilePath
-            },
-            document: document
-        };
-    }
-}
+        } else {
+            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+            return {
+                isDataformWorkspace: true,
+                fileMetadata: fileMetadata,
+                pathMeta: {
+                    filename: filename,
+                    extension: extension,
+                    relativeFilePath: relativeFilePath
+                },
+                document: document
+            };
+        }
+    } 
 
 export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, searchTerm: string) {
     let sourcesDocument = await vscode.workspace.openTextDocument(sourcesJsUri);
@@ -127,7 +147,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        dataformCompiledJson = await runCompilation(workspaceFolder);
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder);
         if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }
@@ -548,7 +568,7 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
-function compileDataform(workspaceFolder: string): Promise<string> {
+function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions:string[] = [];
@@ -580,18 +600,20 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 
         spawnedProcess.on('close', (code: number) => {
             if (code === 0) {
-                resolve(stdOut);
+                resolve({compiledString: stdOut, errors:undefined});
             } else {
                 if (stdOut !== '') {
                     let compiledJson = JSON.parse(stdOut.toString());
                     let graphErrors = compiledJson.graphErrors.compilationErrors;
-                    graphErrors.forEach((graphError: any) => {
-                        vscode.window.showErrorMessage(`Error compiling Dataform: ${graphError.message}:   at ${graphError.fileName}`);
+                    let errors:GraphError[] = [];
+                    graphErrors.forEach((graphError: {message:string, fileName:string}) => {
+                        errors.push({error: graphError.message, fileName: graphError.fileName});
                     });
+                    resolve({compiledString: undefined, errors:errors});
                 } else {
-                    vscode.window.showErrorMessage(`Error compiling Dataform: ${errorOutput}`);
+                    resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}]});
+
                 }
-                reject(new Error(`Process exited with code ${code}`));
             }
         });
 
@@ -602,14 +624,17 @@ function compileDataform(workspaceFolder: string): Promise<string> {
 }
 
 // Usage
-export async function runCompilation(workspaceFolder: string) {
+export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined}> {
     try {
-        let compileResult = await compileDataform(workspaceFolder);
-        const dataformCompiledJson: DataformCompiledJson = JSON.parse(compileResult);
-        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        return dataformCompiledJson;
-    } catch (error) {
-        vscode.window.showErrorMessage(`Error compiling Dataform: ${error}`);
+        let {compiledString, errors} = await compileDataform(workspaceFolder);
+        if(compiledString){
+            const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            return {dataformCompiledJson: dataformCompiledJson, errors:errors};
+        }
+        return {dataformCompiledJson: undefined, errors:errors};
+    } catch (error:any) {
+        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform`, fileName: ""}]};
     }
 }
 
@@ -728,13 +753,12 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
-    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
 
-    if (selectedFiles) {
+    if (selectedFiles && dataformCompiledJson.dataformCompiledJson !== undefined) {
         for (let i = 0; i < selectedFiles.length; i++) {
             let relativeFilepath = selectedFiles[i];
             if (dataformCompiledJson && relativeFilepath) {
-                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson));
+                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson.dataformCompiledJson));
             }
         }
     }
@@ -788,43 +812,6 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
         declarationsAndTargets: declarationsAndTargets, dataformTags: dataformTags, currFileMetadata: currFileMetadata
     };
 
-}
-
-export function getQueryToDisplay(queryMeta:QueryMeta): string {
-    let concatenatedString = "";
-
-    if (queryMeta.tableOrViewQuery && queryMeta.tableOrViewQuery !== "") {
-        concatenatedString += "----------\n -- Query\n ----------\n" + queryMeta.tableOrViewQuery + "\n\n";
-    }
-
-    if (queryMeta.assertionQuery && queryMeta.assertionQuery !== "") {
-        concatenatedString += "----------\n -- Assertion\n ----------\n" + queryMeta.assertionQuery + "\n\n";
-    }
-
-    if (queryMeta.preOpsQuery && queryMeta.preOpsQuery !== "") {
-        concatenatedString += "----------\n -- Pre Operation\n ----------\n" + queryMeta.preOpsQuery + "\n\n";
-    }
-
-    if (queryMeta.postOpsQuery && queryMeta.postOpsQuery !== "") {
-        concatenatedString += "----------\n -- Post Operation\n ----------\n" + queryMeta.postOpsQuery + "\n\n";
-    }
-
-    if (queryMeta.incrementalPreOpsQuery && queryMeta.incrementalPreOpsQuery !== "") {
-        concatenatedString += "----------\n -- Incremental Pre Operation\n ----------\n" + queryMeta.incrementalPreOpsQuery + "\n\n";
-    }
-
-    if (queryMeta.incrementalQuery && queryMeta.incrementalQuery !== "") {
-        concatenatedString += "----------\n -- Incremental Query\n ----------\n" + queryMeta.incrementalQuery + "\n\n";
-    }
-
-    if (queryMeta.nonIncrementalQuery && queryMeta.nonIncrementalQuery !== "") {
-        concatenatedString += "----------\n -- Non Incremental Query\n ----------\n" + queryMeta.nonIncrementalQuery + "\n\n";
-    }
-
-    if (queryMeta.operationsQuery && queryMeta.operationsQuery !== "") {
-        concatenatedString += "----------\n -- Operations Query\n ----------\n" + queryMeta.operationsQuery + "\n\n";
-    }
-    return concatenatedString;
 }
 
 export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined){

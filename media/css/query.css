@@ -347,10 +347,24 @@
 .dependency-list {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease-out;
+    transition: max-height 0.1s ease-out;
 }
 
 .dependency-list.open {
     max-height: 1000px; /* Adjust this value based on your expected content size */
-    transition: max-height 0.5s ease-in;
+    transition: max-height 0.2s ease-in;
+}
+
+#depsDiv ul, #depsDiv ol {
+  list-style-type: none; /* Remove default bullet */
+  padding: 0; /* Remove default padding */
+}
+
+#depsDiv li {
+  margin-bottom: 10px; /* Adjust this value to increase or decrease the gap */
+}
+
+/* Remove margin from the last item to avoid extra space at the bottom */
+#depsDiv li:last-child {
+  margin-bottom: 0;
 }

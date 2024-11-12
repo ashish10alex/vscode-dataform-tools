@@ -156,3 +156,8 @@ export interface TableBigQueryConfig {
     updatePartitionFilter: string;
     clusterBy: string[];
 }
+
+export type GraphError = {
+  error: string;
+  fileName: string;
+};
