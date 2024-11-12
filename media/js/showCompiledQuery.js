@@ -108,12 +108,19 @@ window.addEventListener('message', event => {
             autoColumns: true,
             layout: "fitColumns",
             rowHeader: {
-                formatter: "rownum", 
-                headerSort: false, 
-                hozAlign: "center", 
-                resizable: false, 
+                formatter: "rownum",
+                headerSort: false,
+                hozAlign: "center",
+                resizable: false,
                 frozen: true,
                 width: 40
+            },
+            autoColumnsDefinitions: function(definitions) {
+                definitions.forEach(function(column) {
+                    column.headerFilter = "input";
+                    column.headerFilterLive = true;
+                });
+                return definitions;
             },
         });
     }
