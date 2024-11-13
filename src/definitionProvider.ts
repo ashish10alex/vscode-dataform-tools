@@ -250,11 +250,11 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
 
             } else if (content.includes(".")){
                 const [jsFileName, variableOrFunctionName] = content.split('.'); 
-                console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
+                // console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
                 return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionName);
 
             } else if (content.includes('.') === false && content.trim() !== ''){
-                console.log(`variableOrfunctionName: ${content}`);
+                // console.log(`variableOrfunctionName: ${content}`);
                 const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
                 const jsBlock = sqlxFileMetadata.jsBlock;
                 if(jsBlock.exists === true){
