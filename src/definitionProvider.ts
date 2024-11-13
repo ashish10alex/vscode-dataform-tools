@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getPostionOfSourceDeclaration, getWorkspaceFolder, runCompilation } from './utils';
 import { Assertion, DataformCompiledJson, Operation, Table } from './types';
 import path from 'path';
+import * as fs from 'fs';
 
 function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[] | Assertion[] | Table[], workspaceFolder: string): vscode.Location | undefined {
     let location: vscode.Location | undefined;
@@ -26,6 +27,15 @@ function getSearchTermLocationFromPath(searchTerm: string, workspaceFolder: stri
     location = new vscode.Location(sourcesJsUri, definitionPosition);
     return location;
 }
+
+function getLocationFromPath(locationPath: string, line: number = 0): vscode.Location | undefined {
+    let location: vscode.Location | undefined;
+    let sourcesJsUri = vscode.Uri.file(locationPath);
+    const definitionPosition = new vscode.Position(line, 0);
+    location = new vscode.Location(sourcesJsUri, definitionPosition);
+    return location;
+}
+
 
 export class DataformRefDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(
@@ -144,5 +154,177 @@ export class DataformRequireDefinitionProvider implements vscode.DefinitionProvi
             targetUri: targetLocation.uri,
             targetRange: targetLocation.range,
         }] as vscode.LocationLink[];
+    }
+}
+interface ImportedModule {
+    module: string;
+    path: string;
+}
+
+export function getImportedModules(
+    document: vscode.TextDocument,
+): ImportedModule[] {
+    const requireRegex = /(const|var|let)\s+(\w+)\s*=\s*require\(["'](.+?)["']\)/g;
+    const importedModules: ImportedModule[] = [];
+    const text = document.getText();
+    let match: RegExpExecArray | null;
+
+    while ((match = requireRegex.exec(text)) !== null) {
+        importedModules.push({ module: match[2], path: match[3] });
+    }
+
+    return importedModules;
+}
+
+function extractVariableDeclarations(content: string): Record<string, string> {
+    const variableRegex = /(const|let|var)\s+(\w+)\s*=\s*["']?.+?["']?/g;
+    const variables: Record<string, string> = {};
+    let match: RegExpExecArray | null;
+
+    while ((match = variableRegex.exec(content)) !== null) {
+        variables[match[2]] = match[1];
+    }
+    return variables;
+}
+function extractFunctionDeclarations(content: string): Record<string, string> {
+    const functionsRegex = /(function)\s+(\w+)\s*\([^)]*\)\s*\{/g;
+    const functions: Record<string, string> = {};
+    let match: RegExpExecArray | null;
+
+    while ((match = functionsRegex.exec(content)) !== null) {
+        functions[match[2]] = match[1];
+    }
+    return functions;
+}
+function extractExports(content: string): string[] {
+    const exportsRegex = /module\.exports\s*=\s*{([\s\S]*?)}/;
+    const match = content.match(exportsRegex);
+    return match ? match[1].split(',').map(exportItem => exportItem.trim()): [];
+}
+
+function findLineNumber(content: string, searchTerm: string): number {
+    const lines = content.split('\n');
+    return lines.findIndex(line => line.includes(searchTerm));
+}
+
+function searchInFile(filePath: string, searchTerm: string): vscode.Location | undefined {
+    try{
+        const stat = fs.statSync(filePath);
+        if (!stat.isFile()) { return undefined; }
+
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const variables = {
+            ...extractVariableDeclarations(content),
+            ...extractFunctionDeclarations(content)
+        };
+        const exports = extractExports(content);
+
+        if (exports.includes(searchTerm) && variables[searchTerm]) {
+            // TODO: This search needs to be changed to a regexp
+            const lineNumber = findLineNumber(content, `${variables[searchTerm]} ${searchTerm}`); 
+            if (lineNumber !== -1) {
+                return getLocationFromPath(filePath, lineNumber);
+            }
+        }
+    } catch (error) {
+    console.error(`Error reading file: ${filePath}`);
+    }
+    return undefined;
+};
+
+export function findModuleVarDefinition(
+    document: vscode.TextDocument,
+    workspaceFolder: string,
+    searchTerm: string
+) {
+    const includesPath = path.join(workspaceFolder, 'includes');
+
+    const importedModules = getImportedModules(document);
+    for (const importedModule of importedModules) {
+        const searchPath = path.join(workspaceFolder, importedModule.path);
+        const location = searchInFile(searchPath, searchTerm);
+        if (location){
+            return location;
+        };
+    }
+
+    try {
+        const files = fs.readdirSync(includesPath);
+        for (const file of files) {
+            const filePath = path.join(includesPath, file);
+            const location = searchInFile(filePath, searchTerm);
+            if (location){
+                return location;
+            };
+        }
+    } catch (error) {
+        console.error(`Error reading includes directory: ${error}`);
+    }
+
+    return undefined;
+}
+
+export function findModuleDefinition(
+        document: vscode.TextDocument,
+        workspaceFolder: string,
+        searchTerm: string
+    ) {
+        const includesPath = path.join(workspaceFolder, 'includes');
+        const importedModules = getImportedModules(document);
+        const importedModule = importedModules.find(module => module.module === searchTerm);
+        if (importedModule) {
+            const locationPath = path.join(workspaceFolder, importedModule.path);
+            return getLocationFromPath(locationPath);
+        }
+
+        const files = fs.readdirSync(includesPath);
+        for (const file of files) {
+            const filePath = path.join(includesPath, file);
+            const stat = fs.statSync(filePath);
+            if (!stat.isFile()){
+                continue;
+            }
+            if (file === `${searchTerm}.js`) {
+                return getLocationFromPath(filePath);
+            }
+        }
+        return undefined;
+}
+export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
+    async provideDefinition(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken
+    ): Promise<vscode.Location | undefined> {
+        const wordRange = document.getWordRangeAtPosition(position);
+        if(!wordRange){
+            return undefined;
+        }
+        const searchTerm = document.getText(wordRange);
+        const workspaceFolder = getWorkspaceFolder();
+
+        // Return if no workspace folder is available
+        if (!workspaceFolder) {
+            return undefined;
+        }
+        const line = document.lineAt(position.line).text;
+        const start = wordRange.start.character;
+        const end = wordRange.end.character;
+
+        // We assume it is an import statement
+        if (line.includes('require("')) {
+            return findModuleDefinition(document, workspaceFolder, searchTerm);
+        }
+        // We assume the click is on a variable part (module.variable)
+        if (start > 0 && line[start - 1] === '.') {
+            return findModuleVarDefinition(document, workspaceFolder, searchTerm);
+        }
+        // We assume it is a click on the module part (module.variable)
+        if (end < line.length && line[end] === '.') {
+            return findModuleDefinition(document, workspaceFolder, searchTerm);
+        }
+
+        return undefined;
+
     }
 }
