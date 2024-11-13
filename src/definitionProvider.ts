@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
-import { getPostionOfSourceDeclaration, getWorkspaceFolder, runCompilation } from './utils';
+import { getPostionOfSourceDeclaration, getPostionOfVariableInJsBlock, getWorkspaceFolder, runCompilation } from './utils';
 import { Assertion, DataformCompiledJson, Operation, Table } from './types';
 import path from 'path';
 import * as fs from 'fs';
+import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[] | Assertion[] | Table[], workspaceFolder: string): vscode.Location | undefined {
     let location: vscode.Location | undefined;
@@ -37,74 +38,60 @@ function getLocationFromPath(locationPath: string, line: number = 0): vscode.Loc
 }
 
 
-export class DataformRefDefinitionProvider implements vscode.DefinitionProvider {
-    async provideDefinition(
-        document: vscode.TextDocument,
-        position: vscode.Position,
-        token: vscode.CancellationToken
-    ) {
-        let searchTerm = document.getText(document.getWordRangeAtPosition(position));
-        const line = document.lineAt(position.line).text;
+async function getLocationForRefsAndResolve(document: vscode.TextDocument, searchTerm:string){
+    let sourcesJsUri: vscode.Uri = document.uri;
 
-        // early return
-        if (line.indexOf("${ref(") === -1 && line.indexOf("${resolve(") === -1) {
-            return undefined;
-        }
+    let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder){return;}
+    let dataformCompiledJson: DataformCompiledJson | undefined;
+    if (!CACHED_COMPILED_DATAFORM_JSON) {
+        vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        dataformCompiledJson = dataformCompiledJson;
+    } else {
+        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+    }
 
-        let sourcesJsUri: vscode.Uri = document.uri;
+    let declarations = dataformCompiledJson?.declarations;
+    let tables = dataformCompiledJson?.tables;
+    let operations = dataformCompiledJson?.operations;
+    let assertions = dataformCompiledJson?.assertions;
+    let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
 
-        let workspaceFolder = getWorkspaceFolder();
-        if (!workspaceFolder){return;}
-        let dataformCompiledJson: DataformCompiledJson | undefined;
-        if (!CACHED_COMPILED_DATAFORM_JSON) {
-            vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-            let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
-            dataformCompiledJson = dataformCompiledJson;
-        } else {
-            dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-        }
+    let location: vscode.Location | undefined;
 
-        let declarations = dataformCompiledJson?.declarations;
-        let tables = dataformCompiledJson?.tables;
-        let operations = dataformCompiledJson?.operations;
-        let assertions = dataformCompiledJson?.assertions;
-        let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
+    if (declarations) {
+        for (let i = 0; i < declarations.length; i++) {
+            let declarationName = declarations[i].target.name;
+            if (searchTerm === declarationName) {
+                let fullSourcePath = path.join(workspaceFolder, declarations[i].fileName);
+                sourcesJsUri = vscode.Uri.file(fullSourcePath);
 
-        let location: vscode.Location | undefined;
-
-        if (declarations) {
-            for (let i = 0; i < declarations.length; i++) {
-                let declarationName = declarations[i].target.name;
-                if (searchTerm === declarationName) {
-                    let fullSourcePath = path.join(workspaceFolder, declarations[i].fileName);
-                    sourcesJsUri = vscode.Uri.file(fullSourcePath);
-
-                    const definitionPosition = await getPostionOfSourceDeclaration(sourcesJsUri, searchTerm);
-                    if(!definitionPosition){
-                        return;
-                    }
-                    return new vscode.Location(sourcesJsUri, definitionPosition);
+                const definitionPosition = await getPostionOfSourceDeclaration(sourcesJsUri, searchTerm);
+                if(!definitionPosition){
+                    return;
                 }
-
+                return new vscode.Location(sourcesJsUri, definitionPosition);
             }
-        }
-        if (tablePrefix) {
-            searchTerm = tablePrefix + "_" + searchTerm;
-        }
 
-        if (tables) {
-            location = getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);
         }
-        if (location){return location;}
+    }
+    if (tablePrefix) {
+        searchTerm = tablePrefix + "_" + searchTerm;
+    }
 
-        if (operations) {
-            location =  getSearchTermLocationFromStruct(searchTerm, operations, workspaceFolder);
-        }
-        if (location){return location;}
+    if (tables) {
+        location = getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);
+    }
+    if (location){return location;}
 
-        if (assertions) {
-            return getSearchTermLocationFromStruct(searchTerm, assertions, workspaceFolder);
-        }
+    if (operations) {
+        location =  getSearchTermLocationFromStruct(searchTerm, operations, workspaceFolder);
+    }
+    if (location){return location;}
+
+    if (assertions) {
+        return getSearchTermLocationFromStruct(searchTerm, assertions, workspaceFolder);
     }
 }
 
@@ -176,93 +163,31 @@ export function getImportedModules(
     return importedModules;
 }
 
-function extractVariableDeclarations(content: string): Record<string, string> {
-    const variableRegex = /(const|let|var)\s+(\w+)\s*=\s*["']?.+?["']?/g;
-    const variables: Record<string, string> = {};
-    let match: RegExpExecArray | null;
-
-    while ((match = variableRegex.exec(content)) !== null) {
-        variables[match[2]] = match[1];
-    }
-    return variables;
-}
-function extractFunctionDeclarations(content: string): Record<string, string> {
-    const functionsRegex = /(function)\s+(\w+)\s*\([^)]*\)\s*\{/g;
-    const functions: Record<string, string> = {};
-    let match: RegExpExecArray | null;
-
-    while ((match = functionsRegex.exec(content)) !== null) {
-        functions[match[2]] = match[1];
-    }
-    return functions;
-}
-function extractExports(content: string): string[] {
-    const exportsRegex = /module\.exports\s*=\s*{([\s\S]*?)}/;
-    const match = content.match(exportsRegex);
-    return match ? match[1].split(',').map(exportItem => exportItem.trim()): [];
-}
-
-function findLineNumber(content: string, searchTerm: string): number {
-    const lines = content.split('\n');
-    return lines.findIndex(line => line.includes(searchTerm));
-}
-
-function searchInFile(filePath: string, searchTerm: string): vscode.Location | undefined {
-    try{
-        const stat = fs.statSync(filePath);
-        if (!stat.isFile()) { return undefined; }
-
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const variables = {
-            ...extractVariableDeclarations(content),
-            ...extractFunctionDeclarations(content)
-        };
-        const exports = extractExports(content);
-
-        if (exports.includes(searchTerm) && variables[searchTerm]) {
-            // TODO: This search needs to be changed to a regexp
-            const lineNumber = findLineNumber(content, `${variables[searchTerm]} ${searchTerm}`); 
-            if (lineNumber !== -1) {
-                return getLocationFromPath(filePath, lineNumber);
-            }
-        }
-    } catch (error) {
-    console.error(`Error reading file: ${filePath}`);
-    }
-    return undefined;
-};
-
-export function findModuleVarDefinition(
+async function findModuleVarDefinition(
     document: vscode.TextDocument,
     workspaceFolder: string,
-    searchTerm: string
+    jsFileName:string,
+    variableName:string,
 ) {
     const includesPath = path.join(workspaceFolder, 'includes');
-
-    const importedModules = getImportedModules(document);
-    for (const importedModule of importedModules) {
-        const searchPath = path.join(workspaceFolder, importedModule.path);
-        const location = searchInFile(searchPath, searchTerm);
-        if (location){
-            return location;
-        };
-    }
-
     try {
-        const files = fs.readdirSync(includesPath);
-        for (const file of files) {
-            const filePath = path.join(includesPath, file);
-            const location = searchInFile(filePath, searchTerm);
-            if (location){
-                return location;
-            };
+        const fileNames = fs.readdirSync(includesPath);
+        for (const fileName of fileNames) {
+            if(fileName === jsFileName + ".js"){
+                const filePath = path.join(includesPath, fileName);
+                const filePathUri = vscode.Uri.file(filePath);
+                const position = await getPostionOfSourceDeclaration(filePathUri, variableName);
+                if (position){
+                    return new vscode.Location(filePathUri, position);
+                };
+            }
         }
     } catch (error) {
         console.error(`Error reading includes directory: ${error}`);
     }
-
     return undefined;
 }
+
 
 export function findModuleDefinition(
         document: vscode.TextDocument,
@@ -308,22 +233,39 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
             return undefined;
         }
         const line = document.lineAt(position.line).text;
-        const start = wordRange.start.character;
-        const end = wordRange.end.character;
+        // const start = wordRange.start.character;
+        // const end = wordRange.end.character;
 
-        // We assume it is an import statement
-        if (line.includes('require("')) {
-            return findModuleDefinition(document, workspaceFolder, searchTerm);
-        }
-        // We assume the click is on a variable part (module.variable)
-        if (start > 0 && line[start - 1] === '.') {
-            return findModuleVarDefinition(document, workspaceFolder, searchTerm);
-        }
-        // We assume it is a click on the module part (module.variable)
-        if (end < line.length && line[end] === '.') {
-            return findModuleDefinition(document, workspaceFolder, searchTerm);
-        }
+        const regex = /\$\{([^}]+)\}/g;
 
+        let match;
+        while ((match = regex.exec(line)) !== null) {
+            console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+            const content =  (match[1]);
+            if (content.includes("ref(")  || content.includes("resolve(")) {
+                return getLocationForRefsAndResolve(document, searchTerm);
+
+            } else if (searchTerm.includes('require("')){
+                return findModuleDefinition(document, workspaceFolder, searchTerm);
+
+            } else if (content.includes(".")){
+                const [jsFileName, variableOrFunctionName] = content.split('.'); 
+                console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
+                return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionName);
+
+            } else if (content.includes('.') === false && content.trim() !== ''){
+                console.log(`variableOrfunctionName: ${content}`);
+                const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+                const jsBlock = sqlxFileMetadata.jsBlock;
+                if(jsBlock.exists === true){
+                    const position = await getPostionOfVariableInJsBlock(document, searchTerm, jsBlock.startLine, jsBlock.endLine);
+                    if(position){
+                        return new vscode.Location(document.uri, position);
+                    }
+                }
+            }
+
+        }
         return undefined;
 
     }

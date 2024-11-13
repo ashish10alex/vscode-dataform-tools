@@ -118,12 +118,33 @@ export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, se
         if (wordIndex !== -1) {
             line = lineNum;
             character = wordIndex;
+            return new vscode.Position(line, character);
         }
     }
     if (line === null || character === null) {
         return undefined;
     }
-    return new vscode.Position(line, character);
+}
+
+export async function getPostionOfVariableInJsBlock(document:vscode.TextDocument, searchTerm:string, jsBlockStartLine:number, jsBlockEndLine:number) {
+    let sourcesDocument = await vscode.workspace.openTextDocument(document.uri);
+
+    let line = null;
+    let character = null;
+
+    for (let lineNum = jsBlockStartLine; lineNum < jsBlockEndLine; lineNum++) {
+        const lineText = sourcesDocument.lineAt(lineNum).text;
+        const wordIndex = lineText.indexOf(searchTerm);
+
+        if (wordIndex !== -1) {
+            line = lineNum;
+            character = wordIndex;
+            return new vscode.Position(line, character);
+        }
+    }
+    if (line === null || character === null) {
+        return undefined;
+    }
 }
 
 export async function getTreeRootFromRef(): Promise<string | undefined> {
