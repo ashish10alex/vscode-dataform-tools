@@ -126,18 +126,27 @@ export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, se
     }
 }
 
-export async function getPostionOfVariableInJsBlock(document:vscode.TextDocument, searchTerm:string, jsBlockStartLine:number, jsBlockEndLine:number) {
-    let sourcesDocument = await vscode.workspace.openTextDocument(document.uri);
+export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDocument | vscode.Uri, searchTerm:string, startLine:number, endLine:number) {
+    if (document instanceof vscode.Uri){
+        document = await vscode.workspace.openTextDocument(document);
+    }
+
+    if (endLine === -1){
+        endLine = document.lineCount;
+    }
 
     let line = null;
     let character = null;
 
-    for (let lineNum = jsBlockStartLine; lineNum < jsBlockEndLine; lineNum++) {
-        const lineText = sourcesDocument.lineAt(lineNum).text;
-        const wordIndex = lineText.indexOf(searchTerm);
+    const varRegex = new RegExp(`(var|let|const)\\s+${searchTerm}\\s*=`, 'i');
+    const funcRegex = new RegExp(`function\\s+${searchTerm}\\s*\\(`, 'i');
 
-        if (wordIndex !== -1) {
+    for (let lineNum = startLine; lineNum < endLine; lineNum++) {
+        const lineText = document.lineAt(lineNum).text;
+
+        if ( (varRegex.test(lineText) || funcRegex.test(lineText))) {
             line = lineNum;
+            const wordIndex = lineText.indexOf(searchTerm);
             character = wordIndex;
             return new vscode.Position(line, character);
         }
