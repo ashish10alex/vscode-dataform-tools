@@ -236,18 +236,18 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
         // const start = wordRange.start.character;
         // const end = wordRange.end.character;
 
-        const regex = /\$\{([^}]+)\}/g;
+        // This will often not be inside ${}, rather it will be inside js {}
+        if (line.includes('require("')){
+            return findModuleDefinition(document, workspaceFolder, searchTerm);
+        }
 
+        const regex = /\$\{([^}]+)\}/g;
         let match;
         while ((match = regex.exec(line)) !== null) {
             console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
             const content =  (match[1]);
             if (content.includes("ref(")  || content.includes("resolve(")) {
                 return getLocationForRefsAndResolve(document, searchTerm);
-
-            } else if (searchTerm.includes('require("')){
-                return findModuleDefinition(document, workspaceFolder, searchTerm);
-
             } else if (content.includes(".")){
                 const [jsFileName, variableOrFunctionName] = content.split('.'); 
                 // console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
