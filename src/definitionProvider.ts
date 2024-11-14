@@ -271,7 +271,7 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
         const regex = /\$\{([^}]+)\}/g;
         let match;
         while ((match = regex.exec(line)) !== null) {
-            console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+            // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
             const content =  (match[1]);
             if (content.includes("ref(")  || content.includes("resolve(")) {
                 return getLocationForRefsAndResolve(document, searchTerm);
