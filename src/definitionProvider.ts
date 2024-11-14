@@ -185,6 +185,18 @@ async function findModuleVarDefinition(
     } catch (error) {
         console.error(`Error reading includes directory: ${error}`);
     }
+    // If not found in includes directory, check if it is imported
+    const importedModules = getImportedModules(document);
+    const importedModule = importedModules.find(module => module.module === jsFileName);
+    if (importedModule) {
+        const filePath = path.join(workspaceFolder, importedModule.path);
+        const filePathUri = vscode.Uri.file(filePath);
+        const position = await getPostionOfSourceDeclaration(filePathUri, variableName);
+        if (position){
+            return new vscode.Location(filePathUri, position);
+        };
+    }
+
     return undefined;
 }
 
@@ -251,8 +263,7 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
             } else if (content.includes(".")){
                 const [jsFileName, variableOrFunctionName] = content.split('.'); 
                 // console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
-                return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionName);
-
+                return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm);
             } else if (content.includes('.') === false && content.trim() !== ''){
                 // console.log(`variableOrfunctionName: ${content}`);
                 const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
