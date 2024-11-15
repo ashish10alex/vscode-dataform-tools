@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getPostionOfSourceDeclaration, getPostionOfVariableInJsBlock, getWorkspaceFolder, runCompilation } from './utils';
+import { getPostionOfSourceDeclaration, getPostionOfVariableInJsFileOrBlock, getWorkspaceFolder, runCompilation } from './utils';
 import { Assertion, DataformCompiledJson, Operation, Table } from './types';
 import path from 'path';
 import * as fs from 'fs';
@@ -176,7 +176,7 @@ async function findModuleVarDefinition(
             if(fileName === jsFileName + ".js"){
                 const filePath = path.join(includesPath, fileName);
                 const filePathUri = vscode.Uri.file(filePath);
-                const position = await getPostionOfSourceDeclaration(filePathUri, variableName);
+                const position = await getPostionOfVariableInJsFileOrBlock(filePathUri, variableName, 0, -1);
                 if (position){
                     return new vscode.Location(filePathUri, position);
                 };
@@ -191,13 +191,28 @@ async function findModuleVarDefinition(
     if (importedModule) {
         const filePath = path.join(workspaceFolder, importedModule.path);
         const filePathUri = vscode.Uri.file(filePath);
-        const position = await getPostionOfSourceDeclaration(filePathUri, variableName);
+        const position = await getPostionOfVariableInJsFileOrBlock(filePathUri, variableName, 0, -1);
         if (position){
             return new vscode.Location(filePathUri, position);
         };
     }
 
     return undefined;
+}
+
+/**
+ * Extracts the function name from a function call string.
+ * 
+ * @example
+ * extractFunctionName("getDate()"); // Returns "getDate"
+ * extractFunctionName("object.method(arg1, arg2)"); // Returns "method"
+ * extractFunctionName("namespace.subnamespace.func()"); // Returns "func"
+ * extractFunctionName("someVariable"); // Returns null //
+ */
+function extractFunctionName(functionString:string) {
+  const regex = /(?:^|\.)(\w+)\(/;
+  const match = functionString.match(regex);
+  return match ? match[1] : null;
 }
 
 
@@ -256,20 +271,25 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
         const regex = /\$\{([^}]+)\}/g;
         let match;
         while ((match = regex.exec(line)) !== null) {
-            console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+            // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
             const content =  (match[1]);
             if (content.includes("ref(")  || content.includes("resolve(")) {
                 return getLocationForRefsAndResolve(document, searchTerm);
             } else if (content.includes(".")){
-                const [jsFileName, variableOrFunctionName] = content.split('.'); 
+                const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
+                const variableOrFunctionName = extractFunctionName(variableOrFunctionSignature);
                 // console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
-                return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm);
+                if(variableOrFunctionName !== null){
+                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionName);
+                } else{
+                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionSignature);
+                }
             } else if (content.includes('.') === false && content.trim() !== ''){
                 // console.log(`variableOrfunctionName: ${content}`);
                 const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
                 const jsBlock = sqlxFileMetadata.jsBlock;
                 if(jsBlock.exists === true){
-                    const position = await getPostionOfVariableInJsBlock(document, searchTerm, jsBlock.startLine, jsBlock.endLine);
+                    const position = await getPostionOfVariableInJsFileOrBlock(document, searchTerm, jsBlock.startLine, jsBlock.endLine);
                     if(position){
                         return new vscode.Location(document.uri, position);
                     }
