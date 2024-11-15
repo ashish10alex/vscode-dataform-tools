@@ -1,5 +1,4 @@
 import { BigQuery } from '@google-cloud/bigquery';
-const bigquery = new BigQuery();
 import {  BigQueryDryRunResponse } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
@@ -42,6 +41,8 @@ export async function queryDryRun(query: string) {
     };
 
     try {
+        const bigquery = new BigQuery({keyFilename: '/Users/ashishalex/Documents/personal/repos/dataform-testing/test_creds.json'});
+        // const bigquery = new BigQuery({keyFilename: '/Users/ashishalex/Documents/personal/repos/dataform-testing/limited_access.json'});
         const [job] = await bigquery.createQueryJob(options);
         let dryRunResponse: BigQueryDryRunResponse = {
             schema :  job.metadata.statistics.query.schema,

@@ -102,7 +102,7 @@ function transformBigValues(obj: any) {
 }
 
 export async function queryBigQuery(query: string) {
-    const bigqueryClient = new BigQuery();
+    const bigqueryClient = new BigQuery({keyFilename: '/Users/ashishalex/Documents/personal/repos/dataform-testing/test_creds.json'});
 
     if (cancelBigQueryJobSignal) {
         vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
