@@ -265,7 +265,10 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
 
         // This will often not be inside ${}, rather it will be inside js {}
         if (line.includes('require("')){
-            return findModuleDefinition(document, workspaceFolder, searchTerm);
+            const position = findModuleDefinition(document, workspaceFolder, searchTerm);
+            if (position){
+                return position;
+            }
         }
 
         const regex = /\$\{([^}]+)\}/g;
