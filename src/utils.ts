@@ -23,6 +23,39 @@ export function getNonce() {
     return text;
 }
 
+export function sendNotifactionToUserOnExtensionUpdate(context: vscode.ExtensionContext){
+    const extensionPath = context.extensionPath;
+    const packageJsonPath = path.join(extensionPath, 'package.json');
+    const userConfigPath = path.join(extensionPath, 'user_config.json');
+
+    // Read the current version from package.json
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const currentVersion = packageJson.version;
+
+    // Check if user_config.json exists, if not create it
+    if (!fs.existsSync(userConfigPath)) {
+        fs.writeFileSync(userConfigPath, JSON.stringify({ lastVersion: '0.0.0' }));
+    }
+
+    // Read the last shown version from user_config.json
+    const userConfig = JSON.parse(fs.readFileSync(userConfigPath, 'utf8'));
+    const lastVersion = userConfig.lastVersion;
+
+    if (currentVersion !== lastVersion) {
+        vscode.window.showInformationMessage(
+        `Dataform tools extension updated to version ${currentVersion}. Check out the new features!`,
+        'View Changelog'
+        ).then(selection => {
+        if (selection === 'View Changelog') {
+            // Open changelog or release notes
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/ashish10alex/vscode-dataform-tools/releases'));
+        }
+        });
+        userConfig.lastVersion = currentVersion;
+        fs.writeFileSync(userConfigPath, JSON.stringify(userConfig));
+    }
+}
+
 export function getHighlightJsThemeUri(){
     let themeKind = vscode.window.activeColorTheme.kind;
     let highlighJstThemeUri = "";
