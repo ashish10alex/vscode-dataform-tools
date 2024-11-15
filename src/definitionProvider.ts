@@ -168,15 +168,30 @@ async function findModuleVarDefinition(
     workspaceFolder: string,
     jsFileName:string,
     variableName:string,
+    startLine:number,
+    endLine:number,
 ) {
+
+    const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+    const jsBlock = sqlxFileMetadata.jsBlock;
+    if(jsBlock.exists){
+        let position =  await getPostionOfVariableInJsFileOrBlock(document.uri, variableName, jsBlock.startLine, jsBlock.endLine);
+        if(position){
+            return new vscode.Location(document.uri, position);
+        }
+    }
+
     const includesPath = path.join(workspaceFolder, 'includes');
+    let jsFileWtSameNameUri;
+
     try {
         const fileNames = fs.readdirSync(includesPath);
         for (const fileName of fileNames) {
             if(fileName === jsFileName + ".js"){
                 const filePath = path.join(includesPath, fileName);
                 const filePathUri = vscode.Uri.file(filePath);
-                const position = await getPostionOfVariableInJsFileOrBlock(filePathUri, variableName, 0, -1);
+                jsFileWtSameNameUri =  filePathUri;
+                const position = await getPostionOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
                 if (position){
                     return new vscode.Location(filePathUri, position);
                 };
@@ -188,13 +203,19 @@ async function findModuleVarDefinition(
     // If not found in includes directory, check if it is imported
     const importedModules = getImportedModules(document);
     const importedModule = importedModules.find(module => module.module === jsFileName);
+
     if (importedModule) {
         const filePath = path.join(workspaceFolder, importedModule.path);
         const filePathUri = vscode.Uri.file(filePath);
-        const position = await getPostionOfVariableInJsFileOrBlock(filePathUri, variableName, 0, -1);
+        const position = await getPostionOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
         if (position){
             return new vscode.Location(filePathUri, position);
         };
+    }
+
+    if(jsFileWtSameNameUri){
+        const position = new vscode.Position(0, 0);
+        return new vscode.Location(jsFileWtSameNameUri, position);
     }
 
     return undefined;
@@ -281,11 +302,13 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
             } else if (content.includes(".")){
                 const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
                 const variableOrFunctionName = extractFunctionName(variableOrFunctionSignature);
-                // console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionName}`);
-                if(variableOrFunctionName !== null){
-                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionName);
-                } else{
-                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionSignature);
+                // console.log(`jsFileName: ${jsFileName}, variableOrfunctionName: ${variableOrFunctionSignature}`);
+                if(variableOrFunctionName !== null && variableOrFunctionName.includes(searchTerm)){
+                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionName, 0, -1);
+                } else if (variableOrFunctionSignature.includes(searchTerm)){
+                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, variableOrFunctionSignature, 0, -1);
+                } else if (jsFileName.includes(searchTerm)){
+                    return findModuleVarDefinition(document, workspaceFolder, jsFileName, jsFileName, 0, -1);
                 }
             } else if (content.includes('.') === false && content.trim() !== ''){
                 // console.log(`variableOrfunctionName: ${content}`);
