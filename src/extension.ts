@@ -8,7 +8,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRefDefinitionProvider, DataformRequireDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata } from './utils';
+import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate } from './utils';
 import { executableIsAvailable, runCompilation } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -22,6 +22,8 @@ import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
+
+    sendNotifactionToUserOnExtensionUpdate(context);
 
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
     globalThis.declarationsAndTargets = [] as string[];
@@ -44,7 +46,6 @@ export async function activate(context: vscode.ExtensionContext) {
     };
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
-
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
