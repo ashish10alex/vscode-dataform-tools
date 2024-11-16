@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.3.2...v0.4.0) (2024-11-16)
+
+
+### Features
+
+* add go to definition for js variables / modules from .sqlx files ([#51](https://github.com/ashish10alex/vscode-dataform-tools/issues/51)) ([027ee7f](https://github.com/ashish10alex/vscode-dataform-tools/commit/027ee7f04a91d9a6e75d825e50a96e68ed582df6))
+* show user notification when extension is updated ([#56](https://github.com/ashish10alex/vscode-dataform-tools/issues/56)) ([7a63134](https://github.com/ashish10alex/vscode-dataform-tools/commit/7a6313402c64524f45afb6e91d3fb477cd0e9230))
+
 ### [0.3.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.3.1...v0.3.2) (2024-11-12)
 
 
