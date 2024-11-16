@@ -5,7 +5,7 @@ import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
-import { DataformRefDefinitionProvider, DataformRequireDefinitionProvider } from './definitionProvider';
+import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
 import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate } from './utils';
@@ -113,11 +113,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(
         { language: 'sqlx' },
-        new DataformRefDefinitionProvider()
+        new DataformRequireDefinitionProvider()
     ));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(
         { language: 'sqlx' },
-        new DataformRequireDefinitionProvider()
+        new DataformJsDefinitionProvider()
     ));
 
     context.subscriptions.push(vscode.languages.registerHoverProvider(

@@ -20,7 +20,7 @@
 | [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) ❗ | Native lsp like experience with diagnostics being directly put on both the sqlx file & compiled query |
 | [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
-| [Go to definition](#definition) | Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined |
+| [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
 | [Auto-completion](#autocomplete) | - declarations in `${ref("..")}` trigger when `$` character is typed <br><br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br><br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
 | [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet / menu icons |
@@ -66,6 +66,12 @@ Trouble installing ? Please see [FAQ section](FAQ.md), if you are still stuck, p
 ![preview_query_results](/media/images/preview_query_results.png)
 
 
+### <a id="definition">Go to definition</a>
+Go to definition for source in `$ref{("my_source")}`. Takes you to `my_source.sqlx` or `sources.js` at the line where `my_source` is defined. There is also support for go to definiton 
+from a javascript variable/module from a `.sqlx` file to `js` block or `.js` file where the virable or module declaration exsists
+
+![go-to-definition](media/images/go_to_definition.gif)
+
 ### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
 Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
@@ -79,12 +85,6 @@ Declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
 Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
 
 ![auto-completion](media/images/tags_autocompletion.gif)
-
-
-### <a id="definition">Go to definition</a>
-Go to definition for source in `$ref{("MY_SOURCE")}`. Takes you to `MY_SOURCE.sqlx` or `sources.js` at the line where `MY_SOURCE` is defined
-
-![go-to-definition](media/images/go_to_definition.gif)
 
 ### <a id="formatting">Formatting using sqlfluff</a>
 

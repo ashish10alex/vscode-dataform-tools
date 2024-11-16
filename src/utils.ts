@@ -151,12 +151,42 @@ export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, se
         if (wordIndex !== -1) {
             line = lineNum;
             character = wordIndex;
+            return new vscode.Position(line, character);
         }
     }
     if (line === null || character === null) {
         return undefined;
     }
-    return new vscode.Position(line, character);
+}
+
+export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDocument | vscode.Uri, searchTerm:string, startLine:number, endLine:number) {
+    if (document instanceof vscode.Uri){
+        document = await vscode.workspace.openTextDocument(document);
+    }
+
+    if (endLine === -1){
+        endLine = document.lineCount;
+    }
+
+    let line = null;
+    let character = null;
+
+    const varRegex = new RegExp(`(var|let|const)\\s+${searchTerm}\\s*=`, 'i');
+    const funcRegex = new RegExp(`function\\s+${searchTerm}\\s*\\(`, 'i');
+
+    for (let lineNum = startLine; lineNum < endLine; lineNum++) {
+        const lineText = document.lineAt(lineNum).text;
+
+        if ( (varRegex.test(lineText) || funcRegex.test(lineText))) {
+            line = lineNum;
+            const wordIndex = lineText.indexOf(searchTerm);
+            character = wordIndex;
+            return new vscode.Position(line, character);
+        }
+    }
+    if (line === null || character === null) {
+        return undefined;
+    }
 }
 
 export async function getTreeRootFromRef(): Promise<string | undefined> {
