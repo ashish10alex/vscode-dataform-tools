@@ -2,8 +2,7 @@ import * as vscode from "vscode";
 import {
   getWorkspaceFolder,
   runCompilation,
-  getPostionOfSourceDeclaration,
-  getPostionOfVariableInJsFileOrBlock,
+  getTextByLineRange,
   getHoverOfVariableInJsFileOrBlock
 } from "./utils";
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
@@ -100,8 +99,12 @@ async function findModuleVarDefinition(
 ) {
   const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
   const jsBlock = sqlxFileMetadata.jsBlock;
+  let hover;
   if(jsBlock.exists){
-      let hover = await getHoverOfVariableInJsFileOrBlock(document.uri, variableName, jsBlock.startLine, jsBlock.endLine);
+      const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
+      if(jsBlockCode){
+        hover = getHoverOfVariableInJsFileOrBlock(jsBlockCode, variableName);
+      }
       if (hover) {
           return hover;
       }  
@@ -117,8 +120,10 @@ async function findModuleVarDefinition(
               const filePath = path.join(includesPath, fileName);
               const filePathUri = vscode.Uri.file(filePath);
               jsFileWtSameNameUri =  filePathUri;
-              return await getHoverOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
-
+              const jsBlockCode = await getTextByLineRange(filePathUri, startLine, endLine);
+              if(jsBlockCode){
+                return getHoverOfVariableInJsFileOrBlock(jsBlockCode, variableName);
+              }
               };
           }
   } catch (error) {
@@ -132,9 +137,12 @@ async function findModuleVarDefinition(
   if (importedModule) {
       const filePath = path.join(workspaceFolder, importedModule.path);
       const filePathUri = vscode.Uri.file(filePath);
-      return await getHoverOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
-  }
 
+      const jsBlockCode = await getTextByLineRange(filePathUri, startLine, endLine);
+      if(jsBlockCode){
+        return getHoverOfVariableInJsFileOrBlock(jsBlockCode, variableName);
+      }
+  }
   return undefined;
 }
 
@@ -214,7 +222,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       const regex = /\$\{([^}]+)\}/g;
       let match;
       while ((match = regex.exec(line)) !== null) {
-          console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+          // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
           const content =  (match[1]);
           if (content.includes(".")){
             const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
@@ -225,7 +233,10 @@ export class DataformHoverProvider implements vscode.HoverProvider {
             const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
             const jsBlock = sqlxFileMetadata.jsBlock;
             if(jsBlock.exists === true){
-              return await getHoverOfVariableInJsFileOrBlock(document, searchTerm, jsBlock.startLine, jsBlock.endLine);
+              const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
+              if(jsBlockCode){
+              return getHoverOfVariableInJsFileOrBlock(jsBlockCode, searchTerm);
+              }
             }
         }
       }
