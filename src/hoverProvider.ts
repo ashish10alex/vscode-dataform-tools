@@ -2,8 +2,14 @@ import * as vscode from "vscode";
 import {
   getWorkspaceFolder,
   runCompilation,
+  getPostionOfSourceDeclaration,
+  getPostionOfVariableInJsFileOrBlock,
+  getHoverOfVariableInJsFileOrBlock
 } from "./utils";
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
+import * as fs from "fs";
+import * as path from "path";
+import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -64,6 +70,74 @@ function getFullTableNameFromRef(
   }
   return hoverMeta;
 }
+interface ImportedModule {
+  module: string;
+  path: string;
+}
+
+export function getImportedModules(
+    document: vscode.TextDocument,
+): ImportedModule[] {
+    const requireRegex = /(const|var|let)\s+(\w+)\s*=\s*require\(["'](.+?)["']\)/g;
+    const importedModules: ImportedModule[] = [];
+    const text = document.getText();
+    let match: RegExpExecArray | null;
+
+    while ((match = requireRegex.exec(text)) !== null) {
+        importedModules.push({ module: match[2], path: match[3] });
+    }
+
+    return importedModules;
+}
+
+async function findModuleVarDefinition(
+  document: vscode.TextDocument,
+  workspaceFolder: string,
+  jsFileName:string,
+  variableName:string,
+  startLine:number,
+  endLine:number,
+) {
+  const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+  const jsBlock = sqlxFileMetadata.jsBlock;
+  if(jsBlock.exists){
+      let hover = await getHoverOfVariableInJsFileOrBlock(document.uri, variableName, jsBlock.startLine, jsBlock.endLine);
+      if (hover) {
+          return hover;
+      }  
+    }
+
+
+  const includesPath = path.join(workspaceFolder, 'includes');
+  let jsFileWtSameNameUri;
+  try {
+      const fileNames = fs.readdirSync(includesPath);
+      for (const fileName of fileNames) {
+          if(fileName === jsFileName + ".js"){
+              const filePath = path.join(includesPath, fileName);
+              const filePathUri = vscode.Uri.file(filePath);
+              jsFileWtSameNameUri =  filePathUri;
+              return await getHoverOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
+
+              };
+          }
+  } catch (error) {
+      console.error(`Error reading includes directory: ${error}`);
+  }
+
+  // If not found in includes directory, check if it is imported
+  const importedModules = getImportedModules(document);
+  const importedModule = importedModules.find(module => module.module === jsFileName);
+
+  if (importedModule) {
+      const filePath = path.join(workspaceFolder, importedModule.path);
+      const filePathUri = vscode.Uri.file(filePath);
+      return await getHoverOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
+  }
+
+  return undefined;
+}
+
 
 export class DataformHoverProvider implements vscode.HoverProvider {
   async provideHover(
@@ -77,14 +151,14 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     const line = document.lineAt(position.line).text;
 
     // early return
-    if (line.indexOf("${ref(") === -1) {
+    if (line.indexOf("${") === -1) {
       return undefined;
     }
-
-    let hoverMeta: vscode.Hover | undefined;
-
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder){return;}
+
+    if (line.indexOf("${ref") !== -1) {
+    let hoverMeta: vscode.Hover | undefined;
 
     let dataformCompiledJson: DataformCompiledJson | undefined;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
@@ -135,8 +209,27 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       if (assertions) {
         return getFullTableNameFromRef(searchTerm, assertions);
       }
-
-      return undefined; // If not matches are found then we will not show anything on hover
     }
+  } else {
+      const regex = /\$\{([^}]+)\}/g;
+      let match;
+      while ((match = regex.exec(line)) !== null) {
+          console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+          const content =  (match[1]);
+          if (content.includes(".")){
+            const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
+            if(variableOrFunctionSignature.includes(searchTerm)){
+                return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
+            }
+          } else if (content.includes('.') === false && content.trim() !== ''){
+            const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+            const jsBlock = sqlxFileMetadata.jsBlock;
+            if(jsBlock.exists === true){
+              return await getHoverOfVariableInJsFileOrBlock(document, searchTerm, jsBlock.startLine, jsBlock.endLine);
+            }
+        }
+      }
+      return undefined; // If not matches are found then we will not show anything on hover
   }
+}
 }

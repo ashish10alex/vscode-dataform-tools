@@ -189,6 +189,127 @@ export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDo
     }
 }
 
+
+export async function getJsFunctionMeta(document:vscode.TextDocument, lineNumber: number, startLine: number, endLine: number) {
+    const docStringParamsRegex = /@param\s+\{(.*?)\}\s+(\w+)\s*-\s*(.*)?/g;
+    const functionDeclarationLineText = document.lineAt(lineNumber).text.trim();
+
+    // Helper to extract docstring range and content
+    const extractDocString = (): { docString: string; docStringParams: any[] } => {
+        let docStart: number | undefined;
+
+        // logic to capture the docstring range - replace with regexp?
+        for (let i = lineNumber - 1; i >= startLine; i--) {
+            const lineText = document.lineAt(i).text.trim();
+            if (lineText.startsWith('/**')) {
+                docStart = i;
+                break;
+            } else if (!lineText.startsWith('*') && !lineText.startsWith('*/') && lineText !== '') {
+                break;
+            }
+        }
+
+        if (docStart === undefined) {
+            return { docString: '', docStringParams: [] };
+        }
+
+        const rawDocString = document.getText(new vscode.Range(docStart, 0, lineNumber - 1, 0));
+        const docStringParams: any[] = [];
+        let match;
+        while ((match = docStringParamsRegex.exec(rawDocString)) !== null) {
+            docStringParams.push({ type: match[1], name: match[2], description: match[3] || "" });
+        }
+
+        //dropping all lines that are not a description
+        const formattedDocString = rawDocString
+            .split('\n')
+            .filter(line => line.trim() && !line.includes('@param'))
+            .map(line => line.replace(/^\s*\*\s?/, '').replace('/**', '').trim())
+            .join('\n');
+
+        const paramsDoc = docStringParams
+            .map(param => `**${param.name}** - ${param.description}`)
+            .join('\n\n');
+
+        return { docString: `${formattedDocString}\n\n${paramsDoc}`, docStringParams };
+    };
+
+    // Helper to get full function declaration
+    const extractFunctionDeclaration = (): string => {
+        if (functionDeclarationLineText.includes(')')) {
+            return functionDeclarationLineText.replace(/\s*{.*/, '').trim();
+        }
+
+        let fullDeclaration = '';
+        // Logic to deal with multiline function declarations - replace with regexp?
+        for (let i = lineNumber; i < endLine; i++) {
+            const lineText = document.lineAt(i).text.trim();
+            fullDeclaration += lineText;
+            if (lineText.includes(')')){break};
+        }
+
+        return fullDeclaration.replace(/\s*{.*/, '').trim();
+    };
+
+    // Helper to format function declaration arguments ( add types from docstring )
+    const formatFunctionDeclaration = (
+        declaration: string,
+        params: { type: string; name: string }[]
+    ): string => {
+        const argsRegex = /\(([^)]*)\)/;
+        const argsMatch = argsRegex.exec(declaration);
+        if (!argsMatch) {return declaration};
+
+        const args = argsMatch[1]
+            .split(',')
+            .map(arg => arg.trim())
+            .map(arg => {
+                const param = params.find(p => p.name === arg);
+                return param ? `${arg}: ${param.type}` : `${arg}: any`; // default to any if type not specified in docstring
+            });
+
+        return declaration.replace(argsMatch[1], args.join(', '));
+    };
+
+    const { docString, docStringParams } = extractDocString();
+    const functionDeclaration = formatFunctionDeclaration(
+        extractFunctionDeclaration(),
+        docStringParams
+    );
+
+    return { functionDeclaration, docString };
+
+}
+
+export async function getHoverOfVariableInJsFileOrBlock(document:vscode.TextDocument | vscode.Uri, searchTerm:string, startLine:number, endLine:number) {
+    
+    if (document instanceof vscode.Uri){
+        document = await vscode.workspace.openTextDocument(document);
+    }
+
+    if (endLine === -1){
+        endLine = document.lineCount;
+    }
+
+    const varRegex = new RegExp(`(var|let|const)\\s+${searchTerm}\\s*=`, 'i');
+    const funcRegex = new RegExp(`function\\s+${searchTerm}\\s*\\(`, 'i');
+    
+    for (let lineNum = startLine; lineNum < endLine; lineNum++) {
+        const lineText = document.lineAt(lineNum).text;
+
+        if (varRegex.test(lineText)){
+            const varDeclaration = lineText.split('=')[0].trim().replace(";", "");
+            const content = new vscode.MarkdownString(`\`\`\`javascript\n${varDeclaration}\n\`\`\``);
+            return new vscode.Hover(content)
+        } else if (funcRegex.test(lineText)){
+            let {functionDeclaration, docString} = await getJsFunctionMeta(document, lineNum, startLine, endLine);
+            const content = new vscode.MarkdownString(`\`\`\`javascript\n${functionDeclaration}\n\`\`\`\n\n${docString}`);
+            return new vscode.Hover(content);
+    }    
+}
+    return undefined;
+}
+
 export async function getTreeRootFromRef(): Promise<string | undefined> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
