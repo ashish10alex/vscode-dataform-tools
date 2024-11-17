@@ -176,7 +176,7 @@ export async function queryBigQuery(query: string) {
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
 
-                if ((value[0] && typeof value[0] === "string") || (value.length === 0)) {
+                if ((value[0] && typeof value[0] === "string") || (value.length === 0) || Object.keys(value[0])[0] === "value") {
                     value = convertArrayToObject(value, key);
                 }
 
