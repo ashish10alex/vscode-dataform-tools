@@ -61,7 +61,7 @@ let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
         
             const description = tag.description;
 
-            if(name === "This"){
+            if(tag.tag === "returns"){
               functionSignature+= `): ${type}`;
               hoverContent +=`Returns: ${type} \n\n`;
               gotReturnType = true;
