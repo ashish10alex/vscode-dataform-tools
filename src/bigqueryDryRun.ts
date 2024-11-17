@@ -1,4 +1,4 @@
-import { getBigQueryClient, checkAuthentication } from './bigqueryClient';
+import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -44,20 +44,29 @@ export async function queryDryRun(query: string) {
     };
 
     try {
-        const [job] = await bigqueryClient.createQueryJob(options);
+        const [job] = await bigqueryClient.createQueryJob({
+            query,
+            dryRun: true
+        });
+
         return {
             schema: job.metadata.statistics.query.schema,
             statistics: {
-                totalBytesProcessed: (parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3) + " GB",
+                totalBytesProcessed: `${(parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3)} GB`,
             },
             error: { hasError: false, message: "" }
         };
     } catch (error: any) {
-        let errorLocation = getLineAndColumnNumberFromErrorMessage(error.message);
-        return {
-            schema: undefined,
-            statistics: { totalBytesProcessed: "" },
-            error: { hasError: true, message: error.message, location: errorLocation }
-        };
+        try {
+            await handleBigQueryError(error);
+            return await queryDryRun(query);
+        } catch (finalError: any) {
+            const errorLocation = getLineAndColumnNumberFromErrorMessage(finalError.message);
+            return {
+                schema: undefined,
+                statistics: { totalBytesProcessed: "" },
+                error: { hasError: true, message: finalError.message, location: errorLocation }
+            };
+        }
     }
 }

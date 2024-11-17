@@ -38,13 +38,17 @@ export async function checkAuthentication() {
         return;
     }
 
-    const timeSinceLastCheck = Date.now() - lastAuthCheck;
-    if (timeSinceLastCheck > 55 * 60 * 1000) { // 55 minutes in milliseconds
-        try {
-            await verifyAuthentication();
-        } catch (error) {
-            vscode.window.showWarningMessage('BigQuery authentication expired. Recreating client...');
-            await createBigQueryClient();
+    const useIntervalCheck = vscode.workspace.getConfiguration('vscode-dataform-tools').get('bigqueryAuthenticationCheck', true);
+
+    if (useIntervalCheck) {
+        const timeSinceLastCheck = Date.now() - lastAuthCheck;
+        if (timeSinceLastCheck > 55 * 60 * 1000) { // 55 minutes in milliseconds
+            try {
+                await verifyAuthentication();
+            } catch (error) {
+                vscode.window.showWarningMessage('BigQuery authentication expired. Recreating client...');
+                await createBigQueryClient();
+            }
         }
     }
 }
@@ -53,12 +57,29 @@ export function getBigQueryClient(): BigQuery | undefined {
     return isAuthenticated ? bigquery : undefined;
 }
 
-export function setAuthenticationCheckInterval(interval: NodeJS.Timeout) {
-    authenticationCheckInterval = interval;
+export function setAuthenticationCheckInterval() {
+    const useIntervalCheck = vscode.workspace.getConfiguration('vscode-dataform-tools').get('bigqueryAuthenticationCheck', true);
+
+    clearAuthenticationCheckInterval();
+
+    if (useIntervalCheck) {
+        authenticationCheckInterval = setInterval(async () => {
+            await checkAuthentication();
+        }, 60 * 60 * 1000); // Check every hour
+    }
 }
 
 export function clearAuthenticationCheckInterval() {
     if (authenticationCheckInterval) {
         clearInterval(authenticationCheckInterval);
+        authenticationCheckInterval = undefined;
     }
+}
+
+export async function handleBigQueryError(error: any): Promise<void> {
+    if (error?.message?.includes('authentication')) {
+        vscode.window.showWarningMessage('BigQuery authentication error. Recreating client...');
+        await createBigQueryClient();
+    }
+    throw error;
 }

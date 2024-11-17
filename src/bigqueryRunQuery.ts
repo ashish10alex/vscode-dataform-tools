@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getBigQueryClient, checkAuthentication } from './bigqueryClient';
+import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
@@ -101,7 +101,7 @@ function transformBigValues(obj: any) {
 }
 
 export async function queryBigQuery(query: string) {
-    await checkAuthentication(); // Ensure authentication is valid
+    await checkAuthentication();
 
     const bigquery = getBigQueryClient();
     if (!bigquery) {
@@ -109,19 +109,23 @@ export async function queryBigQuery(query: string) {
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
     }
 
-    if (cancelBigQueryJobSignal) { // Handle cancellation signal
+    if (cancelBigQueryJobSignal) {
         vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
         cancelBigQueryJobSignal = false;
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
     }
 
-    let bigQueryJob;
     try {
-        [bigQueryJob] = await bigquery.createQueryJob(query); // Use shared client
+        [bigQueryJob] = await bigquery.createQueryJob(query);
     } catch (error: any) {
-        // Handle job creation errors (e.g., invalid query)
-        vscode.window.showErrorMessage(`Error creating BigQuery job: ${error.message}`);
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } }; // Or throw the error if appropriate
+        try {
+            await handleBigQueryError(error);
+            // If handleBigQueryError didn't throw, retry the query
+            return await queryBigQuery(query);
+        } catch (finalError: any) {
+            vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
+            return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+        }
     }
 
     //TODO: Not sure if this is needed as if the job is created the job id should be removed when cancelBigQueryJob() is called

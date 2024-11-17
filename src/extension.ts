@@ -53,17 +53,12 @@ export async function activate(context: vscode.ExtensionContext) {
         executableIsAvailable(executable);
     }
 
-    // Initial client creation
     await createBigQueryClient();
+    setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
 
-    // Set up a periodic authentication check (e.g., every 60 minutes)
-    const interval = setInterval(checkAuthentication, 60 * 60 * 1000);
-
-    // Store the interval
-    setAuthenticationCheckInterval(interval);
-
+    // Clean up on deactivation
     context.subscriptions.push({
-        dispose: () => clearAuthenticationCheckInterval() // Clear on deactivation
+        dispose: () => clearAuthenticationCheckInterval()
     });
 
     //TODO: check if user has multiple workspace folders open

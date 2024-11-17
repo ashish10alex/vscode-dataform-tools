@@ -258,6 +258,11 @@
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "WARNING!!: only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
+                },
+                "vscode-dataform-tools.bigqueryAuthenticationCheck": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Uses an interval of 55 minutes to validate the user's BigQuery Credentials. Set this to `false` to only validate the user's credentials when a query or dry run fails"
                 }
             }
         }
