@@ -287,52 +287,54 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
         }
       }
+    }
 
-      if (tablePrefix) {
-        searchTerm = tablePrefix + "_" + searchTerm;
-      }
+    if (tablePrefix) {
+      searchTerm = tablePrefix + "_" + searchTerm;
+    }
 
-      if (tables) {
-        hoverMeta = getTableInformationFromRef(searchTerm, tables);
-      }
-      if (hoverMeta) {
-        return hoverMeta;
-      }
+    if (tables) {
+      hoverMeta = getTableInformationFromRef(searchTerm, tables);
+    }
+    if (hoverMeta) {
+      return hoverMeta;
+    }
 
-      if (operations) {
-        hoverMeta = getFullTableNameFromRef(searchTerm, operations);
-      }
-      if (hoverMeta) {
-        return hoverMeta;
-      }
+    if (operations) {
+      hoverMeta = getFullTableNameFromRef(searchTerm, operations);
+    }
+    if (hoverMeta) {
+      return hoverMeta;
+    }
 
-      if (assertions) {
-        return getFullTableNameFromRef(searchTerm, assertions);
-      }
+    if (assertions) {
+      return getFullTableNameFromRef(searchTerm, assertions);
     }
   } else {
-      const regex = /\$\{([^}]+)\}/g;
-      let match;
-      while ((match = regex.exec(line)) !== null) {
-          // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
-          const content =  (match[1]);
-          if (content.includes(".")){
-            const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
-            if(variableOrFunctionSignature.includes(searchTerm)){
-                return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
+    const regex = /\$\{([^}]+)\}/g;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+        // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+        const content =  (match[1]);
+        if (content.includes(".")){
+          const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
+          if(variableOrFunctionSignature.includes(searchTerm)){
+              return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
+          }
+        } else if (content.includes('.') === false && content.trim() !== ''){
+          const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+          const jsBlock = sqlxFileMetadata.jsBlock;
+          if(jsBlock.exists === true){
+            const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
+            if(jsBlockCode){
+            return getHoverOfVariableInJsFileOrBlock(jsBlockCode, searchTerm);
             }
-          } else if (content.includes('.') === false && content.trim() !== ''){
-            const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
-            const jsBlock = sqlxFileMetadata.jsBlock;
-            if(jsBlock.exists === true){
-              const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
-              if(jsBlockCode){
-              return getHoverOfVariableInJsFileOrBlock(jsBlockCode, searchTerm);
-              }
-            }
-        }
+          }
       }
-      return undefined; // If not matches are found then we will not show anything on hover
+    }
+
+    return undefined; // If not matches are found then we will not show anything on hover
+
+    }
   }
-}
 }
