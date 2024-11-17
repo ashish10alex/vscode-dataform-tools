@@ -80,6 +80,12 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
         "\t${4:condition}"
       ]
     },
+    "CROSS JOIN": {
+      "prefix": "cross join",
+      "body": [
+        "CROSS JOIN ${1:table_reference}"
+      ]
+    },
     "BETWEEN ... AND": {
       "prefix": "between",
       "body": "BETWEEN ${1} AND ${2}"
