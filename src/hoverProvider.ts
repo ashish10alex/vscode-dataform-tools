@@ -13,7 +13,7 @@ import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
-import { createSourceFile, forEachChild, getJSDocCommentsAndTags, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isMethodDeclaration, isVariableDeclaration, Node, ScriptTarget } from "typescript";
+import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {

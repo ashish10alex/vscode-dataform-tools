@@ -8,8 +8,6 @@ import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
-import { createSourceFile, ScriptTarget, Node, isFunctionDeclaration, isVariableDeclaration, isClassDeclaration, isIdentifier, forEachChild, getJSDocTags, getJSDocCommentsAndTags, isMethodDeclaration } from 'typescript';
-
 
 let supportedExtensions = ['sqlx', 'js'];
 
