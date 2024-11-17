@@ -27,20 +27,6 @@ const getMarkdownTableIdWtLink = (fullTableIdStruct:{database:string, schema:str
       return `[${fullTableId}](${linkToTable})`;
 };
 
-function getFunctionSignature(node: Node): string | undefined {
-  if (isFunctionDeclaration(node) || isMethodDeclaration(node)) {
-    const name = node.name ? node.name.getText() : 'anonymous';
-    const parameters = node.parameters.map(param => {
-      const paramName = param.name.getText();
-      const paramType = param.type ? ": " + param.type.getText() : '';
-      return `${paramName} ${paramType}`;
-    }).join(', ');
-    const returnType = node.type ? node.type.getText() : '';
-    return `function ${name}(${parameters}): ${returnType}`;
-  }
-  return undefined;
-}
-
 let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
     let out = commentParser(jsDocBlock);
     let descriptionOnTopOfJsDoc = out[0].description || "";
