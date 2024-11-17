@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import os from 'os';
 import { DataformCompiledJson } from './types';
+import { createBigQueryClient, checkAuthentication, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { registerCenterPanel } from './views/register-center-panel';
@@ -52,12 +53,20 @@ export async function activate(context: vscode.ExtensionContext) {
         executableIsAvailable(executable);
     }
 
+    await createBigQueryClient();
+    setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
+
+    // Clean up on deactivation
+    context.subscriptions.push({
+        dispose: () => clearAuthenticationCheckInterval()
+    });
+
     //TODO: check if user has multiple workspace folders open
     //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
     let workspaceFolder = getWorkspaceFolder();
 
     if (workspaceFolder) {
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let { dataformCompiledJson, errors } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
             dataformTags = await getDataformTags(dataformCompiledJson);
@@ -189,5 +198,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated
 export function deactivate() {
+    clearAuthenticationCheckInterval();
     console.log('Extension "vscode-dataform-tools" is now deactivated.');
 }
