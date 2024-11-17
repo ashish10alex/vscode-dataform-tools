@@ -1,6 +1,8 @@
 /***
 Copied snippets from https://github.com/shinichi-takii/vscode-language-sql-bigquery
 full credit goes to the autor @shinichi-takii
+
+Table references is replaced to better work with sqlx syntax (project.dataset.table -> table_reference)
 ***/
 {
   ".source.sql-bigquery": {
@@ -32,26 +34,24 @@ full credit goes to the autor @shinichi-takii
     // Query
     "`TABLE-NAME`": {
       "prefix": "table",
-      "body": "`${1:project}.${2:dataset}.${3:table}`"
+      "body": "${1:table_reference}"
     },
     "[TABLE-NAME]": {
       "prefix": "tablelegacy",
-      "body": "[${1:project}:${2:dataset}.${3:table}]"
+      "body": "[${1:table_reference}]"
     },
     "SELECT ... FROM": {
       "prefix": "select",
       "body": [
         "SELECT",
         "\t${1:column}",
-        "FROM `${2:project}.${3:dataset}.${4:table}`",
-        "WHERE",
-        "\t${5:condition}"
+        "FROM ${2:table_reference}"
       ]
     },
     "INNER JOIN": {
       "prefix": "inner join",
       "body": [
-        "INNER JOIN `${1:project}.${2:dataset}.${3:table}`",
+        "INNER JOIN ${1:table_reference}",
         "ON",
         "\t${4:condition}"
       ]
@@ -59,7 +59,7 @@ full credit goes to the autor @shinichi-takii
     "LEFT JOIN": {
       "prefix": "left join",
       "body": [
-        "LEFT JOIN `${1:project}.${2:dataset}.${3:table}`",
+        "LEFT JOIN ${1:table_reference}",
         "ON",
         "\t${4:condition}"
       ]
@@ -67,7 +67,7 @@ full credit goes to the autor @shinichi-takii
     "RIGHT JOIN": {
       "prefix": "right join",
       "body": [
-        "RIGHT JOIN `${1:project}.${2:dataset}.${3:table}`",
+        "RIGHT JOIN ${1:table_reference}",
         "ON",
         "\t${4:condition}"
       ]
@@ -75,7 +75,7 @@ full credit goes to the autor @shinichi-takii
     "FULL OUTER JOIN": {
       "prefix": "full join",
       "body": [
-        "FULL OUTER JOIN `${1:project}.${2:dataset}.${3:table}`",
+        "FULL OUTER JOIN ${1:table_reference}",
         "ON",
         "\t${4:condition}"
       ]
@@ -128,26 +128,6 @@ full credit goes to the autor @shinichi-takii
       ],
       "description": "Filters the results of analytic functions."
     },
-    "PARTITION BY": {
-      "prefix": "partitionby",
-      "body": [
-        "PARTITION BY",
-        "\t${1:_PARTITIONDATE}",
-        "\t${2:|DATE(_PARTITIONTIME)}",
-        "\t${3:|<date_column>}",
-        "\t${4:|DATE(<timestamp_column>|<datetime_column>)}",
-        "\t${5:|DATETIME_TRUNC(<datetime_column>, {DAY|HOUR|MONTH|YEAR\\})}",
-        "\t${6:|TIMESTAMP_TRUNC(<timestamp_column>, {DAY|HOUR|MONTH|YEAR\\})}",
-        "\t${7:|TIMESTAMP_TRUNC(_PARTITIONTIME, {DAY|HOUR|MONTH|YEAR\\})}",
-        "\t${8:|DATE_TRUNC(<date_column>, {MONTH|YEAR\\})}",
-        "\t${9:|RANGE_BUCKET(<int64_column>, GENERATE_ARRAY(<start>, <end>[, <interval>]))}",
-        "${10:[CLUSTER BY clustering_column_list]}"
-      ]
-    },
-    "CLUSTER BY": {
-      "prefix": "clusterby",
-      "body": "CLUSTER BY ${1:clustering_column_list}"
-    },
     "WITH ... AS": {
       "prefix": "with",
       "body": [
@@ -155,7 +135,7 @@ full credit goes to the autor @shinichi-takii
         "\tSELECT",
         "\t\t${2}",
         "\tFROM",
-        "\t\t`${3:project}.${4:dataset}.${5:table}`",
+        "\t\t${3:table_reference}",
         ")",
         ""
       ]
@@ -173,7 +153,7 @@ full credit goes to the autor @shinichi-takii
       "body": [
         "SELECT",
         "\t${1:column}",
-        "FROM `${2:project}.${3:dataset}.${4:table}`",
+        "FROM ${2:table_reference}",
         "\tTABLESAMPLE SYSTEM (${5:value} PERCENT)"
       ],
       "description": "Table sampling lets you query random subsets of data from large BigQuery tables."
@@ -183,7 +163,7 @@ full credit goes to the autor @shinichi-takii
       "body": [
         "SELECT",
         "\t${1:column}",
-        "FROM `${2:project}.${3:dataset}.${4:table}`",
+        "FROM ${2:table_reference}",
         "\tFOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${5:1} HOUR)"
       ],
       "description": "Time travel to access data at any point within the last 7 days."
@@ -193,7 +173,7 @@ full credit goes to the autor @shinichi-takii
       "body": [
         "SELECT",
         "\t*",
-        "FROM `${1:project}.${2:dataset}.${3:table}`",
+        "FROM ${1:table_reference}",
         "\tPIVOT(",
         "\t\t${4:aggregate_function(aggregate_column)}",
         "\t\tFOR ${5:input_column}",
@@ -206,7 +186,7 @@ full credit goes to the autor @shinichi-takii
       "body": [
         "SELECT",
         "\t*",
-        "FROM `${1:project}.${2:dataset}.${3:table}`",
+        "FROM ${1:table_reference}",
         "\tUNPIVOT${4:[ INCLUDE NULLS|EXCLUDE NULLS ]}(",
         "\t\t${5:value_column_name}",
         "\t\tFOR ${6:dimension_column_name}",
@@ -227,460 +207,11 @@ full credit goes to the autor @shinichi-takii
       "prefix": "on",
       "body": "ON"
     },
-    // DML
-    "INSERT INTO": {
-      "prefix": "insert",
-      "body": [
-        "INSERT INTO `${1:project}.${2:dataset}.${3:table}`",
-        "\t(${4:column, ...})",
-        "VALUES",
-        "\t(${6:expr, ...})"
-      ]
-    },
-    "INSERT INTO SELECT": {
-      "prefix": "insert select",
-      "body": [
-        "INSERT INTO `${1:project}.${2:dataset}.${3:table}`",
-        "\t(${4:column, ...})",
-        "SELECT",
-        "\t${5:column}",
-        "FROM `${6:project}.${7:dataset}.${8:table}`",
-        "WHERE ${9:condition}"
-      ]
-    },
     "DELETE FROM ...": {
       "prefix": "delete",
       "body": [
-        "DELETE FROM `${1:project}.${2:dataset}.${3:table}`",
+        "DELETE FROM ${1:table_reference}",
         "WHERE ${4:condition}"
-      ]
-    },
-    "TRUNCATE TABLE": {
-      "prefix": "truncate table",
-      "body": "TRUNCATE TABLE `${1:project}.${2:dataset}.${3:table}`"
-    },
-    "UPDATE ... SET": {
-      "prefix": "update",
-      "body": [
-        "UPDATE `${1:project}.${2:dataset}.${3:table}`",
-        "SET ${4:column} = ${5:value}",
-        "WHERE ${6:condition}"
-      ]
-    },
-    "UPDATE ... SET FROM": {
-      "prefix": "update from",
-      "body": [
-        "UPDATE `${1:project}.${2:dataset}.${3:table}` a",
-        "SET ${4:column} = ${5:value}",
-        "FROM `${6:project}.${7:dataset}.${8:table}` b",
-        "WHERE a.${9:column} = b.${9:column}"
-      ]
-    },
-    "MERGE": {
-      "prefix": "merge",
-      "body": [
-        "MERGE INTO `${1:project}.${2:dataset}.${3:target_table}` t",
-        "USING `${4:project}.${5:dataset}.${6:source_table}` s",
-        "ON ${7:merge_condition}",
-        "WHEN MATCHED THEN",
-        "\tUPDATE SET ${8:target_column} = ${9:value}",
-        "WHEN NOT MATCHED THEN",
-        "\tINSERT (${10:target_column, ...}) VALUES(${11:source_column, ...})",
-        "WHEN MATCHED AND ${12:other_condition} THEN",
-        "\tDELETE"
-      ]
-    },
-    // DDL
-    "CREATE SCHEMA": {
-      "prefix": "create schema",
-      "body": [
-        "CREATE SCHEMA ${1:[IF NOT EXISTS]} `${2:project}.${3:dataset}`",
-        "${4:[OPTIONS (",
-        "\tdescription = \"description\",",
-        "\tdefault_kms_key_name = \"projects/[PROJECT_ID]/locations/[LOCATION]/keyRings/[KEYRING]/cryptoKeys/[KEY]\",",
-        "\tdefault_partition_expiration_days = 1,",
-        "\tdefault_table_expiration_days = 1,",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]",
-        ")]}"
-      ]
-    },
-    "CREATE TEMPORARY TABLE": {
-      "prefix": "create temp table",
-      "body": [
-        "CREATE OR REPLACE TEMP TABLE ${1:table_name}",
-        "(",
-        "\t${2:column} ${3:type}${4: OPTIONS (description = \"comment\")}",
-        ")"
-      ]
-    },
-    "CREATE TABLE": {
-      "prefix": "create table",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }TABLE ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:table}`",
-        "(",
-        "\t${6:column} ${7:type}${8: OPTIONS (description = \"comment\")}",
-        ")",
-        "${9:[PARTITION BY",
-        "\t_PARTITIONDATE",
-        "\t|DATE(_PARTITIONTIME)",
-        "\t|<date_column>",
-        "\t|DATE(<timestamp_column>|<datetime_column>)",
-        "\t|DATETIME_TRUNC(<datetime_column>, {DAY|HOUR|MONTH|YEAR\\})",
-        "\t|TIMESTAMP_TRUNC(<timestamp_column>, {DAY|HOUR|MONTH|YEAR\\})",
-        "\t|TIMESTAMP_TRUNC(_PARTITIONTIME, {DAY|HOUR|MONTH|YEAR\\})",
-        "\t|DATE_TRUNC(<date_column>, {MONTH|YEAR\\})",
-        "\t|RANGE_BUCKET(<int64_column>, GENERATE_ARRAY(<start>, <end>[, <interval>]))]}",
-        "${10:[CLUSTER BY clustering_column_list]}",
-        "${11:[OPTIONS (",
-        "\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tpartition_expiration_days = 1,",
-        "\trequire_partition_filter = false,",
-        "\tkms_key_name = \"projects/[PROJECT_ID]/locations/[LOCATION]/keyRings/[KEYRING]/cryptoKeys/[KEY]\",",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]",
-        ")]}"
-      ]
-    },
-    "CREATE TABLE AS SELECT": {
-      "prefix": "create table as select",
-      "body": [
-        "CREATE TABLE `${1:project}.${2:dataset}.${3:table}`",
-        "(",
-        "\t${4:column} ${5:type}${6: OPTIONS (description = \"comment\")}",
-        ") AS",
-        "SELECT",
-        "\t${7:column}",
-        "FROM `${8:project}.${9:dataset}.${10:table}`",
-        "WHERE ${11:condition}"
-      ]
-    },
-    "CREATE TABLE OPTIONS": {
-      "prefix": ["create table options", "options"],
-      "body": [
-        "OPTIONS (",
-        "\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tpartition_expiration_days = 1,",
-        "\trequire_partition_filter = false,",
-        "\tkms_key_name = \"projects/[PROJECT_ID]/locations/[LOCATION]/keyRings/[KEYRING]/cryptoKeys/[KEY]\",",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]",
-        ")"
-      ]
-    },
-    "CREATE SNAPSHOT TABLE": {
-      "prefix": "create snapshot table",
-      "body": [
-        "CREATE SNAPSHOT TABLE ${1:[IF NOT EXISTS] }`${2:project}.${3:dataset}.${4:snapshot_table}`",
-        "\tCLONE `${5:project}.${6:dataset}.${7:source_table}`",
-        "${8:\t[FOR SYSTEM_TIME AS OF ${9:time_expression}]}",
-        "${10:[OPTIONS (",
-        "\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]",
-        ")]}"
-      ]
-    },
-    "CREATE VIEW": {
-      "prefix": "create view",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }VIEW ${2:[IF NOT EXISTS] }`${4:project}.${5:dataset}.${6:view}`",
-        "${7:[(",
-        "\tcolumn_name_list",
-        ")]}",
-        "${8:[OPTIONS (",
-        "\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]",
-        ")]}",
-        "AS",
-        "SELECT",
-        "\t${9:column}",
-        "FROM `${10:project}.${11:dataset}.${12:table}`"
-      ]
-    },
-    "CREATE MATERIALIZED VIEW": {
-      "prefix": "create materialized view",
-      "body": [
-        "CREATE MATERIALIZED VIEW ${1:[IF NOT EXISTS] }`${2:project}.${3:dataset}.${4:materialized_view}`",
-        "${5:[PARTITION BY",
-        "\t_PARTITIONDATE",
-        "\t|DATE(_PARTITIONTIME)",
-        "\t|<date_column>",
-        "\t|DATE(<timestamp_column>|<datetime_column>)",
-        "\t|DATETIME_TRUNC(<datetime_column>, {DAY|HOUR|MONTH|YEAR\\})",
-        "\t|TIMESTAMP_TRUNC(<timestamp_column>, {DAY|HOUR|MONTH|YEAR\\})",
-        "\t|TIMESTAMP_TRUNC(_PARTITIONTIME, {DAY|HOUR|MONTH|YEAR\\})",
-        "\t|DATE_TRUNC(<date_column>, {MONTH|YEAR\\})",
-        "\t|RANGE_BUCKET(<int64_column>, GENERATE_ARRAY(<start>, <end>[, <interval>]))]}",
-        "${6:[CLUSTER BY clustering_column_list]}",
-        "${7:[OPTIONS (",
-        "\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tenable_refresh = false,",
-        "\trefresh_interval_minutes = 1440,",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]",
-        ")]}"
-      ]
-    },
-    "CREATE EXTERNAL TABLE": {
-      "prefix": "create external table",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }EXTERNAL TABLE ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:external_table}`",
-        "${6:[(",
-        "\tcolumn type OPTIONS (description = \"comment\")",
-        ")]}",
-        "${7:[WITH PARTITION COLUMNS]}",
-        "OPTIONS (",
-        "\t${8:description = \"description\",}",
-        "\t${9:allow_jagged_rows = false,}",
-        "\t${10:allow_quoted_newlines = false,}",
-        "\t${11:compression = \"GZIP\",}",
-        "\t${12:enable_logical_types = false,}",
-        "\t${13:encoding = \"UTF8\"|\"ISO_8859_1\",}",
-        "\t${14:expiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",}",
-        "\t${15:field_delimiter = \",\"|\"\\t\"|\"other\",}",
-        "\t${16:format = \"AVRO\"|\"CSV\"|\"DATASTORE_BACKUP\"|\"GOOGLE_SHEETS\"|\"NEWLINE_DELIMITED_JSON\"|\"ORC\"|\"PARQUET\",}",
-        "\t${17:decimal_target_types = [\"NUMERIC\", \"BIGNUMERIC\"],}",
-        "\t${18:hive_partition_uri_prefix = \"gs://bucket/path\",}",
-        "\t${19:ignore_unknown_values = false,}",
-        "\t${20:max_bad_records = 0,}",
-        "\t${21:null_marker = NULL,}",
-        "\t${22:projection_fields = \"\",}",
-        "\t${23:quote = \"\\\"\",}",
-        "\t${24:require_hive_partition_filter = false,}",
-        "\t${25:sheet_range = \"sheet1!A1:B20\",}",
-        "\t${26:skip_leading_rows = 0,}",
-        "\t${27:uris = [\"gs://bucket/path/*\"]}",
-        ")"
-      ]
-    },
-    "CREATE TEMPORARY JavaScript FUNCTION": {
-      "prefix": "create temp function javascript",
-      "body": [
-        "CREATE TEMP FUNCTION ${1:functionName}(${2:param_name data_type[, ...]})",
-        "RETURNS ${3:data_type}",
-        "LANGUAGE js",
-        "${4:[OPTIONS (library = [\"gs://bucket/path/file.js\"])]}",
-        "AS \"\"\"",
-        "\t${5:return \"expression\";}",
-        "\"\"\";"
-      ]
-    },
-    "CREATE TEMPORARY SQL FUNCTION": {
-      "prefix": "create temp function sql",
-      "body": [
-        "CREATE TEMP FUNCTION ${1:functionName}(${2:param_name data_type[, ...]})",
-        "${3:[RETURNS data_type]}",
-        "AS (",
-        "\t${4:sql_expression}",
-        ");"
-      ]
-    },
-    "CREATE JavaScript FUNCTION": {
-      "prefix": "create function javascript",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }FUNCTION ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:functionName}`(${6:param_name data_type[, ...]})",
-        "RETURNS ${7:data_type}",
-        "LANGUAGE js",
-        "${8:[OPTIONS (library = [\"gs://bucket/path/file.js\"])]}",
-        "AS \"\"\"",
-        "\t${9:return \"expression\";}",
-        "\"\"\";"
-      ]
-    },
-    "CREATE SQL FUNCTION": {
-      "prefix": "create function sql",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }FUNCTION ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:functionName}`(${6:param_name data_type[, ...]})",
-        "${7:[RETURNS data_type]}",
-        "AS (",
-        "\t${8:sql_expression}",
-        ");"
-      ]
-    },
-    "CREATE TABLE FUNCTION": {
-      "prefix": "create table function",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }TABLE FUNCTION ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:functionName}`(${6:param_name data_type|ANY TYPE[, ...]})",
-        "${7:[RETURNS TABLE<column_name data_type[, ...]>]}",
-        "AS (",
-        "\t${8:sql_query}",
-        ");"
-      ]
-    },
-    "CREATE PROCEDURE": {
-      "prefix": "create procedure",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }PROCEDURE ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:ProcedureName}`(${6:[IN|OUT|INOUT] arg_name arg_type[, ...]})",
-        "${7:[OPTIONS (strict_mode = TRUE|FALSE)]}",
-        "BEGIN",
-        "\t${8:statements}",
-        "END;"
-      ]
-    },
-    "CREATE MODEL": {
-      "prefix": "create model",
-      "body": [
-        "CREATE ${1:[OR REPLACE] }MODEL ${2:[IF NOT EXISTS] }`${3:project}.${4:dataset}.${5:model}`",
-        "${6:[OPTIONS (model_option_list)]}",
-        "AS",
-        "${7:query_statement}"
-      ]
-    },
-    "DROP SCHEMA": {
-      "prefix": "drop schema",
-      "body": "DROP SCHEMA ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:dataset}` ${5:[CASCADE|RESTRICT]}"
-    },
-    "DROP TABLE": {
-      "prefix": "drop table",
-      "body": "DROP TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:table}`"
-    },
-    "DROP EXTERNAL TABLE": {
-      "prefix": "drop external table",
-      "body": "DROP EXTERNAL TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:external_table}`"
-    },
-    "DROP VIEW": {
-      "prefix": "drop view",
-      "body": "DROP VIEW ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:view}`"
-    },
-    "DROP MATERIALIZED VIEW": {
-      "prefix": "drop materialized view",
-      "body": "DROP MATERIALIZED VIEW ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:materialized_view}`"
-    },
-    "DROP FUNCTION": {
-      "prefix": "drop function",
-      "body": "DROP FUNCTION ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:functionName}`"
-    },
-    "DROP TABLE FUNCTION": {
-      "prefix": "drop table function",
-      "body": "DROP TABLE FUNCTION ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:functionName}`"
-    },
-    "DROP PROCEDURE": {
-      "prefix": "drop procedure",
-      "body": "DROP PROCEDURE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:ProcedureName}`"
-    },
-    "DROP MODEL": {
-      "prefix": "drop model",
-      "body": "${1:DROP MODEL | DROP MODEL IF EXISTS} `${2:project}.${3:dataset}.${4:model}`"
-    },
-    "ALTER SCHEMA SET OPTIONS": {
-      "prefix": "alter schema",
-      "body": [
-        "ALTER SCHEMA ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:dataset}`",
-        "SET OPTIONS (",
-        "${5:\tdescription = \"description\",",
-        "\tdefault_kms_key_name = \"projects/[PROJECT_ID]/locations/[LOCATION]/keyRings/[KEYRING]/cryptoKeys/[KEY]\",",
-        "\tdefault_partition_expiration_days = 1,",
-        "\tdefault_table_expiration_days = 1,",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]}",
-        ")"
-      ]
-    },
-    "ALTER TABLE SET OPTIONS": {
-      "prefix": "alter table options",
-      "body": [
-        "ALTER TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:table}`",
-        "SET OPTIONS (",
-        "${5:\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tpartition_expiration_days = 1,",
-        "\trequire_partition_filter = false,",
-        "\tkms_key_name = \"projects/[PROJECT_ID]/locations/[LOCATION]/keyRings/[KEYRING]/cryptoKeys/[KEY]\",",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]}",
-        ")"
-      ]
-    },
-    "ALTER TABLE RENAME TO": {
-      "prefix": "alter table rename",
-      "body": [
-        "ALTER TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:table}`",
-        "\tRENAME TO ${5:new_table_name}"
-      ]
-    },
-    "ALTER TABLE ADD COLUMN": {
-      "prefix": "alter table add column",
-      "body": [
-        "ALTER TABLE `${1:project}.${2:dataset}.${3:table}`",
-        "\tADD COLUMN ${4:[IF NOT EXISTS]} ${5:column_name} ${6:type}${7: OPTIONS (description = \"comment\")}"
-      ]
-    },
-    "ALTER TABLE DROP COLUMN": {
-      "prefix": "alter table drop column",
-      "body": [
-        "ALTER TABLE `${1:project}.${2:dataset}.${3:table}`",
-        "\tDROP COLUMN ${4:[IF EXISTS]} ${5:column_name}"
-      ]
-    },
-    "ALTER COLUMN SET OPTIONS": {
-      "prefix": "alter column set options",
-      "body": [
-        "ALTER TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:table}`",
-        "\tALTER COLUMN ${5:[IF EXISTS]} ${6:column_name} SET OPTIONS (${7:description = \"comment\"})"
-      ]
-    },
-    "ALTER COLUMN DROP NOT NULL": {
-      "prefix": "alter column drop not null",
-      "body": [
-        "ALTER TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:table}`",
-        "\tALTER COLUMN ${5:[IF EXISTS]} ${6:column_name} DROP NOT NULL"
-      ]
-    },
-    "ALTER COLUMN SET DATA TYPE": {
-      "prefix": "alter column set data type",
-      "body": [
-        "ALTER TABLE ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:table}`",
-        "\tALTER COLUMN ${5:[IF EXISTS]} ${6:column_name} SET DATA TYPE (${7:data_type})"
-      ]
-    },
-    "ALTER VIEW SET OPTIONS": {
-      "prefix": "alter view",
-      "body": [
-        "ALTER VIEW ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:view}`",
-        "SET OPTIONS (",
-        "${5:\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]}",
-        ")"
-      ]
-    },
-    "ALTER MATERIALIZED VIEW SET OPTIONS": {
-      "prefix": "alter materialized view",
-      "body": [
-        "ALTER MATERIALIZED VIEW ${1:[IF EXISTS]} `${2:project}.${3:dataset}.${4:materialized_view}`",
-        "SET OPTIONS (",
-        "${5:\tdescription = \"description\",",
-        "\texpiration_timestamp = TIMESTAMP \"YYYY-MM-DD HH:MI:SS UTC\",",
-        "\tenable_refresh = false,",
-        "\trefresh_interval_minutes = 1440,",
-        "\tfriendly_name = \"friendly_name\",",
-        "\tlabels = [(\"key\", \"value\")]}",
-        ")"
-      ]
-    },
-    // DCL
-    "GRANT": {
-      "prefix": "grant",
-      "body": [
-        "GRANT `${1:role_name[, ...]}`",
-        "\tON ${2:SCHEMA `project.dataset`}|${3:TABLE `project.dataset.table`}|${4:VIEW `project.dataset.view`}",
-        "\tTO ${5:\"user:user@domain|group:group@domain|serviceAccount:user@project.iam.gserviceaccount.com|domain:domain|specialGroup:(allAuthenticatedUsers|allUsers)\"[, ...]}"
-      ]
-    },
-    "REVOKE": {
-      "prefix": "revoke",
-      "body": [
-        "REVOKE `${1:role_name[, ...]}`",
-        "\tON ${2:SCHEMA `project.dataset`}|${3:TABLE `project.dataset.table`}|${4:VIEW `project.dataset.view`}",
-        "\tFROM ${5:\"user:user@domain|group:group@domain|serviceAccount:user@project.iam.gserviceaccount.com|domain:domain|specialGroup:(allAuthenticatedUsers|allUsers)\"[, ...]}"
       ]
     },
     // Debugging statements
@@ -692,7 +223,7 @@ full credit goes to the autor @shinichi-takii
     "CALL PROCEDURE": {
       "prefix": "call procedure",
       "body": [
-        "CALL `${1:project}.${2:dataset}.${3:ProcedureName}`(${4:arg[, ...]});"
+        "CALL ${1:table_reference}(${4:arg[, ...]});"
       ]
     },
     "DECLARE": {
@@ -782,8 +313,8 @@ full credit goes to the autor @shinichi-takii
     "IF EXISTS query THEN": {
       "prefix": "if exists query",
       "body": [
-        "IF EXISTS (${1:SELECT expression FROM `project.dataset.table` WHERE condition}) THEN",
-        "\t${2:statements}",
+        "IF EXISTS (${1:SELECT expression FROM ${2:table_reference} WHERE condition}) THEN",
+        "\t${3:statements}",
         "END IF;"
       ]
     },
@@ -835,27 +366,6 @@ full credit goes to the autor @shinichi-takii
       "prefix": "return",
       "body": "RETURN;",
       "description": "RETURN terminates execution of the current script."
-    },
-    // Other statements
-    "BQ.JOBS.CANCEL": {
-      "prefix": "call bq jobs cancel",
-      "body": "CALL BQ.JOBS.CANCEL(${1:\"project-id.job_id\"});",
-      "description": "Canceling a job."
-    },
-    "EXPORT DATA": {
-      "prefix": "export data",
-      "body": [
-        "EXPORT DATA",
-        "OPTIONS (",
-        "\t${1:format = \"AVRO\"|\"CSV\"|\"JSON\"|\"PARQUET\",}",
-        "\t${2:compression = \"GZIP\"|\"DEFLATE\"|\"SNAPPY\",}",
-        "\t${3:field_delimiter = \",\"|\"\\t\"|\"other\",}",
-        "\t${4:header = false|true,}",
-        "\t${5:overwrite = false|true,}",
-        "\t${6:uri = \"gs://bucket/path/file_*.csv.gz\"}",
-        ") AS",
-        "query_statement"
-      ]
     },
     // Functions
     "ANY_VALUE()": {
@@ -2256,7 +1766,7 @@ full credit goes to the autor @shinichi-takii
     "ML.EVALUATE()": {
       "prefix": "mlevaluate",
       "body": [
-        "ML.EVALUATE(MODEL `${1:project}.${2:dataset}.${3:model}`,",
+        "ML.EVALUATE(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
         "\t${5:[STRUCT(<T> AS threshold)]})"
       ]
@@ -2264,7 +1774,7 @@ full credit goes to the autor @shinichi-takii
     "ML.ROC_CURVE()": {
       "prefix": "mlroccurve",
       "body": [
-        "ML.ROC_CURVE(MODEL `${1:project}.${2:dataset}.${3:model}`,",
+        "ML.ROC_CURVE(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
         "\t${5:[GENERATE_ARRAY(thresholds)]})"
       ]
@@ -2272,30 +1782,30 @@ full credit goes to the autor @shinichi-takii
     "ML.CONFUSION_MATRIX()": {
       "prefix": "mlconfusionmatrix",
       "body": [
-        "ML.CONFUSION_MATRIX(MODEL `${1:project}.${2:dataset}.${3:model}`,",
+        "ML.CONFUSION_MATRIX(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
         "\t${5:[GENERATE_ARRAY(thresholds)]})"
       ]
     },
     "ML.TRAINING_INFO()": {
       "prefix": "mltraininginfo",
-      "body": "ML.TRAINING_INFO(MODEL `${1:project}.${2:dataset}.${3:model}`)"
+      "body": "ML.TRAINING_INFO(MODEL ${1:model_reference})"
     },
     "ML.FEATURE_INFO()": {
       "prefix": "mlfeatureinfo",
-      "body": "ML.FEATURE_INFO(MODEL `${1:project}.${2:dataset}.${3:model}`)"
+      "body": "ML.FEATURE_INFO(MODEL ${1:model_reference})"
     },
     "ML.WEIGHTS()": {
       "prefix": "mlweights",
       "body": [
-        "ML.WEIGHTS(MODEL `${1:project}.${2:dataset}.${3:model}`,",
+        "ML.WEIGHTS(MODEL ${1:model_reference},",
         "\t${4:[STRUCT(<T> AS standardize)]})"
       ]
     },
     "ML.PREDICT()": {
       "prefix": "mlpredict",
       "body": [
-        "ML.PREDICT(MODEL `${1:project}.${2:dataset}.${3:model}`,",
+        "ML.PREDICT(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
         "\t${5:[STRUCT(<threshold FLOAT64> AS threshold)]})"
       ]
@@ -2542,842 +2052,6 @@ full credit goes to the autor @shinichi-takii
       "prefix": "external_query",
       "body": "EXTERNAL_QUERY(${1:connection_id}, ${2:external_database_query}${3:[, options]})",
       "description": "Executes the query in Cloud SQL and returns results as a temporary table."
-    },
-    // INFORMATION_SCHEMA - Dataset metadata
-    "INFORMATION_SCHEMA.SCHEMATA": {
-      "prefix": "info schemata",
-      "body": "INFORMATION_SCHEMA.SCHEMATA",
-      "description": "Results contain one row for each dataset in a project to which the current user has access."
-    },
-    "INFORMATION_SCHEMA.SCHEMATA_OPTIONS": {
-      "prefix": "info schemata options",
-      "body": "INFORMATION_SCHEMA.SCHEMATA_OPTIONS",
-      "description": "Results contain one row for each dataset in a project to which the current user has access."
-    },
-    // INFORMATION_SCHEMA - Table metadata
-    "INFORMATION_SCHEMA.TABLES": {
-      "prefix": "info tables",
-      "body": "INFORMATION_SCHEMA.TABLES",
-      "description": "Results contain one row for each table or view in a dataset."
-    },
-    "INFORMATION_SCHEMA.TABLE_OPTIONS": {
-      "prefix": "info table options",
-      "body": "INFORMATION_SCHEMA.TABLE_OPTIONS",
-      "description": "Results contain one row for each table or view in a dataset."
-    },
-    "INFORMATION_SCHEMA.COLUMNS": {
-      "prefix": "info columns",
-      "body": "INFORMATION_SCHEMA.COLUMNS",
-      "description": "Results contain one row for each column (field) in a table."
-    },
-    "INFORMATION_SCHEMA.COLUMN_FIELD_PATHS": {
-      "prefix": "info column field paths",
-      "body": "INFORMATION_SCHEMA.COLUMN_FIELD_PATHS",
-      "description": "Results contain one row for each column nested within a RECORD (or STRUCT) column."
-    },
-    "INFORMATION_SCHEMA.PARTITIONS": {
-      "prefix": "info partitions",
-      "body": "INFORMATION_SCHEMA.PARTITIONS",
-      "description": "Results contain one row for each partition."
-    },
-    // INFORMATION_SCHEMA - Snapshot metadata
-    "INFORMATION_SCHEMA.TABLE_SNAPSHOTS": {
-      "prefix": "info table snapshots",
-      "body": "INFORMATION_SCHEMA.TABLE_SNAPSHOTS",
-      "description": "Results contain one row for each table snapshot in the specified dataset or region."
-    },
-    // INFORMATION_SCHEMA - View metadata
-    "INFORMATION_SCHEMA.VIEWS": {
-      "prefix": "info views",
-      "body": "INFORMATION_SCHEMA.VIEWS",
-      "description": "Results contain one row for each view in a dataset."
-    },
-    // INFORMATION_SCHEMA - Job metadata
-    "INFORMATION_SCHEMA.JOBS_BY_USER": {
-      "prefix": "info jobs by user",
-      "body": "INFORMATION_SCHEMA.JOBS_BY_USER",
-      "description": "Returns only the jobs submitted by the current user in the current project."
-    },
-    "INFORMATION_SCHEMA.JOBS_BY_PROJECT": {
-      "prefix": "info jobs by project",
-      "body": "INFORMATION_SCHEMA.JOBS_BY_PROJECT",
-      "description": "Returns all jobs submitted in the current project."
-    },
-    "INFORMATION_SCHEMA.JOBS_BY_FOLDER": {
-      "prefix": "info jobs by folder",
-      "body": "INFORMATION_SCHEMA.JOBS_BY_FOLDER",
-      "description": "Returns returns all jobs submitted in the parent folder of the current project, including the jobs in subfolders under it."
-    },
-    "INFORMATION_SCHEMA.JOBS_BY_ORGANIZATION": {
-      "prefix": "info jobs by organization",
-      "body": "INFORMATION_SCHEMA.JOBS_BY_ORGANIZATION",
-      "description": "Returns all jobs submitted in the organization that is associated with the current project."
-    },
-    // INFORMATION_SCHEMA - Job metadata by timeslice
-    "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_USER": {
-      "prefix": "info jobs timeline by user",
-      "body": "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_USER",
-      "description": "Returns only the jobs submitted by the current user in the current project."
-    },
-    "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_PROJECT": {
-      "prefix": "info jobs timeline by project",
-      "body": "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_PROJECT",
-      "description": "Returns all jobs submitted in the current project."
-    },
-    "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_FOLDER": {
-      "prefix": "info jobs timeline by folder",
-      "body": "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_FOLDER",
-      "description": "Returns all jobs submitted in the parent folder of the current project, including the jobs in subfolders under it."
-    },
-    "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_ORGANIZATION": {
-      "prefix": "info jobs timeline by organization",
-      "body": "INFORMATION_SCHEMA.JOBS_TIMELINE_BY_ORGANIZATION",
-      "description": "Returns all jobs submitted in the parent folder of the current project, including the jobs in subfolders under it."
-    },
-    // INFORMATION_SCHEMA - Object privilege
-    "INFORMATION_SCHEMA.OBJECT_PRIVILEGES": {
-      "prefix": "info object privileges",
-      "body": "INFORMATION_SCHEMA.OBJECT_PRIVILEGES",
-      "description": "Returns access control bindings for a resource."
-    },
-    // INFORMATION_SCHEMA - Reservations metadata
-    "INFORMATION_SCHEMA.RESERVATION_CHANGES_BY_PROJECT": {
-      "prefix": "info reservation changes by project",
-      "body": "INFORMATION_SCHEMA.RESERVATION_CHANGES_BY_PROJECT",
-      "description": "Contains a list of all changes to reservations within the administration project. Each row represents a change to a single reservation."
-    },
-    "INFORMATION_SCHEMA.RESERVATIONS_BY_PROJECT": {
-      "prefix": "info reservations by project",
-      "body": "INFORMATION_SCHEMA.RESERVATIONS_BY_PROJECT",
-      "description": "Contains a list of all current reservations within the administration project. Each row represents a single, current reservation. A current reservation is a reservation that has not been deleted."
-    },
-    "INFORMATION_SCHEMA.CAPACITY_COMMITMENT_CHANGES_BY_PROJECT": {
-      "prefix": "info capacity commitment changes by project",
-      "body": "INFORMATION_SCHEMA.CAPACITY_COMMITMENT_CHANGES_BY_PROJECT",
-      "description": "Contains a list of all changes to capacity commitments within the administration project. Each row represents a single change to a single capacity commitment."
-    },
-    "INFORMATION_SCHEMA.CAPACITY_COMMITMENTS_BY_PROJECT": {
-      "prefix": "info capacity commitments by project",
-      "body": "INFORMATION_SCHEMA.CAPACITY_COMMITMENTS_BY_PROJECT",
-      "description": "Contains a list of all current capacity commitments within the administration project. Each row represents a single, current capacity commitment. A current capacity commitment is either pending or active and has not been deleted."
-    },
-    "INFORMATION_SCHEMA.ASSIGNMENT_CHANGES_BY_PROJECT": {
-      "prefix": "info assignment changes by project",
-      "body": "INFORMATION_SCHEMA.ASSIGNMENT_CHANGES_BY_PROJECT",
-      "description": "Contains a list of all changes to assignments within the administration project. Each row represents a single change to a single assignment."
-    },
-    "INFORMATION_SCHEMA.ASSIGNMENTS_BY_PROJECT": {
-      "prefix": "info assignments by project",
-      "body": "INFORMATION_SCHEMA.ASSIGNMENTS_BY_PROJECT",
-      "description": "Contains a list of all current assignments within the administration project. Each row represents a single, current assignment. A current assignment is either pending or active and has not been deleted."
-    },
-    // INFORMATION_SCHEMA - Routine metadata
-    "INFORMATION_SCHEMA.ROUTINES": {
-      "prefix": "info routines",
-      "body": "INFORMATION_SCHEMA.ROUTINES",
-      "description": "Contains "
-    },
-    "INFORMATION_SCHEMA.ROUTINE_OPTIONS": {
-      "prefix": "info routine options",
-      "body": "INFORMATION_SCHEMA.ROUTINE_OPTIONS",
-      "description": "Contains "
-    },
-    "INFORMATION_SCHEMA.PARAMETERS": {
-      "prefix": "info parameters",
-      "body": "INFORMATION_SCHEMA.PARAMETERS",
-      "description": "Contains "
-    },
-    // INFORMATION_SCHEMA - Streaming metadata
-    "INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_PROJECT": {
-      "prefix": "info streaming timeline by project",
-      "body": "INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_PROJECT",
-      "description": "Contains per-minute aggregated streaming statistics for the current project."
-    },
-    "INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_FOLDER": {
-      "prefix": "info streaming timeline by folder",
-      "body": "INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_FOLDER",
-      "description": "Contains per-minute aggregated streaming statistics for the parent folder of the current project, including its subfolders."
-    },
-    "INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_ORGANIZATION": {
-      "prefix": "info streaming timeline by organization",
-      "body": "INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_ORGANIZATION",
-      "description": "Contains per-minute aggregated streaming statistics for the whole organization associated with the current project."
-    },
-    // INFORMATION_SCHEMA - Dataset metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.SCHEMATA": {
-      "prefix": "select info schemata",
-      "body": [
-        "SELECT",
-        "\tcatalog_name,",
-        "\tschema_name,",
-        "\tschema_owner,",
-        "\tcreation_time,",
-        "\tlast_modified_time,",
-        "\tlocation",
-        "FROM",
-        "\t`${1:project}`.INFORMATION_SCHEMA.SCHEMATA",
-        "ORDER BY",
-        "\tschema_name"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.SCHEMATA_OPTIONS": {
-      "prefix": "select info schemata options",
-      "body": [
-        "SELECT",
-        "\tcatalog_name,",
-        "\tschema_name,",
-        "\toption_name,",
-        "\toption_type,",
-        "\toption_value",
-        "FROM",
-        "\t`${1:project}`.INFORMATION_SCHEMA.SCHEMATA_OPTIONS",
-        "ORDER BY",
-        "\tschema_name, option_name"
-      ]
-    },
-    // INFORMATION_SCHEMA - Table metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.TABLES": {
-      "prefix": "select info tables",
-      "body": [
-        "SELECT",
-        "\ttable_catalog,",
-        "\ttable_schema,",
-        "\ttable_name,",
-        "\ttable_type,",
-        "\tis_insertable_into,",
-        "\tis_typed,",
-        "\tcreation_time,",
-        "\tddl",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.TABLES",
-        "ORDER BY",
-        "\ttable_name"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.TABLE_OPTIONS": {
-      "prefix": "select info table options",
-      "body": [
-        "SELECT",
-        "\ttable_catalog,",
-        "\ttable_schema,",
-        "\ttable_name,",
-        "\toption_name,",
-        "\toption_type,",
-        "\toption_value",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.TABLE_OPTIONS",
-        "ORDER BY",
-        "\ttable_name, option_name"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.COLUMNS": {
-      "prefix": "select info columns",
-      "body": [
-        "SELECT",
-        "\ttable_catalog,",
-        "\ttable_schema,",
-        "\ttable_name,",
-        "\tcolumn_name,",
-        "\tordinal_position,",
-        "\tis_nullable,",
-        "\tdata_type,",
-        "\tis_generated,",
-        "\tgeneration_expression,",
-        "\tis_stored,",
-        "\tis_hidden,",
-        "\tis_updatable,",
-        "\tis_system_defined,",
-        "\tis_partitioning_column,",
-        "\tclustering_ordinal_position",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.COLUMNS",
-        "ORDER BY",
-        "\ttable_name, ordinal_position"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.COLUMN_FIELD_PATHS": {
-      "prefix": "select info column field paths",
-      "body": [
-        "SELECT",
-        "\ttable_catalog,",
-        "\ttable_schema,",
-        "\ttable_name,",
-        "\tcolumn_name,",
-        "\tfield_path,",
-        "\tdata_type,",
-        "\tdescription",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS",
-        "ORDER BY",
-        "\ttable_name, column_name"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.PARTITIONS": {
-      "prefix": "select info partitions",
-      "body": [
-        "SELECT",
-        "\ttable_catalog,",
-        "\ttable_schema,",
-        "\ttable_name,",
-        "\tpartition_id,",
-        "\ttotal_rows,",
-        "\ttotal_logical_bytes,",
-        "\ttotal_billable_bytes,",
-        "\tlast_modified_time,",
-        "\tstorage_tier",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.PARTITIONS",
-        "ORDER BY",
-        "\ttable_name, partition_id DESC"
-      ]
-    },
-    // INFORMATION_SCHEMA - Snapshot metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.TABLE_SNAPSHOTS": {
-      "prefix": "select info table snapshots",
-      "body": [
-        "SELECT",
-        "\ttable_catalog",
-        "\ttable_schema",
-        "\ttable_name",
-        "\tbase_table_catalog",
-        "\tbase_table_schema",
-        "\tbase_table_name",
-        "\tsnapshot_time",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`|`region-${3:(us|eu|region_name)}`.INFORMATION_SCHEMA.TABLE_SNAPSHOTS",
-        "ORDER BY",
-        "\ttable_name"
-      ]
-    },
-    // INFORMATION_SCHEMA - View metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.VIEWS": {
-      "prefix": "select info views",
-      "body": [
-        "SELECT",
-        "\ttable_catalog,",
-        "\ttable_schema,",
-        "\ttable_name,",
-        "\tview_definition,",
-        "\tcheck_option,",
-        "\tuse_standard_sql",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.VIEWS",
-        "ORDER BY",
-        "\ttable_name"
-      ]
-    },
-    // INFORMATION_SCHEMA - Job metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_BY_USER": {
-      "prefix": "select info jobs by user",
-      "body": [
-        "SELECT",
-        "\tcreation_time,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tstart_time,",
-        "\tend_time,",
-        "\tquery,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\ttotal_slot_ms,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\tdestination_table,",
-        "\treferenced_tables,",
-        "\tlabels,",
-        "\ttimeline,",
-        "\tjob_stages,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_BY_USER",
-        "ORDER BY",
-        "\tcreation_time DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_BY_PROJECT": {
-      "prefix": "select info jobs by project",
-      "body": [
-        "SELECT",
-        "\tcreation_time,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tstart_time,",
-        "\tend_time,",
-        "\tquery,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\ttotal_slot_ms,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\tdestination_table,",
-        "\treferenced_tables,",
-        "\tlabels,",
-        "\ttimeline,",
-        "\tjob_stages,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT",
-        "ORDER BY",
-        "\tcreation_time DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_BY_FOLDER": {
-      "prefix": "select info jobs by folder",
-      "body": [
-        "SELECT",
-        "\tcreation_time,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tfolder_numbers,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tstart_time,",
-        "\tend_time,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\ttotal_slot_ms,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\tdestination_table,",
-        "\treferenced_tables,",
-        "\tlabels,",
-        "\ttimeline,",
-        "\tjob_stages,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_BY_FOLDER",
-        "ORDER BY",
-        "\tcreation_time DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_BY_ORGANIZATION": {
-      "prefix": "select info jobs by organization",
-      "body": [
-        "SELECT",
-        "\tcreation_time,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tfolder_numbers,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tstart_time,",
-        "\tend_time,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\ttotal_slot_ms,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\tdestination_table,",
-        "\treferenced_tables,",
-        "\tlabels,",
-        "\ttimeline,",
-        "\tjob_stages,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_BY_ORGANIZATION",
-        "ORDER BY",
-        "\tcreation_time DESC"
-      ]
-    },
-    // INFORMATION_SCHEMA - Job metadata by timeslice
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_TIMELINE_BY_USER": {
-      "prefix": "select info jobs timeline by user",
-      "body": [
-        "SELECT",
-        "\tperiod_start,",
-        "\tperiod_slot_ms,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tjob_creation_time,",
-        "\tjob_start_time,",
-        "\tjob_end_time,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_TIMELINE_BY_USER",
-        "ORDER BY",
-        "\tperiod_start DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_TIMELINE_BY_PROJECT": {
-      "prefix": "select info jobs timeline by project",
-      "body": [
-        "SELECT",
-        "\tperiod_start,",
-        "\tperiod_slot_ms,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tjob_creation_time,",
-        "\tjob_start_time,",
-        "\tjob_end_time,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_TIMELINE_BY_PROJECT",
-        "ORDER BY",
-        "\tperiod_start DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_TIMELINE_BY_FOLDER": {
-      "prefix": "select info jobs timeline by folder",
-      "body": [
-        "SELECT",
-        "\tperiod_start,",
-        "\tperiod_slot_ms,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tfolder_numbers,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tjob_creation_time,",
-        "\tjob_start_time,",
-        "\tjob_end_time,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_TIMELINE_BY_FOLDER",
-        "ORDER BY",
-        "\tperiod_start DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.JOBS_TIMELINE_BY_ORGANIZATION": {
-      "prefix": "select info jobs timeline by organization",
-      "body": [
-        "SELECT",
-        "\tperiod_start,",
-        "\tperiod_slot_ms,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tfolder_numbers,",
-        "\tuser_email,",
-        "\tjob_id,",
-        "\tjob_type,",
-        "\tstatement_type,",
-        "\tpriority,",
-        "\tjob_creation_time,",
-        "\tjob_start_time,",
-        "\tjob_end_time,",
-        "\tstate,",
-        "\treservation_id,",
-        "\ttotal_bytes_processed,",
-        "\terror_result,",
-        "\tcache_hit,",
-        "\ttotal_bytes_billed,",
-        "\tparent_job_id",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.JOBS_TIMELINE_BY_ORGANIZATION",
-        "ORDER BY",
-        "\tperiod_start DESC"
-      ]
-    },
-    // INFORMATION_SCHEMA - Object privilege
-    "SELECT ... FROM INFORMATION_SCHEMA.OBJECT_PRIVILEGES": {
-      "prefix": "select info object privileges",
-      "body": [
-        "SELECT",
-        "\tobject_catalog,",
-        "\tobject_schema,",
-        "\tobject_name,",
-        "\tobject_type,",
-        "\tprivilege_type,",
-        "\tgrantee",
-        "FROM",
-        "\t${1:`project`}.`region-${2:(us|eu|region_name)}`.INFORMATION_SCHEMA.OBJECT_PRIVILEGES",
-        "WHERE",
-        "\t-- Dataset required condition",
-        "\t${3:object_name = \"dataset\"}",
-        "\t-- Table/View required conditions",
-        "\t${4:object_schema = \"dataset\"}",
-        "\tAND ${5:object_name = \"table_or_view\"}",
-        "ORDER BY",
-        "\tprivilege_type,",
-        "\tgrantee"
-      ]
-    },
-    // INFORMATION_SCHEMA - Reservations metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.RESERVATION_CHANGES_BY_PROJECT": {
-      "prefix": "select info reservation changes by project",
-      "body": [
-        "SELECT",
-        "\tchange_timestamp,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\treservation_name,",
-        "\tignore_idle_slots,",
-        "\taction,",
-        "\tslot_capacity,",
-        "\tuser_email",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.RESERVATION_CHANGES_BY_PROJECT",
-        "ORDER BY",
-        "\tchange_timestamp DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.RESERVATIONS_BY_PROJECT": {
-      "prefix": "select info reservations by project",
-      "body": [
-        "SELECT",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\treservation_name,",
-        "\tignore_idle_slots,",
-        "\tslot_capacity",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.RESERVATIONS_BY_PROJECT",
-        "ORDER BY",
-        "\tproject_id"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.CAPACITY_COMMITMENT_CHANGES_BY_PROJECT": {
-      "prefix": "select info capacity commitment changes by project",
-      "body": [
-        "SELECT",
-        "\tchange_timestamp,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tcapacity_commitment_id,",
-        "\tcommitment_plan,",
-        "\tstate,",
-        "\tslot_count,",
-        "\taction,",
-        "\tuser_email,",
-        "\tcommitment_start_time,",
-        "\tcommitment_end_time,",
-        "\tfailure_status,",
-        "\trenewal_plan",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.CAPACITY_COMMITMENT_CHANGES_BY_PROJECT",
-        "ORDER BY",
-        "\tchange_timestamp DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.CAPACITY_COMMITMENTS_BY_PROJECT": {
-      "prefix": "select info capacity commitments by project",
-      "body": [
-        "SELECT",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tcapacity_commitment_id,",
-        "\tcommitment_plan,",
-        "\tstate,",
-        "\tslot_count",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.CAPACITY_COMMITMENTS_BY_PROJECT",
-        "ORDER BY",
-        "\tproject_id"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.ASSIGNMENT_CHANGES_BY_PROJECT": {
-      "prefix": "select info assignment changes by project",
-      "body": [
-        "SELECT",
-        "\tchange_timestamp,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tassignment_id,",
-        "\treservation_name,",
-        "\tjob_type,",
-        "\tassignee_id,",
-        "\tassignee_number,",
-        "\tassignee_type,",
-        "\taction,",
-        "\tuser_email,",
-        "\tstate",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.ASSIGNMENT_CHANGES_BY_PROJECT",
-        "ORDER BY",
-        "\tchange_timestamp DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.ASSIGNMENTS_BY_PROJECT": {
-      "prefix": "select info assignments by project",
-      "body": [
-        "SELECT",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tassignment_id,",
-        "\treservation_name,",
-        "\tjob_type,",
-        "\tassignee_id,",
-        "\tassignee_number,",
-        "\tassignee_type",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.ASSIGNMENTS_BY_PROJECT",
-        "ORDER BY",
-        "\tproject_id"
-      ]
-    },
-    // INFORMATION_SCHEMA - Routine metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.ROUTINES": {
-      "prefix": "select info routines",
-      "body": [
-        "SELECT",
-        "\tspecific_catalog,",
-        "\tspecific_schema,",
-        "\tspecific_name,",
-        "\troutine_catalog,",
-        "\troutine_schema,",
-        "\troutine_name,",
-        "\troutine_type,",
-        "\tdata_type,",
-        "\troutine_body,",
-        "\troutine_definition,",
-        "\texternal_language,",
-        "\tis_deterministic,",
-        "\tsecurity_type,",
-        "\tcreated,",
-        "\tlast_modified",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.ROUTINES",
-        "ORDER BY",
-        "\tspecific_catalog, specific_schema, specific_name"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.ROUTINE_OPTIONS": {
-      "prefix": "select info routine options",
-      "body": [
-        "SELECT",
-        "\tspecific_catalog,",
-        "\tspecific_schema,",
-        "\tspecific_name,",
-        "\toption_name,",
-        "\toption_type,",
-        "\toption_value",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.ROUTINE_OPTIONS",
-        "ORDER BY",
-        "\tspecific_catalog, specific_schema, specific_name, option_name"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.PARAMETERS": {
-      "prefix": "select info parameters",
-      "body": [
-        "SELECT",
-        "\tspecific_catalog,",
-        "\tspecific_schema,",
-        "\tspecific_name,",
-        "\tordinal_position,",
-        "\tparameter_mode,",
-        "\tis_result,",
-        "\tparameter_name,",
-        "\tdata_type,",
-        "\tparameter_default,",
-        "\tis_aggregate",
-        "FROM",
-        "\t`${1:project}.${2:dataset}`.INFORMATION_SCHEMA.PARAMETERS",
-        "ORDER BY",
-        "\tspecific_catalog, specific_schema, specific_name, ordinal_position"
-      ]
-    },
-    // INFORMATION_SCHEMA - Streaming metadata
-    "SELECT ... FROM INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_PROJECT": {
-      "prefix": "select info streaming timeline by project",
-      "body": [
-        "SELECT",
-        "\tstart_timestamp,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tdataset_id,",
-        "\ttable_id,",
-        "\terror_code,",
-        "\ttotal_requests,",
-        "\ttotal_rows,",
-        "\ttotal_input_bytes",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_PROJECT",
-        "ORDER BY",
-        "\tstart_timestamp DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_FOLDER": {
-      "prefix": "select info streaming timeline by folder",
-      "body": [
-        "SELECT",
-        "\tstart_timestamp,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tdataset_id,",
-        "\ttable_id,",
-        "\terror_code,",
-        "\ttotal_requests,",
-        "\ttotal_rows,",
-        "\ttotal_input_bytes",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_FOLDER",
-        "ORDER BY",
-        "\tstart_timestamp DESC"
-      ]
-    },
-    "SELECT ... FROM INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_ORGANIZATION": {
-      "prefix": "select info streaming timeline by organization",
-      "body": [
-        "SELECT",
-        "\tstart_timestamp,",
-        "\tproject_id,",
-        "\tproject_number,",
-        "\tdataset_id,",
-        "\ttable_id,",
-        "\terror_code,",
-        "\ttotal_requests,",
-        "\ttotal_rows,",
-        "\ttotal_input_bytes",
-        "FROM",
-        "\t`region-${1:(us|eu|region_name)}`.INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_ORGANIZATION",
-        "ORDER BY",
-        "\tstart_timestamp DESC"
-      ]
     }
   }
 }
