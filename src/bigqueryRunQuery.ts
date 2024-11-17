@@ -1,6 +1,5 @@
-import { result } from 'lodash';
 import * as vscode from 'vscode';
-const { BigQuery } = require('@google-cloud/bigquery');
+import { getBigQueryClient, checkAuthentication } from './bigqueryClient';
 
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
@@ -24,7 +23,7 @@ function parseObject(obj: any, _childrens: any) {
                 _children[key] = value.toString();
             }
             else if (value.constructor.name === 'Object') {
-                let newValues:any = [];
+                let newValues: any = [];
                 for (const [key, val] of Object.entries(value)) {
                     if (val && (typeof val === "object" && val !== null)) {
                         const dateValue = (val as any).value;
@@ -102,30 +101,50 @@ function transformBigValues(obj: any) {
 }
 
 export async function queryBigQuery(query: string) {
-    const bigqueryClient = new BigQuery();
+    await checkAuthentication(); // Ensure authentication is valid
 
-    if (cancelBigQueryJobSignal) {
-        vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
-        cancelBigQueryJobSignal = false;
-        return { results: undefined, columns:undefined, jobStats: { totalBytesBilled: undefined } };
+    const bigquery = getBigQueryClient();
+    if (!bigquery) {
+        vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
     }
 
-    [bigQueryJob] = await bigqueryClient.createQueryJob(query);
+    if (cancelBigQueryJobSignal) { // Handle cancellation signal
+        vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
+        cancelBigQueryJobSignal = false;
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+    }
+
+    let bigQueryJob;
+    try {
+        [bigQueryJob] = await bigquery.createQueryJob(query); // Use shared client
+    } catch (error: any) {
+        // Handle job creation errors (e.g., invalid query)
+        vscode.window.showErrorMessage(`Error creating BigQuery job: ${error.message}`);
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } }; // Or throw the error if appropriate
+    }
 
     //TODO: Not sure if this is needed as if the job is created the job id should be removed when cancelBigQueryJob() is called
     if (cancelBigQueryJobSignal) {
-        cancelBigQueryJob();
+        await cancelBigQueryJob();
         cancelBigQueryJobSignal = false;
-    };
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+    }
 
-    const options = {
-        maxResults: queryLimit
-    };
+    const options = { maxResults: queryLimit };
 
     //TODO: even when the job has been cancelled it might return results, handle this
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
-    const [rows] = await bigQueryJob.getQueryResults(options);
-    queryLimit = 1000; // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
+    let rows;
+    try {
+        [rows] = await bigQueryJob.getQueryResults(options);
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } }; // Or throw the error
+    }
+
+    // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
+    queryLimit = 1000;
 
     let totalBytesBilled;
 
@@ -140,11 +159,11 @@ export async function queryBigQuery(query: string) {
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
     }
 
-    function convertArrayToObject(array:any, columnName:string) {
-        if (array.length === 0){
-            return [{[columnName]: null}];
+    function convertArrayToObject(array: any, columnName: string) {
+        if (array.length === 0) {
+            return [{ [columnName]: null }];
         }
-        return array.map((item:any) => ({ [columnName]: item }));
+        return array.map((item: any) => ({ [columnName]: item }));
     }
 
     let results = rows.map((row: { [s: string]: unknown }) => {
@@ -153,7 +172,7 @@ export async function queryBigQuery(query: string) {
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
 
-                if ((value[0] && typeof value[0] === "string") || (value.length === 0)){
+                if ((value[0] && typeof value[0] === "string") || (value.length === 0)) {
                     value = convertArrayToObject(value, key);
                 }
 
@@ -163,15 +182,15 @@ export async function queryBigQuery(query: string) {
                 // Nested object in Tabulator are displayed by adding the key _children to the exsisting array
                 if (obj._children) {
                     for (let i = 0; i < _childrens.length; i++) {
-                        if(obj._children[i]){
+                        if (obj._children[i]) {
                             obj._children[i] = { ...obj._children[i], ..._childrens[i] };
                         } else {
                             // we need to fill the _children to have all the data for each column so we will fill null values for the rest of the keys
                             let keys = Object.keys(obj._children[0]);
                             let newChildren = {};
-                            keys.forEach((_key: string)=>{
-                                if(_key !== key){
-                                    newChildren = {...newChildren, [_key]: null};
+                            keys.forEach((_key: string) => {
+                                if (_key !== key) {
+                                    newChildren = { ...newChildren, [_key]: null };
                                 }
                             });
                             obj._children[i] = { ...newChildren, ..._childrens[i] };
@@ -202,8 +221,8 @@ export async function cancelBigQueryJob() {
         await bigQueryJob.cancel();
         bigQueryJob = undefined;
         vscode.window.showInformationMessage(`Cancelled BigQuery job with id ${bigQueryJobId}`);
-        return {cancelled: true, bigQueryJobId: bigQueryJobId};
+        return { cancelled: true, bigQueryJobId: bigQueryJobId };
     } else {
-        return {cancelled: undefined, bigQueryJobId: undefined};
+        return { cancelled: undefined, bigQueryJobId: undefined };
     }
 }

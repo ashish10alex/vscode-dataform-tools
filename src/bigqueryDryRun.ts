@@ -1,6 +1,4 @@
-import { BigQuery } from '@google-cloud/bigquery';
-const bigquery = new BigQuery();
-import {  BigQueryDryRunResponse } from './types';
+import { getBigQueryClient, checkAuthentication } from './bigqueryClient';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -18,19 +16,23 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
 }
 
 export async function queryDryRun(query: string) {
+    await checkAuthentication();
 
-    if (query === "" || !query){
-        let dryRunResponse: BigQueryDryRunResponse = {
-            schema : undefined,
-            statistics: {
-                totalBytesProcessed: "0 GB",
-            },
-            error: {
-                hasError: false,
-                message: ""
-            }
+    const bigqueryClient = getBigQueryClient();
+    if (!bigqueryClient) {
+        return {
+            schema: undefined,
+            statistics: { totalBytesProcessed: "" },
+            error: { hasError: true, message: "BigQuery client not available." }
         };
-        return dryRunResponse;
+    }
+
+    if (query === "" || !query) {
+        return {
+            schema: undefined,
+            statistics: { totalBytesProcessed: "0 GB" },
+            error: { hasError: false, message: "" }
+        };
     }
 
     // For all options, see https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
@@ -42,31 +44,20 @@ export async function queryDryRun(query: string) {
     };
 
     try {
-        const [job] = await bigquery.createQueryJob(options);
-        let dryRunResponse: BigQueryDryRunResponse = {
-            schema :  job.metadata.statistics.query.schema,
+        const [job] = await bigqueryClient.createQueryJob(options);
+        return {
+            schema: job.metadata.statistics.query.schema,
             statistics: {
                 totalBytesProcessed: (parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3) + " GB",
             },
-            error: {
-                hasError: false,
-                message: ""
-            }
+            error: { hasError: false, message: "" }
         };
-        return dryRunResponse;
     } catch (error: any) {
-        let errorLocation  = getLineAndColumnNumberFromErrorMessage(error.message);
-        let dryRunResponse: BigQueryDryRunResponse = {
-            schema : undefined,
-            statistics: {
-                totalBytesProcessed: "",
-            },
-            error: {
-                hasError: true,
-                message: error.message,
-                location: errorLocation
-            }
+        let errorLocation = getLineAndColumnNumberFromErrorMessage(error.message);
+        return {
+            schema: undefined,
+            statistics: { totalBytesProcessed: "" },
+            error: { hasError: true, message: error.message, location: errorLocation }
         };
-        return dryRunResponse;
     }
 }
