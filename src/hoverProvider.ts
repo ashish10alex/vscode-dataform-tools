@@ -3,12 +3,12 @@ import {
   getWorkspaceFolder,
   runCompilation,
   getTextByLineRange,
-  getHoverOfVariableInJsFileOrBlock
 } from "./utils";
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
+import { createSourceFile, forEachChild, getJSDocCommentsAndTags, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isMethodDeclaration, isVariableDeclaration, Node, ScriptTarget } from "typescript";
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -21,6 +21,73 @@ const getMarkdownTableIdWtLink = (fullTableIdStruct:{database:string, schema:str
       const linkToTable = `${getUrlToNavigateToTableInBigQuery(database, schema, name)}`;
       return `[${fullTableId}](${linkToTable})`;
 };
+
+function getFunctionSignature(node: Node): string | undefined {
+  if (isFunctionDeclaration(node) || isMethodDeclaration(node)) {
+    const name = node.name ? node.name.getText() : 'anonymous';
+    const parameters = node.parameters.map(param => {
+      const paramName = param.name.getText();
+      const paramType = param.type ? ": " + param.type.getText() : '';
+      return `${paramName} ${paramType}`;
+    }).join(', ');
+    const returnType = node.type ? node.type.getText() : '';
+    return `function ${name}(${parameters}): ${returnType}`;
+  }
+  return undefined;
+}
+
+
+function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
+    const sourceFile = createSourceFile('temp.js', code, ScriptTarget.Latest, true);
+
+    function visit(node: Node):any {
+        let nodeType = "";
+        if (isFunctionDeclaration(node)) {
+            nodeType = "FunctionDeclaration";
+        } else if (isVariableDeclaration(node)) {
+            nodeType = "VariableDeclaration";
+        } else if (isClassDeclaration(node)) {
+            nodeType = "ClassDeclaration";
+        } else {
+            nodeType = "Unknown";
+        }
+
+        if (isFunctionDeclaration(node) || isVariableDeclaration(node) || isClassDeclaration(node)) {
+            const name = node.name && isIdentifier(node.name) ? node.name.text : 'anonymous';
+            // TODO: use this later for better go to definition
+            // const startPosition = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+            // const endPosition = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
+            if(name === searchTerm){
+
+                let functionSignature = getFunctionSignature(node);
+                functionSignature = `\`\`\`javascript\n${functionSignature}\n\`\`\``;
+
+                // let content = `name: ${name}, nodeType: ${nodeType} start: ${startPosition.line}:${startPosition.character}, end: ${endPosition.line}:${endPosition.character}`;
+                let content = `${name}`;
+                if (nodeType === "VariableDeclaration"){
+                    functionSignature = "";
+                    content = `\`\`\`javascript\n var ${node.getText()}\n\`\`\``;
+                }
+
+                const jsDocs = getJSDocTags(node);
+
+                const jsDocComments = getJSDocCommentsAndTags(node);
+                let descriptionOnTopOfJsDoc = "";
+                if (jsDocComments.length > 0) {
+                    descriptionOnTopOfJsDoc = `${jsDocComments[0].comment} \n`;
+                }
+
+                if (jsDocs.length > 0) {
+                    content = jsDocs.map((doc) =>  `@${doc.tagName.text}: ${doc.comment} \n`).join("\n");
+                }
+                content = functionSignature + "\n" + descriptionOnTopOfJsDoc + '\n' + content;
+                return new vscode.Hover(new vscode.MarkdownString(content));
+            }
+        }
+        return forEachChild(node, visit);
+   }
+   return visit(sourceFile);
+}
 
 
 function getTableInformationFromRef(
