@@ -4,6 +4,11 @@ import {
   runCompilation,
   getTextByLineRange,
 } from "./utils";
+
+// the comment-parser library does not have types in it so we have ignore the typescript error
+// @ts-ignore
+import {parse as commentParser} from 'comment-parser';
+
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
 import * as fs from "fs";
 import * as path from "path";
@@ -36,6 +41,39 @@ function getFunctionSignature(node: Node): string | undefined {
   return undefined;
 }
 
+let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
+    let out = commentParser(jsDocBlock);
+    let descriptionOnTopOfJsDoc = out[0].description || "";
+    let functionSignature = `function ${nodeName}(`;
+    let hoverContent = "";
+    let gotReturnType = false;
+
+    out.forEach((doc:any) => {
+        doc.tags.forEach((tag:any) => {
+            const name = tag.name;
+            const type = tag.type;
+            const optional = tag.optional;
+            const description = tag.description;
+
+            if(name === "This"){
+              functionSignature+= `): ${type}`;
+              hoverContent +=`Returns: ${type} \n\n`;
+              gotReturnType = true;
+            } else {
+              functionSignature+= `${name}: ${type}, `;
+              hoverContent +=`${name}:  \`${type}\`  [${optional}]: ${description} \n\n`;
+            }
+        });
+    });
+    if(gotReturnType){
+      functionSignature = `\`\`\`javascript\n var ${functionSignature}\n\`\`\``;
+    }else{
+      functionSignature = functionSignature.replace(/,\s*$/, ''); // remove comma and any trailing white space
+      functionSignature += ")";
+      functionSignature = `\`\`\`javascript\n var ${functionSignature}\n\`\`\``;
+    }
+    return {functionSignature: functionSignature, hoverContent:hoverContent, descriptionOnTopOfJsDoc: descriptionOnTopOfJsDoc};
+};
 
 function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
     const sourceFile = createSourceFile('temp.js', code, ScriptTarget.Latest, true);
@@ -57,31 +95,26 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
             // TODO: use this later for better go to definition
             // const startPosition = sourceFile.getLineAndCharacterOfPosition(node.getStart());
             // const endPosition = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
+
             if(name === searchTerm){
-
-                let functionSignature = getFunctionSignature(node);
-                functionSignature = `\`\`\`javascript\n${functionSignature}\n\`\`\``;
-
-                // let content = `name: ${name}, nodeType: ${nodeType} start: ${startPosition.line}:${startPosition.character}, end: ${endPosition.line}:${endPosition.character}`;
-                let content = `${name}`;
+                let hoverContent = `\`\`\`javascript\n var ${node.getText()}\n\`\`\``;
                 if (nodeType === "VariableDeclaration"){
-                    functionSignature = "";
-                    content = `\`\`\`javascript\n var ${node.getText()}\n\`\`\``;
+                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
                 }
 
-                const jsDocs = getJSDocTags(node);
+                const jsDocTags = getJSDocTags(node);
 
-                const jsDocComments = getJSDocCommentsAndTags(node);
-                let descriptionOnTopOfJsDoc = "";
-                if (jsDocComments.length > 0) {
-                    descriptionOnTopOfJsDoc = `${jsDocComments[0].comment} \n`;
+                if (jsDocTags.length > 0) {
+                    // the comment-parser library does not have types in it so we have ignore the typescript error
+                    // @ts-ignore
+                    const jsDocFullText = jsDocTags[0].parent.parent.body.parent.getFullText();
+                    const nodeName = node.name?.getText() || "anonymous";
+                    let {functionSignature, hoverContent, descriptionOnTopOfJsDoc}  = parseJsDocBlock(jsDocFullText, nodeName);
+                    hoverContent = functionSignature + "\n\n" + descriptionOnTopOfJsDoc + '\n\n' + hoverContent;
+                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
+                } else {
+                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
                 }
-
-                if (jsDocs.length > 0) {
-                    content = jsDocs.map((doc) =>  `@${doc.tagName.text}: ${doc.comment} \n`).join("\n");
-                }
-                content = functionSignature + "\n" + descriptionOnTopOfJsDoc + '\n' + content;
-                return new vscode.Hover(new vscode.MarkdownString(content));
             }
         }
         return forEachChild(node, visit);
