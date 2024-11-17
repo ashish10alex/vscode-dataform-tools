@@ -113,30 +113,30 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
         }
       }
-
-      if (tablePrefix) {
-        searchTerm = tablePrefix + "_" + searchTerm;
-      }
-
-      if (tables) {
-        hoverMeta = getTableInformationFromRef(searchTerm, tables);
-      }
-      if (hoverMeta) {
-        return hoverMeta;
-      }
-
-      if (operations) {
-        hoverMeta = getFullTableNameFromRef(searchTerm, operations);
-      }
-      if (hoverMeta) {
-        return hoverMeta;
-      }
-
-      if (assertions) {
-        return getFullTableNameFromRef(searchTerm, assertions);
-      }
-
-      return undefined; // If not matches are found then we will not show anything on hover
     }
+
+    if (tablePrefix) {
+      searchTerm = tablePrefix + "_" + searchTerm;
+    }
+
+    if (tables) {
+      hoverMeta = getTableInformationFromRef(searchTerm, tables);
+    }
+    if (hoverMeta) {
+      return hoverMeta;
+    }
+
+    if (operations) {
+      hoverMeta = getFullTableNameFromRef(searchTerm, operations);
+    }
+    if (hoverMeta) {
+      return hoverMeta;
+    }
+
+    if (assertions) {
+      return getFullTableNameFromRef(searchTerm, assertions);
+    }
+
+    return undefined; // If not matches are found then we will not show anything on hover
   }
 }
