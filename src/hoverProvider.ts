@@ -52,7 +52,13 @@ let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
         doc.tags.forEach((tag:any) => {
             const name = tag.name;
             const type = tag.type;
-            const optional = tag.optional;
+            let optional = tag.optional;
+            if (optional === true){
+              optional = " `[optional]`";
+            }else {
+              optional = "";
+            }
+        
             const description = tag.description;
 
             if(name === "This"){
@@ -61,7 +67,7 @@ let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
               gotReturnType = true;
             } else {
               functionSignature+= `${name}: ${type}, `;
-              hoverContent +=`${name}:  \`${type}\`  [${optional}]: ${description} \n\n`;
+              hoverContent +=`${name}:  \`${type}\`  ${optional}: ${description} \n\n`;
             }
         });
     });
