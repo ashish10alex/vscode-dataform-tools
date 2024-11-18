@@ -187,7 +187,6 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
         }
       }
-
       if (tablePrefix) {
         searchTerm = tablePrefix + "_" + searchTerm;
       }
