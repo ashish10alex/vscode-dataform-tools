@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.4.0...v0.5.0) (2024-11-18)
+
+
+### Features
+
+* **hover:** show js variable / function definition on hover  ([#58](https://github.com/ashish10alex/vscode-dataform-tools/issues/58)) ([73d69e7](https://github.com/ashish10alex/vscode-dataform-tools/commit/73d69e7b90acb145e0139acb2ccfd3c0f4ccc42f))
+* Improved BigQuery snippets ([#61](https://github.com/ashish10alex/vscode-dataform-tools/issues/61)) ([bdc0bfb](https://github.com/ashish10alex/vscode-dataform-tools/commit/bdc0bfb36d01cf376016ca5159ae33abc5dc8cb6))
+* re-created authentication handler for BigQuery ([#60](https://github.com/ashish10alex/vscode-dataform-tools/issues/60)) ([94942a9](https://github.com/ashish10alex/vscode-dataform-tools/commit/94942a906777c376c620bca9cd46cceb8c3a47be))
+
+
+### Bug Fixes
+
+* array type throwing error on preview results ([797029d](https://github.com/ashish10alex/vscode-dataform-tools/commit/797029d2aa31f23896d15f0872808a1e4cba9406))
+* **hover:** hover not showing if there is no declarations in the project ([c44767e](https://github.com/ashish10alex/vscode-dataform-tools/commit/c44767efe203852e2523cbf4fbb2280230b01707))
+
 ## [0.4.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.3.2...v0.4.0) (2024-11-16)
 
 
