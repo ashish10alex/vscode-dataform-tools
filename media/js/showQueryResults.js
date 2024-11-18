@@ -97,7 +97,7 @@ function updateBigQueryJobLink(bigQueryJobId) {
 
     bigQueryJobLinkDivider.textContent = ' | '; 
     bigQueryJobLink.href = bigQueryLink;
-    bigQueryJobLink.textContent = `View in BigQuery`;
+    bigQueryJobLink.textContent = `View job in BigQuery`;
 }
 
 // Hide the table initially
@@ -125,8 +125,7 @@ window.addEventListener('message', event => {
     const jobStats = event?.data?.jobStats;
     const noResults = event?.data?.noResults;
     const totalBytesBilled = jobStats?.totalBytesBilled;
-    const jobId = jobStats?.jobId;
-    const bigQueryJobId = event?.data?.bigQueryJobId;
+    const bigQueryJobId = jobStats?.bigQueryJobId || event?.data?.bigQueryJobId;
     const bigQueryJobCancelled = event?.data?.bigQueryJobCancelled;
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
@@ -147,7 +146,7 @@ window.addEventListener('message', event => {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, totalGbBilled);
-        updateBigQueryJobLink(jobId);
+        updateBigQueryJobLink(bigQueryJobId);
         clearInterval(timerInterval);
         if (loadingMessage){
             document.body.removeChild(loadingMessage);
@@ -182,7 +181,7 @@ window.addEventListener('message', event => {
         postRunCleanup();
         const jobCancelled = document.querySelector('.bigquery-job-cancelled');
         if(jobCancelled){
-            jobCancelled.textContent = `❕ BigQuery Job was cancelled, jobId: ${bigQueryJobId}`;
+            jobCancelled.textContent = `❕ BigQuery Job was cancelled, bigQueryJobId: ${bigQueryJobId}`;
         }
     }
 

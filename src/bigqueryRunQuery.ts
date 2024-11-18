@@ -151,12 +151,12 @@ export async function queryBigQuery(query: string) {
     queryLimit = 1000;
 
     let totalBytesBilled;
-    let jobId;
+    let bigQueryJobId;
 
     if (bigQueryJob) {
         let jobMetadata = await bigQueryJob.getMetadata();
         let jobStats = jobMetadata[0].statistics.query;
-        jobId = jobMetadata[0].id;
+        bigQueryJobId = jobMetadata[0].id;
         totalBytesBilled = jobStats.totalBytesBilled;
         bigQueryJob = undefined;
     }
@@ -214,7 +214,7 @@ export async function queryBigQuery(query: string) {
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled, jobId: jobId} };
+    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId} };
 }
 
 export async function cancelBigQueryJob() {
@@ -229,6 +229,7 @@ export async function cancelBigQueryJob() {
         vscode.window.showInformationMessage(`Cancelled BigQuery job with id ${bigQueryJobId}`);
         return { cancelled: true, bigQueryJobId: bigQueryJobId };
     } else {
+        vscode.window.showInformationMessage(`Was unable to cancel job, please check for your job in BigQuery console`);
         return { cancelled: undefined, bigQueryJobId: undefined };
     }
 }
