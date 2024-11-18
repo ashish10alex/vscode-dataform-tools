@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.0...v0.5.1) (2024-11-18)
+
+
+### Bug Fixes
+
+* **hover:** hover not showing if there is no declarations in the project ([7ec84b2](https://github.com/ashish10alex/vscode-dataform-tools/commit/7ec84b2d730446016349ae347c9b1e4f0b34e1fa))
+
 ## [0.5.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.4.0...v0.5.0) (2024-11-18)
 
 
