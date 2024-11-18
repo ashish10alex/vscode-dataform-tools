@@ -287,28 +287,27 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
         }
       }
-    }
+      if (tablePrefix) {
+        searchTerm = tablePrefix + "_" + searchTerm;
+      }
 
-    if (tablePrefix) {
-      searchTerm = tablePrefix + "_" + searchTerm;
-    }
+      if (tables) {
+        hoverMeta = getTableInformationFromRef(searchTerm, tables);
+      }
+      if (hoverMeta) {
+        return hoverMeta;
+      }
 
-    if (tables) {
-      hoverMeta = getTableInformationFromRef(searchTerm, tables);
-    }
-    if (hoverMeta) {
-      return hoverMeta;
-    }
+      if (operations) {
+        hoverMeta = getFullTableNameFromRef(searchTerm, operations);
+      }
+      if (hoverMeta) {
+        return hoverMeta;
+      }
 
-    if (operations) {
-      hoverMeta = getFullTableNameFromRef(searchTerm, operations);
-    }
-    if (hoverMeta) {
-      return hoverMeta;
-    }
-
-    if (assertions) {
-      return getFullTableNameFromRef(searchTerm, assertions);
+      if (assertions) {
+        return getFullTableNameFromRef(searchTerm, assertions);
+      }
     }
   } else {
     const regex = /\$\{([^}]+)\}/g;
