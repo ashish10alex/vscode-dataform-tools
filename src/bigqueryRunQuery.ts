@@ -151,10 +151,12 @@ export async function queryBigQuery(query: string) {
     queryLimit = 1000;
 
     let totalBytesBilled;
+    let jobId;
 
     if (bigQueryJob) {
         let jobMetadata = await bigQueryJob.getMetadata();
         let jobStats = jobMetadata[0].statistics.query;
+        jobId = jobMetadata[0].id;
         totalBytesBilled = jobStats.totalBytesBilled;
         bigQueryJob = undefined;
     }
@@ -212,7 +214,7 @@ export async function queryBigQuery(query: string) {
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled } };
+    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled, jobId: jobId} };
 }
 
 export async function cancelBigQueryJob() {
