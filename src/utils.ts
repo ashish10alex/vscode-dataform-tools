@@ -189,6 +189,25 @@ export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDo
     }
 }
 
+export async function getTextByLineRange(filePathUri: vscode.Uri, startLine: number, endLine: number): Promise<string | undefined> {
+  // Get the document from the workspace using the URI
+  const document = await vscode.workspace.openTextDocument(filePathUri);
+  if(endLine === -1){
+    endLine = document.lineCount-1;
+  }
+  
+  // Check if the document is valid and has enough lines
+  if (document && startLine >= 0 && endLine < document.lineCount) {
+    const start = new vscode.Position(startLine, 0);
+    const end = new vscode.Position(endLine, document.lineAt(endLine).text.length);
+    const range = new vscode.Range(start, end);
+    return document.getText(range);
+  } else {
+    console.error('Invalid document or line range.');
+    return undefined; // Return undefined if the document is invalid or line range is out of bounds
+  }
+}
+
 export async function getTreeRootFromRef(): Promise<string | undefined> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
