@@ -2,14 +2,18 @@ import * as vscode from "vscode";
 import {
   getWorkspaceFolder,
   runCompilation,
-  getPostionOfSourceDeclaration,
-  getPostionOfVariableInJsFileOrBlock,
-  getHoverOfVariableInJsFileOrBlock
+  getTextByLineRange,
 } from "./utils";
+
+// the comment-parser library does not have types in it so we have ignore the typescript error
+// @ts-ignore
+import {parse as commentParser} from 'comment-parser';
+
 import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
+import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -22,6 +26,93 @@ const getMarkdownTableIdWtLink = (fullTableIdStruct:{database:string, schema:str
       const linkToTable = `${getUrlToNavigateToTableInBigQuery(database, schema, name)}`;
       return `[${fullTableId}](${linkToTable})`;
 };
+
+let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
+    let out = commentParser(jsDocBlock);
+    let descriptionOnTopOfJsDoc = out[0].description || "";
+    let functionSignature = `function ${nodeName}(`;
+    let hoverContent = "";
+    let gotReturnType = false;
+
+    out.forEach((doc:any) => {
+        doc.tags.forEach((tag:any) => {
+            const name = tag.name;
+            const type = tag.type;
+            let optional = tag.optional;
+            if (optional === true){
+              optional = " `[optional]`";
+            }else {
+              optional = "";
+            }
+        
+            const description = tag.description;
+
+            if(tag.tag === "returns"){
+              functionSignature+= `): ${type}`;
+              hoverContent +=`Returns: ${type} \n\n`;
+              gotReturnType = true;
+            } else {
+              functionSignature+= `${name}: ${type}, `;
+              hoverContent +=`${name}:  \`${type}\`  ${optional}: ${description} \n\n`;
+            }
+        });
+    });
+    if(gotReturnType){
+      functionSignature = `\`\`\`javascript\n var ${functionSignature}\n\`\`\``;
+    }else{
+      functionSignature = functionSignature.replace(/,\s*$/, ''); // remove comma and any trailing white space
+      functionSignature += ")";
+      functionSignature = `\`\`\`javascript\n var ${functionSignature}\n\`\`\``;
+    }
+    return {functionSignature: functionSignature, hoverContent:hoverContent, descriptionOnTopOfJsDoc: descriptionOnTopOfJsDoc};
+};
+
+function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
+    const sourceFile = createSourceFile('temp.js', code, ScriptTarget.Latest, true);
+
+    function visit(node: Node):any {
+        let nodeType = "";
+        if (isFunctionDeclaration(node)) {
+            nodeType = "FunctionDeclaration";
+        } else if (isVariableDeclaration(node)) {
+            nodeType = "VariableDeclaration";
+        } else if (isClassDeclaration(node)) {
+            nodeType = "ClassDeclaration";
+        } else {
+            nodeType = "Unknown";
+        }
+
+        if (isFunctionDeclaration(node) || isVariableDeclaration(node) || isClassDeclaration(node)) {
+            const name = node.name && isIdentifier(node.name) ? node.name.text : 'anonymous';
+            // TODO: use this later for better go to definition
+            // const startPosition = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+            // const endPosition = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
+
+            if(name === searchTerm){
+                let hoverContent = `\`\`\`javascript\n var ${node.getText()}\n\`\`\``;
+                if (nodeType === "VariableDeclaration"){
+                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
+                }
+
+                const jsDocTags = getJSDocTags(node);
+
+                if (jsDocTags.length > 0) {
+                    // the comment-parser library does not have types in it so we have ignore the typescript error
+                    // @ts-ignore
+                    const jsDocFullText = jsDocTags[0].parent.parent.body.parent.getFullText();
+                    const nodeName = node.name?.getText() || "anonymous";
+                    let {functionSignature, hoverContent, descriptionOnTopOfJsDoc}  = parseJsDocBlock(jsDocFullText, nodeName);
+                    hoverContent = functionSignature + "\n\n" + descriptionOnTopOfJsDoc + '\n\n' + hoverContent;
+                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
+                } else {
+                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
+                }
+            }
+        }
+        return forEachChild(node, visit);
+   }
+   return visit(sourceFile);
+}
 
 
 function getTableInformationFromRef(
@@ -100,8 +191,12 @@ async function findModuleVarDefinition(
 ) {
   const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
   const jsBlock = sqlxFileMetadata.jsBlock;
+  let hover;
   if(jsBlock.exists){
-      let hover = await getHoverOfVariableInJsFileOrBlock(document.uri, variableName, jsBlock.startLine, jsBlock.endLine);
+      const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
+      if(jsBlockCode){
+        hover = getHoverOfVariableInJsFileOrBlock(jsBlockCode, variableName);
+      }
       if (hover) {
           return hover;
       }  
@@ -117,8 +212,10 @@ async function findModuleVarDefinition(
               const filePath = path.join(includesPath, fileName);
               const filePathUri = vscode.Uri.file(filePath);
               jsFileWtSameNameUri =  filePathUri;
-              return await getHoverOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
-
+              const jsBlockCode = await getTextByLineRange(filePathUri, startLine, endLine);
+              if(jsBlockCode){
+                return getHoverOfVariableInJsFileOrBlock(jsBlockCode, variableName);
+              }
               };
           }
   } catch (error) {
@@ -132,9 +229,12 @@ async function findModuleVarDefinition(
   if (importedModule) {
       const filePath = path.join(workspaceFolder, importedModule.path);
       const filePathUri = vscode.Uri.file(filePath);
-      return await getHoverOfVariableInJsFileOrBlock(filePathUri, variableName, startLine, endLine);
-  }
 
+      const jsBlockCode = await getTextByLineRange(filePathUri, startLine, endLine);
+      if(jsBlockCode){
+        return getHoverOfVariableInJsFileOrBlock(jsBlockCode, variableName);
+      }
+  }
   return undefined;
 }
 
@@ -210,25 +310,30 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       }
     }
   } else {
-      const regex = /\$\{([^}]+)\}/g;
-      let match;
-      while ((match = regex.exec(line)) !== null) {
-          console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
-          const content =  (match[1]);
-          if (content.includes(".")){
-            const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
-            if(variableOrFunctionSignature.includes(searchTerm)){
-                return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
+    const regex = /\$\{([^}]+)\}/g;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+        // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
+        const content =  (match[1]);
+        if (content.includes(".")){
+          const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
+          if(variableOrFunctionSignature.includes(searchTerm)){
+              return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
+          }
+        } else if (content.includes('.') === false && content.trim() !== ''){
+          const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+          const jsBlock = sqlxFileMetadata.jsBlock;
+          if(jsBlock.exists === true){
+            const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
+            if(jsBlockCode){
+            return getHoverOfVariableInJsFileOrBlock(jsBlockCode, searchTerm);
             }
-          } else if (content.includes('.') === false && content.trim() !== ''){
-            const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
-            const jsBlock = sqlxFileMetadata.jsBlock;
-            if(jsBlock.exists === true){
-              return await getHoverOfVariableInJsFileOrBlock(document, searchTerm, jsBlock.startLine, jsBlock.endLine);
-            }
-        }
+          }
       }
-      return undefined; // If not matches are found then we will not show anything on hover
+    }
+
+    return undefined; // If not matches are found then we will not show anything on hover
+
+    }
   }
-}
 }
