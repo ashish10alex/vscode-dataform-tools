@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.2...v0.5.3) (2024-11-19)
+
+
+### Bug Fixes
+
+* BigQuery client created in a non Dataform workspace ([#69](https://github.com/ashish10alex/vscode-dataform-tools/issues/69)) ([43dffbb](https://github.com/ashish10alex/vscode-dataform-tools/commit/43dffbb090dbd92c21a60b165fd54175fc5da19e))
+
 ### [0.5.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.1...v0.5.2) (2024-11-19)
 
 
