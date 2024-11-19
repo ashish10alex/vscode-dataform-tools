@@ -30,7 +30,7 @@ export async function previewQueryResults(queryResultsViewProvider: CustomViewPr
         if (incrementalCheckBox === true){
             query = fileMetadata.queryMeta.incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery;
         } else {
-            query =  fileMetadata.queryMeta.nonIncrementalQuery;
+            query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery;
         }
     }
     if (query === "") {
