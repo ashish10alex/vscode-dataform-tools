@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import os from 'os';
 import { DataformCompiledJson } from './types';
-import { createBigQueryClient, checkAuthentication, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
+import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { registerCenterPanel } from './views/register-center-panel';
@@ -53,9 +53,6 @@ export async function activate(context: vscode.ExtensionContext) {
         executableIsAvailable(executable);
     }
 
-    await createBigQueryClient();
-    setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
-
     // Clean up on deactivation
     context.subscriptions.push({
         dispose: () => clearAuthenticationCheckInterval()
@@ -66,6 +63,9 @@ export async function activate(context: vscode.ExtensionContext) {
     let workspaceFolder = getWorkspaceFolder();
 
     if (workspaceFolder) {
+        await createBigQueryClient();
+        setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
+
         let { dataformCompiledJson, errors } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
