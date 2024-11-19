@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.1...v0.5.2) (2024-11-19)
+
+
+### Features
+
+* link to go to bigquery job from results preview ([#62](https://github.com/ashish10alex/vscode-dataform-tools/issues/62)) ([d629332](https://github.com/ashish10alex/vscode-dataform-tools/commit/d6293323a2d70edead0b7609dbbe9ef3e331f325))
+
+
+### Bug Fixes
+
+* pre_operations excluded on incremental previews ([01051c2](https://github.com/ashish10alex/vscode-dataform-tools/commit/01051c2d134be9703ca8b85c8a58a6c846c8a298))
+
 ### [0.5.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.0...v0.5.1) (2024-11-18)
 
 
