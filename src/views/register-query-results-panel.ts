@@ -171,7 +171,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <button id="runQueryButton" class="runQueryButton">RUN</button>
       <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
 
-      <p><span id="datetime"></span></p>
+      <p>
+      <span id="datetime"></span>
+      <span id="bigQueryJobLinkDivider"></span>
+      <a id="bigQueryJobLink" href="" target="_blank"></a>
+      </p>
 
       <div class="error-message-container" id="errorsDiv" style="display: none;" >
           <p><span id="errorMessage"></span></p>

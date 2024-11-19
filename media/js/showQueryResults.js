@@ -88,6 +88,18 @@ function updateDateTime(elapsedTime, totalGbBilled) {
     document.getElementById('datetime').textContent = "Query results ran at: " + queryStatsText;
 }
 
+function updateBigQueryJobLink(bigQueryJobId) {
+    const bigQueryJobLink = document.getElementById('bigQueryJobLink');
+    const bigQueryJobLinkDivider = document.getElementById('bigQueryJobLinkDivider');
+    const projectId = bigQueryJobId.split(':')[0];
+    const jobId = bigQueryJobId.split(':')[1].replace('.', ':');
+    const bigQueryLink = `https://console.cloud.google.com/bigquery?project=${projectId}&j=bq:${jobId}&page=queryresults`;
+
+    bigQueryJobLinkDivider.textContent = ' | '; 
+    bigQueryJobLink.href = bigQueryLink;
+    bigQueryJobLink.textContent = `View job in BigQuery`;
+}
+
 // Hide the table initially
 const bigQueryResults = document.getElementById('bigqueryResults');
 if (bigQueryResults){
@@ -113,7 +125,7 @@ window.addEventListener('message', event => {
     const jobStats = event?.data?.jobStats;
     const noResults = event?.data?.noResults;
     const totalBytesBilled = jobStats?.totalBytesBilled;
-    const bigQueryJobId = event?.data?.bigQueryJobId;
+    const bigQueryJobId = jobStats?.bigQueryJobId || event?.data?.bigQueryJobId;
     const bigQueryJobCancelled = event?.data?.bigQueryJobCancelled;
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
@@ -134,6 +146,7 @@ window.addEventListener('message', event => {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, totalGbBilled);
+        updateBigQueryJobLink(bigQueryJobId);
         clearInterval(timerInterval);
         if (loadingMessage){
             document.body.removeChild(loadingMessage);
@@ -168,7 +181,7 @@ window.addEventListener('message', event => {
         postRunCleanup();
         const jobCancelled = document.querySelector('.bigquery-job-cancelled');
         if(jobCancelled){
-            jobCancelled.textContent = `❕ BigQuery Job was cancelled, jobId: ${bigQueryJobId}`;
+            jobCancelled.textContent = `❕ BigQuery Job was cancelled, bigQueryJobId: ${bigQueryJobId}`;
         }
     }
 
