@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.3...v0.5.4) (2024-11-23)
+
+
+### Features
+
+* bundling extension using vscode ([#71](https://github.com/ashish10alex/vscode-dataform-tools/issues/71)) ([b6cf8c3](https://github.com/ashish10alex/vscode-dataform-tools/commit/b6cf8c32743e2fa9bfdf032985a8455a1659f2fb))
+
 ### [0.5.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.2...v0.5.3) (2024-11-19)
 
 
