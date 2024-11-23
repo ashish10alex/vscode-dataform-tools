@@ -34,7 +34,7 @@
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.showFileMetadataForSidePanel"
     ],
-    "main": "./out/extension.js",
+    "main": "./dist/extension.js",
     "contributes": {
         "viewsContainers": {
             "activitybar": [
@@ -268,12 +268,13 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "pretest": "npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
-        "test": "node ./out/test/runTest.js"
+        "compile": "npm run check-types && node esbuild.js",
+        "check-types": "tsc --noEmit",
+        "watch": "npm-run-all -p watch:*",
+        "watch:esbuild": "node esbuild.js --watch",
+        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+        "vscode:prepublish": "npm run package",
+        "package": "npm run check-types && node esbuild.js --production"
     },
     "devDependencies": {
         "@types/js-beautify": "^1.14.3",
@@ -284,7 +285,9 @@
         "@typescript-eslint/parser": "^7.7.1",
         "@vscode/test-cli": "^0.0.9",
         "@vscode/test-electron": "^2.4.0",
-        "eslint": "^8.57.0"
+        "esbuild": "^0.24.0",
+        "eslint": "^8.57.0",
+        "npm-run-all": "^4.1.5"
     },
     "dependencies": {
         "@google-cloud/bigquery": "^7.8.0",
