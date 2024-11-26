@@ -30,7 +30,11 @@ export let dataformCodeActionProviderDisposable = () => vscode.languages.registe
         }
 
         const codeActions = diagnostics.map(diagnostic => {
-            const fixAction = new vscode.CodeAction('Replace with dry run suggestion', vscode.CodeActionKind.QuickFix);
+            const fix = extractFixFromDiagnosticMessage(diagnostic.message);
+            if (fix === null || fix === undefined){
+                return new vscode.CodeAction(``, vscode.CodeActionKind.QuickFix);
+            }
+            const fixAction = new vscode.CodeAction(`Replace with ${fix}`, vscode.CodeActionKind.QuickFix);
             fixAction.command = {
                 command: 'vscode-dataform-tools.fixError',
                 title: 'Apply dry run suggestion',
