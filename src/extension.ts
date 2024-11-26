@@ -11,7 +11,7 @@ import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
 import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate } from './utils';
 import { executableIsAvailable, runCompilation } from './utils';
-import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable } from './completions';
+import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
@@ -47,6 +47,7 @@ export async function activate(context: vscode.ExtensionContext) {
     };
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
+    globalThis.schemaAutoCompletions = [];
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -145,6 +146,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(dataformCodeActionProviderDisposable());
 
     context.subscriptions.push(sourcesAutoCompletionDisposable());
+    context.subscriptions.push(schemaAutoCompletionDisposable());
 
     context.subscriptions.push(dependenciesAutoCompletionDisposable());
 

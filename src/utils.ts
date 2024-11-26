@@ -8,6 +8,7 @@ import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
+import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -22,6 +23,26 @@ export function getNonce() {
     }
     return text;
 }
+
+export async function getTableSchema(projectId:string, datasetId:string, tableId:string): Promise<string[]> {
+    await checkAuthentication();
+    const bigquery = getBigQueryClient();
+    if (!bigquery) {
+        vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
+        return [];
+    }
+    const dataset = bigquery.dataset(datasetId);
+    const [table] = await dataset.table(tableId).get();
+    return table.metadata.schema.fields.map((field: {name: string}) => {
+        return {
+            name: field.name,
+            metadata: {
+                fullTableId: `${projectId}.${datasetId}.${tableId}`
+            }
+        };
+    });
+};
+
 
 export function sendNotifactionToUserOnExtensionUpdate(context: vscode.ExtensionContext){
     const extensionPath = context.extensionPath;

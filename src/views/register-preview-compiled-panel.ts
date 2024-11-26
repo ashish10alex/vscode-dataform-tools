@@ -1,10 +1,28 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
-import { GraphError} from "../types";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 
 
+async function updateSchemaAutoCompletions(currentFileMetadata:any) {
+    let allSchemaCompletions:{name:string, metadata: any}[] = [];
+
+    if (currentFileMetadata?.fileMetadata?.tables) {
+        await Promise.all(currentFileMetadata.fileMetadata.tables.map(async (table:any) => {
+            const dependencyTargets = table.dependencyTargets;
+            
+            if (dependencyTargets) {
+                const schemaPromises = dependencyTargets.map(async (dt:{database:string, schema:string, name:string}) => {
+                    return getTableSchema(dt.database, dt.schema, dt.name);
+                });
+                const schemas = await Promise.all(schemaPromises);
+                const allSchemas = schemas.flat();
+                allSchemaCompletions.push(...allSchemas);
+            }
+        }));
+    }
+    schemaAutoCompletions = allSchemaCompletions;
+}
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
 
@@ -26,6 +44,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
             let currentFileMetadata = await getCurrentFileMetadata(true);
+            updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
         } else {
             if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false){
