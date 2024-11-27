@@ -35,7 +35,14 @@
 
    Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli
 
-2. [Setup default application credentials for GCP](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+2. [Install gcloud cli](https://cloud.google.com/sdk/docs/install) and run
+
+   ```bash
+   gcloud init
+   ```
+   ```bash
+   gcloud auth application-default login
+   ```
 
 
 3. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) install [sqlfluff](https://github.com/sqlfluff/sqlfluff)
@@ -67,7 +74,7 @@ Trouble installing ? Please see [FAQ section](FAQ.md), if you are still stuck, p
 
 
 ### <a id="definition">Go to definition</a>
-Go to definition for source in `$ref{("my_source")}`. Takes you to `my_source.sqlx` or `sources.js` at the line where `my_source` is defined. There is also support for go to definiton 
+Go to definition for source in `$ref{("my_source")}`. Takes you to `my_source.sqlx` or `sources.js` at the line where `my_source` is defined. There is also support for go to definiton
 from a javascript variable/module from a `.sqlx` file to `js` block or `.js` file where the virable or module declaration exsists
 
 ![go-to-definition](media/images/go_to_definition.gif)
