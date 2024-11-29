@@ -110,3 +110,24 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
     ...["'", '"'],
 );
 
+
+export const schemaAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
+    { language: 'sqlx', scheme: 'file' },
+    {
+      async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+        const completionItems = schemaAutoCompletions.map((item: {name: string, metadata: any}) => {
+            const completionItem = new vscode.CompletionItem(`${item.name}`);
+            completionItem.kind = vscode.CompletionItemKind.Variable; 
+            completionItem.detail = `${item.metadata.fullTableId}`;
+            completionItem.sortText = '0'; // put it ahead of other completion objects
+            const markdownString = new vscode.MarkdownString(`[ ${item.metadata.type} ] \n\n ${item.metadata.description}`);
+            markdownString.isTrusted = true;
+            markdownString.supportHtml = true;
+            completionItem.documentation = markdownString;
+            return completionItem;
+        });
+        return completionItems;
+      }
+    }
+);
+

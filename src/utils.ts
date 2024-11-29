@@ -8,6 +8,7 @@ import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
+import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -22,6 +23,34 @@ export function getNonce() {
     }
     return text;
 }
+
+export async function getTableSchema(projectId: string, datasetId: string, tableId: string): Promise<{name: string, metadata: {fullTableId: string}}[]> {
+    try {
+        await checkAuthentication();
+        const bigquery = getBigQueryClient();
+        if (!bigquery) {
+            vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
+            return [];
+        }
+        const dataset = bigquery.dataset(datasetId, { projectId: projectId });
+        const [table] = await dataset.table(tableId).get();
+        return table.metadata.schema.fields.map((field: {name: string, type:string, description:string}) => {
+            return {
+                name: field.name,
+                metadata: {
+                    fullTableId: `${projectId}.${datasetId}.${tableId}`,
+                    type: `${field.type}`,
+                    description: `${field?.description || ""}`
+
+                }
+            };
+        });
+    } catch (error) {
+        // we donot want to throw an error as it would be an annoying editing experience to have this error constantly popping up
+        return [];
+    }
+}
+
 
 export function sendNotifactionToUserOnExtensionUpdate(context: vscode.ExtensionContext){
     const extensionPath = context.extensionPath;

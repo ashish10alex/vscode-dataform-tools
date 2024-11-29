@@ -56,5 +56,9 @@ declare global {
   var incrementalCheckBox: boolean
 }
 
+declare global {
+  var schemaAutoCompletions: {name: string, metadata:any}[];
+}
+
 
 export {};
