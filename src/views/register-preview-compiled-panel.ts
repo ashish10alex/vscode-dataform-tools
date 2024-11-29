@@ -36,6 +36,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(async(editor) => {
         if (editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
             let currentFileMetadata = await getCurrentFileMetadata(false);
+            updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
         }
     }, null, context.subscriptions);
