@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.6...v0.5.7) (2024-11-29)
+
+
+### Features
+
+* trigger schema update on active editor change ([82db2bf](https://github.com/ashish10alex/vscode-dataform-tools/commit/82db2bf643a30b2ea852f926bb57e8d0c335638d))
+
 ### [0.5.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.5...v0.5.6) (2024-11-29)
 
 
