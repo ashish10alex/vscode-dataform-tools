@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.5...v0.5.6) (2024-11-29)
+
+
+### Features
+
+* make the columns of the dependencies available for autocompletion ([#73](https://github.com/ashish10alex/vscode-dataform-tools/issues/73)) ([dd23704](https://github.com/ashish10alex/vscode-dataform-tools/commit/dd23704507e346f3a0a5e3d598cbc11766416d9e))
+
 ### [0.5.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.4...v0.5.5) (2024-11-28)
 
 
