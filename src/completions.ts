@@ -120,6 +120,10 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
             completionItem.kind = vscode.CompletionItemKind.Variable; 
             completionItem.detail = `${item.metadata.fullTableId}`;
             completionItem.sortText = '0'; // put it ahead of other completion objects
+            const markdownString = new vscode.MarkdownString(`[ ${item.metadata.type} ] \n\n ${item.metadata.description}`);
+            markdownString.isTrusted = true;
+            markdownString.supportHtml = true;
+            completionItem.documentation = markdownString;
             return completionItem;
         });
         return completionItems;

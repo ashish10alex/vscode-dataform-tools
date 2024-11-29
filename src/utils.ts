@@ -34,11 +34,14 @@ export async function getTableSchema(projectId: string, datasetId: string, table
         }
         const dataset = bigquery.dataset(datasetId, { projectId: projectId });
         const [table] = await dataset.table(tableId).get();
-        return table.metadata.schema.fields.map((field: {name: string}) => {
+        return table.metadata.schema.fields.map((field: {name: string, type:string, description:string}) => {
             return {
                 name: field.name,
                 metadata: {
-                    fullTableId: `${projectId}.${datasetId}.${tableId}`
+                    fullTableId: `${projectId}.${datasetId}.${tableId}`,
+                    type: `${field.type}`,
+                    description: `${field?.description || ""}`
+
                 }
             };
         });
