@@ -49,6 +49,20 @@ export class DependencyGraph {
         return `${target.database}.${target.schema}.${target.name}`;
     }
 
+    private getTypeIndex(type: string | undefined): number {
+        // Map Dataform types to indices
+        switch (type) {
+            case 'table': return 1;
+            case 'view': return 2;
+            case 'test': return 3;
+            case 'incremental': return 4;
+            case 'assertion': return 5;
+            case 'operations': return 6;
+            case 'declaration': return 7;
+            default: return 0; // Generated/pipeline nodes
+        }
+    }
+
     private createNode(
         item: Table | Operation | Assertion | Declarations,
         isUpstream: boolean = true
@@ -68,7 +82,7 @@ export class DependencyGraph {
         if (isUpstream) {
             return {
                 ...base,
-                _schema_idx: this.getSchemaIndex(item.target.schema)
+                _schema_idx: this.getTypeIndex(base.type)
             };
         }
 
@@ -89,18 +103,11 @@ export class DependencyGraph {
         if (isUpstream) {
             return {
                 ...base,
-                _schema_idx: this.getSchemaIndex(target.schema)
+                _schema_idx: 0  // Missing nodes are treated as generated/pipeline nodes
             };
         }
 
         return base;
-    }
-
-    private getSchemaIndex(schema: string): number {
-        if (this.schemaDict[schema] === undefined) {
-            this.schemaDict[schema] = this.schemaIdx++;
-        }
-        return this.schemaDict[schema];
     }
 
     private buildGraph(
@@ -159,10 +166,18 @@ export class DependencyGraph {
     } {
         const nodeMap = direction === 'upstream' ? this.upstream : this.downstream;
         const metadata: DependancyTreeMetadata[] = [];
-        const legendMetadata: DeclarationsLegendMetadata[] = [{
-            _schema: "dataform",
-            _schema_idx: 0
-        }];
+
+        // Create fixed legend for all Dataform types
+        const legendMetadata: DeclarationsLegendMetadata[] = [
+            { _schema: "Generated/Pipeline", _schema_idx: 0 },
+            { _schema: "Table", _schema_idx: 1 },
+            { _schema: "View", _schema_idx: 2 },
+            { _schema: "Test", _schema_idx: 3 },
+            { _schema: "Incremental", _schema_idx: 4 },
+            { _schema: "Assertion", _schema_idx: 5 },
+            { _schema: "Operations", _schema_idx: 6 },
+            { _schema: "Declaration", _schema_idx: 7 }
+        ];
 
         // Convert nodes to metadata format
         for (const [key, node] of Object.entries(nodeMap)) {
@@ -181,14 +196,6 @@ export class DependencyGraph {
 
             metadata.push(metadataNode);
         }
-
-        // Generate legend metadata
-        Object.entries(this.schemaDict).forEach(([schema, idx]) => {
-            legendMetadata.push({
-                _schema: schema,
-                _schema_idx: idx
-            });
-        });
 
         return { metadata, legendMetadata };
     }
