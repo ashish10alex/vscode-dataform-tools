@@ -125,21 +125,30 @@ function getTableInformationFromRef(
     if (searchTerm === targetName) {
 
       const markdownTableIdWtLink = getMarkdownTableIdWtLink(struct[i].target);
-      const tableMetadata = `\nType: ${struct[i].type}` +
-                      (struct[i].bigquery?.partitionBy ? `\nPartition: ${struct[i].bigquery.partitionBy}` : ``) +
-                      (struct[i].dependencyTargets
-                        ? `\nDependencies:\n${struct[i].dependencyTargets
-                            .map(dep => `- ${dep.database}.${dep.schema}.${dep.name}`)
-                            .join('\n')}`
-                        : ``);
-      const hoverMarkdownString = new vscode.MarkdownString(
-        markdownTableIdWtLink + "\n ```bash" + tableMetadata + "\n```"
-      );
+      const tableType = `**Type:** ${struct[i].type}`;
+      const partition = struct[i].bigquery?.partitionBy 
+        ? `**Partition:** \`${struct[i].bigquery.partitionBy}\`` 
+        : '';
+      const dependencies = struct[i].dependencyTargets
+        ? `**Dependencies:**\n${struct[i].dependencyTargets
+            .map(dep => `- \`${dep.database}.${dep.schema}.${dep.name}\``)
+            .join('\n')}`
+        : '';
+
+      const hoverMarkdownString = new vscode.MarkdownString();
+      hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
+      hoverMarkdownString.appendMarkdown(`${tableType}\n\n`);
+      if (partition) {
+        hoverMarkdownString.appendMarkdown(`${partition}\n\n`);
+      }
+      if (dependencies) {
+        hoverMarkdownString.appendMarkdown(`${dependencies}\n`);
+      }
 
       hoverMarkdownString.isTrusted = true; // Allows command links
       hoverMarkdownString.supportThemeIcons = true; // Allows ThemeIcons
 
-      hoverMeta = new vscode.Hover(hoverMarkdownString);
+     hoverMeta = new vscode.Hover(hoverMarkdownString);
     }
   }
   return hoverMeta;
