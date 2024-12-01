@@ -118,7 +118,7 @@ window.addEventListener('message', event => {
             autoColumnsDefinitions: function(definitions) {
                 definitions.forEach(function(column) {
                     column.headerFilter = "input";
-                    column.headerFilterLive = true;
+                    column.headerFilterLiveFilter = true; // Change this line
                 });
                 return definitions;
             },
@@ -126,7 +126,7 @@ window.addEventListener('message', event => {
     }
 
     compiledQueryloadingIcon.style.display = "none";
-   
+
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);
         const divElement = document.getElementById(key + "Div");

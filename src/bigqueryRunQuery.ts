@@ -81,7 +81,7 @@ function createTabulatorColumns(data: any) {
         title: key,
         field: key,
         headerFilter: "input",
-        headerFilterLive: true,
+        headerFilterLiveFilter: true
     }));
 }
 
