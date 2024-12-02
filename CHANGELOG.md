@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.7...v0.5.8) (2024-12-02)
+
+
+### Features
+
+* prettier hover documentation ([0c9df45](https://github.com/ashish10alex/vscode-dataform-tools/commit/0c9df4598f842665e9b359a5a15b41de5f45933e))
+
+
+### Bug Fixes
+
+* tabulator library error, invalid column definition option: `headerFilterLive` ([993c610](https://github.com/ashish10alex/vscode-dataform-tools/commit/993c610d0edd9af3aa6427e2293034b7d94b5bc9))
+
 ### [0.5.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.6...v0.5.7) (2024-11-29)
 
 
