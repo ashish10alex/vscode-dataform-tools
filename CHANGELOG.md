@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.8...v0.5.9) (2024-12-04)
+
+
+### Bug Fixes
+
+* user has no notification when trying to run a file when dataform compiles throws error ([1fe0d06](https://github.com/ashish10alex/vscode-dataform-tools/commit/1fe0d066a7c0073a9a386e1913068c47f6bab6db))
+
 ### [0.5.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.7...v0.5.8) (2024-12-02)
 
 
