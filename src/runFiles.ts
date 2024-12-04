@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation } from "./utils";
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
@@ -21,6 +22,12 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
 
     let currFileMetadata;
     let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+
+    if(errors && errors.length > 0){
+        vscode.window.showErrorMessage("Error compiling Dataform. Run `dataform compile` to see more details");
+        return;
+    }
+
     if (dataformCompiledJson) {
         currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
     }
