@@ -106,32 +106,30 @@
 	padding-left: 15px !important;
 }
 
-/* Add a black background color to the top navigation */
 .topnav {
-	overflow: hidden;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 4px 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Style the links inside the navigation bar */
 .topnav a {
-	float: left;
-	color: #f2f2f2;
-	text-align: center;
-	padding: 4px 5px;
-	margin: 0 5px;
-	text-decoration: none;
-	font-size: 17px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 16px;
+  padding: 4px 5px;
+  margin-right: 10px;
+  border-radius: 5px;
 }
 
-/* Change the color of links on hover */
 .topnav a:hover {
-	background-color: #ddd;
-	color: black;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Add a color to the active/current link */
 .topnav a.active {
-	background-color: #007acc;
-	color: white;
+  background-color: #007acc;
+  color: white;
 }
 
 .error-message-container {
