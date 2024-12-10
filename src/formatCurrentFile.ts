@@ -9,7 +9,7 @@ import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
 
 
-export async function formatSqlxFile(document:vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
+export async function formatSqlxFile(document:vscode.TextDocument, currentActiveEditorFilePath:string, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
 
     let jsBlockMeta = metadataForSqlxFileBlocks.jsBlock;
     let configBlockMeta = metadataForSqlxFileBlocks.configBlock;
@@ -68,7 +68,6 @@ export async function formatSqlxFile(document:vscode.TextDocument, metadataForSq
 
         if (typeof formattedSql === 'string'){
             let finalFormattedSqlx = configBlockText + jsBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
-            let currentActiveEditorFilePath = getActiveFilePath();
             if (!currentActiveEditorFilePath){
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
                 return;
@@ -95,6 +94,11 @@ export async function formatCurrentFile(diagnosticCollection:any) {
 
     var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
     if (!filename || !relativeFilePath || !extension) {
+        return;
+    }
+
+    let currentActiveEditorFilePath = getActiveFilePath();
+    if(!currentActiveEditorFilePath){
         return;
     }
 
@@ -133,7 +137,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
         vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
     }
-    await formatSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
+    await formatSqlxFile(document, currentActiveEditorFilePath, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 
     document?.save();
 }
