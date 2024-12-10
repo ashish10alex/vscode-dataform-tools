@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.9...v0.5.10) (2024-12-10)
+
+
+### Features
+
+* better nav bar for compiled query ([bfc1b22](https://github.com/ashish10alex/vscode-dataform-tools/commit/bfc1b22c6a1e0a3c8032588b51157f8ab04abb48))
+
+
+### Bug Fixes
+
+* formatted content goes to another file if active editor is switched quickly ([462e914](https://github.com/ashish10alex/vscode-dataform-tools/commit/462e91497f9d8ab76fb935cabd2c3be689bb49bb))
+
 ### [0.5.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.8...v0.5.9) (2024-12-04)
 
 
