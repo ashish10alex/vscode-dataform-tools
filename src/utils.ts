@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -109,7 +109,7 @@ function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | 
     }
 }
 
-function updateDependentsGivenObj(dependents:any, targetObj:any, targetToSearch:any){
+function updateDependentsGivenObj(dependents:Target[], targetObj:Table[]|Assertion[]|Operation[], targetToSearch:Target){
     for(let i=0; i<targetObj.length; i++){
         const tableTargets = targetObj[i].dependencyTargets;
         if(!tableTargets || tableTargets.length === 0){
@@ -125,8 +125,8 @@ function updateDependentsGivenObj(dependents:any, targetObj:any, targetToSearch:
     return dependents;
 }
 
-async function getDependentsOfTarget(targetToSearch:any, dataformCompiledJson:any){
-    let dependents:any = [];
+async function getDependentsOfTarget(targetToSearch:Target, dataformCompiledJson:DataformCompiledJson){
+    let dependents:Target[] = [];
     let tables = dataformCompiledJson.tables;
     let assertions = dataformCompiledJson.assertions;
     let operations = dataformCompiledJson.operations;
