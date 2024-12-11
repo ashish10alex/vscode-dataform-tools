@@ -214,14 +214,6 @@ export class CompiledQueryPanel {
         let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
         let targetTableOrView = curFileMeta.fileMetadata.tables[0]?.target;
 
-        let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
-        if (!queryAutoCompMeta){
-            return;
-        }
-
-        dataformTags = queryAutoCompMeta.dataformTags;
-        declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
-
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
             "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -240,6 +232,12 @@ export class CompiledQueryPanel {
         if(diagnosticCollection){
             diagnosticCollection.clear();
         }
+
+        let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
+        if (!queryAutoCompMeta){
+            return;
+        }
+
         let dryRunResult = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
         let errorMessage = dryRunResult?.error.message;
