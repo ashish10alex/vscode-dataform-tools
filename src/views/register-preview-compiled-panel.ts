@@ -198,6 +198,7 @@ export class CompiledQueryPanel {
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
             "compiledQuerySchema": compiledQuerySchema,
             "targetTableOrView": targetTableOrView,
+            "dependents": curFileMeta.dependents,
         });
 
         if(diagnosticCollection){
@@ -228,6 +229,7 @@ export class CompiledQueryPanel {
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTableOrView": targetTableOrView,
                 "models": curFileMeta.fileMetadata.tables,
+                "dependents": curFileMeta.dependents,
             });
             return webview;
         }
@@ -304,7 +306,7 @@ export class CompiledQueryPanel {
                         <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
                     </svg>
                 </div>
-                <span class="dependency-title">Dependencies</span>
+                <span class="dependency-title">Dependencies & Dependents</span>
             </div>
             <div id="depsDiv" class="dependency-list">
             </div>

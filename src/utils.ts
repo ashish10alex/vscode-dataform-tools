@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -109,6 +109,34 @@ function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | 
     }
 }
 
+function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Assertion[]|Operation[], targetToSearch:Target){
+    for(let i=0; i<targetObjList.length; i++){
+        const tableTargets = targetObjList[i].dependencyTargets;
+        if(!tableTargets || tableTargets.length === 0){
+            continue;
+        } else {
+            tableTargets.forEach((tableTarget:Target) => {
+                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.database===targetToSearch.database){
+                    dependents.push(targetObjList[i].target);
+                }
+            });
+        }
+    }
+    return dependents;
+}
+
+async function getDependentsOfTarget(targetToSearch:Target, dataformCompiledJson:DataformCompiledJson){
+    let dependents:Target[] = [];
+    let tables = dataformCompiledJson.tables;
+    let assertions = dataformCompiledJson.assertions;
+    let operations = dataformCompiledJson.operations;
+
+    dependents = updateDependentsGivenObj(dependents, tables, targetToSearch);
+    dependents = updateDependentsGivenObj(dependents, assertions, targetToSearch);
+    dependents = updateDependentsGivenObj(dependents, operations, targetToSearch);
+    return dependents;
+}
+
 export async function getCurrentFileMetadata(freshCompilation: boolean) {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
@@ -126,10 +154,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
         let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
             if(dataformCompiledJson){
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                let dependents = await getDependentsOfTarget(fileMetadata.tables[0].target, dataformCompiledJson);
                 return {
                     isDataformWorkspace: true,
                     dataformCompilationErrors:errors,
                     fileMetadata: fileMetadata,
+                    dependents: dependents,
                     pathMeta: {
                         filename: filename,
                         extension: extension,
@@ -144,6 +174,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 isDataformWorkspace: true,
                 dataformCompilationErrors:errors,
                 fileMetadata: undefined,
+                dependents: undefined,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
@@ -154,9 +185,11 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
         }
         } else {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+            let dependents = await getDependentsOfTarget(fileMetadata.tables[0].target, CACHED_COMPILED_DATAFORM_JSON);
             return {
                 isDataformWorkspace: true,
                 fileMetadata: fileMetadata,
+                dependents: dependents,
                 pathMeta: {
                     filename: filename,
                     extension: extension,

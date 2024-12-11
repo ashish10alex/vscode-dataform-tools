@@ -66,10 +66,14 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
+    const dependents = event?.data?.dependents;
     const models = event?.data?.models;
     if (models){
-        fullTableIds = [];
 
+        const upstreamHeader = document.createElement("header");
+        upstreamHeader.innerHTML = "<h4>Dependencies</h4>";
+
+        fullTableIds = [];
         const dependencyList = document.createElement('ul');
         for (let i = 0; i < models.length; i++) {
             let tableTargets = models[i]?.dependencyTargets;
@@ -90,7 +94,28 @@ window.addEventListener('message', event => {
         }
 
         depsDiv.innerHTML = "";
+        depsDiv.appendChild(upstreamHeader);
         depsDiv.appendChild(dependencyList);
+
+        if (dependents && dependents.length > 0){
+            const downstreamHeader = document.createElement("header");
+            downstreamHeader.innerHTML = "<h4>Dependents</h4>";
+
+            const dependentsList = document.createElement('ul');
+            for (let j = 0; j < dependents.length; j++) {
+                    fullTableId = `${dependents[j].database}.${dependents[j].schema}.${dependents[j].name}`;
+                    fullTableIds.push(fullTableId);
+
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = getUrlToNavigateToTableInBigQuery(dependents[j].database, dependents[j].schema, dependents[j].name);
+                    link.textContent = fullTableId;
+                    li.appendChild(link);
+                    dependentsList.appendChild(li);
+            }
+            depsDiv.appendChild(downstreamHeader);
+            depsDiv.appendChild(dependentsList);
+        }
     }
 
     let targetTableOrView = event?.data?.targetTableOrView;
