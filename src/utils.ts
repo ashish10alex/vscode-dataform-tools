@@ -110,6 +110,9 @@ function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | 
 }
 
 function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Assertion[]|Operation[], targetToSearch:Target){
+    if(!targetObjList?.length){
+        return dependents;
+    }
     for(let i=0; i<targetObjList.length; i++){
         const tableTargets = targetObjList[i].dependencyTargets;
         if(!tableTargets || tableTargets.length === 0){
