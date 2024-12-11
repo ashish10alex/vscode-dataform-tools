@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.14](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.13...v0.5.14) (2024-12-11)
+
+
+### Features
+
+* optimize func to get dependents ([0f8a126](https://github.com/ashish10alex/vscode-dataform-tools/commit/0f8a1260a9c43a0a858127cd643de183f5685f41))
+
 ### [0.5.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.12...v0.5.13) (2024-12-11)
 
 
