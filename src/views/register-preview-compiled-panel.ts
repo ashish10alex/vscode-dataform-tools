@@ -65,6 +65,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
+        const fileExtension = document.fileName.split('.').pop();
+        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js')){
+            return;
+        }
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
             if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
