@@ -128,16 +128,14 @@ function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Ass
     return dependents;
 }
 
-async function getDependentsOfTarget(targetToSearch:Target, dataformCompiledJson:DataformCompiledJson){
-    let dependents:Target[] = [];
-    let tables = dataformCompiledJson.tables;
-    let assertions = dataformCompiledJson.assertions;
-    let operations = dataformCompiledJson.operations;
+async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJson: DataformCompiledJson) {
+  const { tables, assertions, operations } = dataformCompiledJson;
 
-    dependents = updateDependentsGivenObj(dependents, tables, targetToSearch);
-    dependents = updateDependentsGivenObj(dependents, assertions, targetToSearch);
-    dependents = updateDependentsGivenObj(dependents, operations, targetToSearch);
-    return dependents;
+  return Promise.all([
+    updateDependentsGivenObj([], tables, targetToSearch),
+    updateDependentsGivenObj([], assertions, targetToSearch),
+    updateDependentsGivenObj([], operations, targetToSearch)
+  ]).then(results => results.flat());
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean) {
