@@ -3,6 +3,29 @@ import * as vscode from 'vscode';
 import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 
+function showLoadingProgress(
+    title: string,
+    operation: (
+        progress: vscode.Progress<{ message?: string; increment?: number }>,
+        token: vscode.CancellationToken
+    ) => Thenable<void>,
+    cancellationMessage: string = "Dataform tools: operation cancelled"
+): Thenable<void> {
+    return vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: title,
+            cancellable: true
+        },
+        async (progress, token) => {
+            token.onCancellationRequested(() => {
+                console.log(cancellationMessage);
+            });
+
+            await operation(progress, token);
+        }
+    );
+}
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions:{name:string, metadata: any}[] = [];
@@ -44,9 +67,22 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
-            let currentFileMetadata = await getCurrentFileMetadata(true);
-            updateSchemaAutoCompletions(currentFileMetadata);
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
+            if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
+                let currentFileMetadata = await getCurrentFileMetadata(true);
+                updateSchemaAutoCompletions(currentFileMetadata);
+                CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
+            } else{
+                showLoadingProgress(
+                    "Dataform tools\n",
+                    async (progress, token) => {
+                        progress.report({ message: "Generating compiled query metadata..." });
+                        let currentFileMetadata = await getCurrentFileMetadata(true);
+                        progress.report({ message: "Creating webview..." });
+                        updateSchemaAutoCompletions(currentFileMetadata);
+                        CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
+                    },
+                );
+            }
         } else {
             if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false){
                 compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
