@@ -115,8 +115,8 @@ function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Ass
         if(!tableTargets || tableTargets.length === 0){
             continue;
         } else {
-            tableTargets.forEach((tableTarget:any) => {
-                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.datset===targetToSearch.datset){
+            tableTargets.forEach((tableTarget:Target) => {
+                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.database===targetToSearch.database){
                     dependents.push(targetObjList[i].target);
                 }
             });
