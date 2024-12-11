@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.11...v0.5.12) (2024-12-11)
+
+
+### Bug Fixes
+
+* error trying to get lenght of an obj that does not exists ([afd71db](https://github.com/ashish10alex/vscode-dataform-tools/commit/afd71db23d5397eb3d24d62a971f802a734cd1ec))
+
 ### [0.5.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.10...v0.5.11) (2024-12-11)
 
 
