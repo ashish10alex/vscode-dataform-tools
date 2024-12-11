@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.10...v0.5.11) (2024-12-11)
+
+
+### Features
+
+* show dependents of  model  in compiled query webview([#75](https://github.com/ashish10alex/vscode-dataform-tools/issues/75)) ([087beb6](https://github.com/ashish10alex/vscode-dataform-tools/commit/087beb6a8d09cb97088ea90d88a29f2947f79bd1))
+
 ### [0.5.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.9...v0.5.10) (2024-12-10)
 
 
