@@ -109,6 +109,53 @@ function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | 
     }
 }
 
+async function getDependentsOfTarget(targetToSearch:any, dataformCompiledJson:any){
+    let dependents:any = [];
+    let tables = dataformCompiledJson.tables;
+    let assertions = dataformCompiledJson.assertions;
+    let operations = dataformCompiledJson.operations;
+
+    for(let i=0; i<tables.length; i++){
+        const tableTargets = tables[i].dependencyTargets;
+        if(!tableTargets || tableTargets.length === 0){
+            continue;
+        } else {
+            tableTargets.forEach((tableTarget:any) => {
+                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.datset===targetToSearch.datset){
+                    dependents.push(tables[i].target);
+                }
+            });
+        }
+    }
+
+    for(let i=0; i<assertions.length; i++){
+        const assertionTargets = assertions[i].dependencyTargets;
+        if(!assertionTargets || assertionTargets.length === 0){
+            continue;
+        } else {
+            assertionTargets.forEach((assertionTarget:any) => {
+                if(assertionTarget.name===targetToSearch.name && assertionTarget.schema===targetToSearch.schema  && assertionTarget.datset===targetToSearch.datset){
+                    dependents.push(assertions[i].target);
+                }
+            });
+        }
+    }
+
+    for(let i=0; i<operations.length; i++){
+        const opearationsTargets = operations[i].dependencyTargets;
+        if(!opearationsTargets || opearationsTargets.length === 0){
+            continue;
+        } else {
+            opearationsTargets.forEach((operationTarget:any) => {
+                if(operationTarget.name===targetToSearch.name && operationTarget.schema===targetToSearch.schema  && operationTarget.datset===targetToSearch.datset){
+                    dependents.push(operations[i].target);
+                }
+            });
+        }
+    }
+    return dependents;
+}
+
 export async function getCurrentFileMetadata(freshCompilation: boolean) {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
@@ -126,10 +173,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
         let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
             if(dataformCompiledJson){
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                let dependents = await getDependentsOfTarget(fileMetadata.tables[0].target, dataformCompiledJson);
                 return {
                     isDataformWorkspace: true,
                     dataformCompilationErrors:errors,
                     fileMetadata: fileMetadata,
+                    dependents: dependents,
                     pathMeta: {
                         filename: filename,
                         extension: extension,
@@ -144,6 +193,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 isDataformWorkspace: true,
                 dataformCompilationErrors:errors,
                 fileMetadata: undefined,
+                dependents: undefined,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
@@ -154,9 +204,11 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
         }
         } else {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+            let dependents = await getDependentsOfTarget(fileMetadata.tables[0].target, CACHED_COMPILED_DATAFORM_JSON);
             return {
                 isDataformWorkspace: true,
                 fileMetadata: fileMetadata,
+                dependents: dependents,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
