@@ -109,15 +109,15 @@ function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | 
     }
 }
 
-function updateDependentsGivenObj(dependents:Target[], targetObj:Table[]|Assertion[]|Operation[], targetToSearch:Target){
-    for(let i=0; i<targetObj.length; i++){
-        const tableTargets = targetObj[i].dependencyTargets;
+function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Assertion[]|Operation[], targetToSearch:Target){
+    for(let i=0; i<targetObjList.length; i++){
+        const tableTargets = targetObjList[i].dependencyTargets;
         if(!tableTargets || tableTargets.length === 0){
             continue;
         } else {
             tableTargets.forEach((tableTarget:any) => {
                 if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.datset===targetToSearch.datset){
-                    dependents.push(targetObj[i].target);
+                    dependents.push(targetObjList[i].target);
                 }
             });
         }
