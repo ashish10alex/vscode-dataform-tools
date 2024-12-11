@@ -109,50 +109,31 @@ function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | 
     }
 }
 
+function updateDependentsGivenObj(dependents:any, targetObj:any, targetToSearch:any){
+    for(let i=0; i<targetObj.length; i++){
+        const tableTargets = targetObj[i].dependencyTargets;
+        if(!tableTargets || tableTargets.length === 0){
+            continue;
+        } else {
+            tableTargets.forEach((tableTarget:any) => {
+                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.datset===targetToSearch.datset){
+                    dependents.push(targetObj[i].target);
+                }
+            });
+        }
+    }
+    return dependents;
+}
+
 async function getDependentsOfTarget(targetToSearch:any, dataformCompiledJson:any){
     let dependents:any = [];
     let tables = dataformCompiledJson.tables;
     let assertions = dataformCompiledJson.assertions;
     let operations = dataformCompiledJson.operations;
 
-    for(let i=0; i<tables.length; i++){
-        const tableTargets = tables[i].dependencyTargets;
-        if(!tableTargets || tableTargets.length === 0){
-            continue;
-        } else {
-            tableTargets.forEach((tableTarget:any) => {
-                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.datset===targetToSearch.datset){
-                    dependents.push(tables[i].target);
-                }
-            });
-        }
-    }
-
-    for(let i=0; i<assertions.length; i++){
-        const assertionTargets = assertions[i].dependencyTargets;
-        if(!assertionTargets || assertionTargets.length === 0){
-            continue;
-        } else {
-            assertionTargets.forEach((assertionTarget:any) => {
-                if(assertionTarget.name===targetToSearch.name && assertionTarget.schema===targetToSearch.schema  && assertionTarget.datset===targetToSearch.datset){
-                    dependents.push(assertions[i].target);
-                }
-            });
-        }
-    }
-
-    for(let i=0; i<operations.length; i++){
-        const opearationsTargets = operations[i].dependencyTargets;
-        if(!opearationsTargets || opearationsTargets.length === 0){
-            continue;
-        } else {
-            opearationsTargets.forEach((operationTarget:any) => {
-                if(operationTarget.name===targetToSearch.name && operationTarget.schema===targetToSearch.schema  && operationTarget.datset===targetToSearch.datset){
-                    dependents.push(operations[i].target);
-                }
-            });
-        }
-    }
+    dependents = updateDependentsGivenObj(dependents, tables, targetToSearch);
+    dependents = updateDependentsGivenObj(dependents, assertions, targetToSearch);
+    dependents = updateDependentsGivenObj(dependents, operations, targetToSearch);
     return dependents;
 }
 
