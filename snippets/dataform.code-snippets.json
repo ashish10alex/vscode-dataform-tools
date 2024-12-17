@@ -54,7 +54,8 @@
 				"  schema: '${1}',",
 				"  description: '${2}',",
 				"  dependencies: [${3}],",
-				"  tags: [${6}]",
+				"  tags: [${6}],",
+				"  hasOutput: true",
 			  "}"
 		],
 		"description": "Generate operations config for sqlx files"
