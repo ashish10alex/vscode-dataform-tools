@@ -1,3 +1,5 @@
+const vscode = acquireVsCodeApi();
+
 document.addEventListener('DOMContentLoaded', () => {
     hljs.addPlugin(new CopyButtonPlugin({
         autohide: false, // Always show the copy button
@@ -68,6 +70,7 @@ window.addEventListener('message', event => {
 
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
+    const lineageMetadata = event?.data?.lineageMetadata;
     if (models){
 
         const upstreamHeader = document.createElement("header");
@@ -116,6 +119,67 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(downstreamHeader);
             depsDiv.appendChild(dependentsList);
         }
+
+        const lineageMetadataButton = document.createElement('button');
+        lineageMetadataButton.id = 'lineageMetadata';
+        lineageMetadataButton.style.background = '#bcc9d6';
+        lineageMetadataButton.style.color = 'black'; // blueish
+        lineageMetadataButton.style.border = 'none';
+        lineageMetadataButton.style.padding = '10px';
+        lineageMetadataButton.style.cursor = 'pointer';
+        lineageMetadataButton.style.width = '100%'; 
+
+        const buttonText = document.createElement('h4');
+        if(lineageMetadata?.dependencies){
+            buttonText.textContent = '[beta] Dataplex Downstream  ▼ ';
+        } else {
+            buttonText.textContent = '[beta] Dataplex Downstream  ▶︎ ';
+        }
+        buttonText.style.margin = '0';
+        lineageMetadataButton.appendChild(buttonText);
+        depsDiv.appendChild(lineageMetadataButton);
+        
+        const explainLineagePara = document.createElement('p');
+        explainLineagePara.style.color = '#ffc300';  // yellowish
+        explainLineagePara.innerHTML = `When clicked will retreive downstream lineage using Data Lineage API , similar to "LINEAGE" on BigQuery console`;
+
+        depsDiv.appendChild(explainLineagePara);
+
+        const lineageMetadataButttonId = document.getElementById('lineageMetadata');
+        lineageMetadataButttonId.addEventListener('click', function() {
+            vscode.postMessage({
+                command: 'lineageMetadata',
+                value: true
+            });
+        });
+
+        if(lineageMetadata.error){
+            const dataplexHeader = document.createElement("header");
+            dataplexHeader.innerHTML = `<h4 style="color: #FFB3BA;">${lineageMetadata.error}</h4>`;
+            depsDiv.appendChild(dataplexHeader);
+        }
+
+        const liniageDependencies = lineageMetadata?.dependencies;
+        if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){
+            const downstreamHeader = document.createElement("header");
+
+            const dependentsList = document.createElement('ul');
+            for (let j = 0; j < liniageDependencies.length; j++) {
+                    const fullTableId =  liniageDependencies[j];
+                    fullTableIds.push(fullTableId);
+
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    const [projectId, datasetId, tableId] =  fullTableId.split(".");
+                    link.href = getUrlToNavigateToTableInBigQuery(projectId, datasetId, tableId);
+                    link.textContent = fullTableId;
+                    li.appendChild(link);
+                    dependentsList.appendChild(li);
+            }
+            depsDiv.appendChild(downstreamHeader);
+            depsDiv.appendChild(dependentsList);
+        }
+
     }
 
     let targetTableOrView = event?.data?.targetTableOrView;
