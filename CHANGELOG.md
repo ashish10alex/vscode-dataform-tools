@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.6.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.14...v0.6.0) (2024-12-17)
+
+
+### Features
+
+* add `hasOutput` to operations snippets ([bbe520b](https://github.com/ashish10alex/vscode-dataform-tools/commit/bbe520b5b863b7fc39e8289c28bd9c9c1bb491c6))
+* show external lineage of a table  ([#76](https://github.com/ashish10alex/vscode-dataform-tools/issues/76)) ([0859432](https://github.com/ashish10alex/vscode-dataform-tools/commit/0859432ca3e56780d73914eb20003a356b0f7538))
+
 ### [0.5.14](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.13...v0.5.14) (2024-12-11)
 
 
