@@ -9,7 +9,7 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
-import { getLiniageMetadata } from './getLiniageMetadata';
+import { getLiniageMetadata } from './getLineageMetadata';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -158,13 +158,13 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
                 const targetToSearch = fileMetadata.tables[0].target;
                 let dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
-                let liniageMetadata = await getLiniageMetadata(targetToSearch);
+                let lineageMetadata = await getLiniageMetadata(targetToSearch);
                 return {
                     isDataformWorkspace: true,
                     dataformCompilationErrors:errors,
                     fileMetadata: fileMetadata,
                     dependents: dependents,
-                    liniageMetadata: liniageMetadata,
+                    lineageMetadata: lineageMetadata,
                     pathMeta: {
                         filename: filename,
                         extension: extension,
@@ -180,7 +180,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 dataformCompilationErrors:errors,
                 fileMetadata: undefined,
                 dependents: undefined,
-                liniageMetadata: undefined,
+                lineageMetadata: undefined,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
@@ -193,12 +193,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
             const targetToSearch = fileMetadata.tables[0].target;
             let dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
-            let liniageMetadata = await getLiniageMetadata(targetToSearch);
+            let lineageMetadata = await getLiniageMetadata(targetToSearch);
             return {
                 isDataformWorkspace: true,
                 fileMetadata: fileMetadata,
                 dependents: dependents,
-                liniageMetadata: liniageMetadata,
+                lineageMetadata: lineageMetadata,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
@@ -207,7 +207,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 document: document
             };
         }
-    } 
+    }
 
 export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, searchTerm: string) {
     let sourcesDocument = await vscode.workspace.openTextDocument(sourcesJsUri);
@@ -266,7 +266,7 @@ export async function getTextByLineRange(filePathUri: vscode.Uri, startLine: num
   if(endLine === -1){
     endLine = document.lineCount-1;
   }
-  
+
   // Check if the document is valid and has enough lines
   if (document && startLine >= 0 && endLine < document.lineCount) {
     const start = new vscode.Position(startLine, 0);

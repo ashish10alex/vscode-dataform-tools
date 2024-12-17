@@ -68,7 +68,7 @@ window.addEventListener('message', event => {
 
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
-    const liniageMetadata = event?.data?.liniageMetadata;
+    const lineageMetadata = event?.data?.lineageMetadata;
     if (models){
 
         const upstreamHeader = document.createElement("header");
@@ -118,14 +118,14 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(dependentsList);
         }
 
-        if(liniageMetadata.error){
+        if(lineageMetadata.error){
             const dataplexHeader = document.createElement("header");
-            dataplexHeader.innerHTML = `<h4>Dataplex Downstream</h4><br> <h4 style="color: #FFB3BA;">${liniageMetadata.error}</h4>`;
+            dataplexHeader.innerHTML = `<h4>Dataplex Downstream</h4><br> <h4 style="color: #FFB3BA;">${lineageMetadata.error}</h4>`;
             depsDiv.appendChild(dataplexHeader);
         }
 
-        const liniageDependencies = liniageMetadata?.dependencies;
-        if (liniageMetadata && liniageDependencies?.length > 0 && !liniageMetadata.error){
+        const liniageDependencies = lineageMetadata?.dependencies;
+        if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){
             const downstreamHeader = document.createElement("header");
             downstreamHeader.innerHTML = "<h4>Dataplex Downstream</h4>";
 

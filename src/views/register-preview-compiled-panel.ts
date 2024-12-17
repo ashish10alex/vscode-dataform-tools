@@ -33,7 +33,7 @@ async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     if (currentFileMetadata?.fileMetadata?.tables) {
         await Promise.all(currentFileMetadata.fileMetadata.tables.map(async (table:any) => {
             const dependencyTargets = table.dependencyTargets;
-            
+
             if (dependencyTargets) {
                 const schemaPromises = dependencyTargets.map(async (dt:{database:string, schema:string, name:string}) => {
                     return getTableSchema(dt.database, dt.schema, dt.name);
@@ -183,7 +183,7 @@ export class CompiledQueryPanel {
         if (curFileMeta.isDataformWorkspace===false){
             return;
         }
-        
+
         if(curFileMeta.dataformCompilationErrors){
             let errorString = "<p>Error compiling Dataform:</p><ul>";
 
@@ -228,7 +228,7 @@ export class CompiledQueryPanel {
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
-            "liniageMetadata": curFileMeta.liniageMetadata,
+            "lineageMetadata": curFileMeta.lineageMetadata,
             "compiledQuerySchema": compiledQuerySchema,
             "targetTableOrView": targetTableOrView,
             "dependents": curFileMeta.dependents,
@@ -263,7 +263,7 @@ export class CompiledQueryPanel {
                 "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                 "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
-                "liniageMetadata": curFileMeta.liniageMetadata,
+                "lineageMetadata": curFileMeta.lineageMetadata,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
                 "compiledQuerySchema": compiledQuerySchema,
