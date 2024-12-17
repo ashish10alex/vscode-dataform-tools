@@ -158,13 +158,15 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
                 const targetToSearch = fileMetadata.tables[0].target;
                 let dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
-                let lineageMetadata = await getLiniageMetadata(targetToSearch);
                 return {
                     isDataformWorkspace: true,
                     dataformCompilationErrors:errors,
                     fileMetadata: fileMetadata,
                     dependents: dependents,
-                    lineageMetadata: lineageMetadata,
+                    lineageMetadata: {
+                        dependencies: undefined,
+                        error: undefined,
+                    },
                     pathMeta: {
                         filename: filename,
                         extension: extension,
@@ -193,12 +195,14 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
             const targetToSearch = fileMetadata.tables[0].target;
             let dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
-            let lineageMetadata = await getLiniageMetadata(targetToSearch);
             return {
                 isDataformWorkspace: true,
                 fileMetadata: fileMetadata,
                 dependents: dependents,
-                lineageMetadata: lineageMetadata,
+                lineageMetadata: {
+                    dependencies: undefined,
+                    error: undefined,
+                },
                 pathMeta: {
                     filename: filename,
                     extension: extension,

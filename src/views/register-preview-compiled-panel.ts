@@ -2,6 +2,7 @@ import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
 import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
+import { getLiniageMetadata } from "../getLineageMetadata";
 
 function showLoadingProgress(
     title: string,
@@ -101,6 +102,7 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
     public currentFileMetadata: any;
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata);
@@ -172,7 +174,46 @@ export class CompiledQueryPanel {
             },
             null,
             );
-        }
+        
+        this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
+          async message => {
+            switch (message.command) {
+              case 'lineageMetadata':
+                const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
+                const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
+                const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
+                const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
+                const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+
+                const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target);
+
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+                    "assertionQuery": fileMetadata.queryMeta.assertionQuery,
+                    "preOperations": fileMetadata.queryMeta.preOpsQuery,
+                    "postOperations": fileMetadata.queryMeta.postOpsQuery,
+                    "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
+                    "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
+                    "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+                    "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                    "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                    "lineageMetadata": lineageMetadata,
+                    "errorMessage": errorMessage,
+                    "dryRunStat":  dryRunStat,
+                    "compiledQuerySchema": compiledQuerySchema,
+                    "targetTableOrView": targetTableOrView,
+                    "models": curFileMeta.fileMetadata.tables,
+                    "dependents": curFileMeta.dependents,
+                });
+                return;
+            }
+          },
+          undefined,
+          undefined,
+      );
+
+    }
+
 
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:any) {
         const webview = this.webviewPanel.webview;
@@ -252,6 +293,9 @@ export class CompiledQueryPanel {
         if(!dryRunStat){
             dryRunStat = "0 GB";
         }
+
+        this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat};
+
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
                 "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
