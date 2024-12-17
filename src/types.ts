@@ -55,9 +55,9 @@ export interface DeclarationsLegendMetadata {
 }
 
 export interface Target {
-    database: string;
-    schema: string;
-    name: string;
+    database: string; // projectId
+    schema: string; // dataset
+    name: string; // tableId
 }
 
 export interface Declarations {

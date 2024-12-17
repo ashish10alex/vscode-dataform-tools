@@ -68,6 +68,7 @@ window.addEventListener('message', event => {
 
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
+    const liniageMetadata = event?.data?.liniageMetadata;
     if (models){
 
         const upstreamHeader = document.createElement("header");
@@ -116,6 +117,35 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(downstreamHeader);
             depsDiv.appendChild(dependentsList);
         }
+
+        if(liniageMetadata.error){
+            const dataplexHeader = document.createElement("header");
+            dataplexHeader.innerHTML = `<h4>Dataplex Downstream</h4><br> <h4 style="color: #FFB3BA;">${liniageMetadata.error}</h4>`;
+            depsDiv.appendChild(dataplexHeader);
+        }
+
+        const liniageDependencies = liniageMetadata?.dependencies;
+        if (liniageMetadata && liniageDependencies?.length > 0 && !liniageMetadata.error){
+            const downstreamHeader = document.createElement("header");
+            downstreamHeader.innerHTML = "<h4>Dataplex Downstream</h4>";
+
+            const dependentsList = document.createElement('ul');
+            for (let j = 0; j < liniageDependencies.length; j++) {
+                    const fullTableId =  liniageDependencies[j];
+                    fullTableIds.push(fullTableId);
+
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    const [projectId, datasetId, tableId] =  fullTableId.split(".");
+                    link.href = getUrlToNavigateToTableInBigQuery(projectId, datasetId, tableId);
+                    link.textContent = fullTableId;
+                    li.appendChild(link);
+                    dependentsList.appendChild(li);
+            }
+            depsDiv.appendChild(downstreamHeader);
+            depsDiv.appendChild(dependentsList);
+        }
+
     }
 
     let targetTableOrView = event?.data?.targetTableOrView;
