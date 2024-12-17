@@ -294,8 +294,6 @@ export class CompiledQueryPanel {
             dryRunStat = "0 GB";
         }
 
-        this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat};
-
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
                 "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -315,6 +313,7 @@ export class CompiledQueryPanel {
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
             });
+            this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat};
             return webview;
         }
     }
