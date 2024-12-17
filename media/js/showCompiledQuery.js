@@ -127,7 +127,7 @@ window.addEventListener('message', event => {
         const liniageDependencies = lineageMetadata?.dependencies;
         if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){
             const downstreamHeader = document.createElement("header");
-            downstreamHeader.innerHTML = "<h4>Dataplex Downstream</h4>";
+            downstreamHeader.innerHTML = `<h4 style="color: #ffc300;">Dataplex Downstream</h4>`;
 
             const dependentsList = document.createElement('ul');
             for (let j = 0; j < liniageDependencies.length; j++) {
