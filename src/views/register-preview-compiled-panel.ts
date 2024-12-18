@@ -81,10 +81,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                     "Dataform tools\n",
                     async (progress, token) => {
                         progress.report({ message: "Generating compiled query metadata..." });
-                        let currentFileMetadata = await getCurrentFileMetadata(true);
-                        progress.report({ message: "Creating webview..." });
-                        updateSchemaAutoCompletions(currentFileMetadata);
-                        CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
+                        CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
                     },
                 );
             }
@@ -146,9 +143,9 @@ export class CompiledQueryPanel {
             }
 
             //TODO: Handle this later
-            if (!currentFileMetadata?.isDataformWorkspace) {
-                return;
-            }
+            // if (!currentFileMetadata?.isDataformWorkspace) {
+            //     return;
+            // }
 
             const panel = window.createWebviewPanel(
                 CompiledQueryPanel.viewType,
@@ -219,6 +216,11 @@ export class CompiledQueryPanel {
         const webview = this.webviewPanel.webview;
         if (this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
+        }
+
+        if(!curFileMeta){
+            curFileMeta = await getCurrentFileMetadata(true);
+            updateSchemaAutoCompletions(curFileMeta);
         }
 
         if (curFileMeta.isDataformWorkspace===false){
