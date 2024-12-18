@@ -58,7 +58,12 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     );
 
     vscode.window.onDidChangeActiveTextEditor(async(editor) => {
-        if (editor && CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
+        const changedActiveEditorFileName = editor?.document?.fileName;
+        const webviewPanelVisisble = CompiledQueryPanel?.centerPanel?.webviewPanel?.visible;
+        if(!activeEditorFileName){
+            activeEditorFileName = changedActiveEditorFileName;
+        } else if (editor && changedActiveEditorFileName && activeEditorFileName!== changedActiveEditorFileName && webviewPanelVisisble ){
+            activeEditorFileName = changedActiveEditorFileName;
             let currentFileMetadata = await getCurrentFileMetadata(false);
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);

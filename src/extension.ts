@@ -48,6 +48,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
     globalThis.schemaAutoCompletions = [];
+    globalThis.activeEditorFileName = undefined;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];

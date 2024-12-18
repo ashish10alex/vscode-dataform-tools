@@ -60,5 +60,9 @@ declare global {
   var schemaAutoCompletions: {name: string, metadata:any}[];
 }
 
+declare global {
+  var activeEditorFileName: string | undefined;
+}
+
 
 export {};
