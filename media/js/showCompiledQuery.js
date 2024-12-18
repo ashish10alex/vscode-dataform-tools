@@ -151,6 +151,18 @@ window.addEventListener('message', event => {
                 command: 'lineageMetadata',
                 value: true
             });
+            const lineageLoadingIconDiv = document.createElement('div');
+            lineageLoadingIconDiv.id = "lineageLoadingIcon";
+            lineageLoadingIconDiv.innerHTML = `
+            <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                        values="0 126;126 126;126 0"/>
+                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                        values="0;-126;-252"/>
+                    </circle>
+            </svg>`;
+            depsDiv.appendChild(lineageLoadingIconDiv);
         });
 
         if(lineageMetadata.error){
