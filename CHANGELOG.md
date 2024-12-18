@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.6.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.0...v0.6.1) (2024-12-18)
+
+
+### Features
+
+* keep showing dry run stats which switching to schema tab ([d7be106](https://github.com/ashish10alex/vscode-dataform-tools/commit/d7be106cba9aa53928926d62a2a6037032d0d91a))
+* load the web ui prior to compile to reduce perception of slowness ([d901e72](https://github.com/ashish10alex/vscode-dataform-tools/commit/d901e7243254a61ee614fa9ab72f37fd61fe67c2))
+* show loading icon for dataplex lineage ([44dc8a2](https://github.com/ashish10alex/vscode-dataform-tools/commit/44dc8a26522fc0449b169ef8dd0da72efaee0098))
+* use ordered list to easy identify no. of deps ([9172c5a](https://github.com/ashish10alex/vscode-dataform-tools/commit/9172c5ac0ae46cfbf26e075fbdb0d48a7e09c811))
+
 ## [0.6.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.5.14...v0.6.0) (2024-12-17)
 
 
