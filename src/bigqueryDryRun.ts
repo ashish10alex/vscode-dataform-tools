@@ -22,6 +22,7 @@ export async function queryDryRun(query: string) {
     if (!bigqueryClient) {
         return {
             schema: undefined,
+            location: undefined,
             statistics: { totalBytesProcessed: "" },
             error: { hasError: true, message: "BigQuery client not available." }
         };
@@ -30,6 +31,7 @@ export async function queryDryRun(query: string) {
     if (query === "" || !query) {
         return {
             schema: undefined,
+            location: undefined,
             statistics: { totalBytesProcessed: "0 GB" },
             error: { hasError: false, message: "" }
         };
@@ -51,6 +53,7 @@ export async function queryDryRun(query: string) {
 
         return {
             schema: job.metadata.statistics.query.schema,
+            location: job.metadata.jobReference.location,
             statistics: {
                 totalBytesProcessed: `${(parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3)} GB`,
             },
@@ -64,6 +67,7 @@ export async function queryDryRun(query: string) {
             const errorLocation = getLineAndColumnNumberFromErrorMessage(finalError.message);
             return {
                 schema: undefined,
+                location: undefined,
                 statistics: { totalBytesProcessed: "" },
                 error: { hasError: true, message: finalError.message, location: errorLocation }
             };

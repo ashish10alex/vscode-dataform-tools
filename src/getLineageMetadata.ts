@@ -1,11 +1,10 @@
 import { Target } from "./types";
 const {LineageClient} = require('@google-cloud/lineage').v1;
 
-export async function getLiniageMetadata(targetToSearch: Target) {
+export async function getLiniageMetadata(targetToSearch: Target, location:string) {
     const projectId = targetToSearch.database;
     const datasetId = targetToSearch.schema;
     const tableId = targetToSearch.name;
-    const location = "eu"; //TODO: make this user selectable
 
     const client = new LineageClient(); // TODO: This gets created everytime this func is called. Can we use same client for longer ?
 

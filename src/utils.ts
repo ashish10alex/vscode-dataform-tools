@@ -9,7 +9,6 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
-import { getLiniageMetadata } from './getLineageMetadata';
 
 let supportedExtensions = ['sqlx', 'js'];
 

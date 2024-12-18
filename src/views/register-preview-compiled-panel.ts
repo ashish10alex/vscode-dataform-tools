@@ -99,7 +99,7 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
     public currentFileMetadata: any;
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any, location: string};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata);
@@ -181,8 +181,9 @@ export class CompiledQueryPanel {
                 const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
                 const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                 const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+                const location = this.centerPanel?._cachedResults?.location || "eu"; // TODO: check if there is way to have a better default
 
-                const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target);
+                const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target, location);
 
                 this.centerPanel?.webviewPanel.webview.postMessage({
                     "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -289,6 +290,7 @@ export class CompiledQueryPanel {
         let dryRunResult = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
         let errorMessage = dryRunResult?.error.message;
+        const location:string = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
         }
@@ -315,7 +317,7 @@ export class CompiledQueryPanel {
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
             });
-            this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat};
+            this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
             return webview;
         }
     }
