@@ -171,12 +171,9 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); }));
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async () => {
-            let currentFileMetadata = await getCurrentFileMetadata(true);
-            if (!currentFileMetadata?.isDataformWorkspace || !currentFileMetadata.fileMetadata) {
-                return;
-            }
-            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
+        vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async (_editor) => {
+            activeEditorFileName = _editor.fsPath;
+            CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
         }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
