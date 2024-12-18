@@ -172,16 +172,31 @@ window.addEventListener('message', event => {
 
             const dependentsList = document.createElement('ol');
             for (let j = 0; j < liniageDependencies.length; j++) {
-                    const fullTableId =  liniageDependencies[j];
-                    fullTableIds.push(fullTableId);
+                const fullTableId = liniageDependencies[j];
+                fullTableIds.push(fullTableId);
 
-                    const li = document.createElement('li');
-                    const link = document.createElement('a');
-                    const [projectId, datasetId, tableId] =  fullTableId.split(".");
-                    link.href = getUrlToNavigateToTableInBigQuery(projectId, datasetId, tableId);
-                    link.textContent = fullTableId;
-                    li.appendChild(link);
-                    dependentsList.appendChild(li);
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                const [projectId, datasetId, tableId] = fullTableId.split(".");
+
+                let exists = false;
+                for (const dep of dependents) {
+                    if (dep.database === projectId && dep.schema === datasetId && dep.name === tableId) {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                link.href = getUrlToNavigateToTableInBigQuery(projectId, datasetId, tableId);
+                link.textContent = fullTableId;
+                li.appendChild(link);
+
+                if (exists === false) {
+                    const externalTag = document.createTextNode(' [external]');
+                    li.appendChild(externalTag);
+                }
+
+                dependentsList.appendChild(li);
             }
             depsDiv.appendChild(downstreamHeader);
             depsDiv.appendChild(dependentsList);
