@@ -77,7 +77,7 @@ window.addEventListener('message', event => {
         upstreamHeader.innerHTML = "<h4>Dependencies</h4>";
 
         fullTableIds = [];
-        const dependencyList = document.createElement('ul');
+        const dependencyList = document.createElement('ol');
         for (let i = 0; i < models.length; i++) {
             let tableTargets = models[i]?.dependencyTargets;
             if (!tableTargets){
@@ -104,7 +104,7 @@ window.addEventListener('message', event => {
             const downstreamHeader = document.createElement("header");
             downstreamHeader.innerHTML = "<h4>Dependents</h4>";
 
-            const dependentsList = document.createElement('ul');
+            const dependentsList = document.createElement('ol');
             for (let j = 0; j < dependents.length; j++) {
                     fullTableId = `${dependents[j].database}.${dependents[j].schema}.${dependents[j].name}`;
                     fullTableIds.push(fullTableId);
@@ -163,7 +163,7 @@ window.addEventListener('message', event => {
         if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){
             const downstreamHeader = document.createElement("header");
 
-            const dependentsList = document.createElement('ul');
+            const dependentsList = document.createElement('ol');
             for (let j = 0; j < liniageDependencies.length; j++) {
                     const fullTableId =  liniageDependencies[j];
                     fullTableIds.push(fullTableId);

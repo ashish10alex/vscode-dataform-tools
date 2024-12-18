@@ -354,8 +354,8 @@
 }
 
 #depsDiv ul, #depsDiv ol {
-  list-style-type: none; /* Remove default bullet */
-  padding: 0; /* Remove default padding */
+  padding-left: 20px;
+  list-style-type: decimal;
 }
 
 #depsDiv li {
