@@ -366,3 +366,12 @@
 #depsDiv li:last-child {
   margin-bottom: 0;
 }
+
+.lineage-metadata-button {
+  background: #bcc9d6;
+  color: black;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  width: 100%;
+}

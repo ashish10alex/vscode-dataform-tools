@@ -122,12 +122,7 @@ window.addEventListener('message', event => {
 
         const lineageMetadataButton = document.createElement('button');
         lineageMetadataButton.id = 'lineageMetadata';
-        lineageMetadataButton.style.background = '#bcc9d6';
-        lineageMetadataButton.style.color = 'black'; // blueish
-        lineageMetadataButton.style.border = 'none';
-        lineageMetadataButton.style.padding = '10px';
-        lineageMetadataButton.style.cursor = 'pointer';
-        lineageMetadataButton.style.width = '100%'; 
+        lineageMetadataButton.classList.add('lineage-metadata-button');
 
         const buttonText = document.createElement('h4');
         if(lineageMetadata?.dependencies){
