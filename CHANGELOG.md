@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.6.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.2...v0.6.3) (2024-12-18)
+
+
+### Features
+
+* efficient loading of webview when invoked via icon ([c3332cf](https://github.com/ashish10alex/vscode-dataform-tools/commit/c3332cf4b4fac694411bc7e9c69926800f9642f9))
+* retrieve location of table from dry run job ([7820525](https://github.com/ashish10alex/vscode-dataform-tools/commit/78205254ab7d500a77e3523c6f84c2cac9b40eff))
+
+
+### Bug Fixes
+
+* webview re-draws when same active editor is selected after clicking on webview ([c92a4d0](https://github.com/ashish10alex/vscode-dataform-tools/commit/c92a4d0ab26da0f4c7357ab8276d90c2297a79a1))
+
 ### [0.6.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.1...v0.6.2) (2024-12-18)
 
 
