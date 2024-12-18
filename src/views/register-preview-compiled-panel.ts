@@ -397,11 +397,18 @@ export class CompiledQueryPanel {
             </div>
         </div>
 
-
-        <div id="schemaBlock" style="display: none;">
-            <table id="schemaTable" class="display" width="100%"></table>
+        <div class="error-message-container" id="errorMessageDiv" style="display: none;">
+            <p><span id="errorMessage" class="language-bash"></span></p>
         </div>
 
+        <div class="no-errors-container" id="dryRunStatDiv" style="display: none;">
+            <p><span id="dryRunStat" class="language-bash"></span></p>
+        </div>
+
+
+        <div id="schemaBlock" style="display: none; margin-top: 20px;">
+            <table id="schemaTable" class="display" width="100%"></table>
+        </div>
 
         <div id="compilationBlock" style="display: block;">
 
@@ -414,15 +421,6 @@ export class CompiledQueryPanel {
                             values="0;-126;-252"/>
                         </circle>
                 </svg>
-            </div>
-
-
-            <div class="error-message-container" id="errorMessageDiv" style="display: none;">
-                <p><span id="errorMessage" class="language-bash"></span></p>
-            </div>
-
-            <div class="no-errors-container" id="dryRunStatDiv" style="display: none;">
-                <p><span id="dryRunStat" class="language-bash"></span></p>
             </div>
 
             <span class="bigquery-job-cancelled"></span>
