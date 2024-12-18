@@ -192,7 +192,9 @@ window.addEventListener('message', event => {
                 li.appendChild(link);
 
                 if (exists === false) {
-                    const externalTag = document.createTextNode(' [external]');
+                    const externalTag = document.createElement('span');
+                    externalTag.className = 'external-tag';
+                    externalTag.textContent = 'external';
                     li.appendChild(externalTag);
                 }
 

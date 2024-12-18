@@ -375,3 +375,15 @@
   cursor: pointer;
   width: 100%;
 }
+
+.external-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 0.75em;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #6c757d;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
