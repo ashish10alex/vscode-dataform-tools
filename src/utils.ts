@@ -149,6 +149,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
+    workspaceFolder = `"${workspaceFolder}"`;
 
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
@@ -430,6 +431,7 @@ export function getFileNameFromDocument(document: vscode.TextDocument, showError
 //
 export function getWorkspaceFolder(): string | undefined {
     let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    console.log(workspaceFolder);
     if (workspaceFolder === undefined) {
         vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
         return undefined;
@@ -906,6 +908,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
 }
 
 export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    workspaceFolder = `"${workspaceFolder}"`;
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);

@@ -324,6 +324,8 @@ export class CompiledQueryPanel {
                 "dependents": curFileMeta.dependents,
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
+            dataformTags = queryAutoCompMeta.dataformTags;
+            declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
         }
     }

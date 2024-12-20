@@ -21,6 +21,7 @@ export async function getMultipleTagsSelection() {
 
 export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
     let dataformCompilerOptions = getDataformCompilerOptions();
+    workspaceFolder = `"${workspaceFolder}"`;
     let cmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
     if (typeof tags === "object") {
         for (let tag of tags) {

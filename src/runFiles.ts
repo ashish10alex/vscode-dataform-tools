@@ -13,12 +13,12 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         return;
     }
     let workspaceFolder = getWorkspaceFolder();
-
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-
     if (!workspaceFolder) {
         return;
     }
+    workspaceFolder = `"${workspaceFolder}"`;
+
+    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     let currFileMetadata;
     let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
