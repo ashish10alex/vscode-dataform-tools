@@ -235,7 +235,7 @@ export class CompiledQueryPanel {
         }
 
         if(curFileMeta.dataformCompilationErrors){
-            let errorString = "<p>Error compiling Dataform:</p><ul>";
+            let errorString = "<h3>Error compiling Dataform:</h3><ul>";
 
             let workspaceFolder = getWorkspaceFolder();
             if (!workspaceFolder) {
@@ -257,7 +257,10 @@ export class CompiledQueryPanel {
                 }
             }
 
-            errorString += "</ul>Run `dataform compile` to see more details";
+            errorString += "</ul> Run `dataform compile` to see more details <br>";
+            if(curFileMeta?.possibleResolutions?.length > 0){
+                errorString += `<h4>Possible fix: </h4> <li> ${curFileMeta.possibleResolutions[0]}</li>`;
+            }
 
             await webview.postMessage({
                 "errorMessage": errorString

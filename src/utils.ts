@@ -153,7 +153,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
 
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson, errors, possibleResolutions} = await runCompilation(workspaceFolder); // Takes ~1100ms
             if(dataformCompiledJson){
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
                 const targetToSearch = fileMetadata.tables[0].target;
@@ -161,6 +161,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
                 return {
                     isDataformWorkspace: true,
                     dataformCompilationErrors:errors,
+                    possibleResolutions:possibleResolutions,
                     fileMetadata: fileMetadata,
                     dependents: dependents,
                     lineageMetadata: {
@@ -180,6 +181,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
             return {
                 isDataformWorkspace: true,
                 dataformCompilationErrors:errors,
+                possibleResolutions:possibleResolutions,
                 fileMetadata: undefined,
                 dependents: undefined,
                 lineageMetadata: undefined,
@@ -431,7 +433,6 @@ export function getFileNameFromDocument(document: vscode.TextDocument, showError
 //
 export function getWorkspaceFolder(): string | undefined {
     let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-    console.log(workspaceFolder);
     if (workspaceFolder === undefined) {
         vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
         return undefined;
@@ -726,7 +727,7 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
-function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined}> {
+function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions:string[] = [];
@@ -756,9 +757,9 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
             errorOutput += data.toString();
         });
 
-        spawnedProcess.on('close', (code: number) => {
+        spawnedProcess.on('close', async (code: number) => {
             if (code === 0) {
-                resolve({compiledString: stdOut, errors:undefined});
+                resolve({compiledString: stdOut, errors:undefined, possibleResolutions:undefined});
             } else {
                 if (stdOut !== '') {
                     let compiledJson = JSON.parse(stdOut.toString());
@@ -767,10 +768,21 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
                     graphErrors.forEach((graphError: {message:string, fileName:string}) => {
                         errors.push({error: graphError.message, fileName: graphError.fileName});
                     });
-                    resolve({compiledString: undefined, errors:errors});
+                    resolve({compiledString: undefined, errors:errors, possibleResolutions:undefined});
                 } else {
-                    resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}]});
-
+                    let possibleResolutions = [];
+                    const dataformInstallHint = "If using `package.json`, then run `dataform install`";
+                    if(errorOutput.includes(dataformInstallHint)){
+                        const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+                        if(_workspaceFolder){
+                            const filePath = path.join(_workspaceFolder, 'package.json');
+                            const packageJsonExsists =  await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+                            if(packageJsonExsists){
+                                possibleResolutions.push("run `dataform install` in terminal");
+                            }
+                        }
+                    };
+                    resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
                 }
             }
         });
@@ -782,17 +794,17 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
 }
 
 // Usage
-export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined}> {
+export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
-        let {compiledString, errors} = await compileDataform(workspaceFolder);
+        let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder);
         if(compiledString){
             const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            return {dataformCompiledJson: dataformCompiledJson, errors:errors};
+            return {dataformCompiledJson: dataformCompiledJson, errors:errors, possibleResolutions:possibleResolutions};
         }
-        return {dataformCompiledJson: undefined, errors:errors};
+        return {dataformCompiledJson: undefined, errors:errors, possibleResolutions:possibleResolutions};
     } catch (error:any) {
-        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform`, fileName: ""}]};
+        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform`, fileName: ""}], possibleResolutions:undefined};
     }
 }
 
