@@ -779,11 +779,11 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
                             const filePath = path.join(_workspaceFolder, 'package.json');
                             const packageJsonExsists =  await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
                             if(packageJsonExsists){
-                                possibleResolutions.push("run `dataform install` in terminal");
+                                possibleResolutions.push("run `<b>dataform install</b>` in terminal");
                             }
                         }
                     }else if (errorOutput.includes(installDataformCliHint)){
-                        possibleResolutions.push("Run `npm install -g @dataform/cli` in terminal");
+                        possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
                     };
                     resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
                 }

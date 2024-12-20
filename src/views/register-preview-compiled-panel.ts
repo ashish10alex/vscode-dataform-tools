@@ -302,6 +302,13 @@ export class CompiledQueryPanel {
         const location:string = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
+        }else if (errorMessage ==="BigQuery client not available."){
+            errorMessage += `<h4>Possible fix: </h4> <ol>
+             <li>ensure <b>gcloud cli</b> is installed</li> 
+             <li>Run <b>gcloud init</b></li> 
+             <li>Run <b>gcloud auth application-default login</b></li> 
+             <li>Run <b>gcloud config set project <project_id></b>  #replace with your gcp project id</li> 
+             </ol>`;
         }
         if(!dryRunStat){
             dryRunStat = "0 GB";
