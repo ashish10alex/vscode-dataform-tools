@@ -135,8 +135,7 @@ window.addEventListener('message', event => {
         depsDiv.appendChild(lineageMetadataButton);
         
         const explainLineagePara = document.createElement('p');
-        explainLineagePara.style.color = '#ffc300';  // yellowish
-        explainLineagePara.innerHTML = `When clicked will retreive downstream lineage using Data Lineage API , similar to "LINEAGE" on BigQuery console`;
+        explainLineagePara.innerHTML = `When clicked will retreive downstream lineage using Data Lineage API , similar to "LINEAGE" on BigQuery console. Requires <pre style="display: inline; white-space: pre-wrap;">roles/datalineage.viewer</pre> permissions`;
 
         depsDiv.appendChild(explainLineagePara);
 
