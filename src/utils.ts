@@ -743,7 +743,7 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
             spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         } else {
             const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`]);
+            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         }
 
         let stdOut = '';
@@ -772,6 +772,7 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
                 } else {
                     let possibleResolutions = [];
                     const dataformInstallHint = "If using `package.json`, then run `dataform install`";
+                    const installDataformCliHint = "dataform: command not found"; // TODO: check what is the eror message in windows
                     if(errorOutput.includes(dataformInstallHint)){
                         const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
                         if(_workspaceFolder){
@@ -781,6 +782,8 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
                                 possibleResolutions.push("run `dataform install` in terminal");
                             }
                         }
+                    }else if (errorOutput.includes(installDataformCliHint)){
+                        possibleResolutions.push("Run `npm install -g @dataform/cli` in terminal");
                     };
                     resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
                 }
