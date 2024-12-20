@@ -303,11 +303,13 @@ export class CompiledQueryPanel {
         if(!errorMessage){
             errorMessage = " ";
         }else if (errorMessage ==="BigQuery client not available."){
-            errorMessage += `<h4>Possible fix: </h4> <ol>
-             <li>ensure <b>gcloud cli</b> is installed</li> 
-             <li>Run <b>gcloud init</b></li> 
-             <li>Run <b>gcloud auth application-default login</b></li> 
-             <li>Run <b>gcloud config set project <project_id></b>  #replace with your gcp project id</li> 
+            errorMessage += `<h4>Possible fix: </h4>
+            <a href="https://cloud.google.com/sdk/docs/install">Install gcloud cli</a> <br>
+            <p> After gcloud cli is installed run the following in the terminal in order </p>
+             <ol>
+                <li><b>gcloud init</b></li> 
+                <li><b>gcloud auth application-default login</b></li> 
+                <li><b>gcloud config set project your-project-id</b>  #replace with your gcp project id</li> 
              </ol>`;
         }
         if(!dryRunStat){
