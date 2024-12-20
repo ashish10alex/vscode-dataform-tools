@@ -349,7 +349,7 @@
 }
 
 .dependency-list.open {
-    max-height: 1000px; /* Adjust this value based on your expected content size */
+    max-height: 9000px; /* Adjust this value based on your expected content size */
     transition: max-height 0.2s ease-in;
 }
 
