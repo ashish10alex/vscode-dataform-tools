@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.6.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.3...v0.6.4) (2024-12-20)
+
+
+### Features
+
+* show hint to resolve bigquery client issue ([1c5e1af](https://github.com/ashish10alex/vscode-dataform-tools/commit/1c5e1afed6ec034ebdc19fcfe4e7a14c3c60918a))
+* show hint to the user if they have not install dataform cli ([9fce2a0](https://github.com/ashish10alex/vscode-dataform-tools/commit/9fce2a05f904006a392bcc92ef8395ebc887a8c8))
+* show user potential error resolution steps ([f3a4365](https://github.com/ashish10alex/vscode-dataform-tools/commit/f3a43653ad84c2e2e1ad1c0647a6ff257a245539))
+
+
+### Bug Fixes
+
+* does not compile when path to repo has spaces in windows, e.g. One Drive ([dafee26](https://github.com/ashish10alex/vscode-dataform-tools/commit/dafee26f3f0694b8d6df9b293a5e4a77213ae72a))
+
 ### [0.6.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.2...v0.6.3) (2024-12-18)
 
 
