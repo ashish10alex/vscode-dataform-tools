@@ -166,6 +166,12 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(dataplexHeader);
         }
 
+        // NOTE: sacrifice O(N) memory for O(N*M) runtime where M,N are number of external and internal deps
+        const _dependentsList = [];
+        for (const dep of dependents) {
+            _dependentsList.push(`${dep.database}.${dep.schema}.${dep.name}`);
+        }
+
         const liniageDependencies = lineageMetadata?.dependencies;
         if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){
             const downstreamHeader = document.createElement("header");
@@ -177,16 +183,13 @@ window.addEventListener('message', event => {
 
                 const li = document.createElement('li');
                 const link = document.createElement('a');
-                const [projectId, datasetId, tableId] = fullTableId.split(".");
 
                 let exists = false;
-                for (const dep of dependents) {
-                    if (dep.database === projectId && dep.schema === datasetId && dep.name === tableId) {
-                        exists = true;
-                        break;
-                    }
+                if(_dependentsList.includes(fullTableId)){
+                    exists = true;
                 }
 
+                const [projectId, datasetId, tableId] = fullTableId.split(".");
                 link.href = getUrlToNavigateToTableInBigQuery(projectId, datasetId, tableId);
                 link.textContent = fullTableId;
                 li.appendChild(link);
@@ -202,6 +205,10 @@ window.addEventListener('message', event => {
             }
             depsDiv.appendChild(downstreamHeader);
             depsDiv.appendChild(dependentsList);
+        } else if (liniageDependencies?.length === 0){
+            const noExternalDeps = document.createElement("p");
+            noExternalDeps.innerHTML = "<p>No dependents found!</p>";
+            depsDiv.appendChild(noExternalDeps);
         }
 
     }
