@@ -177,6 +177,8 @@ window.addEventListener('message', event => {
             const downstreamHeader = document.createElement("header");
 
             const dependentsList = document.createElement('ol');
+            const listItems = [];
+
             for (let j = 0; j < liniageDependencies.length; j++) {
                 const fullTableId = liniageDependencies[j];
                 fullTableIds.push(fullTableId);
@@ -184,27 +186,31 @@ window.addEventListener('message', event => {
                 const li = document.createElement('li');
                 const link = document.createElement('a');
 
-                let exists = false;
-                if(_dependentsList.includes(fullTableId)){
-                    exists = true;
-                }
+                let exists = _dependentsList.includes(fullTableId);
 
                 const [projectId, datasetId, tableId] = fullTableId.split(".");
                 link.href = getUrlToNavigateToTableInBigQuery(projectId, datasetId, tableId);
                 link.textContent = fullTableId;
                 li.appendChild(link);
 
-                if (exists === false) {
+                if (!exists) {
                     const externalTag = document.createElement('span');
                     externalTag.className = 'external-tag';
                     externalTag.textContent = 'external';
                     li.appendChild(externalTag);
                 }
 
-                dependentsList.appendChild(li);
+                listItems.push({ element: li, isExternal: !exists });
             }
-            depsDiv.appendChild(downstreamHeader);
+
+            listItems.sort((a, b) => {
+                if (a.isExternal === b.isExternal) {return 0;}
+                return a.isExternal ? -1 : 1;
+            });
+
+            listItems.forEach(item => dependentsList.appendChild(item.element));
             depsDiv.appendChild(dependentsList);
+            depsDiv.appendChild(downstreamHeader);
         } else if (liniageDependencies?.length === 0){
             const noExternalDeps = document.createElement("p");
             noExternalDeps.innerHTML = "<p>No dependents found!</p>";
