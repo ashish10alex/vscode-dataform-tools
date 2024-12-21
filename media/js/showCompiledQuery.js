@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const runModelButton = document.getElementById('runModel');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
+const fullRefreshCheckBox = document.getElementById('fullRefresh');
 
 function runModelClickHandler() {
     runModelButton.disabled = true;
@@ -18,6 +19,7 @@ function runModelClickHandler() {
             runMode: true,
             includeDependents: includeDependentsCheckBox.checked,
             includeDependencies: includeDependenciesCheckbox.checked,
+            fullRefresh: fullRefreshCheckBox.checked,
         }
     });
 

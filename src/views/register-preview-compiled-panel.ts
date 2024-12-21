@@ -204,7 +204,8 @@ export class CompiledQueryPanel {
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;
                 const includeDependents  = message.value.includeDependents;
-                await runCurrentFile(includeDependencies, includeDependents, false);
+                const fullRefresh  = message.value.fullRefresh;
+                await runCurrentFile(includeDependencies, includeDependents, fullRefresh);
                 return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
@@ -481,12 +482,17 @@ export class CompiledQueryPanel {
                     <label class="model-checkbox-container">
                         <input type="checkbox" id="includeDependencies" class="checkbox"> 
                         <span class="custom-checkbox"></span>
-                        Include Dependencies
+                        Include Dependencies (upstream)
                     </label>
                     <label class="model-checkbox-container">
                         <input type="checkbox" id="includeDependents" class="checkbox"> 
                         <span class="custom-checkbox"></span>
-                        Include Dependents
+                        Include Dependents (downstream)
+                    </label>
+                    <label class="model-checkbox-container">
+                        <input type="checkbox" id="fullRefresh" class="checkbox"> 
+                        <span class="custom-checkbox"></span>
+                        full Refresh (Forces incremental tables to be rebuilt from scratch)
                     </label>
                 </div>
 
