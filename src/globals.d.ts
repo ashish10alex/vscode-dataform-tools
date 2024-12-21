@@ -64,5 +64,9 @@ declare global {
   var activeEditorFileName: string | undefined;
 }
 
+declare global {
+  var activeDocumentObj: any;
+}
+
 
 export {};

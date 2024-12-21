@@ -6,6 +6,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+const runModelButton = document.getElementById('runModel');
+const includeDependenciesCheckbox = document.getElementById('includeDependencies');
+const includeDependentsCheckBox = document.getElementById('includeDependents');
+const fullRefreshCheckBox = document.getElementById('fullRefresh');
+
+function runModelClickHandler() {
+    runModelButton.disabled = true;
+    vscode.postMessage({
+        command: 'runModel',
+        value: {
+            runMode: true,
+            includeDependents: includeDependentsCheckBox.checked,
+            includeDependencies: includeDependenciesCheckbox.checked,
+            fullRefresh: fullRefreshCheckBox.checked,
+        }
+    });
+
+    setTimeout(() => {
+        runModelButton.disabled = false;
+    }, 10000);
+}
+
+if (runModelButton) {
+    runModelButton.addEventListener('click', runModelClickHandler);
+}
+
+const previewResultsButton = document.getElementById('previewResults');
+function previewResultsClickHandler() {
+    vscode.postMessage({
+        command: 'previewResults',
+        value: true
+    });
+}
+
+if (previewResults) {
+    previewResultsButton.addEventListener('click', previewResultsClickHandler);
+}
+
+
 const depsDiv = document.getElementById("depsDiv");
 const dependencyHeader = document.querySelector('.dependency-header');
 const arrowToggle = document.querySelector('.arrow-toggle');
