@@ -3,7 +3,7 @@ import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromCo
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
 
-    let document = getVSCodeDocument() || activeDocumentObj;
+    let document = activeDocumentObj || getVSCodeDocument();
     if (!document) {
         return;
     }

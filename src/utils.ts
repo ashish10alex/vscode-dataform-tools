@@ -139,7 +139,7 @@ async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJso
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean) {
-    let document = vscode.window.activeTextEditor?.document;
+    let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
     if (!document) {
         return;
     }

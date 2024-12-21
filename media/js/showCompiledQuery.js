@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const runModelButton = document.getElementById('runModel');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
+
 function runModelClickHandler() {
     runModelButton.disabled = true;
     vscode.postMessage({
@@ -27,6 +28,18 @@ function runModelClickHandler() {
 
 if (runModelButton) {
     runModelButton.addEventListener('click', runModelClickHandler);
+}
+
+const previewResultsButton = document.getElementById('previewResults');
+function previewResultsClickHandler() {
+    vscode.postMessage({
+        command: 'previewResults',
+        value: true
+    });
+}
+
+if (previewResults) {
+    previewResultsButton.addEventListener('click', previewResultsClickHandler);
 }
 
 
