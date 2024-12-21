@@ -350,7 +350,6 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 export function getVSCodeDocument(): vscode.TextDocument | undefined {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
-        vscode.window.showErrorMessage("VS Code document object was undefined");
         return;
     }
     return document;

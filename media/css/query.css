@@ -387,3 +387,25 @@
     margin-left: 6px;
     vertical-align: middle;
   }
+
+.run-model {
+	background-color: #007acc;
+	color: #ffffff;
+	padding: 5px 10px;
+	font-size: 16px;
+	border-radius: 5px;
+	border: none;
+	cursor: pointer;
+}
+
+.run-model:hover {
+  background-color: #3291d0;
+}
+
+
+.model-checkbox-container {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 10px;
+}

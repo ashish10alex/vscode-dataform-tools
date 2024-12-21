@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
+import { runCurrentFile } from "../runFiles";
 
 function showLoadingProgress(
     title: string,
@@ -64,6 +65,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             activeEditorFileName = changedActiveEditorFileName;
         } else if (editor && changedActiveEditorFileName && activeEditorFileName!== changedActiveEditorFileName && webviewPanelVisisble ){
             activeEditorFileName = changedActiveEditorFileName;
+            activeDocumentObj = editor.document;
             let currentFileMetadata = await getCurrentFileMetadata(false);
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
@@ -76,6 +78,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             return;
         }
         activeEditorFileName = document?.fileName;
+        activeDocumentObj = document;
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
             if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
@@ -105,6 +108,8 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
     public currentFileMetadata: any;
+    private lastMessageTime = 0;
+    private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
     private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any, location: string};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
@@ -180,7 +185,22 @@ export class CompiledQueryPanel {
         
         this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
           async message => {
+            const now = Date.now();
+            if(this.centerPanel){
+                if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
+                    // TODO: vscode.postMessage form webview sends in multiple messages when active editor is switched
+                    // TODO: This is debounce hack build to avoid processing multiple messages and process only the first message
+                    return; 
+                }
+                this.centerPanel.lastMessageTime = now;
+            }
+
             switch (message.command) {
+              case 'runModel':
+                const includeDependencies = message.value.includeDependencies;
+                const includeDependents  = message.value.includeDependents;
+                await runCurrentFile(includeDependencies, includeDependents, false);
+                return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
@@ -447,7 +467,27 @@ export class CompiledQueryPanel {
 
             <span class="bigquery-job-cancelled"></span>
 
-            <p><span id="relativeFilePath"></span></p>
+            <p>
+                <span id="relativeFilePath"></span>
+            </p>
+
+            <div>
+                <div class="checkbox-group">
+                    <label class="model-checkbox-container">
+                        <input type="checkbox" id="includeDependencies" class="checkbox"> 
+                        <span class="custom-checkbox"></span>
+                        Include Dependencies
+                    </label>
+                    <label class="model-checkbox-container">
+                        <input type="checkbox" id="includeDependents" class="checkbox"> 
+                        <span class="custom-checkbox"></span>
+                        Include Dependents
+                    </label>
+                </div>
+                <div class="button-container">
+                    <button class="run-model" id="runModel">Run</button>
+                </div>
+            </div>
 
             <div id="codeBlock">
                 <div id="preOperationsDiv" style="display: none;">

@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate } from './utils';
+import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument } from './utils';
 import { executableIsAvailable, runCompilation } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -49,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.incrementalCheckBox = false;
     globalThis.schemaAutoCompletions = [];
     globalThis.activeEditorFileName = undefined;
+    globalThis.activeDocumentObj = undefined;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -173,6 +174,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async (_editor) => {
             activeEditorFileName = _editor.fsPath;
+            activeDocumentObj = getVSCodeDocument();
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
         }));
 
