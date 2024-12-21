@@ -188,8 +188,8 @@ export class CompiledQueryPanel {
             const now = Date.now();
             if(this.centerPanel){
                 if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
-                    // TODO: vscode.postMessage form webview sends in multiple messages when active editor is switched
-                    // TODO: This is debounce hack build to avoid processing multiple messages and process only the first message
+                    // NOTE: vscode.postMessage form webview sends in multiple messages when active editor is switched
+                    // NOTE: This is debounce hack build to avoid processing multiple messages and process only the first message
                     return; 
                 }
                 this.centerPanel.lastMessageTime = now;
