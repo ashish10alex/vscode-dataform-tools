@@ -10,6 +10,7 @@ const runModelButton = document.getElementById('runModel');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
 function runModelClickHandler() {
+    runModelButton.disabled = true;
     vscode.postMessage({
         command: 'runModel',
         value: {
@@ -18,6 +19,10 @@ function runModelClickHandler() {
             includeDependencies: includeDependenciesCheckbox.checked,
         }
     });
+
+    setTimeout(() => {
+        runModelButton.disabled = false;
+    }, 10000);
 }
 
 if (runModelButton) {
