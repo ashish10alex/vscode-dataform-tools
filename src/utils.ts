@@ -139,7 +139,7 @@ async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJso
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean) {
-    let document = vscode.window.activeTextEditor?.document;
+    let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
     if (!document) {
         return;
     }
@@ -350,7 +350,6 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 export function getVSCodeDocument(): vscode.TextDocument | undefined {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
-        vscode.window.showErrorMessage("VS Code document object was undefined");
         return;
     }
     return document;
@@ -505,36 +504,25 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
 
 export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let dataformCompilerOptions = getDataformCompilerOptions();
-    let dataformActionCmd = "";
+    let cmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
     for (let i = 0; i < actionsList.length; i++) {
         let fullTableName = actionsList[i];
         if (i === 0) {
             if (includDependencies) {
-                if (fullRefresh) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps --full-refresh`);
-                } else {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-deps`);
-                }
-            } else if (includeDownstreamDependents) {
-                if (fullRefresh) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents --full-refresh`);
-                } else {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --include-dependents`);
-                }
+                cmd += ` --include-deps`;
             }
-            else {
-                if (fullRefresh) {
-                    dataformActionCmd = (`dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}" --full-refresh`);
-                } else {
-                    dataformActionCmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout ${dataformCompilationTimeoutVal} --actions "${fullTableName}"`;
-                }
+            if (includeDownstreamDependents) {
+                cmd += ` --include-dependents`;
             }
+            if (fullRefresh) {
+                cmd += ` --full-refresh`;
+            }
+            cmd += ` --actions "${fullTableName}"`;
         } else {
-            // TODO: Not sure what is this doing ?
-            dataformActionCmd += ` --actions "${fullTableName}"`;
+            cmd += ` --actions "${fullTableName}"`;
         }
     }
-    return dataformActionCmd;
+    return cmd;
 }
 
 export async function getDataformTags(compiledJson: DataformCompiledJson) {

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
+import { runCurrentFile } from "../runFiles";
 
 function showLoadingProgress(
     title: string,
@@ -64,6 +65,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             activeEditorFileName = changedActiveEditorFileName;
         } else if (editor && changedActiveEditorFileName && activeEditorFileName!== changedActiveEditorFileName && webviewPanelVisisble ){
             activeEditorFileName = changedActiveEditorFileName;
+            activeDocumentObj = editor.document;
             let currentFileMetadata = await getCurrentFileMetadata(false);
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
@@ -76,6 +78,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             return;
         }
         activeEditorFileName = document?.fileName;
+        activeDocumentObj = document;
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
             if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
@@ -105,6 +108,8 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
     public currentFileMetadata: any;
+    private lastMessageTime = 0;
+    private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
     private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any, location: string};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
@@ -180,7 +185,28 @@ export class CompiledQueryPanel {
         
         this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
           async message => {
+            const now = Date.now();
+            if(this.centerPanel){
+                if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
+                    // NOTE: vscode.postMessage form webview sends in multiple messages when active editor is switched
+                    // NOTE: This is debounce hack build to avoid processing multiple messages and process only the first message
+                    return; 
+                }
+                this.centerPanel.lastMessageTime = now;
+            }
+
             switch (message.command) {
+              case 'previewResults':
+                if(message.value){
+                    await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+                }
+                return;
+              case 'runModel':
+                const includeDependencies = message.value.includeDependencies;
+                const includeDependents  = message.value.includeDependents;
+                const fullRefresh  = message.value.fullRefresh;
+                await runCurrentFile(includeDependencies, includeDependents, fullRefresh);
+                return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
@@ -413,7 +439,7 @@ export class CompiledQueryPanel {
                         <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
                     </svg>
                 </div>
-                <span class="dependency-title" style="font-weight: bold;">Dependencies & Dependents</span>
+                <span class="dependency-title" style="font-weight: bold;">Data Lineage</span>
             </div>
             <div id="depsDiv" class="dependency-list">
             </div>
@@ -447,7 +473,35 @@ export class CompiledQueryPanel {
 
             <span class="bigquery-job-cancelled"></span>
 
-            <p><span id="relativeFilePath"></span></p>
+            <p>
+                <span id="relativeFilePath"></span>
+            </p>
+
+            <div>
+                <div class="checkbox-group">
+                    <label class="model-checkbox-container">
+                        <input type="checkbox" id="includeDependencies" class="checkbox"> 
+                        <span class="custom-checkbox"></span>
+                        Include Dependencies (upstream)
+                    </label>
+                    <label class="model-checkbox-container">
+                        <input type="checkbox" id="includeDependents" class="checkbox"> 
+                        <span class="custom-checkbox"></span>
+                        Include Dependents (downstream)
+                    </label>
+                    <label class="model-checkbox-container">
+                        <input type="checkbox" id="fullRefresh" class="checkbox"> 
+                        <span class="custom-checkbox"></span>
+                        full Refresh (Forces incremental tables to be rebuilt from scratch)
+                    </label>
+                </div>
+
+                <div class="button-container">
+                    <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
+                    <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run</button>
+                </div>
+
+            </div>
 
             <div id="codeBlock">
                 <div id="preOperationsDiv" style="display: none;">
