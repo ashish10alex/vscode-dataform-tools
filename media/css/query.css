@@ -1,12 +1,12 @@
 button:disabled {
-   background-color: #cccccc;
-   color: #666666;
-   cursor: not-allowed;
-   opacity: 0.7;
+	background-color: #cccccc;
+	color: #666666;
+	cursor: not-allowed;
+	opacity: 0.7;
 }
 
 button:disabled:hover {
-   background-color: #cccccc;
+	background-color: #cccccc;
 }
 
 #runQueryButton {
@@ -118,29 +118,29 @@ button:disabled:hover {
 }
 
 .topnav {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  padding: 4px 5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	padding: 4px 5px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .topnav a {
-  color: #fff;
-  text-decoration: none;
-  font-size: 16px;
-  padding: 4px 5px;
-  margin-right: 10px;
-  border-radius: 5px;
+	color: #fff;
+	text-decoration: none;
+	font-size: 16px;
+	padding: 4px 5px;
+	margin-right: 10px;
+	border-radius: 5px;
 }
 
 .topnav a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+	background-color: rgba(255, 255, 255, 0.1);
 }
 
 .topnav a.active {
-  background-color: #007acc;
-  color: white;
+	background-color: #007acc;
+	color: white;
 }
 
 .error-message-container {
@@ -262,13 +262,15 @@ button:disabled:hover {
 	min-height: 300px;
 }
 
-.button-container, form {
+.button-container,
+form {
 	margin-bottom: 20px;
 }
 
 
 .checkbox {
-	display: none; /* Hide the default checkbox */
+	display: none;
+	/* Hide the default checkbox */
 }
 
 .checkbox-container {
@@ -278,7 +280,7 @@ button:disabled:hover {
 	display: flex;
 	align-items: center;
 	cursor: pointer;
-  }
+}
 
 
 .custom-checkbox {
@@ -290,37 +292,41 @@ button:disabled:hover {
 	margin-right: 10px;
 }
 
-.checkbox:checked + .custom-checkbox {
-	background-color: #007BFF; /* Change background when checked */
-	border-color: #0056b3; /* Darker border when checked */
+.checkbox:checked+.custom-checkbox {
+	background-color: #007BFF;
+	/* Change background when checked */
+	border-color: #0056b3;
+	/* Darker border when checked */
 }
 
-.checkbox:checked + .custom-checkbox::after {
+.checkbox:checked+.custom-checkbox::after {
 	content: '';
 	position: absolute;
 	left: 5px;
 	top: 2px;
 	width: 5px;
 	height: 10px;
-	border: solid white; /* Checkmark color */
-	border-width: 0 2px 2px 0; /* Create checkmark shape */
+	border: solid white;
+	/* Checkmark color */
+	border-width: 0 2px 2px 0;
+	/* Create checkmark shape */
 	transform: rotate(45deg);
 }
 
 .dependency-container {
-    margin-top: 20px;
-    font-family: Arial, sans-serif;
+	margin-top: 20px;
+	font-family: Arial, sans-serif;
 }
 
 .dependency-header {
-    cursor: pointer;
-    user-select: none;
-    display: flex;
-    align-items: center;
-    padding: 10px;
+	cursor: pointer;
+	user-select: none;
+	display: flex;
+	align-items: center;
+	padding: 10px;
 	background-color: #bcc9d6;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
+	border-radius: 5px;
+	transition: background-color 0.3s ease;
 }
 
 .dependency-header:hover {
@@ -328,76 +334,79 @@ button:disabled:hover {
 }
 
 .dependency-title {
-    margin-left: 15px;
+	margin-left: 15px;
 	font-size: 13px;
-    color: #333;
+	color: #333;
 }
 
 .arrow-toggle {
-    transition: transform 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+	transition: transform 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .arrow-toggle svg {
-    fill: #555;
-    transition: fill 0.3s ease;
+	fill: #555;
+	transition: fill 0.3s ease;
 }
 
 .dependency-header:hover .arrow-toggle svg {
-    fill: #333;
+	fill: #333;
 }
 
 .arrow-toggle.open {
-    transform: rotate(90deg);
+	transform: rotate(90deg);
 }
 
 .dependency-list {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.1s ease-out;
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.1s ease-out;
 }
 
 .dependency-list.open {
-    max-height: 9000px; /* Adjust this value based on your expected content size */
-    transition: max-height 0.2s ease-in;
+	max-height: 9000px;
+	/* Adjust this value based on your expected content size */
+	transition: max-height 0.2s ease-in;
 }
 
-#depsDiv ul, #depsDiv ol {
-  padding-left: 20px;
-  list-style-type: decimal;
+#depsDiv ul,
+#depsDiv ol {
+	padding-left: 20px;
+	list-style-type: decimal;
 }
 
 #depsDiv li {
-  margin-bottom: 10px; /* Adjust this value to increase or decrease the gap */
+	margin-bottom: 10px;
+	/* Adjust this value to increase or decrease the gap */
 }
 
 /* Remove margin from the last item to avoid extra space at the bottom */
 #depsDiv li:last-child {
-  margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 .lineage-metadata-button {
-  background: #bcc9d6;
-  color: black;
-  border: none;
-  padding: 10px;
-  cursor: pointer;
-  width: 100%;
+	background: #bcc9d6;
+	color: black;
+	border: none;
+	padding: 10px;
+	cursor: pointer;
+	width: 100%;
 }
 
 .external-tag {
-    display: inline-block;
-    padding: 2px 6px;
-    font-size: 0.75em;
-    font-weight: bold;
-    color: #ffffff;
-    background-color: #6c757d;
-    border-radius: 4px;
-    margin-left: 6px;
-    vertical-align: middle;
-  }
+	display: inline-block;
+	padding: 2px 6px;
+	font-size: 0.75em;
+	font-weight: bold;
+	color: #ffffff;
+	background-color: #6c757d;
+	border-radius: 4px;
+	margin-left: 6px;
+	vertical-align: middle;
+}
 
 .run-model {
 	background-color: #007acc;
@@ -410,12 +419,12 @@ button:disabled:hover {
 }
 
 .run-model:hover {
-  background-color: #3291d0;
+	background-color: #3291d0;
 }
 
 .model-checkbox-container {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    margin: 10px;
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+	margin: 10px;
 }
