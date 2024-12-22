@@ -127,6 +127,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+- [ ] Show column description in schema of compiled query web view
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 
 
