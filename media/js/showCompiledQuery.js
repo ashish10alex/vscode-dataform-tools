@@ -112,6 +112,14 @@ window.addEventListener('message', event => {
     const lineageMetadata = event?.data?.lineageMetadata;
     if (models){
 
+        let targetTableOrView = event?.data?.targetTableOrView;
+        if (targetTableOrView){
+            const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+            targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
+            targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+        }
+
+
         const upstreamHeader = document.createElement("header");
         upstreamHeader.innerHTML = "<h4>Dependencies</h4>";
 
@@ -209,6 +217,7 @@ window.addEventListener('message', event => {
         for (const dep of dependents) {
             _dependentsList.push(`${dep.database}.${dep.schema}.${dep.name}`);
         }
+        _dependentsList.push((`${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`));
 
         const liniageDependencies = lineageMetadata?.dependencies;
         if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){
@@ -255,13 +264,6 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(noExternalDeps);
         }
 
-    }
-
-    let targetTableOrView = event?.data?.targetTableOrView;
-    if (targetTableOrView){
-        const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
-        targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
-        targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
     }
 
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
