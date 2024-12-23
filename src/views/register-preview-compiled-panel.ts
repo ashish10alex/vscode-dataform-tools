@@ -4,6 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoComplet
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
+import { Table } from "../types";
 
 function showLoadingProgress(
     title: string,
@@ -110,7 +111,7 @@ export class CompiledQueryPanel {
     public currentFileMetadata: any;
     private lastMessageTime = 0;
     private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any, location: string};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any, location: string|undefined};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata);
@@ -325,7 +326,7 @@ export class CompiledQueryPanel {
         let dryRunResult = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
         let errorMessage = dryRunResult?.error.message;
-        const location:string = dryRunResult?.location?.toLowerCase();
+        const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
         }else if (errorMessage ==="BigQuery client not available."){
@@ -340,6 +341,20 @@ export class CompiledQueryPanel {
         }
         if(!dryRunStat){
             dryRunStat = "0 GB";
+        }
+
+        if(CACHED_COMPILED_DATAFORM_JSON){
+            CACHED_COMPILED_DATAFORM_JSON.tables.forEach((table:Table) => {
+                if(table.fileName === curFileMeta.pathMeta.relativeFilePath ){
+                    const columnsDescriptions = table?.actionDescriptor?.columns;
+                    if(columnsDescriptions){
+                        columnsDescriptions.forEach((c:any) => {
+                            console.log(c?.path[0]);
+                            console.log(c?.description);
+                        });
+                    }
+                }
+            });
         }
 
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){

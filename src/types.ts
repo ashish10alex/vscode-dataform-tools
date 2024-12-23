@@ -12,6 +12,17 @@ export interface Table {
     incrementalPreOps: string[];
     dependencyTargets: Target[];
     bigquery: TableBigQueryConfig;
+    actionDescriptor:ActionDescription;
+}
+
+interface ActionDescription{
+    description: string;
+    columns: Column[]
+}
+
+interface Column {
+    path: string[];
+    descrition: string;
 }
 
 export interface QueryMeta {
@@ -105,14 +116,6 @@ export interface DryRunError {
     };
 }
 
-export interface BigQueryDryRunResponse {
-    schema : any;
-    statistics: {
-        totalBytesProcessed: string;
-    };
-    error: DryRunError;
-}
-
 export interface ConfigBlockMetadata {
     startLine: number;
     endLine: number;
@@ -161,3 +164,41 @@ export type GraphError = {
   error: string;
   fileName: string;
 };
+
+export interface ColumnMetadata {
+    name: string;
+    type: string;
+    mode: string;
+};
+
+export interface CompiledQuerySchema {
+    fields: ColumnMetadata[]
+};
+
+export interface ErrorLocation {
+        line: number;
+        column: number;
+};
+
+export interface BigQueryDryRunResponse {
+    schema: any; //TODO: add type here
+    location: string | undefined;
+    statistics: {
+        totalBytesProcessed: string; // e.g. "0 GB", "1.234 GB"
+    };
+    error: {
+        hasError: boolean;
+        message: string;
+        location?: ErrorLocation;
+    };
+}
+
+export interface ColumnMetadata {
+    name: string;
+    type: string;
+    mode: string;
+}
+
+export interface CompiledQuerySchema {
+    fields:  ColumnMetadata[];
+}

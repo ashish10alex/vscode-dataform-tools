@@ -1,4 +1,5 @@
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { BigQueryDryRunResponse } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -15,7 +16,7 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     };
 }
 
-export async function queryDryRun(query: string) {
+export async function queryDryRun(query: string) : Promise<BigQueryDryRunResponse> {
     await checkAuthentication();
 
     const bigqueryClient = getBigQueryClient();
