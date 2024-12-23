@@ -15,7 +15,7 @@ export interface Table {
     actionDescriptor:ActionDescription;
 }
 
-interface ActionDescription{
+export interface ActionDescription{
     description: string;
     columns: Column[]
 }

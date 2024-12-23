@@ -611,7 +611,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 postOps: table.postOps,
                 dependencyTargets: table.dependencyTargets,
                 incrementalQuery: table?.incrementalQuery ?? "",
-                incrementalPreOps: table?.incrementalPreOps ?? []
+                incrementalPreOps: table?.incrementalPreOps ?? [],
+                actionDescriptor: table?.actionDescriptor
             };
             finalTables.push(tableFound);
             break;

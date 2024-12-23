@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoComplet
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata, Table, Column } from "../types";
+import { ColumnMetadata, Table, Column, ActionDescription } from "../types";
 
 function showLoadingProgress(
     title: string,
@@ -343,27 +343,22 @@ export class CompiledQueryPanel {
             dryRunStat = "0 GB";
         }
 
-        console.time("compiledQuerySchemaColumns");
+        if (compiledQuerySchema?.fields) {
+            const curFileActionDescriptor:ActionDescription = curFileMeta.fileMetadata.tables[0].actionDescriptor;
+            if (curFileActionDescriptor) {
 
-        if (compiledQuerySchema?.fields && CACHED_COMPILED_DATAFORM_JSON?.tables) {
-            const targetTable = CACHED_COMPILED_DATAFORM_JSON.tables.find(
-                (table: Table) => table.fileName === curFileMeta.pathMeta.relativeFilePath
-            );
-
-            if (targetTable?.actionDescriptor?.columns) {
                 const columnMap = new Map(
-                targetTable.actionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
+                curFileActionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
                 );
 
                 compiledQuerySchema.fields.forEach((columnMetadata: ColumnMetadata) => {
-                const description = columnMap.get(columnMetadata.name);
-                if (description !== undefined) {
-                    columnMetadata.description = description;
-                }
+                    const description = columnMap.get(columnMetadata.name);
+                    if (description !== undefined) {
+                        columnMetadata.description = description;
+                    }
                 });
             }
         }
-        console.timeEnd("compiledQuerySchemaColumns");
 
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
