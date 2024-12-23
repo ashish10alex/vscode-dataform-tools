@@ -20,9 +20,9 @@ interface ActionDescription{
     columns: Column[]
 }
 
-interface Column {
+export interface Column {
     path: string[];
-    descrition: string;
+    description: string;
 }
 
 export interface QueryMeta {

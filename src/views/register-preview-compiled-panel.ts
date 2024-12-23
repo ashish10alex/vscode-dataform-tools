@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoComplet
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata, Table } from "../types";
+import { ColumnMetadata, Table, Column } from "../types";
 
 function showLoadingProgress(
     title: string,
@@ -344,38 +344,26 @@ export class CompiledQueryPanel {
         }
 
         console.time("compiledQuerySchemaColumns");
-        // get the name of the columns in a list so that it becomes easy for us to search a column 
-        const compiledQuerySchemaColumns = compiledQuerySchema?.fields.map((elem) =>  elem.name);
 
-        let columDescriptionMap: { [key: string]: string } = {};
+        if (compiledQuerySchema?.fields && CACHED_COMPILED_DATAFORM_JSON?.tables) {
+            const targetTable = CACHED_COMPILED_DATAFORM_JSON.tables.find(
+                (table: Table) => table.fileName === curFileMeta.pathMeta.relativeFilePath
+            );
 
+            if (targetTable?.actionDescriptor?.columns) {
+                const columnMap = new Map(
+                targetTable.actionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
+                );
 
-        if(CACHED_COMPILED_DATAFORM_JSON){
-            CACHED_COMPILED_DATAFORM_JSON.tables.forEach((table:Table) => {
-                if(table.fileName === curFileMeta.pathMeta.relativeFilePath ){
-                    const columnsDescriptions = table?.actionDescriptor?.columns;
-                    if(columnsDescriptions){
-                        columnsDescriptions.forEach((c:any) => {
-                            const columnName = c.path[0];
-                            if(compiledQuerySchemaColumns?.includes(columnName)){
-                                columDescriptionMap[columnName] = c.description || "";
-                            }
-                        });
-                    }
+                compiledQuerySchema.fields.forEach((columnMetadata: ColumnMetadata) => {
+                const description = columnMap.get(columnMetadata.name);
+                if (description !== undefined) {
+                    columnMetadata.description = description;
                 }
-            });
-        }
-
-        compiledQuerySchema?.fields.forEach((elem:ColumnMetadata, idx:number) => {
-            if(columDescriptionMap[elem.name]){
-                if(compiledQuerySchema){
-                    compiledQuerySchema.fields[idx]["description"] = columDescriptionMap[elem.name] || "";
-                }
+                });
             }
-        });
+        }
         console.timeEnd("compiledQuerySchemaColumns");
-
-        // console.log(compiledQuerySchema);
 
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
