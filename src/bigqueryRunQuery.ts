@@ -124,7 +124,7 @@ export async function queryBigQuery(query: string) {
             return await queryBigQuery(query);
         } catch (finalError: any) {
             vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
-            return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+            return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined }, errorMessage: finalError.message};
         }
     }
 
@@ -144,7 +144,7 @@ export async function queryBigQuery(query: string) {
         [rows] = await bigQueryJob.getQueryResults(options);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } }; // Or throw the error
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined }, errorMessage: error.message };
     }
 
     // TODO: reset limit back to 1000, forcing user to not fetch large number of rows

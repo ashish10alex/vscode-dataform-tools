@@ -92,16 +92,20 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
-          const { results, columns, jobStats } = await queryBigQuery(query);
-          if(results){
+          const { results, columns, jobStats, errorMessage } = await queryBigQuery(query);
+          if(results && !errorMessage){
             this._cachedResults = { results, columns, jobStats, query };
             this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
             //TODO: This needs be before we run the query in backend
             this._view.show(true);
-          }else{
+          } else if (!errorMessage){
             //TODO: even when there is no results we could shows billed bytes 
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
             this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
+            this._view.show(true);
+          } else if(errorMessage){
+            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+            this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
             this._view.show(true);
           }
       } catch (error:any) {
