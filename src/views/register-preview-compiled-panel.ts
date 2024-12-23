@@ -473,6 +473,7 @@ export class CompiledQueryPanel {
 
 
         <div id="schemaBlock" style="display: none; margin-top: 20px;">
+            <div id="noSchemaBlock"> </div>
             <table id="schemaTable" class="display" width="100%"></table>
         </div>
 

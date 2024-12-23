@@ -10,6 +10,7 @@ const runModelButton = document.getElementById('runModel');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
 const fullRefreshCheckBox = document.getElementById('fullRefresh');
+const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
 
 function runModelClickHandler() {
     runModelButton.disabled = true;
@@ -268,6 +269,7 @@ window.addEventListener('message', event => {
 
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
+        noSchemaBlockDiv.innerHTML = "";
         compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type, description }) => ({ name, type, description }));
         new Tabulator("#schemaTable", {
             data: compiledQuerySchema,
@@ -289,6 +291,14 @@ window.addEventListener('message', event => {
                 return definitions;
             },
         });
+    }
+
+    if(!compiledQuerySchema && event?.data?.dryRunStat){
+        noSchemaBlockDiv.innerHTML = "";
+        const noSchemaHeader = document.createElement("header");
+        noSchemaHeader.innerHTML = "<h4>No schema available for operation defined in the current model. Showing pervious models schema if available</h4>";
+        noSchemaHeader.style.color = "#FFA500"; // orange
+        noSchemaBlockDiv.appendChild(noSchemaHeader);
     }
 
     compiledQueryloadingIcon.style.display = "none";
