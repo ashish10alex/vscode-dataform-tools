@@ -345,7 +345,7 @@ export class CompiledQueryPanel {
 
         if (compiledQuerySchema?.fields) {
             const curFileActionDescriptor:ActionDescription = curFileMeta.fileMetadata.tables[0].actionDescriptor;
-            if (curFileActionDescriptor) {
+            if (curFileActionDescriptor?.columns) {
 
                 const columnMap = new Map(
                 curFileActionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
