@@ -128,6 +128,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 ## TODO
 
 - [ ] Add BigQuery job link when assertion is executed
+- [ ] Improved UI to support light mode users
 - [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 
 
