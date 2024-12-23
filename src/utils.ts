@@ -156,8 +156,13 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
         let {dataformCompiledJson, errors, possibleResolutions} = await runCompilation(workspaceFolder); // Takes ~1100ms
             if(dataformCompiledJson){
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
-                const targetToSearch = fileMetadata.tables[0].target;
-                let dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
+
+                const targetToSearch = fileMetadata?.tables[0]?.target;
+                let dependents = undefined;
+                if(targetToSearch){
+                    dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
+                }
+
                 return {
                     isDataformWorkspace: true,
                     dataformCompilationErrors:errors,
@@ -195,8 +200,13 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
         }
         } else {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
-            const targetToSearch = fileMetadata.tables[0].target;
-            let dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
+
+            const targetToSearch = fileMetadata?.tables[0]?.target;
+            let dependents = undefined;
+            if(targetToSearch){
+                dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
+            }
+
             return {
                 isDataformWorkspace: true,
                 fileMetadata: fileMetadata,
