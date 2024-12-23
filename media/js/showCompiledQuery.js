@@ -268,7 +268,7 @@ window.addEventListener('message', event => {
 
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
-        compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type }) => ({ name, type }));
+        compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type, description }) => ({ name, type, description }));
         new Tabulator("#schemaTable", {
             data: compiledQuerySchema,
             autoColumns: true,
@@ -284,7 +284,7 @@ window.addEventListener('message', event => {
             autoColumnsDefinitions: function(definitions) {
                 definitions.forEach(function(column) {
                     column.headerFilter = "input";
-                    column.headerFilterLiveFilter = true; // Change this line
+                    column.headerFilterLiveFilter = true;
                 });
                 return definitions;
             },
