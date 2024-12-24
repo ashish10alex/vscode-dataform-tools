@@ -1,3 +1,4 @@
+import { UnaryExpression } from "typescript";
 
 export interface Table {
     type: string;
@@ -182,7 +183,7 @@ export interface ErrorLocation {
 };
 
 export interface BigQueryDryRunResponse {
-    schema: any; //TODO: add type here
+    schema: CompiledQuerySchema | undefined;
     location: string | undefined;
     statistics: {
         totalBytesProcessed: string; // e.g. "0 GB", "1.234 GB"
