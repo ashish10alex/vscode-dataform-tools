@@ -291,9 +291,10 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         let declarationName = declarations[i].target.name;
         if (searchTerm === declarationName) {
           const markdownTableIdWtLink = getMarkdownTableIdWtLink(declarations[i].target);
-          const hoverData = new vscode.MarkdownString(markdownTableIdWtLink);
-          return new vscode.Hover(hoverData);
-
+          const hoverMarkdownString = new vscode.MarkdownString();
+          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}`);
+          hoverMarkdownString.isTrusted = true; // Allows command links
+          return new vscode.Hover(hoverMarkdownString);
         }
       }
     }
