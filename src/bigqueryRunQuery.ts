@@ -162,7 +162,7 @@ export async function queryBigQuery(query: string) {
     }
 
     if (rows.length === 0) {
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled } };
+        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId} };
     }
 
     function convertArrayToObject(array: any, columnName: string) {

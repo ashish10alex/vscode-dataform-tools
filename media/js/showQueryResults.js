@@ -193,6 +193,7 @@ window.addEventListener('message', event => {
             noResultsDiv.style.display = "";
             if (type === "assertion"){
                 noResultsForQuery.textContent = `Assertion passed !`;
+                updateBigQueryJobLink(bigQueryJobId);
             } else {
                 noResultsForQuery.textContent = `There is no data to display`;
             }
