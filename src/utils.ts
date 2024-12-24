@@ -1015,14 +1015,15 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
+    let [dryRunResult, dryRunResultMainQuery, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
+        queryDryRun(currFileMetadata.queryMeta.tableOrViewQuery),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(currFileMetadata.queryMeta.preOpsQuery),
         queryDryRun(currFileMetadata.queryMeta.postOpsQuery)
     ]);
 
-    compiledQuerySchema = dryRunResult.schema;
+    compiledQuerySchema = dryRunResult.schema || dryRunResultMainQuery.schema;
 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
