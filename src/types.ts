@@ -1,4 +1,3 @@
-import { UnaryExpression } from "typescript";
 
 export interface Table {
     type: string;
