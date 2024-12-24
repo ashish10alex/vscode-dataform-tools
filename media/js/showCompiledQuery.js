@@ -297,7 +297,7 @@ window.addEventListener('message', event => {
     if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
         noSchemaBlockDiv.innerHTML = "";
         const noSchemaHeader = document.createElement("header");
-        noSchemaHeader.innerHTML = "<h4>No schema available for operation defined in the current model</h4>";
+        noSchemaHeader.innerHTML = "<h4>Schema could not be infered for the transaction defined in the current model</h4>";
         noSchemaHeader.style.color = "#FFA500"; // orange
         noSchemaBlockDiv.appendChild(noSchemaHeader);
     }
