@@ -293,10 +293,11 @@ window.addEventListener('message', event => {
         });
     }
 
-    if(!compiledQuerySchema && event?.data?.dryRunStat){
+    const compiledQuerySchemaNotAvailable = compiledQuerySchema && compiledQuerySchema.length === 1 && compiledQuerySchema[0].name === "" && compiledQuerySchema[0].type === "";
+    if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
         noSchemaBlockDiv.innerHTML = "";
         const noSchemaHeader = document.createElement("header");
-        noSchemaHeader.innerHTML = "<h4>No schema available for operation defined in the current model. Showing pervious models schema if available</h4>";
+        noSchemaHeader.innerHTML = "<h4>No schema available for operation defined in the current model</h4>";
         noSchemaHeader.style.color = "#FFA500"; // orange
         noSchemaBlockDiv.appendChild(noSchemaHeader);
     }

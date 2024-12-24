@@ -169,7 +169,7 @@ export interface ColumnMetadata {
     name: string;
     type: string;
     mode: string;
-    description:string;
+    description?:string;
 };
 
 export interface CompiledQuerySchema {

@@ -358,6 +358,8 @@ export class CompiledQueryPanel {
                     }
                 });
             }
+        } else {
+            compiledQuerySchema = {fields: [{"name": "", type:"", mode: ""}]};
         }
 
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
