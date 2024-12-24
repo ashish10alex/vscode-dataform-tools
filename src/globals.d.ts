@@ -1,4 +1,4 @@
-import { DataformCompiledJson } from "./types";
+import { CompiledQuerySchema, DataformCompiledJson } from "./types";
 import * as vscode from 'vscode';
 
 declare global {
@@ -49,7 +49,7 @@ declare global {
 
 
 declare global {
-  var compiledQuerySchema: any | undefined;
+  var compiledQuerySchema: CompiledQuerySchema | undefined;
 }
 
 declare global {
