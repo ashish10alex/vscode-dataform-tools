@@ -1013,6 +1013,9 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         queryToDryRun = incrementalQuery;
     }
 
+    //drop @@query_labels if exists -- else queryMeta breaks
+    queryToDryRun = queryToDryRun.replace(/SET\s+@@query_label\s*=\s*".*"\s*;/g, '');
+
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
