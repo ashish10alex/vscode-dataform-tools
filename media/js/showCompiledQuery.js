@@ -10,6 +10,7 @@ const runModelButton = document.getElementById('runModel');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
 const fullRefreshCheckBox = document.getElementById('fullRefresh');
+const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
 
 function runModelClickHandler() {
     runModelButton.disabled = true;
@@ -268,7 +269,8 @@ window.addEventListener('message', event => {
 
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
-        compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type }) => ({ name, type }));
+        noSchemaBlockDiv.innerHTML = "";
+        compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type, description }) => ({ name, type, description }));
         new Tabulator("#schemaTable", {
             data: compiledQuerySchema,
             autoColumns: true,
@@ -284,11 +286,20 @@ window.addEventListener('message', event => {
             autoColumnsDefinitions: function(definitions) {
                 definitions.forEach(function(column) {
                     column.headerFilter = "input";
-                    column.headerFilterLiveFilter = true; // Change this line
+                    column.headerFilterLiveFilter = true;
                 });
                 return definitions;
             },
         });
+    }
+
+    const compiledQuerySchemaNotAvailable = compiledQuerySchema && compiledQuerySchema.length === 1 && compiledQuerySchema[0].name === "" && compiledQuerySchema[0].type === "";
+    if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
+        noSchemaBlockDiv.innerHTML = "";
+        const noSchemaHeader = document.createElement("header");
+        noSchemaHeader.innerHTML = "<h4>Schema could not be infered for the transaction defined in the current model</h4>";
+        noSchemaHeader.style.color = "#FFA500"; // orange
+        noSchemaBlockDiv.appendChild(noSchemaHeader);
     }
 
     compiledQueryloadingIcon.style.display = "none";

@@ -1,4 +1,5 @@
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { BigQueryDryRunResponse } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -15,7 +16,16 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     };
 }
 
-export async function queryDryRun(query: string) {
+export async function queryDryRun(query: string) : Promise<BigQueryDryRunResponse> {
+    if (query === "" || !query) {
+        return {
+            schema: undefined,
+            location: undefined,
+            statistics: { totalBytesProcessed: "0 GB" },
+            error: { hasError: false, message: "" }
+        };
+    }
+
     await checkAuthentication();
 
     const bigqueryClient = getBigQueryClient();
@@ -25,15 +35,6 @@ export async function queryDryRun(query: string) {
             location: undefined,
             statistics: { totalBytesProcessed: "" },
             error: { hasError: true, message: "BigQuery client not available." }
-        };
-    }
-
-    if (query === "" || !query) {
-        return {
-            schema: undefined,
-            location: undefined,
-            statistics: { totalBytesProcessed: "0 GB" },
-            error: { hasError: false, message: "" }
         };
     }
 
