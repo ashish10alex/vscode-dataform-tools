@@ -1039,7 +1039,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
-            [undefined , undefined];
+            [undefined , undefined, undefined];
         }
 
         let offSet = 0;
@@ -1054,7 +1054,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         if (sqlxBlockMetadata) {
             setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult];
+        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -1065,7 +1065,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult];
+    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {
