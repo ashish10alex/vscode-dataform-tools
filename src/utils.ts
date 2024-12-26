@@ -1008,9 +1008,9 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
     if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view") {
         let preOpsQuery = currFileMetadata.queryMeta.preOpsQuery;
         if(preOpsQuery && preOpsQuery !== ""){
-            currFileMetadata.queryMeta.preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
+            preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
         }
-        queryToDryRun = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.tableOrViewQuery;
+        queryToDryRun = preOpsQuery + currFileMetadata.queryMeta.tableOrViewQuery;
     } else if (currFileMetadata.queryMeta.type === "assertion") {
         queryToDryRun = currFileMetadata.queryMeta.assertionQuery;
     } else if (currFileMetadata.queryMeta.type === "operation") {
@@ -1039,7 +1039,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
-            return;
+            [undefined , undefined];
         }
 
         let offSet = 0;
@@ -1054,7 +1054,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         if (sqlxBlockMetadata) {
             setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return dryRunResult;
+        return [dryRunResult, preOpsDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -1065,7 +1065,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
     }
-    return dryRunResult;
+    return [dryRunResult, preOpsDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

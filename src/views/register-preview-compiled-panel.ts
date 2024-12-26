@@ -323,9 +323,9 @@ export class CompiledQueryPanel {
             return;
         }
 
-        let dryRunResult = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
+        const [dryRunResult, preOpsDryRunResult] = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
-        let errorMessage = dryRunResult?.error.message;
+        let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message;
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
