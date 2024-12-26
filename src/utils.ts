@@ -986,6 +986,10 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
 
 }
 
+function replaceQueryLabelWtEmptyStringForDryRun(query:string) {
+    return query.replace(/SET\s+@@query_label\s*=\s*".*"\s*;/g, '');   
+}
+
 export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined){
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
@@ -1001,6 +1005,10 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
 
     let queryToDryRun = "";
     if (currFileMetadata.queryMeta.type === "table" || currFileMetadata.queryMeta.type === "view") {
+        let preOpsQuery = currFileMetadata.queryMeta.preOpsQuery;
+        if(preOpsQuery && preOpsQuery !== ""){
+            currFileMetadata.queryMeta.preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
+        }
         queryToDryRun = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.tableOrViewQuery;
     } else if (currFileMetadata.queryMeta.type === "assertion") {
         queryToDryRun = currFileMetadata.queryMeta.assertionQuery;
@@ -1009,12 +1017,13 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
     } else if (currFileMetadata.queryMeta.type === "incremental") {
         //TODO: defaulting to using incremental query to dry run for now
         // let nonIncrementalQuery = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.nonIncrementalQuery;
-        let incrementalQuery = currFileMetadata.queryMeta.incrementalPreOpsQuery.trimStart() + currFileMetadata.queryMeta.incrementalQuery.trimStart();
+        let preOpsQuery = currFileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
+        if(preOpsQuery && preOpsQuery !== ""){
+            preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(currFileMetadata.queryMeta.preOpsQuery);
+        }
+        let incrementalQuery = preOpsQuery + currFileMetadata.queryMeta.incrementalQuery.trimStart();
         queryToDryRun = incrementalQuery;
     }
-
-    //drop @@query_labels if exists -- else queryMeta breaks
-    queryToDryRun = queryToDryRun.replace(/SET\s+@@query_label\s*=\s*".*"\s*;/g, '');
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
