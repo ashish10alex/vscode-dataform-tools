@@ -1,4 +1,4 @@
-import { CompiledQuerySchema, DataformCompiledJson } from "./types";
+import { CompiledQuerySchema, DataformCompiledJson, Metadata} from "./types";
 import * as vscode from 'vscode';
 
 declare global {
@@ -57,7 +57,7 @@ declare global {
 }
 
 declare global {
-  var schemaAutoCompletions: {name: string, metadata:any}[];
+  var schemaAutoCompletions: {name: string, metadata: Metadata }[];
 }
 
 declare global {

@@ -203,3 +203,13 @@ export interface ColumnMetadata {
 export interface CompiledQuerySchema {
     fields:  ColumnMetadata[];
 }
+
+export type Metadata = {
+    type:string,
+    description: string,
+    fullTableId: string,
+}
+
+export type SchemaMetadata = {
+    name: string, metadata: Metadata
+}

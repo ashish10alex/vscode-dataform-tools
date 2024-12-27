@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { SchemaMetadata } from './types';
 
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
@@ -115,9 +116,9 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
     { language: 'sqlx', scheme: 'file' },
     {
       async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
-        const completionItems = schemaAutoCompletions.map((item: {name: string, metadata: any}) => {
+        const completionItems = schemaAutoCompletions.map((item: SchemaMetadata) => {
             const completionItem = new vscode.CompletionItem(`${item.name}`);
-            completionItem.kind = vscode.CompletionItemKind.Variable; 
+            completionItem.kind = vscode.CompletionItemKind.Variable;
             completionItem.detail = `${item.metadata.fullTableId}`;
             completionItem.sortText = '0'; // put it ahead of other completion objects
             const markdownString = new vscode.MarkdownString(`[ ${item.metadata.type} ] \n\n ${item.metadata.description}`);

@@ -46,7 +46,7 @@ export async function getTableSchema(projectId: string, datasetId: string, table
             };
         });
     } catch (error) {
-        // we donot want to throw an error as it would be an annoying editing experience to have this error constantly popping up
+        // we do not want to throw an error as it would be an annoying editing experience to have this error constantly popping up
         return [];
     }
 }
@@ -98,7 +98,7 @@ export function getHighlightJsThemeUri(){
     return highlighJstThemeUri;
 }
 
-function getTreeRootFromWordInStruct(struct: any, searchTerm: string): string | undefined {
+function getTreeRootFromWordInStruct(struct: Table[]|Operation[]|Assertion[], searchTerm: string): string | undefined {
     if (struct) {
         for (let i = 0; i < struct.length; i++) {
             let declarationName = struct[i].target.name;
@@ -975,7 +975,7 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
     if (!CACHED_COMPILED_DATAFORM_JSON){
         return;
     }
-    // all 3 of these togather take less than 0.35ms (dataform wt 285 nodes)
+    // all 3 of these together take less than 0.35ms (Dataform repository with 285 nodes)
     let [declarationsAndTargets, dataformTags, currFileMetadata] = await Promise.all([
         getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
         getDataformTags(CACHED_COMPILED_DATAFORM_JSON),
@@ -988,14 +988,14 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
 }
 
 function replaceQueryLabelWtEmptyStringForDryRun(query:string) {
-    return query.replace(/SET\s+@@query_label\s*=\s*".*"\s*;/g, '');   
+    return query.replace(/SET\s+@@query_label\s*=\s*".*"\s*;/g, '');
 }
 
 export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined){
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (curFileMeta.pathMeta.extension === "sqlx") {
-        sqlxBlockMetadata = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (dataform wt 285 nodes)
+        sqlxBlockMetadata = getMetadataForSqlxFileBlocks(document); //Takes less than 2ms (Dataform with 285 nodes)
     }
 
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
