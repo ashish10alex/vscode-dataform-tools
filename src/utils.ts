@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
@@ -98,7 +98,7 @@ export function getHighlightJsThemeUri(){
     return highlighJstThemeUri;
 }
 
-function getTreeRootFromWordInStruct(struct: Table[]|Operation[]|Assertion[], searchTerm: string): string | undefined {
+function getTreeRootFromWordInStruct(struct: Table[]|Operation[]|Assertion[]|Declarations[], searchTerm: string): string | undefined {
     if (struct) {
         for (let i = 0; i < struct.length; i++) {
             let declarationName = struct[i].target.name;
