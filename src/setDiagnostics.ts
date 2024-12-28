@@ -26,6 +26,7 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
             errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
+            dryRunError.message = "(fullQuery): " + dryRunError.message;
             const regularBlockDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
             diagnostics.push(regularBlockDiagnostic);
         }
