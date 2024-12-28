@@ -563,9 +563,8 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
-    let tables = compiledJson.tables;
-    let assertions = compiledJson.assertions;
-    let operations = compiledJson.operations;
+    const { tables, assertions, operations } = compiledJson;
+
     //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
         type: "",
@@ -584,49 +583,47 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         return { tables: finalTables, queryMeta: queryMeta };
     }
 
-    for (let i = 0; i < tables.length; i++) {
-        let table = tables[i];
-        let tableRelativeFilePath = table.fileName;
-        if (relativeFilePath === tableRelativeFilePath) {
-            if (table.type === "table" || table.type === "view") {
+    const table = tables.find(table => table.fileName === relativeFilePath);
+    if (table) {
+        switch (table.type) {
+            case "table":
+            case "view":
                 queryMeta.type = table.type;
                 queryMeta.tableOrViewQuery = table.query.trimStart() + "\n ;";
-            } else if (table.type === "incremental") {
+                break;
+            case "incremental":
                 queryMeta.type = table.type;
                 queryMeta.nonIncrementalQuery = table.query + ";";
                 queryMeta.incrementalQuery = table.incrementalQuery + ";";
-                if (table?.incrementalPreOps) {
-                    table.incrementalPreOps.forEach((query, idx) => {
-                        queryMeta.incrementalPreOpsQuery += query + "\n";
-                    });
+                if (table.incrementalPreOps) {
+                    queryMeta.incrementalPreOpsQuery = table.incrementalPreOps.join("\n") + "\n";
                 }
-            }
-
-            if (table.preOps) {
-                table.preOps.forEach((query, idx) => {
-                    queryMeta.preOpsQuery += query + "\n";
-                });
-            }
-            if (table.postOps) {
-                table.postOps.forEach((query, idx) => {
-                    queryMeta.postOpsQuery += query + "\n";
-                });
-            }
-            let tableFound = {
-                type: table.type,
-                tags: table.tags,
-                fileName: relativeFilePath,
-                target: table.target,
-                preOps: table.preOps,
-                postOps: table.postOps,
-                dependencyTargets: table.dependencyTargets,
-                incrementalQuery: table?.incrementalQuery ?? "",
-                incrementalPreOps: table?.incrementalPreOps ?? [],
-                actionDescriptor: table?.actionDescriptor
-            };
-            finalTables.push(tableFound);
-            break;
+                break;
+            default:
+                console.warn(`Unexpected table type: ${table.type}`);
         }
+
+        // Process preOps and postOps
+        if (table.preOps) {
+            queryMeta.preOpsQuery = table.preOps.join("\n") + "\n";
+        }
+        if (table.postOps) {
+            queryMeta.postOpsQuery = table.postOps.join("\n") + "\n";
+        }
+
+        const tableFound = {
+            type: table.type,
+            tags: table.tags,
+            fileName: relativeFilePath,
+            target: table.target,
+            preOps: table.preOps,
+            postOps: table.postOps,
+            dependencyTargets: table.dependencyTargets,
+            incrementalQuery: table.incrementalQuery ?? "",
+            incrementalPreOps: table.incrementalPreOps ?? [],
+            actionDescriptor: table.actionDescriptor
+        };
+        finalTables.push(tableFound);
     }
 
     if (assertions === undefined) {
