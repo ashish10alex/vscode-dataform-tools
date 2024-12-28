@@ -630,31 +630,25 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         return { tables: finalTables, queryMeta: queryMeta };
     }
 
-    let assertionCountForFile = 0;
-    let assertionQuery = "";
-    for (let i = 0; i < assertions.length; i++) {
-        //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
-        let assertion = assertions[i];
-        if (assertion.fileName === relativeFilePath) {
-            if (queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
-                queryMeta.type = "assertion";
-            }
-            let assertionFound = {
-                type: "assertion",
-                tags: assertion.tags,
-                fileName: relativeFilePath,
-                query: assertion.query,
-                target: assertion.target,
-                dependencyTargets: assertion.dependencyTargets,
-                incrementalQuery: "", incrementalPreOps: []
-            };
-            finalTables.push(assertionFound);
-            assertionCountForFile += 1;
-            assertionQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
-            assertionQuery += assertion.query.trimStart() + "; \n";
-        }
+    const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
+    const assertionCountForFile = assertionsForFile.length;
+    if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
+        queryMeta.type = "assertion";
     }
-    queryMeta.assertionQuery = assertionQuery;
+    const assertionQueries = assertionsForFile.map((assertion, index) => {
+        finalTables.push({
+            type: "assertion",
+            tags: assertion.tags,
+            fileName: relativeFilePath,
+            query: assertion.query,
+            target: assertion.target,
+            dependencyTargets: assertion.dependencyTargets,
+            incrementalQuery: "",
+            incrementalPreOps: []
+        });
+        return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+    });
+    queryMeta.assertionQuery = assertionQueries.join('');
 
     if (operations === undefined) {
         return { tables: finalTables, queryMeta: queryMeta };
