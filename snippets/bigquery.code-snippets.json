@@ -33,15 +33,15 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     "TIMESTAMP type": {"prefix": "TIMESTAMP type", "body": "TIMESTAMP"},
     // Query
     "`TABLE-NAME`": {
-      "prefix": "table",
+      "prefix": "TABLE",
       "body": "${1:table_reference}"
     },
     "[TABLE-NAME]": {
-      "prefix": "tablelegacy",
+      "prefix": "TABLELEGACY",
       "body": "[${1:table_reference}]"
     },
     "SELECT ... FROM": {
-      "prefix": "select",
+      "prefix": "SELECT",
       "body": [
         "SELECT",
         "\t${1:column}",
@@ -49,7 +49,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "INNER JOIN": {
-      "prefix": "inner join",
+      "prefix": "INNER JOIN",
       "body": [
         "INNER JOIN ${1:table_reference}",
         "ON",
@@ -57,7 +57,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "LEFT JOIN": {
-      "prefix": "left join",
+      "prefix": "LEFT JOIN",
       "body": [
         "LEFT JOIN ${1:table_reference}",
         "ON",
@@ -65,7 +65,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "RIGHT JOIN": {
-      "prefix": "right join",
+      "prefix": "RIGHT JOIN",
       "body": [
         "RIGHT JOIN ${1:table_reference}",
         "ON",
@@ -73,7 +73,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "FULL OUTER JOIN": {
-      "prefix": "full join",
+      "prefix": "FULL JOIN",
       "body": [
         "FULL OUTER JOIN ${1:table_reference}",
         "ON",
@@ -81,53 +81,53 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "CROSS JOIN": {
-      "prefix": "cross join",
+      "prefix": "CROSS JOIN",
       "body": [
         "CROSS JOIN ${1:table_reference}"
       ]
     },
     "BETWEEN ... AND": {
-      "prefix": "between",
+      "prefix": "BETWEEN",
       "body": "BETWEEN ${1} AND ${2}"
     },
     "BETWEEN ... AND as date": {
-      "prefix": "between date",
+      "prefix": "BETWEEN DATE",
       "body": "BETWEEN \"${1:${CURRENT_YEAR:yyyy}-${CURRENT_MONTH:mm}-${CURRENT_DATE:dd}}\" AND \"${2:${CURRENT_YEAR:yyyy}-${CURRENT_MONTH:mm}-${CURRENT_DATE:dd}}\""
     },
     "IN (value, ...)": {
-      "prefix": "in",
+      "prefix": "IN",
       "body": "IN (${1:value, ...})"
     },
     "GROUP BY": {
-      "prefix": "group by",
+      "prefix": "GROUP BY",
       "body": [
         "GROUP BY",
         "\t${1:expression}"
       ]
     },
     "ORDER BY": {
-      "prefix": "order by",
+      "prefix": "ORDER BY",
       "body": [
         "ORDER BY",
         "\t${1:expression} ${2:[ASC|DESC]} ${3:[NULLS FIRST|NULLS LAST]}"
       ]
     },
     "WHERE": {
-      "prefix": "where",
+      "prefix": "WHERE",
       "body": [
         "WHERE",
         "\t${1:condition}"
       ]
     },
     "HAVING": {
-      "prefix": "having",
+      "prefix": "HAVING",
       "body": [
         "HAVING",
         "\t${1:condition}"
       ]
     },
     "QUALIFY": {
-      "prefix": "qualify",
+      "prefix": "QUALIFY",
       "body": [
         "QUALIFY",
         "\t${1:condition}"
@@ -135,7 +135,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Filters the results of analytic functions."
     },
     "WITH ... AS": {
-      "prefix": "with",
+      "prefix": "WITH",
       "body": [
         "WITH ${1:with_query_name} AS (",
         "\tSELECT",
@@ -147,7 +147,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "_TABLE_SUFFIX BETWEEN ...": {
-      "prefix": ["_tablesuffix", "tablesuffix"],
+      "prefix": ["_TABLESUFFIX", "TABLESUFFIX"],
       "body": "_TABLE_SUFFIX BETWEEN \"${1:from}\" AND \"${2:to}\""
     },
     "_PARTITIONTIME BETWEEN ...": {
@@ -155,7 +155,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "_PARTITIONTIME BETWEEN \"${1:${CURRENT_YEAR:yyyy}-${CURRENT_MONTH:mm}-${CURRENT_DATE:dd}}\" AND \"${2:${CURRENT_YEAR:yyyy}-${CURRENT_MONTH:mm}-${CURRENT_DATE:dd}}\""
     },
     "TABLESAMPLE": {
-      "prefix": ["tablesample", "sampling"],
+      "prefix": ["TABLESAMPLE", "SAMPLING"],
       "body": [
         "SELECT",
         "\t${1:column}",
@@ -175,7 +175,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Time travel to access data at any point within the last 7 days."
     },
     "PIVOT": {
-      "prefix": "pivot",
+      "prefix": "PIVOT",
       "body": [
         "SELECT",
         "\t*",
@@ -188,7 +188,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "UNPIVOT": {
-      "prefix": "unpivot",
+      "prefix": "UNPIVOT",
       "body": [
         "SELECT",
         "\t*",
@@ -202,19 +202,19 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     },
     // Keyword
     "DISTINCT": {
-      "prefix": "distinct",
+      "prefix": "DISTINCT",
       "body": "DISTINCT"
     },
     "NULL": {
-      "prefix": "null",
+      "prefix": "NULL",
       "body": "NULL"
     },
     "ON": {
-      "prefix": "on",
+      "prefix": "ON",
       "body": "ON"
     },
     "DELETE FROM ...": {
-      "prefix": "delete",
+      "prefix": "DELETE",
       "body": [
         "DELETE FROM ${1:table_reference}",
         "WHERE ${4:condition}"
@@ -222,42 +222,42 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     },
     // Debugging statements
     "ASSERT": {
-      "prefix": "assert",
+      "prefix": "ASSERT",
       "body": "ASSERT ${1:expression}${2: [AS \"description\"]}"
     },
     // Scripting
     "CALL PROCEDURE": {
-      "prefix": "call procedure",
+      "prefix": "CALL PROCEDURE",
       "body": [
         "CALL ${1:table_reference}(${4:arg[, ...]});"
       ]
     },
     "DECLARE": {
-      "prefix": "declare",
+      "prefix": "DECLARE",
       "body": [
         "DECLARE ${1:variable_name[, ...] variable_type [DEFAULT expression]};"
       ]
     },
     "SET": {
-      "prefix": "set",
+      "prefix": "SET",
       "body": [
         "SET ${1:variable_name} = ${2:expression};"
       ]
     },
     "SET multiple": {
-      "prefix": "set multiple",
+      "prefix": "SET MULTIPLE",
       "body": [
         "SET (${1:variable_name_1, ...}) = (${2:expression_1, ...});"
       ]
     },
     "SET from query": {
-      "prefix": "set query",
+      "prefix": "SET QUERY",
       "body": [
         "SET ${1:variable_name} = (${2:SELECT query});"
       ]
     },
     "EXECUTE IMMEDIATE": {
-      "prefix": "execute immediate",
+      "prefix": "EXECUTE IMMEDIATE",
       "body": [
         "EXECUTE IMMEDIATE",
         "\t${1:\"sql_expression @parameter_name\"}",
@@ -267,7 +267,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Executes a dynamic SQL statement on the fly."
     },
     "BEGIN ... END": {
-      "prefix": "begin end",
+      "prefix": "BEGIN END",
       "body": [
         "BEGIN",
         "\t${1:statements}",
@@ -283,7 +283,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "IF ... THEN": {
-      "prefix": "if then",
+      "prefix": "IF THEN",
       "body": [
         "IF ${1:condition} THEN",
         "\t${2:statements}",
@@ -291,7 +291,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "IF ... ELSEIF ... ELSE": {
-      "prefix": "if elseif else",
+      "prefix": "IF ELSEIF ELSE",
       "body": [
         "IF ${1:condition} THEN",
         "\t${2:statements}",
@@ -303,21 +303,21 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "ELSEIF ... THEN": {
-      "prefix": "elseif",
+      "prefix": "ELSEIF",
       "body": [
         "ELSEIF ${1:condition} THEN",
         "\t${2:statements}"
       ]
     },
     "ELSE": {
-      "prefix": "else",
+      "prefix": "ELSE",
       "body": [
         "ELSE",
         "\t${1:statements}"
       ]
     },
     "IF EXISTS query THEN": {
-      "prefix": "if exists query",
+      "prefix": "IF EXISTS QUERY",
       "body": [
         "IF EXISTS (${1:SELECT expression FROM ${2:table_reference} WHERE condition}) THEN",
         "\t${3:statements}",
@@ -325,7 +325,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "LOOP": {
-      "prefix": "loop",
+      "prefix": "LOOP",
       "body": [
         "LOOP",
         "\t${1:statements}",
@@ -336,7 +336,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "WHILE": {
-      "prefix": "while",
+      "prefix": "WHILE",
       "body": [
         "WHILE ${1:expression} DO",
         "\t${2:statements}",
@@ -344,43 +344,43 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "BREAK": {
-      "prefix": "break",
+      "prefix": "BREAK",
       "body": "BREAK;",
       "description": "Exit the current loop."
     },
     "LEAVE": {
-      "prefix": "leave",
+      "prefix": "LEAVE",
       "body": "LEAVE;",
       "description": "Synonym for BREAK."
     },
     "CONTINUE": {
-      "prefix": "continue",
+      "prefix": "CONTINUE",
       "body": "CONTINUE;",
       "description": "Skip statements and return to the start of the loop."
     },
     "ITERATE": {
-      "prefix": "iterate",
+      "prefix": "ITERATE",
       "body": "ITERATE;",
       "description": "Synonym for CONTINUE."
     },
     "RAISE": {
-      "prefix": "raise",
+      "prefix": "RAISE",
       "body": "RAISE ${1:[USING MESSAGE = \"message\"]};",
       "description": "Raises an error."
     },
     "RETURN": {
-      "prefix": "return",
+      "prefix": "RETURN",
       "body": "RETURN;",
       "description": "RETURN terminates execution of the current script."
     },
     // Functions
     "ANY_VALUE()": {
-      "prefix": "any_value",
+      "prefix": "ANY_VALUE",
       "body": "ANY_VALUE(${1:expr}) ${2:[OVER (...)]}",
       "description": "Returns any value from the input or NULL if there are zero input rows."
     },
     "ARRAY_AGG()": {
-      "prefix": "array_agg",
+      "prefix": "ARRAY_AGG",
       "body": [
         "ARRAY_AGG(${1:[DISTINCT] expression [{IGNORE|RESPECT\\} NULLS]",
         "          [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
@@ -389,67 +389,67 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns an ARRAY of `expression` values."
     },
     "ARRAY_CONCAT_AGG()": {
-      "prefix": "array_concat_agg",
+      "prefix": "ARRAY_CONCAT_AGG",
       "body": "ARRAY_CONCAT_AGG(${1:expression [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
       "description": "Concatenates elements from `expression` of type ARRAY, returning a single ARRAY as a result."
     },
     "AVG()": {
-      "prefix": "avg",
+      "prefix": "AVG",
       "body": "AVG(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": "Returns the average of non-NULL input values, or NaN if the input contains a NaN."
     },
     "BIT_AND()": {
-      "prefix": "bit_and",
+      "prefix": "BIT_AND",
       "body": "BIT_AND(${1:expression})",
       "description": "Performs a bitwise AND operation on `expression` and returns the result."
     },
     "BIT_OR()": {
-      "prefix": "bit_or",
+      "prefix": "BIT_OR",
       "body": "BIT_OR(${1:expression})",
       "description": "Performs a bitwise OR operation on `expression` and returns the result."
     },
     "BIT_XOR()": {
-      "prefix": "bit_xor",
+      "prefix": "BIT_XOR",
       "body": "BIT_XOR(${1:expression})",
       "description": "Performs a bitwise XOR operation on `expression` and returns the result."
     },
     "COUNT(*)": {
-      "prefix": "count",
+      "prefix": "COUNT",
       "body": "COUNT(*)",
       "description": "Returns the number of rows in the input."
     },
     "COUNT(expr)": {
-      "prefix": "count expr",
+      "prefix": "COUNT EXPR",
       "body": "COUNT(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": "Returns the number of rows with `expression` evaluated to any value other than NULL."
     },
     "COUNTIF()": {
-      "prefix": "countif",
+      "prefix": "COUNTIF",
       "body": "COUNTIF(${1:expression}) ${2:[OVER (...)]}",
       "description": "Returns the count of TRUE values for `expression`."
     },
     "LOGICAL_AND()": {
-      "prefix": "logical_and",
+      "prefix": "LOGICAL_AND",
       "body": "LOGICAL_AND(${1:expression})",
       "description": "Returns the logical AND of all non-NULL expressions."
     },
     "LOGICAL_OR()": {
-      "prefix": "logical_or",
+      "prefix": "LOGICAL_OR",
       "body": "LOGICAL_OR(${1:expression})",
       "description": "Returns the logical OR of all non-NULL expressions."
     },
     "MAX()": {
-      "prefix": "max",
+      "prefix": "MAX",
       "body": "MAX(${1:expression}) ${2:[OVER (...)]}",
       "description": "Returns the maximum value of non-NULL expressions."
     },
     "MIN()": {
-      "prefix": "min",
+      "prefix": "MIN",
       "body": "MIN(${1:expression}) ${2:[OVER (...)]}",
       "description": "Returns the minimum value of non-NULL expressions."
     },
     "STRING_AGG()": {
-      "prefix": "string_agg",
+      "prefix": "STRING_AGG",
       "body": [
         "STRING_AGG(${1:[DISTINCT] expression [, delimiter] [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
         "${2:[OVER (...)]}"
@@ -459,97 +459,97 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "SUM()": {
-      "prefix": "sum",
+      "prefix": "SUM",
       "body": "SUM(${1:expression}) ${2:[OVER (...)]}",
       "description": [
         "Returns the sum of non-null values."
       ]
     },
     "CORR()": {
-      "prefix": "corr",
+      "prefix": "CORR",
       "body": "CORR(${1:X1}, ${2:X2}) ${3:[OVER (...)]}",
       "description": [
         "Returns the Pearson coefficient of correlation of a set of number pairs."
       ]
     },
     "COVAR_POP()": {
-      "prefix": "covar_pop",
+      "prefix": "COVAR_POP",
       "body": "COVAR_POP(${1:X1}, ${2:X2}) ${3:[OVER (...)]}",
       "description": [
         "Returns the population covariance of a set of number pairs."
       ]
     },
     "COVAR_SAMP()": {
-      "prefix": "covar_samp",
+      "prefix": "COVAR_SAMP",
       "body": "COVAR_SAMP(${1:X1}, ${2:X2}) ${3:[OVER (...)]}",
       "description": [
         "Returns the sample covariance of a set of number pairs."
       ]
     },
     "STDDEV_POP()": {
-      "prefix": "stddev_pop",
+      "prefix": "STDDEV_POP",
       "body": "STDDEV_POP(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": [
         "Returns the population (biased) standard deviation of the values. The return result is between `0` and `+Inf`."
       ]
     },
     "STDDEV_SAMP()": {
-      "prefix": "stddev_samp",
+      "prefix": "STDDEV_SAMP",
       "body": "STDDEV_SAMP(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": [
         "Returns the sample (unbiased) standard deviation of the values. The return result is between `0` and `+Inf`."
       ]
     },
     "STDDEV()": {
-      "prefix": "stddev",
+      "prefix": "STDDEV",
       "body": "STDDEV(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": "An alias of STDDEV_SAMP."
     },
     "VAR_POP()": {
-      "prefix": "var_pop",
+      "prefix": "VAR_POP",
       "body": "VAR_POP(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": [
         "Returns the population (biased) variance of the values. The return result is between `0` and `+Inf`."
       ]
     },
     "VAR_SAMP()": {
-      "prefix": "var_samp",
+      "prefix": "VAR_SAMP",
       "body": "VAR_SAMP(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": [
         "Returns the sample (unbiased) variance of the values. The return result is between `0` and `+Inf`."
       ]
     },
     "VARIANCE()": {
-      "prefix": "variance",
+      "prefix": "VARIANCE",
       "body": "VARIANCE(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": "An alias of VAR_SAMP."
     },
     "APPROX_COUNT_DISTINCT()": {
-      "prefix": "approx_count_distinct",
+      "prefix": "APPROX_COUNT_DISTINCT",
       "body": "APPROX_COUNT_DISTINCT(${1:expression})",
       "description": [
         "Returns the approximate result for `COUNT(DISTINCT expression)`."
       ]
     },
     "APPROX_QUANTILES()": {
-      "prefix": "approx_quantiles",
+      "prefix": "APPROX_QUANTILES",
       "body": "APPROX_QUANTILES(${1:[DISTINCT] expression, number [{IGNORE|RESPECT\\} NULLS]})",
       "description": "Returns the approximate boundaries for a group of `expression` values, where `number` represents the number of quantiles to create."
     },
     "APPROX_TOP_COUNT()": {
-      "prefix": "approx_top_count",
+      "prefix": "APPROX_TOP_COUNT",
       "body": "APPROX_TOP_COUNT(${1:expression}, ${2:number})",
       "description": "Returns the approximate top elements of `expression`."
     },
     "APPROX_TOP_SUM()": {
-      "prefix": "approx_top_sum",
+      "prefix": "APPROX_TOP_SUM",
       "body": "APPROX_TOP_SUM(${1:expression}, ${2:weight}, ${3:number})",
       "description": [
         "Returns the approximate top elements of `expression`, based on the sum of an assigned `weight`. The `number` parameter specifies the number of elements returned."
       ]
     },
     "HLL_COUNT.INIT()": {
-      "prefix": "hll_count.init",
+      "prefix": "HLL_COUNT.INIT",
       "body": "HLL_COUNT.INIT(${1:input [, precision]})",
       "description": "A scalar function that takes one or more input values and aggregates them into a HyperLogLog++ sketch."
     },
@@ -561,7 +561,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "HLL_COUNT.MERGE_PARTIAL()": {
-      "prefix": "hll_count.merge_partial",
+      "prefix": "HLL_COUNT.MERGE_PARTIAL",
       "body": "HLL_COUNT.MERGE_PARTIAL(${1:sketch})",
       "description": [
         "An aggregate function that takes one or more HyperLogLog++ `sketch` inputs and merges them into a new sketch."
@@ -575,93 +575,93 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "RANK()": {
-      "prefix": "rank",
+      "prefix": "RANK",
       "body": "RANK()",
       "description": "Returns the ordinal (1-based) rank of each row within the ordered partition."
     },
     "DENSE_RANK()": {
-      "prefix": "dense_rank",
+      "prefix": "DENSE_RANK",
       "body": "DENSE_RANK()",
       "description": "Returns the ordinal (1-based) rank of each row within the window partition."
     },
     "PERCENT_RANK()": {
-      "prefix": "percent_rank",
+      "prefix": "PERCENT_RANK",
       "body": "PERCENT_RANK()",
       "description": "Return the percentile rank of a row defined as (RK-1)/(NR-1), where RK is the `RANK` of the row and NR is the number of rows in the partition. Returns 0 if NR=1."
     },
     "CUME_DIST()": {
-      "prefix": "cume_dist",
+      "prefix": "CUME_DIST",
       "body": "CUME_DIST()",
       "description": "Return the relative rank of a row defined as NP/NR. NP is defined to be the number of rows that either precede or are peers with the current row. NR is the number of rows in the partition."
     },
     "NTILE()": {
-      "prefix": "ntile",
+      "prefix": "NTILE",
       "body": "NTILE(${1:constant_integer_expression})",
       "description": "This function divides the rows into `constant_integer_expression` buckets based on row ordering and returns the 1-based bucket number that is assigned to each row."
     },
     "ROW_NUMBER()": {
-      "prefix": "row_number",
+      "prefix": "ROW_NUMBER",
       "body": "ROW_NUMBER()",
       "description": "Does not require the `ORDER BY` clause."
     },
     "FIRST_VALUE()": {
-      "prefix": "first_value",
+      "prefix": "FIRST_VALUE",
       "body": "FIRST_VALUE(${1:value_expression [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
         "Returns the value of the `value_expression` for the first row in the current window frame."
       ]
     },
     "LAST_VALUE()": {
-      "prefix": "last_value",
+      "prefix": "LAST_VALUE",
       "body": "LAST_VALUE(${1:value_expression [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
         "Returns the value of the `value_expression` for the last row in the current window frame."
       ]
     },
     "NTH_VALUE()": {
-      "prefix": "nth_value",
+      "prefix": "NTH_VALUE",
       "body": "NTH_VALUE(${1:value_expression, constant_integer_expression [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
         "Returns the value of `value_expression` at the Nth row of the current window frame, where Nth is defined by `constant_integer_expression`. Returns NULL if there is no such row."
       ]
     },
     "LEAD()": {
-      "prefix": "lead",
+      "prefix": "LEAD",
       "body": "LEAD(${1:value_expression, [, offset [, default_expression]]})",
       "description": [
         "Returns the value of the `value_expression` on a subsequent row."
       ]
     },
     "LAG()": {
-      "prefix": "lag",
+      "prefix": "LAG",
       "body": "LAG(${1:value_expression, [, offset [, default_expression]]})",
       "description": [
         "Returns the value of the `value_expression` on a preceding row."
       ]
     },
     "PERCENTILE_CONT()": {
-      "prefix": "percentile_cont",
+      "prefix": "PERCENTILE_CONT",
       "body": "PERCENTILE_CONT(${1:value_expression, percentile [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
         "Computes the specified percentile value for the value_expression, with linear interpolation."
       ]
     },
     "PERCENTILE_DISC()": {
-      "prefix": "percentile_disc",
+      "prefix": "PERCENTILE_DISC",
       "body": "PERCENTILE_DISC(${1:value_expression, percentile [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
         "Computes the specified percentile value for a discrete `value_expression`."
       ]
     },
     "BIT_COUNT()": {
-      "prefix": "bit_count",
+      "prefix": "BIT_COUNT",
       "body": "BIT_COUNT(${1:expression})",
       "description": [
         "The input, `expression`, must be an integer or BYTES."
       ]
     },
     "ABS()": {
-      "prefix": "abs",
+      "prefix": "ABS",
       "body": "ABS(${1:X})",
       "description": "Computes absolute value."
     },
@@ -671,7 +671,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns -1, 0, or +1 for negative, zero and positive argument respectively."
     },
     "IS_INF()": {
-      "prefix": "is_inf",
+      "prefix": "IS_INF",
       "body": "IS_INF(${1:X})",
       "description": "Return TRUE if the value is positive or negative infinity."
     },
@@ -681,29 +681,29 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Return TRUE if the value is a `NaN` value."
     },
     "IEEE_DIVIDE()": {
-      "prefix": "ieee_divide",
+      "prefix": "IEEE_DIVIDE",
       "body": "IEEE_DIVIDE(${1:X}, ${2:Y})",
       "description": [
         "Divides X by Y; never fails. Returns FLOAT64. Unlike division operator (/), does not generate errors for division by zero or overflow."
       ]
     },
     "RAND()": {
-      "prefix": "rand",
+      "prefix": "RAND",
       "body": "RAND()",
       "description": "Generates a pseudo-random value of type FLOAT64 in the range of [0, 1), inclusive of 0 and exclusive of 1."
     },
     "SQRT()": {
-      "prefix": "sqrt",
+      "prefix": "SQRT",
       "body": "SQRT(${1:X})",
       "description": "Computes the square root of X."
     },
     "POW()": {
-      "prefix": "pow",
+      "prefix": "POW",
       "body": "POW(${1:X}, ${2:Y})",
       "description": "Power function: returns the value of X raised to the power of Y."
     },
     "POWER()": {
-      "prefix": "power",
+      "prefix": "POWER",
       "body": "POWER(${1:X}, ${2:Y})",
       "description": "Synonym of POW()."
     },
@@ -713,7 +713,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes natural exponential function ex."
     },
     "LN()": {
-      "prefix": "ln",
+      "prefix": "LN",
       "body": "LN(${1:X})",
       "description": "Computes the natural logarithm of X."
     },
@@ -723,7 +723,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Synonym of LN(X)"
     },
     "LOG(X, Y)": {
-      "prefix": "log",
+      "prefix": "LOG",
       "body": "LOG(${1:X}, ${2:Y})",
       "description": "Computes logarithm of X to base Y."
     },
@@ -733,7 +733,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Similar to LOG(X) but computes logarithm to base 10."
     },
     "GREATEST()": {
-      "prefix": "greatest",
+      "prefix": "GREATEST",
       "body": "GREATEST(${1:X1,...,XN})",
       "description": "Returns `NULL` if any of the inputs is `NULL`."
     },
@@ -743,7 +743,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns `NULL` if any of the inputs is `NULL`."
     },
     "DIV()": {
-      "prefix": "div",
+      "prefix": "DIV",
       "body": "DIV(${1:X}, ${2:Y})",
       "description": "Returns the result of integer division of X by Y."
     },
@@ -753,7 +753,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Equivalent to the division operator (`/`)."
     },
     "MOD()": {
-      "prefix": "mod",
+      "prefix": "MOD",
       "body": "MOD(${1:X}, ${2:Y})",
       "description": "Modulo function: returns the remainder of the division of X by Y."
     },
@@ -763,7 +763,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes cosine of X. Never fails."
     },
     "COSH()": {
-      "prefix": "cosh",
+      "prefix": "COSH",
       "body": "COSH(${1:X})",
       "description": "Computes the hyperbolic cosine of X."
     },
@@ -773,7 +773,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes the principal value of the arc cosine of X."
     },
     "ACOSH()": {
-      "prefix": "acosh",
+      "prefix": "ACOSH",
       "body": "ACOSH(${1:X})",
       "description": "Computes the inverse hyperbolic cosine of X."
     },
@@ -783,7 +783,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes the sine of X. Never fails."
     },
     "SINH()": {
-      "prefix": "sinh",
+      "prefix": "SINH",
       "body": "SINH(${1:X})",
       "description": "Computes the hyperbolic sine of X."
     },
@@ -793,7 +793,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes the principal value of the arc sine of X."
     },
     "ASINH()": {
-      "prefix": "asinh",
+      "prefix": "ASINH",
       "body": "ASINH(${1:X})",
       "description": "Computes the inverse hyperbolic sine of X. Does not fail."
     },
@@ -803,7 +803,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes tangent of X."
     },
     "TANH()": {
-      "prefix": "tanh",
+      "prefix": "TANH",
       "body": "TANH(${1:X})",
       "description": "Computes hyperbolic tangent of X. Does not fail."
     },
@@ -813,7 +813,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes the principal value of the arc tangent of X."
     },
     "ATANH()": {
-      "prefix": "atanh",
+      "prefix": "ATANH",
       "body": "ATANH(${1:X})",
       "description": "Computes the inverse hyperbolic tangent of X."
     },
@@ -823,7 +823,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Calculates the principal value of the arc tangent of Y/X using the signs of the two arguments to determine the quadrant."
     },
     "RANGE_BUCKET()": {
-      "prefix": "range_bucket",
+      "prefix": "RANGE_BUCKET",
       "body": "RANGE_BUCKET(${1:point}, ${2:boundaries_array})",
       "description": "Scans through a sorted array and returns the 0-based position of the point's upper bound."
     },
@@ -834,7 +834,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Computes the fingerprint of the STRING or BYTES input using the Fingerprint64 function from the open-source FarmHash library."
     },
     "MD5()": {
-      "prefix": "md5",
+      "prefix": "MD5",
       "body": "MD5(${1:input})",
       "description": [
         "Computes the hash of the input using the MD5 algorithm."
@@ -848,7 +848,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "SHA256()": {
-      "prefix": "sha256",
+      "prefix": "SHA256",
       "body": "SHA256(${1:input})",
       "description": [
         "Computes the hash of the input using the SHA-256 algorithm."
@@ -863,7 +863,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     },
     // Conversion functions
     "CAST()": {
-      "prefix": "cast",
+      "prefix": "CAST",
       "body": "CAST(${1:expr} AS ${2:type})",
       "description": "Cast syntax is used in a query to indicate that the result type of an expression should be converted to some other type."
     },
@@ -873,7 +873,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "The format clause can be used in some CAST functions."
     },
     "SAFE_CAST()": {
-      "prefix": "safe_cast",
+      "prefix": "SAFE_CAST",
       "body": "SAFE_CAST(${1:expr} AS ${3:type})",
       "description": "SAFE_CAST is identical to CAST, except it returns NULL instead of raising an error."
     },
@@ -883,7 +883,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Converts a string to a BIGNUMERIC value."
     },
     "PARSE_NUMERIC()": {
-      "prefix": "parse_numeric",
+      "prefix": "PARSE_NUMERIC",
       "body": "PARSE_NUMERIC(${1:string_expression})",
       "description": "Converts a string to a NUMERIC value."
     },
@@ -894,7 +894,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the ASCII code for the first character or byte in value."
     },
     "BYTE_LENGTH()": {
-      "prefix": "byte_length",
+      "prefix": "BYTE_LENGTH",
       "body": "BYTE_LENGTH(${1:value})",
       "description": "Returns the length of the value in bytes, regardless of whether the type of the value is STRING or BYTES."
     },
@@ -904,7 +904,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the length of the STRING in characters."
     },
     "CHARACTER_LENGTH()": {
-      "prefix": "character_length",
+      "prefix": "CHARACTER_LENGTH",
       "body": "CHARACTER_LENGTH(${1:value})",
       "description": "Synonym for CHAR_LENGTH."
     },
@@ -914,7 +914,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Takes a Unicode code point and returns the character that matches the code point."
     },
     "CODE_POINTS_TO_BYTES()": {
-      "prefix": "code_points_to_bytes",
+      "prefix": "CODE_POINTS_TO_BYTES",
       "body": "CODE_POINTS_TO_BYTES(${1:ascii_values})",
       "description": [
         "Takes an array of extended ASCII code points (ARRAY of INT64) and returns BYTES."
@@ -928,7 +928,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "CONCAT()": {
-      "prefix": "concat",
+      "prefix": "CONCAT",
       "body": "CONCAT(${1:value1[, ...]})",
       "description": "Concatenates one or more values into a single result."
     },
@@ -938,7 +938,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Takes two values. Returns TRUE if the second value is a suffix of the first."
     },
     "FORMAT()": {
-      "prefix": "format",
+      "prefix": "FORMAT",
       "body": "FORMAT(${1:<format_string>, ...})",
       "description": "BigQuery supports a FORMAT() function for formatting strings. This function is similar to the C printf function."
     },
@@ -948,7 +948,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Converts the base32-encoded input `string_expr` into BYTES format."
     },
     "FROM_BASE64()": {
-      "prefix": "from_base64",
+      "prefix": "FROM_BASE64",
       "body": "FROM_BASE64(${1:string_expr})",
       "description": "Converts the base64-encoded input `string_expr` into BYTES format."
     },
@@ -958,7 +958,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Converts a hexadecimal-encoded STRING into BYTES format."
     },
     "INITCAP()": {
-      "prefix": "initcap",
+      "prefix": "INITCAP",
       "body": "INITCAP(${1:value}${2:[, delimiters]})",
       "description": "Returns it with the first character in each word in uppercase and all other characters in lowercase."
     },
@@ -968,7 +968,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the lowest 1-based index of search_value in source_value."
     },
     "LEFT()": {
-      "prefix": "left",
+      "prefix": "LEFT",
       "body": "LEFT(${1:value}, ${2:length})",
       "description": "Return the specified leftmost number of characters."
     },
@@ -978,7 +978,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the length of the value."
     },
     "LPAD()": {
-      "prefix": "lpad",
+      "prefix": "LPAD",
       "body": "LPAD(${1:original_value}, ${2:return_length[, pattern]})",
       "description": [
         "Returns a value that consists of `original_value` prepended with `pattern`."
@@ -992,7 +992,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "LTRIM()": {
-      "prefix": "ltrim",
+      "prefix": "LTRIM",
       "body": "LTRIM(${1:value1[, value2]})",
       "description": "Identical to TRIM, but only removes leading characters."
     },
@@ -1004,7 +1004,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "NORMALIZE_AND_CASEFOLD()": {
-      "prefix": "normalize_and_casefold",
+      "prefix": "NORMALIZE_AND_CASEFOLD",
       "body": "NORMALIZE_AND_CASEFOLD(${1:value[, normalization_mode]})",
       "description": "Takes a STRING, `value`, and performs the same actions as NORMALIZE, as well as casefolding for case-insensitive operations."
     },
@@ -1014,7 +1014,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Alias for BYTE_LENGTH."
     },
     "REGEXP_CONTAINS()": {
-      "prefix": "regexp_contains",
+      "prefix": "REGEXP_CONTAINS",
       "body": "REGEXP_CONTAINS(${1:value}, r\"${2:regex}\")",
       "description": "Returns TRUE if `value` is a partial match for the regular expression, `regex`."
     },
@@ -1024,7 +1024,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the first substring in `value` that matches the regular expression, `regex`. Returns NULL if there is no match."
     },
     "REGEXP_EXTRACT_ALL()": {
-      "prefix": "regexp_extract_all",
+      "prefix": "REGEXP_EXTRACT_ALL",
       "body": "REGEXP_EXTRACT_ALL(${1:value}, r\"${2:regex}\")",
       "description": "Returns an array of all substrings of `value` that match the regular expression, `regex`."
     },
@@ -1034,7 +1034,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the lowest 1-based index of a regular expression, regexp, in source_value."
     },
     "REGEXP_REPLACE()": {
-      "prefix": "regexp_replace",
+      "prefix": "REGEXP_REPLACE",
       "body": "REGEXP_REPLACE(${1:value}, r\"${2:regex}\", ${3:replacement})",
       "description": "Returns a STRING where all substrings of `value` that match regular expression `regex` are replaced with `replacement`."
     },
@@ -1044,7 +1044,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Synonym for REGEXP_EXTRACT."
     },
     "REPLACE()": {
-      "prefix": "replace",
+      "prefix": "REPLACE",
       "body": "REPLACE(${1:original_value}, ${2:from_value}, ${3:to_value})",
       "description": "Replaces all occurrences of `from_value` with `to_value` in `original_value`."
     },
@@ -1056,7 +1056,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "REVERSE()": {
-      "prefix": "reverse",
+      "prefix": "REVERSE",
       "body": "REVERSE(${1:value})",
       "description": "Returns the reverse of the input STRING or BYTES."
     },
@@ -1066,7 +1066,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Return the specified rightmost number of characters."
     },
     "RPAD()": {
-      "prefix": "rpad",
+      "prefix": "RPAD",
       "body": "RPAD(${1:original_value}, ${2:return_length[, pattern]})",
       "description": [
         "Returns a value that consists of `original_value` appended with pattern."
@@ -1078,7 +1078,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Identical to TRIM, but only removes trailing characters."
     },
     "SAFE_CONVERT_BYTES_TO_STRING()": {
-      "prefix": "safe_convert_bytes_to_string",
+      "prefix": "SAFE_CONVERT_BYTES_TO_STRING",
       "body": "SAFE_CONVERT_BYTES_TO_STRING(${1:value})",
       "description": "Converts a sequence of bytes to a string."
     },
@@ -1088,7 +1088,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns a STRING that represents the Soundex code for value."
     },
     "SPLIT()": {
-      "prefix": "split",
+      "prefix": "SPLIT",
       "body": "SPLIT(${1:value[, delimiter]})",
       "description": [
         "Splits `value` using the `delimiter` argument."
@@ -1100,7 +1100,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Takes two values. Returns TRUE if the second value is a prefix of the first."
     },
     "STRPOS()": {
-      "prefix": "strpos",
+      "prefix": "STRPOS",
       "body": "STRPOS(${1:string}, ${2:substring})",
       "description": "Returns the 1-based index of the first occurrence of `substring` inside `string`. Returns 0 if `substring` is not found."
     },
@@ -1112,7 +1112,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "SUBSTRING()": {
-      "prefix": "substring",
+      "prefix": "SUBSTRING",
       "body": "SUBSTRING(${1:value}, ${2:position}${3:[, length]})",
       "description": [
         "Returns a substring of the supplied `value`. (Alias for SUBSTR)"
@@ -1124,7 +1124,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Converts a sequence of BYTES into a base32-encoded STRING."
     },
     "TO_BASE64()": {
-      "prefix": "to_base64",
+      "prefix": "TO_BASE64",
       "body": "TO_BASE64(${1:bytes_expr})",
       "description": "Converts a sequence of BYTES into a base64-encoded STRING."
     },
@@ -1136,7 +1136,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "TO_HEX()": {
-      "prefix": "to_hex",
+      "prefix": "TO_HEX",
       "body": "TO_HEX(${1:bytes})",
       "description": "Converts a sequence of BYTES into a hexadecimal STRING."
     },
@@ -1146,7 +1146,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "In `expression`, replaces each character in `source_characters` with the corresponding character in `target_characters`."
     },
     "TRIM()": {
-      "prefix": "trim",
+      "prefix": "TRIM",
       "body": "TRIM(${1:value1[, value2]})",
       "description": "Removes all leading and trailing characters that match `value2`."
     },
@@ -1156,7 +1156,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the Unicode code point for the first character in value."
     },
     "UPPER()": {
-      "prefix": "upper",
+      "prefix": "UPPER",
       "body": "UPPER(${1:value})",
       "description": [
         "For STRING arguments, returns the original string with all alphabetic characters in uppercase."
@@ -1169,7 +1169,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Extracts a JSON values. (Legacy JSON function, recommend using `JSON_QUERY`)"
     },
     "JSON_QUERY()": {
-      "prefix": "json_query",
+      "prefix": "JSON_QUERY",
       "body": "JSON_QUERY(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
       "description": "Extracts a JSON values."
     },
@@ -1179,7 +1179,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Extracts a scalar value. (Legacy JSON function, recommend using `JSON_VALUE`)"
     },
     "JSON_VALUE()": {
-      "prefix": "json_value",
+      "prefix": "JSON_VALUE",
       "body": "JSON_VALUE(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
       "description": "Extracts a scalar value."
     },
@@ -1189,7 +1189,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Extracts an array of JSON values. (Legacy JSON function, recommend using `JSON_QUERY_ARRAY`)"
     },
     "JSON_QUERY_ARRAY()": {
-      "prefix": "json_query_array",
+      "prefix": "JSON_QUERY_ARRAY",
       "body": "JSON_QUERY_ARRAY(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
       "description": "Extracts an array of JSON values."
     },
@@ -1199,7 +1199,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Extracts an array of scalar values. (Legacy JSON function, recommend using `JSON_VALUE_ARRAY`)"
     },
     "JSON_VALUE_ARRAY()": {
-      "prefix": "json_value_array",
+      "prefix": "JSON_VALUE_ARRAY",
       "body": "JSON_VALUE_ARRAY(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
       "description": "Extracts an array of scalar values."
     },
@@ -1209,7 +1209,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns a JSON-formatted string representation of the value."
     },
     "ARRAY_CONCAT()": {
-      "prefix": "array_concat",
+      "prefix": "ARRAY_CONCAT",
       "body": "ARRAY_CONCAT(${1:array_expression_1 [, array_expression_n]})",
       "description": "Concatenates one or more arrays with the same element type into a single array."
     },
@@ -1219,7 +1219,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the size of the array."
     },
     "ARRAY_TO_STRING()": {
-      "prefix": "array_to_string",
+      "prefix": "ARRAY_TO_STRING",
       "body": "ARRAY_TO_STRING(${1:array_expression}, ${2:delimiter[, null_text]})",
       "description": [
         "Returns a concatenation of the elements in `array_expression` as a STRING. The value for `array_expression` can either be an array of STRING or BYTES data types."
@@ -1233,7 +1233,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "GENERATE_DATE_ARRAY()": {
-      "prefix": "generate_date_array",
+      "prefix": "GENERATE_DATE_ARRAY",
       "body": "GENERATE_DATE_ARRAY(${1:start_date}, ${2:end_date[, INTERVAL INT64_expr date_part]})",
       "description": [
         "Returns an array of dates. The `start_date` and `end_date` parameters determine the inclusive start and end of the array."
@@ -1247,7 +1247,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "[OFFSET(zero_based_offset)]": {
-      "prefix": "offset",
+      "prefix": "OFFSET",
       "body": "OFFSET(${1:zero_based_offset})",
       "description": "Accesses an ARRAY element by position and returns the element."
     },
@@ -1257,7 +1257,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Accesses an ARRAY element by position and returns the element."
     },
     "ARRAY_REVERSE()": {
-      "prefix": "array_reverse",
+      "prefix": "ARRAY_REVERSE",
       "body": "ARRAY_REVERSE(${1:value})",
       "description": "Returns the input ARRAY with elements in reverse order."
     },
@@ -1267,363 +1267,363 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Identical to `OFFSET` and `ORDINAL`, except returns `NULL` if the index is out of range."
     },
     "[SAFE_ORDINAL(one_based_offset)]": {
-      "prefix": "safe_ordinal",
+      "prefix": "SAFE_ORDINAL",
       "body": "SAFE_ORDINAL(${1:one_based_offset})",
       "description": "Identical to `OFFSET` and `ORDINAL`, except returns `NULL` if the index is out of range."
     },
     // Date functions
     "CURRENT_DATE()": {
-      "prefix": "current_date",
+      "prefix": "CURRENT_DATE",
       "body": "CURRENT_DATE(${1:[time_zone]})",
       "description": [
         "Returns the current date as of the specified or default timezone."
       ]
     },
     "EXTRACT(part FROM date_expression)": {
-      "prefix": "extract date",
+      "prefix": "EXTRACT DATE",
       "body": "EXTRACT(${1:part} FROM ${2:date_expression})",
       "description": [
         "Returns the value corresponding to the specified date part. The `part` must be one of:"
       ]
     },
     "DATE(year, month, day)": {
-      "prefix": "date use int",
+      "prefix": "DATE USE INT",
       "body": "DATE(${1:year}, ${2:month}, ${3:day})",
       "description": "Constructs a `DATE` from `INT64` values representing the year, month, and day."
     },
     "DATE(timestamp)": {
-      "prefix": "date use timestamp",
+      "prefix": "DATE USE TIMESTAMP",
       "body": "DATE(${1:timestamp_expression[, timezone]})",
       "description": "Converts a `timestamp_expression` to a `DATE` data type."
     },
     "DATE_ADD()": {
-      "prefix": "date_add",
+      "prefix": "DATE_ADD",
       "body": "DATE_ADD(${1:date_expression}, INTERVAL ${2:INT64_expr date_part})",
       "description": [
         "Adds a specified time interval to a DATE."
       ]
     },
     "DATE_SUB()": {
-      "prefix": "date_sub",
+      "prefix": "DATE_SUB",
       "body": "DATE_SUB(${1:date_expression}, INTERVAL ${2:INT64_expr date_part})",
       "description": [
         "Subtracts a specified time interval from a DATE."
       ]
     },
     "DATE_DIFF()": {
-      "prefix": "date_diff",
+      "prefix": "DATE_DIFF",
       "body": "DATE_DIFF(${1:date_expression}, ${2:date_expression}, ${3:date_part})",
       "description": [
         "Returns the number of `date_part` boundaries between the two `date_expression`s."
       ]
     },
     "DATE_TRUNC()": {
-      "prefix": "date_trunc",
+      "prefix": "DATE_TRUNC",
       "body": "DATE_TRUNC(${1:date_expression}, ${2:date_part})",
       "description": [
         "Truncates the date to the specified granularity."
       ]
     },
     "DATE_FROM_UNIX_DATE()": {
-      "prefix": "date_from_unix_date",
+      "prefix": "DATE_FROM_UNIX_DATE",
       "body": "DATE_FROM_UNIX_DATE(${1:INT64_expression})",
       "description": "Interprets `INT64_expression` as the number of days since 1970-01-01."
     },
     "FORMAT_DATE()": {
-      "prefix": "format_date",
+      "prefix": "FORMAT_DATE",
       "body": "FORMAT_DATE(${1:format_string}, ${2:date_expr})",
       "description": [
         "Formats the `date_expr` according to the specified `format_string`."
       ]
     },
     "LAST_DAY()": {
-      "prefix": "last_day",
+      "prefix": "LAST_DAY",
       "body": "LAST_DAY(${1:date_expression}${2:[, date_part]})",
       "description": "Returns the last day from a date expression."
     },
     "PARSE_DATE()": {
-      "prefix": "parse_date",
+      "prefix": "PARSE_DATE",
       "body": "PARSE_DATE(${1:format_string}, ${2:date_string})",
       "description": [
         "Uses a `format_string` and a string representation of a date to return a DATE object."
       ]
     },
     "UNIX_DATE()": {
-      "prefix": "unix_date",
+      "prefix": "UNIX_DATE",
       "body": "UNIX_DATE(${1:date_expression})",
       "description": "Returns the number of days since 1970-01-01."
     },
     // Datetime functions
     "CURRENT_DATETIME()": {
-      "prefix": "current_datetime",
+      "prefix": "CURRENT_DATETIME",
       "body": "CURRENT_DATETIME(${1:[timezone]})",
       "description": [
         "Returns the current time as a DATETIME object."
       ]
     },
     "DATETIME(year, month, day, hour, minute, second)": {
-      "prefix": "datetime use int",
+      "prefix": "DATETIME USE INT",
       "body": "DATETIME(${1:year}, ${2:month}, ${3:day}, ${4:hour}, ${5:minute}, ${6:second})",
       "description": "Constructs a `DATETIME` object using `INT64` values representing the year, month, day, hour, minute, and second."
     },
     "DATETIME(date, time)": {
-      "prefix": "datetime use datetime",
+      "prefix": "DATETIME USE DATETIME",
       "body": "DATETIME(${1:date_expression}, ${2:time_expression})",
       "description": "Constructs a `DATETIME` object using a `DATE` object and a `TIME` object."
     },
     "DATETIME(timestamp)": {
-      "prefix": "datetime use timestamp",
+      "prefix": "DATETIME USE TIMESTAMP",
       "body": "DATETIME(${1:timestamp_expression[, timezone]})",
       "description": "Constructs a `DATETIME` object using a `TIMESTAMP` object."
     },
     "DATETIME_ADD()": {
-      "prefix": "datetime_add",
+      "prefix": "DATETIME_ADD",
       "body": "DATETIME_ADD(${1:datetime_expression}, INTERVAL ${2:INT64_expr part})",
       "description": [
         "Adds `INT64_expr` units of `part` to the DATETIME object."
       ]
     },
     "DATETIME_SUB()": {
-      "prefix": "datetime_sub",
+      "prefix": "DATETIME_SUB",
       "body": "DATETIME_SUB(${1:datetime_expression}, INTERVAL ${2:INT64_expr part})",
       "description": [
         "Subtracts `INT64_expr` units of `part` from the DATETIME."
       ]
     },
     "DATETIME_DIFF()": {
-      "prefix": "datetime_diff",
+      "prefix": "DATETIME_DIFF",
       "body": "DATETIME_DIFF(${1:datetime_expression}, ${2:datetime_expression}, ${3:part})",
       "description": [
         "Returns the number of `part` boundaries between the two `datetime_expressions`."
       ]
     },
     "DATETIME_TRUNC()": {
-      "prefix": "datetime_trunc",
+      "prefix": "DATETIME_TRUNC",
       "body": "DATETIME_TRUNC(${1:datetime_expression}, ${2:part})",
       "description": [
         "Truncates a `DATETIME` object to the granularity of `part`."
       ]
     },
     "FORMAT_DATETIME()": {
-      "prefix": "format_datetime",
+      "prefix": "FORMAT_DATETIME",
       "body": "FORMAT_DATETIME(${1:format_string}, ${2:datetime_expression})",
       "description": [
         "Formats a DATETIME object according to the specified `format_string`."
       ]
     },
     "PARSE_DATETIME()": {
-      "prefix": "parse_datetime",
+      "prefix": "PARSE_DATETIME",
       "body": "PARSE_DATETIME(${1:format_string}, ${2:datetime_string})",
       "description": [
         "Uses a `format_string` and a `string` representation of a timestamp to return a TIMESTAMP object."
       ]
     },
     "CURRENT_TIME()": {
-      "prefix": "current_time",
+      "prefix": "CURRENT_TIME",
       "body": "CURRENT_TIME()",
       "description": "Returns the current time as a TIME object."
     },
     "TIME(hour, minute, second)": {
-      "prefix": "time use int",
+      "prefix": "TIME USE INT",
       "body": "TIME(${1:hour}, ${2:minute}, ${3:second})",
       "description": "Constructs a `TIME` object using `INT64` values representing the hour, minute, and second."
     },
     "TIME(datetime)": {
-      "prefix": "time use datetime",
+      "prefix": "TIME USE DATETIME",
       "body": "TIME(${1:datetime})",
       "description": "Constructs a `TIME` object using a `DATETIME` object."
     },
     "TIME(timestamp)": {
-      "prefix": "time",
+      "prefix": "TIME",
       "body": "TIME(${1:timestamp[, timezone]})",
       "description": "Constructs a `TIME` object using a `TIMESTAMP` object."
     },
     "TIME_ADD()": {
-      "prefix": "time_add",
+      "prefix": "TIME_ADD",
       "body": "TIME_ADD(${1:time_expression}, INTERVAL ${2:INT64_expr part})",
       "description": [
         "Adds `INT64_expr` units of `part` to the TIME object."
       ]
     },
     "TIME_SUB()": {
-      "prefix": "time_sub",
+      "prefix": "TIME_SUB",
       "body": "TIME_SUB(${1:time_expression}, INTERVAL ${2:INT64_expr part})",
       "description": [
         "Subtracts `INT64_expr` units of `part` from the TIME object."
       ]
     },
     "TIME_DIFF()": {
-      "prefix": "time_diff",
+      "prefix": "TIME_DIFF",
       "body": "TIME_DIFF(${1:time_expression}, ${2:time_expression}, ${3:part})",
       "description": [
         "Returns the number of whole specified `part` intervals between two TIME objects."
       ]
     },
     "TIME_TRUNC()": {
-      "prefix": "time_trunc",
+      "prefix": "TIME_TRUNC",
       "body": "TIME_TRUNC(${1:time_expression}, ${2:part})",
       "description": [
         "Truncates a TIME object to the granularity of `part`."
       ]
     },
     "FORMAT_TIME()": {
-      "prefix": "format_time",
+      "prefix": "FORMAT_TIME",
       "body": "FORMAT_TIME(${1:format_string}, ${2:time_object})",
       "description": [
         "Formats a TIME object according to the specified `format_string`."
       ]
     },
     "PARSE_TIME()": {
-      "prefix": "parse_time",
+      "prefix": "PARSE_TIME",
       "body": "PARSE_TIME(${1:format_string}, ${2:string})",
       "description": [
         "Uses a `format_string` and a string to return a TIME object."
       ]
     },
     "CURRENT_TIMESTAMP()": {
-      "prefix": "current_timestamp",
+      "prefix": "CURRENT_TIMESTAMP",
       "body": "CURRENT_TIMESTAMP()",
       "description": "Parentheses are optional."
     },
     "EXTRACT(part FROM timestamp)": {
-      "prefix": "extract timestamp",
+      "prefix": "EXTRACT TIMESTAMP",
       "body": "EXTRACT(${1:part} FROM ${2:timestamp_expression [AT TIME ZONE tz_spec]})",
       "description": [
         "Returns an `INT64` value that corresponds to the specified `part` from a supplied `timestamp_expression`."
       ]
     },
     "STRING()": {
-      "prefix": "string",
+      "prefix": "STRING",
       "body": "STRING(${1:timestamp_expression[, timezone]})",
       "description": [
         "Converts a `timestamp_expression` to a STRING data type."
       ]
     },
     "TIMESTAMP(string)": {
-      "prefix": "timestamp use string",
+      "prefix": "TIMESTAMP USE STRING",
       "body": "TIMESTAMP(${1:string_expression[, timezone]})",
       "description": "Converts a STRING expression to a TIMESTAMP data type."
     },
     "TIMESTAMP(date)": {
-      "prefix": "timestamp use date",
+      "prefix": "TIMESTAMP USE DATE",
       "body": "TIMESTAMP(${1:date_expression[, timezone]})",
       "description": "Converts a DATE object to a TIMESTAMP data type."
     },
     "TIMESTAMP(datetime)": {
-      "prefix": "timestamp use datetime",
+      "prefix": "TIMESTAMP USE DATETIME",
       "body": "TIMESTAMP(${1:datetime_expression[, timezone]})",
       "description": "Converts a DATETIME object to a TIMESTAMP data type."
     },
     "TIMESTAMP_ADD()": {
-      "prefix": "timestamp_add",
+      "prefix": "TIMESTAMP_ADD",
       "body": "TIMESTAMP_ADD(${1:timestamp_expression}, INTERVAL ${2:INT64_expr date_part})",
       "description": [
         "Adds `INT64_expr` units of `date_part` to the timestamp, independent of any time zone."
       ]
     },
     "TIMESTAMP_SUB()": {
-      "prefix": "timestamp_sub",
+      "prefix": "TIMESTAMP_SUB",
       "body": "TIMESTAMP_SUB(${1:timestamp_expression}, INTERVAL ${2:INT64_expr date_part})",
       "description": [
         "Subtracts `INT64_expr` units of `date_part` from the timestamp, independent of any time zone."
       ]
     },
     "TIMESTAMP_DIFF()": {
-      "prefix": "timestamp_diff",
+      "prefix": "TIMESTAMP_DIFF",
       "body": "TIMESTAMP_DIFF(${1:timestamp_expression}, ${2:timestamp_expression}, ${3:date_part})",
       "description": [
         "Returns the number of whole specified `date_part` intervals between two timestamps."
       ]
     },
     "TIMESTAMP_TRUNC()": {
-      "prefix": "timestamp_trunc",
+      "prefix": "TIMESTAMP_TRUNC",
       "body": "TIMESTAMP_TRUNC(${1:timestamp_expression}, ${2:date_part, [, time_zone]})",
       "description": [
         "Truncates a timestamp to the granularity of `date_part`."
       ]
     },
     "FORMAT_TIMESTAMP()": {
-      "prefix": "format_timestamp",
+      "prefix": "FORMAT_TIMESTAMP",
       "body": "FORMAT_TIMESTAMP(${1:format_string}, ${2:timestamp[, time_zone]})",
       "description": [
         "Formats a timestamp according to the specified `format_string`."
       ]
     },
     "PARSE_TIMESTAMP()": {
-      "prefix": "parse_timestamp",
+      "prefix": "PARSE_TIMESTAMP",
       "body": "PARSE_TIMESTAMP(${1:format_string}, ${2:string[, time_zone]})",
       "description": [
         "Uses a `format_string` and a string representation of a timestamp to return a TIMESTAMP object."
       ]
     },
     "TIMESTAMP_SECONDS()": {
-      "prefix": "timestamp_seconds",
+      "prefix": "TIMESTAMP_SECONDS",
       "body": "TIMESTAMP_SECONDS(${1:int64_expression})",
       "description": "Interprets `int64_expression` as the number of seconds since 1970-01-01 00:00:00 UTC."
     },
     "TIMESTAMP_MILLIS()": {
-      "prefix": "timestamp_millis",
+      "prefix": "TIMESTAMP_MILLIS",
       "body": "TIMESTAMP_MILLIS(${1:int64_expression})",
       "description": "Interprets `int64_expression` as the number of milliseconds since 1970-01-01 00:00:00 UTC."
     },
     "TIMESTAMP_MICROS()": {
-      "prefix": "timestamp_micros",
+      "prefix": "TIMESTAMP_MICROS",
       "body": "TIMESTAMP_MICROS(${1:int64_expression})",
       "description": "Interprets `int64_expression` as the number of microseconds since 1970-01-01 00:00:00 UTC."
     },
     "UNIX_SECONDS()": {
-      "prefix": "unix_seconds",
+      "prefix": "UNIX_SECONDS",
       "body": "UNIX_SECONDS(${1:timestamp_expression})",
       "description": "Returns the number of seconds since 1970-01-01 00:00:00 UTC."
     },
     "UNIX_MILLIS()": {
-      "prefix": "unix_millis",
+      "prefix": "UNIX_MILLIS",
       "body": "UNIX_MILLIS(${1:timestamp_expression})",
       "description": "Returns the number of milliseconds since 1970-01-01 00:00:00 UTC."
     },
     "UNIX_MICROS()": {
-      "prefix": "unix_micros",
+      "prefix": "UNIX_MICROS",
       "body": "UNIX_MICROS(${1:timestamp_expression})",
       "description": "Returns the number of microseconds since 1970-01-01 00:00:00 UTC."
     },
     "SESSION_USER()": {
-      "prefix": "session_user",
+      "prefix": "SESSION_USER",
       "body": "SESSION_USER()",
       "description": "Returns the email address of whoever is executing the query."
     },
     "NET.IP_FROM_STRING()": {
-      "prefix": "net.ip_from_string",
+      "prefix": "NET.IP_FROM_STRING",
       "body": "NET.IP_FROM_STRING(${1:addr_str})",
       "description": [
         "Converts an IPv4 or IPv6 address from text (STRING) format to binary (BYTES) format in network byte order."
       ]
     },
     "NET.SAFE_IP_FROM_STRING()": {
-      "prefix": "net.safe_ip_from_string",
+      "prefix": "NET.SAFE_IP_FROM_STRING",
       "body": "NET.SAFE_IP_FROM_STRING(${1:addr_str})",
       "description": "Similar to NET.IP_FROM_STRING, but returns `NULL` instead of throwing an error if the input is invalid."
     },
     "NET.IP_TO_STRING()": {
-      "prefix": "net.ip_to_string",
+      "prefix": "NET.IP_TO_STRING",
       "body": "NET.IP_TO_STRING(${1:addr_bin})",
       "description": [
         "Converts an IPv4 or IPv6 address from binary (BYTES) format in network byte order to text (STRING) format."
       ]
     },
     "NET.IP_NET_MASK()": {
-      "prefix": "net.ip_net_mask",
+      "prefix": "NET.IP_NET_MASK",
       "body": "NET.IP_NET_MASK(${1:num_output_bytes}, ${2:prefix_length})",
-      "description": "Returns a network mask: a byte sequence with length equal to `num_output_bytes`, where the first `prefix_length` bits are set to 1 and the other bits are set to 0."
+      "DESCRIPTION": "RETURNS A NETWORK MASK: A BYTE SEQUENCE WITH LENGTH EQUAL TO `NUM_OUTPUT_BYTES`, WHERE THE FIRST `PREFIX_LENGTH` BITS ARE SET TO 1 AND THE OTHER BITS ARE SET TO 0."
     },
     "NET.IP_TRUNC()": {
-      "prefix": "net.ip_trunc",
+      "prefix": "NET.IP_TRUNC",
       "body": "NET.IP_TRUNC(${1:addr_bin}, ${2:prefix_length})",
       "description": [
         "Takes `addr_bin`, an IPv4 or IPv6 address in binary (BYTES) format in network byte order, and returns a subnet address in the same format."
       ]
     },
     "NET.IPV4_FROM_INT64()": {
-      "prefix": "net.ipv4_from_int64",
+      "prefix": "NET.IPV4_FROM_INT64",
       "body": "NET.IPV4_FROM_INT64(${1:integer_value})",
       "description": [
         "Converts an IPv4 address from integer format to binary (BYTES) format in network byte order."
@@ -1637,7 +1637,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "NET.HOST()": {
-      "prefix": "net.host",
+      "prefix": "NET.HOST",
       "body": "NET.HOST(${1:url})",
       "description": "Takes a URL as a STRING and returns the host as a STRING."
     },
@@ -1649,14 +1649,14 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "NET.REG_DOMAIN()": {
-      "prefix": "net.reg_domain",
+      "prefix": "NET.REG_DOMAIN",
       "body": "NET.REG_DOMAIN(${1:url})",
       "description": [
         "Takes a URL as a STRING and returns the registered or registerable domain (the public suffix plus one preceding label), as a STRING."
       ]
     },
     "CASE expr WHEN value ... END": {
-      "prefix": "case",
+      "prefix": "CASE",
       "body": [
         "CASE ${1:expr}",
         "\tWHEN ${2:value} THEN ${3:result}",
@@ -1667,7 +1667,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Compares `expr` to value of each successive `WHEN` clause and returns the first result where this comparison returns true."
     },
     "CASE WHEN condition ... END": {
-      "prefix": "casecond",
+      "prefix": "CASECOND",
       "body": [
         "CASE",
         "\tWHEN ${1:cond} THEN ${2:result}",
@@ -1682,7 +1682,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "Returns the value of the first non-null expression."
     },
     "IF()": {
-      "prefix": "if",
+      "prefix": "IF",
       "body": "IF(${1:cond}, ${2:true_result}, ${3:else_result})",
       "description": "If `cond` is true, returns `true_result`, else returns `else_result`."
     },
@@ -1692,7 +1692,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "description": "If `expr` is `NULL`, return `null_result`."
     },
     "NULLIF()": {
-      "prefix": "nullif",
+      "prefix": "NULLIF",
       "body": "NULLIF(${1:expression}, ${2:expression_to_match})",
       "description": "Returns `NULL` if `expression = expression_to_match` is true, otherwise returns `expression`."
     },
@@ -1701,7 +1701,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(DAYOFWEEK FROM ${1:date_expression})"
     },
     "EXTRACT(DAY FROM date_expression)": {
-      "prefix": "day",
+      "prefix": "DAY",
       "body": "EXTRACT(DAY FROM ${1:date_expression})"
     },
     "EXTRACT(DAYOFYEAR FROM date_expression)": {
@@ -1709,7 +1709,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(DAYOFYEAR FROM ${1:date_expression})"
     },
     "EXTRACT(WEEK FROM date_expression)": {
-      "prefix": "week",
+      "prefix": "WEEK",
       "body": "EXTRACT(WEEK FROM ${1:date_expression})"
     },
     "EXTRACT(WEEK<WEEKDAY> FROM date_expression)": {
@@ -1717,7 +1717,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(WEEK(${1:<WEEKDAY>}) FROM ${2:date_expression})"
     },
     "EXTRACT(ISOWEEK FROM date_expression)": {
-      "prefix": "isoweek",
+      "prefix": "ISOWEEK",
       "body": "EXTRACT(ISOWEEK FROM ${1:date_expression})"
     },
     "EXTRACT(MONTH FROM date_expression)": {
@@ -1725,7 +1725,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(MONTH FROM ${1:date_expression})"
     },
     "EXTRACT(QUARTER FROM date_expression)": {
-      "prefix": "quarter",
+      "prefix": "QUARTER",
       "body": "EXTRACT(QUARTER FROM ${1:date_expression})"
     },
     "EXTRACT(YEAR FROM date_expression)": {
@@ -1733,7 +1733,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(YEAR FROM ${1:date_expression})"
     },
     "EXTRACT(ISOYEAR FROM date_expression)": {
-      "prefix": "isoyear",
+      "prefix": "ISOYEAR",
       "body": "EXTRACT(ISOYEAR FROM ${1:date_expression})"
     },
     "EXTRACT(MICROSECOND FROM timestamp_expression)": {
@@ -1741,7 +1741,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(MICROSECOND FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
     },
     "EXTRACT(MILLISECOND FROM timestamp_expression)": {
-      "prefix": "millisecond",
+      "prefix": "MILLISECOND",
       "body": "EXTRACT(MILLISECOND FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
     },
     "EXTRACT(SECOND FROM timestamp_expression)": {
@@ -1749,7 +1749,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "EXTRACT(SECOND FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
     },
     "EXTRACT(MINUTE FROM timestamp_expression)": {
-      "prefix": "minute",
+      "prefix": "MINUTE",
       "body": "EXTRACT(MINUTE FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
     },
     "EXTRACT(HOUR FROM timestamp_expression)": {
@@ -1758,19 +1758,19 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     },
     // Debugging functions
     "ERROR()": {
-      "prefix": "error",
+      "prefix": "ERROR",
       "body": "ERROR(${1:error_message})",
       "description": "Returns an error. The error_message argument is a STRING."
     },
     "SAFE.prefix()": {
-      "prefix": "safeprefix",
+      "prefix": "SAFEPREFIX",
       "body": "SAFE.${1:function_name()}",
       "description": [
         "If you begin a function with the SAFE. prefix, it will return NULL instead of an error."
       ]
     },
     "ML.EVALUATE()": {
-      "prefix": "mlevaluate",
+      "prefix": "MLEVALUATE",
       "body": [
         "ML.EVALUATE(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
@@ -1786,7 +1786,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "ML.CONFUSION_MATRIX()": {
-      "prefix": "mlconfusionmatrix",
+      "prefix": "MLCONFUSIONMATRIX",
       "body": [
         "ML.CONFUSION_MATRIX(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
@@ -1798,7 +1798,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ML.TRAINING_INFO(MODEL ${1:model_reference})"
     },
     "ML.FEATURE_INFO()": {
-      "prefix": "mlfeatureinfo",
+      "prefix": "MLFEATUREINFO",
       "body": "ML.FEATURE_INFO(MODEL ${1:model_reference})"
     },
     "ML.WEIGHTS()": {
@@ -1809,7 +1809,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       ]
     },
     "ML.PREDICT()": {
-      "prefix": "mlpredict",
+      "prefix": "MLPREDICT",
       "body": [
         "ML.PREDICT(MODEL ${1:model_reference},",
         "\t${4:{TABLE table_name | (query_statement)}},",
@@ -1822,7 +1822,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_AREA(${1:geography_expression[, spheroid=FALSE]})"
     },
     "ST_ASBINARY()": {
-      "prefix": "st_asbinary",
+      "prefix": "ST_ASBINARY",
       "body": "ST_ASBINARY(${1:geography_expression})"
     },
     "ST_ASGEOJSON()": {
@@ -1830,7 +1830,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_ASGEOJSON(${1:geography_expression})"
     },
     "ST_ASTEXT()": {
-      "prefix": "st_astext",
+      "prefix": "ST_ASTEXT",
       "body": "ST_ASTEXT(${1:geography_expression})"
     },
     "ST_BOUNDARY()": {
@@ -1838,7 +1838,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_BOUNDARY(${1:geography_expression})"
     },
     "ST_CENTROID()": {
-      "prefix": "st_centroid",
+      "prefix": "ST_CENTROID",
       "body": "ST_CENTROID(${1:geography_expression})"
     },
     "ST_CENTROID_AGG()": {
@@ -1846,7 +1846,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_CENTROID_AGG(${1:geography})"
     },
     "ST_CLOSESTPOINT()": {
-      "prefix": "st_closestpoint",
+      "prefix": "ST_CLOSESTPOINT",
       "body": "ST_CLOSESTPOINT(${1:geography_1}, ${2:geography_2}${3:[, spheroid=FALSE]})"
     },
     "ST_CLUSTERDBSCAN()": {
@@ -1854,7 +1854,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_CLUSTERDBSCAN(${1:geography_column}, ${2:epsilon}, ${3:minimum_geographies}) OVER (${4:...})"
     },
     "ST_CONTAINS()": {
-      "prefix": "st_contains",
+      "prefix": "ST_CONTAINS",
       "body": "ST_CONTAINS(${1:geography_1}, ${2:geography_2})"
     },
     "ST_CONVEXHULL()": {
@@ -1862,7 +1862,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_CONVEXHULL(${1:geography_expression})"
     },
     "ST_COVEREDBY()": {
-      "prefix": "st_coveredby",
+      "prefix": "ST_COVEREDBY",
       "body": "ST_COVEREDBY(${1:geography_1}, ${2:geography_2})"
     },
     "ST_COVERS()": {
@@ -1870,7 +1870,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_COVERS(${1:geography_1}, ${2:geography_2})"
     },
     "ST_DIFFERENCE()": {
-      "prefix": "st_difference",
+      "prefix": "ST_DIFFERENCE",
       "body": "ST_DIFFERENCE(${1:geography_1}, ${2:geography_2})"
     },
     "ST_DIMENSION()": {
@@ -1878,7 +1878,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_DIMENSION(${1:geography_expression})"
     },
     "ST_DISJOINT()": {
-      "prefix": "st_disjoint",
+      "prefix": "ST_DISJOINT",
       "body": "ST_DISJOINT(${1:geography_1}, ${2:geography_2})"
     },
     "ST_DISTANCE()": {
@@ -1886,7 +1886,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_DISTANCE(${1:geography_1}, ${2:geography_2[, spheroid=FALSE]})"
     },
     "ST_DUMP()": {
-      "prefix": "st_dump",
+      "prefix": "ST_DUMP",
       "body": "ST_DUMP(${1:geography}${2:[, dimension]})"
     },
     "ST_DWITHIN()": {
@@ -1894,7 +1894,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_DWITHIN(${1:geography_1}, ${2:geography_2}, ${3:distance[, spheroid=FALSE]})"
     },
     "ST_ENDPOINT()": {
-      "prefix": "st_endpoint",
+      "prefix": "ST_ENDPOINT",
       "body": "ST_ENDPOINT(${1:linestring_geography})"
     },
     "ST_EQUALS()": {
@@ -1902,7 +1902,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_EQUALS(${1:geography_1}, ${2:geography_2})"
     },
     "ST_GEOGFROM()": {
-      "prefix": "st_geogfrom",
+      "prefix": "ST_GEOGFROM",
       "body": "ST_GEOGFROM(${1:expression})"
     },
     "ST_GEOGFROMGEOJSON()": {
@@ -1910,7 +1910,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_GEOGFROMGEOJSON(${1:geojson_string}${2:[, make_valid => constant_expression]})"
     },
     "ST_GEOGFROMTEXT()": {
-      "prefix": "st_geogfromtext",
+      "prefix": "ST_GEOGFROMTEXT",
       "body": "ST_GEOGFROMTEXT(${1:wkt_string}${2:[, oriented => boolean_constant_1]}${3:[, planar => boolean_constant_2]}${4:[, make_valid => boolean_constant_3]})"
     },
     "ST_GEOGFROMWKB()": {
@@ -1918,7 +1918,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_GEOGFROMWKB(${1:wkb_bytes_expression|wkb_hex_string_expression})"
     },
     "ST_GEOGPOINT()": {
-      "prefix": "st_geogpoint",
+      "prefix": "ST_GEOGPOINT",
       "body": "ST_GEOGPOINT(${1:longitude}, ${2:latitude})"
     },
     "ST_GEOGPOINTFROMGEOHASH()": {
@@ -1926,7 +1926,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_GEOGPOINTFROMGEOHASH(${1:geohash})"
     },
     "ST_GEOHASH()": {
-      "prefix": "st_geohash",
+      "prefix": "ST_GEOHASH",
       "body": "ST_GEOHASH(${1:geography_expression}, ${2:maxchars})"
     },
     "ST_INTERSECTION()": {
@@ -1934,7 +1934,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_INTERSECTION(${1:geography_1}, ${2:geography_2})"
     },
     "ST_INTERSECTS()": {
-      "prefix": "st_intersects",
+      "prefix": "ST_INTERSECTS",
       "body": "ST_INTERSECTS(${1:geography_1}, ${2:geography_2})"
     },
     "ST_INTERSECTSBOX()": {
@@ -1942,7 +1942,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_INTERSECTSBOX(${1:geography}, ${2:lng1}, ${3:lat1}, ${4:lng2}, ${5:lat2})"
     },
     "ST_ISCOLLECTION()": {
-      "prefix": "st_iscollection",
+      "prefix": "ST_ISCOLLECTION",
       "body": "ST_ISCOLLECTION(${1:geography_expression})"
     },
     "ST_ISEMPTY()": {
@@ -1950,7 +1950,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_ISEMPTY(${1:geography_expression})"
     },
     "ST_LENGTH()": {
-      "prefix": "st_length",
+      "prefix": "ST_LENGTH",
       "body": "ST_LENGTH(${1:geography_expression[, spheroid=FALSE]})"
     },
     "ST_MAKELINE()": {
@@ -1958,7 +1958,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_MAKELINE(${1:geography_1, geography_2 | array_of_geography})"
     },
     "ST_MAKEPOLYGON()": {
-      "prefix": "st_makepolygon",
+      "prefix": "ST_MAKEPOLYGON",
       "body": "ST_MAKEPOLYGON(${1:geography_expression[, array_of_geography]})"
     },
     "ST_MAKEPOLYGONORIENTED()": {
@@ -1966,7 +1966,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_MAKEPOLYGONORIENTED(${1:array_of_geography})"
     },
     "ST_MAXDISTANCE()": {
-      "prefix": "st_maxdistance",
+      "prefix": "ST_MAXDISTANCE",
       "body": "ST_MAXDISTANCE(${1:geography_1}, ${2:geography_2[, spheroid=FALSE]})"
     },
     "ST_NPOINTS()": {
@@ -1974,7 +1974,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_NPOINTS(${1:geography_expression})"
     },
     "ST_NUMPOINTS()": {
-      "prefix": "st_numpoints",
+      "prefix": "ST_NUMPOINTS",
       "body": "ST_NUMPOINTS(${1:geography_expression})"
     },
     "ST_PERIMETER()": {
@@ -1982,7 +1982,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_PERIMETER(${1:geography_expression[, spheroid=FALSE]})"
     },
     "ST_POINTN()": {
-      "prefix": "st_pointn",
+      "prefix": "ST_POINTN",
       "body": "ST_POINTN(${1:linestring_geography}, ${2:index})"
     },
     "ST_SIMPLIFY()": {
@@ -1990,7 +1990,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_SIMPLIFY(${1:geography}, ${2:tolerance_meters})"
     },
     "ST_SNAPTOGRID()": {
-      "prefix": "st_snaptogrid",
+      "prefix": "ST_SNAPTOGRID",
       "body": "ST_SNAPTOGRID(${1:geography_expression}, ${2:grid_size})"
     },
     "ST_STARTPOINT()": {
@@ -1998,7 +1998,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_STARTPOINT(${1:linestring_geography})"
     },
     "ST_TOUCHES()": {
-      "prefix": "st_touches",
+      "prefix": "ST_TOUCHES",
       "body": "ST_TOUCHES(${1:geography_1}, ${2:geography_2})"
     },
     "ST_UNION()": {
@@ -2006,7 +2006,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_UNION(${1:geography_1, geography_2 | array_of_geography})"
     },
     "ST_UNION_AGG()": {
-      "prefix": "st_union_agg",
+      "prefix": "ST_UNION_AGG",
       "body": "ST_UNION_AGG(${1:geography})"
     },
     "ST_WITHIN()": {
@@ -2014,7 +2014,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "ST_WITHIN(${1:geography_1}, ${2:geography_2})"
     },
     "ST_X()": {
-      "prefix": "st_x",
+      "prefix": "ST_X",
       "body": "ST_X(${1:geography_expression})"
     },
     "ST_Y()": {
@@ -2023,7 +2023,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     },
     // AEAD encryption functions
     "KEYS.NEW_KEYSET": {
-      "prefix": "keysnew_keyset",
+      "prefix": "KEYSNEW_KEYSET",
       "body": "KEYS.NEW_KEYSET(${1:key_type})"
     },
     "KEYS.ADD_KEY_FROM_RAW_BYTES": {
@@ -2031,7 +2031,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "KEYS.ADD_KEY_FROM_RAW_BYTES(${1:keyset}, ${2:key_type}, ${3:raw_key_bytes})"
     },
     "AEAD.DECRYPT_BYTES": {
-      "prefix": "aeaddecrypt_bytes",
+      "prefix": "AEADDECRYPT_BYTES",
       "body": "AEAD.DECRYPT_BYTES(${1:keyset}, ${2:ciphertext}, ${3:additional_data})"
     },
     "AEAD.DECRYPT_STRING": {
@@ -2039,7 +2039,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "AEAD.DECRYPT_STRING(${1:keyset}, ${2:ciphertext}, ${3:additional_data})"
     },
     "AEAD.ENCRYPT": {
-      "prefix": "aeadencrypt",
+      "prefix": "AEADENCRYPT",
       "body": "AEAD.ENCRYPT(${1:keyset}, ${2:plaintext}, ${3:additional_data})"
     },
     "KEYS.KEYSET_FROM_JSON": {
@@ -2047,7 +2047,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "KEYS.KEYSET_FROM_JSON(${1:json_keyset})"
     },
     "KEYS.KEYSET_TO_JSON": {
-      "prefix": "keyskeyset_to_json",
+      "prefix": "KEYSKEYSET_TO_JSON",
       "body": "KEYS.KEYSET_TO_JSON(${1:keyset})"
     },
     "KEYS.ROTATE_KEYSET": {
@@ -2055,7 +2055,7 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "KEYS.ROTATE_KEYSET(${1:keyset}, ${2:key_type})"
     },
     "EXTERNAL_QUERY()": {
-      "prefix": "external_query",
+      "prefix": "EXTERNAL_QUERY",
       "body": "EXTERNAL_QUERY(${1:connection_id}, ${2:external_database_query}${3:[, options]})",
       "description": "Executes the query in Cloud SQL and returns results as a temporary table."
     }
