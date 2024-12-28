@@ -7,7 +7,7 @@ import { getMetadataForSqlxFileBlocks } from "../../sqlxFileParser";
 
 suite('GetMetadataForSqlxFileBlocks', () => {
     test('When multiple curley braces are in the same line in config/pre ops blocks', async function() {
-        this.timeout(90000);
+        this.timeout(9000);
 
         const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
         const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/010_MULTI_CURL_BLOCK.sqlx'));
