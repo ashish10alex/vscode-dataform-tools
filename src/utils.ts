@@ -660,32 +660,25 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         return { tables: finalTables, queryMeta: queryMeta };
     }
 
-    for (let i = 0; i < operations.length; i++) {
-        let operation = operations[i];
-        if (operation.fileName === relativeFilePath) {
-            queryMeta.type = "operation";
-            let operationsCountForFile = 0;
-            let opQueries = operation.queries;
-            let finalOperationQuery = "";
-            for (let i = 0; i < opQueries.length; i++) {
-                operationsCountForFile += 1;
-                finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
-                finalOperationQuery += opQueries[i] + "\n ;";
-            }
-            queryMeta.operationsQuery += finalOperationQuery;
-            let operationFound = {
-                type: "operation",
-                tags: operation.tags,
-                fileName: relativeFilePath,
-                query: finalOperationQuery,
-                target: operation.target,
-                dependencyTargets: operation.dependencyTargets,
-                incrementalQuery: "",
-                incrementalPreOps: []
-            };
-            finalTables.push(operationFound);
-            break;
-        }
+    const operation = operations.find(op => op.fileName === relativeFilePath);
+    if (operation) {
+        queryMeta.type = "operation";
+        const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+            return acc + `\n -- Operations: [${index + 1}] \n${query}\n ;`;
+        }, "");
+
+        queryMeta.operationsQuery += finalOperationQuery;
+
+        finalTables.push({
+            type: "operation",
+            tags: operation.tags,
+            fileName: relativeFilePath,
+            query: finalOperationQuery,
+            target: operation.target,
+            dependencyTargets: operation.dependencyTargets,
+            incrementalQuery: "",
+            incrementalPreOps: []
+        });
     }
 
     return { tables: finalTables, queryMeta: queryMeta };
