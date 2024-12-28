@@ -196,6 +196,27 @@ export async function activate(context: vscode.ExtensionContext) {
         runTag(includeDependencies, includeDependents);
     }));
 
+    if (vscode.workspace.getConfiguration("vscode-dataform-tools").get("recommendErrorLensExtension")) {
+    const errorLensExtension = vscode.extensions.getExtension("usernamehw.errorlens");
+    if (!errorLensExtension) {
+        await vscode.window
+        .showInformationMessage(
+            "The Dataform tools extension recommends installing the Error Lens extension to show error messages inline instead of just showing swigly lines under the error",
+            "Install",
+            "Don't show again"
+        )
+        .then(selection => {
+            if (selection === "Install") {
+            vscode.env.openExternal(vscode.Uri.parse("vscode:extension/usernamehw.errorlens"));
+            } else if (selection === "Don't show again") {
+            vscode.workspace
+                .getConfiguration("vscode-dataform-tools")
+                .update("recommendYamlExtension", false, vscode.ConfigurationTarget.Global);
+            }
+        });
+    }
+    }
+
 }
 
 // This method is called when your extension is deactivated

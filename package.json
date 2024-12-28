@@ -263,7 +263,13 @@
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Uses an interval of 55 minutes to validate the user's BigQuery Credentials. Set this to `false` to only validate the user's credentials when a query or dry run fails"
+                },
+                "vscode-dataform-tools.recommendErrorLensExtension": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Whether to recommend Error Lens extension to show erorrs inline rather than showing them as swigly lines"
                 }
+
             }
         }
     },
