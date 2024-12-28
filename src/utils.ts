@@ -563,9 +563,8 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
-    let tables = compiledJson.tables;
-    let assertions = compiledJson.assertions;
-    let operations = compiledJson.operations;
+    const { tables, assertions, operations } = compiledJson;
+
     //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
         type: "",
@@ -584,111 +583,96 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         return { tables: finalTables, queryMeta: queryMeta };
     }
 
-    for (let i = 0; i < tables.length; i++) {
-        let table = tables[i];
-        let tableRelativeFilePath = table.fileName;
-        if (relativeFilePath === tableRelativeFilePath) {
-            if (table.type === "table" || table.type === "view") {
+    const table = tables.find(table => table.fileName === relativeFilePath);
+    if (table) {
+        switch (table.type) {
+            case "table":
+            case "view":
                 queryMeta.type = table.type;
                 queryMeta.tableOrViewQuery = table.query.trimStart() + "\n ;";
-            } else if (table.type === "incremental") {
+                break;
+            case "incremental":
                 queryMeta.type = table.type;
                 queryMeta.nonIncrementalQuery = table.query + ";";
                 queryMeta.incrementalQuery = table.incrementalQuery + ";";
-                if (table?.incrementalPreOps) {
-                    table.incrementalPreOps.forEach((query, idx) => {
-                        queryMeta.incrementalPreOpsQuery += query + "\n";
-                    });
+                if (table.incrementalPreOps) {
+                    queryMeta.incrementalPreOpsQuery = table.incrementalPreOps.join("\n") + "\n";
                 }
-            }
-
-            if (table.preOps) {
-                table.preOps.forEach((query, idx) => {
-                    queryMeta.preOpsQuery += query + "\n";
-                });
-            }
-            if (table.postOps) {
-                table.postOps.forEach((query, idx) => {
-                    queryMeta.postOpsQuery += query + "\n";
-                });
-            }
-            let tableFound = {
-                type: table.type,
-                tags: table.tags,
-                fileName: relativeFilePath,
-                target: table.target,
-                preOps: table.preOps,
-                postOps: table.postOps,
-                dependencyTargets: table.dependencyTargets,
-                incrementalQuery: table?.incrementalQuery ?? "",
-                incrementalPreOps: table?.incrementalPreOps ?? [],
-                actionDescriptor: table?.actionDescriptor
-            };
-            finalTables.push(tableFound);
-            break;
+                break;
+            default:
+                console.warn(`Unexpected table type: ${table.type}`);
         }
+
+        // Process preOps and postOps
+        if (table.preOps) {
+            queryMeta.preOpsQuery = table.preOps.join("\n") + "\n";
+        }
+        if (table.postOps) {
+            queryMeta.postOpsQuery = table.postOps.join("\n") + "\n";
+        }
+
+        const tableFound = {
+            type: table.type,
+            tags: table.tags,
+            fileName: relativeFilePath,
+            target: table.target,
+            preOps: table.preOps,
+            postOps: table.postOps,
+            dependencyTargets: table.dependencyTargets,
+            incrementalQuery: table.incrementalQuery ?? "",
+            incrementalPreOps: table.incrementalPreOps ?? [],
+            actionDescriptor: table.actionDescriptor
+        };
+        finalTables.push(tableFound);
     }
 
     if (assertions === undefined) {
         return { tables: finalTables, queryMeta: queryMeta };
     }
 
-    let assertionCountForFile = 0;
-    let assertionQuery = "";
-    for (let i = 0; i < assertions.length; i++) {
-        //TODO: check if we can break early, maybe not as a table can have multiple assertions ?
-        let assertion = assertions[i];
-        if (assertion.fileName === relativeFilePath) {
-            if (queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
-                queryMeta.type = "assertion";
-            }
-            let assertionFound = {
-                type: "assertion",
-                tags: assertion.tags,
-                fileName: relativeFilePath,
-                query: assertion.query,
-                target: assertion.target,
-                dependencyTargets: assertion.dependencyTargets,
-                incrementalQuery: "", incrementalPreOps: []
-            };
-            finalTables.push(assertionFound);
-            assertionCountForFile += 1;
-            assertionQuery += `\n -- Assertions: [${assertionCountForFile}] \n`;
-            assertionQuery += assertion.query.trimStart() + "; \n";
-        }
+    const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
+    const assertionCountForFile = assertionsForFile.length;
+    if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
+        queryMeta.type = "assertion";
     }
-    queryMeta.assertionQuery = assertionQuery;
+    const assertionQueries = assertionsForFile.map((assertion, index) => {
+        finalTables.push({
+            type: "assertion",
+            tags: assertion.tags,
+            fileName: relativeFilePath,
+            query: assertion.query,
+            target: assertion.target,
+            dependencyTargets: assertion.dependencyTargets,
+            incrementalQuery: "",
+            incrementalPreOps: []
+        });
+        return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+    });
+    queryMeta.assertionQuery = assertionQueries.join('');
 
     if (operations === undefined) {
         return { tables: finalTables, queryMeta: queryMeta };
     }
 
-    for (let i = 0; i < operations.length; i++) {
-        let operation = operations[i];
-        if (operation.fileName === relativeFilePath) {
-            queryMeta.type = "operation";
-            let operationsCountForFile = 0;
-            let opQueries = operation.queries;
-            let finalOperationQuery = "";
-            for (let i = 0; i < opQueries.length; i++) {
-                operationsCountForFile += 1;
-                finalOperationQuery += `\n -- Operations: [${operationsCountForFile}] \n`;
-                finalOperationQuery += opQueries[i] + "\n ;";
-            }
-            queryMeta.operationsQuery += finalOperationQuery;
-            let operationFound = {
-                type: "operation",
-                tags: operation.tags,
-                fileName: relativeFilePath,
-                query: finalOperationQuery,
-                target: operation.target,
-                dependencyTargets: operation.dependencyTargets,
-                incrementalQuery: "",
-                incrementalPreOps: []
-            };
-            finalTables.push(operationFound);
-            break;
-        }
+    const operation = operations.find(op => op.fileName === relativeFilePath);
+    if (operation) {
+        queryMeta.type = "operation";
+        const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+            return acc + `\n -- Operations: [${index + 1}] \n${query}\n ;`;
+        }, "");
+
+        queryMeta.operationsQuery += finalOperationQuery;
+
+        finalTables.push({
+            type: "operation",
+            tags: operation.tags,
+            fileName: relativeFilePath,
+            query: finalOperationQuery,
+            target: operation.target,
+            dependencyTargets: operation.dependencyTargets,
+            incrementalQuery: "",
+            incrementalPreOps: []
+        });
     }
 
     return { tables: finalTables, queryMeta: queryMeta };

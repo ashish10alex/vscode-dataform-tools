@@ -106,11 +106,6 @@
                 "title": "Run file(s) / tag(s) with options"
             },
             {
-                "command": "vscode-dataform-tools.formatCurrentfile",
-                "category": "Dataform",
-                "title": "Format current file"
-            },
-            {
                 "command": "vscode-dataform-tools.runTag",
                 "category": "Dataform",
                 "title": "Run a tag"
@@ -196,19 +191,16 @@
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
-                    "alt": "vscode-dataform-tools.runCurrentFile",
                     "group": "navigation"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
-                    "alt": "vscode-dataform-tools.showCompiledQueryWtDryRun",
                     "group": "navigation@3"
                 },
                 {
                     "command": "vscode-dataform-tools.formatCurrentfile",
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
-                    "alt": "vscode-dataform-tools.formatCurrentfile",
                     "group": "navigation@0"
                 }
             ],
