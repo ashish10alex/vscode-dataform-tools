@@ -11,10 +11,12 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 
         const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
         const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/010_MULTI_CURL_BLOCK.sqlx'));
+        //console.log('[TEST] URI:', uri.toString());
 
         await vscode.workspace.openTextDocument(uri);
         const doc = await vscode.workspace.openTextDocument(uri);
         let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
+        //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
 
         /**config block */
         assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
