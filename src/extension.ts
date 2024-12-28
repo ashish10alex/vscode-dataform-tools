@@ -68,12 +68,6 @@ export async function activate(context: vscode.ExtensionContext) {
     if (workspaceFolder) {
         await createBigQueryClient();
         setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
-
-        let { dataformCompiledJson, errors } = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson) {
-            declarationsAndTargets = await getDependenciesAutoCompletionItems(dataformCompiledJson);
-            dataformTags = await getDataformTags(dataformCompiledJson);
-        }
     }
 
     diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
