@@ -988,7 +988,7 @@ export async function gatherQueryAutoCompletionMeta(curFileMeta:any){
 }
 
 function replaceQueryLabelWtEmptyStringForDryRun(query:string) {
-    return query.replace(/SET\s+@@query_label\s*=\s*".*"\s*;/g, '');
+    return query.replace(/SET\s+@@query_label\s*=\s*(['"]).*?\1\s*;/gi, '');
 }
 
 export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMeta:any, document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined){
