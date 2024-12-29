@@ -1,4 +1,3 @@
-
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
@@ -8,6 +7,10 @@ import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
 
+/*
+WARN: These tests currently are only tested to be running on mac os
+WARN: we might need to change the script for `npm run test` in package.json for it to work in mmultiple platforms
+*/
 
 suite('GetMetadataForSqlxFileBlocks', () => {
     test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async function() {
