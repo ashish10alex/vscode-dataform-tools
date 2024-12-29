@@ -7,132 +7,138 @@ import * as vscode from 'vscode';
 //import { setDiagnostics } from '../../setDiagnostics';
 import { compileDataform, getQueryMetaForCurrentFile, runCompilation } from '../../utils';
 import { DataformCompiledJson } from '../../types';
+import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 
 
-//suite('GetMetadataForSqlxFileBlocks', () => {
-//    test('When multiple curley braces are in the same line in config/pre ops blocks', async function() {
-//        this.timeout(9000);
-//
-//        const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-//        const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/010_MULTI_CURL_BLOCK.sqlx'));
-//        //console.log('[TEST] URI:', uri.toString());
-//
-//        await vscode.workspace.openTextDocument(uri);
-//        const doc = await vscode.workspace.openTextDocument(uri);
-//        let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
-//        //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
-//
-//        /**config block */
-//        assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
-//        assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 6);
-//
-//        /** Pre ops block */
-//        assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
-//        assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 9);
-//        assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 12);
-//
-//        /** sql block */
-//        assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 15);
-//        assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 19);
-//    });
-//
-//
-//    test('Unnested config block and sql block', async function() {
-//        this.timeout(9000);
-//        try {
-//            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-//            const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/0100_TEST.sqlx'));
-//            console.log('[TEST] URI:', uri.toString());
-//            let doc = await vscode.workspace.openTextDocument(uri);
-//            assert.ok(doc);
-//            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
-//
-//            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
-//            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 6);
-//            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 9);
-//            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 45);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 0);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 0);
-//
-//        } catch (error: any) {
-//            console.error('Test failed:', error);
-//            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-//            throw error;
-//        }
-//    });
-//
-//    test('Single line config / pre / post operation blocks', async () => {
-//        try {
-//
-//            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-//            const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/010_SINGLE_LINE.sqlx'));
-//            let doc = await vscode.workspace.openTextDocument(uri);
-//            assert.ok(doc);
-//            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
-//
-//            /**config block */
-//            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
-//            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 1);
-//
-//            /** Pre ops block */
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 3);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 3);
-//
-//            /** Post ops block */
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 1);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 5);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 5);
-//
-//            /** sql block */
-//            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 7);
-//            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 7);
-//        } catch (error: any) {
-//            console.error('Test failed:', error);
-//            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-//            throw error;
-//        }
-//    });
-//
-//    test('When config, multiple pre/post operation blocks are present', async () => {
-//        try {
-//            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-//            const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/010_INCREMENTAL.sqlx'));
-//            let doc = await vscode.workspace.openTextDocument(uri);
-//            assert.ok(doc);
-//            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
-//
-//            /**config block */
-//            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
-//            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 10);
-//
-//            /** Post ops block */
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 2);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 31);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 40);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].startLine, 42);
-//            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].endLine, 46);
-//
-//            /** Pre ops block */
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 13);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 22);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].startLine, 24);
-//            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].endLine, 28);
-//
-//            /** sql block */
-//            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 49);
-//            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 64);
-//
-//
-//        } catch (error: any) {
-//            console.error('Test failed:', error);
-//            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-//            throw error;
-//        }
-//    });
-//
-//});
+suite('GetMetadataForSqlxFileBlocks', () => {
+    test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async function() {
+        this.timeout(9000);
+
+        const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
+        const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
+        //console.log('[TEST] URI:', uri.toString());
+
+        await vscode.workspace.openTextDocument(uri);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
+        //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
+
+        /**config block */
+        assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
+        assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 6);
+
+        /** Pre ops block */
+        assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
+        assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 8);
+        assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 10);
+
+        /** sql block */
+        assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 12);
+        assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 32);
+    });
+
+    test("Config block with assertion and has pre_operations, post_operations", async function() {
+        this.timeout(9000);
+        try {
+            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
+            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/099_MULTIPLE_ERRORS.sqlx"));
+            //console.log('[TEST] URI:', uri.toString());
+            let doc = await vscode.workspace.openTextDocument(uri);
+            assert.ok(doc);
+            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
+
+            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
+            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 6);
+
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 19);
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 22);
+
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 1);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
+
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 8);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 11);
+
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 13);
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 16);
+
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+
+    test('Single line config with pre_operations post_operations blocks', async () => {
+        try {
+            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
+            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0100_SINGLE_LINE_CONFIG.sqlx"));
+            //console.log('[TEST] URI:', uri.toString());
+            let doc = await vscode.workspace.openTextDocument(uri);
+            assert.ok(doc);
+            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
+
+            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
+            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 1);
+
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 11);
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 12);
+
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 1);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
+
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 3);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 5);
+
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 7);
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 9);
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+
+    test('Multiple pre/post operation blocks are present', async () => {
+        try {
+            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
+            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
+            let doc = await vscode.workspace.openTextDocument(uri);
+            assert.ok(doc);
+            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
+
+            /**config block */
+            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
+            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 3);
+
+            /** Pre ops block */
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 6);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 8);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].startLine, 10);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].endLine, 12);
+
+            /** Post ops block */
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 2);
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 15);
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 17);
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].startLine, 19);
+            assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].endLine, 21);
+
+
+            /** sql block */
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 24);
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 24);
+
+
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+});
+
 //
 //suite('setDiagnostics', () => {
 //    test('Table: error set on the correct line when pre/post operations are present', function(done) {

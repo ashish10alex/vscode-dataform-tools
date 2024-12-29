@@ -1,0 +1,12 @@
+config { type: 'table'}
+
+pre_operations {
+  SELECT 1 AS SOME_NUMBER
+}
+
+post_operations {
+  SELECT 2 AS SOME_NUMBER
+}
+
+SELECT 
+CURRENT_DATE() AS TODAYS_DATE 
