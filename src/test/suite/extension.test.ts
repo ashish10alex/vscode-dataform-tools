@@ -8,6 +8,8 @@ import * as vscode from 'vscode';
 import { compileDataform, getQueryMetaForCurrentFile, runCompilation } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
+import { tableQueryOffset } from '../../constants';
+import { setDiagnostics } from '../../setDiagnostics';
 
 
 suite('GetMetadataForSqlxFileBlocks', () => {
@@ -23,16 +25,16 @@ suite('GetMetadataForSqlxFileBlocks', () => {
         let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
         //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
 
-        /**config block */
+        //config block
         assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
         assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 6);
 
-        /** Pre ops block */
+        // Pre ops block
         assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
         assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 8);
         assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 10);
 
-        /** sql block */
+        // sql block
         assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 12);
         assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 32);
     });
@@ -107,18 +109,18 @@ suite('GetMetadataForSqlxFileBlocks', () => {
             assert.ok(doc);
             let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
 
-            /**config block */
+            //config block
             assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 1);
             assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 3);
 
-            /** Pre ops block */
+            // Pre ops block
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 2);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 6);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 8);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].startLine, 10);
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[1].endLine, 12);
 
-            /** Post ops block */
+            // Post ops block
             assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList.length, 2);
             assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine, 15);
             assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[0].endLine, 17);
@@ -126,7 +128,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
             assert.strictEqual(sqlxBlockMetadata.postOpsBlock.postOpsList[1].endLine, 21);
 
 
-            /** sql block */
+            // sql block
             assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 24);
             assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 24);
 
@@ -139,93 +141,121 @@ suite('GetMetadataForSqlxFileBlocks', () => {
     });
 });
 
-//
-//suite('setDiagnostics', () => {
-//    test('Table: error set on the correct line when pre/post operations are present', function(done) {
-//        this.timeout(9000);
-//
-//        const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-//        const uri = vscode.Uri.file(path.join(workspacePath, 'definitions/0100_TEST.sqlx'));
-//
-//        (async () => {
-//            try {
-//                const document = await vscode.workspace.openTextDocument(uri);
-//                assert.ok(document, 'Document should be opened');
-//
-//                let offSet = tableQueryOffset;
-//
-//                /**Error line number is the line number where the error is in the sql block.
-//                 * The spaces in front of the sql block are trimmed out before sending it to BigQuery Api
-//                 */
-//                let mockDryRunError = {
-//                    hasError: true,
-//                    message: "Unfortunate error",
-//                    location: {
-//                        line: 2,
-//                        column: 1
-//                    }
-//                };
-//
-//                let mockPreOpsDryRunError = {
-//                    hasError: false,
-//                    message: "",
-//                    location: {
-//                        line: 0,
-//                        column: 0
-//                    }
-//                };
-//
-//                let mockPostOpsDryRunError = {
-//                    hasError: false,
-//                    message: "",
-//                    location: {
-//                        line: 0,
-//                        column: 0
-//                    }
-//                };
-//
-//                let configBlockMeta = {
-//                    startLine: 1,
-//                    endLine: 5,
-//                    exists: true,
-//                };
-//
-//                let sqlBlockMeta = {
-//                    startLine: 20,
-//                    endLine: 22,
-//                    exists: true,
-//                };
-//
-//                let jsBlockMeta = {
-//                    startLine: 0,
-//                    endLine: 0,
-//                    exists: false,
-//                };
-//
-//                let mockSqlxBlockMetadata = {
-//                    configBlock: configBlockMeta,
-//                    preOpsBlock: { preOpsList: [] },
-//                    postOpsBlock: { postOpsList: [] },
-//                    sqlBlock: sqlBlockMeta,
-//                    jsBlock: jsBlockMeta,
-//                };
-//
-//                let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
-//                setDiagnostics(document, mockDryRunError, mockPreOpsDryRunError, mockPostOpsDryRunError, diagnosticCollection, mockSqlxBlockMetadata, offSet);
-//                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
-//                assert.deepEqual(allDiagnostics.length, 1);
-//                let diagnosticRange = allDiagnostics[0].range;
-//                assert.deepEqual(diagnosticRange.start.line, 20);
-//
-//
-//                done();
-//            } catch (error) {
-//                console.error('Test failed:', error);
-//                done(error);
-//            }
-//        })();
-//    });
-//});
+suite("setDiagnostics", () => {
+    test("Able to set multiple diagnostics at correct line numbers", function(done) {
+        this.timeout(9000);
+
+        const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
+        const uri = vscode.Uri.file(path.join(workspacePath, "definitions/099_MULTIPLE_ERRORS.sqlx"));
+
+        (async () => {
+            try {
+                const document = await vscode.workspace.openTextDocument(uri);
+                assert.ok(document, 'Document should be opened');
+
+                /**Error line number is the line number where the error is in the sql block.
+                 * The spaces in front of the sql block are trimmed out before sending it to BigQuery Api
+                 */
+                const mockDryRunError = {
+                    hasError: true,
+                    message: "(fullQuery): Query error: Function not found: URRENT_DATE; Did you mean current_date? at [8:5]",
+                    location: {
+                        line: 8,
+                        column: 5
+                    }
+                };
+
+
+                let mockPreOpsDryRunError = {
+                    hasError: true,
+                    message: "(preOps): Variable declarations are allowed only at the start of a block or script at [3:2]",
+                    location: {
+                        line: 3,
+                        column: 2
+                    }
+                };
+
+                let mockPostOpsDryRunError = {
+                    hasError: true,
+                    message: "(postOps): Function not found: URRENT_TIMESTAMP; Did you mean current_timestamp? at [3:6]",
+                    location: {
+                        line: 3,
+                        column: 6
+                    }
+                };
+
+                let configBlockMeta = {
+                    startLine: 1,
+                    endLine: 6,
+                    exists: true,
+                };
+
+                let sqlBlockMeta = {
+                    startLine: 19,
+                    endLine: 22,
+                    exists: true,
+                };
+
+                let jsBlockMeta = {
+                    startLine: 0,
+                    endLine: 0,
+                    exists: false,
+                };
+
+                let preOpsList = [
+                    {
+                        startLine: 8,
+                        endLine: 11,
+                        exists: true,
+                    }
+                ];
+
+                let postOpsList = [
+                    {
+                        startLine: 13,
+                        endLine: 16,
+                        exists: true,
+                    }
+                ];
+
+                let mockSqlxBlockMetadata = {
+                    configBlock: configBlockMeta,
+                    preOpsBlock: { preOpsList: preOpsList },
+                    postOpsBlock: { postOpsList: postOpsList },
+                    sqlBlock: sqlBlockMeta,
+                    jsBlock: jsBlockMeta,
+                };
+
+                let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
+                setDiagnostics(document, mockDryRunError, mockPreOpsDryRunError, mockPostOpsDryRunError, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset);
+                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+
+                const exppectedCountOfDiagnostics = 3;
+                assert.deepEqual(allDiagnostics.length, exppectedCountOfDiagnostics, `Expected ${exppectedCountOfDiagnostics} diagnostic, got ${allDiagnostics.length}`);
+
+                //console.log(`[TEST] allDiagnostics:`, allDiagnostics);
+
+                let fullQueryDiagnosticRange = allDiagnostics[0].range;
+                const expectedLineNumber = 21;
+                assert.deepEqual(fullQueryDiagnosticRange.start.line, expectedLineNumber, `Expected diagnostic on line ${expectedLineNumber}, got ${fullQueryDiagnosticRange.start.line}`);
+
+                let preOpsDiagnosticRange = allDiagnostics[1].range;
+                const expectedPreOpsLineNumber = 7;
+                assert.deepEqual(preOpsDiagnosticRange.start.line, expectedPreOpsLineNumber, `Expected diagnostic on line ${expectedPreOpsLineNumber}, got ${preOpsDiagnosticRange.start.line}`);
+
+                let postOpsDiagnosticRange = allDiagnostics[2].range;
+                const expectedPostOpsLineNumber = 12;
+                assert.deepEqual(postOpsDiagnosticRange.start.line, expectedPostOpsLineNumber, `Expected diagnostic on line ${expectedPostOpsLineNumber}, got ${postOpsDiagnosticRange.start.line}`);
+
+
+                done();
+            } catch (error) {
+                console.error('Test failed:', error);
+                done(error);
+            }
+        })();
+    });
+});
 
 suite('getQueryMetaForCurrentFile', () => {
     test("able to get model of type: view", async function() {
@@ -383,8 +413,5 @@ suite('getQueryMetaForCurrentFile', () => {
             throw error;
         }
     });
-
-
-
 
 });
