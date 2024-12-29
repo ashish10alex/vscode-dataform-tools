@@ -43,7 +43,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
         this.timeout(9000);
         try {
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/099_MULTIPLE_ERRORS.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
             //console.log('[TEST] URI:', uri.toString());
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
@@ -74,7 +74,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
     test('Single line config with pre_operations post_operations blocks', async () => {
         try {
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0100_SINGLE_LINE_CONFIG.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/0100_SINGLE_LINE_CONFIG.sqlx"));
             //console.log('[TEST] URI:', uri.toString());
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
@@ -104,7 +104,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
     test('Multiple pre/post operation blocks are present', async () => {
         try {
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
             let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
@@ -146,7 +146,7 @@ suite("setDiagnostics", () => {
         this.timeout(9000);
 
         const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-        const uri = vscode.Uri.file(path.join(workspacePath, "definitions/099_MULTIPLE_ERRORS.sqlx"));
+        const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
 
         (async () => {
             try {
@@ -258,6 +258,50 @@ suite("setDiagnostics", () => {
 });
 
 suite('getQueryMetaForCurrentFile', () => {
+
+    test("able to get model of type: table [ has assertion ]", async function() {
+        this.timeout(9000);
+        try {
+            const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
+            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
+            let { compiledString, errors, possibleResolutions } = await compileDataform(workspacePath, false);
+            if (compiledString) {
+                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+                if (dataformCompiledJson) {
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
+
+                    assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
+                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "table");
+                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
+
+                    assert.strictEqual(sqlxBlockMetadata.tables[1].type, "assertion");
+                    assert.strictEqual(sqlxBlockMetadata.tables[1].fileName, relativeFilePath);
+
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "table");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
+
+                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
+                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
+                } else {
+                    throw new Error('Compilation failed');
+                }
+            }
+            if (errors) {
+                throw new Error(errors.join('\n'));
+            }
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+
+
     test("able to get model of type: view", async function() {
         this.timeout(9000);
         try {
