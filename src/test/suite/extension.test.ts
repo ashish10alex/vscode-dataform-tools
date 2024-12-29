@@ -9,7 +9,8 @@ import { setDiagnostics } from '../../setDiagnostics';
 
 /*
 WARN: These tests currently are only tested to be running on mac os
-WARN: we might need to change the script for `npm run test` in package.json for it to work in mmultiple platforms
+WARN: we might need to change the script for `npm run test` in package.json for it to work in multiple platforms
+WARN: we are having to remove `.vscode-test/user-data` before running `vscode-test` which was a solution to the issue reported in https://github.com/microsoft/vscode-test/issues/232
 */
 
 suite('GetMetadataForSqlxFileBlocks', () => {
