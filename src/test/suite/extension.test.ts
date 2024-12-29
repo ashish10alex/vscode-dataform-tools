@@ -2,10 +2,7 @@
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
-//import { getMetadataForSqlxFileBlocks } from "../../sqlxFileParser";
-//import { tableQueryOffset } from '../../constants';
-//import { setDiagnostics } from '../../setDiagnostics';
-import { compileDataform, getQueryMetaForCurrentFile, runCompilation } from '../../utils';
+import { compileDataform, getQueryMetaForCurrentFile } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
