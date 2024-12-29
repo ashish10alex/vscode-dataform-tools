@@ -8,9 +8,9 @@ import { tableQueryOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
 
 /*
-WARN: These tests currently are only tested to be running on mac os
-WARN: we might need to change the script for `npm run test` in package.json for it to work in multiple platforms
-WARN: we are having to remove `.vscode-test/user-data` before running `vscode-test` which was a solution to the issue reported in https://github.com/microsoft/vscode-test/issues/232
+WARN: The test would not be able to run if your project path is very long this is a known issue reported in https://github.com/microsoft/vscode-test/issues/232
+NOTE: Also, we are having to remove `.vscode-test/user-data` before running `vscode-test` in the `npm run test` script in package.json
+WARN: These tests currently are only tested to be running on mac os. We will need to change the script for `npm run test` in package.json for it to work in multiple platforms
 */
 
 suite('GetMetadataForSqlxFileBlocks', () => {
