@@ -1,0 +1,10 @@
+config {
+  type: 'view',
+  schema: 'dataform',
+  description: 'data for club',
+  tags: ["FOOTY"]
+}
+
+select * from 
+${ref("CLUBS")} WHERE 1=1
+-- AND LOWER(name)  LIKE "%manchester%"

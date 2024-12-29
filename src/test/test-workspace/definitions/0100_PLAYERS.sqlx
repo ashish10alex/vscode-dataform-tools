@@ -1,0 +1,28 @@
+config {
+    type: "table",
+    columns: docs.columnDescriptions,
+}
+
+WITH PLAYERS AS (
+    select *
+    FROM 
+    ${ref("PLAYERS")}
+)
+
+
+, PLAYER_VALUATIONS AS (
+    select *
+    FROM 
+    ${ref("PLAYER_VALUATIONS")}
+)
+
+
+, FINAL_TABLE AS (
+    SELECT 
+    P.*
+    FROM PLAYERS P LEFT JOIN  
+    PLAYER_VALUATIONS V
+    USING(PLAYER_ID)
+)
+
+SELECT * FROM FINAL_TABLE WHERE 1=1

@@ -1,0 +1,22 @@
+config {
+  type: 'table',
+  assertions: {
+    uniqueKey: ["uniqueId"]
+  }
+}
+
+pre_operations {
+ SET @@query_label = "key:value";
+ declare SOME_DATE DATE DEFAULT CURRENT_DATE;
+}
+
+post_operations {
+  SELECT
+     URRENT_TIMESTAMP() AS SOME_TIMESTAMP
+}
+
+
+SELECT
+  1                AS UNIQUEID
+  , "myData"       AS SOMECOLUMN
+  , URRENT_DATE() AS TODAYS_DATE

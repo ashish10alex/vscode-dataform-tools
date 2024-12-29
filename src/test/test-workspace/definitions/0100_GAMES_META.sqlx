@@ -1,0 +1,40 @@
+config {
+  type: "table",
+  description: "games played by Manchester United in 2024",
+  schema: "dataform",
+  assertions: {
+    uniqueKey: ["game_id"]
+  },
+  tags: ["FOOTY"]
+}
+
+
+
+WITH GAMES AS (
+  SELECT * FROM
+    ${ref("GAMES")}
+)
+
+, GAME_EVENTS AS (
+  SELECT * FROM
+    ${ref("GAME_EVENTS")}
+)
+
+SELECT *,
+  ROW_NUMBER() OVER (
+    PARTITION BY HOME_CLUB_ID
+    ORDER BY ATTENDANCE DESC
+  ) AS RN 
+FROM GAMES
+ WHERE 1 = 1
+  AND COMPETITION_ID = ${params.PREMIER_LEAGUE_COMP_ID}
+  AND HOME_CLUB_ID = ${params.MANCHESTER_UNITED_CLUB_ID}
+  AND SEASON = 2024
+  ORDER BY DATE desc
+
+-- SELECT * FROM GAMES AS G
+-- LEFT JOIN GAME_EVENTS AS E
+--   USING (GAME_ID)
+
+
+-- SELECT DISTINCT competition_id, competition_type FROM GAMES

@@ -710,7 +710,7 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
-function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
+export function compileDataform(workspaceFolder: string, isRunningOnWindows:boolean): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions:string[] = [];
@@ -782,7 +782,7 @@ function compileDataform(workspaceFolder: string): Promise<{compiledString:strin
 // Usage
 export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
-        let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder);
+        let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder, isRunningOnWindows);
         if(compiledString){
             const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;

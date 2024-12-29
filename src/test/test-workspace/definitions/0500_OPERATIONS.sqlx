@@ -1,0 +1,10 @@
+config {
+  type: 'operations',
+  hasOutput: true
+}
+
+DROP TABLE IF EXISTS
+${self()};
+
+CREATE OR REPLACE TABLE ${self()} AS 
+SELECT * FROM ${ref("0100_GAMES_META")}

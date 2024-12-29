@@ -1,0 +1,11 @@
+config {
+  type: 'assertion',
+}
+
+WITH TEST AS (
+
+SELECT 
+ SUBSTRING(URL, 0,5) as initial
+ FROM ${ref("0100_CLUBS")}
+)
+SELECT * FROM TEST WHERE initial <> "https"

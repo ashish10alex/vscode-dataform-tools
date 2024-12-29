@@ -1,0 +1,18 @@
+config {
+  type: "incremental",
+}
+
+pre_operations {
+  DECLARE date_checkpoint DEFAULT (
+    ${when(incremental(),
+      `SELECT MAX(date) FROM ${self()}`,
+      `SELECT DATE("2012-01-01")`)}
+  );
+}
+
+
+SELECT
+  *
+FROM
+  ${ref("0100_GAMES_META")} WHERE 1=1
+AND date >= date_checkpoint

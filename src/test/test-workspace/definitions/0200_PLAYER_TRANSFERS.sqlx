@@ -1,0 +1,32 @@
+config {
+  type: 'table',
+  schema: 'dataform',
+  description: 'Shows mox expensive manchester united player in each season',
+  columns: {...{transfer_date: "date on which transfere from one club to another happened"}, ...docs.columnDescriptions}
+}
+
+pre_operations {
+   SET @@query_label = "key:value";
+}
+
+WITH TRANSFERS AS (
+  SELECT * FROM ${ref("TRANSFERS")}
+)
+
+, TEST AS (
+  SELECT *
+  FROM TRANSFERS
+  WHERE
+    1 = 1
+    AND TO_CLUB_ID = ${params.MANCHESTER_UNITED_CLUB_ID}
+  ORDER BY TRANSFER_DATE DESC
+)
+
+SELECT *
+FROM TEST
+QUALIFY
+  ROW_NUMBER() OVER (
+    PARTITION BY TRANSFER_SEASON
+    ORDER BY TRANSFER_FEE DESC
+  ) = 1
+ORDER BY TRANSFER_DATE DESC
