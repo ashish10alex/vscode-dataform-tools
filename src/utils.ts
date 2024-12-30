@@ -5,7 +5,7 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from './constants';
+import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
@@ -755,7 +755,6 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
                 } else {
                     let possibleResolutions = [];
                     const dataformInstallHint = "If using `package.json`, then run `dataform install`";
-                    const installDataformCliHint = "dataform: command not found"; // TODO: check what is the eror message in windows
                     if(errorOutput.includes(dataformInstallHint)){
                         const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
                         if(_workspaceFolder){
@@ -765,7 +764,7 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
                                 possibleResolutions.push("run `<b>dataform install</b>` in terminal");
                             }
                         }
-                    }else if (errorOutput.includes(installDataformCliHint)){
+                    }else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)){
                         possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
                     };
                     resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
