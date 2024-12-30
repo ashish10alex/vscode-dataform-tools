@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.0...v0.7.1) (2024-12-30)
+
+
+### Features
+
+* **installation:** add hint to install dataform cli using error message on windows platform ([30b7ea4](https://github.com/ashish10alex/vscode-dataform-tools/commit/30b7ea4ece9690e085237c2edde5aaa7f335e76e))
+
+
+### Bug Fixes
+
+* **panel:** error message appears 3 times if there are pre/post ops and gcloud not setup ([e92a666](https://github.com/ashish10alex/vscode-dataform-tools/commit/e92a6660e0a06b4d1c4986fd1053c37861ef47c4))
+
 ## [0.7.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.4...v0.7.0) (2024-12-30)
 
 
