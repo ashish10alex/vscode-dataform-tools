@@ -1,42 +1,30 @@
-## Usage
 
-0. Please clone this repository in your terminal
+### How to use
 
-```
-git clone https://github.com/ashish10alex/test_dataform.git
-```
+<b>Option 1: </b>
 
-1. Open this repository as the root of your VSCode work space in a new window
+Open the repository in github code spaces by clicking on the "Code" button on the github repository page and selecting the  "Codespaces" tab. It uses the `devcontainer.json` file in this repo to build a 
+container with the [Dataform tools](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) extension and dependencies such as gcloud and dataform cli preconfigured. **Note** that it takes approximately 5 mins for the container to build, so grab a cup of coffe while its getting spun up !
 
-2. Install dataform cli
+<b>Option 2: </b>
 
-```
-npm i -g @dataform/cli@3.0.0
-```
+Open the repository in a [VSCode Dev Container](https://code.visualstudio.com/docs/devcontainers/containers)  and run the following 
 
-3. Get the version, should match the version you install in step 1
-
-```
-dataform --version
+```bash
+gcloud init
+gloud auth application-default login
+gcloud config set project drawingfire-b72a8 # replace with your gcp project id
 ```
 
-4. Install necessary dependencies
+#### TODOs
 
+- [ ] Add example of using a javascript function 
+- [ ] Create another dataset in BigQuery and connect to it in the pipeline
+
+#### Personal notes 
+
+Create a new Dataform project
+
+```bash
+dataform init --default-database drawingfire-b72a8 --default-location europe-west2
 ```
-dataform install
-```
-
-5. Compile your Dataform project
-
-```
-dataform compile
-```
-
-6. If step 4 executes without issues please try any features of [vscode-dataform-tools](https://github.com/ashish10alex/vscode-dataform-tools). I expect all
-features to work that donot require your gcloud credentials. You can modify the sqlx and config files such that you can test your own gcp project on it too
-
-
-
-## FAQ
-
-

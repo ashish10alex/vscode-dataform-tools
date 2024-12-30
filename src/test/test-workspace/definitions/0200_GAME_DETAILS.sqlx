@@ -1,0 +1,44 @@
+config {
+  type: 'table',
+  schema: 'dataform',
+  description: 'Shows who scored goals for a specific Chelsea vs Arsenal game',
+  tags: ["FOOTY"]
+}
+
+
+js {
+  const type = "'Goals'"
+}
+
+
+WITH CHELSEA_GAMES_META AS (
+  SELECT *
+  FROM ${ref("0100_GAMES_META")}
+  WHERE
+    1 = 1
+    AND GAME_ID = ${params.CHELSEA_VS_ARSENAL_GAME_ID}
+)
+
+, PLAYERS AS (
+  SELECT * FROM ${ref("PLAYERS")}
+)
+
+, GOAL_EVENTS AS (
+  SELECT * FROM ${ref("GAME_EVENTS")}
+  WHERE TYPE = ${type}
+)
+
+, GAME_EVENTS AS (
+  SELECT E.*
+  FROM GOAL_EVENTS AS E
+  RIGHT JOIN CHELSEA_GAMES_META AS C USING (GAME_ID)
+)
+
+
+SELECT
+  P.NAME AS PLAYER_NAME
+  , E.*
+FROM GAME_EVENTS AS E
+LEFT JOIN
+  PLAYERS AS P
+  USING (PLAYER_ID)

@@ -1,0 +1,24 @@
+config {
+  type: 'table',
+}
+
+
+pre_operations {
+  select 22 as someNumber
+}
+
+pre_operations {
+  select 44 as someNumber
+}
+
+
+post_operations {
+  select 55 as someNumber
+}
+
+post_operations {
+  select 66 as someNumber
+}
+
+
+SELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP

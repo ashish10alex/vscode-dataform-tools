@@ -6,5 +6,4 @@ node_modules
 .DS_Store
 .excalidraw
 user_config.json
-src/test/profile.mjs
-src/test/dataformCompiledJson.json
+src/test/test-workspace/AGENDA.md
