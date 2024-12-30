@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.6.4",
+    "version": "0.7.0",
     "engines": {
         "vscode": "^1.89.0"
     },
@@ -261,7 +261,6 @@
                     "default": true,
                     "markdownDescription": "Whether to recommend Error Lens extension to show erorrs inline rather than showing them as swigly lines"
                 }
-
             }
         }
     },
@@ -271,7 +270,7 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-		"test": "rm -rf .vscode-test/user-data; vscode-test"
+        "test": "rm -rf .vscode-test/user-data; vscode-test"
     },
     "devDependencies": {
         "@types/js-beautify": "^1.14.3",
@@ -280,8 +279,8 @@
         "@types/vscode": "^1.89.0",
         "@typescript-eslint/eslint-plugin": "^7.7.1",
         "@typescript-eslint/parser": "^7.7.1",
-		"@vscode/test-cli": "^0.0.8",
-		"@vscode/test-electron": "^2.3.9",
+        "@vscode/test-cli": "^0.0.8",
+        "@vscode/test-electron": "^2.3.9",
         "eslint": "^8.57.0"
     },
     "dependencies": {

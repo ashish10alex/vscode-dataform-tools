@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.7.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.4...v0.7.0) (2024-12-30)
+
+
+### Features
+
+*  refactor `getQueryMetaForCurrentFile` to be more functional  ([#83](https://github.com/ashish10alex/vscode-dataform-tools/issues/83)) ([b96fe4b](https://github.com/ashish10alex/vscode-dataform-tools/commit/b96fe4b09b9bc6a4546dea788c6b24e8f6da56bc))
+* add `CONTRIBUTING.md` ([2be9172](https://github.com/ashish10alex/vscode-dataform-tools/commit/2be9172deac5f81b7ef32f1f10a99236a95707d6))
+* capitalize the prefix for BigQuery snippets ([ed003a3](https://github.com/ashish10alex/vscode-dataform-tools/commit/ed003a3fc1d9669a8630fb93a5d758faa2bb5030))
+* do not compile on extension activation making the activation faster ([23fdf06](https://github.com/ashish10alex/vscode-dataform-tools/commit/23fdf06ff84745a6162f876e385db2ec936c790c))
+* **hover:** make hover docs for base sources more visible ([5d3824e](https://github.com/ashish10alex/vscode-dataform-tools/commit/5d3824edef765061da46ea0577dca036bc55bef1))
+* make testing work again and improve coverage  ([#84](https://github.com/ashish10alex/vscode-dataform-tools/issues/84)) ([2d23439](https://github.com/ashish10alex/vscode-dataform-tools/commit/2d23439ff3e6b485eba6f665482aefb3c523599e))
+* optimize external deps computation ([cd609ec](https://github.com/ashish10alex/vscode-dataform-tools/commit/cd609ec23bfd43a99cd6e3de5ed999a7832c4c43))
+* propagate pre and post operation errors to webview ([#82](https://github.com/ashish10alex/vscode-dataform-tools/issues/82)) ([2de85ee](https://github.com/ashish10alex/vscode-dataform-tools/commit/2de85ee431cb603b6c79209078e37848697529e7))
+* recommend user to install error lens extension ([77a7eab](https://github.com/ashish10alex/vscode-dataform-tools/commit/77a7eabb9491c0256b047cc13f38a91a78973650))
+* show column description in the  table schema  ([#79](https://github.com/ashish10alex/vscode-dataform-tools/issues/79)) ([0bbd35b](https://github.com/ashish10alex/vscode-dataform-tools/commit/0bbd35b32fe529ffd469d4ec15b84d1873f5b540))
+* show external deps first ([0d37bbe](https://github.com/ashish10alex/vscode-dataform-tools/commit/0d37bbea7a21686efaf453f385e95faa2175669c))
+* show link to bigquery job when assertion passes ([11a0de8](https://github.com/ashish10alex/vscode-dataform-tools/commit/11a0de8c15a45682117664904c33f3753b297ba3))
+* trigger table run & data preview directly from compiled web ui ([#77](https://github.com/ashish10alex/vscode-dataform-tools/issues/77)) ([187ef72](https://github.com/ashish10alex/vscode-dataform-tools/commit/187ef7219c2c00cb639f735e95f04bc7302f33e0))
+
+
+### Bug Fixes
+
+* assertion not showing error when bigquery job fails ([8e6fcaa](https://github.com/ashish10alex/vscode-dataform-tools/commit/8e6fcaa5e3beacc1468a0494b728711640b4c206))
+* content getting truncated when the number of items exceeds expected amount ([aa3f5db](https://github.com/ashish10alex/vscode-dataform-tools/commit/aa3f5db6afa62307d5ee8c6f92acf252b6ac26a6))
+* dry run not working with @[@query](https://github.com/query)_label ([#80](https://github.com/ashish10alex/vscode-dataform-tools/issues/80)) ([35441ff](https://github.com/ashish10alex/vscode-dataform-tools/commit/35441ffdc6103b3ad5930dfcb69eff29ec6513e6))
+* error attempting to fetch dependents for an undefined target ([5b5fd98](https://github.com/ashish10alex/vscode-dataform-tools/commit/5b5fd989a6b18d35a355357749f3426824ad5958))
+* incremental model showing as external dependency ([59aa1de](https://github.com/ashish10alex/vscode-dataform-tools/commit/59aa1dea68a31e85608534526d3fd028cd7ac3d1))
+* nav bar not visible in light mode ([76adc84](https://github.com/ashish10alex/vscode-dataform-tools/commit/76adc841114ffdc025a89c143ad16ec9bb9309a7))
+* set @[@query](https://github.com/query)_label was not being escaped when lower case ([6e9d279](https://github.com/ashish10alex/vscode-dataform-tools/commit/6e9d279e9b8ba9375be849b38e4c0cb10d526bc5))
+
 ### [0.6.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.6.3...v0.6.4) (2024-12-20)
 
 
