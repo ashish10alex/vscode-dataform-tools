@@ -329,7 +329,7 @@ export class CompiledQueryPanel {
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
-        }else if (errorMessage ==="BigQuery client not available."){
+        }else if (dryRunResult?.error.message ==="BigQuery client not available."){
             errorMessage += `<h4>Possible fix: </h4>
             <a href="https://cloud.google.com/sdk/docs/install">Install gcloud cli</a> <br>
             <p> After gcloud cli is installed run the following in the terminal in order </p>
