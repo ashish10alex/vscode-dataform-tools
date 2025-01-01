@@ -1,5 +1,7 @@
 # Dataform tools - a vscode extension
 
+🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+
 [![Version](https://img.shields.io/github/v/release/ashish10alex/vscode-dataform-tools)](https://github.com/ashish10alex/vscode-dataform-tools/releases)
 ![Installs](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)
 ![Linux](https://img.shields.io/badge/Linux-supported-success)
