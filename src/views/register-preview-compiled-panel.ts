@@ -344,11 +344,13 @@ export class CompiledQueryPanel {
         }
 
         if (compiledQuerySchema?.fields) {
-            const curFileActionDescriptor:ActionDescription = curFileMeta.fileMetadata.tables[0].actionDescriptor;
-            if (curFileActionDescriptor?.columns) {
+            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata.tables[0].actionDescriptor;
+            // Remove 'mode' attribute from each field
+            compiledQuerySchema.fields = compiledQuerySchema.fields.map(({ mode, ...rest }) => rest);
 
+            if (curFileActionDescriptor?.columns) {
                 const columnMap = new Map(
-                curFileActionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
+                    curFileActionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
                 );
 
                 compiledQuerySchema.fields.forEach((columnMetadata: ColumnMetadata) => {
@@ -358,8 +360,10 @@ export class CompiledQueryPanel {
                     }
                 });
             }
+            //TODO: there seem to be any issue with loading many columns 
+            // compiledQuerySchema.fields = compiledQuerySchema.fields.slice(0, 69);
         } else {
-            compiledQuerySchema = {fields: [{"name": "", type:"", mode: ""}]};
+            compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
 
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){

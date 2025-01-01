@@ -9,8 +9,8 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getDependenciesAutoCompletionItems, getDataformTags, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument } from './utils';
-import { executableIsAvailable, runCompilation } from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument } from './utils';
+import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
@@ -43,7 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
         highlightJsOneLightThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
         highlightJsLineNoExtUri: "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
         tabulatorCssUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator_midnight.min.css",
-        tabulatorUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js",
+        tabulatorUri: "https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js",
     };
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;

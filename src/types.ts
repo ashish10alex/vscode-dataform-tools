@@ -168,7 +168,7 @@ export type GraphError = {
 export interface ColumnMetadata {
     name: string;
     type: string;
-    mode: string;
+    mode?: string;
     description?:string;
 };
 
@@ -192,12 +192,6 @@ export interface BigQueryDryRunResponse {
         message: string;
         location?: ErrorLocation;
     };
-}
-
-export interface ColumnMetadata {
-    name: string;
-    type: string;
-    mode: string;
 }
 
 export interface CompiledQuerySchema {
