@@ -66,6 +66,9 @@
 > [!NOTE]
 Trouble installing ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 
+* 🎥 [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
+* 🎥 [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+
 ## Features
 
 ### <a id="compilation">Compiled query & Dry run stats</a>
