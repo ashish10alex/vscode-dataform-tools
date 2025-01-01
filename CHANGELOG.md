@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.2...v0.7.3) (2025-01-01)
+
+
+### Features
+
+* update tabulator and prevent redundant data flowing to webview ([de745b6](https://github.com/ashish10alex/vscode-dataform-tools/commit/de745b6d9eb7d40cdb6b2f501fd247aeec9f1bea))
+
 ### [0.7.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.1...v0.7.2) (2025-01-01)
 
 
