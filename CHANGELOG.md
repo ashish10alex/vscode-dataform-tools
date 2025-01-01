@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.1...v0.7.2) (2025-01-01)
+
+
+### Features
+
+* add link to YouTube video with setup and demo ([b7ce997](https://github.com/ashish10alex/vscode-dataform-tools/commit/b7ce9973dc94e2b253b2f583d59363a872a81904))
+
 ### [0.7.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.0...v0.7.1) (2024-12-30)
 
 
