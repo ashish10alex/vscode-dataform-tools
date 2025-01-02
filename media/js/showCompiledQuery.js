@@ -181,7 +181,7 @@ window.addEventListener('message', event => {
         buttonText.style.margin = '0';
         lineageMetadataButton.appendChild(buttonText);
         depsDiv.appendChild(lineageMetadataButton);
-        
+
         const explainLineagePara = document.createElement('p');
         explainLineagePara.innerHTML = `When clicked will retreive downstream lineage using Data Lineage API , similar to "LINEAGE" on BigQuery console. Requires <pre style="display: inline; white-space: pre-wrap;">roles/datalineage.viewer</pre> permissions`;
 
@@ -270,11 +270,19 @@ window.addEventListener('message', event => {
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
         noSchemaBlockDiv.innerHTML = "";
-        compiledQuerySchema = compiledQuerySchema.fields.map(({ name, type, description }) => ({ name, type, description }));
         new Tabulator("#schemaTable", {
-            data: compiledQuerySchema,
-            autoColumns: true,
+            data: compiledQuerySchema.fields,
+            columns: [
+                {title: "name", field: "name", headerFilter: "input",  formatter: "plaintext"},
+                {title: "type", field: "type", headerFilter: "input",  formatter: "plaintext"},
+                {title: "description", field: "description",  formatter: "plaintext"},
+            ],
             layout: "fitColumns",
+            pagination:"local",
+            paginationSize:50,
+            paginationCounter:"rows",
+            selectable: false,
+            movableRows: false,
             rowHeader: {
                 formatter: "rownum",
                 headerSort: false,
