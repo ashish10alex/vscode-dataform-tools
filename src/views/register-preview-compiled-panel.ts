@@ -254,11 +254,15 @@ export class CompiledQueryPanel {
 
         if(!curFileMeta){
             curFileMeta = await getCurrentFileMetadata(true);
+            if (curFileMeta.isDataformWorkspace===false){
+                const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+                const currentDirectory = workspaceFolder?.uri.fsPath;
+                await webview.postMessage({
+                    "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflowsetting.yaml or dataform.json`
+                });
+                return;
+            }
             updateSchemaAutoCompletions(curFileMeta);
-        }
-
-        if (curFileMeta.isDataformWorkspace===false){
-            return;
         }
 
         if(curFileMeta.dataformCompilationErrors){
