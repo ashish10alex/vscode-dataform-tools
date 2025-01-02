@@ -128,7 +128,6 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 ## Known Issues
 
 - [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}` or when it is multiline or a different format works best with `${ref('table_name')}` format
-- [ ] If a model returns more than ~2 million rows the BigQuery api does not seem to return any results
 
 ## TODO
 

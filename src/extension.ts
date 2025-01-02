@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider } from './definitionProvider';
 import { DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument } from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -92,7 +92,6 @@ export async function activate(context: vscode.ExtensionContext) {
             let curFileMeta = await getCurrentFileMetadata(false);
             let type = curFileMeta?.fileMetadata?.queryMeta.type;
             queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
-
         }
     }, null, context.subscriptions);
 

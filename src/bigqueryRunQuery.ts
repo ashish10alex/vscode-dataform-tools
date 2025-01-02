@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { QueryResultsOptions } from '@google-cloud/bigquery';
+import { bigQuerytimeoutMs } from './constants';
 
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
@@ -116,7 +118,7 @@ export async function queryBigQuery(query: string) {
     }
 
     try {
-        [bigQueryJob] = await bigquery.createQueryJob(query);
+        [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: bigQuerytimeoutMs });
     } catch (error: any) {
         try {
             await handleBigQueryError(error);
@@ -135,7 +137,7 @@ export async function queryBigQuery(query: string) {
         return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
     }
 
-    const options = { maxResults: queryLimit };
+    const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs:bigQuerytimeoutMs };
 
     //TODO: even when the job has been cancelled it might return results, handle this
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?

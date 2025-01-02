@@ -9,3 +9,4 @@ export const incrementalTableOffset = 1;
 export const assertionQueryOffset = 4;
 export const windowsDataformCliNotAvailableErrorMessage = "'dataform.cmd' is not recognized as an internal or external command";
 export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not found";
+export const bigQuerytimeoutMs = 20000;
