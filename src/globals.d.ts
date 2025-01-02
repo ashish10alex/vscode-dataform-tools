@@ -1,3 +1,4 @@
+import { Job } from "@google-cloud/bigquery";
 import { CompiledQuerySchema, DataformCompiledJson, Metadata} from "./types";
 import * as vscode from 'vscode';
 
@@ -32,7 +33,7 @@ declare global {
 }
 
 declare global {
-  var bigQueryJob: any
+  var bigQueryJob: Job |  undefined
 }
 
 declare global {
