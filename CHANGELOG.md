@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.4...v0.7.5) (2025-01-02)
+
+
+### Bug Fixes
+
+* bigquery job will return no results if job takes longer than 10sec ([5c034ca](https://github.com/ashish10alex/vscode-dataform-tools/commit/5c034ca17c278a2449ef9fc985fdf283517426f0))
+
 ### [0.7.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.3...v0.7.4) (2025-01-02)
 
 
