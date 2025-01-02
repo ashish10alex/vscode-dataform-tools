@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.3...v0.7.4) (2025-01-02)
+
+
+### Features
+
+* show hint to user that the workspace is not a Dataform workspace ([ef15f6d](https://github.com/ashish10alex/vscode-dataform-tools/commit/ef15f6d690cb10c3f3353f89c2acf5b0bcd13713))
+
+
+### Bug Fixes
+
+* schema not showing when number of column is high(e.g ~100) ([e7ee2cd](https://github.com/ashish10alex/vscode-dataform-tools/commit/e7ee2cd57bc43cd46d6a63e62597aace55416a2a))
+
 ### [0.7.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.2...v0.7.3) (2025-01-01)
 
 
