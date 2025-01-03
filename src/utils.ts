@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage } from './constants';
@@ -138,7 +138,7 @@ async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJso
   ]).then(results => results.flat());
 }
 
-export async function getCurrentFileMetadata(freshCompilation: boolean) {
+export async function getCurrentFileMetadata(freshCompilation: boolean): Promise<CurrentFileMetadata | undefined> {
     let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
     if (!document) {
         return;

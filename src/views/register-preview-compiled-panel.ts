@@ -1,10 +1,10 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getVSCodeDocument, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata, Table, Column, ActionDescription } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata } from "../types";
 import { getFileNotFoundErrorMessageForWebView } from "../constants";
 
 function showLoadingProgress(
@@ -151,7 +151,9 @@ export class CompiledQueryPanel {
                 if(diagnosticCollection){
                     diagnosticCollection.clear();
                 }
-                dryRunAndShowDiagnostics(currentFileMetadata, queryAutoCompMeta, currentFileMetadata.document, diagnosticCollection, false);
+                if (currentFileMetadata.document){
+                    dryRunAndShowDiagnostics(currentFileMetadata, queryAutoCompMeta, currentFileMetadata.document, diagnosticCollection, false);
+                }
                 return;
             }
 
@@ -184,7 +186,7 @@ export class CompiledQueryPanel {
             },
             null,
             );
-        
+
         this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
           async message => {
             const now = Date.now();
@@ -192,7 +194,7 @@ export class CompiledQueryPanel {
                 if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
                     // NOTE: vscode.postMessage form webview sends in multiple messages when active editor is switched
                     // NOTE: This is debounce hack build to avoid processing multiple messages and process only the first message
-                    return; 
+                    return;
                 }
                 this.centerPanel.lastMessageTime = now;
             }
@@ -247,7 +249,7 @@ export class CompiledQueryPanel {
     }
 
 
-    private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:any) {
+    private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined) {
         const webview = this.webviewPanel.webview;
         if (this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
@@ -257,6 +259,11 @@ export class CompiledQueryPanel {
             curFileMeta = await getCurrentFileMetadata(true);
         }
 
+        if(!curFileMeta){
+            return;
+            //TODO: show some error message in this case
+        }
+
         if (curFileMeta.isDataformWorkspace===false){
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             const currentDirectory = workspaceFolder?.uri.fsPath;
@@ -264,7 +271,7 @@ export class CompiledQueryPanel {
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflowsetting.yaml or dataform.json`
             });
             return;
-        } else if (curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0){
+        } else if ((curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath){
             const errorMessage = getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
                 "errorMessage": errorMessage
@@ -297,13 +304,18 @@ export class CompiledQueryPanel {
             }
 
             errorString += "</ul> Run `dataform compile` to see more details <br>";
-            if(curFileMeta?.possibleResolutions?.length > 0){
+            if(curFileMeta?.possibleResolutions && curFileMeta?.possibleResolutions?.length > 0){
                 errorString += `<h4>Possible fix: </h4> <li> ${curFileMeta.possibleResolutions[0]}</li>`;
             }
 
             await webview.postMessage({
                 "errorMessage": errorString
             });
+            return;
+        }
+
+        if(!curFileMeta.fileMetadata || !curFileMeta.pathMeta){
+            //TODO: show some error message in this case
             return;
         }
 
@@ -331,7 +343,8 @@ export class CompiledQueryPanel {
         }
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
-        if (!queryAutoCompMeta){
+        if (!queryAutoCompMeta || !curFileMeta.document){
+            //TODO: show some error message in this case
             return;
         }
 
@@ -346,9 +359,9 @@ export class CompiledQueryPanel {
             <a href="https://cloud.google.com/sdk/docs/install">Install gcloud cli</a> <br>
             <p> After gcloud cli is installed run the following in the terminal in order </p>
              <ol>
-                <li><b>gcloud init</b></li> 
-                <li><b>gcloud auth application-default login</b></li> 
-                <li><b>gcloud config set project your-project-id</b>  #replace with your gcp project id</li> 
+                <li><b>gcloud init</b></li>
+                <li><b>gcloud auth application-default login</b></li>
+                <li><b>gcloud config set project your-project-id</b>  #replace with your gcp project id</li>
              </ol>`;
         }
         if(!dryRunStat){
@@ -372,7 +385,7 @@ export class CompiledQueryPanel {
                     }
                 });
             }
-            //TODO: there seem to be any issue with loading many columns 
+            //TODO: there seem to be any issue with loading many columns
             // compiledQuerySchema.fields = compiledQuerySchema.fields.slice(0, 69);
         } else {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
@@ -517,17 +530,17 @@ export class CompiledQueryPanel {
             <div>
                 <div class="checkbox-group">
                     <label class="model-checkbox-container">
-                        <input type="checkbox" id="includeDependencies" class="checkbox"> 
+                        <input type="checkbox" id="includeDependencies" class="checkbox">
                         <span class="custom-checkbox"></span>
                         Include Dependencies (upstream)
                     </label>
                     <label class="model-checkbox-container">
-                        <input type="checkbox" id="includeDependents" class="checkbox"> 
+                        <input type="checkbox" id="includeDependents" class="checkbox">
                         <span class="custom-checkbox"></span>
                         Include Dependents (downstream)
                     </label>
                     <label class="model-checkbox-container">
-                        <input type="checkbox" id="fullRefresh" class="checkbox"> 
+                        <input type="checkbox" id="fullRefresh" class="checkbox">
                         <span class="custom-checkbox"></span>
                         full Refresh (Forces incremental tables to be rebuilt from scratch)
                     </label>

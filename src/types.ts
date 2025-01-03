@@ -1,3 +1,4 @@
+import { TextDocument } from "vscode";
 
 export interface Table {
     type: string;
@@ -206,4 +207,23 @@ export type Metadata = {
 
 export type SchemaMetadata = {
     name: string, metadata: Metadata
+};
+
+export type CurrentFileMetadata = {
+  isDataformWorkspace?: boolean;
+  dataformCompilationErrors?: any[];
+  fileMetadata?: TablesWtFullQuery;
+  possibleResolutions?: any[];
+  dependents?: any;
+  lineageMetadata?: {
+    dependencies: undefined;
+    error: undefined;
+  };
+  pathMeta?: {
+    filename: string;
+    extension: string;
+    relativeFilePath: string;
+  };
+  document?: TextDocument;
+  fileNotFoundError?: boolean;
 };

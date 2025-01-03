@@ -12,14 +12,14 @@ export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not f
 export const bigQuerytimeoutMs = 20000;
 
 export function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
-    let errorMessage = `file "${relativeFilePath}" not found in Dataform compiled json <br>`;
+    let errorMessage = `file <b>"${relativeFilePath}"</b> not found in Dataform compiled json <br>`;
     errorMessage += `<p>Ignore the error if the file you are in is not expected to produce a sql output</p>`;
-    errorMessage += `<h4>Possible resolution/fix: </h4>`;
+    errorMessage += `<h4>Possible resolution/fix(s): </h4>`;
 
     errorMessage += `<ol>`;
 
     errorMessage += `<li>Check if running "dataform compile" throws an error</li>`;
-    errorMessage += `<li>If the case of the file has been changed and the <b>case does not match</b> what is being shown in the error message, this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. A workaround for this is:`;
+    errorMessage += `<li>Check if case of the file has been changed and the case does not match what is being shown in the error message above, this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. A workaround for this is:`;
 
     errorMessage += `<ol>`;
     errorMessage += `<li>Change the filename to something arbitrary and save it</li>`;
