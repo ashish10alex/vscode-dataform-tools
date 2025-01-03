@@ -271,7 +271,7 @@ export class CompiledQueryPanel {
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflowsetting.yaml or dataform.json`
             });
             return;
-        } else if ((curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath){
+        } else if ((curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const errorMessage = getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
                 "errorMessage": errorMessage
