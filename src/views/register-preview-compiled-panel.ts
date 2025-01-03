@@ -5,6 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
 import { ColumnMetadata, Table, Column, ActionDescription } from "../types";
+import { getFileNotFoundErrorMessageForWebView } from "../constants";
 
 function showLoadingProgress(
     title: string,
@@ -264,11 +265,7 @@ export class CompiledQueryPanel {
             });
             return;
         } else if (curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0){
-
-            let errorMessage = `file "${curFileMeta.pathMeta.relativeFilePath}" not found in Dataform compiled json <br>`;
-            errorMessage += `<h4>Ignore the error if the file you are in is not expected to produce a sql output</h4>`;
-            errorMessage += `<h4>Possible fix: </h4> <li> check if running "dataform compile" throws an error</li>`;
-            errorMessage += `<li>If the case of the file has been changed. and the <b>case does not match</b> what is being shown in the error message. This is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. A workaround for this is to change the filename to something arbitary and save it, then reload the VSCode window change the file name to the case you want</li>`;
+            const errorMessage = getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
                 "errorMessage": errorMessage
             });
