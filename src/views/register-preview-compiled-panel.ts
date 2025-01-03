@@ -254,16 +254,27 @@ export class CompiledQueryPanel {
 
         if(!curFileMeta){
             curFileMeta = await getCurrentFileMetadata(true);
-            if (curFileMeta.isDataformWorkspace===false){
-                const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-                const currentDirectory = workspaceFolder?.uri.fsPath;
-                await webview.postMessage({
-                    "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflowsetting.yaml or dataform.json`
-                });
-                return;
-            }
-            updateSchemaAutoCompletions(curFileMeta);
         }
+
+        if (curFileMeta.isDataformWorkspace===false){
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            const currentDirectory = workspaceFolder?.uri.fsPath;
+            await webview.postMessage({
+                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflowsetting.yaml or dataform.json`
+            });
+            return;
+        } else if (curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0){
+
+            let errorMessage = `file "${curFileMeta.pathMeta.relativeFilePath}" not found in Dataform compiled json <br>`;
+            errorMessage += `<h4>Ignore the error if the file you are in is not expected to produce a sql output</h4>`;
+            errorMessage += `<h4>Possible fix: </h4> <li> check if running "dataform compile" throws an error</li>`;
+            errorMessage += `<li>If the case of the file has been changed. and the <b>case does not match</b> what is being shown in the error message. This is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. A workaround for this is to change the filename to something arbitary and save it, then reload the VSCode window change the file name to the case you want</li>`;
+            await webview.postMessage({
+                "errorMessage": errorMessage
+            });
+            return;
+        }
+        updateSchemaAutoCompletions(curFileMeta);
 
         if(curFileMeta.dataformCompilationErrors){
             let errorString = "<h3>Error compiling Dataform:</h3><ul>";

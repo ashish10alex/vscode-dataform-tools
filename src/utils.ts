@@ -157,6 +157,17 @@ export async function getCurrentFileMetadata(freshCompilation: boolean) {
             if(dataformCompiledJson){
                 let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
 
+                if(fileMetadata?.tables?.length === 0){
+                    return {
+                        fileNotFoundError: true,
+                        pathMeta: {
+                            filename: filename,
+                            extension: extension,
+                            relativeFilePath: relativeFilePath
+                        },
+                    };
+                };
+
                 const targetToSearch = fileMetadata?.tables[0]?.target;
                 let dependents = undefined;
                 if(targetToSearch){
