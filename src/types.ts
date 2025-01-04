@@ -1,8 +1,8 @@
 import { TextDocument } from "vscode";
 
-export type Result<T, E> = { success: true; value: T } | { success: false; error: E };
+export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
 
-export type FileNameResult = [string, string, string];
+export type FileNameMetadata = [string, string, string];
 
 export interface Table {
     type: string;

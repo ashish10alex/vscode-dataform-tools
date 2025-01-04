@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, Result, FileNameResult } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage } from './constants';
@@ -440,7 +440,7 @@ function getRelativePath(filePath: string) {
 export function getFileNameFromDocument(
   document: vscode.TextDocument,
   showErrorMessage: boolean
-): Result<FileNameResult, string> {
+): FileNameMetadataResult<FileNameMetadata, string> {
   const filePath = document.uri.fsPath;
   const basenameSplit = path.basename(filePath).split('.');
   const extension = basenameSplit[1];
