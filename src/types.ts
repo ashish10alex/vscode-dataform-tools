@@ -1,5 +1,9 @@
 import { TextDocument } from "vscode";
 
+export type Result<T, E> = { success: true; value: T } | { success: false; error: E };
+
+export type FileNameResult = [string, string, string];
+
 export interface Table {
     type: string;
     tags: string[];
@@ -211,6 +215,7 @@ export type SchemaMetadata = {
 
 export type CurrentFileMetadata = {
   isDataformWorkspace?: boolean;
+  errors?: { errorGettingFileNameFromDocument:string }
   dataformCompilationErrors?: any[];
   fileMetadata?: TablesWtFullQuery;
   possibleResolutions?: any[];

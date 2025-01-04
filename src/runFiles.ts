@@ -7,10 +7,14 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     if (!document) {
         return;
     }
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, true);
-    if (!filename || !relativeFilePath || !extension) {
+
+    var result = getFileNameFromDocument(document, false);
+    if (result.success === false) {
         return;
+         //{ return {errors: {errorGettingFileNameFromDocument: result.error}}; }
+        //TODO: should we return an error here ?
     }
+    const [filename, relativeFilePath, extension] = result.value;
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) {
         return;
