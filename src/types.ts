@@ -1,5 +1,9 @@
 import { TextDocument } from "vscode";
 
+export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
+
+export type FileNameMetadata = [string, string, string];
+
 export interface Table {
     type: string;
     tags: string[];
@@ -211,7 +215,7 @@ export type SchemaMetadata = {
 
 export type CurrentFileMetadata = {
   isDataformWorkspace?: boolean;
-  dataformCompilationErrors?: any[];
+  errors?: { errorGettingFileNameFromDocument?:string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean;}
   fileMetadata?: TablesWtFullQuery;
   possibleResolutions?: any[];
   dependents?: any;
@@ -225,5 +229,4 @@ export type CurrentFileMetadata = {
     relativeFilePath: string;
   };
   document?: TextDocument;
-  fileNotFoundError?: boolean;
 };

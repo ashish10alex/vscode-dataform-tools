@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage } from './constants';
@@ -144,8 +144,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         return;
     }
 
-    var [filename, relativeFilePath, extension] = getFileNameFromDocument(document, false);
-    if (!filename || !relativeFilePath || !extension) { return {isDataformWorkspace: false };};
+    var result = getFileNameFromDocument(document, false);
+    if (result.success === false) {
+         { return {errors: {errorGettingFileNameFromDocument: result.error}}; }
+    }
+
+    const [filename, relativeFilePath, extension] = result.value;
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
@@ -159,7 +163,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
                 if(fileMetadata?.tables?.length === 0){
                     return {
-                        fileNotFoundError: true,
+                        errors: { fileNotFoundError: true },
                         pathMeta: {
                             filename: filename,
                             extension: extension,
@@ -176,7 +180,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
                 return {
                     isDataformWorkspace: true,
-                    dataformCompilationErrors:errors,
+                    errors: { dataformCompilationErrors: errors },
                     possibleResolutions:possibleResolutions,
                     fileMetadata: fileMetadata,
                     dependents: dependents,
@@ -196,7 +200,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             CACHED_COMPILED_DATAFORM_JSON = undefined;
             return {
                 isDataformWorkspace: true,
-                dataformCompilationErrors:errors,
+                errors: { dataformCompilationErrors: errors },
                 possibleResolutions:possibleResolutions,
                 fileMetadata: undefined,
                 dependents: undefined,
@@ -431,20 +435,29 @@ function getRelativePath(filePath: string) {
     return relativePath;
 }
 
-export function getFileNameFromDocument(document: vscode.TextDocument, showErrorMessage: boolean): string[] | [undefined, undefined, undefined] {
-    var filePath = document.uri.fsPath;
-    let basenameSplit = path.basename(filePath).split('.');
-    let extension = basenameSplit[1];
-    let relativeFilePath = getRelativePath(filePath);
-    let validFileType = supportedExtensions.includes(extension);
-    if (!validFileType) {
-        if (showErrorMessage) {
-            vscode.window.showErrorMessage(`File type not supported. Supported file types are ${supportedExtensions.join(', ')}`);
-        }
-        return [undefined, undefined, undefined];
+
+
+export function getFileNameFromDocument(
+  document: vscode.TextDocument,
+  showErrorMessage: boolean
+): FileNameMetadataResult<FileNameMetadata, string> {
+  const filePath = document.uri.fsPath;
+  const basenameSplit = path.basename(filePath).split('.');
+  const extension = basenameSplit[1];
+  const relativeFilePath = getRelativePath(filePath);
+  const validFileType = supportedExtensions.includes(extension);
+
+  if (!validFileType) {
+    if (showErrorMessage) {
+      vscode.window.showErrorMessage(
+        `File type not supported. Supported file types are ${supportedExtensions.join(', ')}`
+      );
     }
-    let rawFileName = basenameSplit[0];
-    return [rawFileName, relativeFilePath, extension];
+    return { success: false, error: `File type not supported. Supported file types are ${supportedExtensions.join(', ')}` };
+  }
+
+  const rawFileName = basenameSplit[0];
+  return { success: true, value: [rawFileName, relativeFilePath, extension] };
 }
 
 //
