@@ -215,8 +215,7 @@ export type SchemaMetadata = {
 
 export type CurrentFileMetadata = {
   isDataformWorkspace?: boolean;
-  errors?: { errorGettingFileNameFromDocument:string }
-  dataformCompilationErrors?: any[];
+  errors?: { errorGettingFileNameFromDocument?:string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean;}
   fileMetadata?: TablesWtFullQuery;
   possibleResolutions?: any[];
   dependents?: any;
@@ -230,5 +229,4 @@ export type CurrentFileMetadata = {
     relativeFilePath: string;
   };
   document?: TextDocument;
-  fileNotFoundError?: boolean;
 };

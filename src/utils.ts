@@ -163,7 +163,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
                 if(fileMetadata?.tables?.length === 0){
                     return {
-                        fileNotFoundError: true,
+                        errors: { fileNotFoundError: true },
                         pathMeta: {
                             filename: filename,
                             extension: extension,
@@ -180,7 +180,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
                 return {
                     isDataformWorkspace: true,
-                    dataformCompilationErrors:errors,
+                    errors: { dataformCompilationErrors: errors },
                     possibleResolutions:possibleResolutions,
                     fileMetadata: fileMetadata,
                     dependents: dependents,
@@ -200,7 +200,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             CACHED_COMPILED_DATAFORM_JSON = undefined;
             return {
                 isDataformWorkspace: true,
-                dataformCompilationErrors:errors,
+                errors: { dataformCompilationErrors: errors },
                 possibleResolutions:possibleResolutions,
                 fileMetadata: undefined,
                 dependents: undefined,

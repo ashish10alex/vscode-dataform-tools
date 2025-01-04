@@ -275,7 +275,7 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument
             });
-        } else if ((curFileMeta?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
+        } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const errorMessage = getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
                 "errorMessage": errorMessage
@@ -284,7 +284,7 @@ export class CompiledQueryPanel {
         }
         updateSchemaAutoCompletions(curFileMeta);
 
-        if(curFileMeta.dataformCompilationErrors){
+        if(curFileMeta.errors?.dataformCompilationErrors){
             let errorString = "<h3>Error compiling Dataform:</h3><ul>";
 
             let workspaceFolder = getWorkspaceFolder();
@@ -292,7 +292,7 @@ export class CompiledQueryPanel {
                 return;
             }
 
-            for (const { error, fileName } of curFileMeta.dataformCompilationErrors) {
+            for (const { error, fileName } of curFileMeta?.errors?.dataformCompilationErrors) {
                 errorString += `<li>${error} at ${fileName}</li><br>`;
 
                 if (diagnosticCollection) {
