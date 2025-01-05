@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.5...v0.7.6) (2025-01-05)
+
+
+### Features
+
+* improve error messages  ([#85](https://github.com/ashish10alex/vscode-dataform-tools/issues/85)) ([38a147b](https://github.com/ashish10alex/vscode-dataform-tools/commit/38a147bc098860f8829c5e72da26525b77c203f8))
+* show error message & possible resolution on file case change [issue](https://github.com/microsoft/vscode/issues/123660) in vscode ([ddbe46d](https://github.com/ashish10alex/vscode-dataform-tools/commit/ddbe46d383138f3c42fec5afb9321d93ee879dc0))
+
 ### [0.7.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.4...v0.7.5) (2025-01-02)
 
 
