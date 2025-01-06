@@ -2058,6 +2058,11 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "prefix": "EXTERNAL_QUERY",
       "body": "EXTERNAL_QUERY(${1:connection_id}, ${2:external_database_query}${3:[, options]})",
       "description": "Executes the query in Cloud SQL and returns results as a temporary table."
+    },
+    "EXCEPT": {
+      "prefix": "EXCEPT",
+      "body": "EXCEPT (${1:column1}${2:, column2})",
+      "description": "EXCEPT clause excludes specified columns from the result set in BigQuery. Syntax looks like SELECT * EXCEPT(column_name, ...) FROM table"
     }
   }
 }
