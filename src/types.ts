@@ -103,6 +103,14 @@ export interface Operation {
     dependencyTargets: Target[];
 }
 
+type GraphErrors  = {
+    compilationErrors: {
+        fileName: string,
+        message: string,
+        stack: string,
+    }[]
+};
+
 export interface DataformCompiledJson {
     tables: Table[];
     assertions: Assertion[];
@@ -110,7 +118,7 @@ export interface DataformCompiledJson {
     targets: Target[];
     declarations: Declarations[];
     projectConfig: ProjectConfig;
-    graphErrors: any;
+    graphErrors: GraphErrors;
 }
 
 export interface DryRunError {
