@@ -769,7 +769,12 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
                 resolve({compiledString: stdOut, errors:undefined, possibleResolutions:undefined});
             } else {
                 if (stdOut !== '') {
-                    let compiledJson = JSON.parse(stdOut.toString());
+                    let compiledJson:  DataformCompiledJson;
+                    try{
+                        compiledJson = JSON.parse(stdOut.toString());
+                    } catch (parseError) {
+                        compiledJson = extractDataformJsonFromMultipleJson(stdOut.toString());
+                    }
                     let graphErrors = compiledJson.graphErrors.compilationErrors;
                     let errors:GraphError[] = [];
                     graphErrors.forEach((graphError: {message:string, fileName:string}) => {
@@ -802,20 +807,56 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
     });
 }
 
+function parseMultipleJSON(str:string) {
+    const result = [];
+    let startIndex = str.indexOf('{');
+    let openBraces = 0;
+  
+    for (let i = startIndex; i < str.length; i++) {
+      if (str[i] === '{') {
+        if (openBraces === 0) {startIndex = i;};
+        openBraces++;
+      } else if (str[i] === '}') {
+        openBraces--;
+        if (openBraces === 0) {
+          const jsonStr = str.substring(startIndex, i + 1);
+          result.push(JSON.parse(jsonStr));
+        }
+      }
+    }
+  
+    return result;
+  }
+
+  function extractDataformJsonFromMultipleJson(compiledString: string){
+    const parsedObjects = parseMultipleJSON(compiledString);
+    if (parsedObjects.length > 0) {
+        return parsedObjects[1] as DataformCompiledJson;
+    } else {
+        throw new Error("Failed to parse JSON");
+    }
+  }
+  
 // Usage
 export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
         let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder, isRunningOnWindows);
         if(compiledString){
-            const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+            let dataformCompiledJson: DataformCompiledJson;
+            try {
+                dataformCompiledJson = JSON.parse(compiledString);
+            } catch (parseError) {
+                dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
+            }
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
             return {dataformCompiledJson: dataformCompiledJson, errors:errors, possibleResolutions:possibleResolutions};
         }
         return {dataformCompiledJson: undefined, errors:errors, possibleResolutions:possibleResolutions};
     } catch (error:any) {
-        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform`, fileName: ""}], possibleResolutions:undefined};
+        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform: ${error.message}`, fileName: ""}], possibleResolutions:undefined};
     }
 }
+
 
 export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
 

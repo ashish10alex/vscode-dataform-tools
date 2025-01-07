@@ -110,6 +110,7 @@ export interface DataformCompiledJson {
     targets: Target[];
     declarations: Declarations[];
     projectConfig: ProjectConfig;
+    graphErrors: any;
 }
 
 export interface DryRunError {
