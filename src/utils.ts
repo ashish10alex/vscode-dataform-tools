@@ -808,6 +808,7 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
 }
 
 function parseMultipleJSON(str:string) {
+    // TODO: add some comments on retionale for doing this
     const result = [];
     let startIndex = str.indexOf('{');
     let openBraces = 0;
@@ -829,6 +830,7 @@ function parseMultipleJSON(str:string) {
   }
 
   function extractDataformJsonFromMultipleJson(compiledString: string){
+    // TODO: add some rationale on why are we choosing index 1
     const parsedObjects = parseMultipleJSON(compiledString);
     if (parsedObjects.length > 0) {
         return parsedObjects[1] as DataformCompiledJson;
