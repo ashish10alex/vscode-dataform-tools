@@ -209,7 +209,7 @@ export interface BigQueryDryRunResponse {
     schema: CompiledQuerySchema | undefined;
     location: string | undefined;
     statistics: {
-        totalBytesProcessed: string; // e.g. "0 GB", "1.234 GB"
+        totalGBProcessed: string; // e.g. "1.234"
         costInPounds?:number;
         statementType?: string;
         totalBytesProcessedAccuracy?: string;

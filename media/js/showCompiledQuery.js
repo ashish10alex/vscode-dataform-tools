@@ -354,6 +354,21 @@ window.addEventListener('message', event => {
             {title: "Statement type", field: "statementType", headerFilter: "input", formatter: "plaintext"},
             {title: "Accuracy", field: "totalBytesProcessedAccuracy", headerFilter: "input", formatter: "plaintext"},
             {
+                title: "GB proc.",
+                field: "totalGBProcessed",
+                formatter: function(cell, formatterParams) {
+                        const value = parseFloat(cell.getValue());
+                        return isNaN(value) ? "" : value.toFixed(2);
+                },
+                bottomCalc: function(values) {
+                    const sum = values.reduce((acc, val) => acc + parseFloat(val) || 0, 0);
+                    return sum.toFixed(2);
+                },
+                bottomCalcFormatter: function(cell, formatterParams) {
+                    return cell.getValue();
+                }
+            },
+            {
                 title: "Cost",
                 field: "cost",
                 formatter: "money",

@@ -389,7 +389,7 @@ export class CompiledQueryPanel {
         }
 
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
-        let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
+        let dryRunStat = dryRunResult?.statistics?.totalGBProcessed;
         let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message: "");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
@@ -406,6 +406,8 @@ export class CompiledQueryPanel {
         }
         if(!dryRunStat){
             dryRunStat = "0 GB";
+        }else{
+            dryRunStat += " GB";
         }
 
         if (compiledQuerySchema?.fields) {

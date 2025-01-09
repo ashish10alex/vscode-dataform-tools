@@ -9,6 +9,7 @@ async function getModelPromised(filteredModels: Table[] | Operation[] | Assertio
   type: string;
   targetName: string;
   cost: number;
+  totalGBProcessed: string;
   totalBytesProcessedAccuracy: string | undefined;
   statementType: string | undefined;
   error: string
@@ -38,6 +39,7 @@ async function getModelPromised(filteredModels: Table[] | Operation[] | Assertio
 
     const dryRunOutput = await queryDryRun(fullQuery);
     const costOfRunningModel = dryRunOutput?.statistics?.costInPounds || 0;
+    const totalGBProcessed = dryRunOutput?.statistics?.totalGBProcessed;
     const statementType = dryRunOutput?.statistics?.statementType;
     const totalBytesProcessedAccuracy = dryRunOutput?.statistics?.totalBytesProcessedAccuracy;
     const error = dryRunOutput?.error;
@@ -46,6 +48,7 @@ async function getModelPromised(filteredModels: Table[] | Operation[] | Assertio
         type: curModel.type || type || "",
         targetName: createFullTargetName(curModel.target),
         cost: costOfRunningModel,
+        totalGBProcessed: totalGBProcessed || "0.000",
         totalBytesProcessedAccuracy: totalBytesProcessedAccuracy,
         statementType: statementType,
         error: error.message
