@@ -386,7 +386,7 @@ window.addEventListener('message', event => {
             {title: "error", field: "error",  formatter: "plaintext",  cssClass: "error-column" },
         ],
         pagination: "local",
-        paginationSize: 50,
+        paginationSize: 20,
         paginationCounter: "rows",
         selectable: false,
         movableRows: false,

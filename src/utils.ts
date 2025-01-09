@@ -1070,7 +1070,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
             combinedTableIds += targetTableId;
         });
-        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
+        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalGBProcessed} - ${combinedTableIds}`);
     }
     return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult];
 }
