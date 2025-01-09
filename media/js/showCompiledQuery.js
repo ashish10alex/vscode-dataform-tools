@@ -385,6 +385,9 @@ window.addEventListener('message', event => {
             },
             {title: "error", field: "error",  formatter: "plaintext",  cssClass: "error-column" },
         ],
+        initialSort: [
+            {column: "error", dir: "desc"}
+        ],
         pagination: "local",
         paginationSize: 20,
         paginationCounter: "rows",
