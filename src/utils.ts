@@ -603,100 +603,94 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     };
     let finalTables: any[] = [];
 
-    if (tables === undefined) {
-        return { tables: finalTables, queryMeta: queryMeta };
-    }
+    if(tables?.length > 0){
+        const table = tables.find(table => table.fileName === relativeFilePath);
+        if (table) {
+            switch (table.type) {
+                case "table":
+                case "view":
+                    queryMeta.type = table.type;
+                    queryMeta.tableOrViewQuery = table.query.trimStart() + "\n ;";
+                    break;
+                case "incremental":
+                    queryMeta.type = table.type;
+                    queryMeta.nonIncrementalQuery = table.query + ";";
+                    queryMeta.incrementalQuery = table.incrementalQuery + ";";
+                    if (table.incrementalPreOps) {
+                        queryMeta.incrementalPreOpsQuery = table.incrementalPreOps.join("\n") + "\n";
+                    }
+                    break;
+                default:
+                    console.warn(`Unexpected table type: ${table.type}`);
+            }
 
-    const table = tables.find(table => table.fileName === relativeFilePath);
-    if (table) {
-        switch (table.type) {
-            case "table":
-            case "view":
-                queryMeta.type = table.type;
-                queryMeta.tableOrViewQuery = table.query.trimStart() + "\n ;";
-                break;
-            case "incremental":
-                queryMeta.type = table.type;
-                queryMeta.nonIncrementalQuery = table.query + ";";
-                queryMeta.incrementalQuery = table.incrementalQuery + ";";
-                if (table.incrementalPreOps) {
-                    queryMeta.incrementalPreOpsQuery = table.incrementalPreOps.join("\n") + "\n";
-                }
-                break;
-            default:
-                console.warn(`Unexpected table type: ${table.type}`);
+            // Process preOps and postOps
+            if (table.preOps) {
+                queryMeta.preOpsQuery = table.preOps.join("\n") + "\n";
+            }
+            if (table.postOps) {
+                queryMeta.postOpsQuery = table.postOps.join("\n") + "\n";
+            }
+
+            const tableFound = {
+                type: table.type,
+                tags: table.tags,
+                fileName: relativeFilePath,
+                target: table.target,
+                preOps: table.preOps,
+                postOps: table.postOps,
+                dependencyTargets: table.dependencyTargets,
+                incrementalQuery: table.incrementalQuery ?? "",
+                incrementalPreOps: table.incrementalPreOps ?? [],
+                actionDescriptor: table.actionDescriptor
+            };
+            finalTables.push(tableFound);
         }
+    }
 
-        // Process preOps and postOps
-        if (table.preOps) {
-            queryMeta.preOpsQuery = table.preOps.join("\n") + "\n";
+    if(assertions?.length > 0){
+        const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
+        const assertionCountForFile = assertionsForFile.length;
+        if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
+            queryMeta.type = "assertion";
         }
-        if (table.postOps) {
-            queryMeta.postOpsQuery = table.postOps.join("\n") + "\n";
-        }
-
-        const tableFound = {
-            type: table.type,
-            tags: table.tags,
-            fileName: relativeFilePath,
-            target: table.target,
-            preOps: table.preOps,
-            postOps: table.postOps,
-            dependencyTargets: table.dependencyTargets,
-            incrementalQuery: table.incrementalQuery ?? "",
-            incrementalPreOps: table.incrementalPreOps ?? [],
-            actionDescriptor: table.actionDescriptor
-        };
-        finalTables.push(tableFound);
-    }
-
-    if (assertions === undefined) {
-        return { tables: finalTables, queryMeta: queryMeta };
-    }
-
-    const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
-    const assertionCountForFile = assertionsForFile.length;
-    if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
-        queryMeta.type = "assertion";
-    }
-    const assertionQueries = assertionsForFile.map((assertion, index) => {
-        finalTables.push({
-            type: "assertion",
-            tags: assertion.tags,
-            fileName: relativeFilePath,
-            query: assertion.query,
-            target: assertion.target,
-            dependencyTargets: assertion.dependencyTargets,
-            incrementalQuery: "",
-            incrementalPreOps: []
+        const assertionQueries = assertionsForFile.map((assertion, index) => {
+            finalTables.push({
+                type: "assertion",
+                tags: assertion.tags,
+                fileName: relativeFilePath,
+                query: assertion.query,
+                target: assertion.target,
+                dependencyTargets: assertion.dependencyTargets,
+                incrementalQuery: "",
+                incrementalPreOps: []
+            });
+            return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
         });
-        return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
-    });
-    queryMeta.assertionQuery = assertionQueries.join('');
-
-    if (operations === undefined) {
-        return { tables: finalTables, queryMeta: queryMeta };
+        queryMeta.assertionQuery = assertionQueries.join('');
     }
 
-    const operation = operations.find(op => op.fileName === relativeFilePath);
-    if (operation) {
-        queryMeta.type = "operation";
-        const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
-            return acc + `\n -- Operations: [${index + 1}] \n${query}\n ;`;
-        }, "");
+    if (operations?.length > 0) {
+        const operation = operations.find(op => op.fileName === relativeFilePath);
+        if (operation) {
+            queryMeta.type = "operation";
+            const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+                return acc + `\n -- Operations: [${index + 1}] \n${query}\n ;`;
+            }, "");
 
-        queryMeta.operationsQuery += finalOperationQuery;
+            queryMeta.operationsQuery += finalOperationQuery;
 
-        finalTables.push({
-            type: "operation",
-            tags: operation.tags,
-            fileName: relativeFilePath,
-            query: finalOperationQuery,
-            target: operation.target,
-            dependencyTargets: operation.dependencyTargets,
-            incrementalQuery: "",
-            incrementalPreOps: []
-        });
+            finalTables.push({
+                type: "operation",
+                tags: operation.tags,
+                fileName: relativeFilePath,
+                query: finalOperationQuery,
+                target: operation.target,
+                dependencyTargets: operation.dependencyTargets,
+                incrementalQuery: "",
+                incrementalPreOps: []
+            });
+        }
     }
 
     return { tables: finalTables, queryMeta: queryMeta };
