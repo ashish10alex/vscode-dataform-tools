@@ -27,3 +27,7 @@
 .tabulator .tabulator-row:nth-child(even) {
     background-color: #24272a; /* Slightly different background for even rows */
 }
+
+.error-column {
+    color: #D32F2F;
+}

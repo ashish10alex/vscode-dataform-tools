@@ -368,7 +368,7 @@ window.addEventListener('message', event => {
                     symbol: "£"
                 }
             },
-            {title: "error", field: "error",  formatter: "plaintext" },
+            {title: "error", field: "error",  formatter: "plaintext",  cssClass: "error-column" },
         ],
         pagination: "local",
         paginationSize: 50,
