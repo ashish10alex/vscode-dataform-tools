@@ -551,13 +551,21 @@ export class CompiledQueryPanel {
         </div>
 
         <div id="costBlock" style="display: none; margin-top: 20px;">
-            <form>
-                <select id="tags" class="tree-tags-selection">
-                    <option disabled selected>Tags</option>
-                </select>
-            </form>
-            <button class="cost-model" id="costEstimator" title="Cost Esimator">Estimate</button>
-            <table id="costTable" class="display" width="100%"></table>
+            <h2>Cost Estimator</h2>
+                <p>Select tags and click <i>'Estimate'</i> to calculate costs.</p>
+                
+                <form class="tag-selection-form">
+                    <label for="tags">Choose Tags:</label>
+                    <select id="tags" class="tag-dropdown">
+                        <option value="" disabled selected>Select tags</option>
+                    </select>
+                </form>
+                
+                <button class="cost-model" id="costEstimator" title="Cost Esimator">Estimate</button>
+                
+                <div class="cost-table-container">
+                    <table id="costTable" class="cost-table"></table>
+                </div>
         </div>
 
         <div id="compilationBlock" style="display: block;">
