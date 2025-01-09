@@ -275,9 +275,8 @@ window.addEventListener('message', event => {
             columns: [
                 {title: "name", field: "name", headerFilter: "input",  formatter: "plaintext"},
                 {title: "type", field: "type", headerFilter: "input",  formatter: "plaintext"},
-                {title: "description", field: "description",  formatter: "plaintext"},
+                {title: "description", field: "description",  formatter: "plaintext", width: 900, variableHeight: true },
             ],
-            layout: "fitColumns",
             pagination:"local",
             paginationSize:50,
             paginationCounter:"rows",
