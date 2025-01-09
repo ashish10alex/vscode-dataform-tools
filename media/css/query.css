@@ -127,6 +127,7 @@ button:disabled:hover {
 
 .topnav a {
 	color: #b8b5b5;
+	box-shadow: 0 1px 1px gray;
 	text-decoration: none;
 	font-size: 16px;
 	padding: 4px 5px;
