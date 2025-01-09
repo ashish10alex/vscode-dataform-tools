@@ -101,16 +101,16 @@ navLinks.forEach(link => {
         this.classList.add('active');
         if (this.getAttribute('href') === '#compilation') {
             document.getElementById("compilationBlock").style.display = "";
-            document.getElementById("costBlock").style.display = "";
+            document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#schema')  {
             document.getElementById("schemaBlock").style.display = "";
-            document.getElementById("costBlock").style.display = "";
+            document.getElementById("costBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#cost')  {
+            document.getElementById("costBlock").style.display = "";
             document.getElementById("schemaBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
-            document.getElementById("costBlock").style.display = "";
         }
     });
 });
