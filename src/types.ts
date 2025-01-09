@@ -48,12 +48,18 @@ export interface TablesWtFullQuery {
 }
 
 export interface Assertion {
+    type: string;
     tags: string[];
     fileName: string;
     query: string;
     target: Target;
     canonicalTarget: Target;
     dependencyTargets: Target[];
+    preOps?: string[];
+    postOps?: string[];
+    incrementalQuery?: string;
+    incrementalPreOps?: string[];
+    bigquery?: TableBigQueryConfig;
 }
 
 export interface DependancyTreeMetadata {
@@ -94,6 +100,8 @@ interface ProjectConfig {
 }
 
 export interface Operation {
+    type: string;
+    query?: string //WARN: this does not adding this to avoid type error :)
     target: Target;
     canonicalTarget: Target;
     queries: string[];
@@ -101,6 +109,11 @@ export interface Operation {
     hasOutput: boolean;
     tags: string[];
     dependencyTargets: Target[];
+    preOps?: string[];
+    postOps?: string[];
+    incrementalQuery?: string;
+    incrementalPreOps?: string[];
+    bigquery?: TableBigQueryConfig;
 }
 
 export interface DataformCompiledJson {
@@ -186,6 +199,12 @@ export interface ErrorLocation {
         column: number;
 };
 
+interface DryRunErorr {
+    hasError: boolean;
+    message: string;
+    location?: ErrorLocation;
+}
+
 export interface BigQueryDryRunResponse {
     schema: CompiledQuerySchema | undefined;
     location: string | undefined;
@@ -195,11 +214,7 @@ export interface BigQueryDryRunResponse {
         statementType?: string;
         totalBytesProcessedAccuracy?: string;
     };
-    error: {
-        hasError: boolean;
-        message: string;
-        location?: ErrorLocation;
-    };
+    error: DryRunErorr
 }
 
 export interface CompiledQuerySchema {

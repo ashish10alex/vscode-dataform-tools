@@ -1,50 +1,83 @@
 import { queryDryRun } from "./bigqueryDryRun";
-import { DataformCompiledJson, Target } from "./types";
+import { Assertion, DataformCompiledJson, DryRunError, Operation, Table, Target } from "./types";
 
 const createFullTargetName = (target: Target) => {
     return `${target.database}.${target.schema}.${target.name}`;
 };
 
+async function getModelPromised(filteredModels: Table[] | Operation[] | Assertion[], type:string|undefined): Promise<Array<{
+  type: string;
+  targetName: string;
+  cost: number;
+  totalBytesProcessedAccuracy: string | undefined;
+  statementType: string | undefined;
+  error: string
+}>>{
+    const modelPromises = filteredModels.map(async (curModel) => {
+    let fullQuery = "";
+    const preOpsQuery = curModel.preOps ? curModel.preOps.join("\n") + ";" : "";
+    const incrementalPreOpsQuery = curModel.incrementalPreOps ? curModel.incrementalPreOps.join("\n") + ";" : "";
+    const incrementalQuery = curModel.incrementalQuery || "";
+
+    if (curModel.type === "view") {
+        fullQuery = preOpsQuery + 'CREATE OR REPLACE VIEW ' + createFullTargetName(curModel.target) + ' AS ' + curModel.query;
+    } else if (curModel.type === "table" && (curModel?.bigquery?.partitionBy || curModel?.bigquery?.clusterBy)) {
+        fullQuery = preOpsQuery + curModel.query;
+    } else if (curModel.type === "table") {
+        fullQuery = preOpsQuery + 'CREATE OR REPLACE TABLE ' + createFullTargetName(curModel.target) + ' AS ' + curModel.query;
+    } else if (curModel.type === "incremental" && (curModel?.bigquery?.partitionBy || curModel?.bigquery?.clusterBy)) {
+        fullQuery = incrementalPreOpsQuery + incrementalQuery;
+    } else if (curModel.type === "incremental") {
+        fullQuery = incrementalPreOpsQuery + 'CREATE OR REPLACE TABLE ' + createFullTargetName(curModel.target) + ' AS ' + incrementalQuery;
+    } else if (type === "assertion") {
+        fullQuery = curModel.query || "";
+    } else if (type === "operation") {
+        // @ts-ignore -- adding this to avoid type error hassle, we can revisit this later 
+        fullQuery = curModel.queries.join("\n") + ";";
+    }
+
+    const dryRunOutput = await queryDryRun(fullQuery);
+    const costOfRunningModel = dryRunOutput?.statistics?.costInPounds || 0;
+    const statementType = dryRunOutput?.statistics?.statementType;
+    const totalBytesProcessedAccuracy = dryRunOutput?.statistics?.totalBytesProcessedAccuracy;
+    const error = dryRunOutput?.error;
+
+    return {
+        type: curModel.type || type || "",
+        targetName: createFullTargetName(curModel.target),
+        cost: costOfRunningModel,
+        totalBytesProcessedAccuracy: totalBytesProcessedAccuracy,
+        statementType: statementType,
+        error: error.message
+    };
+    });
+    const results = await Promise.all(modelPromises);
+    return results;
+}
+
 export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string) {
     try{
         const filteredTables = jsonData.tables.filter(table => table.tags.includes(selectedTag));
+        const filteredOperations = jsonData.operations.filter(operation => operation.tags.includes(selectedTag));
+        const filteredAssertions = jsonData.assertions.filter(assertion => assertion.tags.includes(selectedTag));
 
-        const tablePromises = filteredTables.map(async (curTable) => {
-            let fullQuery = "";
-            const preOpsQuery = curTable.preOps ? curTable.preOps.join("\n") + ";" : "";
-            const incrementalPreOpsQuery = curTable.incrementalPreOps ? curTable.incrementalPreOps.join("\n") + ";" : "";
-            const incrementalQuery = curTable.incrementalQuery || "";
+        let allResults = [];
 
-            if (curTable.type === "view") {
-                fullQuery = preOpsQuery + 'CREATE OR REPLACE VIEW ' + createFullTargetName(curTable.target) + ' AS ' + curTable.query;
-            } else if (curTable.type === "table" && (curTable?.bigquery?.partitionBy || curTable?.bigquery?.clusterBy)) {
-                fullQuery = preOpsQuery + curTable.query;
-            } else if (curTable.type === "table") {
-                fullQuery = preOpsQuery + 'CREATE OR REPLACE TABLE ' + createFullTargetName(curTable.target) + ' AS ' + curTable.query;
-            } else if (curTable.type === "incremental" && (curTable?.bigquery?.partitionBy || curTable?.bigquery?.clusterBy)) {
-                fullQuery = incrementalPreOpsQuery + incrementalQuery;
-            } else if (curTable.type === "incremental") {
-                fullQuery = incrementalPreOpsQuery + 'CREATE OR REPLACE TABLE ' + createFullTargetName(curTable.target) + ' AS ' + incrementalQuery;
-            }
+        if(filteredTables?.length > 0){
+            const tableResults = await getModelPromised(filteredTables, undefined);
+            allResults.push(...tableResults);
+        }
 
-            const dryRunOutput = await queryDryRun(fullQuery);
-            const costOfRunningModel = dryRunOutput?.statistics?.costInPounds || 0;
-            const statementType = dryRunOutput?.statistics?.statementType;
-            const totalBytesProcessedAccuracy = dryRunOutput?.statistics?.totalBytesProcessedAccuracy;
+        if(filteredAssertions?.length > 0){
+            const assertionResults = await getModelPromised(filteredAssertions, "assertion");
+            allResults.push(...assertionResults);
+        }
 
-            return {
-                type: curTable.type,
-                targetName: createFullTargetName(curTable.target),
-                cost: costOfRunningModel,
-                totalBytesProcessedAccuracy: totalBytesProcessedAccuracy,
-                statementType: statementType,
-            };
-        });
-
-        const results = await Promise.all(tablePromises);
-        // console.log(results);
-        return results;
-
+        if(filteredOperations?.length > 0){
+            const operationResults = await getModelPromised(filteredOperations, "operation");
+            allResults.push(...operationResults);
+        }
+        return allResults;
     }catch(error:any){
         console.error(error);
     }
