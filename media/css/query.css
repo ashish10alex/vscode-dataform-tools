@@ -428,3 +428,18 @@ form {
 	cursor: pointer;
 	margin: 10px;
 }
+
+
+.cost-model {
+	background-color: #007acc;
+	color: #ffffff;
+	padding: 5px 10px;
+	font-size: 16px;
+	border-radius: 5px;
+	border: none;
+	cursor: pointer;
+}
+
+.cost-model:hover {
+	background-color: #3291d0;
+}

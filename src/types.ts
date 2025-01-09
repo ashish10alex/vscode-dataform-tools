@@ -191,6 +191,9 @@ export interface BigQueryDryRunResponse {
     location: string | undefined;
     statistics: {
         totalBytesProcessed: string; // e.g. "0 GB", "1.234 GB"
+        costInPounds?:number;
+        statementType?: string;
+        totalBytesProcessedAccuracy?: string;
     };
     error: {
         hasError: boolean;

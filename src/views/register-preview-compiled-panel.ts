@@ -6,6 +6,7 @@ import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata } from "../types";
 import { getFileNotFoundErrorMessageForWebView } from "../constants";
+import { costEstimator } from "../costEstimator";
 
 function showLoadingProgress(
     title: string,
@@ -211,6 +212,39 @@ export class CompiledQueryPanel {
                 const fullRefresh  = message.value.fullRefresh;
                 await runCurrentFile(includeDependencies, includeDependents, fullRefresh);
                 return;
+              case 'costEstimator':
+
+                const selectedTag = message.value.selectedTag;
+                if(CACHED_COMPILED_DATAFORM_JSON){
+                    const costEstimatorData = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
+                    const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
+                    const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
+                    const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
+                    const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
+                    const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+                    this.centerPanel?.webviewPanel.webview.postMessage({
+                        "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+                        "assertionQuery": fileMetadata.queryMeta.assertionQuery,
+                        "preOperations": fileMetadata.queryMeta.preOpsQuery,
+                        "postOperations": fileMetadata.queryMeta.postOpsQuery,
+                        "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
+                        "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
+                        "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+                        "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                        "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                        "costEstimatorData": costEstimatorData,
+                        "errorMessage": errorMessage,
+                        "dryRunStat":  dryRunStat,
+                        "compiledQuerySchema": compiledQuerySchema,
+                        "targetTableOrView": targetTableOrView,
+                        "models": curFileMeta.fileMetadata.tables,
+                        "dependents": curFileMeta.dependents,
+                        "dataformTags": dataformTags,
+                    });
+                }else{
+                    vscode.window.showErrorMessage("No cached data to estimate cost from");
+                }
+                return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
@@ -238,6 +272,7 @@ export class CompiledQueryPanel {
                     "targetTableOrView": targetTableOrView,
                     "models": curFileMeta.fileMetadata.tables,
                     "dependents": curFileMeta.dependents,
+                    "dataformTags": dataformTags,
                 });
                 return;
             }
@@ -340,6 +375,7 @@ export class CompiledQueryPanel {
             "compiledQuerySchema": compiledQuerySchema,
             "targetTableOrView": targetTableOrView,
             "dependents": curFileMeta.dependents,
+            "dataformTags": dataformTags,
         });
 
         if(diagnosticCollection){
@@ -395,6 +431,7 @@ export class CompiledQueryPanel {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
 
+        dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
                 "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -413,9 +450,9 @@ export class CompiledQueryPanel {
                 "targetTableOrView": targetTableOrView,
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
+                "dataformTags": dataformTags,
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
-            dataformTags = queryAutoCompMeta.dataformTags;
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
         }
@@ -467,6 +504,7 @@ export class CompiledQueryPanel {
             <div class="topnav">
                 <a class="active" href="#compilation">Compiled Query</a>
                 <a href="#schema">Schema</a>
+                <a href="#cost">Cost Estimator</a>
             </div>
         </div>
 
@@ -510,6 +548,16 @@ export class CompiledQueryPanel {
         <div id="schemaBlock" style="display: none; margin-top: 20px;">
             <div id="noSchemaBlock"> </div>
             <table id="schemaTable" class="display" width="100%"></table>
+        </div>
+
+        <div id="costBlock" style="display: none; margin-top: 20px;">
+            <form>
+                <select id="tags" class="tree-tags-selection">
+                    <option disabled selected>Tags</option>
+                </select>
+            </form>
+            <button class="cost-model" id="costEstimator" title="Cost Esimator">Estimate</button>
+            <table id="costTable" class="display" width="100%"></table>
         </div>
 
         <div id="compilationBlock" style="display: block;">

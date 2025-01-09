@@ -1,4 +1,5 @@
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { costInPoundsForOneGb } from './constants';
 import { BigQueryDryRunResponse } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
@@ -52,11 +53,17 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
             dryRun: true
         });
 
+        const parsedTotalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
+        const costInPounds = Number((parsedTotalBytesProcessed) / 10 ** 9) * costInPoundsForOneGb;
+
         return {
             schema: job.metadata.statistics.query.schema,
             location: job.metadata.jobReference.location,
             statistics: {
-                totalBytesProcessed: `${(parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3)} GB`,
+                totalBytesProcessed: (parsedTotalBytesProcessed/ 10 ** 9).toFixed(3) + " GB",
+                costInPounds: costInPounds,
+                statementType: job.metadata.statistics.query.statementType,
+                totalBytesProcessedAccuracy: job.metadata.statistics.query.totalBytesProcessedAccuracy
             },
             error: { hasError: false, message: "" }
         };

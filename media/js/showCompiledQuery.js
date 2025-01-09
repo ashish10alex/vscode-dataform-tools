@@ -7,10 +7,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const runModelButton = document.getElementById('runModel');
+const costEstimatorButton = document.getElementById('costEstimator');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
 const fullRefreshCheckBox = document.getElementById('fullRefresh');
 const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
+
+
+function populateDropdown(tags) {
+    const dropdown = document.getElementById('tags');
+    dropdown.innerHTML = '<option disabled selected>Tags</option>';
+    tags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        dropdown.appendChild(option);
+    });
+}
 
 function runModelClickHandler() {
     runModelButton.disabled = true;
@@ -29,8 +42,28 @@ function runModelClickHandler() {
     }, 10000);
 }
 
+function costEstimatorClickHandler() {
+    costEstimatorButton.disabled = true;
+    const dropdown = document.getElementById("tags");
+    const selectedTag = dropdown.value;
+    vscode.postMessage({
+        command: 'costEstimator',
+        value: {
+            selectedTag: selectedTag
+        }
+    });
+
+    setTimeout(() => {
+        costEstimatorButton.disabled = false;
+    }, 3000);
+}
+
 if (runModelButton) {
     runModelButton.addEventListener('click', runModelClickHandler);
+}
+
+if(costEstimatorButton){
+    costEstimatorButton.addEventListener('click', costEstimatorClickHandler);
 }
 
 const previewResultsButton = document.getElementById('previewResults');
@@ -68,10 +101,16 @@ navLinks.forEach(link => {
         this.classList.add('active');
         if (this.getAttribute('href') === '#compilation') {
             document.getElementById("compilationBlock").style.display = "";
+            document.getElementById("costBlock").style.display = "";
             document.getElementById("schemaBlock").style.display = "none";
-        } else {
+        } else if (this.getAttribute('href') === '#schema')  {
             document.getElementById("schemaBlock").style.display = "";
+            document.getElementById("costBlock").style.display = "";
             document.getElementById("compilationBlock").style.display = "none";
+        } else if (this.getAttribute('href') === '#cost')  {
+            document.getElementById("schemaBlock").style.display = "none";
+            document.getElementById("compilationBlock").style.display = "none";
+            document.getElementById("costBlock").style.display = "";
         }
     });
 });
@@ -107,6 +146,11 @@ window.addEventListener('message', event => {
         "dryRunStat": event?.data?.dryRunStat,
     };
     removeExistingCopyElements();
+
+    let dataformTags = event?.data?.dataformTags;
+    if(dataformTags){
+        populateDropdown(dataformTags);
+    }
 
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
@@ -207,7 +251,7 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(lineageLoadingIconDiv);
         });
 
-        if(lineageMetadata.error){
+        if(lineageMetadata?.error){
             const dataplexHeader = document.createElement("header");
             dataplexHeader.innerHTML = `<h4 style="color: #FFB3BA;">${lineageMetadata.error}</h4>`;
             depsDiv.appendChild(dataplexHeader);
@@ -300,6 +344,56 @@ window.addEventListener('message', event => {
             },
         });
     }
+
+    let costEstimatorData =  event?.data?.costEstimatorData;
+    if(costEstimatorData){
+        new Tabulator("#costTable", {
+        data: costEstimatorData,
+        columns: [
+            {title: "Target", field: "targetName", headerFilter: "input", formatter: "plaintext"},
+            {title: "Type", field: "type", headerFilter: "input", formatter: "plaintext"},
+            {title: "Statement type", field: "statementType", headerFilter: "input", formatter: "plaintext"},
+            {title: "Accuracy", field: "totalBytesProcessedAccuracy", headerFilter: "input", formatter: "plaintext"},
+            {
+                title: "Cost",
+                field: "cost",
+                formatter: "money",
+                formatterParams: {
+                    precision: 2,
+                    symbol: "£"
+                },
+                bottomCalc: "sum",
+                bottomCalcFormatter: "money",
+                bottomCalcFormatterParams: {
+                    precision: 2,
+                    symbol: "£"
+                }
+            },
+        ],
+        pagination: "local",
+        paginationSize: 50,
+        paginationCounter: "rows",
+        selectable: false,
+        movableRows: false,
+        rowHeader: {
+            formatter: "rownum",
+            headerSort: false,
+            hozAlign: "center",
+            resizable: false,
+            frozen: true,
+            width: 40
+        },
+        autoColumnsDefinitions: function(definitions) {
+            definitions.forEach(function(column) {
+            column.headerFilter = "input";
+            column.headerFilterLiveFilter = true;
+            });
+            return definitions;
+        },
+        footerElement: "<div id='total-cost'></div>",
+        });
+    }
+
 
     const compiledQuerySchemaNotAvailable = compiledQuerySchema && compiledQuerySchema.length === 1 && compiledQuerySchema[0].name === "" && compiledQuerySchema[0].type === "";
     if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
