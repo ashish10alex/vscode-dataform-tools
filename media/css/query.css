@@ -443,3 +443,7 @@ form {
 .cost-model:hover {
 	background-color: #3291d0;
 }
+
+#costEstimator {
+    margin-bottom: 20px;
+}
