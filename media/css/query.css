@@ -448,3 +448,7 @@ form {
 #costEstimator {
     margin-bottom: 20px;
 }
+
+.tag-dropdown {
+  font-size: 14px;
+}
