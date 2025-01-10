@@ -675,7 +675,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         if (operation) {
             queryMeta.type = "operation";
             const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
-                return acc + `\n -- Operations: [${index + 1}] \n${query}\n ;`;
+                return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
             }, "");
 
             queryMeta.operationsQuery += finalOperationQuery;
