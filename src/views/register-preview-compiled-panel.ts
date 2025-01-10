@@ -552,8 +552,21 @@ export class CompiledQueryPanel {
             <table id="schemaTable" class="display" width="100%"></table>
         </div>
 
+
         <div id="costBlock" style="display: none; margin-top: 20px;">
             <h2>Cost Estimator</h2>
+
+                <div id="costEstimatorloadingIcon" style="display: none;">
+                    <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
+                                <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                                values="0 126;126 126;126 0"/>
+                                <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                                values="0;-126;-252"/>
+                            </circle>
+                    </svg>
+                </div>
+
                 <p>Select tags and click <i>'Estimate'</i> to calculate costs.</p>
                 
                 <form class="tag-selection-form">

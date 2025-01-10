@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
 const costEstimatorButton = document.getElementById('costEstimator');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
@@ -43,6 +44,7 @@ function runModelClickHandler() {
 }
 
 function costEstimatorClickHandler() {
+    costEstimatorloadingIcon.style.display = "";
     costEstimatorButton.disabled = true;
     const dropdown = document.getElementById("tags");
     const selectedTag = dropdown.value;
@@ -346,6 +348,8 @@ window.addEventListener('message', event => {
 
     let costEstimatorData =  event?.data?.costEstimatorData;
     if(costEstimatorData){
+        console.log(costEstimatorData);
+        costEstimatorloadingIcon.style.display = "none";
         new Tabulator("#costTable", {
         data: costEstimatorData,
         columns: [
