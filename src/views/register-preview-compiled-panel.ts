@@ -240,6 +240,7 @@ export class CompiledQueryPanel {
                         "models": curFileMeta.fileMetadata.tables,
                         "dependents": curFileMeta.dependents,
                         "dataformTags": dataformTags,
+                        "selectedTag": selectedTag,
                     });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");

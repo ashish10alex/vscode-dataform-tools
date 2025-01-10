@@ -15,16 +15,20 @@ const fullRefreshCheckBox = document.getElementById('fullRefresh');
 const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
 
 
-function populateDropdown(tags) {
+function populateDropdown(tags, defaultTag = undefined) {
     const dropdown = document.getElementById('tags');
     dropdown.innerHTML = '<option disabled selected>Tags</option>';
     tags.forEach(tag => {
         const option = document.createElement('option');
         option.value = tag;
         option.textContent = tag;
+        if (defaultTag && tag === defaultTag) {
+            option.selected = true;
+        }
         dropdown.appendChild(option);
     });
 }
+
 
 function runModelClickHandler() {
     runModelButton.disabled = true;
@@ -151,7 +155,7 @@ window.addEventListener('message', event => {
 
     let dataformTags = event?.data?.dataformTags;
     if(dataformTags){
-        populateDropdown(dataformTags);
+        populateDropdown(dataformTags, event?.data?.selectedTag);
     }
 
     const dependents = event?.data?.dependents;
