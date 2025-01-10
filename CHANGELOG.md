@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.8...v0.7.9) (2025-01-10)
+
+
+### Bug Fixes
+
+* [#89](https://github.com/ashish10alex/vscode-dataform-tools/issues/89) semicolon added to end of operations ([#90](https://github.com/ashish10alex/vscode-dataform-tools/issues/90)) ([6a7e149](https://github.com/ashish10alex/vscode-dataform-tools/commit/6a7e1496cf78ddf3a8fd372c6103114bef45e399))
+
 ### [0.7.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.7...v0.7.8) (2025-01-09)
 
 
