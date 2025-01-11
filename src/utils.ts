@@ -670,7 +670,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         queryMeta.assertionQuery = assertionQueries.join('');
     }
 
-    if (operations?.length > 0) {
+    if (operations?.length > 0 && finalTables.length === 0) {
         const operation = operations.find(op => op.fileName === relativeFilePath);
         if (operation) {
             queryMeta.type = "operations";
