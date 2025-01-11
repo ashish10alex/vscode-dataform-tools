@@ -1014,7 +1014,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
         queryToDryRun = preOpsQuery + currFileMetadata.queryMeta.tableOrViewQuery;
     } else if (currFileMetadata.queryMeta.type === "assertion") {
         queryToDryRun = currFileMetadata.queryMeta.assertionQuery;
-    } else if (currFileMetadata.queryMeta.type === "operation") {
+    } else if (currFileMetadata.queryMeta.type === "operations") {
         queryToDryRun = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.operationsQuery;
     } else if (currFileMetadata.queryMeta.type === "incremental") {
         //TODO: defaulting to using incremental query to dry run for now
