@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.10...v0.7.11) (2025-01-11)
+
+
+### Bug Fixes
+
+* dry run stats not showing for `operations` ([9afbb70](https://github.com/ashish10alex/vscode-dataform-tools/commit/9afbb70b8a5e5bba378970925a423fe844388171))
+
+
+### Performance
+
+* **compilation:** no need to loop through operation if it is of type table, view, operations ([8bf4132](https://github.com/ashish10alex/vscode-dataform-tools/commit/8bf4132633ceb5c11be3ae44fe0ef9e34cadee1a))
+
 ### [0.7.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.9...v0.7.10) (2025-01-11)
 
 
