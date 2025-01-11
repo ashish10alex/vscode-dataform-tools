@@ -60,6 +60,7 @@ async function getModelPromised(filteredModels: Table[] | Operation[] | Assertio
 
 export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string) {
     try{
+        //TODO: perform dry run using `select 1;` to ensure that user has sufficient permissions to perform the action
         const filteredTables = jsonData.tables.filter(table => table.tags.includes(selectedTag));
         const filteredOperations = jsonData.operations.filter(operation => operation.tags.includes(selectedTag));
         const filteredAssertions = jsonData.assertions.filter(assertion => assertion.tags.includes(selectedTag));
@@ -82,6 +83,7 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
         }
         return allResults;
     }catch(error:any){
+        //TODO: return error
         console.error(error);
     }
 }
