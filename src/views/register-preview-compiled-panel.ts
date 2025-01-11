@@ -568,10 +568,10 @@ export class CompiledQueryPanel {
                     </svg>
                 </div>
 
-                <p>Select tags and click <i>'Estimate'</i> to calculate costs.</p>
+                <p>Select a tag and click <i>'Estimate'</i> to estimate cost.</p>
                 
                 <form class="tag-selection-form">
-                    <label for="tags">Choose Tags:</label>
+                    <label for="tags">Select Tag:</label>
                     <select id="tags" class="tag-dropdown">
                         <option value="" disabled selected>Select tags</option>
                     </select>
