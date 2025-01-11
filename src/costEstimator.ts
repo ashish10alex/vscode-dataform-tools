@@ -69,9 +69,9 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
             throw new Error(testDryRunOutput.error.message);
         }
 
-        const filteredTables = jsonData.tables.filter(table => table.tags.includes(selectedTag));
-        const filteredOperations = jsonData.operations.filter(operation => operation.tags.includes(selectedTag));
-        const filteredAssertions = jsonData.assertions.filter(assertion => assertion.tags.includes(selectedTag));
+        const filteredTables = jsonData.tables.filter(table => table?.tags?.includes(selectedTag));
+        const filteredOperations = jsonData.operations.filter(operation => operation?.tags?.includes(selectedTag));
+        const filteredAssertions = jsonData.assertions.filter(assertion => assertion?.tags?.includes(selectedTag));
 
         let allResults = [];
 
