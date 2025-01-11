@@ -581,7 +581,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
             });
         });
     }
-    return dataformTags;
+    return dataformTags.sort();
 }
 
 
