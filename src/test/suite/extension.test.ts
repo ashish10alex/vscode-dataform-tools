@@ -419,7 +419,7 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
-    test("able to get model of type: operation", async function() {
+    test("able to get model of type: operations", async function() {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";

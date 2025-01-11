@@ -673,7 +673,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     if (operations?.length > 0) {
         const operation = operations.find(op => op.fileName === relativeFilePath);
         if (operation) {
-            queryMeta.type = "operation";
+            queryMeta.type = "operations";
             const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
                 return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
             }, "");
@@ -681,7 +681,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             queryMeta.operationsQuery += finalOperationQuery;
 
             finalTables.push({
-                type: "operation",
+                type: "operations",
                 tags: operation.tags,
                 fileName: relativeFilePath,
                 query: finalOperationQuery,
