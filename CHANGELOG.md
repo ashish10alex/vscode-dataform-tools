@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.9...v0.7.10) (2025-01-11)
+
+
+### Bug Fixes
+
+* unable to preview results of type `operations` ([6e717d4](https://github.com/ashish10alex/vscode-dataform-tools/commit/6e717d4ed8cae52df7e0a34a084919c482b291c9))
+
 ### [0.7.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.8...v0.7.9) (2025-01-10)
 
 
