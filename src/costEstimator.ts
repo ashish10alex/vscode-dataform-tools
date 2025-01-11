@@ -26,7 +26,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     } else if (type === "assertion") {
         fullQuery = curModel.query || "";
     } else if (type === "operation") {
-        // @ts-ignore -- adding this to avoid type error hassle, we can revisit this later 
+        // @ts-ignore -- adding this to avoid type error hassle, we can revisit this later
         fullQuery = curModel.queries.join("\n") + ";";
     }
 
@@ -53,8 +53,6 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
 
 export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string): Promise<TagDryRunStatsMeta|undefined>  {
     try{
-        //TODO: perform dry run using `select 1;` to ensure that user has sufficient permissions to perform the action
-        //TODO: we need to propogate this error to the web view
         const testQueryToCheckUserAccess = "SELECT 1;";
         const testDryRunOutput = await queryDryRun(testQueryToCheckUserAccess);
         if(testDryRunOutput.error.hasError){
@@ -89,7 +87,7 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
             error: undefined,
         };
     }catch(error:any){
-        //TODO: return error and show in the web view
+        //TODO: return error and show in the web view ?
         vscode.window.showErrorMessage(error.message);
     }
 }
