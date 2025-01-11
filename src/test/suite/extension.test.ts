@@ -431,10 +431,10 @@ suite('getQueryMetaForCurrentFile', () => {
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "operation");
+                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "operations");
                     assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "operation");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "operations");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
