@@ -526,7 +526,7 @@ export class CompiledQueryPanel {
            <a id="targetTableOrViewLink"></a>
         </div>
 
-        <div class="dependency-container" style="padding-bottom: 10px;">
+        <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">
             <div class="dependency-header">
                 <div class="arrow-toggle">
                     <svg viewBox="0 0 24 24" width="24" height="24">
@@ -557,6 +557,16 @@ export class CompiledQueryPanel {
         <div id="costBlock" style="display: none; margin-top: 20px;">
             <h2>Cost Estimator</h2>
 
+            <p>For each model in the tag, we construct a full query as follows and perform dry run:</p>
+            <ul>
+                <li><strong>Table/View</strong>: Pre operation + Create or replaces a table/view statement + main query</li>
+                <li><strong>Partitioned or clustered tables</strong>: Pre operations + main query </li>
+                <li><strong>Incremental</strong>: Incremental pre operation query + Create or replaces a table/view statement + main query</li>
+                <li><strong>Partitioned or clustered Incremental table</strong>: Incremental pre operation query + main query</li>
+                <li><strong>Assertion & Operation </strong>: Main query </li>
+            </ul>
+
+
                 <div id="costEstimatorloadingIcon" style="display: none;">
                     <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
                             <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
@@ -568,17 +578,17 @@ export class CompiledQueryPanel {
                     </svg>
                 </div>
 
-                <p>Select a tag and click <i>'Estimate'</i> to estimate cost.</p>
-                
+                <p style="color: #007acc;">Select a tag and click <i>'Estimate'</i> to estimate cost</p>
+
                 <form class="tag-selection-form">
-                    <label for="tags">Select Tag:</label>
+                    <label for="tags" style="color: #007acc;"><strong>Select Tag:</strong></label>
                     <select id="tags" class="tag-dropdown">
-                        <option value="" disabled selected>Select tags</option>
+                        <option value="" disabled selected>Tags</option>
                     </select>
                 </form>
-                
+
                 <button class="cost-model" id="costEstimator" title="Cost Esimator">Estimate</button>
-                
+
                 <div class="cost-table-container">
                     <table id="costTable" class="cost-table"></table>
                 </div>

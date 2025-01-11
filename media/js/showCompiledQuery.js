@@ -13,6 +13,10 @@ const includeDependenciesCheckbox = document.getElementById('includeDependencies
 const includeDependentsCheckBox = document.getElementById('includeDependents');
 const fullRefreshCheckBox = document.getElementById('fullRefresh');
 const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
+const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+const dryRunStatDiv = document.getElementById("dryRunStatDiv");
+const errorMessageDiv = document.getElementById("errorMessageDiv");
+const dataLineageDiv = document.getElementById("dataLineageDiv");
 
 
 function populateDropdown(tags, defaultTag = undefined) {
@@ -106,10 +110,16 @@ navLinks.forEach(link => {
         // Add active class to clicked link
         this.classList.add('active');
         if (this.getAttribute('href') === '#compilation') {
+            targetTableOrViewLink.style.display = "";
+            dryRunStatDiv.style.display = "";
+            dataLineageDiv.style.display = "";
             document.getElementById("compilationBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#schema')  {
+            targetTableOrViewLink.style.display = "";
+            dryRunStatDiv.style.display = "";
+            dataLineageDiv.style.display = "";
             document.getElementById("schemaBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
@@ -117,6 +127,9 @@ navLinks.forEach(link => {
             document.getElementById("costBlock").style.display = "";
             document.getElementById("schemaBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
+            targetTableOrViewLink.style.display = "none";
+            dryRunStatDiv.style.display = "none";
+            dataLineageDiv.style.display = "none";
         }
     });
 });
@@ -165,7 +178,7 @@ window.addEventListener('message', event => {
 
         let targetTableOrView = event?.data?.targetTableOrView;
         if (targetTableOrView){
-            const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+            targetTableOrViewLink.style.display = "";
             targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
             targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
         }
@@ -350,10 +363,69 @@ window.addEventListener('message', event => {
         });
     }
 
+
+    const compiledQuerySchemaNotAvailable = compiledQuerySchema && compiledQuerySchema.length === 1 && compiledQuerySchema[0].name === "" && compiledQuerySchema[0].type === "";
+    if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
+        noSchemaBlockDiv.innerHTML = "";
+        const noSchemaHeader = document.createElement("header");
+        noSchemaHeader.innerHTML = "<h4>Schema could not be infered for the transaction defined in the current model</h4>";
+        noSchemaHeader.style.color = "#FFA500"; // orange
+        noSchemaBlockDiv.appendChild(noSchemaHeader);
+    }
+
+    compiledQueryloadingIcon.style.display = "none";
+
+    Object.entries(data).forEach(([key, value]) => {
+        const element = document.getElementById(key);
+        const divElement = document.getElementById(key + "Div");
+
+        if (value === undefined || value === null || value === "") {
+            if (divElement?.style){
+                divElement.style.display = "none";
+            }
+        } else {
+            if(key === "errorMessage"){
+                dryRunloadingIcon.style.display = "none";
+                if (value === " "){
+                    divElement.style.display = "none";
+                } else {
+                    divElement.style.display = "";
+                    element.innerHTML = value;
+                }
+            }
+            else if (key === "dryRunStat"){
+                dryRunloadingIcon.style.display = "none";
+                if (value === "0 GB"){
+                    divElement.style.display = "none";
+                } else {
+                    divElement.style.display = "";
+                    element.textContent = `This query will process ${value} when run.`;
+                }
+            } else {
+                if (divElement?.style){
+                    divElement.style.display = "";
+                }
+                element.textContent = value;
+
+                // Reset highlighting
+                element.removeAttribute('data-highlighted');
+                element.className = element.className.replace(/\bhljs\b/, '');
+
+                // Re-apply highlighting
+                hljs.highlightElement(element);
+                hljs.lineNumbersBlock(element);
+            }
+        }
+    });
+
     let costEstimatorData =  event?.data?.costEstimatorData;
     if(costEstimatorData){
         console.log(costEstimatorData);
         costEstimatorloadingIcon.style.display = "none";
+        targetTableOrViewLink.style.display = "none";
+        dryRunStatDiv.style.display = "none";
+        dataLineageDiv.style.display = "none";
+
         new Tabulator("#costTable", {
         data: costEstimatorData,
         columns: [
@@ -420,58 +492,4 @@ window.addEventListener('message', event => {
         });
     }
 
-
-    const compiledQuerySchemaNotAvailable = compiledQuerySchema && compiledQuerySchema.length === 1 && compiledQuerySchema[0].name === "" && compiledQuerySchema[0].type === "";
-    if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
-        noSchemaBlockDiv.innerHTML = "";
-        const noSchemaHeader = document.createElement("header");
-        noSchemaHeader.innerHTML = "<h4>Schema could not be infered for the transaction defined in the current model</h4>";
-        noSchemaHeader.style.color = "#FFA500"; // orange
-        noSchemaBlockDiv.appendChild(noSchemaHeader);
-    }
-
-    compiledQueryloadingIcon.style.display = "none";
-
-    Object.entries(data).forEach(([key, value]) => {
-        const element = document.getElementById(key);
-        const divElement = document.getElementById(key + "Div");
-
-        if (value === undefined || value === null || value === "") {
-            if (divElement?.style){
-                divElement.style.display = "none";
-            }
-        } else {
-            if(key === "errorMessage"){
-                dryRunloadingIcon.style.display = "none";
-                if (value === " "){
-                    divElement.style.display = "none";
-                } else {
-                    divElement.style.display = "";
-                    element.innerHTML = value;
-                }
-            }
-            else if (key === "dryRunStat"){
-                dryRunloadingIcon.style.display = "none";
-                if (value === "0 GB"){
-                    divElement.style.display = "none";
-                } else {
-                    divElement.style.display = "";
-                    element.textContent = `This query will process ${value} when run.`;
-                }
-            } else {
-                if (divElement?.style){
-                    divElement.style.display = "";
-                }
-                element.textContent = value;
-
-                // Reset highlighting
-                element.removeAttribute('data-highlighted');
-                element.className = element.className.replace(/\bhljs\b/, '');
-
-                // Re-apply highlighting
-                hljs.highlightElement(element);
-                hljs.lineNumbersBlock(element);
-            }
-        }
-    });
 });
