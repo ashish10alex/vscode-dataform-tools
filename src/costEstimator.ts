@@ -1,20 +1,12 @@
 import { queryDryRun } from "./bigqueryDryRun";
 import * as vscode from 'vscode';
-import { Assertion, DataformCompiledJson, DryRunError, Operation, Table, Target } from "./types";
+import { Assertion, DataformCompiledJson, TagDryRunStats, TagDryRunStatsMeta, Operation, Table, Target } from "./types";
 
 const createFullTargetName = (target: Target) => {
     return `${target.database}.${target.schema}.${target.name}`;
 };
 
-async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Assertion[], type:string|undefined): Promise<Array<{
-  type: string;
-  targetName: string;
-  cost: number;
-  totalGBProcessed: string;
-  totalBytesProcessedAccuracy: string | undefined;
-  statementType: string | undefined;
-  error: string
-}>>{
+async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Assertion[], type:string|undefined): Promise<Array<TagDryRunStats>>{
     const modelPromises = filteredModels.map(async (curModel) => {
     let fullQuery = "";
     const preOpsQuery = curModel.preOps ? curModel.preOps.join("\n") + ";" : "";
@@ -59,14 +51,17 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     return results;
 }
 
-export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string) {
+export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string): Promise<TagDryRunStatsMeta|undefined>  {
     try{
         //TODO: perform dry run using `select 1;` to ensure that user has sufficient permissions to perform the action
         //TODO: we need to propogate this error to the web view
         const testQueryToCheckUserAccess = "SELECT 1;";
         const testDryRunOutput = await queryDryRun(testQueryToCheckUserAccess);
         if(testDryRunOutput.error.hasError){
-            throw new Error(testDryRunOutput.error.message);
+            return {
+                tagDryRunStatsList: undefined,
+                error: testDryRunOutput.error.message,
+            };
         }
 
         const filteredTables = jsonData.tables.filter(table => table?.tags?.includes(selectedTag));
@@ -89,7 +84,10 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
             const operationResults = await getModelDryRunStats(filteredOperations, "operation");
             allResults.push(...operationResults);
         }
-        return allResults;
+        return {
+            tagDryRunStatsList: allResults,
+            error: undefined,
+        };
     }catch(error:any){
         //TODO: return error and show in the web view
         vscode.window.showErrorMessage(error.message);

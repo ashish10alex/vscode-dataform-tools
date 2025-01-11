@@ -216,7 +216,7 @@ export class CompiledQueryPanel {
 
                 const selectedTag = message.value.selectedTag;
                 if(CACHED_COMPILED_DATAFORM_JSON){
-                    const costEstimatorData = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
+                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
                     const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                     const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
                     const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
@@ -232,7 +232,7 @@ export class CompiledQueryPanel {
                         "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                         "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
-                        "costEstimatorData": costEstimatorData,
+                        "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "errorMessage": errorMessage,
                         "dryRunStat":  dryRunStat,
                         "compiledQuerySchema": compiledQuerySchema,

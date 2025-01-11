@@ -248,3 +248,18 @@ export type CurrentFileMetadata = {
   };
   document?: TextDocument;
 };
+
+export type TagDryRunStats = {
+  type: string;
+  targetName: string;
+  cost: number;
+  totalGBProcessed: string;
+  totalBytesProcessedAccuracy: string | undefined;
+  statementType: string | undefined;
+  error: string
+};
+
+export type TagDryRunStatsMeta = {
+    tagDryRunStatsList?: TagDryRunStats[];
+    error?: string;
+};

@@ -418,16 +418,15 @@ window.addEventListener('message', event => {
         }
     });
 
-    let costEstimatorData =  event?.data?.costEstimatorData;
-    if(costEstimatorData){
-        console.log(costEstimatorData);
+    let tagDryRunStatsMeta =  event?.data?.tagDryRunStatsMeta;
+    if(tagDryRunStatsMeta?.tagDryRunStatsList && !tagDryRunStatsMeta?.error?.message){
         costEstimatorloadingIcon.style.display = "none";
         targetTableOrViewLink.style.display = "none";
         dryRunStatDiv.style.display = "none";
         dataLineageDiv.style.display = "none";
 
         new Tabulator("#costTable", {
-        data: costEstimatorData,
+        data: tagDryRunStatsMeta.tagDryRunStatsList,
         columns: [
             {title: "Target", field: "targetName", headerFilter: "input", formatter: "plaintext"},
             {title: "Type", field: "type", headerFilter: "input", formatter: "plaintext"},
