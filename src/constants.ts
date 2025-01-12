@@ -13,10 +13,6 @@ export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not f
 export const costInPoundsForOneGb = 0.005;
 export const bigQuerytimeoutMs = 20000;
 
-export const supportedCurrencies: SupportedCurrency[] = [
-  "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "INR"
-];
-
 export const bigQueryCostOfOneGB: Record<SupportedCurrency, number> = {
   "USD": 0.005,
   "EUR": 0.0046,
