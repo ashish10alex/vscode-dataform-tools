@@ -84,7 +84,7 @@
 	},
 
 	"partitionBy": {
-		"prefix": "partitionBy [Dataform]",
+		"prefix": "partitionBy bigquery [Dataform]",
 		"body": [
 			"partitionBy: '${1:partition_column}',"
 		],
@@ -92,7 +92,7 @@
 	},
 
 	"requirePartitionFilter": {
-		"prefix": "requirePartitionFilter [Dataform]",
+		"prefix": "requirePartitionFilter bigquery [Dataform]",
 		"body": [
 			"requirePartitionFilter: ${1|true,false|},"
 		],
@@ -100,7 +100,7 @@
 	},
 
 	"clusterBy": {
-		"prefix": "clusterBy [Dataform]",
+		"prefix": "clusterBy bigquery [Dataform]",
 		"body": [
 			"clusterBy: ['${1:column1}'],"
 		],
