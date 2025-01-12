@@ -13,7 +13,7 @@ import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExte
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
-import { AssertionRunnerCodeLensProvider } from './codeLensProvider';
+import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { formatCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
@@ -97,11 +97,20 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
 
-    const codeLensProvider = new AssertionRunnerCodeLensProvider();
+    const assertionCodeLensProvider = new AssertionRunnerCodeLensProvider();
     context.subscriptions.push(
         vscode.languages.registerCodeLensProvider(
             { language: 'sqlx' },
-            codeLensProvider
+            assertionCodeLensProvider
+        )
+    );
+
+
+    const tagsCodeLensProvider = new TagsRunnerCodeLensProvider();
+    context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider(
+            { language: 'sqlx' },
+            tagsCodeLensProvider
         )
     );
 
