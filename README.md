@@ -132,9 +132,9 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## Known Issues
 
-- [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}` or when it is multiline or a different format works best with `${ref('table_name')}` format
+* [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}` or when it is multiline or a different format works best with `${ref('table_name')}` format
 
 ## TODO
 
-- [ ] Add option to include dependents / dependencies when running cost estimator for tag
-- [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
+* [ ] Add option to include dependents / dependencies when running cost estimator for tag
+* [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
