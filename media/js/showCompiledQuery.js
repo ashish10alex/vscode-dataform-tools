@@ -419,6 +419,7 @@ window.addEventListener('message', event => {
     });
 
     let tagDryRunStatsMeta =  event?.data?.tagDryRunStatsMeta;
+    let currencySymbol = event?.data?.currencySymbol;
     if(tagDryRunStatsMeta?.tagDryRunStatsList && !tagDryRunStatsMeta?.error?.message){
         costEstimatorloadingIcon.style.display = "none";
         targetTableOrViewLink.style.display = "none";
@@ -449,17 +450,17 @@ window.addEventListener('message', event => {
             },
             {
                 title: "Cost",
-                field: "cost",
+                field: "costOfRunningModel",
                 formatter: "money",
                 formatterParams: {
                     precision: 2,
-                    symbol: "£"
+                    symbol: currencySymbol
                 },
                 bottomCalc: "sum",
                 bottomCalcFormatter: "money",
                 bottomCalcFormatterParams: {
                     precision: 2,
-                    symbol: "£"
+                    symbol: currencySymbol
                 }
             },
             {title: "error", field: "error",  formatter: "plaintext",  cssClass: "error-column" },

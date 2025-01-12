@@ -4,8 +4,8 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoComplet
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata } from "../types";
-import { getFileNotFoundErrorMessageForWebView } from "../constants";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, supportedCurrencies } from "../types";
+import { currencySymbols, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 
 function showLoadingProgress(
@@ -217,6 +217,12 @@ export class CompiledQueryPanel {
                 const selectedTag = message.value.selectedTag;
                 if(CACHED_COMPILED_DATAFORM_JSON){
                     const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
+                    let currency = "USD" as SupportedCurrency;
+                    let currencySymbol = "$";
+                    if(tagDryRunStatsMeta?.tagDryRunStatsList){
+                        currency = tagDryRunStatsMeta?.tagDryRunStatsList[0].currency;
+                        currencySymbol = currencySymbols[currency];
+                    }
                     const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                     const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
                     const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
@@ -233,6 +239,7 @@ export class CompiledQueryPanel {
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                         "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
                         "tagDryRunStatsMeta": tagDryRunStatsMeta,
+                        "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
                         "dryRunStat":  dryRunStat,
                         "compiledQuerySchema": compiledQuerySchema,
@@ -391,6 +398,16 @@ export class CompiledQueryPanel {
 
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
         let dryRunStat = dryRunResult?.statistics?.totalGBProcessed;
+
+        let currency = "USD" as SupportedCurrency;
+        let currencySymbol = "$";
+
+        if(dryRunResult?.statistics?.cost?.currency){
+            currency = dryRunResult?.statistics?.cost?.currency as SupportedCurrency;
+            currencySymbol = currencySymbols[currency];
+        }
+        let dryRunCost = (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00") + currencySymbol;
+
         let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message: "");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
@@ -408,7 +425,7 @@ export class CompiledQueryPanel {
         if(!dryRunStat){
             dryRunStat = "0 GB";
         }else{
-            dryRunStat += " GB";
+            dryRunStat += " GB " + `(${dryRunCost})`;
         }
 
         if (compiledQuerySchema?.fields) {

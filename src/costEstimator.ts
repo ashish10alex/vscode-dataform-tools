@@ -1,6 +1,6 @@
 import { queryDryRun } from "./bigqueryDryRun";
 import * as vscode from 'vscode';
-import { Assertion, DataformCompiledJson, TagDryRunStats, TagDryRunStatsMeta, Operation, Table, Target } from "./types";
+import { Assertion, DataformCompiledJson, TagDryRunStats, TagDryRunStatsMeta, Operation, Table, Target, SupportedCurrency } from "./types";
 
 const createFullTargetName = (target: Target) => {
     return `${target.database}.${target.schema}.${target.name}`;
@@ -46,7 +46,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     }
 
     const dryRunOutput = await queryDryRun(fullQuery);
-    const costOfRunningModel = dryRunOutput?.statistics?.costInPounds || 0;
+    const costOfRunningModel = dryRunOutput?.statistics?.cost?.value || 0;
     const totalGBProcessed = dryRunOutput?.statistics?.totalGBProcessed;
     const statementType = dryRunOutput?.statistics?.statementType;
     const totalBytesProcessedAccuracy = dryRunOutput?.statistics?.totalBytesProcessedAccuracy;
@@ -55,7 +55,8 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     return {
         type: curModel.type || type || "",
         targetName: createFullTargetName(curModel.target),
-        cost: costOfRunningModel,
+        costOfRunningModel: costOfRunningModel,
+        currency: (dryRunOutput?.statistics?.cost?.currency || "USD") as SupportedCurrency,
         totalGBProcessed: totalGBProcessed || "0.000",
         totalBytesProcessedAccuracy: totalBytesProcessedAccuracy,
         statementType: statementType,

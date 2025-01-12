@@ -210,7 +210,10 @@ export interface BigQueryDryRunResponse {
     location: string | undefined;
     statistics: {
         totalGBProcessed: string; // e.g. "1.234"
-        costInPounds?:number;
+        cost?:{
+            currency: string
+            value: number
+        };
         statementType?: string;
         totalBytesProcessedAccuracy?: string;
     };
@@ -252,7 +255,8 @@ export type CurrentFileMetadata = {
 export type TagDryRunStats = {
   type: string;
   targetName: string;
-  cost: number;
+  costOfRunningModel: number;
+  currency: SupportedCurrency;
   totalGBProcessed: string;
   totalBytesProcessedAccuracy: string | undefined;
   statementType: string | undefined;
@@ -263,3 +267,15 @@ export type TagDryRunStatsMeta = {
     tagDryRunStatsList?: TagDryRunStats[];
     error?: string;
 };
+
+export const supportedCurrencies = {
+  USD: "USD",
+  EUR: "EUR",
+  GBP: "GBP",
+  JPY: "JPY",
+  CAD: "CAD",
+  AUD: "AUD",
+  INR: "INR",
+} as const;
+
+export type SupportedCurrency = keyof typeof supportedCurrencies;

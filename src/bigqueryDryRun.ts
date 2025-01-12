@@ -1,6 +1,7 @@
+import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
-import { costInPoundsForOneGb } from './constants';
-import { BigQueryDryRunResponse } from './types';
+import { bigQueryCostOfOneGB } from './constants';
+import { BigQueryDryRunResponse, SupportedCurrency } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -47,6 +48,10 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         dryRun: true,
     };
 
+    let currencyFoDryRunCost: SupportedCurrency | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('currencyFoDryRunCost');
+    if(!currencyFoDryRunCost){
+        currencyFoDryRunCost = "USD" as SupportedCurrency;
+    }
     try {
         const [job] = await bigqueryClient.createQueryJob({
             query,
@@ -54,14 +59,17 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         });
 
         const parsedTotalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
-        const costInPounds = Number((parsedTotalBytesProcessed) / 10 ** 9) * costInPoundsForOneGb;
+        const cost = Number((parsedTotalBytesProcessed) / 10 ** 9) * bigQueryCostOfOneGB[currencyFoDryRunCost];
 
         return {
             schema: job.metadata.statistics.query.schema,
             location: job.metadata.jobReference.location,
             statistics: {
                 totalGBProcessed: (parsedTotalBytesProcessed/ 10 ** 9).toFixed(3),
-                costInPounds: costInPounds,
+                cost: {
+                    currency: currencyFoDryRunCost,
+                    value: cost
+                },
                 statementType: job.metadata.statistics.query.statementType,
                 totalBytesProcessedAccuracy: job.metadata.statistics.query.totalBytesProcessedAccuracy
             },
@@ -76,7 +84,13 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
             return {
                 schema: undefined,
                 location: undefined,
-                statistics: { totalGBProcessed: "" },
+                statistics: {
+                    totalGBProcessed: "",
+                    cost: {
+                        currency: currencyFoDryRunCost,
+                        value: 0
+                    }
+                },
                 error: { hasError: true, message: finalError.message, location: errorLocation }
             };
         }

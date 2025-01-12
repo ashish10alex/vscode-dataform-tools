@@ -1,5 +1,6 @@
 import os from 'os';
 import path from 'path';
+import { SupportedCurrency } from './types';
 
 const tempDir = os.tmpdir();
 export const sqlFileToFormatPath = path.join(tempDir, "format.sql");
@@ -11,6 +12,30 @@ export const windowsDataformCliNotAvailableErrorMessage = "'dataform.cmd' is not
 export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not found";
 export const costInPoundsForOneGb = 0.005;
 export const bigQuerytimeoutMs = 20000;
+
+export const supportedCurrencies: SupportedCurrency[] = [
+  "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "INR"
+];
+
+export const bigQueryCostOfOneGB: Record<SupportedCurrency, number> = {
+  "USD": 0.005,
+  "EUR": 0.0046,
+  "GBP": 0.0039,
+  "JPY": 0.56,
+  "CAD": 0.0067,
+  "AUD": 0.0075,
+  "INR": 0.41,
+};
+
+export const currencySymbols = {
+  "USD": "$",
+  "EUR": "€",
+  "GBP": "£",
+  "JPY": "¥",
+  "CAD": "C$",
+  "AUD": "A$",
+  "INR": "₹",
+};
 
 export function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
     let errorMessage = `file <b>"${relativeFilePath}"</b> not found in Dataform compiled json <br>`;
