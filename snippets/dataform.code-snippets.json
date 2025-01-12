@@ -1,25 +1,25 @@
 {
 	"Config block table": {
 		"scope": "sqlx",
-        "prefix": "config block table [Dataform]",
+		"prefix": "config block table [Dataform]",
 		"body": [
 			"config {",
-				"  type: 'table',",
-				"  schema: '${1}',",
-				"  description: '${2}',",
-				"  dependencies: [${3}],",
-				"  bigquery: {",
-				"  \tpartitionBy: '${4:partition_column}',",
-				"  \trequirePartitionFilter: ${5|true,false|},",
-				"  \tclusterBy: [${6}]",
-				"  },",
-				"assertions: {",
-				"\tnonNull: ['${7}'],",
-				"\trowConditions: ['${7}'],",
-				"\tuniqueKey: ['${8:}'],",
-				"},",
-				"tags: [${9}]",
-			  "}"
+			"  type: 'table',",
+			"  schema: '${1:schema_name}',",
+			"  description: '${2:description}',",
+			"  dependencies: [${3}],",
+			"  bigquery: {",
+			"    partitionBy: '${4:partition_column}',",
+			"    requirePartitionFilter: ${5|true,false|},",
+			"    clusterBy: ['${6:cluster_columns}']",
+			"  },",
+			"  assertions: {",
+			"    nonNull: ['${7:non_null_columns}'],",
+			"    rowConditions: ['${8:row_conditions}'],",
+			"    uniqueKey: ['${9:unique_key_columns}']",
+			"  },",
+			"  tags: ['${10:tags}']",
+			"}"
 		],
 		"description": "Generate table config for sqlx files"
 	},
@@ -48,6 +48,11 @@
 				"  schema: '${1}',",
 				"  description: '${2}',",
 				"  dependencies: [${3}],",
+				"  assertions: {",
+				"    nonNull: ['${7:non_null_columns}'],",
+				"    rowConditions: ['${8:row_conditions}'],",
+				"    uniqueKey: ['${9:unique_key_columns}']",
+				"  },",
 				"  tags: [${6}]",
 			  "}"
 		],
@@ -112,9 +117,9 @@
         "prefix": "declare sources [Dataform]",
 		"body": [
 			"declare({",
-				"\tdatabase: '${gcp_project}',",
-				"\tschema: '${gcp_dataset_name}',",
-				"\tname: '${gcp_table_name}',",
+				"\tdatabase: '${1:gcp_project}',",
+				"\tschema: '${2:gcp_dataset_name}',",
+				"\tname: '${3:gcp_table_name}',",
 			  "});"
 		],
 		"description": "Generate source declararions"
@@ -142,13 +147,13 @@
 		"description": "Generate post_operation block"
 	},
 
-	"Dataform assertions": {
+	"assertions": {
 		"prefix": "assertions [Dataform]",
 		"body": [
 			"assertions: {",
 			"\tnonNull: ['${1}'],",
 			"\trowConditions: ['${2}'],",
-			"\tuniqueKey: ['${3:}'],",
+			"\tuniqueKey: ['${3}'],",
 			"},"
 		],
 		"description": "Generate Dataform assertions object with nonNull, rowConditions, and uniqueKey arrays"
