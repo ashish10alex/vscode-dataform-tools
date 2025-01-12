@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.7.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.10...v0.7.11) (2025-01-11)
+
+
+### Bug Fixes
+
+* dry run stats not showing for `operations` ([9afbb70](https://github.com/ashish10alex/vscode-dataform-tools/commit/9afbb70b8a5e5bba378970925a423fe844388171))
+
+
+### Performance
+
+* **compilation:** no need to loop through operation if it is of type table, view, operations ([8bf4132](https://github.com/ashish10alex/vscode-dataform-tools/commit/8bf4132633ceb5c11be3ae44fe0ef9e34cadee1a))
+
+### [0.7.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.9...v0.7.10) (2025-01-11)
+
+
+### Bug Fixes
+
+* unable to preview results of type `operations` ([6e717d4](https://github.com/ashish10alex/vscode-dataform-tools/commit/6e717d4ed8cae52df7e0a34a084919c482b291c9))
+
+### [0.7.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.8...v0.7.9) (2025-01-10)
+
+
+### Bug Fixes
+
+* [#89](https://github.com/ashish10alex/vscode-dataform-tools/issues/89) semicolon added to end of operations ([#90](https://github.com/ashish10alex/vscode-dataform-tools/issues/90)) ([6a7e149](https://github.com/ashish10alex/vscode-dataform-tools/commit/6a7e1496cf78ddf3a8fd372c6103114bef45e399))
+
 ### [0.7.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.7...v0.7.8) (2025-01-09)
 
 

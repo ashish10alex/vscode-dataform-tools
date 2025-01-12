@@ -1,7 +1,7 @@
 {
 	"Config block table": {
 		"scope": "sqlx",
-        "prefix": "config-table",
+        "prefix": "config block table [Dataform]",
 		"body": [
 			"config {",
 				"  type: 'table',",
@@ -9,17 +9,24 @@
 				"  description: '${2}',",
 				"  dependencies: [${3}],",
 				"  bigquery: {",
-				"  partitionBy: ${4},",
-				"  clusterBy: [${5}]",
+				"  \tpartitionBy: '${4:partition_column}',",
+				"  \trequirePartitionFilter: ${5|true,false|},",
+				"  \tclusterBy: [${6}]",
 				"  },",
-				"  tags: [${6}]",
+				"assertions: {",
+				"\tnonNull: ['${7}'],",
+				"\trowConditions: ['${7}'],",
+				"\tuniqueKey: ['${8:}'],",
+				"},",
+				"tags: [${9}]",
 			  "}"
 		],
 		"description": "Generate table config for sqlx files"
 	},
+
 	"Config block assertion": {
 		"scope": "sqlx",
-        "prefix": "config-assertion",
+        "prefix": "config block assertion [Dataform]",
 		"body": [
 			"config {",
 				"  type: 'assertion',",
@@ -31,9 +38,10 @@
 		],
 		"description": "Generate assertion config for sqlx files"
 	},
+
 	"Config block view": {
 		"scope": "sqlx",
-        "prefix": "config-view",
+        "prefix": "config block view [Dataform]",
 		"body": [
 			"config {",
 				"  type: 'view',",
@@ -45,9 +53,10 @@
 		],
 		"description": "Generate view config for sqlx files"
 	},
+
 	"Config block operations": {
 		"scope": "sqlx",
-        "prefix": "config-operations",
+        "prefix": "config block operations [Dataform]",
 		"body": [
 			"config {",
 				"  type: 'operations',",
@@ -60,21 +69,60 @@
 		],
 		"description": "Generate operations config for sqlx files"
 	},
+
+	"bigquery options config": {
+		"scope": "sqlx",
+        "prefix": "bigquery options [Dataform]",
+		"body": [
+				"  bigquery: {",
+				"  \tpartitionBy: '${4:partition_column}',",
+				"  \trequirePartitionFilter: ${5|true,false|},",
+				"  \tclusterBy: [${6}]",
+				"  },"
+		],
+		"description": "BigQuery options for config block"
+	},
+
+	"partitionBy": {
+		"prefix": "partitionBy bigquery [Dataform]",
+		"body": [
+			"partitionBy: '${1:partition_column}',"
+		],
+		"description": "Generate a partitionBy option for BigQuery in Dataform"
+	},
+
+	"requirePartitionFilter": {
+		"prefix": "requirePartitionFilter bigquery [Dataform]",
+		"body": [
+			"requirePartitionFilter: ${1|true,false|},"
+		],
+		"description": "Generate a requirePartitionFilter option for BigQuery in Dataform"
+	},
+
+	"clusterBy": {
+		"prefix": "clusterBy bigquery [Dataform]",
+		"body": [
+			"clusterBy: ['${1:column1}'],"
+		],
+		"description": "Generate a clusterBy option for BigQuery in Dataform"
+	},
+
 	"source declarations": {
 		"scope": "javascript",
-        "prefix": "declare",
+        "prefix": "declare sources [Dataform]",
 		"body": [
 			"declare({",
-				"database: '${1}',",
-				"schema: '${2}',",
-				"name: '${3}',",
+				"\tdatabase: '${gcp_project}',",
+				"\tschema: '${gcp_dataset_name}',",
+				"\tname: '${gcp_table_name}',",
 			  "});"
 		],
 		"description": "Generate source declararions"
 	},
+
 	"pre operations": {
 		"scope": "sqlx",
-        "prefix": "pre_operations",
+        "prefix": "pre_operations [Dataform]",
 		"body": [
 			"pre_operations {",
 				"  ${1}",
@@ -82,14 +130,52 @@
 		],
 		"description": "Generate pre_operation block"
 	},
+
 	"post operations": {
 		"scope": "sqlx",
-        "prefix": "post_operations",
+        "prefix": "post_operations [Dataform]",
 		"body": [
 			"post_operations {",
 				"  ${1}",
 			  "}"
 		],
 		"description": "Generate post_operation block"
+	},
+
+	"Dataform assertions": {
+		"prefix": "assertions [Dataform]",
+		"body": [
+			"assertions: {",
+			"\tnonNull: ['${1}'],",
+			"\trowConditions: ['${2}'],",
+			"\tuniqueKey: ['${3:}'],",
+			"},"
+		],
+		"description": "Generate Dataform assertions object with nonNull, rowConditions, and uniqueKey arrays"
+	},
+
+	"nonNull assertion": {
+	"prefix": "nonNull assertions [Dataform]",
+	"body": [
+		"nonNull: ['${1:column1}'],"
+	],
+	"description": "Generate a nonNull assertion for Dataform"
+	},
+
+	"rowConditions assertion": {
+	"prefix": "rowConditions assertions [Dataform]",
+	"body": [
+		"rowConditions: ['${1:condition1}'],"
+	],
+	"description": "Generate a rowConditions assertion for Dataform"
+	},
+
+	"uniqueKey assertion": {
+	"prefix": "uniqueKey assertions [Dataform]",
+	"body": [
+		"uniqueKey: ['${1:key1}'],"
+	],
+	"description": "Generate a uniqueKey assertion for Dataform"
 	}
+
 }
