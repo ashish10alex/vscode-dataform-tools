@@ -6,12 +6,27 @@ const createFullTargetName = (target: Target) => {
     return `${target.database}.${target.schema}.${target.name}`;
 };
 
+export function handleSemicolonInQuery(query: string){
+    query = query.trimStart();
+    const queryWithSemicolon = /;\s*$/.test(query);
+    if(!queryWithSemicolon && query !== "" ){
+        query = query + ";";
+    }
+    return query;
+}
+
+
 async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Assertion[], type:string|undefined): Promise<Array<TagDryRunStats>>{
     const modelPromises = filteredModels.map(async (curModel) => {
     let fullQuery = "";
-    const preOpsQuery = curModel.preOps ? curModel.preOps.join("\n") + ";" : "";
-    const incrementalPreOpsQuery = curModel.incrementalPreOps ? curModel.incrementalPreOps.join("\n") + ";" : "";
-    const incrementalQuery = curModel.incrementalQuery || "";
+    let preOpsQuery = curModel.preOps ? curModel.preOps.join("\n") : "";
+    preOpsQuery = handleSemicolonInQuery(preOpsQuery);
+
+    let incrementalPreOpsQuery = curModel.incrementalPreOps ? curModel.incrementalPreOps.join("\n") + ";" : "";
+    incrementalPreOpsQuery = handleSemicolonInQuery(incrementalPreOpsQuery);
+
+    let incrementalQuery = curModel.incrementalQuery || "";
+    incrementalQuery = handleSemicolonInQuery(incrementalQuery);
 
     if (curModel.type === "view") {
         fullQuery = preOpsQuery + 'CREATE OR REPLACE VIEW ' + createFullTargetName(curModel.target) + ' AS ' + curModel.query;
