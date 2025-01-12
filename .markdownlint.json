@@ -1,0 +1,6 @@
+
+{
+  "MD033": false, // Inline HTML
+  "MD013": false, // Line length
+  "MD051": false // Link fragments should be valid"
+}
