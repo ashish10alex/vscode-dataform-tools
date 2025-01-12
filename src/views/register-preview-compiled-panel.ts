@@ -406,7 +406,7 @@ export class CompiledQueryPanel {
             currency = dryRunResult?.statistics?.cost?.currency as SupportedCurrency;
             currencySymbol = currencySymbols[currency];
         }
-        let dryRunCost = (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00") + currencySymbol;
+        let dryRunCost = currencySymbol + (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00");
 
         let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message: "");
         const location = dryRunResult?.location?.toLowerCase();
