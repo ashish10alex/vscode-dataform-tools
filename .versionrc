@@ -9,7 +9,6 @@
     {"type": "test", "section": "Tests"},
     {"type": "build", "section": "Build System"},
     {"type": "ci", "section": "CI"},
-    {"type": "chore", "section": "Chore"},
     {"type": "revert", "section": "Reverts"}
   ]
 }
