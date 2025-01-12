@@ -468,7 +468,7 @@ window.addEventListener('message', event => {
             {column: "error", dir: "desc"}
         ],
         pagination: "local",
-        paginationSize: 20,
+        paginationSize:30,
         paginationCounter: "rows",
         selectable: false,
         movableRows: false,
