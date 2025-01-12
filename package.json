@@ -270,7 +270,8 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "rm -rf .vscode-test/user-data; vscode-test"
+        "test": "rm -rf .vscode-test/user-data; vscode-test",
+        "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {
         "@types/js-beautify": "^1.14.3",
