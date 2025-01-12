@@ -1,6 +1,6 @@
 import os from 'os';
 import path from 'path';
-import { SupportedCurrency } from './types';
+import { SupportedCurrency as SupportedCurrencies } from './types';
 
 const tempDir = os.tmpdir();
 export const sqlFileToFormatPath = path.join(tempDir, "format.sql");
@@ -13,7 +13,7 @@ export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not f
 export const costInPoundsForOneGb = 0.005;
 export const bigQuerytimeoutMs = 20000;
 
-export const bigQueryCostOfOneGB: Record<SupportedCurrency, number> = {
+export const bigQueryDryRunCostOneGbByCurrency: Record<SupportedCurrencies, number> = {
   "USD": 0.005,
   "EUR": 0.0046,
   "GBP": 0.0039,
@@ -23,7 +23,7 @@ export const bigQueryCostOfOneGB: Record<SupportedCurrency, number> = {
   "INR": 0.41,
 };
 
-export const currencySymbols = {
+export const currencySymbolMapping = {
   "USD": "$",
   "EUR": "€",
   "GBP": "£",

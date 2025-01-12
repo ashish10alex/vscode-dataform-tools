@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
-import { bigQueryCostOfOneGB } from './constants';
+import { bigQueryDryRunCostOneGbByCurrency } from './constants';
 import { BigQueryDryRunResponse, SupportedCurrency } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
@@ -59,7 +59,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         });
 
         const parsedTotalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
-        const cost = Number((parsedTotalBytesProcessed) / 10 ** 9) * bigQueryCostOfOneGB[currencyFoDryRunCost];
+        const cost = Number((parsedTotalBytesProcessed) / 10 ** 9) * bigQueryDryRunCostOneGbByCurrency[currencyFoDryRunCost];
 
         return {
             schema: job.metadata.statistics.query.schema,

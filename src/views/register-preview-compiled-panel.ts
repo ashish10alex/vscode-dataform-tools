@@ -5,7 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, supportedCurrencies } from "../types";
-import { currencySymbols, getFileNotFoundErrorMessageForWebView } from "../constants";
+import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 
 function showLoadingProgress(
@@ -221,7 +221,7 @@ export class CompiledQueryPanel {
                     let currencySymbol = "$";
                     if(tagDryRunStatsMeta?.tagDryRunStatsList){
                         currency = tagDryRunStatsMeta?.tagDryRunStatsList[0].currency;
-                        currencySymbol = currencySymbols[currency];
+                        currencySymbol = currencySymbolMapping[currency];
                     }
                     const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                     const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
@@ -404,7 +404,7 @@ export class CompiledQueryPanel {
 
         if(dryRunResult?.statistics?.cost?.currency){
             currency = dryRunResult?.statistics?.cost?.currency as SupportedCurrency;
-            currencySymbol = currencySymbols[currency];
+            currencySymbol = currencySymbolMapping[currency];
         }
         let dryRunCost = currencySymbol + (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00");
 
