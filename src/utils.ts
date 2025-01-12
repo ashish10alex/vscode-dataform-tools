@@ -802,11 +802,14 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
 }
 
 function parseMultipleJSON(str:string) {
-    // TODO: add some comments on retionale for doing this
+    /*
+    NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string
+    so we need to parse them separately to ensure there is no error in parsing and we get the compilation metadata of Dataform project
+    */
     const result = [];
     let startIndex = str.indexOf('{');
     let openBraces = 0;
-  
+
     for (let i = startIndex; i < str.length; i++) {
       if (str[i] === '{') {
         if (openBraces === 0) {startIndex = i;};
@@ -819,12 +822,12 @@ function parseMultipleJSON(str:string) {
         }
       }
     }
-  
+
     return result;
   }
 
   function extractDataformJsonFromMultipleJson(compiledString: string){
-    // TODO: add some rationale on why are we choosing index 1
+    //NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string. From observation, index 1 is the JSON object that has Dataform compilation metadata
     const parsedObjects = parseMultipleJSON(compiledString);
     if (parsedObjects.length > 0) {
         return parsedObjects[1] as DataformCompiledJson;
@@ -832,7 +835,7 @@ function parseMultipleJSON(str:string) {
         throw new Error("Failed to parse JSON");
     }
   }
-  
+
 // Usage
 export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
