@@ -48,6 +48,11 @@
 				"  schema: '${1}',",
 				"  description: '${2}',",
 				"  dependencies: [${3}],",
+				"  assertions: {",
+				"    nonNull: ['${7:non_null_columns}'],",
+				"    rowConditions: ['${8:row_conditions}'],",
+				"    uniqueKey: ['${9:unique_key_columns}']",
+				"  },",
 				"  tags: [${6}]",
 			  "}"
 		],
@@ -112,9 +117,9 @@
         "prefix": "declare sources [Dataform]",
 		"body": [
 			"declare({",
-				"\tdatabase: '${gcp_project}',",
-				"\tschema: '${gcp_dataset_name}',",
-				"\tname: '${gcp_table_name}',",
+				"\tdatabase: '${1:gcp_project}',",
+				"\tschema: '${2:gcp_dataset_name}',",
+				"\tname: '${3:gcp_table_name}',",
 			  "});"
 		],
 		"description": "Generate source declararions"
@@ -142,13 +147,13 @@
 		"description": "Generate post_operation block"
 	},
 
-	"Dataform assertions": {
+	"assertions": {
 		"prefix": "assertions [Dataform]",
 		"body": [
 			"assertions: {",
 			"\tnonNull: ['${1}'],",
 			"\trowConditions: ['${2}'],",
-			"\tuniqueKey: ['${3:}'],",
+			"\tuniqueKey: ['${3}'],",
 			"},"
 		],
 		"description": "Generate Dataform assertions object with nonNull, rowConditions, and uniqueKey arrays"
