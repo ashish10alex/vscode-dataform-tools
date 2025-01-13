@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.8.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.11...v0.8.0) (2025-01-13)
+
+
+### Features
+
+* add code lens to run a tag ([9f6b04e](https://github.com/ashish10alex/vscode-dataform-tools/commit/9f6b04e3c1f12d78a6c24204134330e5945439ea))
+* estimate the cost of running a tag from web view ([#87](https://github.com/ashish10alex/vscode-dataform-tools/issues/87)) ([7aab65e](https://github.com/ashish10alex/vscode-dataform-tools/commit/7aab65e158015a706b089998a64aa5852bb356e7))
+* **snippets:** assertions and bigquery options in config block ([e2c6ec6](https://github.com/ashish10alex/vscode-dataform-tools/commit/e2c6ec66344cb6223c9cb313b0f0c07331133afc))
+
+
+### Bug Fixes
+
+* backward  compatibility broken for Dataform v2.x ([#86](https://github.com/ashish10alex/vscode-dataform-tools/issues/86)) ([7f921fc](https://github.com/ashish10alex/vscode-dataform-tools/commit/7f921fc22f2a49b1681af9aab467dd5dbaf457e3))
+
 ### [0.7.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.10...v0.7.11) (2025-01-11)
 
 
