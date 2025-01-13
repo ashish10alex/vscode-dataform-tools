@@ -22,7 +22,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     let preOpsQuery = curModel.preOps ? curModel.preOps.join("\n") : "";
     preOpsQuery = handleSemicolonInQuery(preOpsQuery);
 
-    let incrementalPreOpsQuery = curModel.incrementalPreOps ? curModel.incrementalPreOps.join("\n") + ";" : "";
+    let incrementalPreOpsQuery = curModel.incrementalPreOps ? curModel.incrementalPreOps.join("\n") : "";
     incrementalPreOpsQuery = handleSemicolonInQuery(incrementalPreOpsQuery);
 
     let incrementalQuery = curModel.incrementalQuery || "";
