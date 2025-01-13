@@ -219,6 +219,20 @@
                     "default": "",
                     "markdownDescription": "Addition compiler options to pass to dataform cli commands e.g. --vars=someKey=someValue,a=b"
                 },
+                "vscode-dataform-tools.currencyFoDryRunCost": {
+                    "type": "string",
+                    "enum": [
+                        "USD",
+                        "EUR",
+                        "GBP",
+                        "JPY",
+                        "CAD",
+                        "AUD",
+                        "INR"
+                    ],
+                    "default": "USD",
+                    "markdownDescription": "Supported currencies for Dry Run cost estimation. Choose from USD (US Dollar), EUR (Euro), GBP (British Pound), JPY (Japanese Yen), CAD (Canadian Dollar), AUD (Australian Dollar), or INR (Indian Rupee)."
+                },
                 "vscode-dataform-tools.showCompiledQueryInVerticalSplitOnSave": {
                     "type": "boolean",
                     "default": true,
@@ -270,7 +284,8 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "rm -rf .vscode-test/user-data; vscode-test"
+        "test": "rm -rf .vscode-test/user-data; vscode-test",
+        "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {
         "@types/js-beautify": "^1.14.3",

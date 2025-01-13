@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, getQueryMetaForCurrentFile } from '../../utils';
+import { compileDataform, formatBytes, getQueryMetaForCurrentFile } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
@@ -459,4 +459,19 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
+});
+
+suite('format bytes from dry run in human readable format', () => {
+    test('format bytes from dry run in human readable format', () => {
+        assert.strictEqual(formatBytes(0), '0 B');
+        assert.strictEqual(formatBytes(1), '1.00 B');
+        assert.strictEqual(formatBytes(1024), '1.00 KB');
+        assert.strictEqual(formatBytes(1048576) ,'1.00 MB');
+        assert.strictEqual(formatBytes(1073741824), '1.00 GB');
+        assert.strictEqual(formatBytes(1099511627776), '1.00 TB');
+        assert.strictEqual(formatBytes(1125899906842624), '1.00 PB');
+        assert.strictEqual(formatBytes(500), '500.00 B');
+        assert.strictEqual(formatBytes(1500), '1.46 KB');
+        assert.strictEqual(formatBytes(1024 * 1024 * 1.5), '1.50 MB');
+    });
 });

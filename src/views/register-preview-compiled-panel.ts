@@ -1,11 +1,12 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata } from "../types";
-import { getFileNotFoundErrorMessageForWebView } from "../constants";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency } from "../types";
+import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
+import { costEstimator } from "../costEstimator";
 
 function showLoadingProgress(
     title: string,
@@ -211,6 +212,47 @@ export class CompiledQueryPanel {
                 const fullRefresh  = message.value.fullRefresh;
                 await runCurrentFile(includeDependencies, includeDependents, fullRefresh);
                 return;
+              case 'costEstimator':
+
+                const selectedTag = message.value.selectedTag;
+                if(CACHED_COMPILED_DATAFORM_JSON){
+                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
+                    let currency = "USD" as SupportedCurrency;
+                    let currencySymbol = "$";
+                    if(tagDryRunStatsMeta?.tagDryRunStatsList){
+                        currency = tagDryRunStatsMeta?.tagDryRunStatsList[0].currency;
+                        currencySymbol = currencySymbolMapping[currency];
+                    }
+                    const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
+                    const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
+                    const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
+                    const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
+                    const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+                    this.centerPanel?.webviewPanel.webview.postMessage({
+                        "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+                        "assertionQuery": fileMetadata.queryMeta.assertionQuery,
+                        "preOperations": fileMetadata.queryMeta.preOpsQuery,
+                        "postOperations": fileMetadata.queryMeta.postOpsQuery,
+                        "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
+                        "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
+                        "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+                        "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                        "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                        "tagDryRunStatsMeta": tagDryRunStatsMeta,
+                        "currencySymbol": currencySymbol,
+                        "errorMessage": errorMessage,
+                        "dryRunStat":  dryRunStat,
+                        "compiledQuerySchema": compiledQuerySchema,
+                        "targetTableOrView": targetTableOrView,
+                        "models": curFileMeta.fileMetadata.tables,
+                        "dependents": curFileMeta.dependents,
+                        "dataformTags": dataformTags,
+                        "selectedTag": selectedTag,
+                    });
+                }else{
+                    vscode.window.showErrorMessage("No cached data to estimate cost from");
+                }
+                return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
@@ -238,6 +280,7 @@ export class CompiledQueryPanel {
                     "targetTableOrView": targetTableOrView,
                     "models": curFileMeta.fileMetadata.tables,
                     "dependents": curFileMeta.dependents,
+                    "dataformTags": dataformTags,
                 });
                 return;
             }
@@ -340,6 +383,7 @@ export class CompiledQueryPanel {
             "compiledQuerySchema": compiledQuerySchema,
             "targetTableOrView": targetTableOrView,
             "dependents": curFileMeta.dependents,
+            "dataformTags": dataformTags,
         });
 
         if(diagnosticCollection){
@@ -353,7 +397,17 @@ export class CompiledQueryPanel {
         }
 
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
-        let dryRunStat = dryRunResult?.statistics?.totalBytesProcessed;
+        let dryRunStat = formatBytes(dryRunResult?.statistics?.totalBytesProcessed);
+
+        let currency = "USD" as SupportedCurrency;
+        let currencySymbol = "$";
+
+        if(dryRunResult?.statistics?.cost?.currency){
+            currency = dryRunResult?.statistics?.cost?.currency as SupportedCurrency;
+            currencySymbol = currencySymbolMapping[currency];
+        }
+        let dryRunCost = currencySymbol + (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00");
+
         let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message: "");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
@@ -369,7 +423,9 @@ export class CompiledQueryPanel {
              </ol>`;
         }
         if(!dryRunStat){
-            dryRunStat = "0 GB";
+            dryRunStat = "0 B";
+        }else{
+            dryRunStat += ` (${dryRunCost})`;
         }
 
         if (compiledQuerySchema?.fields) {
@@ -395,6 +451,7 @@ export class CompiledQueryPanel {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
 
+        dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
                 "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -409,13 +466,14 @@ export class CompiledQueryPanel {
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
+                "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTableOrView": targetTableOrView,
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
+                "dataformTags": dataformTags,
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
-            dataformTags = queryAutoCompMeta.dataformTags;
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
         }
@@ -467,6 +525,7 @@ export class CompiledQueryPanel {
             <div class="topnav">
                 <a class="active" href="#compilation">Compiled Query</a>
                 <a href="#schema">Schema</a>
+                <a href="#cost">Cost Estimator</a>
             </div>
         </div>
 
@@ -485,7 +544,7 @@ export class CompiledQueryPanel {
            <a id="targetTableOrViewLink"></a>
         </div>
 
-        <div class="dependency-container" style="padding-bottom: 10px;">
+        <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">
             <div class="dependency-header">
                 <div class="arrow-toggle">
                     <svg viewBox="0 0 24 24" width="24" height="24">
@@ -510,6 +569,47 @@ export class CompiledQueryPanel {
         <div id="schemaBlock" style="display: none; margin-top: 20px;">
             <div id="noSchemaBlock"> </div>
             <table id="schemaTable" class="display" width="100%"></table>
+        </div>
+
+
+        <div id="costBlock" style="display: none; margin-top: 20px;">
+            <h2>Cost Estimator</h2>
+
+            <p>For each model in the tag, we construct a full query as follows and perform dry run:</p>
+            <ul>
+                <li><strong>Table/View</strong>: Pre operation + Create or replaces a table/view statement + main query</li>
+                <li><strong>Partitioned or clustered tables</strong>: Pre operations + main query </li>
+                <li><strong>Incremental</strong>: Incremental pre operation query + Create or replaces a table/view statement + main query</li>
+                <li><strong>Partitioned or clustered Incremental table</strong>: Incremental pre operation query + main query</li>
+                <li><strong>Assertion & Operation </strong>: Main query </li>
+            </ul>
+
+
+                <div id="costEstimatorloadingIcon" style="display: none;">
+                    <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
+                                <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                                values="0 126;126 126;126 0"/>
+                                <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                                values="0;-126;-252"/>
+                            </circle>
+                    </svg>
+                </div>
+
+                <p style="color: #007acc;">Select a tag and click <i>'Estimate'</i> to estimate cost</p>
+
+                <form class="tag-selection-form">
+                    <label for="tags" style="color: #007acc;"><strong>Select Tag:</strong></label>
+                    <select id="tags" class="tag-dropdown">
+                        <option value="" disabled selected>Tags</option>
+                    </select>
+                </form>
+
+                <button class="cost-model" id="costEstimator" title="Cost Esimator">Estimate</button>
+
+                <div class="cost-table-container">
+                    <table id="costTable" class="cost-table"></table>
+                </div>
         </div>
 
         <div id="compilationBlock" style="display: block;">

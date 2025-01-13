@@ -6,11 +6,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
+const costEstimatorButton = document.getElementById('costEstimator');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
 const fullRefreshCheckBox = document.getElementById('fullRefresh');
 const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
+const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+const dryRunStatDiv = document.getElementById("dryRunStatDiv");
+const errorMessageDiv = document.getElementById("errorMessageDiv");
+const dataLineageDiv = document.getElementById("dataLineageDiv");
+
+
+function populateDropdown(tags, defaultTag = undefined) {
+    const dropdown = document.getElementById('tags');
+    dropdown.innerHTML = '<option disabled selected>Tags</option>';
+    tags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        if (defaultTag && tag === defaultTag) {
+            option.selected = true;
+        }
+        dropdown.appendChild(option);
+    });
+}
+
 
 function runModelClickHandler() {
     runModelButton.disabled = true;
@@ -29,8 +51,29 @@ function runModelClickHandler() {
     }, 10000);
 }
 
+function costEstimatorClickHandler() {
+    costEstimatorloadingIcon.style.display = "";
+    costEstimatorButton.disabled = true;
+    const dropdown = document.getElementById("tags");
+    const selectedTag = dropdown.value;
+    vscode.postMessage({
+        command: 'costEstimator',
+        value: {
+            selectedTag: selectedTag
+        }
+    });
+
+    setTimeout(() => {
+        costEstimatorButton.disabled = false;
+    }, 3000);
+}
+
 if (runModelButton) {
     runModelButton.addEventListener('click', runModelClickHandler);
+}
+
+if(costEstimatorButton){
+    costEstimatorButton.addEventListener('click', costEstimatorClickHandler);
 }
 
 const previewResultsButton = document.getElementById('previewResults');
@@ -67,11 +110,23 @@ navLinks.forEach(link => {
         // Add active class to clicked link
         this.classList.add('active');
         if (this.getAttribute('href') === '#compilation') {
+            targetTableOrViewLink.style.display = "";
+            dataLineageDiv.style.display = "";
             document.getElementById("compilationBlock").style.display = "";
+            document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
-        } else {
+        } else if (this.getAttribute('href') === '#schema')  {
+            targetTableOrViewLink.style.display = "";
+            dataLineageDiv.style.display = "";
             document.getElementById("schemaBlock").style.display = "";
+            document.getElementById("costBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
+        } else if (this.getAttribute('href') === '#cost')  {
+            document.getElementById("costBlock").style.display = "";
+            document.getElementById("schemaBlock").style.display = "none";
+            document.getElementById("compilationBlock").style.display = "none";
+            targetTableOrViewLink.style.display = "none";
+            dataLineageDiv.style.display = "none";
         }
     });
 });
@@ -108,6 +163,12 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
+    let dataformTags = event?.data?.dataformTags;
+    if(dataformTags){
+        populateDropdown(dataformTags, event?.data?.selectedTag);
+    }
+
+    let currencySymbol = event?.data?.currencySymbol;
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
     const lineageMetadata = event?.data?.lineageMetadata;
@@ -115,7 +176,7 @@ window.addEventListener('message', event => {
 
         let targetTableOrView = event?.data?.targetTableOrView;
         if (targetTableOrView){
-            const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+            targetTableOrViewLink.style.display = "";
             targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
             targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
         }
@@ -207,7 +268,7 @@ window.addEventListener('message', event => {
             depsDiv.appendChild(lineageLoadingIconDiv);
         });
 
-        if(lineageMetadata.error){
+        if(lineageMetadata?.error){
             const dataplexHeader = document.createElement("header");
             dataplexHeader.innerHTML = `<h4 style="color: #FFB3BA;">${lineageMetadata.error}</h4>`;
             depsDiv.appendChild(dataplexHeader);
@@ -300,6 +361,7 @@ window.addEventListener('message', event => {
         });
     }
 
+
     const compiledQuerySchemaNotAvailable = compiledQuerySchema && compiledQuerySchema.length === 1 && compiledQuerySchema[0].name === "" && compiledQuerySchema[0].type === "";
     if(compiledQuerySchemaNotAvailable && event?.data?.dryRunStat){
         noSchemaBlockDiv.innerHTML = "";
@@ -331,7 +393,8 @@ window.addEventListener('message', event => {
             }
             else if (key === "dryRunStat"){
                 dryRunloadingIcon.style.display = "none";
-                if (value === "0 GB"){
+                console.log(`errorMessage: ${event?.data?.errorMessage}`);
+                if (event?.data?.errorMessage !== " "){
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
@@ -353,4 +416,78 @@ window.addEventListener('message', event => {
             }
         }
     });
+
+    let tagDryRunStatsMeta =  event?.data?.tagDryRunStatsMeta;
+    if(tagDryRunStatsMeta?.tagDryRunStatsList && !tagDryRunStatsMeta?.error?.message){
+        costEstimatorloadingIcon.style.display = "none";
+        targetTableOrViewLink.style.display = "none";
+        dryRunStatDiv.style.display = "none";
+        dataLineageDiv.style.display = "none";
+
+        new Tabulator("#costTable", {
+        data: tagDryRunStatsMeta.tagDryRunStatsList,
+        columns: [
+            {title: "Target", field: "targetName", headerFilter: "input", formatter: "plaintext"},
+            {title: "Type", field: "type", headerFilter: "input", formatter: "plaintext"},
+            {title: "Statement type", field: "statementType", headerFilter: "input", formatter: "plaintext"},
+            {title: "Accuracy", field: "totalBytesProcessedAccuracy", headerFilter: "input", formatter: "plaintext"},
+            {
+                title: "GB proc.",
+                field: "totalGBProcessed",
+                formatter: function(cell, formatterParams) {
+                        const value = parseFloat(cell.getValue());
+                        return isNaN(value) ? "" : value.toFixed(2);
+                },
+                bottomCalc: function(values) {
+                    const sum = values.reduce((acc, val) => acc + parseFloat(val) || 0, 0);
+                    return sum.toFixed(2);
+                },
+                bottomCalcFormatter: function(cell, formatterParams) {
+                    return cell.getValue();
+                }
+            },
+            {
+                title: "Cost",
+                field: "costOfRunningModel",
+                formatter: "money",
+                formatterParams: {
+                    precision: 2,
+                    symbol: currencySymbol
+                },
+                bottomCalc: "sum",
+                bottomCalcFormatter: "money",
+                bottomCalcFormatterParams: {
+                    precision: 2,
+                    symbol: currencySymbol
+                }
+            },
+            {title: "error", field: "error",  formatter: "plaintext",  cssClass: "error-column" },
+        ],
+        initialSort: [
+            {column: "error", dir: "desc"}
+        ],
+        pagination: "local",
+        paginationSize:30,
+        paginationCounter: "rows",
+        selectable: false,
+        movableRows: false,
+        rowHeader: {
+            formatter: "rownum",
+            headerSort: false,
+            hozAlign: "center",
+            resizable: false,
+            frozen: true,
+            width: 40
+        },
+        autoColumnsDefinitions: function(definitions) {
+            definitions.forEach(function(column) {
+            column.headerFilter = "input";
+            column.headerFilterLiveFilter = true;
+            });
+            return definitions;
+        },
+        footerElement: "<div id='total-cost'></div>",
+        });
+    }
+
 });
