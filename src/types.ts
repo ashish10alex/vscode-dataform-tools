@@ -116,6 +116,14 @@ export interface Operation {
     bigquery?: TableBigQueryConfig;
 }
 
+type GraphErrors  = {
+    compilationErrors: {
+        fileName: string,
+        message: string,
+        stack: string,
+    }[]
+};
+
 export interface DataformCompiledJson {
     tables: Table[];
     assertions: Assertion[];
@@ -123,6 +131,7 @@ export interface DataformCompiledJson {
     targets: Target[];
     declarations: Declarations[];
     projectConfig: ProjectConfig;
+    graphErrors: GraphErrors;
 }
 
 export interface DryRunError {

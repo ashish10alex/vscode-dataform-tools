@@ -351,8 +351,12 @@ export class CompiledQueryPanel {
             }
 
             errorString += "</ul> Run `dataform compile` to see more details <br>";
-            if(curFileMeta?.possibleResolutions && curFileMeta?.possibleResolutions?.length > 0){
-                errorString += `<h4>Possible fix: </h4> <li> ${curFileMeta.possibleResolutions[0]}</li>`;
+            if (curFileMeta?.possibleResolutions && curFileMeta?.possibleResolutions?.length > 0) {
+                errorString += "<h4>Possible fixes:</h4><ul>";
+                for (let i = 0; i < curFileMeta.possibleResolutions.length; i++) {
+                    errorString += `<li>${curFileMeta.possibleResolutions[i]}</li>`;
+                }
+                errorString += "</ul>";
             }
 
             await webview.postMessage({

@@ -778,8 +778,29 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
                 resolve({compiledString: stdOut, errors:undefined, possibleResolutions:undefined});
             } else {
                 if (stdOut !== '') {
-                    let compiledJson = JSON.parse(stdOut.toString());
-                    let graphErrors = compiledJson.graphErrors.compilationErrors;
+                    let compiledJson:  DataformCompiledJson;
+                    try{
+                        compiledJson = JSON.parse(stdOut.toString());
+                    } catch (parseError) {
+                        compiledJson = extractDataformJsonFromMultipleJson(stdOut.toString());
+                    }
+
+                    let graphErrors = compiledJson?.graphErrors?.compilationErrors;
+                    if(!graphErrors){
+                        const dataformPackageJsonMissingHint = "(missing dataform.json file)";
+                    const dataformInstallHintv2 = "Could not find a recent installed version of @dataform/core in the project";
+                        const possibleResolutions = [];
+                        if(errorOutput.includes(dataformPackageJsonMissingHint)){
+                            possibleResolutions.push("Run `<b>dataform compile</b>` in terminal to get full error");
+                            possibleResolutions.push("Verify the dataform version of the project matches the version used in the project (<b>dataform --version</b> in terminal)");
+                            possibleResolutions.push("If your project is using dataform version 3.x run <b>npm i -g @dataform/cli</b> in terminal)");
+                        } else if (errorOutput.includes(dataformInstallHintv2)){
+                            possibleResolutions.push("run `<b>dataform install</b>` in terminal followed by reload window and compile the file again");
+                        }
+                        resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
+                        return;
+                    }
+
                     let errors:GraphError[] = [];
                     graphErrors.forEach((graphError: {message:string, fileName:string}) => {
                         errors.push({error: graphError.message, fileName: graphError.fileName});
@@ -787,8 +808,8 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
                     resolve({compiledString: undefined, errors:errors, possibleResolutions:undefined});
                 } else {
                     let possibleResolutions = [];
-                    const dataformInstallHint = "If using `package.json`, then run `dataform install`";
-                    if(errorOutput.includes(dataformInstallHint)){
+                    const dataformInstallHintv3 = "If using `package.json`, then run `dataform install`";
+                    if(errorOutput.includes(dataformInstallHintv3)){
                         const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
                         if(_workspaceFolder){
                             const filePath = path.join(_workspaceFolder, 'package.json');
@@ -811,20 +832,61 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
     });
 }
 
+function parseMultipleJSON(str:string) {
+    /*
+    NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string
+    so we need to parse them separately to ensure there is no error in parsing and we get the compilation metadata of Dataform project
+    */
+    const result = [];
+    let startIndex = str.indexOf('{');
+    let openBraces = 0;
+
+    for (let i = startIndex; i < str.length; i++) {
+      if (str[i] === '{') {
+        if (openBraces === 0) {startIndex = i;};
+        openBraces++;
+      } else if (str[i] === '}') {
+        openBraces--;
+        if (openBraces === 0) {
+          const jsonStr = str.substring(startIndex, i + 1);
+          result.push(JSON.parse(jsonStr));
+        }
+      }
+    }
+
+    return result;
+  }
+
+  function extractDataformJsonFromMultipleJson(compiledString: string){
+    //NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string. From observation, index 1 is the JSON object that has Dataform compilation metadata
+    const parsedObjects = parseMultipleJSON(compiledString);
+    if (parsedObjects.length > 0) {
+        return parsedObjects[1] as DataformCompiledJson;
+    } else {
+        throw new Error("Failed to parse JSON");
+    }
+  }
+
 // Usage
 export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
         let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder, isRunningOnWindows);
         if(compiledString){
-            const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+            let dataformCompiledJson: DataformCompiledJson;
+            try {
+                dataformCompiledJson = JSON.parse(compiledString);
+            } catch (parseError) {
+                dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
+            }
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
             return {dataformCompiledJson: dataformCompiledJson, errors:errors, possibleResolutions:possibleResolutions};
         }
         return {dataformCompiledJson: undefined, errors:errors, possibleResolutions:possibleResolutions};
     } catch (error:any) {
-        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform`, fileName: ""}], possibleResolutions:undefined};
+        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform: ${error.message}`, fileName: ""}], possibleResolutions:undefined};
     }
 }
+
 
 export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
 
