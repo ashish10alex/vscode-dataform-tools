@@ -88,7 +88,7 @@ Trouble installing ? Please see [FAQ section](FAQ.md), if you are still stuck, p
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
-<!-- ![cost_estimator]() -->
+![cost_estimator](/media/images/tag_cost_estimator.png)
 
 ### <a id="definition">Go to definition</a>
 
