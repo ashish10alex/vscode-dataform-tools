@@ -1,5 +1,7 @@
+import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
-import { BigQueryDryRunResponse } from './types';
+import { bigQueryDryRunCostOneGbByCurrency } from './constants';
+import { BigQueryDryRunResponse, SupportedCurrency } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -21,7 +23,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         return {
             schema: undefined,
             location: undefined,
-            statistics: { totalBytesProcessed: "0 GB" },
+            statistics: { totalBytesProcessed: 0},
             error: { hasError: false, message: "" }
         };
     }
@@ -33,7 +35,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         return {
             schema: undefined,
             location: undefined,
-            statistics: { totalBytesProcessed: "" },
+            statistics: { totalBytesProcessed: 0 },
             error: { hasError: true, message: "BigQuery client not available." }
         };
     }
@@ -46,17 +48,30 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         dryRun: true,
     };
 
+    let currencyFoDryRunCost: SupportedCurrency | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('currencyFoDryRunCost');
+    if(!currencyFoDryRunCost){
+        currencyFoDryRunCost = "USD" as SupportedCurrency;
+    }
     try {
         const [job] = await bigqueryClient.createQueryJob({
             query,
             dryRun: true
         });
 
+        const totalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
+        const cost = Number((totalBytesProcessed) / 10 ** 9) * bigQueryDryRunCostOneGbByCurrency[currencyFoDryRunCost];
+
         return {
             schema: job.metadata.statistics.query.schema,
             location: job.metadata.jobReference.location,
             statistics: {
-                totalBytesProcessed: `${(parseFloat(job.metadata.statistics.totalBytesProcessed) / 10 ** 9).toFixed(3)} GB`,
+                totalBytesProcessed: totalBytesProcessed,
+                cost: {
+                    currency: currencyFoDryRunCost,
+                    value: cost
+                },
+                statementType: job.metadata.statistics.query.statementType,
+                totalBytesProcessedAccuracy: job.metadata.statistics.query.totalBytesProcessedAccuracy
             },
             error: { hasError: false, message: "" }
         };
@@ -69,7 +84,13 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
             return {
                 schema: undefined,
                 location: undefined,
-                statistics: { totalBytesProcessed: "" },
+                statistics: {
+                    totalBytesProcessed: 0,
+                    cost: {
+                        currency: currencyFoDryRunCost,
+                        value: 0
+                    }
+                },
                 error: { hasError: true, message: finalError.message, location: errorLocation }
             };
         }

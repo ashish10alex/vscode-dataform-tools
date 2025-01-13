@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import { QueryResultsOptions } from '@google-cloud/bigquery';
 import { bigQuerytimeoutMs } from './constants';
+import { formatBytes } from './utils';
 
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
@@ -216,7 +217,7 @@ export async function queryBigQuery(query: string) {
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId} };
+    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
 }
 
 export async function cancelBigQueryJob() {

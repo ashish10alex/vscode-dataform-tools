@@ -48,12 +48,18 @@ export interface TablesWtFullQuery {
 }
 
 export interface Assertion {
+    type: string;
     tags: string[];
     fileName: string;
     query: string;
     target: Target;
     canonicalTarget: Target;
     dependencyTargets: Target[];
+    preOps?: string[];
+    postOps?: string[];
+    incrementalQuery?: string;
+    incrementalPreOps?: string[];
+    bigquery?: TableBigQueryConfig;
 }
 
 export interface DependancyTreeMetadata {
@@ -94,6 +100,8 @@ interface ProjectConfig {
 }
 
 export interface Operation {
+    type: string;
+    query?: string //WARN: this does not adding this to avoid type error :)
     target: Target;
     canonicalTarget: Target;
     queries: string[];
@@ -101,6 +109,11 @@ export interface Operation {
     hasOutput: boolean;
     tags: string[];
     dependencyTargets: Target[];
+    preOps?: string[];
+    postOps?: string[];
+    incrementalQuery?: string;
+    incrementalPreOps?: string[];
+    bigquery?: TableBigQueryConfig;
 }
 
 type GraphErrors  = {
@@ -195,17 +208,25 @@ export interface ErrorLocation {
         column: number;
 };
 
+interface DryRunErorr {
+    hasError: boolean;
+    message: string;
+    location?: ErrorLocation;
+}
+
 export interface BigQueryDryRunResponse {
     schema: CompiledQuerySchema | undefined;
     location: string | undefined;
     statistics: {
-        totalBytesProcessed: string; // e.g. "0 GB", "1.234 GB"
+        totalBytesProcessed: number;
+        cost?:{
+            currency: string
+            value: number
+        };
+        statementType?: string;
+        totalBytesProcessedAccuracy?: string;
     };
-    error: {
-        hasError: boolean;
-        message: string;
-        location?: ErrorLocation;
-    };
+    error: DryRunErorr
 }
 
 export interface CompiledQuerySchema {
@@ -239,3 +260,31 @@ export type CurrentFileMetadata = {
   };
   document?: TextDocument;
 };
+
+export type TagDryRunStats = {
+  type: string;
+  targetName: string;
+  costOfRunningModel: number;
+  currency: SupportedCurrency;
+  totalGBProcessed: string;
+  totalBytesProcessedAccuracy: string | undefined;
+  statementType: string | undefined;
+  error: string
+};
+
+export type TagDryRunStatsMeta = {
+    tagDryRunStatsList?: TagDryRunStats[];
+    error?: string;
+};
+
+export const supportedCurrencies = {
+  USD: "USD",
+  EUR: "EUR",
+  GBP: "GBP",
+  JPY: "JPY",
+  CAD: "CAD",
+  AUD: "AUD",
+  INR: "INR",
+} as const;
+
+export type SupportedCurrency = keyof typeof supportedCurrencies;

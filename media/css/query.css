@@ -127,6 +127,7 @@ button:disabled:hover {
 
 .topnav a {
 	color: #b8b5b5;
+	box-shadow: 0 1px 1px gray;
 	text-decoration: none;
 	font-size: 16px;
 	padding: 4px 5px;
@@ -427,4 +428,27 @@ form {
 	align-items: center;
 	cursor: pointer;
 	margin: 10px;
+}
+
+
+.cost-model {
+	background-color: #007acc;
+	color: #ffffff;
+	padding: 5px 10px;
+	font-size: 16px;
+	border-radius: 5px;
+	border: none;
+	cursor: pointer;
+}
+
+.cost-model:hover {
+	background-color: #3291d0;
+}
+
+#costEstimator {
+    margin-bottom: 20px;
+}
+
+.tag-dropdown {
+  font-size: 14px;
 }
