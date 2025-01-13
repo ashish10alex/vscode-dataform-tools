@@ -73,7 +73,7 @@ if (queryLimit){
     });
 }
 
-function updateDateTime(elapsedTime, totalGbBilled) {
+function updateDateTime(elapsedTime, jobCostMeta) {
     const now = new Date();
     const options = {
       weekday: 'long',
@@ -84,7 +84,7 @@ function updateDateTime(elapsedTime, totalGbBilled) {
       minute: '2-digit',
       second: '2-digit'
     };
-    let queryStatsText = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | GB billed:  ' + totalGbBilled ;
+    let queryStatsText = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | billed:  ' + jobCostMeta ;
     document.getElementById('datetime').textContent = "Query results ran at: " + queryStatsText;
 }
 
@@ -124,7 +124,7 @@ window.addEventListener('message', event => {
     const columns = event?.data?.columns;
     const jobStats = event?.data?.jobStats;
     const noResults = event?.data?.noResults;
-    const totalBytesBilled = jobStats?.totalBytesBilled;
+    const jobCostMeta = jobStats?.jobCostMeta;
     const bigQueryJobId = jobStats?.bigQueryJobId || event?.data?.bigQueryJobId;
     const bigQueryJobCancelled = event?.data?.bigQueryJobCancelled;
     const errorMessage = event?.data?.errorMessage;
@@ -140,12 +140,10 @@ window.addEventListener('message', event => {
        incrementalCheckBoxDiv.style.display = "none";
     }
 
-    let totalGbBilled =  (parseFloat(totalBytesBilled) / 10 ** 9).toFixed(3) + " GB";
-
     if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
-        updateDateTime(elapsedTime, totalGbBilled);
+        updateDateTime(elapsedTime, jobCostMeta);
         updateBigQueryJobLink(bigQueryJobId);
         clearInterval(timerInterval);
         if (loadingMessage){
