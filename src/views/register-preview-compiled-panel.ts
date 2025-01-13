@@ -1,10 +1,10 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, supportedCurrencies } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 
@@ -397,7 +397,7 @@ export class CompiledQueryPanel {
         }
 
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
-        let dryRunStat = dryRunResult?.statistics?.totalGBProcessed;
+        let dryRunStat = formatBytes(dryRunResult?.statistics?.totalBytesProcessed);
 
         let currency = "USD" as SupportedCurrency;
         let currencySymbol = "$";
@@ -423,9 +423,9 @@ export class CompiledQueryPanel {
              </ol>`;
         }
         if(!dryRunStat){
-            dryRunStat = "0 GB";
+            dryRunStat = "0 B";
         }else{
-            dryRunStat += " GB " + `(${dryRunCost})`;
+            dryRunStat += ` (${dryRunCost})`;
         }
 
         if (compiledQuerySchema?.fields) {
@@ -466,6 +466,7 @@ export class CompiledQueryPanel {
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
+                "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTableOrView": targetTableOrView,
                 "models": curFileMeta.fileMetadata.tables,

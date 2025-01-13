@@ -23,7 +23,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         return {
             schema: undefined,
             location: undefined,
-            statistics: { totalGBProcessed: "0 GB" },
+            statistics: { totalBytesProcessed: 0},
             error: { hasError: false, message: "" }
         };
     }
@@ -35,7 +35,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
         return {
             schema: undefined,
             location: undefined,
-            statistics: { totalGBProcessed: "" },
+            statistics: { totalBytesProcessed: 0 },
             error: { hasError: true, message: "BigQuery client not available." }
         };
     }
@@ -58,14 +58,14 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
             dryRun: true
         });
 
-        const parsedTotalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
-        const cost = Number((parsedTotalBytesProcessed) / 10 ** 9) * bigQueryDryRunCostOneGbByCurrency[currencyFoDryRunCost];
+        const totalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
+        const cost = Number((totalBytesProcessed) / 10 ** 9) * bigQueryDryRunCostOneGbByCurrency[currencyFoDryRunCost];
 
         return {
             schema: job.metadata.statistics.query.schema,
             location: job.metadata.jobReference.location,
             statistics: {
-                totalGBProcessed: (parsedTotalBytesProcessed/ 10 ** 9).toFixed(3),
+                totalBytesProcessed: totalBytesProcessed,
                 cost: {
                     currency: currencyFoDryRunCost,
                     value: cost
@@ -85,7 +85,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
                 schema: undefined,
                 location: undefined,
                 statistics: {
-                    totalGBProcessed: "",
+                    totalBytesProcessed: 0,
                     cost: {
                         currency: currencyFoDryRunCost,
                         value: 0

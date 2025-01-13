@@ -111,14 +111,12 @@ navLinks.forEach(link => {
         this.classList.add('active');
         if (this.getAttribute('href') === '#compilation') {
             targetTableOrViewLink.style.display = "";
-            dryRunStatDiv.style.display = "";
             dataLineageDiv.style.display = "";
             document.getElementById("compilationBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#schema')  {
             targetTableOrViewLink.style.display = "";
-            dryRunStatDiv.style.display = "";
             dataLineageDiv.style.display = "";
             document.getElementById("schemaBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
@@ -128,7 +126,6 @@ navLinks.forEach(link => {
             document.getElementById("schemaBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
             targetTableOrViewLink.style.display = "none";
-            dryRunStatDiv.style.display = "none";
             dataLineageDiv.style.display = "none";
         }
     });
@@ -171,6 +168,7 @@ window.addEventListener('message', event => {
         populateDropdown(dataformTags, event?.data?.selectedTag);
     }
 
+    let currencySymbol = event?.data?.currencySymbol;
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
     const lineageMetadata = event?.data?.lineageMetadata;
@@ -395,7 +393,8 @@ window.addEventListener('message', event => {
             }
             else if (key === "dryRunStat"){
                 dryRunloadingIcon.style.display = "none";
-                if (value === "0 GB"){
+                console.log(`errorMessage: ${event?.data?.errorMessage}`);
+                if (event?.data?.errorMessage !== " "){
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
@@ -419,7 +418,6 @@ window.addEventListener('message', event => {
     });
 
     let tagDryRunStatsMeta =  event?.data?.tagDryRunStatsMeta;
-    let currencySymbol = event?.data?.currencySymbol;
     if(tagDryRunStatsMeta?.tagDryRunStatsList && !tagDryRunStatsMeta?.error?.message){
         costEstimatorloadingIcon.style.display = "none";
         targetTableOrViewLink.style.display = "none";

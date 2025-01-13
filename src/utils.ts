@@ -24,6 +24,21 @@ export function getNonce() {
     return text;
 }
 
+export function formatBytes(bytes: number) {
+    if (bytes === 0) {return '0 B';}
+  
+    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const k = 1024; // Use 1024 for binary prefixes (e.g., KiB) or 1000 for decimal
+  
+    // Find the appropriate unit level
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+    // Convert to the unit and round to 2 decimal places
+    const value = (bytes / Math.pow(k, i)).toFixed(2);
+  
+    return `${value} ${units[i]}`;
+  }
+
 export async function getTableSchema(projectId: string, datasetId: string, tableId: string): Promise<{name: string, metadata: {fullTableId: string}}[]> {
     try {
         await checkAuthentication();
@@ -1064,7 +1079,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any, queryAutoCompMet
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
             combinedTableIds += targetTableId;
         });
-        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalGBProcessed} - ${combinedTableIds}`);
+        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
     }
     return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult];
 }
