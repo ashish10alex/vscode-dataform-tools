@@ -163,6 +163,8 @@ window.addEventListener('message', event => {
         document.getElementById('bigqueryResults').style.display = 'table';
 
         new Tabulator("#bigqueryResults", {
+            layout: "fitDataFill",
+            height: "100%",
             data:results,
             columns:columns,
             // autoColumns:true,
