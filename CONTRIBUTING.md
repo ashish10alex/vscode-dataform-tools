@@ -3,6 +3,8 @@
 
 * `node v18` or higher
 * `npm` (gets installed alongside node)
+* [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
+* Install and setup [gcloud cli](https://cloud.google.com/sdk/docs/install) for your operating system
 
 ## How to contribute
 
@@ -31,5 +33,5 @@ Make the desired changes to the `vscode-dataform-tools` repo and re-run/refresh 
 [If you'd like the feature or bug fix to be merged]()
 
 * Check the exsisting issues to make sure that if it has not been already raised
-* [Create an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)  
+* [Create an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 * [Create a pull request here](https://github.com/ashish10alex/vscode-dataform-tools/pulls)
