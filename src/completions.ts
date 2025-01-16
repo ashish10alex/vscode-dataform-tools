@@ -113,7 +113,7 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
 
 
 export const schemaAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
-    { language: 'sqlx', scheme: 'file' },
+    "*",
     {
       async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
         const completionItems = schemaAutoCompletions.map((item: SchemaMetadata) => {
