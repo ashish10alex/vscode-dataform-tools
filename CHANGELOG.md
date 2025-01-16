@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.0...v0.8.1) (2025-01-16)
+
+
+### Features
+
+* add copy full model name button ([c571c63](https://github.com/ashish10alex/vscode-dataform-tools/commit/c571c636b27e54fbfd46568dcde91bbc41a3cbbd))
+* **completion:** use a generic selector for completion items. ([3066dfd](https://github.com/ashish10alex/vscode-dataform-tools/commit/3066dfdd5d29c0d99bb7ea29b4b4b85b22450e8c))
+* ensure result panel fits in the container ([3ae835f](https://github.com/ashish10alex/vscode-dataform-tools/commit/3ae835fc0fe8d59cd27ba529e21f1837c8c79cff))
+
 ## [0.8.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.7.11...v0.8.0) (2025-01-13)
 
 
