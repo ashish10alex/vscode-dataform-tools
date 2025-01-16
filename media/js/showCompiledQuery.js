@@ -17,7 +17,8 @@ const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
 const dryRunStatDiv = document.getElementById("dryRunStatDiv");
 const errorMessageDiv = document.getElementById("errorMessageDiv");
 const dataLineageDiv = document.getElementById("dataLineageDiv");
-
+const modelLinkDiv = document.getElementById("modelLinkDiv");
+const copyModelNameButton = document.getElementById("copyModelNameButton");
 
 function populateDropdown(tags, defaultTag = undefined) {
     const dropdown = document.getElementById('tags');
@@ -68,6 +69,24 @@ function costEstimatorClickHandler() {
     }, 3000);
 }
 
+function copyModelNameHandler(){
+    const textToCopy = "`" + targetTableOrViewLink.textContent  + "`";
+    const buttonText = copyModelNameButton.querySelector('.button-text');
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        console.log(copyModelNameButton.textContent);
+        buttonText.textContent = 'copied!';
+        setTimeout(() => {
+            buttonText.textContent = '';
+        }, 500);
+    }).catch(function(err) {
+        console.error('Failed to copy model name: ', err);
+    });
+}
+
+if(copyModelNameButton){
+    copyModelNameButton.addEventListener('click', copyModelNameHandler);
+}
+
 if (runModelButton) {
     runModelButton.addEventListener('click', runModelClickHandler);
 }
@@ -110,13 +129,13 @@ navLinks.forEach(link => {
         // Add active class to clicked link
         this.classList.add('active');
         if (this.getAttribute('href') === '#compilation') {
-            targetTableOrViewLink.style.display = "";
+            modelLinkDiv.style.display = "";
             dataLineageDiv.style.display = "";
             document.getElementById("compilationBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#schema')  {
-            targetTableOrViewLink.style.display = "";
+            modelLinkDiv.style.display = "";
             dataLineageDiv.style.display = "";
             document.getElementById("schemaBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
@@ -125,7 +144,7 @@ navLinks.forEach(link => {
             document.getElementById("costBlock").style.display = "";
             document.getElementById("schemaBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
-            targetTableOrViewLink.style.display = "none";
+            modelLinkDiv.style.display = "none";
             dataLineageDiv.style.display = "none";
         }
     });
@@ -176,6 +195,7 @@ window.addEventListener('message', event => {
 
         let targetTableOrView = event?.data?.targetTableOrView;
         if (targetTableOrView){
+            modelLinkDiv.style.display = "";
             targetTableOrViewLink.style.display = "";
             targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
             targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
@@ -393,7 +413,6 @@ window.addEventListener('message', event => {
             }
             else if (key === "dryRunStat"){
                 dryRunloadingIcon.style.display = "none";
-                console.log(`errorMessage: ${event?.data?.errorMessage}`);
                 if (event?.data?.errorMessage !== " "){
                     divElement.style.display = "none";
                 } else {

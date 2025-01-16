@@ -519,6 +519,7 @@ export class CompiledQueryPanel {
 
             <link href="${styleResetUri}" rel="stylesheet">
             <link href="${customTabulatorCss}" rel="stylesheet">
+            <link rel="stylesheet" href=${cdnLinks.fontAwesomeIconsUri}>
             <style>
         </style>
         </head>
@@ -544,8 +545,12 @@ export class CompiledQueryPanel {
             </svg>
         </div>
 
-        <div>
-           <a id="targetTableOrViewLink"></a>
+        <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
+            <a id="targetTableOrViewLink"></a>
+            <button id="copyModelNameButton" style="margin-left: 10px;">
+                <i class="fa-regular fa-copy"></i>
+                <span class="button-text"></span>
+            </button>
         </div>
 
         <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">
