@@ -526,6 +526,15 @@ export class CompiledQueryPanel {
 
         <body>
 
+        <div class="report-widget">
+        <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" class="report-link">
+            Report an issue
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 5H19V14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+        </div>
+
         <div style="padding-bottom: 20px; padding-top: 10px;">
             <div class="topnav">
                 <a class="active" href="#compilation">Compiled Query</a>

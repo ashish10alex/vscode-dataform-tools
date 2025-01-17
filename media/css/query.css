@@ -452,3 +452,9 @@ form {
 .tag-dropdown {
   font-size: 14px;
 }
+
+.report-widget {
+  position: fixed;
+  top: 20px;
+  right: 10px;
+}
