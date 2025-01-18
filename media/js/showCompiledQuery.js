@@ -6,6 +6,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'UTC'
+    }) + ' UTC';
+}
+
+function wasUpdatedToday(timestamp) {
+    const lastUpdate = new Date(timestamp);
+    const today = new Date();
+    return lastUpdate.toDateString() === today.toDateString();
+}
+
 const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
 const costEstimatorButton = document.getElementById('costEstimator');
@@ -19,6 +39,7 @@ const errorMessageDiv = document.getElementById("errorMessageDiv");
 const dataLineageDiv = document.getElementById("dataLineageDiv");
 const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
+let fullModelName = "";
 
 function populateDropdown(tags, defaultTag = undefined) {
     const dropdown = document.getElementById('tags');
@@ -70,10 +91,9 @@ function costEstimatorClickHandler() {
 }
 
 function copyModelNameHandler(){
-    const textToCopy = "`" + targetTableOrViewLink.textContent  + "`";
+    const textToCopy = "`" + fullModelName  + "`";
     const buttonText = copyModelNameButton.querySelector('.button-text');
     navigator.clipboard.writeText(textToCopy).then(() => {
-        console.log(copyModelNameButton.textContent);
         buttonText.textContent = 'copied!';
         setTimeout(() => {
             buttonText.textContent = '';
@@ -198,7 +218,27 @@ window.addEventListener('message', event => {
             modelLinkDiv.style.display = "";
             targetTableOrViewLink.style.display = "";
             targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
-            targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+            fullModelName = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+
+            modelLastUpdateTime = event?.data?.modelLastUpdateTime;
+
+            if(!modelLastUpdateTime){
+                targetTableOrViewLink.innerHTML  = `${fullModelName}`;
+                targetTableOrViewLink.innerHTML = `
+                    <span class="modified-time">
+                        <small>Last modified: n/a</small>
+                    </span><br>
+                    ${fullModelName}
+                `;
+            }else{
+                targetTableOrViewLink.innerHTML = `
+                    <span class="modified-time ${!wasUpdatedToday(event?.data?.modelLastUpdateTime) ? 'outdated' : ''}" 
+                            title="Last modified: ${formatTimestamp(event?.data?.modelLastUpdateTime)}">
+                    <small>Last modified: ${formatTimestamp(event?.data?.modelLastUpdateTime)}</small>
+                    </span><br>
+                    ${fullModelName}
+                `;
+            }
         }
 
 

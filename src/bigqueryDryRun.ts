@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import { bigQueryDryRunCostOneGbByCurrency } from './constants';
-import { BigQueryDryRunResponse, SupportedCurrency } from './types';
+import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency } from './types';
+import { error } from 'console';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -18,12 +19,12 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     };
 }
 
-export async function queryDryRun(query: string) : Promise<BigQueryDryRunResponse> {
+export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse> {
     if (query === "" || !query) {
         return {
             schema: undefined,
             location: undefined,
-            statistics: { totalBytesProcessed: 0},
+            statistics: { totalBytesProcessed: 0 },
             error: { hasError: false, message: "" }
         };
     }
@@ -49,7 +50,7 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
     };
 
     let currencyFoDryRunCost: SupportedCurrency | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('currencyFoDryRunCost');
-    if(!currencyFoDryRunCost){
+    if (!currencyFoDryRunCost) {
         currencyFoDryRunCost = "USD" as SupportedCurrency;
     }
     try {
@@ -94,5 +95,37 @@ export async function queryDryRun(query: string) : Promise<BigQueryDryRunRespons
                 error: { hasError: true, message: finalError.message, location: errorLocation }
             };
         }
+    }
+}
+
+
+export async function getLastModifiedTime(projectId: string, datasetId: string, tableId: string): Promise<LastModifiedTimeMeta> {
+    const bigqueryClient = getBigQueryClient();
+    if (!bigqueryClient) {
+        return {
+            lastModifiedTime: undefined,
+            error: { message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}` }
+        };
+    }
+
+    try {
+        const [table] = await bigqueryClient.dataset(datasetId, { projectId }).table(tableId).get();
+        const lastModifiedTime = table?.metadata?.lastModifiedTime;
+
+        return lastModifiedTime
+            ? { lastModifiedTime: new Date(parseInt(lastModifiedTime)), error: { message: undefined } }
+            : {
+                lastModifiedTime: undefined,
+                error: {
+                    message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
+                }
+            };
+    } catch (error: any) {
+        return {
+            lastModifiedTime: undefined,
+            error: {
+                message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
+            }
+        };
     }
 }
