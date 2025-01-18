@@ -7,7 +7,7 @@ import { runCurrentFile } from "../runFiles";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
-import { getLastModifiedTime } from "../bigqueryDryRun";
+import { getModelLastModifiedTime } from "../bigqueryDryRun";
 
 function showLoadingProgress(
     title: string,
@@ -403,7 +403,7 @@ export class CompiledQueryPanel {
 
         const [dryRunResults, modelLastUpdateTimeMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false),
-            getLastModifiedTime(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name)
+            getModelLastModifiedTime(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name)
         ]);
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
 

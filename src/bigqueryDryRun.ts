@@ -99,7 +99,7 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
 }
 
 
-export async function getLastModifiedTime(projectId: string, datasetId: string, tableId: string): Promise<LastModifiedTimeMeta> {
+export async function getModelLastModifiedTime(projectId: string, datasetId: string, tableId: string): Promise<LastModifiedTimeMeta> {
     const bigqueryClient = getBigQueryClient();
     if (!bigqueryClient) {
         return {
