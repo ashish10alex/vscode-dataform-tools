@@ -7,6 +7,7 @@ import { runCurrentFile } from "../runFiles";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
+import { getModelLastModifiedTime } from "../bigqueryDryRun";
 
 function showLoadingProgress(
     title: string,
@@ -388,7 +389,7 @@ export class CompiledQueryPanel {
             "targetTableOrView": targetTableOrView,
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
-        });
+    });
 
         if(diagnosticCollection){
             diagnosticCollection.clear();
@@ -400,7 +401,12 @@ export class CompiledQueryPanel {
             return;
         }
 
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false);
+        const [dryRunResults, modelLastUpdateTimeMeta] = await Promise.all([
+            dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false),
+            getModelLastModifiedTime(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name)
+        ]);
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
+
         let dryRunStat = formatBytes(dryRunResult?.statistics?.totalBytesProcessed);
 
         let currency = "USD" as SupportedCurrency;
@@ -476,6 +482,8 @@ export class CompiledQueryPanel {
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
+                "modelLastUpdateTime": modelLastUpdateTimeMeta.lastModifiedTime,
+                "modelWasUpdatedToday": modelLastUpdateTimeMeta.modelWasUpdatedToday,
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;

@@ -288,3 +288,11 @@ export const supportedCurrencies = {
 } as const;
 
 export type SupportedCurrency = keyof typeof supportedCurrencies;
+
+export type LastModifiedTimeMeta = {
+    lastModifiedTime: any,
+    modelWasUpdatedToday: boolean | undefined,
+    error: {
+        message: string | undefined,
+    }
+};

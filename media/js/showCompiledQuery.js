@@ -19,6 +19,7 @@ const errorMessageDiv = document.getElementById("errorMessageDiv");
 const dataLineageDiv = document.getElementById("dataLineageDiv");
 const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
+let fullModelName = "";
 
 function populateDropdown(tags, defaultTag = undefined) {
     const dropdown = document.getElementById('tags');
@@ -70,10 +71,9 @@ function costEstimatorClickHandler() {
 }
 
 function copyModelNameHandler(){
-    const textToCopy = "`" + targetTableOrViewLink.textContent  + "`";
+    const textToCopy = "`" + fullModelName  + "`";
     const buttonText = copyModelNameButton.querySelector('.button-text');
     navigator.clipboard.writeText(textToCopy).then(() => {
-        console.log(copyModelNameButton.textContent);
         buttonText.textContent = 'copied!';
         setTimeout(() => {
             buttonText.textContent = '';
@@ -198,7 +198,28 @@ window.addEventListener('message', event => {
             modelLinkDiv.style.display = "";
             targetTableOrViewLink.style.display = "";
             targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
-            targetTableOrViewLink.textContent = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+            fullModelName = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+
+            modelLastUpdateTime = event?.data?.modelLastUpdateTime;
+
+            if(!modelLastUpdateTime){
+                targetTableOrViewLink.innerHTML  = `${fullModelName}`;
+                targetTableOrViewLink.innerHTML = `
+                    <span class="modified-time">
+                        <small>Last modified: n/a</small>
+                    </span><br>
+                    ${fullModelName}
+                `;
+            }else{
+                console.log(`modelWasUpdatedToday: ${event.data?.modelWasUpdatedToday}`);
+                targetTableOrViewLink.innerHTML = `
+                    <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
+                            title="Last modified: ${event?.data?.modelLastUpdateTime}">
+                    <small>Last modified: ${event?.data?.modelLastUpdateTime}</small>
+                    </span><br>
+                    ${fullModelName}
+                `;
+            }
         }
 
 
