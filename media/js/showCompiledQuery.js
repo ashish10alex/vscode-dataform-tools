@@ -6,26 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
-function formatTimestamp(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-        timeZone: 'UTC'
-    }) + ' UTC';
-}
-
-function wasUpdatedToday(timestamp) {
-    const lastUpdate = new Date(timestamp);
-    const today = new Date();
-    return lastUpdate.toDateString() === today.toDateString();
-}
-
 const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
 const costEstimatorButton = document.getElementById('costEstimator');
@@ -231,10 +211,11 @@ window.addEventListener('message', event => {
                     ${fullModelName}
                 `;
             }else{
+                console.log(`modelWasUpdatedToday: ${event.data?.modelWasUpdatedToday}`);
                 targetTableOrViewLink.innerHTML = `
-                    <span class="modified-time ${!wasUpdatedToday(event?.data?.modelLastUpdateTime) ? 'outdated' : ''}" 
-                            title="Last modified: ${formatTimestamp(event?.data?.modelLastUpdateTime)}">
-                    <small>Last modified: ${formatTimestamp(event?.data?.modelLastUpdateTime)}</small>
+                    <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
+                            title="Last modified: ${event?.data?.modelLastUpdateTime}">
+                    <small>Last modified: ${event?.data?.modelLastUpdateTime}</small>
                     </span><br>
                     ${fullModelName}
                 `;

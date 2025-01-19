@@ -483,6 +483,7 @@ export class CompiledQueryPanel {
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelLastUpdateTime": modelLastUpdateTimeMeta.lastModifiedTime,
+                "modelWasUpdatedToday": modelLastUpdateTimeMeta.modelWasUpdatedToday,
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;

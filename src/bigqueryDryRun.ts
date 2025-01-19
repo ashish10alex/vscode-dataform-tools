@@ -99,23 +99,47 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
 }
 
 
+function formatTimestamp(lastModifiedTime:Date) {
+    return lastModifiedTime.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'UTC'
+    }) + ' UTC';
+}
+
+function isModelWasUpdatedToday(lastModifiedTime:Date) {
+    const today = new Date();
+    return lastModifiedTime.toDateString() === today.toDateString();
+}
+
+
 export async function getModelLastModifiedTime(projectId: string, datasetId: string, tableId: string): Promise<LastModifiedTimeMeta> {
     const bigqueryClient = getBigQueryClient();
     if (!bigqueryClient) {
         return {
             lastModifiedTime: undefined,
+            modelWasUpdatedToday: undefined,
             error: { message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}` }
         };
     }
 
     try {
         const [table] = await bigqueryClient.dataset(datasetId, { projectId }).table(tableId).get();
-        const lastModifiedTime = table?.metadata?.lastModifiedTime;
+        let lastModifiedTime = table?.metadata?.lastModifiedTime;
+        lastModifiedTime = new Date(parseInt(lastModifiedTime));
+        const formattedLastModifiedTime = formatTimestamp(lastModifiedTime);
+        const modelWasUpdatedToday = isModelWasUpdatedToday(lastModifiedTime);
 
         return lastModifiedTime
-            ? { lastModifiedTime: new Date(parseInt(lastModifiedTime)), error: { message: undefined } }
+            ? { lastModifiedTime: formattedLastModifiedTime, modelWasUpdatedToday : modelWasUpdatedToday, error: { message: undefined } }
             : {
                 lastModifiedTime: undefined,
+                modelWasUpdatedToday: undefined,
                 error: {
                     message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
                 }
@@ -123,6 +147,7 @@ export async function getModelLastModifiedTime(projectId: string, datasetId: str
     } catch (error: any) {
         return {
             lastModifiedTime: undefined,
+            modelWasUpdatedToday: undefined,
             error: {
                 message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
             }
