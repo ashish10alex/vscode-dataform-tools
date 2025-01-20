@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import { bigQueryDryRunCostOneGbByCurrency } from './constants';
 import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency } from './types';
-import { error } from 'console';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
