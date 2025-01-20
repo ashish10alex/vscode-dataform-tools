@@ -458,3 +458,17 @@ form {
   top: 20px;
   right: 10px;
 }
+
+.modified-time {
+	font-size: 14px;
+    opacity: 0.8;
+    color: #bec8d0;
+}
+
+.modified-time.outdated {
+    color: #dc3545;
+}
+
+.modified-time:hover {
+    opacity: 1;
+}
