@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.1...v0.8.2) (2025-01-20)
+
+
+### Features
+
+* add a widget for user to navigate to create issues ([29dc171](https://github.com/ashish10alex/vscode-dataform-tools/commit/29dc1715432fb08cf24671201c0fb3e2d5b08e7f))
+* **hover:** assertion hover documentation ([00bb02f](https://github.com/ashish10alex/vscode-dataform-tools/commit/00bb02fcd74647a94575fa5c1f1cab667fa3fbae))
+* show model lastModifiedTime in compiled query webview ([#92](https://github.com/ashish10alex/vscode-dataform-tools/issues/92)) ([58bb8e1](https://github.com/ashish10alex/vscode-dataform-tools/commit/58bb8e1e879be7272a1d66b36b2c2ce355555a42))
+
 ### [0.8.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.0...v0.8.1) (2025-01-16)
 
 
