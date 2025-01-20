@@ -7,7 +7,7 @@ import { CustomViewProvider } from './views/register-query-results-panel';
 import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider } from './definitionProvider';
-import { DataformHoverProvider } from './hoverProvider';
+import { DataformConfigProvider, DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument} from './utils';
 import { executableIsAvailable } from './utils';
@@ -139,6 +139,13 @@ export async function activate(context: vscode.ExtensionContext) {
         { language: 'sqlx' },
         new DataformHoverProvider()
     ));
+
+    context.subscriptions.push(vscode.languages.registerHoverProvider(
+        { language: 'sqlx' },
+        new DataformConfigProvider()
+    ));
+
+
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.fixError',

@@ -348,3 +348,64 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     }
   }
 }
+
+export class DataformConfigProvider implements vscode.HoverProvider {
+  async provideHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken
+  ) {
+    // TODO: Add more hover documentation for config block here
+    const line = document.lineAt(position.line).text;
+    if (line.includes("nonNull:")) {
+      return new vscode.Hover(new vscode.MarkdownString(`#### assertion: ( nonNull )
+
+    This condition asserts that the specified columns are not null across all table rows
+    The following code sample shows a nonNull assertion in the config block of a table:
+
+      config {
+      type: "table",
+      assertions: {
+        nonNull: ["user_id", "customer_id", "email"]
+        }
+      }
+      SELECT ...
+        `));
+    } else if (line.includes("rowConditions:")){
+      return new vscode.Hover(new vscode.MarkdownString(`#### assertion: ( rowConditions )
+
+      This condition asserts that all table rows follow the custom logic you define.
+      Each row condition is a custom SQL expression, and each table row is evaluated against each row condition. The assertion fails if any table row results in false.
+
+      config {
+        type: "incremental",
+        assertions: {
+          rowConditions: [
+            'signup_date is null or signup_date > "2022-08-01"',
+            'email like "%@%.%"'
+          ]
+        }
+      }
+      SELECT ...
+        `));
+
+    } else if (line.includes("uniqueKey:")){
+      return new vscode.Hover(new vscode.MarkdownString(`#### assertion: ( uniqueKey )
+
+      This condition asserts that, in a specified column, no table rows have the same value.
+      The following code sample shows a uniqueKey assertion in the config block of a view:
+
+      config {
+        type: "view",
+        assertions: {
+          uniqueKey: ["user_id"]
+        }
+      }
+      SELECT ...
+        `));
+
+    } else if (line.includes("assertions:")){
+      return new vscode.Hover(new vscode.MarkdownString(`#### [Dataform assertion documentation](https://cloud.google.com/dataform/docs/assertions)`));
+    }
+  }
+}
