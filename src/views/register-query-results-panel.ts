@@ -8,7 +8,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
     private queryType: string = "";
-    private _cachedResults?: { results: any[], columns:any, jobStats: any, query:string };
+    private _cachedResults?: { results: any[] | undefined, columns:any | undefined, jobStats: any, query:string|undefined };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -100,6 +100,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             this._view.show(true);
           } else if (!errorMessage){
             //TODO: even when there is no results we could shows billed bytes 
+            this._cachedResults = { results, columns, jobStats, query };
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
             this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
             this._view.show(true);
