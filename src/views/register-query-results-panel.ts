@@ -92,6 +92,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
+          this._view.show(true);
           const { results, columns, jobStats, errorMessage } = await queryBigQuery(query);
           if(results && !errorMessage){
             this._cachedResults = { results, columns, jobStats, query };
@@ -102,8 +103,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             //TODO: even when there is no results we could shows billed bytes 
             this._cachedResults = { results, columns, jobStats, query };
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-            this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
             this._view.show(true);
+            this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
           } else if(errorMessage){
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
             this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
