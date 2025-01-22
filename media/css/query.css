@@ -14,7 +14,7 @@ button:disabled:hover {
 	top: 6px;
 	right: 130px;
 	padding: 5px 10px;
-	border: none;
+	border-radius: 5px;
 	cursor: pointer;
 }
 
@@ -22,7 +22,7 @@ button:disabled:hover {
 	background-color: #007acc;
 	color: white;
 	padding: 5px 10px;
-	border: none;
+	border-radius: 5px;
 	cursor: pointer;
 }
 
@@ -37,7 +37,7 @@ button:disabled:hover {
 	top: 6px;
 	right: 10px;
 	padding: 5px 10px;
-	border: none;
+	border-radius: 5px;
 	cursor: pointer;
 }
 
@@ -45,7 +45,7 @@ button:disabled:hover {
 	background-color: #b8860b;
 	color: white;
 	padding: 5px 10px;
-	border: none;
+	border-radius: 5px;
 	cursor: pointer;
 }
 
@@ -79,7 +79,7 @@ button:disabled:hover {
 	top: 6px;
 	right: 130px;
 	padding: 5px 10px;
-	border: none;
+	border-radius: 5px;
 	cursor: pointer;
 }
 
@@ -100,7 +100,7 @@ button:disabled:hover {
 	top: 6px;
 	right: 200px;
 	padding: 5px 10px;
-	border: none;
+	border-radius: 5px;
 	cursor: pointer;
 }
 
