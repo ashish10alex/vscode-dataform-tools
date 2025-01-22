@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.2...v0.8.3) (2025-01-22)
+
+
+### Features
+
+* **codeLens:** ability to preview assertion results from config block ([2dafa7e](https://github.com/ashish10alex/vscode-dataform-tools/commit/2dafa7e7e9099540dff7ca395a96456964ea7d70))
+* **style:** consistent ui ([ddef8bc](https://github.com/ashish10alex/vscode-dataform-tools/commit/ddef8bce7f74dadeed63fdf8fcaa720e8a79c0fc))
+
+
+### Bug Fixes
+
+* when query returns no results cache was not cleared ([93a02fd](https://github.com/ashish10alex/vscode-dataform-tools/commit/93a02fd405c799b220b70b705430225950c61a2a))
+
 ### [0.8.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.1...v0.8.2) (2025-01-20)
 
 
