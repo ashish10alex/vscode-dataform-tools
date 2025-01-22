@@ -1,31 +1,29 @@
-/* tabulator_custom.css */
-
 .tabulator {
-    background-color: #2c2f33; /* Soft dark background */
-    color: #dcdcdc; /* Light gray text for better readability */
+    background-color: #1e1e1e; /* VS Code dark theme background */
+    color: #d4d4d4; /* VS Code default text color */
 }
 
 .tabulator .tabulator-header {
-    background-color: #23272a; /* Darker header with subtle contrast */
-    color: #ffffff; /* White header text for clarity */
+    background-color: #252526; 
+    color: #d4d4d4;
 }
 
 .tabulator .tabulator-row {
-    background-color: #2c2f33; /* Row background */
+    background-color: #1e1e1e; 
 }
 
 .tabulator .tabulator-row:hover {
-    background-color: #3c4043; /* Slightly lighter hover effect */
+    background-color: #2a2d2e;
 }
 
 .tabulator .tabulator-cell {
-    border-color: #3e444a; /* Cell borders with soft contrast */
-    color: #dcdcdc; /* Default cell text color */
+    border-color: #3c3c3c; 
+    color: #d4d4d4; 
 }
 
 /* Optional: Add alternating row colors for better readability */
 .tabulator .tabulator-row:nth-child(even) {
-    background-color: #24272a; /* Slightly different background for even rows */
+    background-color: #252526; /* Slightly lighter background for even rows */
 }
 
 .error-column {
