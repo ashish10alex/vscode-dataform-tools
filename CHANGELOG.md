@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.3...v0.8.4) (2025-01-22)
+
+
+### Bug Fixes
+
+* **ui:** report issue widget getting frozen at the top when scrolling ([5d3a4dc](https://github.com/ashish10alex/vscode-dataform-tools/commit/5d3a4dc2d2f4571dfb15f04e52337f46dbc2e329))
+
+
+### Performance
+
+* **query:** show query ui right before query in ran in BigQuery ([e494677](https://github.com/ashish10alex/vscode-dataform-tools/commit/e494677530d871f71267ba00bc1369e637db2023))
+
+
+### Styling
+
+* **table:** match the colorscheme of vscode default dark theme for tables ([0d08ef0](https://github.com/ashish10alex/vscode-dataform-tools/commit/0d08ef00c3472ead1f9a3ef28aeddf07f551d0d9))
+
 ### [0.8.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.2...v0.8.3) (2025-01-22)
 
 
