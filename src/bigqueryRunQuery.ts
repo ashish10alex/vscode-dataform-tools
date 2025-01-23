@@ -109,13 +109,13 @@ export async function queryBigQuery(query: string) {
     const bigquery = getBigQueryClient();
     if (!bigquery) {
         vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+        return { results: undefined, columns: undefined, jobStats: undefined };
     }
 
     if (cancelBigQueryJobSignal) {
         vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
         cancelBigQueryJobSignal = false;
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+        return { results: undefined, columns: undefined, jobStats: undefined };
     }
 
     try {
@@ -127,7 +127,7 @@ export async function queryBigQuery(query: string) {
             return await queryBigQuery(query);
         } catch (finalError: any) {
             vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
-            return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined }, errorMessage: finalError.message};
+            return { results: undefined, columns: undefined, jobStats: undefined, errorMessage: finalError.message};
         }
     }
 
@@ -135,7 +135,7 @@ export async function queryBigQuery(query: string) {
     if (cancelBigQueryJobSignal) {
         await cancelBigQueryJob();
         cancelBigQueryJobSignal = false;
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined } };
+        return { results: undefined, columns: undefined, jobStats: undefined };
     }
 
     const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs:bigQuerytimeoutMs };
@@ -147,7 +147,7 @@ export async function queryBigQuery(query: string) {
         [rows] = await bigQueryJob.getQueryResults(options);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: undefined }, errorMessage: error.message };
+        return { results: undefined, columns: undefined, jobStats: undefined, errorMessage: error.message };
     }
 
     // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
@@ -172,7 +172,7 @@ export async function queryBigQuery(query: string) {
     }
 
     if (rows.length === 0) {
-        return { results: undefined, columns: undefined, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
+        return { results: undefined, columns: undefined, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
     }
 
     function convertArrayToObject(array: any, columnName: string) {
@@ -224,7 +224,7 @@ export async function queryBigQuery(query: string) {
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
+    return { results: results, columns: columns, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
 }
 
 export async function cancelBigQueryJob() {
