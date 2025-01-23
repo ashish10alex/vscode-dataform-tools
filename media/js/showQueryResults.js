@@ -73,18 +73,8 @@ if (queryLimit){
     });
 }
 
-function updateDateTime(elapsedTime, jobCostMeta) {
-    const now = new Date();
-    const options = {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    };
-    let queryStatsText = now.toLocaleString('en-US', options) + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | billed:  ' + jobCostMeta ;
+function updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime) {
+    let queryStatsText = bigQueryJobEndTime  + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | billed:  ' + jobCostMeta ;
     document.getElementById('datetime').textContent = "Query results ran at: " + queryStatsText;
 }
 
@@ -125,6 +115,7 @@ window.addEventListener('message', event => {
     const jobStats = event?.data?.jobStats;
     const noResults = event?.data?.noResults;
     const jobCostMeta = jobStats?.jobCostMeta;
+    const bigQueryJobEndTime = jobStats?.bigQueryJobEndTime;
     const bigQueryJobId = jobStats?.bigQueryJobId || event?.data?.bigQueryJobId;
     const bigQueryJobCancelled = event?.data?.bigQueryJobCancelled;
     const errorMessage = event?.data?.errorMessage;
@@ -143,7 +134,7 @@ window.addEventListener('message', event => {
     if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
-        updateDateTime(elapsedTime, jobCostMeta);
+        updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime);
         updateBigQueryJobLink(bigQueryJobId);
         clearInterval(timerInterval);
         if (loadingMessage){
@@ -193,6 +184,7 @@ window.addEventListener('message', event => {
             noResultsDiv.style.display = "";
             if (type === "assertion"){
                 noResultsForQuery.textContent = `Assertion passed !`;
+                updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime);
                 updateBigQueryJobLink(bigQueryJobId);
             } else {
                 noResultsForQuery.textContent = `There is no data to display`;

@@ -155,17 +155,24 @@ export async function queryBigQuery(query: string) {
 
     let totalBytesBilled;
     let bigQueryJobId;
+    let bigQueryJobEndTime;
 
     if (bigQueryJob) {
         let jobMetadata = await bigQueryJob.getMetadata();
         let jobStats = jobMetadata[0].statistics.query;
         bigQueryJobId = jobMetadata[0].id;
         totalBytesBilled = jobStats.totalBytesBilled;
+        try {
+            const jobEndTime = parseInt(jobMetadata[0].statistics.endTime, 10);
+            bigQueryJobEndTime = new Date(jobEndTime);
+        } catch (error:any) {
+            bigQueryJobEndTime = new Date();
+        }
         bigQueryJob = undefined;
     }
 
     if (rows.length === 0) {
-        return { results: undefined, columns: undefined, jobStats: { totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId} };
+        return { results: undefined, columns: undefined, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
     }
 
     function convertArrayToObject(array: any, columnName: string) {
@@ -217,7 +224,7 @@ export async function queryBigQuery(query: string) {
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: { totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
+    return { results: results, columns: columns, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, totalBytesBilled: totalBytesBilled, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
 }
 
 export async function cancelBigQueryJob() {
