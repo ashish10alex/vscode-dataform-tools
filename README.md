@@ -10,7 +10,7 @@
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://buymeacoffee.com/ashishalexj)
 
-⚠️ ***This is not an officially supported Google product.***
+🎉 **Officially recommended by Google[^1]**. Though not an officially supported Google product.
 
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform) with following features
 
@@ -139,3 +139,5 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 * [ ] Add hover docs for config block elements. e.g. Assertions, type etc
 * [ ] Add option to include dependents / dependencies when running cost estimator for tag
 * [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
+
+[^1]: Link to confirmation of official recommendation by Google:  [link](https://github.com/dataform-co/dataform/blob/main/vscode/README.md)
