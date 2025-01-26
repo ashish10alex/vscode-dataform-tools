@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.4...v0.8.5) (2025-01-26)
+
+
+### Features
+
+* **query:** use Big Query job end time instead of current time as job end time ([e7386cd](https://github.com/ashish10alex/vscode-dataform-tools/commit/e7386cde29d6ee78cd11a22c13e6044f57ccd69d))
+
+
+### Bug Fixes
+
+* `Show compiled query in vertical split` command broken ([8f28ba8](https://github.com/ashish10alex/vscode-dataform-tools/commit/8f28ba86df3cea3d0a4580fc0326484bd6868917))
+
+
+### Documentation
+
+* officially the recommended vscode extension as of Dataform v3.0.10 ([96985d1](https://github.com/ashish10alex/vscode-dataform-tools/commit/96985d1e0a6651d180cf582f0de6daf2b16e1ab9))
+
 ### [0.8.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.3...v0.8.4) (2025-01-22)
 
 
