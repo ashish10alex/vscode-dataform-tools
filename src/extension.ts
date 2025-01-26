@@ -183,8 +183,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async (_editor) => {
-            activeEditorFileName = _editor.fsPath;
-            activeDocumentObj = getVSCodeDocument();
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
         }));
 
