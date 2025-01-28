@@ -260,6 +260,15 @@
                     "default": "${ref('table_name')}",
                     "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name')}` or ${ref({schema:'dataset_name', name:'table_name'})}"
                 },
+                "vscode-dataform-tools.dataformCliScope": {
+                    "type": "string",
+                    "enum": [
+                        "global",
+                        "local"
+                    ],
+                    "default": "global",
+                    "markdownDescription": "which dataform installation to use"
+                },
                 "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
                     "type": "boolean",
                     "default": true,

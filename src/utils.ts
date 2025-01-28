@@ -753,12 +753,20 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
 
     return new Promise((resolve, reject) => {
         let spawnedProcess;
+        let command = "dataform";
+        let dataformCliScope:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+        if(dataformCliScope === "local"){
+            let customDataformCliPath = getRelativePath(workspaceFolder  + "/./node_modules/.bin/dataform");
+            command = customDataformCliPath;
+        }
         if (isRunningOnWindows) {
-            const command = "dataform.cmd";
             // windows seems to require shell: true
             spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         } else {
-            const command = "dataform";
+            if(dataformCliScope === "local"){
+                let customDataformCliPath = getRelativePath(workspaceFolder  + "/./node_modules/.bin/dataform");
+                command = customDataformCliPath;
+            }
             spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         }
 
