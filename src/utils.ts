@@ -553,7 +553,8 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
 
 export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let dataformCompilerOptions = getDataformCompilerOptions();
-    let cmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
+    const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+    let cmd = `${customDataformCliPath} run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
     for (let i = 0; i < actionsList.length; i++) {
         let fullTableName = actionsList[i];
         if (i === 0) {
@@ -743,6 +744,21 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
+export function getDataformCliCmdBasedOnScope(workspaceFolder:string){
+    let customDataformCliPath = "dataform";
+    let dataformCliScope:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    if(dataformCliScope === "local"){
+        if(isRunningOnWindows){
+            customDataformCliPath = getRelativePath("/./node_modules/.bin/dataform");
+            customDataformCliPath = workspaceFolder + customDataformCliPath;
+            return customDataformCliPath;
+        }
+        return getRelativePath(workspaceFolder  + "/./node_modules/.bin/dataform");
+    } else {
+        return "dataform";
+    }
+}
+ 
 export function compileDataform(workspaceFolder: string, isRunningOnWindows:boolean): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
@@ -750,24 +766,17 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
     if (dataformCompilerOptions !== ""){
         compilerOptions.push(dataformCompilerOptions);
     }
-
+ 
     return new Promise((resolve, reject) => {
         let spawnedProcess;
-        let command = "dataform";
-        let dataformCliScope:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
-        if(dataformCliScope === "local"){
-            let customDataformCliPath = getRelativePath(workspaceFolder  + "/./node_modules/.bin/dataform");
-            command = customDataformCliPath;
-        }
+        let customDataformCliPath:string = "dataform";
         if (isRunningOnWindows) {
             // windows seems to require shell: true
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+            customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+            spawnedProcess = spawn(customDataformCliPath, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         } else {
-            if(dataformCliScope === "local"){
-                let customDataformCliPath = getRelativePath(workspaceFolder  + "/./node_modules/.bin/dataform");
-                command = customDataformCliPath;
-            }
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+            customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+            spawnedProcess = spawn(customDataformCliPath, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         }
 
         let stdOut = '';
