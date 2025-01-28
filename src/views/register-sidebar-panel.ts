@@ -11,6 +11,10 @@ export async function registerWebViewProvider(context: ExtensionContext) {
         let currFileMetadata = await getCurrentFileMetadata(false);
         if (currFileMetadata) {
             provider.view?.webview.postMessage({ "currFileMetadata": currFileMetadata });
+        } else {
+            provider.view?.webview.postMessage({ 
+                "errorMessage": `File type not supported. Supported file types are sqlx, js`
+            });
         }
     }));
 
@@ -91,7 +95,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
            <body>
               <h1> Dataform </h1>
               <br>
-              <h3 id="loadingMessage"> Loading metadata ... </h3>
+              <h3 id="loadingMessage"></h3>
               <br>
               <button type="button" class="load-dependancy-graph-button">Load dependancy graph</button><br>
               <script nonce="${nonce}" src="${sidePanelScriptUri}"></script>

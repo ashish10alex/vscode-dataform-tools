@@ -1,7 +1,9 @@
-function removeLoadingMessage() {
+function removeLoadingMessage(errorMessage) {
     var loadingMessage = document.getElementById("loadingMessage");
-    if (loadingMessage) {
+    if (loadingMessage && !errorMessage) {
         loadingMessage.parentNode.removeChild(loadingMessage);
+    } else if (errorMessage){
+        loadingMessage.innerHTML = `<p>${errorMessage}<p>`;
     }
 }
 
@@ -103,8 +105,12 @@ function showCurrFileMetadataInSideBar(tables) {
 
 window.addEventListener('message', event => {
     const message = event.data;
+    let errorMessage = message.errorMessage;
+    if(errorMessage){
+        removeLoadingMessage(errorMessage);
+        return;
+    }
     let tables = message.currFileMetadata.fileMetadata.tables;
     showCurrFileMetadataInSideBar(tables);
-    removeLoadingMessage();
 });
 
