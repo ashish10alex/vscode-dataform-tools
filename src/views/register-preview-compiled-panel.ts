@@ -304,8 +304,10 @@ export class CompiledQueryPanel {
         }
 
         if(!curFileMeta){
+            await webview.postMessage({
+                "errorMessage": `File type not supported. Supported file types are sqlx, js`
+            });
             return;
-            //TODO: show some error message in this case
         }
 
         if (curFileMeta.isDataformWorkspace===false){
