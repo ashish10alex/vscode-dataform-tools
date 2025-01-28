@@ -168,8 +168,6 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
-    workspaceFolder = `"${workspaceFolder}"`;
-
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
         let {dataformCompiledJson, errors, possibleResolutions} = await runCompilation(workspaceFolder); // Takes ~1100ms
@@ -554,7 +552,7 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
 export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let dataformCompilerOptions = getDataformCompilerOptions();
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-    let cmd = `${customDataformCliPath} run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
+    let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
     for (let i = 0; i < actionsList.length; i++) {
         let fullTableName = actionsList[i];
         if (i === 0) {
@@ -748,12 +746,9 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder:string){
     let customDataformCliPath = "dataform";
     let dataformCliScope:string|undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
     if(dataformCliScope === "local"){
-        if(isRunningOnWindows){
-            customDataformCliPath = getRelativePath("/./node_modules/.bin/dataform");
-            customDataformCliPath = workspaceFolder + customDataformCliPath;
-            return customDataformCliPath;
-        }
-        return getRelativePath(workspaceFolder  + "/./node_modules/.bin/dataform");
+        let dataformCliLocalScopePath = getRelativePath("/./node_modules/.bin/dataform");
+        customDataformCliPath = workspaceFolder + dataformCliLocalScopePath;
+        return customDataformCliPath;
     } else {
         return "dataform";
     }
@@ -773,10 +768,10 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
         if (isRunningOnWindows) {
             // windows seems to require shell: true
             customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-            spawnedProcess = spawn(customDataformCliPath, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+            spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         } else {
             customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-            spawnedProcess = spawn(customDataformCliPath, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+            spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
         }
 
         let stdOut = '';
@@ -1017,7 +1012,6 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
 }
 
 export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
-    workspaceFolder = `"${workspaceFolder}"`;
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);

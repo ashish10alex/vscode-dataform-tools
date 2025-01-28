@@ -19,7 +19,6 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     if (!workspaceFolder) {
         return;
     }
-    workspaceFolder = `"${workspaceFolder}"`;
 
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
