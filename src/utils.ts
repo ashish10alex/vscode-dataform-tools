@@ -743,19 +743,12 @@ export function getSqlfluffConfigPathFromSettings() {
 }
 
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
-    let dataformCliBase = "dataform";
-    if(isRunningOnWindows){
-        dataformCliBase = "dataform.cmd";
-    }
+    const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
     const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
-    
-    if (dataformCliScope === "local") {
-        let dataformCliLocalScopePath = "";
-        if(isRunningOnWindows){
-            dataformCliLocalScopePath = path.join("node_modules", ".bin", "dataform.cmd");
-        } else {
-            dataformCliLocalScopePath = path.join("node_modules", ".bin", "dataform");
-        }
+    if (dataformCliScope === 'local') {
+        const dataformCliLocalScopePath = isRunningOnWindows
+            ? path.join('node_modules', '.bin', 'dataform.cmd')
+            : path.join('node_modules', '.bin', 'dataform');
         return path.join(workspaceFolder, dataformCliLocalScopePath);
     }
     return dataformCliBase;
