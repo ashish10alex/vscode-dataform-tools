@@ -18,10 +18,18 @@
    * Run `dataform init-creds` from the from the root of your dataform project in your terminal
    * You will be promted to pick the location and type of authentication `json/adc`. Choosing adc will be use your default gcp credentials that you had setup using `gcloud`
 
-3. [I do not want to see compiled query each time I save it]()
+4. [I do not want to see compiled query each time I save it]()
    * Open vscode settings and search for Dataform and uncheck the following setting
    ![disable_save_on_compile](/media/images/disable_save_on_compile.png)
 
-3. [I want the autocompletion to be of the format  `${ref('dataset_name', 'table_name)}` instead of `${ref('table_name')}` ]()
+5. [I want the autocompletion to be of the format  `${ref('dataset_name', 'table_name)}` instead of `${ref('table_name')}`]()
    * Open vscode settings and search for Dataform and select the prefered autocompletion format
    ![disable_save_on_compile](/media/images/preferred_autocompletion.png)
+
+6. [I want to use local installation of dataform cli instead of global one | OR | I have to use different version of Dataform cli for a workspace]()
+   * If you install dataform cli using `npm install -g @dataform/cli` it will install the dataform cli
+      globally making only one version available everywhere.  If you have varing Dataform version requeriement for a workspace
+      you can installation dataform cli version specific to that workspace by running `npm install @dataform/cli` notice the absence of `-g` flag as compared to the previous command. Running `npm install @dataform/cli` will install dataform cli at `./node_modules/.bin/dataform`. To make the extension use dataform cli installated in local scope open
+     settings and select local for `Dataform Cli Scope` as shown in the screenshot below.
+
+     ![cli_scope](/media/images/cli_scope.png)
