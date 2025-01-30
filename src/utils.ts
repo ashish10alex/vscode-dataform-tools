@@ -764,15 +764,8 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
  
     return new Promise((resolve, reject) => {
         let spawnedProcess;
-        let customDataformCliPath:string = "dataform";
-        if (isRunningOnWindows) {
-            // windows seems to require shell: true
-            customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-            spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
-        } else {
-            customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-            spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
-        }
+        let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
 
         let stdOut = '';
         let errorOutput = '';
