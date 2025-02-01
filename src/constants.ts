@@ -4,7 +4,7 @@ import { SupportedCurrency as SupportedCurrencies } from './types';
 
 const tempDir = os.tmpdir();
 export const sqlFileToFormatPath = path.join(tempDir, "format.sql");
-export const executablesToCheck = ['dataform', 'sqlfluff', 'gcloud'];
+export const executablesToCheck = ['dataform', 'gcloud'];
 export const tableQueryOffset = 2;
 export const incrementalTableOffset = 1;
 export const assertionQueryOffset = 4;

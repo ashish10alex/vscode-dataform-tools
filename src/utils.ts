@@ -428,10 +428,6 @@ export async function fetchGitHubFileContent(): Promise<string> {
 }
 
 export function executableIsAvailable(name: string) {
-    if(name === "sqlfluff"){
-        name = getSqlfluffExecutablePathFromSettings();
-    }
-
     const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
     const command = isRunningOnWindows ? "where.exe" : "which";
     try { shell(`${command} ${name}`); return true; }
