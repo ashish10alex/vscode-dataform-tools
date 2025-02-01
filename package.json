@@ -254,7 +254,7 @@
                     "type": "string",
                     "default": "sqlfluff",
                     "description": "Path to sqlfluff executable",
-                    "pattern": "^(.*[\\/])?sqlfluff$"
+                    "pattern": "^.*sqlfluff(?:\\.exe)?$"
                 },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
