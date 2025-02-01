@@ -81,7 +81,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
         }
     }
     ).catch((err) => {
-        vscode.window.showErrorMessage(`Error formatting: ${err}`);
+        vscode.window.showErrorMessage(`[Error formatting]: Ran: ${formatCmd}. Error: ${err}`);
         return;
     });
 }
