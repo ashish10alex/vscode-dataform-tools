@@ -266,6 +266,15 @@
                     "default": "${ref('table_name')}",
                     "markdownDescription": "Preferred source autocompletion can be one of `${ref('table_name')}` or `${ref('dataset_name', 'table_name')}` or ${ref({schema:'dataset_name', name:'table_name'})}"
                 },
+                "vscode-dataform-tools.dataformCliScope": {
+                    "type": "string",
+                    "enum": [
+                        "global",
+                        "local"
+                    ],
+                    "default": "global",
+                    "markdownDescription": "Dataform installation scope to use. Default to `global` which uses the dataform cli installed in global scope when running `dataform install -g @dataform/cli`. Selecting `local` scope would mean dataform cli installation in your workspace folder in `./node_modules/.bin/dataform` will be used. This is created when `npm install @dataform/cli` is ran from the root of the workspace folder."
+                },
                 "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
                     "type": "boolean",
                     "default": true,

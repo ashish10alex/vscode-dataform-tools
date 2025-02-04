@@ -26,16 +26,16 @@ export function getNonce() {
 
 export function formatBytes(bytes: number) {
     if (bytes === 0) {return '0 B';}
-  
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
     const k = 1024; // Use 1024 for binary prefixes (e.g., KiB) or 1000 for decimal
-  
+
     // Find the appropriate unit level
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
     // Convert to the unit and round to 2 decimal places
     const value = (bytes / Math.pow(k, i)).toFixed(2);
-  
+
     return `${value} ${units[i]}`;
   }
 
@@ -173,8 +173,6 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
-    workspaceFolder = `"${workspaceFolder}"`;
-
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
         let {dataformCompiledJson, errors, possibleResolutions} = await runCompilation(workspaceFolder); // Takes ~1100ms
@@ -558,7 +556,8 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
 
 export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let dataformCompilerOptions = getDataformCompilerOptions();
-    let cmd = `dataform run ${workspaceFolder} ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
+    const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+    let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
     for (let i = 0; i < actionsList.length; i++) {
         let fullTableName = actionsList[i];
         if (i === 0) {
@@ -764,6 +763,18 @@ export function getSqlfluffExecutablePathFromSettings() {
     return path.win32.normalize(defaultSqlfluffExecutablePath);
 }
 
+export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
+    const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
+    const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    if (dataformCliScope === 'local') {
+        const dataformCliLocalScopePath = isRunningOnWindows
+            ? path.join('node_modules', '.bin', 'dataform.cmd')
+            : path.join('node_modules', '.bin', 'dataform');
+        return path.join(workspaceFolder, dataformCliLocalScopePath);
+    }
+    return dataformCliBase;
+}
+
 export function compileDataform(workspaceFolder: string, isRunningOnWindows:boolean): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
@@ -774,14 +785,8 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
 
     return new Promise((resolve, reject) => {
         let spawnedProcess;
-        if (isRunningOnWindows) {
-            const command = "dataform.cmd";
-            // windows seems to require shell: true
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
-        } else {
-            const command = "dataform";
-            spawnedProcess = spawn(command, ["compile", workspaceFolder, ...compilerOptions , "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
-        }
+        let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
 
         let stdOut = '';
         let errorOutput = '';
@@ -1021,7 +1026,6 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
 }
 
 export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
-    workspaceFolder = `"${workspaceFolder}"`;
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
