@@ -26,16 +26,16 @@ export function getNonce() {
 
 export function formatBytes(bytes: number) {
     if (bytes === 0) {return '0 B';}
-  
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
     const k = 1024; // Use 1024 for binary prefixes (e.g., KiB) or 1000 for decimal
-  
+
     // Find the appropriate unit level
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
     // Convert to the unit and round to 2 decimal places
     const value = (bytes / Math.pow(k, i)).toFixed(2);
-  
+
     return `${value} ${units[i]}`;
   }
 
@@ -758,7 +758,7 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     }
     return dataformCliBase;
 }
- 
+
 export function compileDataform(workspaceFolder: string, isRunningOnWindows:boolean): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
@@ -766,7 +766,7 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
     if (dataformCompilerOptions !== ""){
         compilerOptions.push(dataformCompilerOptions);
     }
- 
+
     return new Promise((resolve, reject) => {
         let spawnedProcess;
         let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
