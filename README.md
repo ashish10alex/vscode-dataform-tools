@@ -136,6 +136,7 @@ Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd
 
 ## TODO
 
+* [ ] Make formatting available to invoke from web panel
 * [ ] Add hover docs for config block elements. e.g. Assertions, type etc
 * [ ] Add option to include dependents / dependencies when running cost estimator for tag
 * [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
