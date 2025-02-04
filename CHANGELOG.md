@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.5...v0.8.6) (2025-02-04)
+
+
+### Features
+
+* **theme:** improved support for light theme ([7759a21](https://github.com/ashish10alex/vscode-dataform-tools/commit/7759a2140f70668a7dab0760a460d9281c9ab842))
+
+
+### Bug Fixes
+
+* no error message when user compiled without having file opened ([#98](https://github.com/ashish10alex/vscode-dataform-tools/issues/98)) ([8f6d775](https://github.com/ashish10alex/vscode-dataform-tools/commit/8f6d7759ca9a136b8384b25eeb6db599a0ee4ede))
+* theme switch in high contrast light mode ([db83284](https://github.com/ashish10alex/vscode-dataform-tools/commit/db8328483758ec9ba97fdd48a4c46dbf5914be7a))
+
 ### [0.8.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.4...v0.8.5) (2025-01-26)
 
 
