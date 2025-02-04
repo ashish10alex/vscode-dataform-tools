@@ -748,6 +748,22 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
+export function getSqlfluffExecutablePathFromSettings() {
+    let defaultSqlfluffExecutablePath = "sqlfluff";
+    let sqlfluffExecutablePath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffExecutablePath');
+    if (sqlfluffExecutablePath !== defaultSqlfluffExecutablePath && sqlfluffExecutablePath !== undefined) {
+        if (isRunningOnWindows) {
+            return sqlfluffExecutablePath = path.win32.normalize(sqlfluffExecutablePath);
+        } else {
+            return sqlfluffExecutablePath;
+        }
+    }
+    if (!isRunningOnWindows) {
+        return defaultSqlfluffExecutablePath;
+    }
+    return path.win32.normalize(defaultSqlfluffExecutablePath);
+}
+
 export function compileDataform(workspaceFolder: string, isRunningOnWindows:boolean): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();

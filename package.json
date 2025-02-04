@@ -250,6 +250,12 @@
                     "description": "Path to sqlfluff config file. Please make sure your .sqlfluff is compatible with .sqlx files",
                     "pattern": ".*\\/\\.sqlfluff$"
                 },
+                "vscode-dataform-tools.sqlfluffExecutablePath": {
+                    "type": "string",
+                    "default": "sqlfluff",
+                    "description": "Path to sqlfluff executable",
+                    "pattern": "^.*sqlfluff(?:\\.exe)?$"
+                },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
                     "enum": [
