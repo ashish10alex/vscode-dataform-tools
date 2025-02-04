@@ -459,10 +459,17 @@ form {
   margin-right: 10px;
 }
 
-.modified-time {
-	font-size: 14px;
-    opacity: 0.8;
-    color: #bec8d0;
+.vscode-light .modified-time {
+    color: #5a5a5a;
+}
+
+.vscode-dark .modified-time {
+    color: #a0a0a0;
+}
+
+.vscode-high-contrast .modified-time {
+    color: var(--vscode-editor-foreground);
+    opacity: 1;
 }
 
 .modified-time.outdated {
