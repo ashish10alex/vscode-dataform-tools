@@ -747,6 +747,22 @@ export function getSqlfluffConfigPathFromSettings() {
     return path.win32.normalize(defaultSqlfluffConfigPath);
 }
 
+export function getSqlfluffExecutablePathFromSettings() {
+    let defaultSqlfluffExecutablePath = "sqlfluff";
+    let sqlfluffExecutablePath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffExecutablePath');
+    if (sqlfluffExecutablePath !== defaultSqlfluffExecutablePath && sqlfluffExecutablePath !== undefined) {
+        if (isRunningOnWindows) {
+            return sqlfluffExecutablePath = path.win32.normalize(sqlfluffExecutablePath);
+        } else {
+            return sqlfluffExecutablePath;
+        }
+    }
+    if (!isRunningOnWindows) {
+        return defaultSqlfluffExecutablePath;
+    }
+    return path.win32.normalize(defaultSqlfluffExecutablePath);
+}
+
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
     const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');

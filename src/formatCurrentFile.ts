@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import beautify from 'js-beautify';
 import { exec as exec } from 'child_process';
-import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffConfigPathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile, getActiveFilePath, getSqlfluffExecutablePathFromSettings } from './utils';
+import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile, getActiveFilePath, getSqlfluffConfigPathFromSettings } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
