@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getCurrentFileMetadata, getHighlightJsThemeUri, getNonce } from '../utils';
+import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
 
@@ -123,10 +123,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview) {
     const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    const customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom.css"));
+    let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
     const nonce = getNonce();
     // TODO: light theme does not seem to get picked up
     let highlighJstThemeUri = getHighlightJsThemeUri();
+
+      let {tabulatorCssUri, type} = getTabulatorThemeUri();
+      if(type === "light"){
+          customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_light.css"));
+      }
 
     return /*html*/ `
       <!DOCTYPE html>
@@ -140,7 +145,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
           <link rel="stylesheet" href="${highlighJstThemeUri}">
 
-          <link href="${cdnLinks.tabulatorCssUri}" rel="stylesheet">
+          <link href="${tabulatorCssUri}" rel="stylesheet">
           <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
           <link href="${styleResetUri}" rel="stylesheet">

@@ -5,8 +5,12 @@ function toggleNavbar() {
     navbar.classList.toggle('collapsed');
 }
 
-const isDarkTheme = document.body.classList.contains('vscode-dark');
-const isLightTheme = document.body.classList.contains('vscode-light');
+const isDarkTheme = document.body.classList.contains('vscode-dark') || 
+                   document.body.classList.contains('vscode-high-contrast-dark');
+
+const isLightTheme = document.body.classList.contains('vscode-light') || 
+                    document.body.classList.contains('vscode-high-contrast-light');
+
 
 /** This function creates a legend for the datasets that are present in the graph
     @param {Array} uniqueDatasets - An array of unique datasets

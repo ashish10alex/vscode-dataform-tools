@@ -13,8 +13,9 @@ declare  global {
       highlightJsCopyExtUri: string;
       highlightJsCopyExtCssUri: string;
       highlightJsLineNoExtUri: string;
-      tabulatorCssUri: string;
       tabulatorUri: string;
+      tabulatorDarkCssUri: string;
+      tabulatorLightCssUri: string;
       highlightJsOneDarkThemeUri: string;
       highlightJsOneLightThemeUri: string;
       fontAwesomeIconsUri: string;

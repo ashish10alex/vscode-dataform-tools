@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
@@ -506,10 +506,15 @@ export class CompiledQueryPanel {
     private _getHtmlForWebview(webview: vscode.Webview) {
         const showCompiledQueryUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showCompiledQuery.js"));
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-        const customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom.css"));
+        let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
         const nonce = getNonce();
 
         let highlighJstThemeUri = getHighlightJsThemeUri();
+
+        let {tabulatorCssUri, type} = getTabulatorThemeUri();
+        if(type === "light"){
+            customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_light.css"));
+        }
 
         return /*html*/ `
         <!DOCTYPE html>
@@ -524,7 +529,7 @@ export class CompiledQueryPanel {
             <link rel="stylesheet" href="${highlighJstThemeUri}">
             <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
 
-            <link href="${cdnLinks.tabulatorCssUri}" rel="stylesheet">
+            <link href="${tabulatorCssUri}" rel="stylesheet">
             <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
 
             <link href="${styleResetUri}" rel="stylesheet">
