@@ -3,7 +3,7 @@
     "displayName": "Dataform tools",
     "publisher": "ashishalex",
     "icon": "media/images/dtools.png",
-    "description": "Preview compiled query, dry run stats, interactive dependency graphs, inline diagnostics, query result previews, cost estimation, go-to-definition, auto-completion, formatting using sqlfluff and more.",
+    "description": "Compiled query, dry run stats, dependency graphs, inline diagnostics, run and preview models, cost estimation, go-to-definition, auto-completion, formatting using sqlfluff and more.",
     "repository": {
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
