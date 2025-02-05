@@ -121,40 +121,10 @@ additional_allowed_characters = ["", $]
 unquoted_identifiers_policy = all
 quoted_identifiers_policy = none
 
-
-# 1 is used by sqlfluff to replace the regex match with the value of the placeholder
-# if you have multiple placeholders, you can add more lines with the same format
-# e.g. 2 = `gcp_project_id.my_dataset.my_table`
-# NOTE: when using formatdataform cli it automatically generates multiple lines for you (defaulted to 30 atm)
 [sqlfluff:templater:placeholder]
-param_regex = (?s)\$\{\s*self\s*\(\s*\)\s*\}|\$\{\s*ref\s*\(\s*(\"?\w+\"?|\{[^}]+\})\s*\)\s*\}|\$\{\s*ref\s*\(\s*\'\s*\d*\s*([\w]+)\s*\'\s*\)\s*\}|\$\{\s*[^}]*\s*\}
-1 = my_table_or_replacement
-2 = my_table_or_replacement
-3 = my_table_or_replacement
-4 = my_table_or_replacement
-5 = my_table_or_replacement
-6 = my_table_or_replacement
-7 = my_table_or_replacement
-8 = my_table_or_replacement
-9 = my_table_or_replacement
-10 = my_table_or_replacement
-11 = my_table_or_replacement
-12 = my_table_or_replacement
-13 = my_table_or_replacement
-14 = my_table_or_replacement
-15 = my_table_or_replacement
-16 = my_table_or_replacement
-17 = my_table_or_replacement
-18 = my_table_or_replacement
-19 = my_table_or_replacement
-20 = my_table_or_replacement
-21 = my_table_or_replacement
-22 = my_table_or_replacement
-23 = my_table_or_replacement
-24 = my_table_or_replacement
-25 = my_table_or_replacement
-26 = my_table_or_replacement
-27 = my_table_or_replacement
-28 = my_table_or_replacement
-29 = my_table_or_replacement
-30 = my_table_or_replacement
+param_regex = (?s)\${\s*(?P<param_name>[\w_]+)(?P<rec>(?:[^{}]+|{(?&rec)})*+)}|(?P<param_name>config|pre_operations|post_operations)\s*{(?&rec)}
+ref = ref_table_placeholder
+self = self_table_placeholder
+when =
+config =
+pre_operations =
