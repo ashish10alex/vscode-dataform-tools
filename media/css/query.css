@@ -573,3 +573,171 @@ body.vscode-dark .copy-model-button:hover {
     color: #1e1e1e;
     box-shadow: 0 2px 4px rgba(96, 165, 250, 0.3);
 }
+
+/* Cost Estimator Styles */
+.cost-estimator-header {
+    padding: 20px;
+    border-radius: 8px;
+    background: var(--vscode-editor-background);
+}
+
+.cost-estimator-header h2 {
+    margin-bottom: 24px;
+    font-size: 24px;
+    color: var(--vscode-editor-foreground);
+}
+
+.cost-estimator-info {
+    margin-bottom: 32px;
+}
+
+.cost-estimator-info p {
+    margin-bottom: 16px;
+    color: var(--vscode-foreground);
+    font-size: 14px;
+}
+
+.query-types {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.query-type {
+    padding: 16px;
+    border-radius: 6px;
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-widget-border);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.query-type:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.query-type-title {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.query-type-desc {
+    font-size: 13px;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.4;
+}
+
+.tag-selection-container {
+    margin: 24px 0;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.select-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.tag-select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+    cursor: pointer;
+    appearance: none;
+}
+
+.tag-select:focus {
+    outline: none;
+    border-color: var(--vscode-focusBorder);
+}
+
+.select-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--vscode-dropdown-foreground);
+    pointer-events: none;
+}
+
+.cost-estimate-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cost-estimate-button:hover {
+    background: var(--vscode-button-hoverBackground);
+    transform: translateY(-1px);
+}
+
+.button-icon {
+    display: flex;
+    align-items: center;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--vscode-editor-foreground);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.cost-table-container {
+    margin-top: 24px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--vscode-widget-border);
+}
+
+.cost-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.cost-table th,
+.cost-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.cost-table th {
+    background: var(--vscode-editor-background);
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.cost-table tr:hover {
+    background: var(--vscode-list-hoverBackground);
+}
