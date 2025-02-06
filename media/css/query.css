@@ -633,12 +633,15 @@ body.vscode-dark .copy-model-button:hover {
     margin: 24px 0;
     display: flex;
     gap: 16px;
-    align-items: center;
+    align-items: stretch;
 }
 
 .select-wrapper {
     position: relative;
     flex: 1;
+    max-width: 300px;
+    display: flex;
+    align-items: center;
 }
 
 .tag-select {
@@ -651,6 +654,8 @@ body.vscode-dark .copy-model-button:hover {
     color: var(--vscode-dropdown-foreground);
     cursor: pointer;
     appearance: none;
+    height: 35px;
+    margin: 0;
 }
 
 .tag-select:focus {
@@ -675,6 +680,7 @@ body.vscode-dark .copy-model-button:hover {
 .cost-estimate-button {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 8px 16px;
     border-radius: 6px;
@@ -685,6 +691,8 @@ body.vscode-dark .copy-model-button:hover {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    height: 35px;
+    margin: 0;
 }
 
 .cost-estimate-button:hover {
