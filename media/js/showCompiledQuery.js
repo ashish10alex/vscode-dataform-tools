@@ -198,9 +198,11 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
+    const hasError = event?.data?.errorMessage && event?.data?.errorMessage !== " ";
+
     const formatButton = document.getElementById('formatButton');
     if (formatButton) {
-        formatButton.style.display = event?.data?.errorMessage && event?.data?.errorMessage !== " " ? "none" : "";
+        formatButton.disabled = hasError;
     }
 
     let dataformTags = event?.data?.dataformTags;
