@@ -165,6 +165,16 @@ function removeExistingCopyElements() {
     });
 }
 
+const formatButton = document.getElementById('formatButton');
+if (formatButton) {
+    formatButton.addEventListener('click', () => {
+        vscode.postMessage({
+            command: 'formatCurrentFile',
+            value: true
+        });
+    });
+}
+
 window.addEventListener('message', event => {
     dryRunloadingIcon.style.display = "";
     let data = {
