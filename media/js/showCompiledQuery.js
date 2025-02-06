@@ -198,6 +198,11 @@ window.addEventListener('message', event => {
     };
     removeExistingCopyElements();
 
+    const formatButton = document.getElementById('formatButton');
+    if (formatButton) {
+        formatButton.style.display = event?.data?.errorMessage && event?.data?.errorMessage !== " " ? "none" : "";
+    }
+
     let dataformTags = event?.data?.dataformTags;
     if(dataformTags){
         populateDropdown(dataformTags, event?.data?.selectedTag);
