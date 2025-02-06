@@ -572,10 +572,12 @@ export class CompiledQueryPanel {
 
         <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
             <a id="targetTableOrViewLink"></a>
-            <button id="copyModelNameButton" style="margin-left: 10px;">
-                <i class="fa-regular fa-copy"></i>
-                <span class="button-text"></span>
-            </button>
+            <div class="copy-button-container">
+                <button id="copyModelNameButton" class="copy-model-button" title="Copy model name">
+                    <i class="fa-regular fa-copy"></i>
+                    <span class="button-text"></span>
+                </button>
+            </div>
         </div>
 
         <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">

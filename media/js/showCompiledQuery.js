@@ -221,7 +221,6 @@ window.addEventListener('message', event => {
                     ${fullModelName}
                 `;
             }else{
-                console.log(`modelWasUpdatedToday: ${event.data?.modelWasUpdatedToday}`);
                 targetTableOrViewLink.innerHTML = `
                     <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
                             title="Last modified: ${event?.data?.modelLastUpdateTime}">
