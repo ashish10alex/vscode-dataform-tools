@@ -36,6 +36,17 @@ function populateDropdown(tags, defaultTag = undefined) {
 }
 
 
+function formatCurrentFileClickHandler() {
+    formatButton.disabled = true;
+    vscode.postMessage({
+        command: 'formatCurrentFile',
+        value: true
+    });
+    setTimeout(() => {
+        formatButton.disabled = false;
+    }, 100);
+}
+
 function runModelClickHandler() {
     runModelButton.disabled = true;
     vscode.postMessage({
@@ -93,6 +104,10 @@ if (runModelButton) {
 
 if(costEstimatorButton){
     costEstimatorButton.addEventListener('click', costEstimatorClickHandler);
+}
+
+if(formatButton){
+    formatButton.addEventListener('click', formatCurrentFileClickHandler);
 }
 
 const previewResultsButton = document.getElementById('previewResults');
@@ -165,6 +180,7 @@ function removeExistingCopyElements() {
     });
 }
 
+
 window.addEventListener('message', event => {
     dryRunloadingIcon.style.display = "";
     let data = {
@@ -181,6 +197,13 @@ window.addEventListener('message', event => {
         "dryRunStat": event?.data?.dryRunStat,
     };
     removeExistingCopyElements();
+
+    const hasError = event?.data?.errorMessage && event?.data?.errorMessage !== " ";
+
+    const formatButton = document.getElementById('formatButton');
+    if (formatButton) {
+        formatButton.disabled = hasError;
+    }
 
     let dataformTags = event?.data?.dataformTags;
     if(dataformTags){
@@ -211,7 +234,6 @@ window.addEventListener('message', event => {
                     ${fullModelName}
                 `;
             }else{
-                console.log(`modelWasUpdatedToday: ${event.data?.modelWasUpdatedToday}`);
                 targetTableOrViewLink.innerHTML = `
                     <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
                             title="Last modified: ${event?.data?.modelLastUpdateTime}">

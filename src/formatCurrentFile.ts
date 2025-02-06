@@ -89,8 +89,11 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
 export async function formatCurrentFile(diagnosticCollection:any) {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
-        vscode.window.showErrorMessage("VS Code document object was undefined");
-        return;
+        document = activeDocumentObj;
+        if (!document) {
+            vscode.window.showErrorMessage("[Error formatting]: VS Code document object was undefined");
+            return;
+        }
     }
 
     var result = getFileNameFromDocument(document, false);

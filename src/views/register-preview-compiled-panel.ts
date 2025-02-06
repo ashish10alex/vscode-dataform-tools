@@ -8,6 +8,7 @@ import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, Suppor
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
+import { formatCurrentFile } from "../formatCurrentFile";
 
 function showLoadingProgress(
     title: string,
@@ -253,6 +254,9 @@ export class CompiledQueryPanel {
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
                 }
+                return;
+              case 'formatCurrentFile':
+                    await formatCurrentFile(diagnosticCollection);
                 return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
@@ -535,8 +539,6 @@ export class CompiledQueryPanel {
             <link href="${styleResetUri}" rel="stylesheet">
             <link href="${customTabulatorCss}" rel="stylesheet">
             <link rel="stylesheet" href=${cdnLinks.fontAwesomeIconsUri}>
-            <style>
-        </style>
         </head>
 
         <body>
@@ -571,10 +573,12 @@ export class CompiledQueryPanel {
 
         <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
             <a id="targetTableOrViewLink"></a>
-            <button id="copyModelNameButton" style="margin-left: 10px;">
-                <i class="fa-regular fa-copy"></i>
-                <span class="button-text"></span>
-            </button>
+            <div class="copy-button-container">
+                <button id="copyModelNameButton" class="copy-model-button" title="Copy model name">
+                    <i class="fa-regular fa-copy"></i>
+                    <span class="button-text"></span>
+                </button>
+            </div>
         </div>
 
         <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">
@@ -660,9 +664,18 @@ export class CompiledQueryPanel {
 
             <span class="bigquery-job-cancelled"></span>
 
-            <p>
+            <div class="file-path-container">
                 <span id="relativeFilePath"></span>
-            </p>
+                <button id="formatButton" class="format-button" title="Format Model">
+                    <svg class="format-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z" 
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1" 
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Format
+                </button>
+            </div>
 
             <div>
                 <div class="checkbox-group">
