@@ -535,8 +535,6 @@ export class CompiledQueryPanel {
             <link href="${styleResetUri}" rel="stylesheet">
             <link href="${customTabulatorCss}" rel="stylesheet">
             <link rel="stylesheet" href=${cdnLinks.fontAwesomeIconsUri}>
-            <style>
-        </style>
         </head>
 
         <body>
@@ -660,9 +658,20 @@ export class CompiledQueryPanel {
 
             <span class="bigquery-job-cancelled"></span>
 
-            <p>
+            <div class="file-path-container">
                 <span id="relativeFilePath"></span>
-            </p>
+                <button id="formatButton" class="format-button" title="Format SQL">
+                    <svg class="format-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z" 
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1" 
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+                        </path>
+                    </svg>
+                    Format
+                </button>
+            </div>
 
             <div>
                 <div class="checkbox-group">
