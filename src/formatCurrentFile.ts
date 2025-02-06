@@ -91,7 +91,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
     if (!document) {
         document = activeDocumentObj;
         if (!document) {
-            vscode.window.showErrorMessage("VS Code document object was undefined");
+            vscode.window.showErrorMessage("[Error formatting]: VS Code document object was undefined");
             return;
         }
     }
