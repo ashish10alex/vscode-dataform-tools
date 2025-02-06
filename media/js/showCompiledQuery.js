@@ -36,6 +36,17 @@ function populateDropdown(tags, defaultTag = undefined) {
 }
 
 
+function formatCurrentFileClickHandler() {
+    formatButton.disabled = true;
+    vscode.postMessage({
+        command: 'formatCurrentFile',
+        value: true
+    });
+    setTimeout(() => {
+        formatButton.disabled = false;
+    }, 100);
+}
+
 function runModelClickHandler() {
     runModelButton.disabled = true;
     vscode.postMessage({
@@ -93,6 +104,10 @@ if (runModelButton) {
 
 if(costEstimatorButton){
     costEstimatorButton.addEventListener('click', costEstimatorClickHandler);
+}
+
+if(formatButton){
+    formatButton.addEventListener('click', formatCurrentFileClickHandler);
 }
 
 const previewResultsButton = document.getElementById('previewResults');
@@ -165,15 +180,6 @@ function removeExistingCopyElements() {
     });
 }
 
-const formatButton = document.getElementById('formatButton');
-if (formatButton) {
-    formatButton.addEventListener('click', () => {
-        vscode.postMessage({
-            command: 'formatCurrentFile',
-            value: true
-        });
-    });
-}
 
 window.addEventListener('message', event => {
     dryRunloadingIcon.style.display = "";
