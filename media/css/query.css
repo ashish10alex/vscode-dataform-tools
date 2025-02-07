@@ -531,7 +531,7 @@ form {
 }
 
 .dependency-list.open {
-	max-height: 800px;
+	max-height: 9000px;
 	padding: 16px 20px;
 }
 
