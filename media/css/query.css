@@ -479,12 +479,11 @@ form {
 	background: var(--vscode-editor-background);
 	border: 1px solid var(--vscode-widget-border);
 	border-radius: 8px;
-	transition: all 0.3s ease;
+	transition: background-color 0.2s ease;
 }
 
 .dependency-header:hover {
 	background: var(--vscode-list-hoverBackground);
-	transform: translateY(-1px);
 }
 
 .dependency-title {
@@ -499,7 +498,7 @@ form {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: transform 0.2s ease;
 	width: 24px;
 	height: 24px;
 }
@@ -509,12 +508,10 @@ form {
 	height: 16px;
 	fill: var(--vscode-foreground);
 	opacity: 0.8;
-	transition: all 0.3s ease;
 }
 
 .dependency-header:hover .arrow-toggle svg {
 	opacity: 1;
-	transform: scale(1.1);
 }
 
 .arrow-toggle.open {
@@ -524,7 +521,7 @@ form {
 .dependency-list {
 	max-height: 0;
 	overflow: hidden;
-	transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: max-height 0.2s ease-out;
 	background: var(--vscode-editor-background);
 	border-left: 1px solid var(--vscode-widget-border);
 	border-right: 1px solid var(--vscode-widget-border);
@@ -534,7 +531,7 @@ form {
 }
 
 .dependency-list.open {
-	max-height: 9000px;
+	max-height: 800px;
 	padding: 16px 20px;
 }
 
