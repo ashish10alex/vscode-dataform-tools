@@ -451,16 +451,41 @@ window.addEventListener('message', event => {
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
-                    element.innerHTML = value;
+                    // Check if the error message contains HTML
+                    if (value.includes('<')) {
+                        // For structured HTML error messages
+                        element.innerHTML = `
+                            <div class="error-content">
+                                ${value}
+                            </div>
+                        `;
+                    } else {
+                        // For simple error messages
+                        element.innerHTML = `
+                            <div class="error-content">
+                                <div class="error-details">${value}</div>
+                            </div>
+                        `;
+                    }
                 }
             }
-            else if (key === "dryRunStat"){
+            else if (key === "dryRunStat") {
                 dryRunloadingIcon.style.display = "none";
-                if (event?.data?.errorMessage !== " "){
+                if (event?.data?.errorMessage !== " ") {
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
-                    element.textContent = `This query will process ${value} when run.`;
+                    // Parse the dryRunStat to separate the bytes and cost
+                    const [bytes, cost] = value.split(' (');
+                    const formattedCost = cost ? ` (${cost}` : '';
+                    
+                    element.innerHTML = `
+                        <div class="stats-content">
+                            <span class="stats-label">Query will process:</span>
+                            <span class="stats-value">${bytes}</span>
+                            <span class="stats-cost">${formattedCost}</span>
+                        </div>
+                    `;
                 }
             } else {
                 if (divElement?.style){
