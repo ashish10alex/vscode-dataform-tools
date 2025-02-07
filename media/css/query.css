@@ -1,75 +1,237 @@
-button:disabled {
-	background-color: #cccccc;
-	color: #666666;
+/* Base button styles */
+button {
+	padding: 5px 10px;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+/* Disabled button states */
+button:disabled,
+.runQueryButton:disabled,
+.cancelBigQueryJobButton:disabled {
+	background-color: #d3d3d3;
+	color: #808080;
 	cursor: not-allowed;
 	opacity: 0.7;
 }
 
-button:disabled:hover {
-	background-color: #cccccc;
-}
-
-#runQueryButton {
+/* Common positioning for absolute buttons */
+#runQueryButton,
+#cancelBigQueryJobButton,
+#queryLimit,
+.checkbox-container {
 	position: absolute;
 	top: 6px;
-	right: 130px;
-	padding: 5px 10px;
-	border-radius: 5px;
-	cursor: pointer;
 }
 
+/* Button positions */
+#runQueryButton { right: 130px; }
+#cancelBigQueryJobButton { right: 10px; }
+#queryLimit { right: 200px; }
+.checkbox-container { right: 325px; }
+
+/* Button variants */
 .runQueryButton {
 	background-color: #007acc;
 	color: white;
-	padding: 5px 10px;
-	border-radius: 5px;
-	cursor: pointer;
-}
-
-.runQueryButton:disabled {
-	background-color: #d3d3d3;
-	color: #808080;
-	cursor: not-allowed;
-}
-
-#cancelBigQueryJobButton {
-	position: absolute;
-	top: 6px;
-	right: 10px;
-	padding: 5px 10px;
-	border-radius: 5px;
-	cursor: pointer;
 }
 
 .cancelBigQueryJobButton {
 	background-color: #b8860b;
 	color: white;
-	padding: 5px 10px;
-	border-radius: 5px;
-	cursor: pointer;
 }
 
-.cancelBigQueryJobButton:disabled {
-	background-color: #d3d3d3;
-	color: #808080;
-	cursor: not-allowed;
-}
-
-#runQueryButton {
-	position: absolute;
-	top: 6px;
-	right: 130px;
-	padding: 5px 10px;
-	border-radius: 5px;
-	cursor: pointer;
-}
-
+/* Top positioning */
 .top-left {
 	position: absolute;
 	top: 6px;
 	left: 0;
 	margin: 0;
 	padding: 5px 10px;
+}
+
+/* Code highlighting */
+.hljs-ln {
+	&-numbers {
+		padding-right: 15px !important;
+		text-align: right;
+		border-right: 1px solid #ccc;
+	}
+	
+	&-code {
+		padding-left: 15px !important;
+	}
+}
+
+/* Navigation styles */
+.topnav {
+	display: flex;
+	align-items: center;
+	padding: 4px 5px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+
+	a {
+		color: #b8b5b5;
+		box-shadow: 0 1px 1px gray;
+		text-decoration: none;
+		font-size: 16px;
+		padding: 4px 5px;
+		margin-right: 10px;
+		border-radius: 5px;
+		
+		&:hover {
+			background-color: rgba(255, 255, 255, 0.1);
+		}
+		
+		&.active {
+			background-color: #007acc;
+			color: white;
+		}
+	}
+}
+
+/* Error message container base styles */
+.message-container-base {
+	padding: 12px 16px;
+	margin: 16px 0;
+	font-size: 13px;
+	line-height: 1.5;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+	position: relative;
+	overflow: hidden;
+}
+
+/* Error message styles */
+.error-message-container {
+	padding: 12px 16px;
+	margin: 16px 0;
+	font-size: 13px;
+	line-height: 1.5;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+	position: relative;
+	overflow: hidden;
+	color: #dc3545;
+	background: rgba(220, 53, 69, 0.08);
+}
+
+/* Success message styles */
+.no-errors-container {
+	padding: 12px 16px;
+	margin: 16px 0;
+	font-size: 13px;
+	line-height: 1.5;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+	position: relative;
+	overflow: hidden;
+	color: var(--vscode-editor-foreground);
+	background: var(--vscode-editor-background);
+	border-left: 4px solid #28a745;
+	display: flex;
+	align-items: center;
+}
+
+/* Container layout */
+.container {
+	display: flex;
+	flex-direction: row-reverse;
+	width: 100%;
+	min-height: 100vh;
+}
+
+/* Navbar styles */
+.navbar {
+	width: 420px;
+	position: sticky;
+	top: 0;
+	height: 100vh;
+	overflow: hidden;
+	background-color: whitesmoke;
+
+	&.collapsed {
+		width: 50px;
+		
+		.navbar-content {
+			display: none;
+		}
+	}
+}
+
+/* Custom checkbox styles */
+.checkbox {
+	display: none;
+	
+	&:checked + .custom-checkbox {
+		background-color: #007BFF;
+		border-color: #0056b3;
+		
+		&::after {
+			content: '';
+			position: absolute;
+			left: 5px;
+			top: 2px;
+			width: 5px;
+			height: 10px;
+			border: solid white;
+			border-width: 0 2px 2px 0;
+			transform: rotate(45deg);
+		}
+	}
+}
+
+/* Button container */
+.button-container {
+	display: flex;
+	justify-content: flex-start;
+	gap: 10px;
+	width: 30%;
+	padding: 5px 0 10px;
+	
+	button {
+		flex: 0 1 auto;
+	}
+}
+
+/* Select2 customization */
+.select2 {
+	&-results__option {
+		color: black;
+	}
+	
+	&-results__options {
+		max-height: 400px !important;
+	}
+}
+
+/* Theme-specific styles */
+.vscode-light .modified-time { color: #5a5a5a; }
+.vscode-dark .modified-time { color: #a0a0a0; }
+.vscode-high-contrast .modified-time {
+	color: var(--vscode-editor-foreground);
+	opacity: 1;
+}
+
+.topnav a:disabled {
+	background-color: #cccccc;
+}
+
+.topnav a:disabled:hover {
+	background-color: #cccccc;
+}
+
+#runQueryButton {
+	position: absolute;
+	top: 6px;
+	right: 130px;
+	padding: 5px 10px;
+	border-radius: 5px;
+	cursor: pointer;
 }
 
 #bigqueryResults {
@@ -83,19 +245,6 @@ button:disabled:hover {
 	padding: 5px 10px;
 	border-radius: 5px;
 	cursor: pointer;
-}
-
-
-/* Increase space between line numbers and code */
-.hljs-ln-numbers {
-	padding-right: 15px !important;
-	text-align: right;
-	border-right: 1px solid #ccc;
-}
-
-/* Add left padding to the code */
-.hljs-ln-code {
-	padding-left: 15px !important;
 }
 
 .topnav {
@@ -125,25 +274,6 @@ button:disabled:hover {
 	color: white;
 }
 
-.error-message-container {
-	color: #dc3545;
-	background: rgba(220, 53, 69, 0.08);
-	border-left: 4px solid #dc3545;
-	border-radius: 8px;
-	padding: 12px 16px;
-	margin: 16px 0;
-	font-size: 13px;
-	line-height: 1.5;
-	box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);
-	display: flex;
-	align-items: flex-start;
-	transition: all 0.3s ease;
-	position: relative;
-	overflow: hidden;
-	font-weight: 500;
-}
-
-/* Remove the icon */
 .error-message-container::before {
 	display: none;
 }
@@ -160,12 +290,6 @@ button:disabled:hover {
 		rgba(220, 53, 69, 0.2) 50%, 
 		transparent 100%
 	);
-}
-
-.error-message-container:hover {
-	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
-	background: rgba(220, 53, 69, 0.12);
 }
 
 .error-message-container .error-content {
@@ -241,23 +365,6 @@ button:disabled:hover {
 	font-size: 12px;
 	color: #dc3545;
 	font-weight: 600;
-}
-
-.no-errors-container {
-	color: var(--vscode-editor-foreground);
-	background: var(--vscode-editor-background);
-	border-left: 4px solid #28a745;
-	border-radius: 8px;
-	padding: 12px 16px;
-	margin: 16px 0;
-	font-size: 13px;
-	line-height: 1.5;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	display: flex;
-	align-items: center;
-	transition: all 0.3s ease;
-	position: relative;
-	overflow: hidden;
 }
 
 .no-errors-container::before {
@@ -336,7 +443,6 @@ button:disabled:hover {
 	max-height: 400px !important;
 }
 
-
 .container {
 	display: flex;
 	flex-direction: row-reverse;
@@ -395,7 +501,6 @@ form {
 	margin-bottom: 20px;
 }
 
-
 .checkbox {
 	display: none;
 	/* Hide the default checkbox */
@@ -409,7 +514,6 @@ form {
 	align-items: center;
 	cursor: pointer;
 }
-
 
 .custom-checkbox {
 	width: 15px;
@@ -617,7 +721,6 @@ form {
 	margin: 10px;
 }
 
-
 .cost-model {
 	background-color: #007acc;
 	color: #ffffff;
@@ -644,19 +747,6 @@ form {
   float: right;
   margin-top: 20px;
   margin-right: 10px;
-}
-
-.vscode-light .modified-time {
-    color: #5a5a5a;
-}
-
-.vscode-dark .modified-time {
-    color: #a0a0a0;
-}
-
-.vscode-high-contrast .modified-time {
-    color: var(--vscode-editor-foreground);
-    opacity: 1;
 }
 
 .modified-time.outdated {
