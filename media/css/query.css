@@ -576,63 +576,63 @@ body.vscode-dark .copy-model-button:hover {
 
 /* Cost Estimator Styles */
 .cost-estimator-header {
-    padding: 20px;
+    padding: 12px;
     border-radius: 8px;
     background: var(--vscode-editor-background);
 }
 
 .cost-estimator-header h2 {
-    margin-bottom: 24px;
-    font-size: 24px;
+    margin-bottom: 16px;
+    font-size: 20px;
     color: var(--vscode-editor-foreground);
 }
 
 .cost-estimator-info {
-    margin-bottom: 32px;
+    margin-bottom: 16px;
 }
 
 .cost-estimator-info p {
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     color: var(--vscode-foreground);
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .query-types {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .query-type {
-    padding: 16px;
-    border-radius: 6px;
+    padding: 8px 12px;
+    border-radius: 4px;
     background: var(--vscode-editor-background);
     border: 1px solid var(--vscode-widget-border);
-    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .query-type:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: none;
+    box-shadow: none;
 }
 
 .query-type-title {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-weight: 600;
+    font-size: 13px;
     color: var(--vscode-editor-foreground);
 }
 
 .query-type-desc {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--vscode-descriptionForeground);
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 .tag-selection-container {
-    margin: 24px 0;
+    margin: 16px 0;
     display: flex;
-    gap: 16px;
+    gap: 8px;
     align-items: stretch;
 }
 
@@ -721,10 +721,7 @@ body.vscode-dark .copy-model-button:hover {
 }
 
 .cost-table-container {
-    margin-top: 24px;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--vscode-widget-border);
+    margin-top: 16px;
 }
 
 .cost-table {
