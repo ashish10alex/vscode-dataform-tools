@@ -298,9 +298,9 @@ window.addEventListener('message', event => {
 
         const buttonText = document.createElement('h4');
         if(lineageMetadata?.dependencies){
-            buttonText.textContent = '[beta] Dataplex Downstream  ▼ ';
+            buttonText.textContent = 'Dataplex Downstream  ▼ ';
         } else {
-            buttonText.textContent = '[beta] Dataplex Downstream  ▶︎ ';
+            buttonText.textContent = 'Dataplex Downstream  ▶︎ ';
         }
         buttonText.style.margin = '0';
         lineageMetadataButton.appendChild(buttonText);

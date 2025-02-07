@@ -55,25 +55,6 @@ button:disabled:hover {
 	cursor: not-allowed;
 }
 
-.beta-button-container {
-	display: flex;
-	justify-content: center;
-	margin-top: 10px;
-}
-
-.beta-button {
-	background-color: #b8860b;
-	position: absolute;
-	color: white;
-	top: 6px;
-	padding: 5px 10px;
-	font-size: 12px;
-	border-radius: 50px;
-	/* Rounded corners */
-	cursor: not-allowed;
-	/* Disabled state */
-}
-
 #runQueryButton {
 	position: absolute;
 	top: 6px;

@@ -538,7 +538,6 @@ export class CompiledQueryPanel {
 
             <link href="${styleResetUri}" rel="stylesheet">
             <link href="${customTabulatorCss}" rel="stylesheet">
-            <link rel="stylesheet" href=${cdnLinks.fontAwesomeIconsUri}>
         </head>
 
         <body>

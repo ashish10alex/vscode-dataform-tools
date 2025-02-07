@@ -18,7 +18,6 @@ declare  global {
       tabulatorLightCssUri: string;
       highlightJsOneDarkThemeUri: string;
       highlightJsOneLightThemeUri: string;
-      fontAwesomeIconsUri: string;
   }
 }
 

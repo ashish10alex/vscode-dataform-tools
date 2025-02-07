@@ -159,10 +159,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <a href="#query">Query</a>
       </div>
 
-      <div class="beta-button-container">
-        <button class="beta-button" disabled>BETA</button>
-      </div>
-
       <span class="bigquery-job-cancelled"></span>
 
       <div id="incrementalCheckBoxDiv" style="display: none;" >
