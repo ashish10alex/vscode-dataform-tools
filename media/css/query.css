@@ -115,6 +115,7 @@ button:disabled,
 	transition: all 0.3s ease;
 	position: relative;
 	overflow: hidden;
+	border-left: 4px solid #dc3545;
 	color: #dc3545;
 	background: rgba(220, 53, 69, 0.08);
 }
