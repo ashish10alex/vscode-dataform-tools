@@ -538,7 +538,6 @@ export class CompiledQueryPanel {
 
             <link href="${styleResetUri}" rel="stylesheet">
             <link href="${customTabulatorCss}" rel="stylesheet">
-            <link rel="stylesheet" href=${cdnLinks.fontAwesomeIconsUri}>
         </head>
 
         <body>
@@ -575,7 +574,10 @@ export class CompiledQueryPanel {
             <a id="targetTableOrViewLink"></a>
             <div class="copy-button-container">
                 <button id="copyModelNameButton" class="copy-model-button" title="Copy model name">
-                    <i class="fa-regular fa-copy"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
                     <span class="button-text"></span>
                 </button>
             </div>
@@ -610,43 +612,53 @@ export class CompiledQueryPanel {
 
 
         <div id="costBlock" style="display: none; margin-top: 20px;">
-            <h2>Cost Estimator</h2>
-
-            <p>For each model in the tag, we construct a full query as follows and perform dry run:</p>
-            <ul>
-                <li><strong>Table/View</strong>: Pre operation + Create or replaces a table/view statement + main query</li>
-                <li><strong>Partitioned or clustered tables</strong>: Pre operations + main query </li>
-                <li><strong>Incremental</strong>: Incremental pre operation query + Create or replaces a table/view statement + main query</li>
-                <li><strong>Partitioned or clustered Incremental table</strong>: Incremental pre operation query + main query</li>
-                <li><strong>Assertion & Operation </strong>: Main query </li>
-            </ul>
-
-
-                <div id="costEstimatorloadingIcon" style="display: none;">
-                    <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
-                                <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                                values="0 126;126 126;126 0"/>
-                                <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                                values="0;-126;-252"/>
-                            </circle>
-                    </svg>
+            <div class="cost-estimator-header">
+                <h2>Cost Estimator</h2>
+                <div class="cost-estimator-info">
+                    <p>For each model in the tag, we construct a full query and perform dry run:</p>
+                    <div class="query-types">
+                        <div class="query-type">
+                            <span class="query-type-title">Table/View</span>
+                            <span class="query-type-desc">Pre operation + Create or replaces a table/view statement + main query</span>
+                        </div>
+                        <div class="query-type">
+                            <span class="query-type-title">Partitioned/Clustered Tables</span>
+                            <span class="query-type-desc">Pre operations + main query</span>
+                        </div>
+                        <div class="query-type">
+                            <span class="query-type-title">Incremental</span>
+                            <span class="query-type-desc">Incremental pre operation query + Create or replaces a table/view statement + main query</span>
+                        </div>
+                        <div class="query-type">
+                            <span class="query-type-title">Partitioned/Clustered Incremental</span>
+                            <span class="query-type-desc">Incremental pre operation query + main query</span>
+                        </div>
+                        <div class="query-type">
+                            <span class="query-type-title">Assertion & Operation</span>
+                            <span class="query-type-desc">Main query</span>
+                        </div>
+                    </div>
                 </div>
 
-                <p style="color: #007acc;">Select a tag and click <i>'Estimate'</i> to estimate cost</p>
+                <div id="costEstimatorloadingIcon" style="display: none;">
+                    <div class="loading-spinner"></div>
+                </div>
 
-                <form class="tag-selection-form">
-                    <label for="tags" style="color: #007acc;"><strong>Select Tag:</strong></label>
-                    <select id="tags" class="tag-dropdown">
-                        <option value="" disabled selected>Tags</option>
-                    </select>
-                </form>
-
-                <button class="cost-model" id="costEstimator" title="Cost Esimator">Estimate</button>
+                <div class="tag-selection-container">
+                    <div class="select-wrapper">
+                        <select id="tags" class="tag-select">
+                            <option value="" disabled selected>Select a tag to estimate cost</option>
+                        </select>
+                    </div>
+                    <button class="cost-estimate-button" id="costEstimator">
+                        Estimate Cost
+                    </button>
+                </div>
 
                 <div class="cost-table-container">
                     <table id="costTable" class="cost-table"></table>
                 </div>
+            </div>
         </div>
 
         <div id="compilationBlock" style="display: block;">

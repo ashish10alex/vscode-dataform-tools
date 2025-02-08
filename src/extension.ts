@@ -45,7 +45,6 @@ export async function activate(context: vscode.ExtensionContext) {
         tabulatorDarkCssUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator_midnight.min.css",
         tabulatorLightCssUri: "https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator_simple.min.css",
         tabulatorUri: "https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js",
-        fontAwesomeIconsUri : "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css",
     };
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
