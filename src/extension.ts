@@ -15,7 +15,7 @@ import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, 
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
-import { formatCurrentFile } from './formatCurrentFile';
+import { formatCurrentFile, formatCurrentFileWithDataform } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
@@ -174,7 +174,12 @@ export async function activate(context: vscode.ExtensionContext) {
      * NOTE: Takes ~2 seconds as we compile the project (~200 nodes ) and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
      */
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-        await formatCurrentFile(diagnosticCollection);
+        let formattingCli = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formattingCli");
+        if (formattingCli === "sqlfluff") {
+            await formatCurrentFile(diagnosticCollection);
+        } else if (formattingCli === "dataform") {
+            await formatCurrentFileWithDataform();
+        }
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false); }));

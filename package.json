@@ -244,6 +244,15 @@
                     "pattern": "^(\\d+[sm])+$",
                     "markdownDescription": "Duration to allow project compilation to complete. Use format like '5m', '60s' etc. Passed to `dataform compile --json --timeout=<value>`"
                 },
+                "vscode-dataform-tools.formattingCli": {
+                    "type": "string",
+                    "default": "sqlfluff",
+                    "markdownDescription": "CLI to use for formatting. Choose between `sqlfluff` or `dataform`. NOTE:`dataform` cli does not support formatting individual files. It formats the entire project",
+                    "enum": [
+                        "sqlfluff",
+                        "dataform"
+                    ]
+                },
                 "vscode-dataform-tools.sqlfluffConfigPath": {
                     "type": "string",
                     "default": ".vscode-dataform-tools/.sqlfluff",

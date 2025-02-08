@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import beautify from 'js-beautify';
 import { exec as exec } from 'child_process';
-import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile, getActiveFilePath, getSqlfluffConfigPathFromSettings } from './utils';
+import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile, getActiveFilePath, getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
@@ -147,4 +147,16 @@ export async function formatCurrentFile(diagnosticCollection:any) {
     await formatSqlxFile(document, currentActiveEditorFilePath, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 
     document?.save();
+}
+
+export async function formatCurrentFileWithDataform() {
+    let workspaceFolder = getWorkspaceFolder();
+    if (!workspaceFolder) {
+        vscode.window.showErrorMessage("No workspace folder found");
+        return;
+    }
+    if (isRunningOnWindows) {
+        workspaceFolder = path.win32.normalize(workspaceFolder);
+    }
+    runCommandInTerminal(`dataform format ${workspaceFolder}`);
 }
