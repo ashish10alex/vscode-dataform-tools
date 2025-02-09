@@ -117,7 +117,7 @@ button:disabled,
 	overflow: hidden;
 	border-left: 4px solid #dc3545;
 	color: #dc3545;
-	background: rgba(220, 53, 69, 0.08);
+	background: whitesmoke;
 }
 
 /* Success message styles */
@@ -132,7 +132,7 @@ button:disabled,
 	position: relative;
 	overflow: hidden;
 	color: var(--vscode-editor-foreground);
-	background: var(--vscode-editor-background);
+	background: lightcyan;
 	border-left: 4px solid #28a745;
 	display: flex;
 	align-items: center;
@@ -409,17 +409,19 @@ button:disabled,
 
 .no-errors-container .stats-label {
 	font-weight: 500;
-	color: var(--vscode-foreground);
+	color: black;
 }
 
 .no-errors-container .stats-value {
 	font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
 	color: #28a745;
-	font-weight: 600;
+	font-weight: 900;
+	text-shadow: 0.1px 0 0 currentColor;
+	-webkit-font-smoothing: antialiased;
 }
 
 .no-errors-container .stats-cost {
-	color: var(--vscode-foreground);
+	color: black;
 	opacity: 0.8;
 }
 
