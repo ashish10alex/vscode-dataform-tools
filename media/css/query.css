@@ -1024,3 +1024,80 @@ body.vscode-dark .copy-model-button:hover {
 .cost-table tr:hover {
     background: var(--vscode-list-hoverBackground);
 }
+
+/* Modern styling for code blocks */
+#codeBlock {
+    margin-top: 20px;
+}
+
+#codeBlock > div {
+    margin-bottom: 24px;
+    background: var(--vscode-editor-background);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--vscode-panel-border);
+}
+
+#codeBlock h4 {
+    margin: 0;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--vscode-editor-lineHighlightBackground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+#codeBlock pre {
+    margin: 0;
+    padding: 16px;
+}
+
+#codeBlock code {
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}
+
+/* Add a subtle hover effect */
+#codeBlock > div:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: box-shadow 0.2s ease;
+}
+
+/* Style the copy button that comes with highlight.js */
+.hljs-copy-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    padding: 6px 8px !important;
+    border-radius: 4px !important;
+    border: 1px solid var(--vscode-button-background) !important;
+    background: var(--vscode-button-background) !important;
+    color: var(--vscode-button-foreground) !important;
+    font-size: 12px !important;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+#codeBlock > div:hover .hljs-copy-button {
+    opacity: 1;
+}
+
+.hljs-copy-button:hover {
+    background: var(--vscode-button-hoverBackground) !important;
+}
+
+/* Add a subtle transition when showing/hiding code blocks */
+#codeBlock > div {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#codeBlock > div[style*="display: none"] {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+#codeBlock > div:not([style*="display: none"]) {
+    opacity: 1;
+    transform: translateY(0);
+}
