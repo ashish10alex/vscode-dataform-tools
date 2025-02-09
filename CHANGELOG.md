@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.9.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.0...v0.9.1) (2025-02-09)
+
+
+### Features
+
+* **ui:** compiled query stats looks better with contrast ([e7be512](https://github.com/ashish10alex/vscode-dataform-tools/commit/e7be5128e7d9112c1108224492bf035b4cc5b853))
+
 ## [0.9.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.6...v0.9.0) (2025-02-09)
 
 
