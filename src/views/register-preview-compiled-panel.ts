@@ -256,7 +256,7 @@ export class CompiledQueryPanel {
                 }
                 return;
               case 'formatCurrentFile':
-                    await formatCurrentFile(diagnosticCollection);
+                    await vscode.commands.executeCommand('vscode-dataform-tools.formatCurrentfile');
                 return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
