@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.9.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.6...v0.9.0) (2025-02-09)
+
+
+### Features
+
+* ability to specify local/global installation of dataform cli  ([#99](https://github.com/ashish10alex/vscode-dataform-tools/issues/99)) ([aeb0667](https://github.com/ashish10alex/vscode-dataform-tools/commit/aeb0667b65a0b8f370f50fcb957b7bd9a9b8cae2))
+* add format button in compiled query web view ([#103](https://github.com/ashish10alex/vscode-dataform-tools/issues/103)) ([71c25a5](https://github.com/ashish10alex/vscode-dataform-tools/commit/71c25a50662dd1c95861ba7d36f821836588316f))
+* **format:** formatting using dataform cli ([#106](https://github.com/ashish10alex/vscode-dataform-tools/issues/106)) ([4f23cca](https://github.com/ashish10alex/vscode-dataform-tools/commit/4f23cca2fe097e26c2b9297cc53e33b6de18a6b5))
+* **formatting:** add option to specify path to sqlfluff binary ([#101](https://github.com/ashish10alex/vscode-dataform-tools/issues/101)) ([80e7a9c](https://github.com/ashish10alex/vscode-dataform-tools/commit/80e7a9c3f3883a04ceb55f5a635a3bbbb157fed9))
+* improve compiled query ui ([fa47b38](https://github.com/ashish10alex/vscode-dataform-tools/commit/fa47b38e5d18747434a44d55bf85cf9a39ff7612))
+* revamp compiled query ui ([#104](https://github.com/ashish10alex/vscode-dataform-tools/issues/104)) ([3db128d](https://github.com/ashish10alex/vscode-dataform-tools/commit/3db128df934c9eab3c6c313d4e12a9b4cd83f576))
+* sqlfluff config file with support for incremental js query ([fde0e2c](https://github.com/ashish10alex/vscode-dataform-tools/commit/fde0e2c38c04f0bac62d21f5fd8e5bcb6ba4c124))
+
+
+### Documentation
+
+* add description to extension ([22c2e66](https://github.com/ashish10alex/vscode-dataform-tools/commit/22c2e6664b15af15375966e137e52bfc829241ee))
+
 ### [0.8.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.8.5...v0.8.6) (2025-02-04)
 
 
