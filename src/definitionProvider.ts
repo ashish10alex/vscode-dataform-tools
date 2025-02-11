@@ -327,3 +327,33 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
 
     }
 }
+
+export class DataformCTEDefinitionProvider implements vscode.DefinitionProvider {
+    async provideDefinition(
+        document: vscode.TextDocument,
+        pos: vscode.Position,
+        token: vscode.CancellationToken
+    ): Promise<vscode.Location | undefined> {
+        const wordRange = document.getWordRangeAtPosition(pos);
+        if (!wordRange) {
+            return undefined;
+        }
+
+        const searchTerm = document.getText(wordRange);
+        const documentText = document.getText();
+
+        // Look for CTE definition pattern: "WITH searchTerm AS (" or ", searchTerm AS ("
+        const cteRegex = new RegExp(`(WITH|,)\\s+${searchTerm}\\s+AS\\s*\\(`, 'i');
+        const match = documentText.match(cteRegex);
+
+        if (!match) {
+            return undefined;
+        }
+
+        // Find the position of the CTE definition
+        const offset = match.index || 0;
+        const position = document.positionAt(offset + match[1].length); // Position after "WITH" or ","
+
+        return new vscode.Location(document.uri, position);
+    }
+}
