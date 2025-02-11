@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.9.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.1...v0.9.2) (2025-02-11)
+
+
+### Features
+
+* go to definition for CTEs ([086a95b](https://github.com/ashish10alex/vscode-dataform-tools/commit/086a95b9408775469ee64f0dc352ce5eae55e3df))
+
 ### [0.9.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.0...v0.9.1) (2025-02-09)
 
 
