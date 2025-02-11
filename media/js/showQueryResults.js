@@ -123,7 +123,28 @@ window.addEventListener('message', event => {
     const showLoadingMessage = event?.data?.showLoadingMessage;
     const type = event?.data?.type;
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
+    const clearResults = event?.data?.clearResults;
+    
     checkbox.checked = incrementalCheckBox;
+
+    // Clear previous results if requested
+    if (clearResults) {
+        const bigQueryResults = document.getElementById('bigqueryResults');
+        if (bigQueryResults) {
+            bigQueryResults.style.display = 'none';
+            // Destroy existing Tabulator instance if it exists
+            if (bigQueryResults._tabulator) {
+                bigQueryResults._tabulator.destroy();
+            }
+        }
+        // Clear error and no results messages
+        document.getElementById('bigqueryerror').textContent = '';
+        document.getElementById('errorsDiv').style.display = 'none';
+        document.getElementById('noResultsDiv').style.display = 'none';
+        document.getElementById('datetime').textContent = '';
+        document.getElementById('bigQueryJobLinkDivider').textContent = '';
+        document.getElementById('bigQueryJobLink').textContent = '';
+    }
 
     if (type === "incremental"){
        incrementalCheckBoxDiv.style.display = "";
@@ -205,8 +226,18 @@ window.addEventListener('message', event => {
         document.getElementById('bigqueryerror').textContent = errorMessage;
     }
 
-    if (showLoadingMessage){
+    if (showLoadingMessage) {
+        // Clear any existing loading message and timer
+        if (loadingMessage) {
+            document.body.removeChild(loadingMessage);
+        }
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+        
         document.getElementById("cancelBigQueryJobButton").disabled = false;
+        document.getElementById("runQueryButton").disabled = true;
+        
         // Create a loading message element
         loadingMessage = document.createElement('div');
         loadingMessage.id = 'loading-message';
