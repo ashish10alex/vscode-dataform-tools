@@ -20,13 +20,23 @@ import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import { logger } from './logger';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
+    // Initialize logger at the start
+    logger.initialize();
+    logger.info('Activating Dataform Tools extension');
 
     sendNotifactionToUserOnExtensionUpdate(context);
 
+    // Add logger to subscriptions for cleanup
+    context.subscriptions.push({
+        dispose: () => logger.dispose()
+    });
+
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
+    logger.debug('Initialized global cache');
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
@@ -84,6 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async () => {
+            logger.info('Running query command');
             await previewQueryResults(queryResultsViewProvider);
         })
     );
@@ -236,10 +247,22 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     }
 
+    // Add logging to key operations
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('vscode-dataform-tools.enableLogging')) {
+                logger.initialize();
+                logger.info('Logging configuration updated');
+            }
+        })
+    );
+
+    logger.info('Dataform Tools extension activated successfully');
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {
+    logger.info('Deactivating Dataform Tools extension');
     clearAuthenticationCheckInterval();
-    console.log('Extension "vscode-dataform-tools" is now deactivated.');
+    logger.info('Extension "vscode-dataform-tools" is now deactivated.');
 }

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { logger } from './logger';
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
@@ -163,6 +164,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     if (!document) {
         return;
     }
+    logger.debug(`Getting current file metadata for document: ${document.uri.fsPath}`);
 
     var result = getFileNameFromDocument(document, false);
     if (result.success === false) {
@@ -170,9 +172,10 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     }
 
     const [filename, relativeFilePath, extension] = result.value;
-
+    logger.debug(`File name: ${filename}, relative file path: ${relativeFilePath}, extension: ${extension}`);
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
+    logger.debug(`Workspace folder: ${workspaceFolder}`);
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
         let {dataformCompiledJson, errors, possibleResolutions} = await runCompilation(workspaceFolder); // Takes ~1100ms
@@ -625,6 +628,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     if(tables?.length > 0){
         const table = tables.find(table => table.fileName === relativeFilePath);
         if (table) {
+            logger.debug(`Table found: ${table.fileName}`);
             switch (table.type) {
                 case "table":
                 case "view":
@@ -684,6 +688,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 incrementalQuery: "",
                 incrementalPreOps: []
             });
+            logger.debug(`Assertion found: ${assertion.fileName}`);
             return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
         });
         queryMeta.assertionQuery = assertionQueries.join('');
@@ -692,6 +697,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     if (operations?.length > 0 && finalTables.length === 0) {
         const operation = operations.find(op => op.fileName === relativeFilePath);
         if (operation) {
+            logger.debug(`Operations found: ${operation.fileName}`);
             queryMeta.type = "operations";
             const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
                 return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;

@@ -8,7 +8,6 @@ import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, Suppor
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
-import { formatCurrentFile } from "../formatCurrentFile";
 
 function showLoadingProgress(
     title: string,
