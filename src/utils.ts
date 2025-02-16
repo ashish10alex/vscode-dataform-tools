@@ -756,6 +756,7 @@ export function getSqlfluffConfigPathFromSettings() {
 export function getSqlfluffExecutablePathFromSettings() {
     let defaultSqlfluffExecutablePath = "sqlfluff";
     let sqlfluffExecutablePath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffExecutablePath');
+    logger.debug(`sqlfluffExecutablePath: ${sqlfluffExecutablePath}`);
     if (sqlfluffExecutablePath !== defaultSqlfluffExecutablePath && sqlfluffExecutablePath !== undefined) {
         if (isRunningOnWindows) {
             return sqlfluffExecutablePath = path.win32.normalize(sqlfluffExecutablePath);
@@ -788,10 +789,11 @@ export function compileDataform(workspaceFolder: string, isRunningOnWindows:bool
     if (dataformCompilerOptions !== ""){
         compilerOptions.push(dataformCompilerOptions);
     }
-
+    logger.debug(`compilerOptions: ${compilerOptions}`);
     return new Promise((resolve, reject) => {
         let spawnedProcess;
         let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+        logger.debug(`customDataformCliPath: ${customDataformCliPath}`);
         spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
 
         let stdOut = '';
@@ -899,7 +901,6 @@ function parseMultipleJSON(str:string) {
     }
   }
 
-// Usage
 export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
         let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder, isRunningOnWindows);
