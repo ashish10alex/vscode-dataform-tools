@@ -298,6 +298,11 @@
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Whether to recommend Error Lens extension to show erorrs inline rather than showing them as swigly lines"
+                },
+                "vscode-dataform-tools.enableLogging": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Enable debug logging to help troubleshoot issues. Logs will appear in the 'Dataform Tools' output channel."
                 }
             }
         }
