@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.9.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.3...v0.9.4) (2025-02-18)
+
+
+### Bug Fixes
+
+* formatter not using last active editor when switching to an non editor window ([5ad869d](https://github.com/ashish10alex/vscode-dataform-tools/commit/5ad869dce76784e9545bf0eed573cf641f256956))
+
 ### [0.9.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.2...v0.9.3) (2025-02-16)
 
 
