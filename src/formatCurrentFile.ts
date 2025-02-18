@@ -7,6 +7,7 @@ import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getF
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
+import { logger } from './logger';
 
 
 export async function formatSqlxFile(document:vscode.TextDocument, currentActiveEditorFilePath:string, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
@@ -103,8 +104,9 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         //TODO: should we return an error here ?
     }
     const [filename, relativeFilePath, extension] = result.value;
-
-    let currentActiveEditorFilePath = getActiveFilePath();
+    
+    let currentActiveEditorFilePath = document.uri.fsPath;
+    logger.debug(`currentActiveEditorFilePath: ${currentActiveEditorFilePath}`);
     if(!currentActiveEditorFilePath){
         return;
     }
