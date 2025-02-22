@@ -41,12 +41,14 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
     }
 
     // For all options, see https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
+    /*
     const options = {
         query: query,
-        // Location must match that of the dataset(s) referenced in the query.
-        //location: '',
+        Location must match that of the dataset(s) referenced in the query.
+        location: '',
         dryRun: true,
     };
+    */
 
     let currencyFoDryRunCost: SupportedCurrency | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('currencyFoDryRunCost');
     if (!currencyFoDryRunCost) {

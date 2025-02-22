@@ -14,6 +14,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
          //{ return {errors: {errorGettingFileNameFromDocument: result.error}}; }
         //TODO: should we return an error here ?
     }
+    //@ts-ignore
     const [filename, relativeFilePath, extension] = result.value;
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) {

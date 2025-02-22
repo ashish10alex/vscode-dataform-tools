@@ -41,7 +41,7 @@ function parseObject(obj: any, _childrens: any) {
             else if (value.constructor.name === 'Array') {
                 let new_children = parseObject(value, _childrens);
                 if (new_children.constructor.name === "Array") {
-                    new_children.forEach((c: any, idx: any) => {
+                    new_children.forEach((_: any, idx: any) => {
                         new_children[idx] = transformBigValues(new_children[idx]);
                         new_children[idx] = { ..._children, ...new_children[idx] };
                     });

@@ -119,6 +119,7 @@ export function getTabulatorThemeUri(){
     }
 }
 
+//@ts-ignore
 function getTreeRootFromWordInStruct(struct: Table[]|Operation[]|Assertion[]|Declarations[], searchTerm: string): string | undefined {
     if (struct) {
         for (let i = 0; i < struct.length; i++) {
@@ -259,8 +260,10 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 document: document
             };
         }
+        return undefined;
     }
 
+//@ts-ignore
 export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, searchTerm: string) {
     let sourcesDocument = await vscode.workspace.openTextDocument(sourcesJsUri);
 
@@ -282,6 +285,7 @@ export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, se
     }
 }
 
+//@ts-ignore
 export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDocument | vscode.Uri, searchTerm:string, startLine:number, endLine:number) {
     if (document instanceof vscode.Uri){
         document = await vscode.workspace.openTextDocument(document);
@@ -352,7 +356,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder);
+        let {dataformCompiledJson} = await runCompilation(workspaceFolder);
         if (dataformCompiledJson) {
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         }
@@ -534,7 +538,7 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
 
     return new Promise((resolve, reject) => {
 
-        exec(cmd, { cwd: workspaceFolder }, (err: any, stdout: any, stderr: any) => {
+        exec(cmd, { cwd: workspaceFolder }, (_: any, stdout: any, stderr: any) => {
             if (stderr) {
                 reject(new Error(stderr));
                 return;
@@ -782,7 +786,7 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     return dataformCliBase;
 }
 
-export function compileDataform(workspaceFolder: string, isRunningOnWindows:boolean): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
+export function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions:string[] = [];
@@ -903,7 +907,7 @@ function parseMultipleJSON(str:string) {
 
 export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
     try {
-        let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder, isRunningOnWindows);
+        let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder);
         if(compiledString){
             let dataformCompiledJson: DataformCompiledJson;
             try {
@@ -1006,6 +1010,7 @@ export function checkIfFileExsists(filePath: string) {
     return false;
 }
 
+//@ts-ignore
 const ensureDirectoryExistence = (filePath: string) => {
     const dirname = path.dirname(filePath);
     if (fs.existsSync(dirname)) {

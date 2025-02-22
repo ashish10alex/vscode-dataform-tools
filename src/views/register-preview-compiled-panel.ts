@@ -92,7 +92,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             } else{
                 showLoadingProgress(
                     "Dataform tools\n",
-                    async (progress, token) => {
+                    async (progress) => {
                         progress.report({ message: "Generating compiled query metadata..." });
                         CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
                     },
@@ -121,10 +121,6 @@ export class CompiledQueryPanel {
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
-        const column = window.activeTextEditor
-            ? window.activeTextEditor.viewColumn
-            : undefined;
-
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
@@ -296,6 +292,7 @@ export class CompiledQueryPanel {
     }
 
 
+    //@ts-ignore
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined) {
         const webview = this.webviewPanel.webview;
         if (this.webviewPanel.webview.html === ""){

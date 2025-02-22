@@ -46,7 +46,7 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
     let dataformCompiledJson: DataformCompiledJson | undefined;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
         dataformCompiledJson = dataformCompiledJson;
     } else {
         dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
@@ -93,13 +93,13 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
     if (assertions) {
         return getSearchTermLocationFromStruct(searchTerm, assertions, workspaceFolder);
     }
+    return undefined;
 }
 
 export class DataformRequireDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(
         document: vscode.TextDocument,
         position: vscode.Position,
-        token: vscode.CancellationToken
     ): Promise<vscode.LocationLink[] | undefined> {
         const line = document.lineAt(position.line).text;
         const requireRegex = /[const|var|let].+=.+require\(["'](.+?)["']\)/;
@@ -267,7 +267,6 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(
         document: vscode.TextDocument,
         position: vscode.Position,
-        token: vscode.CancellationToken
     ): Promise<vscode.Location | undefined> {
         const wordRange = document.getWordRangeAtPosition(position);
         if(!wordRange){
@@ -332,7 +331,6 @@ export class DataformCTEDefinitionProvider implements vscode.DefinitionProvider 
     async provideDefinition(
         document: vscode.TextDocument,
         pos: vscode.Position,
-        token: vscode.CancellationToken
     ): Promise<vscode.Location | undefined> {
         const wordRange = document.getWordRangeAtPosition(pos);
         if (!wordRange) {

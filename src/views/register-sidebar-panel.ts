@@ -1,7 +1,6 @@
-import { CancellationToken, commands, ExtensionContext, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext, window } from "vscode";
+import { commands, ExtensionContext, Uri, Webview, WebviewView, WebviewViewProvider, window } from "vscode";
 import * as vscode from 'vscode';
 import {getNonce, getCurrentFileMetadata } from '../utils';
-import { CenterPanel } from "./register-center-panel";
 
 export async function registerWebViewProvider(context: ExtensionContext) {
     const provider = new SidebarWebViewProvider(context.extensionUri, context);
@@ -33,9 +32,7 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
     constructor(private readonly _extensionUri: Uri, public extensionContext: ExtensionContext) { }
     view?: WebviewView;
 
-    resolveWebviewView(webviewView: WebviewView,
-        webViewContext: WebviewViewResolveContext,
-        token: CancellationToken) {
+    resolveWebviewView(webviewView: WebviewView) {
         this.view = webviewView;
 
         webviewView.onDidChangeVisibility(() => {
@@ -59,7 +56,8 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(async (data) => {
             switch (data.type) {
                 case "load-dependancy-graph-button": {
-                    CenterPanel.getInstance(this.extensionContext.extensionUri, this.extensionContext);
+                    //TODO: Add new dependency graph panel here
+                    // CenterPanel.getInstance(this.extensionContext.extensionUri, this.extensionContext);
                     break;
                 }
             }
