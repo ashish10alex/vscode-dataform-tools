@@ -67,14 +67,11 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
 
 export async function generateDependancyTreeMetadata(): Promise<any> {
     let dependancyTreeMetadata: DependancyModelMetadata[] = [];
-    // let schemaDict = {}; // used to keep track of unique schema names ( gcp dataset name ) already seen in the compiled json declarations
-    // let schemaIdx = 0;   // used to assign a unique index to each unique schema name for color coding dataset in the web panel
     let modelIdx = 0;    // used to assign a unique index to each model for color coding model in the web panel
     let modelNameToIdx = new Map<string, number>();
     let initialEdgesStatic: any[] = [];
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
-
         let workspaceFolder = getWorkspaceFolder();
         if (!workspaceFolder) {
             return;
@@ -95,10 +92,11 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
     if (tables) {
-       const output = populateDependancyTree("tables", tables, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
-       dependancyTreeMetadata = output.dependancyTreeMetadata;
-       initialEdgesStatic = output.initialEdgesStatic;
-       modelNameToIdx = output.modelNameToIdx;
+        const output = populateDependancyTree("tables", tables, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
+        dependancyTreeMetadata = output.dependancyTreeMetadata;
+        initialEdgesStatic = output.initialEdgesStatic;
+        modelNameToIdx = output.modelNameToIdx;
+        modelIdx = modelNameToIdx.size; // Update modelIdx to the current size of the map
     }
 
     if (assertions) {
@@ -106,6 +104,7 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         dependancyTreeMetadata = output.dependancyTreeMetadata;
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
+        modelIdx = modelNameToIdx.size; // Update modelIdx to the current size of the map
     }
 
     if (operations) {
@@ -113,6 +112,7 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         dependancyTreeMetadata = output.dependancyTreeMetadata;
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
+        modelIdx = modelNameToIdx.size; // Update modelIdx to the current size of the map
     }
 
     if (declarations) {
