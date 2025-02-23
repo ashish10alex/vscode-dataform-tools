@@ -68,6 +68,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
           right: '-6px',
           background: datasetColor,
           color: '#fff',
+          border: `2px solid ${type === 'view' ? 'yellow' : 'transparent'}`,
           fontSize: '8px',
           padding: '2px 4px',
           borderRadius: '3px',
