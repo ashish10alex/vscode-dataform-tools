@@ -131,13 +131,6 @@ const Flow: React.FC = () => {
     }
   };
 
-  const sendMessageToExtension = () => {
-    vscode.postMessage({
-      type: 'fromWebview',
-      value: 'Hello from React webview!'
-    });
-  };
-
   // Add this new handler for node clicks
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
     console.log('Clicked node:', node);
@@ -166,14 +159,6 @@ const Flow: React.FC = () => {
         </div>
       )}
       
-      {/* Add test button */}
-      <button 
-        onClick={sendMessageToExtension}
-        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        Send Message to Extension
-      </button>
-
       <div className="p-4">
         <Select
           options={selectOptions}
@@ -183,25 +168,61 @@ const Flow: React.FC = () => {
           className="w-full"
           classNamePrefix="react-select"
           styles={{
-            control: (base) => ({
+            control: (base, state) => ({
               ...base,
-              borderRadius: '0.375rem',
-              borderColor: '#e2e8f0',
+              backgroundColor: '#1a1a1a',
+              borderRadius: '0.75rem',
+              borderColor: state.isFocused ? '#3b82f6' : '#374151',
+              borderWidth: '2px',
+              boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
+              padding: '2px',
+              transition: 'all 0.2s ease',
               '&:hover': {
                 borderColor: '#3b82f6'
               }
             }),
+            input: (base) => ({
+              ...base,
+              color: '#fff'
+            }),
+            placeholder: (base) => ({
+              ...base,
+              color: '#6b7280'
+            }),
             option: (base, state) => ({
               ...base,
-              backgroundColor: state.isFocused ? '#e2e8f0' : 'white',
-              color: 'black',
+              backgroundColor: state.isFocused ? '#2563eb' : '#1a1a1a',
+              color: state.isFocused ? 'white' : '#e5e7eb',
+              padding: '10px 12px',
+              cursor: 'pointer',
               '&:hover': {
-                backgroundColor: '#e2e8f0'
+                backgroundColor: '#2563eb'
               }
+            }),
+            menu: (base) => ({
+              ...base,
+              backgroundColor: '#1a1a1a',
+              border: '2px solid #374151',
+              borderRadius: '0.75rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
             }),
             singleValue: (base) => ({
               ...base,
-              color: 'black'
+              color: '#fff'
+            }),
+            dropdownIndicator: (base, state) => ({
+              ...base,
+              color: state.isFocused ? '#3b82f6' : '#6b7280',
+              '&:hover': {
+                color: '#3b82f6'
+              }
+            }),
+            clearIndicator: (base) => ({
+              ...base,
+              color: '#6b7280',
+              '&:hover': {
+                color: '#ef4444'
+              }
             })
           }}
         />
