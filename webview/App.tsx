@@ -92,6 +92,10 @@ const Flow: React.FC = () => {
 
   // Updated handler for table selection
   const handleTableSelect = (option: OptionType | null) => {
+      // Clear the graph when no option is selected
+      setNodes([]);
+      setEdges([]);
+
     if (!option) return;
     
     // Get the selected node and its connected nodes (dependencies and dependents)
@@ -106,22 +110,22 @@ const Flow: React.FC = () => {
     );
 
     // Compute new positions for the filtered nodes
-    const filteredNodesWithPosition = nodePositioning(
+    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
       filteredNodes,
       filteredEdges,
       'LR'
     );
 
-    // Update the graph with new nodes and edges
-    setNodes(filteredNodesWithPosition.nodes);
-    setEdges(filteredNodesWithPosition.edges);
+    // Set new nodes and edges (completely replacing old ones)
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
 
     // Fit view to show all nodes with padding
     if (reactFlowInstance.current) {
       setTimeout(() => {
         reactFlowInstance.current?.fitView({
-          padding: 0.2, // 20% padding around the graph
-          duration: 800 // Animation duration in milliseconds
+          padding: 0.2,
+          duration: 800
         });
       }, 50);
     }
