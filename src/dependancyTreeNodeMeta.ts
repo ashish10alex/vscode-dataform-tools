@@ -1,12 +1,14 @@
 import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } from "./types";
 import { getWorkspaceFolder, runCompilation } from "./utils";
 
-// give me a set of 30 distinct colors which are user friendly but at the same time distinct
 const datasetColors = [
-    "#FF5733", "#33FF33", "#3333FF", "#FF33A1", "#FF9E33", "#33A1FF", "#A133FF", "#FF3366", "#66FF33", "#3366FF",
-    "#FF33CC", "#CC33FF", "#33CCFF", "#FF6633", "#33FF66", "#6633FF", "#FF6666", "#6666FF", "#FF66CC", "#CC66FF",
-    "#FF5733", "#33FF33", "#3333FF", "#FF33A1", "#FF9E33", "#33A1FF", "#A133FF", "#FF3366", "#66FF33", "#3366FF",
-    "#FF33CC", "#CC33FF", "#33CCFF", "#FF6633", "#33FF66", "#6633FF", "#FF6666", "#6666FF", "#FF66CC", "#CC66FF"
+    "#FF0000", "#00FF00", "#0000FF", "#FF00FF", "#FFFF00", "#00FFFF",
+    "#FF8000", "#80FF00", "#00FF80", "#0080FF", "#8000FF", "#FF0080",
+    "#A0522D", "#006400", "#483D8B", "#800000", "#008080", "#4B0082",
+    "#FFB6C1", "#98FB98", "#87CEEB", "#DDA0DD", "#F0E68C", "#E0FFFF",
+    "#FF4500", "#32CD32", "#1E90FF", "#FF1493", "#FFD700", "#20B2AA",
+    "#8B4513", "#228B22", "#4169E1", "#8B008B", "#DAA520", "#008B8B",
+    "#FF6347", "#90EE90", "#6495ED", "#BA55D3"
 ];
 
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>, datasetColorMap: Map<string, string>) {

@@ -29,6 +29,29 @@ interface OptionType {
 // @ts-ignore
 const vscode = acquireVsCodeApi();
 
+// Add this new Legend component at the top of the file, before the Flow component
+const Legend: React.FC<{ datasetColorMap: Map<string, string> }> = ({ datasetColorMap }) => {
+  return (
+    <div className="mb-4 p-4 bg-gray-800 rounded-xl shadow-lg">
+      <h3 className="text-sm font-semibold text-gray-400 mb-2">Datasets</h3>
+      <div className="flex flex-wrap gap-2">
+        {Array.from(datasetColorMap.entries()).map(([dataset, color]) => (
+          <div 
+            key={dataset}
+            className="flex items-center bg-gray-700 rounded-lg px-3 py-1.5"
+          >
+            <div 
+              className="w-3 h-3 rounded-full mr-2" 
+              style={{ backgroundColor: color }}
+            />
+            <span className="text-sm text-gray-200">{dataset}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Flow: React.FC = () => {
   const [fullNodes, setFullNodes] = useState<Node[]>([]);
   const [fullEdges, setFullEdges] = useState<Edge[]>([]);
@@ -36,7 +59,7 @@ const Flow: React.FC = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const [message, setMessage] = useState<string>('');
-
+  const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       const message = event.data;
@@ -46,9 +69,10 @@ const Flow: React.FC = () => {
           setMessage(message.value);
           break;
         case 'nodeMetadata':
-          const { initialNodesStatic, initialEdgesStatic } = message.value;
+          const { initialNodesStatic, initialEdgesStatic, datasetColorMap } = message.value;
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
+          setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
           // filter to node with id 1 load all nodes connected to it
           const filteredEdges = initialEdgesStatic.filter((edge: Edge) => 
             edge.source === '2' || edge.target === '2'
@@ -155,7 +179,12 @@ const Flow: React.FC = () => {
         </div>
       )}
       
-      <div className="p-4">
+      {/* Add the Legend component here, before the search dropdown */}
+      <div className="p-4 space-y-4">
+        {datasetColorMap.size > 0 && (
+          <Legend datasetColorMap={datasetColorMap} />
+        )}
+        
         <Select
           options={selectOptions}
           onChange={handleTableSelect}
