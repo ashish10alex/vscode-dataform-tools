@@ -42,20 +42,6 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
     const output = await generateDependancyTreeMetadata();
     panel.webview.html = getWebViewHtmlContent(context, panel.webview);
 
-    // Handle messages from webview
-    // panel.webview.onDidReceiveMessage(
-    //     message => {
-    //         switch (message.type) {
-    //             case 'fromWebview':
-    //                 vscode.window.showInformationMessage(message.value);
-    //                 return;
-    //         }
-    //     },
-    //     undefined,
-    //     context.subscriptions
-    // );
-
-    // TODO: We will be generating the node metadata from the dataform json file
     setTimeout(() => {
         panel.webview.postMessage({
             type: 'nodeMetadata',
@@ -66,7 +52,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                 currentActiveEditorIdx: output.currentActiveEditorIdx
             }
         });
-    }, 500);
+    }, 200);
 
     return panel;
 }
