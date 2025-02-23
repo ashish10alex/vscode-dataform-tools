@@ -8,7 +8,10 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
     //     { id: 'e1-3', source: '2', target: '3' }, 
     // ]
 
-    if (type === "tables" || type === "assertions") {
+    if (type === "tables" || type === "assertions" || type === "declarations" || type === "operations") {
+        // if(type === "declarations") {
+        //     console.log("declarations");
+        // }
         for (let i = 0; i < structs.length; i++) {
             let targetIdx = modelIdx;
 
@@ -87,9 +90,9 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         return;
     }
     let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
-    // let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
+    let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
     let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
-    // let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
+    let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
     if (tables) {
        const output = populateDependancyTree("tables", tables, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
@@ -104,15 +107,20 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
     }
+
+    if (operations) {
+        const output = populateDependancyTree("operations", operations, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
+        dependancyTreeMetadata = output.dependancyTreeMetadata;
+        initialEdgesStatic = output.initialEdgesStatic;
+        modelNameToIdx = output.modelNameToIdx;
+    }
+
+    if (declarations) {
+        const output = populateDependancyTree("declarations", declarations, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
+        dependancyTreeMetadata = output.dependancyTreeMetadata;
+        initialEdgesStatic = output.initialEdgesStatic;
+        modelNameToIdx = output.modelNameToIdx;
+    }
     return { dependancyTreeMetadata, initialEdgesStatic };
-
-
-    // if (operations) {
-    //     const { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx } = populateDependancyTree("operations", operations, dependancyTreeMetadata, modelIdx, modelNameToIdx);
-    // }
-
-    // if (declarations) {
-    //     output = populateDependancyTree("declarations", declarations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx, modelIdx);
-    // }
     // return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
 }
