@@ -36,6 +36,8 @@ interface OptionType {
 const vscode = acquireVsCodeApi();
 
 const Flow: React.FC = () => {
+  const [fullNodes, setFullNodes] = useState<any[]>([]);
+  const [fullEdges, setFullEdges] = useState<any[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
@@ -53,13 +55,18 @@ const Flow: React.FC = () => {
           break;
         case 'nodeMetadata':
           const { initialNodesStatic, initialEdgesStatic } = message.value;
-          const { nodes: initialNodes, edges: initialEdges } = nodePositioning(
-            initialNodesStatic,
-            initialEdgesStatic,
+          setFullNodes(initialNodesStatic);
+          setFullEdges(initialEdgesStatic);
+          // filter to node with id 1 load all nodes connected to it
+          const filteredEdges = initialEdgesStatic.filter((edge: any) => edge.source === '2' || edge.target === '2');
+          const filteredNodes = initialNodesStatic.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
+          const filteredNodesWithPosition = nodePositioning(
+            filteredNodes,
+            filteredEdges,
             'LR'
           );
-          setNodes(initialNodes);
-          setEdges(initialEdges);
+          setNodes(filteredNodesWithPosition.nodes);
+          setEdges(filteredNodesWithPosition.edges);
           break;
         // Add more message types as needed
       }
@@ -104,6 +111,25 @@ const Flow: React.FC = () => {
       value: 'Hello from React webview!'
     });
   };
+
+  // Add this new handler for node clicks
+  const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    console.log('Clicked node:', node);
+    // get the dependent and dependecies of the clicked node
+    const filteredEdges = fullEdges.filter((edge: any) => edge.source === node.id || edge.target === node.id);
+    const filteredNodes = fullNodes.filter((n: any) => filteredEdges.some((edge: any) => edge.source === n.id || edge.target === n.id));
+    // add to the current nodes and edges the filtered nodes and edges
+    setNodes([...nodes, ...filteredNodes]);
+    setEdges([...edges, ...filteredEdges]);
+    // recompute the positions of the nodes
+    const filteredNodesWithPosition = nodePositioning(
+      [...nodes, ...filteredNodes],
+      [...edges, ...filteredEdges],
+      'LR'
+    );
+    setNodes(filteredNodesWithPosition.nodes);
+    setEdges(filteredNodesWithPosition.edges);
+  }, [fullNodes, fullEdges, nodes, edges, setNodes, setEdges]);
 
   return (
     <div className="h-full">
@@ -162,6 +188,7 @@ const Flow: React.FC = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         onInit={(instance) => {
           reactFlowInstance.current = instance;
         }}

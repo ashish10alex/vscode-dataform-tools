@@ -9,17 +9,21 @@ interface NodeData {
   fileName: string;
   datasetColor: string;
   type: 'view' | 'table' | 'operation' | 'source' | 'assertion';
+  onNodeClick: (nodeId: string) => void;
 }
 
-const TableNode: React.FC<{ data: NodeData }> = ({ data }) => {
-  const { modelName, datasetId, projectId, tags, fileName, datasetColor, type } = data;
+const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
+  const { modelName, datasetId, projectId, tags, fileName, datasetColor, type, onNodeClick } = data;
 
-  const getModelName = () => {
-    return `${projectId}.${datasetId}.${modelName}`;
+  const handleClick = () => {
+    if (onNodeClick) {
+      onNodeClick(id);
+    }
   };
 
   return (
     <div
+      onClick={handleClick}
       style={{
         background: '#ffffff',
         borderRadius: '6px',
@@ -29,6 +33,8 @@ const TableNode: React.FC<{ data: NodeData }> = ({ data }) => {
         fontFamily: 'Inter, sans-serif',
         border: `1px solid ${datasetColor}`,
         position: 'relative',
+        cursor: 'pointer',
+        transition: 'opacity 0.3s ease-in-out',
       }}
     >
       <Handle type="target" position={Position.Top} style={{ background: '#555' }} />

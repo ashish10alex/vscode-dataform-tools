@@ -64,7 +64,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                 initialEdgesStatic: output.initialEdgesStatic,
             }
         });
-    }, 500);
+    }, 100);
 
     return panel;
 }

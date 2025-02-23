@@ -1,5 +1,4 @@
-
-import { Assertion, Declarations, DeclarationsLegendMetadata, DependancyModelMetadata, DependancyTreeMetadata, Operation, Table } from "./types";
+import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } from "./types";
 import { getWorkspaceFolder, runCompilation } from "./utils";
 
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[],  modelIdx: number) {
@@ -20,9 +19,10 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
 
             // we need to ensure that the model name is unique in the dependancy tree
             if(modelNameToIdx.has(fullTableName)) {
-                modelIdx = modelNameToIdx.get(fullTableName) || i;
+                targetIdx = modelNameToIdx.get(fullTableName)!;
             } else {
                 modelNameToIdx.set(fullTableName, modelIdx);
+                modelIdx++;
             }
 
             let modelDependencies: any[] = [];
@@ -31,7 +31,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     const fullTableName = `${dependecies[j].database}.${dependecies[j].schema}.${dependecies[j].name}`;
                     if(!modelNameToIdx.has(fullTableName)) {
                         modelDependencies.push(fullTableName);
-                        modelNameToIdx.set(fullTableName, modelIdx + 1);
+                        modelNameToIdx.set(fullTableName, modelIdx);
                         modelIdx++;
                     } else {
                         modelDependencies.push(fullTableName);
@@ -39,7 +39,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                 }
             }
             dependancyTreeMetadata.push({
-                id: String(modelIdx),
+                id: String(targetIdx),
                 type: "tableNode",
                 data: {
                     modelName: structs[i].target.name,
@@ -54,13 +54,9 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
             if(modelDependencies.length > 0) {
                 modelDependencies.forEach((dependency) => {
                     const sourceIdx = modelNameToIdx.get(dependency) || 0;
-                    const targetIdx = modelNameToIdx.get(fullTableName) || 0;
                     initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx)});
                 });
             }
-
-            modelIdx++;
-
         }
     }
     return { dependancyTreeMetadata, initialEdgesStatic };
