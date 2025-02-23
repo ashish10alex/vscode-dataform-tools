@@ -3,13 +3,20 @@ import { Handle, Position } from '@xyflow/react';
 
 interface NodeData {
   modelName: string;
-  tableName: string;
+  datasetId: string;
+  projectId: string;
+  tags: string[];
+  fileName: string;
   datasetColor: string;
   type: 'view' | 'table' | 'operation' | 'source' | 'assertion';
 }
 
 const TableNode: React.FC<{ data: NodeData }> = ({ data }) => {
-  const { modelName, tableName, datasetColor, type } = data;
+  const { modelName, datasetId, projectId, tags, fileName, datasetColor, type } = data;
+
+  const getModelName = () => {
+    return `${projectId}.${datasetId}.${modelName}`;
+  };
 
   return (
     <div
@@ -44,7 +51,7 @@ const TableNode: React.FC<{ data: NodeData }> = ({ data }) => {
           fontWeight: 'bold',
         }}
       >
-        {tableName}
+        {datasetId}
       </div>
 
       <div

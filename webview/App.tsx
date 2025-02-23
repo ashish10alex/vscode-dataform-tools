@@ -52,12 +52,11 @@ const Flow: React.FC = () => {
           setMessage(message.value);
           break;
         case 'nodeMetadata':
-          console.log(message.value);
           const { initialNodesStatic, initialEdgesStatic } = message.value;
           const { nodes: initialNodes, edges: initialEdges } = nodePositioning(
             initialNodesStatic,
             initialEdgesStatic,
-            'TB'
+            'LR'
           );
           setNodes(initialNodes);
           setEdges(initialEdges);
@@ -81,7 +80,7 @@ const Flow: React.FC = () => {
   // Convert nodes to options format for react-select
   const selectOptions: OptionType[] = nodes.map((node) => ({
     value: node.id,
-    label: node.data.tableName as string
+    label: node.data.modelName as string
   }));
 
   // Function to handle table selection

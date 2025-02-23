@@ -296,3 +296,10 @@ export type LastModifiedTimeMeta = {
         message: string | undefined,
     }
 };
+
+
+export type DependancyModelMetadata = {
+    id: string;
+    type: string;
+    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string };
+};
