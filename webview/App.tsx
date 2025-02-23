@@ -128,7 +128,7 @@ const Flow: React.FC = () => {
   };
 
   // Add this new handler for node clicks
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     console.log('Clicked node:', node);
     // get the dependent and dependecies of the clicked node
     const filteredEdges = fullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);

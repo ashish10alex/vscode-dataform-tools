@@ -13,7 +13,7 @@ interface NodeData {
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, projectId, tags, fileName, datasetColor, type, onNodeClick } = data;
+  const { modelName, datasetId, datasetColor, type, onNodeClick } = data;
 
   const handleClick = () => {
     if (onNodeClick) {
