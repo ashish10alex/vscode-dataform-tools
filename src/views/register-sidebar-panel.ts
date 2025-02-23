@@ -52,17 +52,6 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
         if (isFileOpen) {
             vscode.commands.executeCommand('vscode-dataform-tools.getCurrFileMetadataForSidePanel');
         }
-
-        webviewView.webview.onDidReceiveMessage(async (data) => {
-            switch (data.type) {
-                case "load-dependancy-graph-button": {
-                    //TODO: Add new dependency graph panel here
-                    // CenterPanel.getInstance(this.extensionContext.extensionUri, this.extensionContext);
-                    break;
-                }
-            }
-        });
-
     }
 
     private _getHtmlForWebview(webview: Webview) {
@@ -95,7 +84,6 @@ export class SidebarWebViewProvider implements WebviewViewProvider {
               <br>
               <h3 id="loadingMessage"></h3>
               <br>
-              <button type="button" class="load-dependancy-graph-button">Load dependancy graph</button><br>
               <script nonce="${nonce}" src="${sidePanelScriptUri}"></script>
               <script nonce="${nonce}" src="${scriptPanel}"></script>
            </body>

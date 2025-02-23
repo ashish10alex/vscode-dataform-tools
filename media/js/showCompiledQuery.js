@@ -19,7 +19,19 @@ const errorMessageDiv = document.getElementById("errorMessageDiv");
 const dataLineageDiv = document.getElementById("dataLineageDiv");
 const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
+const dependencyGraphButton = document.getElementById("dependencyGraph");
 let fullModelName = "";
+
+function dependencyGraphClickHandler() {
+    vscode.postMessage({
+        command: 'dependencyGraph',
+        value: true
+    });
+}
+
+if (dependencyGraphButton) {
+    dependencyGraphButton.addEventListener('click', dependencyGraphClickHandler);
+}
 
 function populateDropdown(tags, defaultTag = undefined) {
     const dropdown = document.getElementById('tags');

@@ -198,6 +198,9 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'dependencyGraph':
+                await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
+                return;
               case 'previewResults':
                 if(message.value){
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
@@ -705,6 +708,7 @@ export class CompiledQueryPanel {
                 </div>
 
                 <div class="button-container">
+                    <button class="run-model" id="dependencyGraph" title="Dependency Graph">Dependency Graph</button>
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
                     <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run</button>
                 </div>
