@@ -32,19 +32,19 @@ const vscode = acquireVsCodeApi();
 // Add this new Legend component at the top of the file, before the Flow component
 const Legend: React.FC<{ datasetColorMap: Map<string, string> }> = ({ datasetColorMap }) => {
   return (
-    <div className="mb-4 p-4 bg-gray-800 rounded-xl shadow-lg">
-      <h3 className="text-sm font-semibold text-gray-400 mb-2">Datasets</h3>
+    <div className="mb-4 p-2 border border-[var(--vscode-widget-border)] rounded-md">
+      <h3 className="text-sm font-semibold text-[var(--vscode-foreground)] mb-2">Datasets</h3>
       <div className="flex flex-wrap gap-2">
         {Array.from(datasetColorMap.entries()).map(([dataset, color]) => (
           <div 
             key={dataset}
-            className="flex items-center bg-gray-700 rounded-lg px-3 py-1.5"
+            className="flex items-center border border-[var(--vscode-widget-border)] rounded-md px-2 py-1"
           >
             <div 
               className="w-3 h-3 rounded-full mr-2" 
               style={{ backgroundColor: color }}
             />
-            <span className="text-sm text-gray-200">{dataset}</span>
+            <span className="text-sm text-[var(--vscode-foreground)]">{dataset}</span>
           </div>
         ))}
       </div>
@@ -190,7 +190,7 @@ const Flow: React.FC = () => {
           onChange={handleTableSelect}
           isClearable
           placeholder="Search for a table..."
-          className="w-full"
+          className="w-96 max-w-full"
           classNamePrefix="react-select"
           styles={{
             control: (base, state) => ({
