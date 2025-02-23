@@ -7,24 +7,18 @@ import {
   useEdgesState,
   addEdge,
   ReactFlowProvider,
-  ReactFlowInstance
+  ReactFlowInstance,
+  Node,
+  Edge
 } from '@xyflow/react';
 import Select from 'react-select';
 import '@xyflow/react/dist/style.css';
 import TableNode from './TableNode';
-import { initialNodesStatic } from './initialNodes';
-import { initialEdgesStatic } from './initialEdges';
 import { nodePositioning } from './nodePositioning';
 
 const nodeTypes = {
   tableNode: TableNode,
 };
-
-const { nodes: initialNodes, edges: initialEdges } = nodePositioning(
-  initialNodesStatic,
-  initialEdgesStatic,
-  'LR'
-);
 
 interface OptionType {
   value: string;
@@ -36,19 +30,17 @@ interface OptionType {
 const vscode = acquireVsCodeApi();
 
 const Flow: React.FC = () => {
-  const [fullNodes, setFullNodes] = useState<any[]>([]);
-  const [fullEdges, setFullEdges] = useState<any[]>([]);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
-  const [message, setMessage] = useState<string>(''); // Add state for message
+  const [fullNodes, setFullNodes] = useState<Node[]>([]);
+  const [fullEdges, setFullEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
+  const [message, setMessage] = useState<string>('');
 
-  // Add effect to listen for messages
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       const message = event.data;
       
-      // Handle different message types
       switch (message.type) {
         case 'testMessage':
           setMessage(message.value);
@@ -58,15 +50,19 @@ const Flow: React.FC = () => {
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
           // filter to node with id 1 load all nodes connected to it
-          const filteredEdges = initialEdgesStatic.filter((edge: any) => edge.source === '2' || edge.target === '2');
-          const filteredNodes = initialNodesStatic.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
-          const filteredNodesWithPosition = nodePositioning(
+          const filteredEdges = initialEdgesStatic.filter((edge: Edge) => 
+            edge.source === '2' || edge.target === '2'
+          );
+          const filteredNodes = initialNodesStatic.filter((node: Node) => 
+            filteredEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
+          );
+          const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
             filteredNodes,
             filteredEdges,
             'LR'
           );
-          setNodes(filteredNodesWithPosition.nodes);
-          setEdges(filteredNodesWithPosition.edges);
+          setNodes(positionedNodes);
+          setEdges(positionedEdges);
           break;
         // Add more message types as needed
       }
@@ -80,7 +76,7 @@ const Flow: React.FC = () => {
   }, []);
 
   const onConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge(params, eds)),
+    (params: any) => setEdges((eds: any[]) => addEdge(params, eds)),
     [setEdges]
   );
 
@@ -99,12 +95,12 @@ const Flow: React.FC = () => {
     if (!option) return;
     
     // Get the selected node and its connected nodes (dependencies and dependents)
-    const filteredEdges = fullEdges.filter((edge: any) => 
+    const filteredEdges = fullEdges.filter((edge: Edge) => 
       edge.source === option.value || edge.target === option.value
     );
-    const filteredNodes = fullNodes.filter((node: any) => 
+    const filteredNodes = fullNodes.filter((node: Node) => 
       node.id === option.value || // Include selected node
-      filteredEdges.some((edge: any) => 
+      filteredEdges.some((edge: Edge) => 
         edge.source === node.id || edge.target === node.id
       )
     );
@@ -132,11 +128,11 @@ const Flow: React.FC = () => {
   };
 
   // Add this new handler for node clicks
-  const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     console.log('Clicked node:', node);
     // get the dependent and dependecies of the clicked node
-    const filteredEdges = fullEdges.filter((edge: any) => edge.source === node.id || edge.target === node.id);
-    const filteredNodes = fullNodes.filter((n: any) => filteredEdges.some((edge: any) => edge.source === n.id || edge.target === n.id));
+    const filteredEdges = fullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);
+    const filteredNodes = fullNodes.filter((n: Node) => filteredEdges.some((edge: Edge) => edge.source === n.id || edge.target === n.id));
     // add to the current nodes and edges the filtered nodes and edges
     setNodes([...nodes, ...filteredNodes]);
     setEdges([...edges, ...filteredEdges]);
@@ -228,23 +224,29 @@ const Flow: React.FC = () => {
         />
       </div>
       
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={onNodeClick}
-        onInit={(instance) => {
-          reactFlowInstance.current = instance;
-        }}
-        fitView
-      >
-        <Controls />
-        {/* @ts-ignore */}
-        <Background variant="dots" gap={12} size={1} />
-      </ReactFlow>
+      {nodes.length > 0 ? (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onInit={(instance) => {
+            reactFlowInstance.current = instance;
+          }}
+          fitView
+        >
+          <Controls />
+          {/* @ts-ignore */}
+          <Background variant="dots" gap={12} size={1} />
+        </ReactFlow>
+      ) : (
+        <div className="flex items-center justify-center h-[80vh] text-gray-400">
+          Select a table to view its dependencies
+        </div>
+      )}
     </div>
   );
 };
