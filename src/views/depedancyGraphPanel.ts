@@ -63,6 +63,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                 initialNodesStatic: output.dependancyTreeMetadata,
                 initialEdgesStatic: output.initialEdgesStatic,
                 datasetColorMap: Object.fromEntries(output.datasetColorMap),
+                currentActiveEditorIdx: output.currentActiveEditorIdx
             }
         });
     }, 500);

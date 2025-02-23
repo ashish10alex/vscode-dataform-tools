@@ -451,7 +451,7 @@ export function executableIsAvailable(name: string) {
     }
 }
 
-function getRelativePath(filePath: string) {
+export function getRelativePath(filePath: string) {
     const fileUri = vscode.Uri.file(filePath);
     let relativePath = vscode.workspace.asRelativePath(fileUri);
     if (isRunningOnWindows) {

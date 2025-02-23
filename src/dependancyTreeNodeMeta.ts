@@ -1,5 +1,6 @@
 import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } from "./types";
-import { getWorkspaceFolder, runCompilation } from "./utils";
+import { getRelativePath, getWorkspaceFolder, runCompilation } from "./utils";
+import * as vscode from 'vscode';
 
 const datasetColors = [
     "#FF0000", "#00FF00", "#0000FF", "#FF00FF", "#FFFF00", "#00FFFF",
@@ -11,7 +12,7 @@ const datasetColors = [
     "#FF6347", "#90EE90", "#6495ED", "#BA55D3"
 ];
 
-function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>, datasetColorMap: Map<string, string>) {
+function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>, datasetColorMap: Map<string, string>, currentActiveEditorRelativePath: string, currentActiveEditorIdx: string) {
 
     if (type === "tables" || type === "assertions" || type === "declarations" || type === "operations") {
         for (let i = 0; i < structs.length; i++) {
@@ -34,6 +35,10 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
             } else {
                 modelNameToIdx.set(fullTableName, modelIdx);
                 modelIdx++;
+            }
+
+            if(currentActiveEditorRelativePath !== "" && currentActiveEditorRelativePath === structs[i].fileName && currentActiveEditorIdx === "0") {
+                currentActiveEditorIdx = String(targetIdx);
             }
 
             let modelDependencies: any[] = [];
@@ -71,7 +76,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
             }
         }
     }
-    return { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx, datasetColorMap };
+    return { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx, datasetColorMap, currentActiveEditorIdx };
 }
 
 
@@ -81,6 +86,8 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
     let modelNameToIdx = new Map<string, number>();
     let initialEdgesStatic: any[] = [];
     let datasetColorMap = new Map<string, string>();
+    let currentActiveEditorIdx = "0";
+
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         let workspaceFolder = getWorkspaceFolder();
@@ -94,6 +101,13 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         }
     }
 
+    let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
+    let currentActiveEditorFilePath = document?.uri?.fsPath;
+    let currentActiveEditorRelativePath = "";
+    if (currentActiveEditorFilePath) {
+        currentActiveEditorRelativePath = getRelativePath(currentActiveEditorFilePath);
+    }
+
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         return;
     }
@@ -103,39 +117,42 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
     let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
     if (tables) {
-        const output = populateDependancyTree("tables", tables, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap);
+        const output = populateDependancyTree("tables", tables, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap, currentActiveEditorRelativePath, currentActiveEditorIdx);
         dependancyTreeMetadata = output.dependancyTreeMetadata;
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
         modelIdx = modelNameToIdx.size; // Update modelIdx to the current size of the map
         datasetColorMap = output.datasetColorMap;
+        currentActiveEditorIdx = output.currentActiveEditorIdx;
     }
 
     if (assertions) {
-        const output = populateDependancyTree("assertions", assertions, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap);
+        const output = populateDependancyTree("assertions", assertions, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap, currentActiveEditorRelativePath, currentActiveEditorIdx);
         dependancyTreeMetadata = output.dependancyTreeMetadata;
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
         modelIdx = modelNameToIdx.size; // Update modelIdx to the current size of the map
         datasetColorMap = output.datasetColorMap;
+        currentActiveEditorIdx = output.currentActiveEditorIdx;
     }
 
     if (operations) {
-        const output = populateDependancyTree("operations", operations, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap);
+        const output = populateDependancyTree("operations", operations, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap, currentActiveEditorRelativePath, currentActiveEditorIdx);
         dependancyTreeMetadata = output.dependancyTreeMetadata;
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
         modelIdx = modelNameToIdx.size; // Update modelIdx to the current size of the map
         datasetColorMap = output.datasetColorMap;
+        currentActiveEditorIdx = output.currentActiveEditorIdx;
     }
 
     if (declarations) {
-        const output = populateDependancyTree("declarations", declarations, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap);
+        const output = populateDependancyTree("declarations", declarations, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx, datasetColorMap, currentActiveEditorRelativePath, currentActiveEditorIdx);
         dependancyTreeMetadata = output.dependancyTreeMetadata;
         initialEdgesStatic = output.initialEdgesStatic;
         modelNameToIdx = output.modelNameToIdx;
         datasetColorMap = output.datasetColorMap;
+        currentActiveEditorIdx = output.currentActiveEditorIdx;
     }
-    return { dependancyTreeMetadata, initialEdgesStatic, datasetColorMap};
-    // return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
+    return { dependancyTreeMetadata, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx};
 }

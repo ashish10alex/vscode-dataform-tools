@@ -69,13 +69,12 @@ const Flow: React.FC = () => {
           setMessage(message.value);
           break;
         case 'nodeMetadata':
-          const { initialNodesStatic, initialEdgesStatic, datasetColorMap } = message.value;
+          const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx } = message.value;
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
-          // filter to node with id 1 load all nodes connected to it
           const filteredEdges = initialEdgesStatic.filter((edge: Edge) => 
-            edge.source === '2' || edge.target === '2'
+            edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
           );
           const filteredNodes = initialNodesStatic.filter((node: Node) => 
             filteredEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
@@ -83,7 +82,6 @@ const Flow: React.FC = () => {
           const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
             filteredNodes,
             filteredEdges,
-            'LR'
           );
           setNodes(positionedNodes);
           setEdges(positionedEdges);
@@ -116,7 +114,7 @@ const Flow: React.FC = () => {
       setNodes([]);
       setEdges([]);
 
-    if (!option) return;
+    if (!option) {return;};
     
     // Get the selected node and its connected nodes (dependencies and dependents)
     const filteredEdges = fullEdges.filter((edge: Edge) => 
@@ -128,12 +126,10 @@ const Flow: React.FC = () => {
         edge.source === node.id || edge.target === node.id
       )
     );
-
     // Compute new positions for the filtered nodes
     const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
       filteredNodes,
       filteredEdges,
-      'LR'
     );
 
     // Set new nodes and edges (completely replacing old ones)
@@ -164,7 +160,6 @@ const Flow: React.FC = () => {
     const filteredNodesWithPosition = nodePositioning(
       [...nodes, ...filteredNodes],
       [...edges, ...filteredEdges],
-      'LR'
     );
     setNodes(filteredNodesWithPosition.nodes);
     setEdges(filteredNodesWithPosition.edges);
