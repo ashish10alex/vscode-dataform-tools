@@ -37,7 +37,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
         transition: 'opacity 0.3s ease-in-out',
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: '#555' }} />
+      <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
       
       <div
         style={{
@@ -76,7 +76,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
         {type}
       </div>
 
-      <Handle type="source" position={Position.Bottom} style={{ background: '#555' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
     </div>
   );
 };

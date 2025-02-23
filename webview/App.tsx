@@ -84,24 +84,50 @@ const Flow: React.FC = () => {
     [setEdges]
   );
 
-  // Convert nodes to options format for react-select
-  const selectOptions: OptionType[] = nodes.map((node) => ({
+  // Update selectOptions to use fullNodes instead of nodes
+  const selectOptions: OptionType[] = fullNodes.map((node) => ({
     value: node.id,
     label: node.data.modelName as string
   }));
 
-  // Function to handle table selection
+  // Updated handler for table selection
   const handleTableSelect = (option: OptionType | null) => {
     if (!option) return;
     
-    const node = nodes.find((n) => n.id === option.value);
-    
-    if (node && reactFlowInstance.current) {
-      reactFlowInstance.current.setCenter(
-        node.position.x + 100, 
-        node.position.y + 100, 
-        { duration: 800 }
+    // Get the selected node and its connected nodes (dependencies and dependents)
+    const filteredEdges = fullEdges.filter((edge: any) => 
+      edge.source === option.value || edge.target === option.value
+    );
+    const filteredNodes = fullNodes.filter((node: any) => 
+      node.id === option.value || // Include selected node
+      filteredEdges.some((edge: any) => 
+        edge.source === node.id || edge.target === node.id
+      )
+    );
+
+    // Compute new positions for the filtered nodes
+    const filteredNodesWithPosition = nodePositioning(
+      filteredNodes,
+      filteredEdges,
+      'LR'
+    );
+
+    // Update the graph with new nodes and edges
+    setNodes(filteredNodesWithPosition.nodes);
+    setEdges(filteredNodesWithPosition.edges);
+
+    // Center the view on the selected node
+    if (reactFlowInstance.current) {
+      const selectedNode = filteredNodesWithPosition.nodes.find(
+        (n: any) => n.id === option.value
       );
+      if (selectedNode) {
+        reactFlowInstance.current.setCenter(
+          selectedNode.position.x + 100,
+          selectedNode.position.y + 100,
+          { duration: 800 }
+        );
+      }
     }
   };
 
