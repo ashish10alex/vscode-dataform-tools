@@ -8,7 +8,7 @@ interface NodeData {
   tags: string[];
   fileName: string;
   datasetColor: string;
-  type: 'view' | 'table' | 'operation' | 'source' | 'assertion';
+  type: 'view' | 'table' | 'operation' | 'source' | 'assertions';
   onNodeClick: (nodeId: string) => void;
 }
 
@@ -35,6 +35,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
         position: 'relative',
         cursor: 'pointer',
         transition: 'opacity 0.3s ease-in-out',
+        borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : 'none',
       }}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#555' }} />

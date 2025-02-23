@@ -23,7 +23,7 @@ const nodeTypes = {
 const { nodes: initialNodes, edges: initialEdges } = nodePositioning(
   initialNodesStatic,
   initialEdgesStatic,
-  'TB'
+  'LR'
 );
 
 interface OptionType {
@@ -116,18 +116,14 @@ const Flow: React.FC = () => {
     setNodes(filteredNodesWithPosition.nodes);
     setEdges(filteredNodesWithPosition.edges);
 
-    // Center the view on the selected node
+    // Fit view to show all nodes with padding
     if (reactFlowInstance.current) {
-      const selectedNode = filteredNodesWithPosition.nodes.find(
-        (n: any) => n.id === option.value
-      );
-      if (selectedNode) {
-        reactFlowInstance.current.setCenter(
-          selectedNode.position.x + 100,
-          selectedNode.position.y + 100,
-          { duration: 800 }
-        );
-      }
+      setTimeout(() => {
+        reactFlowInstance.current?.fitView({
+          padding: 0.2, // 20% padding around the graph
+          duration: 800 // Animation duration in milliseconds
+        });
+      }, 50);
     }
   };
 

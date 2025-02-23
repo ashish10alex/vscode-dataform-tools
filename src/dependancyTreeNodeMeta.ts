@@ -1,16 +1,14 @@
 import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } from "./types";
 import { getWorkspaceFolder, runCompilation } from "./utils";
 
-function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[],  modelIdx: number) {
-    let modelNameToIdx = new Map<string, number>();
-    let initialEdgesStatic: any[] = [];
+function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>) {
 
     // const initialEdgesStatic = [
     //     { id: 'e1-2', source: '1', target: '2' }, 
     //     { id: 'e1-3', source: '2', target: '3' }, 
     // ]
 
-    if (type === "tables") {
+    if (type === "tables" || type === "assertions") {
         for (let i = 0; i < structs.length; i++) {
             let targetIdx = modelIdx;
 
@@ -45,6 +43,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     modelName: structs[i].target.name,
                     datasetId: structs[i].target.schema,
                     projectId: structs[i].target.database,
+                    type: (structs[i] as Table | Assertion | Operation ).type || type,
                     tags: structs[i].tags,
                     datasetColor: "grey",
                     fileName: structs[i].fileName,
@@ -59,7 +58,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
             }
         }
     }
-    return { dependancyTreeMetadata, initialEdgesStatic };
+    return { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx };
 }
 
 
@@ -68,6 +67,8 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
     // let schemaDict = {}; // used to keep track of unique schema names ( gcp dataset name ) already seen in the compiled json declarations
     // let schemaIdx = 0;   // used to assign a unique index to each unique schema name for color coding dataset in the web panel
     let modelIdx = 0;    // used to assign a unique index to each model for color coding model in the web panel
+    let modelNameToIdx = new Map<string, number>();
+    let initialEdgesStatic: any[] = [];
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
 
@@ -82,25 +83,34 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         }
     }
 
-    let output;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         return;
     }
     let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
     // let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
-    // let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
+    let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
     // let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
 
     if (tables) {
-        output = populateDependancyTree("tables", tables, dependancyTreeMetadata, modelIdx);
-        return output;
+       const output = populateDependancyTree("tables", tables, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
+       dependancyTreeMetadata = output.dependancyTreeMetadata;
+       initialEdgesStatic = output.initialEdgesStatic;
+       modelNameToIdx = output.modelNameToIdx;
     }
+
+    if (assertions) {
+        const output = populateDependancyTree("assertions", assertions, dependancyTreeMetadata, initialEdgesStatic, modelIdx, modelNameToIdx);
+        dependancyTreeMetadata = output.dependancyTreeMetadata;
+        initialEdgesStatic = output.initialEdgesStatic;
+        modelNameToIdx = output.modelNameToIdx;
+    }
+    return { dependancyTreeMetadata, initialEdgesStatic };
+
+
     // if (operations) {
-    //     output = populateDependancyTree("operations", operations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx, modelIdx);
+    //     const { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx } = populateDependancyTree("operations", operations, dependancyTreeMetadata, modelIdx, modelNameToIdx);
     // }
-    // if (assertions) {
-    //     output = populateDependancyTree("assertions", assertions, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx, modelIdx);
-    // }
+
     // if (declarations) {
     //     output = populateDependancyTree("declarations", declarations, output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, schemaDict, output ? output["schemaIdx"] : schemaIdx, modelIdx);
     // }
