@@ -48,17 +48,15 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                 currentActiveEditorIdx = String(targetIdx);
             }
 
-            let modelDependencies: any[] = [];
             if(dependecies) {
                 for(let j = 0; j < dependecies.length; j++) {
                     const fullTableName = `${dependecies[j].database}.${dependecies[j].schema}.${dependecies[j].name}`;
                     if(!modelNameToIdx.has(fullTableName)) {
-                        modelDependencies.push(fullTableName);
                         modelNameToIdx.set(fullTableName, modelIdx);
                         modelIdx++;
-                    } else {
-                        modelDependencies.push(fullTableName);
                     }
+                    const sourceIdx = modelNameToIdx.get(fullTableName)!;
+                    initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx)});
                 }
             }
             dependancyTreeMetadata.push({
@@ -75,13 +73,6 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     isExternalSource: isExternalSource
                 }
             });
-
-            if(modelDependencies.length > 0) {
-                modelDependencies.forEach((dependency) => {
-                    const sourceIdx = modelNameToIdx.get(dependency) || 0;
-                    initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx)});
-                });
-            }
         }
     }
     return { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx, datasetColorMap, currentActiveEditorIdx };
