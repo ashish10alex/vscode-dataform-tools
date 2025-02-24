@@ -22,64 +22,60 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
     }
   };
 
+  const nodeStyle = {
+    background: isExternalSource ? datasetColor : '#ffffff',
+    border: `1px solid ${datasetColor}`,
+    borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
+  };
+
+  const typeStyle = {
+    background: isExternalSource ? '#fff' : datasetColor,
+    color: isExternalSource ? '#000' : '#fff',
+    border: type === 'view' ? '2px solid yellow' : undefined,
+  };
+
+  const arrowColors = {
+    '--arrow-color': isExternalSource ? '#fff' : datasetColor,
+  } as React.CSSProperties;
+
   return (
     <div
       onClick={handleClick}
-      style={{
-        background: isExternalSource ? datasetColor : '#ffffff',
-        borderRadius: '6px',
-        padding: '8px 12px',
-        minWidth: '120px',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        fontFamily: 'Inter, sans-serif',
-        border: `1px solid ${datasetColor}`,
-        position: 'relative',
-        cursor: 'pointer',
-        transition: 'opacity 0.3s ease-in-out',
-        borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : 'none',
-      }}
+      className="table-node min-w-[120px] rounded-md p-3 shadow-sm font-inter cursor-pointer transition-all duration-300"
+      style={{ ...nodeStyle, ...arrowColors }}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
       
-      <div
-        style={{
-          fontSize: '12px',
-          fontWeight: 'bold',
-          color: '#333',
-          marginBottom: '4px',
-        }}
-      >
+      <div className="text-xs font-bold text-gray-800 mb-1">
         {modelName}
       </div>
 
       <div
-        style={{
-          color: isExternalSource ? '#fff' : datasetColor,
-          fontSize: '9px',
-          fontWeight: 'bold',
-        }}
+        className="text-[9px] font-bold"
+        style={{ color: isExternalSource ? '#fff' : datasetColor }}
       >
         {datasetId}
       </div>
 
       <div
-        style={{
-          position: 'absolute',
-          top: '-8px',
-          right: '-6px',
-          background: isExternalSource ? '#fff' : datasetColor,
-          color: isExternalSource ? '#000' : '#fff',
-          border: `2px solid ${type === 'view' ? 'yellow' : 'transparent'}`,
-          fontSize: '8px',
-          padding: '1px 2px',
-          borderRadius: '3px',
-          textTransform: 'uppercase',
-        }}
+        className="absolute -top-2 -right-1.5 text-[8px] px-0.5 rounded uppercase"
+        style={typeStyle}
       >
         {type}
       </div>
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
+
+      <style>
+        {`
+          .table-node::before {
+            border-color: transparent var(--arrow-color) transparent transparent;
+          }
+          .table-node::after {
+            border-color: transparent transparent transparent var(--arrow-color);
+          }
+        `}
+      </style>
     </div>
   );
 };
