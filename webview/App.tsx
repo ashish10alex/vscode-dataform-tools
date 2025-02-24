@@ -110,41 +110,42 @@ const Flow: React.FC = () => {
 
   // Updated handler for table selection
   const handleTableSelect = (option: OptionType | null) => {
-      // Clear the graph when no option is selected
-      setNodes([]);
-      setEdges([]);
+    // clear the nodes and edges in the existing graph
+    setNodes([]);
+    setEdges([]);
 
-    if (!option) {return;};
-    
-    // Get the selected node and its connected nodes (dependencies and dependents)
-    const filteredEdges = fullEdges.filter((edge: Edge) => 
-      edge.source === option.value || edge.target === option.value
-    );
-    const filteredNodes = fullNodes.filter((node: Node) => 
-      node.id === option.value || // Include selected node
-      filteredEdges.some((edge: Edge) => 
-        edge.source === node.id || edge.target === node.id
-      )
-    );
-    // Compute new positions for the filtered nodes
-    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-      filteredNodes,
-      filteredEdges,
-    );
-
-    // Set new nodes and edges (completely replacing old ones)
-    setNodes(positionedNodes);
-    setEdges(positionedEdges);
-
-    // Fit view to show all nodes with padding
-    if (reactFlowInstance.current) {
-      setTimeout(() => {
-        reactFlowInstance.current?.fitView({
-          padding: 0.2,
-          duration: 800
-        });
-      }, 50);
+    if (!option) {
+        return;
     }
+    
+    // Small delay to ensure the clear operation is complete before adding new nodes
+    setTimeout(() => {
+        const filteredEdges = fullEdges.filter((edge: Edge) => 
+            edge.source === option.value || edge.target === option.value
+        );
+        const filteredNodes = fullNodes.filter((node: Node) => 
+            node.id === option.value || // Include selected node
+            filteredEdges.some((edge: Edge) => 
+                edge.source === node.id || edge.target === node.id
+            )
+        );
+        
+        // Compute new positions for the filtered nodes
+        const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
+            filteredNodes,
+            filteredEdges,
+        );
+
+        setNodes(positionedNodes);
+        setEdges(positionedEdges);
+
+        if (reactFlowInstance.current) {
+            reactFlowInstance.current?.fitView({
+                padding: 0.2,
+                duration: 800
+            });
+        }
+    }, 50);
   };
 
   // Add this new handler for node clicks
