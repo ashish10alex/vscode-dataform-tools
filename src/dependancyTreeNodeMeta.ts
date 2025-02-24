@@ -67,7 +67,8 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                 tags: structs[i].tags,
                 datasetColor: datasetColorMap.get(dataset) || "grey",
                 fileName: structs[i].fileName,
-                isExternalSource: isExternalSource
+                isExternalSource: isExternalSource,
+                fullTableName: fullTableName
             }
         });
     }

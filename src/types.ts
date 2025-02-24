@@ -301,5 +301,5 @@ export type LastModifiedTimeMeta = {
 export type DependancyModelMetadata = {
     id: string;
     type: string;
-    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean };
+    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean, fullTableName: string };
 };

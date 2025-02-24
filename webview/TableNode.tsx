@@ -11,10 +11,12 @@ interface NodeData {
   type: 'view' | 'table' | 'operation' | 'source' | 'assertions';
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
+  fullTableName: string;
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, datasetColor, type, onNodeClick, isExternalSource } = data;
+  const { modelName, datasetId, datasetColor, type, onNodeClick, isExternalSource, fullTableName } = data;
+  const [isHovered, setIsHovered] = React.useState(false);
 
   const handleClick = () => {
     if (onNodeClick) {
@@ -26,6 +28,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
     background: isExternalSource ? datasetColor : '#ffffff',
     border: `1px solid ${datasetColor}`,
     borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
+    position: 'relative' as const,
   };
 
   const typeStyle = {
@@ -41,6 +44,8 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
   return (
     <div
       onClick={handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className="table-node min-w-[120px] rounded-md p-3 shadow-sm font-inter cursor-pointer transition-all duration-300"
       style={{ ...nodeStyle, ...arrowColors }}
     >
@@ -63,6 +68,14 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       >
         {type}
       </div>
+
+      {isHovered && (
+        <div 
+          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10"
+        >
+          {fullTableName}
+        </div>
+      )}
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
 
