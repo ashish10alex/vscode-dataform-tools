@@ -13,67 +13,63 @@ const datasetColors = [
 ];
 
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>, datasetColorMap: Map<string, string>, currentActiveEditorRelativePath: string, currentActiveEditorIdx: string) {
+    let isExternalSource = false;
 
-    if (type === "tables" || type === "assertions" || type === "declarations" || type === "operations") {
+    if(type === "declarations") {
+        isExternalSource = true;
+    }
 
-        let isExternalSource = false;
+    for (let i = 0; i < structs.length; i++) {
+        let targetIdx = modelIdx;
 
+        const fullTableName = `${structs[i].target.database}.${structs[i].target.schema}.${structs[i].target.name}`;
+        const dependecies = structs[i].dependencyTargets;
+        const dataset = structs[i].target.schema;
+
+        // I only want to set the color for the dataset if it is a dataset in a declaration
         if(type === "declarations") {
-            isExternalSource = true;
+            if(!datasetColorMap.has(dataset)) {
+                datasetColorMap.set(dataset, datasetColors[i % datasetColors.length]);
+            }
         }
 
-        for (let i = 0; i < structs.length; i++) {
-            let targetIdx = modelIdx;
-
-            const fullTableName = `${structs[i].target.database}.${structs[i].target.schema}.${structs[i].target.name}`;
-            const dependecies = structs[i].dependencyTargets;
-            const dataset = structs[i].target.schema;
-
-            // I only want to set the color for the dataset if it is a dataset in a declaration
-            if(type === "declarations") {
-                if(!datasetColorMap.has(dataset)) {
-                    datasetColorMap.set(dataset, datasetColors[i % datasetColors.length]);
-                }
-            }
-
-            // we need to ensure that the model name is unique in the dependancy tree
-            if(modelNameToIdx.has(fullTableName)) {
-                targetIdx = modelNameToIdx.get(fullTableName)!;
-            } else {
-                modelNameToIdx.set(fullTableName, modelIdx);
-                modelIdx++;
-            }
-
-            if(currentActiveEditorRelativePath !== "" && currentActiveEditorRelativePath === structs[i].fileName && currentActiveEditorIdx === "0") {
-                currentActiveEditorIdx = String(targetIdx);
-            }
-
-            if(dependecies) {
-                for(let j = 0; j < dependecies.length; j++) {
-                    const fullTableName = `${dependecies[j].database}.${dependecies[j].schema}.${dependecies[j].name}`;
-                    if(!modelNameToIdx.has(fullTableName)) {
-                        modelNameToIdx.set(fullTableName, modelIdx);
-                        modelIdx++;
-                    }
-                    const sourceIdx = modelNameToIdx.get(fullTableName)!;
-                    initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx)});
-                }
-            }
-            dependancyTreeMetadata.push({
-                id: String(targetIdx),
-                type: "tableNode",
-                data: {
-                    modelName: structs[i].target.name,
-                    datasetId: structs[i].target.schema,
-                    projectId: structs[i].target.database,
-                    type: (structs[i] as Table | Assertion | Operation ).type || type,
-                    tags: structs[i].tags,
-                    datasetColor: datasetColorMap.get(dataset) || "grey",
-                    fileName: structs[i].fileName,
-                    isExternalSource: isExternalSource
-                }
-            });
+        // we need to ensure that the model name is unique in the dependancy tree
+        if(modelNameToIdx.has(fullTableName)) {
+            targetIdx = modelNameToIdx.get(fullTableName)!;
+        } else {
+            modelNameToIdx.set(fullTableName, modelIdx);
+            modelIdx++;
         }
+
+        if(currentActiveEditorRelativePath !== "" && currentActiveEditorRelativePath === structs[i].fileName && currentActiveEditorIdx === "0") {
+            currentActiveEditorIdx = String(targetIdx);
+        }
+
+        if(dependecies) {
+            for(let j = 0; j < dependecies.length; j++) {
+                const fullTableName = `${dependecies[j].database}.${dependecies[j].schema}.${dependecies[j].name}`;
+                if(!modelNameToIdx.has(fullTableName)) {
+                    modelNameToIdx.set(fullTableName, modelIdx);
+                    modelIdx++;
+                }
+                const sourceIdx = modelNameToIdx.get(fullTableName)!;
+                initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx)});
+            }
+        }
+        dependancyTreeMetadata.push({
+            id: String(targetIdx),
+            type: "tableNode",
+            data: {
+                modelName: structs[i].target.name,
+                datasetId: structs[i].target.schema,
+                projectId: structs[i].target.database,
+                type: (structs[i] as Table | Assertion | Operation ).type || type,
+                tags: structs[i].tags,
+                datasetColor: datasetColorMap.get(dataset) || "grey",
+                fileName: structs[i].fileName,
+                isExternalSource: isExternalSource
+            }
+        });
     }
     return { dependancyTreeMetadata, initialEdgesStatic, modelNameToIdx, datasetColorMap, currentActiveEditorIdx };
 }
