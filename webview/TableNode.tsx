@@ -10,10 +10,11 @@ interface NodeData {
   datasetColor: string;
   type: 'view' | 'table' | 'operation' | 'source' | 'assertions';
   onNodeClick: (nodeId: string) => void;
+  isExternalSource: boolean;
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, datasetColor, type, onNodeClick } = data;
+  const { modelName, datasetId, datasetColor, type, onNodeClick, isExternalSource } = data;
 
   const handleClick = () => {
     if (onNodeClick) {
@@ -25,7 +26,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
     <div
       onClick={handleClick}
       style={{
-        background: '#ffffff',
+        background: isExternalSource ? datasetColor : '#ffffff',
         borderRadius: '6px',
         padding: '8px 12px',
         minWidth: '120px',
@@ -53,7 +54,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
 
       <div
         style={{
-          color: datasetColor,
+          color: isExternalSource ? '#fff' : datasetColor,
           fontSize: '9px',
           fontWeight: 'bold',
         }}
@@ -66,11 +67,11 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
           position: 'absolute',
           top: '-6px',
           right: '-6px',
-          background: datasetColor,
-          color: '#fff',
+          background: isExternalSource ? '#fff' : datasetColor,
+          color: isExternalSource ? '#000' : '#fff',
           border: `2px solid ${type === 'view' ? 'yellow' : 'transparent'}`,
           fontSize: '8px',
-          padding: '2px 4px',
+          padding: '1px 2px',
           borderRadius: '3px',
           textTransform: 'uppercase',
         }}

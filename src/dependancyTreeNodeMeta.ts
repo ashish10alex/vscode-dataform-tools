@@ -15,6 +15,13 @@ const datasetColors = [
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>, datasetColorMap: Map<string, string>, currentActiveEditorRelativePath: string, currentActiveEditorIdx: string) {
 
     if (type === "tables" || type === "assertions" || type === "declarations" || type === "operations") {
+
+        let isExternalSource = false;
+
+        if(type === "declarations") {
+            isExternalSource = true;
+        }
+
         for (let i = 0; i < structs.length; i++) {
             let targetIdx = modelIdx;
 
@@ -65,6 +72,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     tags: structs[i].tags,
                     datasetColor: datasetColorMap.get(dataset) || "grey",
                     fileName: structs[i].fileName,
+                    isExternalSource: isExternalSource
                 }
             });
 
