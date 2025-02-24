@@ -65,7 +65,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       <div
         style={{
           position: 'absolute',
-          top: '-6px',
+          top: '-8px',
           right: '-6px',
           background: isExternalSource ? '#fff' : datasetColor,
           color: isExternalSource ? '#000' : '#fff',
