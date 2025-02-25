@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { getNonce } from '../utils';
+import { getNonce, getWorkspaceFolder } from '../utils';
 import { generateDependancyTreeMetadata } from '../dependancyTreeNodeMeta';
+import path from 'path';
 
 export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview: vscode.Webview) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview.js'));
@@ -41,6 +42,30 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
     
     const output = await generateDependancyTreeMetadata();
     panel.webview.html = getWebViewHtmlContent(context, panel.webview);
+
+    panel.webview.onDidReceiveMessage(
+        async (message) => {
+            switch (message.type) {
+                case 'nodeFileName':
+                    const filePath = message.value;
+                    if (filePath) {
+                        // Open the file in VS Code
+                        const workspaceFolder = getWorkspaceFolder();
+                        if (workspaceFolder) {
+                            const fullFilePath = path.join(workspaceFolder, filePath);
+                            const filePathUri = vscode.Uri.file(fullFilePath);
+                            const document = await vscode.workspace.openTextDocument(filePathUri);
+                            await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+                        } else {
+                            vscode.window.showErrorMessage('Workspace folder not found');
+                        }
+                    }
+                    return;
+            }
+        },
+        undefined,
+        context.subscriptions
+    );
 
     setTimeout(() => {
         panel.webview.postMessage({

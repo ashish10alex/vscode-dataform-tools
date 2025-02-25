@@ -15,6 +15,7 @@ import Select from 'react-select';
 import '@xyflow/react/dist/style.css';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
+import { getVsCodeApi } from './vscode';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -27,7 +28,7 @@ interface OptionType {
 
 // Get vscode API
 // @ts-ignore
-const vscode = acquireVsCodeApi();
+const vscode = getVsCodeApi();
 
 // Add this new Legend component at the top of the file, before the Flow component
 const Legend: React.FC<{ datasetColorMap: Map<string, string> }> = ({ datasetColorMap }) => {
