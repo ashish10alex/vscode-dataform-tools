@@ -84,7 +84,11 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
           e.stopPropagation();
           getVsCodeApi().postMessage({
             type: 'nodeFileName',
-            value: fileName
+            value: {
+              modelName: modelName,
+              filePath: fileName,
+              type: type,
+            }
           });
           if (goToNodeFile) goToNodeFile(id);
         }}

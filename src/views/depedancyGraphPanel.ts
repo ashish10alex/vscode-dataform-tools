@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getNonce, getWorkspaceFolder } from '../utils';
+import { getNonce, getPostionOfSourceDeclaration, getWorkspaceFolder } from '../utils';
 import { generateDependancyTreeMetadata } from '../dependancyTreeNodeMeta';
 import path from 'path';
 
@@ -47,15 +47,26 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
         async (message) => {
             switch (message.type) {
                 case 'nodeFileName':
-                    const filePath = message.value;
+                    const filePath = message.value.filePath;
+                    const type = message.value.type;
                     if (filePath) {
-                        // Open the file in VS Code
                         const workspaceFolder = getWorkspaceFolder();
                         if (workspaceFolder) {
                             const fullFilePath = path.join(workspaceFolder, filePath);
                             const filePathUri = vscode.Uri.file(fullFilePath);
                             const document = await vscode.workspace.openTextDocument(filePathUri);
-                            await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+                            if (type === 'declarations') {
+                                const position = await getPostionOfSourceDeclaration(filePathUri, message.value.modelName);
+                                if (position) {
+                                    vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
+                                        const range = new vscode.Range(position.line, 0, position.line, 0);
+                                        editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                                        editor.selection = new vscode.Selection(position.line, 0, position.line, 0);
+                                    });
+                                }
+                            } else {
+                                await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+                            }
                         } else {
                             vscode.window.showErrorMessage('Workspace folder not found');
                         }
