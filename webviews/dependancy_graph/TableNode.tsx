@@ -89,7 +89,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
           if (goToNodeFile) goToNodeFile(id);
         }}
         className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
-        title="Copy"
+        title="Open File"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
