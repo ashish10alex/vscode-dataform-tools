@@ -25,7 +25,7 @@
 	},
 	"include": [
 		"src",
-		"webview/**/*",
+		"webviews/dependancy_graph/**/*",
 		"src/globals.d.ts"
 	],
 	"exclude": [

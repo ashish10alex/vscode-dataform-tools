@@ -7,9 +7,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: './webview/index.tsx',
+      input: './webviews/dependancy_graph/index.tsx',
       output: {
-        entryFileNames: 'webview.js',
+        entryFileNames: 'dependancy_graph.js',
         format: 'iife',
       },
     },
@@ -21,7 +21,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './webview')
+      '@': path.resolve(__dirname, './webviews/dependancy_graph')
     }
   }
 }); 

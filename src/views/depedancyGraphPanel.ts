@@ -4,7 +4,7 @@ import { generateDependancyTreeMetadata } from '../dependancyTreeNodeMeta';
 import path from 'path';
 
 export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview: vscode.Webview) {
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview.js'));
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'dependancy_graph.js'));
     const nonce = getNonce();
   
     return `

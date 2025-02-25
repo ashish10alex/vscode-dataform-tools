@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    content: ['./webview/**/*.{js,jsx,ts,tsx}'],
+    content: ['./webviews/dependancy_graph/**/*.{js,jsx,ts,tsx}'],
     theme: {
       extend: {},
     },
