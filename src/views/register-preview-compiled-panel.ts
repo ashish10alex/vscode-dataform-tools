@@ -401,7 +401,7 @@ export class CompiledQueryPanel {
         }
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
-        if (!queryAutoCompMeta || !curFileMeta.document){
+        if (!queryAutoCompMeta || !curFileMeta.document || !targetTableOrView){
             //TODO: show some error message in this case
             return;
         }
