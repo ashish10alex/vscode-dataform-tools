@@ -26,6 +26,11 @@ export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview:
 
 
 export async function createDependencyGraphPanel(context: vscode.ExtensionContext, viewColumn: vscode.ViewColumn = vscode.ViewColumn.Beside) {
+    const output = await generateDependancyTreeMetadata();
+    if(!output){
+        //TODO: show error message maybe ?
+        return;
+    }
     const panel = vscode.window.createWebviewPanel(
         "Dependency Graph",
         "Dependency Graph",
@@ -40,7 +45,6 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
         },
     );
     
-    const output = await generateDependancyTreeMetadata();
     panel.webview.html = getWebViewHtmlContent(context, panel.webview);
 
     panel.webview.onDidReceiveMessage(
