@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { logger } from '../logger';
 import { getNonce, getPostionOfSourceDeclaration, getWorkspaceFolder } from '../utils';
 import { generateDependancyTreeMetadata } from '../dependancyTreeNodeMeta';
 import path from 'path';
@@ -26,8 +27,11 @@ export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview:
 
 
 export async function createDependencyGraphPanel(context: vscode.ExtensionContext, viewColumn: vscode.ViewColumn = vscode.ViewColumn.Beside) {
+    logger.info('Creating dependency graph panel');
     const output = await generateDependancyTreeMetadata();
+    logger.info(`output.currentActiveEditorIdx: ${output?.currentActiveEditorIdx}`);
     if(!output){
+        logger.error('No dependency graph data found');
         //TODO: show error message maybe ?
         return;
     }
