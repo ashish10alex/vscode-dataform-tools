@@ -15,6 +15,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   
     public async resolveWebviewView(
       webviewView: vscode.WebviewView,
+      //@ts-ignore
       context: vscode.WebviewViewResolveContext,
       _token: vscode.CancellationToken
     ) {
@@ -62,6 +63,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 return;
+              //@ts-ignore
               case 'queryLimit':
                 if (message.value){
                   queryLimit = message.value;

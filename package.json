@@ -32,9 +32,10 @@
         "onCommand:extension.formatCurrentfile",
         "onCommand:extension.runFilesTagsWtOptions",
         "onCommand:extension.showCompiledQueryInWebView",
-        "onCommand:extension.showFileMetadataForSidePanel"
+        "onCommand:extension.showFileMetadataForSidePanel",
+        "onCommand:extension.dependencyGraphPanel"
     ],
-    "main": "./out/extension.js",
+    "main": "./out/src/extension.js",
     "contributes": {
         "viewsContainers": {
             "activitybar": [
@@ -160,6 +161,11 @@
                 "command": "vscode-dataform-tools.showCompiledQueryInWebView",
                 "category": "Dataform",
                 "title": "Show compiled Query in web view"
+            },
+            {
+                "command": "vscode-dataform-tools.dependencyGraphPanel",
+                "category": "Dataform",
+                "title": "Show dependency graph"
             }
         ],
         "languages": [
@@ -317,21 +323,38 @@
         "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {
+        "@types/dagre": "^0.7.52",
+        "@types/jest": "^29.5.14",
         "@types/js-beautify": "^1.14.3",
-        "@types/mocha": "^10.0.7",
-        "@types/node": "18.x",
+        "@types/mocha": "^10.0.10",
+        "@types/node": "20.x",
+        "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.0.4",
         "@types/vscode": "^1.89.0",
         "@typescript-eslint/eslint-plugin": "^7.7.1",
         "@typescript-eslint/parser": "^7.7.1",
+        "@vitejs/plugin-react": "^4.2.0",
         "@vscode/test-cli": "^0.0.8",
         "@vscode/test-electron": "^2.3.9",
-        "eslint": "^8.57.0"
+        "autoprefixer": "^10.4.16",
+        "concurrently": "^9.1.2",
+        "dagre": "^0.8.5",
+        "eslint": "^8.57.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "tailwindcss": "^3.3.0",
+        "vite": "^5.0.0"
     },
     "dependencies": {
         "@google-cloud/bigquery": "^7.8.0",
         "@google-cloud/lineage": "^1.3.0",
+        "@xyflow/react": "^12.4.3",
+        "clean": "^4.0.2",
         "comment-parser": "^1.4.1",
         "js-beautify": "^1.15.1",
-        "typescript": "^5.4.5"
+        "postcss": "^8.5.2",
+        "pretest": "^1.1.0",
+        "react-select": "^5.10.0",
+        "typescript": "^5.7.3"
     }
 }

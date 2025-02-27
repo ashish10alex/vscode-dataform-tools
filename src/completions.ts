@@ -10,7 +10,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
     */
     { language: 'sqlx', scheme: 'file' },
     {
-        provideCompletionItems(document, position, token, context) {
+        provideCompletionItems(document, position) {
 
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
             if (!linePrefix.endsWith('$')) {
@@ -57,7 +57,7 @@ export const dependenciesAutoCompletionDisposable = () => vscode.languages.regis
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
     { language: 'sqlx', scheme: 'file' },
     {
-        provideCompletionItems(document, position, token, context) {
+        provideCompletionItems(document, position) {
 
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
             if (!(linePrefix.includes('dependencies') && ( linePrefix.includes('"') || linePrefix.includes("'")))){
@@ -86,7 +86,7 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
     { language: 'sqlx', scheme: 'file' },
     {
-        provideCompletionItems(document, position, token, context) {
+        provideCompletionItems(document, position) {
 
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
             if (!(linePrefix.includes('tags') && ( linePrefix.includes('"') || linePrefix.includes("'")))){
@@ -115,7 +115,7 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
 export const schemaAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     "*",
     {
-      async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+      async provideCompletionItems() {
         const completionItems = schemaAutoCompletions.map((item: SchemaMetadata) => {
             const completionItem = new vscode.CompletionItem(`${item.name}`);
             completionItem.kind = vscode.CompletionItemKind.Variable;

@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .table-node {
+    @apply relative;
+  }
+
+  .table-node::before,
+  .table-node::after {
+    @apply content-[''] absolute top-1/2 w-0 h-0 opacity-0 -translate-y-1/2 transition-opacity duration-300;
+    border-style: solid;
+  }
+
+  .table-node::before {
+    @apply -left-5;
+    border-width: 6px 8px 6px 0;
+  }
+
+  .table-node::after {
+    @apply -right-5;
+    border-width: 6px 0 6px 8px;
+  }
+
+  .table-node:hover::before,
+  .table-node:hover::after {
+    @apply opacity-60;
+  }
+}

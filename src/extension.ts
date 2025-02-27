@@ -4,12 +4,11 @@ import { DataformCompiledJson } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
-import { registerCenterPanel } from './views/register-center-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, getVSCodeDocument} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -21,6 +20,7 @@ import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
+import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -85,7 +85,6 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(diagnosticCollection);
 
     registerWebViewProvider(context);
-    registerCenterPanel(context);
     registerCompiledQueryPanel(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
@@ -98,6 +97,10 @@ export async function activate(context: vscode.ExtensionContext) {
             await previewQueryResults(queryResultsViewProvider);
         })
     );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.dependencyGraphPanel', async () => {
+        createDependencyGraphPanel(context, vscode.ViewColumn.One);
+    }));
 
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {
         if (editor && queryResultsViewProvider._view?.visible) {
@@ -127,7 +130,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async (uri: vscode.Uri, line: number) => {
+        vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async () => {
             let curFileMeta = await getCurrentFileMetadata(false);
             if (!curFileMeta?.fileMetadata) {
                 return;

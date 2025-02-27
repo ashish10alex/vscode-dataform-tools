@@ -213,6 +213,7 @@ async function findModuleVarDefinition(
 
 
   const includesPath = path.join(workspaceFolder, 'includes');
+  //@ts-ignore
   let jsFileWtSameNameUri;
   try {
       const fileNames = fs.readdirSync(includesPath);
@@ -249,10 +250,10 @@ async function findModuleVarDefinition(
 
 
 export class DataformHoverProvider implements vscode.HoverProvider {
+  //@ts-ignore
   async provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
   ) {
     let searchTerm = document.getText(
       document.getWordRangeAtPosition(position)
@@ -274,7 +275,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       vscode.window.showWarningMessage(
         "Compile the Dataform project once for faster go to definition"
       );
-      let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+      let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
       dataformCompiledJson = dataformCompiledJson;
     } else {
       dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
@@ -353,7 +354,6 @@ export class DataformConfigProvider implements vscode.HoverProvider {
   async provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
   ) {
     // TODO: Add more hover documentation for config block here
     const line = document.lineAt(position.line).text;
@@ -407,5 +407,6 @@ export class DataformConfigProvider implements vscode.HoverProvider {
     } else if (line.includes("assertions:")){
       return new vscode.Hover(new vscode.MarkdownString(`#### [Dataform assertion documentation](https://cloud.google.com/dataform/docs/assertions)`));
     }
+    return undefined;
   }
 }

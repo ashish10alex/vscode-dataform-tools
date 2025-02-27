@@ -105,5 +105,6 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
     }catch(error:any){
         //TODO: return error and show in the web view ?
         vscode.window.showErrorMessage(error.message);
+        return undefined;
     }
 }

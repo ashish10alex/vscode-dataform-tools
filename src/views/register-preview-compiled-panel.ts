@@ -92,7 +92,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             } else{
                 showLoadingProgress(
                     "Dataform tools\n",
-                    async (progress, token) => {
+                    async (progress) => {
                         progress.report({ message: "Generating compiled query metadata..." });
                         CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
                     },
@@ -121,10 +121,6 @@ export class CompiledQueryPanel {
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
-        const column = window.activeTextEditor
-            ? window.activeTextEditor.viewColumn
-            : undefined;
-
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
@@ -202,6 +198,9 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'dependencyGraph':
+                await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
+                return;
               case 'previewResults':
                 if(message.value){
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
@@ -296,6 +295,7 @@ export class CompiledQueryPanel {
     }
 
 
+    //@ts-ignore
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined) {
         const webview = this.webviewPanel.webview;
         if (this.webviewPanel.webview.html === ""){
@@ -401,7 +401,7 @@ export class CompiledQueryPanel {
         }
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
-        if (!queryAutoCompMeta || !curFileMeta.document){
+        if (!queryAutoCompMeta || !curFileMeta.document || !targetTableOrView){
             //TODO: show some error message in this case
             return;
         }
@@ -708,6 +708,7 @@ export class CompiledQueryPanel {
                 </div>
 
                 <div class="button-container">
+                    <button class="run-model" id="dependencyGraph" title="Dependency Graph">Dependency Graph</button>
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
                     <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run</button>
                 </div>

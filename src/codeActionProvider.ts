@@ -23,7 +23,7 @@ function extractFixFromDiagnosticMessage(diagnosticMessage: string) {
 
 
 export let dataformCodeActionProviderDisposable = () => vscode.languages.registerCodeActionsProvider('sqlx', {
-    provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context, token) {
+    provideCodeActions(document: vscode.TextDocument, _: vscode.Range, context) {
         const diagnostics = context.diagnostics.filter(diag => diag.severity === vscode.DiagnosticSeverity.Error);
         if (diagnostics.length === 0) {
             return;

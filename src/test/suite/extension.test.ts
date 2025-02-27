@@ -12,11 +12,10 @@ WARN: The test would not be able to run if your project path is very long this i
 NOTE: Also, we are having to remove `.vscode-test/user-data` before running `vscode-test` in the `npm run test` script in package.json
 WARN: These tests currently are only tested to be running on mac os. We will need to change the script for `npm run test` in package.json for it to work in multiple platforms
 */
+import { suite, test } from 'mocha';
 
 suite('GetMetadataForSqlxFileBlocks', () => {
-    test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async function() {
-        this.timeout(9000);
-
+    test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async () => {
         const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
         const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
         //console.log('[TEST] URI:', uri.toString());
@@ -265,7 +264,7 @@ suite('getQueryMetaForCurrentFile', () => {
         try {
             const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors, possibleResolutions } = await compileDataform(workspacePath, false);
+            let { compiledString, errors } = await compileDataform(workspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -308,7 +307,7 @@ suite('getQueryMetaForCurrentFile', () => {
         try {
             const relativeFilePath = "definitions/0100_CLUBS.sqlx";
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors, possibleResolutions } = await compileDataform(workspacePath, false);
+            let { compiledString, errors } = await compileDataform(workspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -346,7 +345,7 @@ suite('getQueryMetaForCurrentFile', () => {
         try {
             const relativeFilePath = "definitions/0300_INCREMENTAL.sqlx";
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors, possibleResolutions } = await compileDataform(workspacePath, false);
+            let { compiledString, errors } = await compileDataform(workspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -385,7 +384,7 @@ suite('getQueryMetaForCurrentFile', () => {
         try {
             const relativeFilePath = "definitions/assertions/0100_CLUBS_ASSER.sqlx";
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors, possibleResolutions } = await compileDataform(workspacePath, false);
+            let { compiledString, errors } = await compileDataform(workspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -424,7 +423,7 @@ suite('getQueryMetaForCurrentFile', () => {
         try {
             const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";
             const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors, possibleResolutions } = await compileDataform(workspacePath, false);
+            let { compiledString, errors } = await compileDataform(workspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
