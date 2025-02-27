@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.10.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.4...v0.10.0) (2025-02-27)
+
+
+### Features
+
+* modern depedancy graph webview with reactflow ([#109](https://github.com/ashish10alex/vscode-dataform-tools/issues/109)) ([a49c313](https://github.com/ashish10alex/vscode-dataform-tools/commit/a49c313cd2b5e1caa084ff134382cc723d032121))
+
 ### [0.9.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.3...v0.9.4) (2025-02-18)
 
 
