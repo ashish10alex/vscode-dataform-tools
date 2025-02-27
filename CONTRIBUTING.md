@@ -36,6 +36,6 @@ Make the desired changes to the `vscode-dataform-tools` repo and re-run/refresh 
 * [Create an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 * [Create a pull request here](https://github.com/ashish10alex/vscode-dataform-tools/pulls)
 
-## React webview
+## Dependency graph webview
 
-We are using [React Flow](https://reactflow.dev/) to create the dependency graph.  To build `dist/webview.js` run `./node_modules/.bin/vite build` in the terminal. This will watch for changes and rebuild the `dist/webview.js` file.
+We are using [React Flow](https://reactflow.dev/) to create the dependency graph.  To build `dist/dependancy_graph.js` run `./node_modules/.bin/vite build` in the terminal. This will watch for changes and rebuild the `dist/dependancy_graph.js` file.
