@@ -96,7 +96,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                 currentActiveEditorIdx: output.currentActiveEditorIdx
             }
         });
-    }, 200);
+    }, 400);
 
     return panel;
 }
