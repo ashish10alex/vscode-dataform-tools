@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.0...v0.10.1) (2025-02-28)
+
+
+### Bug Fixes
+
+* unable to draw graph on slower machines, increase delay to 400ms ([40cd617](https://github.com/ashish10alex/vscode-dataform-tools/commit/40cd61782222ffb8567e6f8c40ca66526f756f76))
+
 ## [0.10.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.9.4...v0.10.0) (2025-02-27)
 
 
