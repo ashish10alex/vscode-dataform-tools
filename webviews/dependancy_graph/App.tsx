@@ -61,7 +61,7 @@ const Flow: React.FC = () => {
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const [message, setMessage] = useState<string>('');
   const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
-  const [isReady, setIsReady] = useState<boolean>(false);
+  const [_, setIsReady] = useState<boolean>(false);
 
   // Send ready message when component mounts
   useEffect(() => {
