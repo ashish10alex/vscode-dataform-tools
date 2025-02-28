@@ -54,6 +54,18 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
     panel.webview.onDidReceiveMessage(
         async (message) => {
             switch (message.type) {
+                case 'webviewReady':
+                    // Send data only after the webview signals it's ready
+                    panel.webview.postMessage({
+                        type: 'nodeMetadata',
+                        value: {
+                            initialNodesStatic: output.dependancyTreeMetadata,
+                            initialEdgesStatic: output.initialEdgesStatic,
+                            datasetColorMap: Object.fromEntries(output.datasetColorMap),
+                            currentActiveEditorIdx: output.currentActiveEditorIdx
+                        }
+                    });
+                    break;
                 case 'nodeFileName':
                     const filePath = message.value.filePath;
                     const type = message.value.type;
@@ -85,18 +97,6 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
         undefined,
         context.subscriptions
     );
-
-    setTimeout(() => {
-        panel.webview.postMessage({
-            type: 'nodeMetadata',
-            value: {
-                initialNodesStatic: output.dependancyTreeMetadata,
-                initialEdgesStatic: output.initialEdgesStatic,
-                datasetColorMap: Object.fromEntries(output.datasetColorMap),
-                currentActiveEditorIdx: output.currentActiveEditorIdx
-            }
-        });
-    }, 400);
 
     return panel;
 }
