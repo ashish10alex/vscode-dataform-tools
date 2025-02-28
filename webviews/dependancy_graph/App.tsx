@@ -61,6 +61,17 @@ const Flow: React.FC = () => {
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const [message, setMessage] = useState<string>('');
   const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
+  const [isReady, setIsReady] = useState<boolean>(false);
+
+  // Send ready message when component mounts
+  useEffect(() => {
+    // Small delay to ensure React has fully rendered
+    setTimeout(() => {
+      setIsReady(true);
+      vscode.postMessage({ type: 'webviewReady' });
+    }, 50);
+  }, []);
+
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       const message = event.data;
