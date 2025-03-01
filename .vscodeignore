@@ -15,10 +15,13 @@ vsc-extension-quickstart.md
 
 FAQ.md
 webviews/**
+.github/**
 media/images/cli_scope.png
 media/images/dataform_tools_run_and_debug.png
 media/images/disable_save_on_compile.png
 media/images/preferred_autocompletion.png
+tailwind.config.js
+out/test*/**
 
 
 node_modules/react*/**
