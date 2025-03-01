@@ -22,6 +22,7 @@ media/images/disable_save_on_compile.png
 media/images/preferred_autocompletion.png
 tailwind.config.js
 out/test*/**
+out/webviews/**
 
 
 node_modules/react*/**
