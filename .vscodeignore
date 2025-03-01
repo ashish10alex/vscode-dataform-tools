@@ -39,3 +39,4 @@ node_modules/pretest/**
 node_modules/@babel/**
 node_modules/undici-types/**
 node_modules/@types/**
+node_modules/@emotion*/**
