@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.1...v0.10.2) (2025-03-01)
+
+
+### Features
+
+* improved dynamic loading of dependancy graph when webview is mounted ([#111](https://github.com/ashish10alex/vscode-dataform-tools/issues/111)) ([c770461](https://github.com/ashish10alex/vscode-dataform-tools/commit/c770461d02ffa842527c55707afe3dea7c5c0f41))
+* reduce bundle size by excluding files not required by extension ([#112](https://github.com/ashish10alex/vscode-dataform-tools/issues/112)) ([26512d7](https://github.com/ashish10alex/vscode-dataform-tools/commit/26512d7da83a8474cefacb88eee88163a5e3a69c))
+
 ### [0.10.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.0...v0.10.1) (2025-02-28)
 
 
