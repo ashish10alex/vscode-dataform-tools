@@ -153,11 +153,6 @@
                 "group": "navigation@3"
             },
             {
-                "command": "vscode-dataform-tools.showDependentsInGraph",
-                "category": "Dataform",
-                "title": "Show dependents in graph"
-            },
-            {
                 "command": "vscode-dataform-tools.showCompiledQueryInWebView",
                 "category": "Dataform",
                 "title": "Show compiled Query in web view"
@@ -208,12 +203,6 @@
                     "command": "vscode-dataform-tools.formatCurrentfile",
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "group": "navigation@0"
-                }
-            ],
-            "editor/context": [
-                {
-                    "command": "vscode-dataform-tools.showDependentsInGraph",
-                    "when": "(resourceExtname == .sqlx || resourceExtname == .js) && editorTextFocus"
                 }
             ]
         },
