@@ -238,19 +238,19 @@ const Flow: React.FC = () => {
         
         <div className="flex gap-4">
           <StyledSelect
-            options={tableOptions}
-            onChange={handleTableSelect}
-            isClearable
-            placeholder="Search for a table..."
-            width="w-72"
-          />
-
-          <StyledSelect
             options={tagOptions}
             onChange={handleTagSelect}
             isClearable
             placeholder="Search for a tag..."
-            width="w-72"
+            width="w-1/6"
+          />
+
+          <StyledSelect
+            options={tableOptions}
+            onChange={handleTableSelect}
+            isClearable
+            placeholder="Search for a table..."
+            width="w-1/3"
           />
         </div>
       </div>
