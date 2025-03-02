@@ -174,7 +174,12 @@ const Flow: React.FC = () => {
     setEdges([]);
 
     setTimeout(() => {
-      const filteredEdges = fullEdges.filter((edge: any) => edge.tags.includes(option.value));
+      const filteredEdges = fullEdges.filter((edge: any) =>  {
+        if(edge?.tags) {
+          return edge.tags.includes(option.value);
+        }
+        return false;
+      });
       const filteredNodes = fullNodes.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
 
       setTableOptions(filteredNodes.map((node: any) => ({
