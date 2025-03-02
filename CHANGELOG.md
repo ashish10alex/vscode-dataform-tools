@@ -11,6 +11,15 @@ All notable changes to this project will be documented in this file. See [standa
 * filter dependancy graph by selecting a tag ([#113](https://github.com/ashish10alex/vscode-dataform-tools/issues/113)) ([7a5c28a](https://github.com/ashish10alex/vscode-dataform-tools/commit/7a5c28a77e2383483e1583f3c0d2e45a445b56cc))
 * reduce bundle size, we only need compiled minfied react code ([2b37f54](https://github.com/ashish10alex/vscode-dataform-tools/commit/2b37f54e74cdd0bc8ddbca601a1983fecfcd0c37))
 
+### [0.10.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.2...v0.10.3) (2025-03-02)
+
+
+### Features
+
+* deprecate command to show graph by right clicking a ref ([ee98ae3](https://github.com/ashish10alex/vscode-dataform-tools/commit/ee98ae302dd0ee90a82b206d752a95b909d1202a))
+* filter dependancy graph by selecting a tag ([#113](https://github.com/ashish10alex/vscode-dataform-tools/issues/113)) ([7a5c28a](https://github.com/ashish10alex/vscode-dataform-tools/commit/7a5c28a77e2383483e1583f3c0d2e45a445b56cc))
+* reduce bundle size, we only need compiled minfied react code ([2b37f54](https://github.com/ashish10alex/vscode-dataform-tools/commit/2b37f54e74cdd0bc8ddbca601a1983fecfcd0c37))
+
 ### [0.10.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.1...v0.10.2) (2025-03-01)
 
 
