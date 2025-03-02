@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.3...v0.10.4) (2025-03-02)
+
+
+### Bug Fixes
+
+* no graph shown if one of the edges does not have a tag property ([4f5575c](https://github.com/ashish10alex/vscode-dataform-tools/commit/4f5575c6a0cd4a0df1c828a0c83bb5c3c3b46023))
+* type error ([44fa5b6](https://github.com/ashish10alex/vscode-dataform-tools/commit/44fa5b64d76470c31687907f9eb424b04c5f160a))
+
 ### [0.10.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.2...v0.10.3) (2025-03-02)
 
 
