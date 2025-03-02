@@ -53,7 +53,6 @@ const Flow: React.FC = () => {
   const [fullEdges, setFullEdges] = useState<Edge[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [uniqueTags, setUniqueTags] = useState<string[]>([]);
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const [message, setMessage] = useState<string>('');
@@ -173,9 +172,28 @@ const Flow: React.FC = () => {
     setEdges([]);
 
     setTimeout(() => {
-      console.log('option', option);
+      const filteredEdges = fullEdges.filter((edge: any) => edge.tags.includes(option.value));
+      const filteredNodes = fullNodes.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
+
+      // select one of the nodes from the selected tag
+      const selectedNode = filteredNodes[0];
+      const filteredEdgesFromSelectedNode = filteredEdges.filter((edge: any) => edge.source === selectedNode.id || edge.target === selectedNode.id);
+      const filteredNodesFromSelectedNode = filteredNodes.filter((node: any) => filteredEdgesFromSelectedNode.some((edge: any) => edge.source === node.id || edge.target === node.id));
+
+      const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
+        filteredNodesFromSelectedNode,
+        filteredEdgesFromSelectedNode,
+      );
+      setNodes(positionedNodes);
+      setEdges(positionedEdges);
+
+      if (reactFlowInstance.current) {
+        reactFlowInstance.current?.fitView({
+            padding: 0.2,
+            duration: 800
+        });
+      }
     }, 50);
-    
     
   };
 

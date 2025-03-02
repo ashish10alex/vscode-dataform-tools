@@ -53,7 +53,7 @@ function populateDependancyTree(type: string, structs: Table[] | Operation[] | A
                     modelIdx++;
                 }
                 const sourceIdx = modelNameToIdx.get(fullTableName)!;
-                initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx)});
+                initialEdgesStatic.push({ id: `e${sourceIdx}-${targetIdx}`, source: String(sourceIdx), target: String(targetIdx), tags: structs[i].tags});
             }
         }
         dependancyTreeMetadata.push({
