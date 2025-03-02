@@ -53,6 +53,8 @@ const Flow: React.FC = () => {
   const [fullEdges, setFullEdges] = useState<Edge[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [uniqueTags, setUniqueTags] = useState<string[]>([]);
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const [message, setMessage] = useState<string>('');
   const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
@@ -79,6 +81,8 @@ const Flow: React.FC = () => {
           const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx } = message.value;
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
+          const uniqueTags: string[] = Array.from(new Set(initialNodesStatic.flatMap((node: Node) => node.data.tags as string[])));
+          setUniqueTags(uniqueTags);
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
           const filteredEdges = initialEdgesStatic.filter((edge: Edge) => 
             edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
@@ -113,6 +117,11 @@ const Flow: React.FC = () => {
   const selectOptions: OptionType[] = fullNodes.map((node) => ({
     value: node.id,
     label: node.data.modelName as string
+  }));
+
+  const tagOptions: OptionType[] = uniqueTags.map((tag) => ({
+    value: tag,
+    label: tag
   }));
 
   // Updated handler for table selection
@@ -155,9 +164,23 @@ const Flow: React.FC = () => {
     }, 50);
   };
 
+  const handleTagSelect = (option: OptionType | null) => {
+    if (!option) {
+      return;
+    }
+
+    setNodes([]);
+    setEdges([]);
+
+    setTimeout(() => {
+      console.log('option', option);
+    }, 50);
+    
+    
+  };
+
   // Add this new handler for node clicks
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    console.log('Clicked node:', node);
     // get the dependent and dependecies of the clicked node
     const filteredEdges = fullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);
     const filteredNodes = fullNodes.filter((n: Node) => filteredEdges.some((edge: Edge) => edge.source === n.id || edge.target === n.id));
@@ -198,8 +221,8 @@ const Flow: React.FC = () => {
           />
 
           <StyledSelect
-            options={selectOptions}
-            onChange={handleTableSelect}
+            options={tagOptions}
+            onChange={handleTagSelect}
             isClearable
             placeholder="Search for a tag..."
             width="w-72"
