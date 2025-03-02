@@ -58,6 +58,8 @@ const Flow: React.FC = () => {
   const [message, setMessage] = useState<string>('');
   const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
   const [_, setIsReady] = useState<boolean>(false);
+  const [tableOptions, setTableOptions] = useState<OptionType[]>([]);
+  const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -95,6 +97,18 @@ const Flow: React.FC = () => {
           );
           setNodes(positionedNodes);
           setEdges(positionedEdges);
+
+          setTableOptions(initialNodesStatic.map((node: any) => ({
+            value: node.id,
+            label: node.data.modelName as string
+          })));
+
+          setTagOptions(uniqueTags.map((tag) => ({
+            value: tag,
+            label: tag
+          }))
+        
+        );
           break;
         // Add more message types as needed
       }
@@ -112,18 +126,6 @@ const Flow: React.FC = () => {
     [setEdges]
   );
 
-  // Update selectOptions to use fullNodes instead of nodes
-  const selectOptions: OptionType[] = fullNodes.map((node) => ({
-    value: node.id,
-    label: node.data.modelName as string
-  }));
-
-  const tagOptions: OptionType[] = uniqueTags.map((tag) => ({
-    value: tag,
-    label: tag
-  }));
-
-  // Updated handler for table selection
   const handleTableSelect = (option: OptionType | null) => {
     // clear the nodes and edges in the existing graph
     setNodes([]);
@@ -174,6 +176,11 @@ const Flow: React.FC = () => {
     setTimeout(() => {
       const filteredEdges = fullEdges.filter((edge: any) => edge.tags.includes(option.value));
       const filteredNodes = fullNodes.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
+
+      setTableOptions(filteredNodes.map((node: any) => ({
+        value: node.id,
+        label: node.data.modelName as string
+      }))); 
 
       // select one of the nodes from the selected tag
       const selectedNode = filteredNodes[0];
@@ -231,7 +238,7 @@ const Flow: React.FC = () => {
         
         <div className="flex gap-4">
           <StyledSelect
-            options={selectOptions}
+            options={tableOptions}
             onChange={handleTableSelect}
             isClearable
             placeholder="Search for a table..."
