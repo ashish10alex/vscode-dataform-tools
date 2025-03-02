@@ -11,20 +11,15 @@ import {
   Node,
   Edge
 } from '@xyflow/react';
-import Select from 'react-select';
 import '@xyflow/react/dist/style.css';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
 import { getVsCodeApi } from './vscode';
+import StyledSelect, { OptionType } from './components/StyledSelect';
 
 const nodeTypes = {
   tableNode: TableNode,
 };
-
-interface OptionType {
-  value: string;
-  label: string;
-}
 
 // Get vscode API
 // @ts-ignore
@@ -188,77 +183,28 @@ const Flow: React.FC = () => {
       )}
       
       {/* Add the Legend component here, before the search dropdown */}
-      <div className="p-4 space-y-4">
+      <div className="p-4">
         {datasetColorMap.size > 0 && (
           <Legend datasetColorMap={datasetColorMap} />
         )}
         
-        <Select
-          options={selectOptions}
-          onChange={handleTableSelect}
-          isClearable
-          placeholder="Search for a table..."
-          className="w-96 max-w-full"
-          classNamePrefix="react-select"
-          styles={{
-            control: (base, state) => ({
-              ...base,
-              backgroundColor: '#1a1a1a',
-              borderRadius: '0.75rem',
-              borderColor: state.isFocused ? '#3b82f6' : '#374151',
-              borderWidth: '2px',
-              boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
-              padding: '2px',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                borderColor: '#3b82f6'
-              }
-            }),
-            input: (base) => ({
-              ...base,
-              color: '#fff'
-            }),
-            placeholder: (base) => ({
-              ...base,
-              color: '#6b7280'
-            }),
-            option: (base, state) => ({
-              ...base,
-              backgroundColor: state.isFocused ? '#2563eb' : '#1a1a1a',
-              color: state.isFocused ? 'white' : '#e5e7eb',
-              padding: '10px 12px',
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: '#2563eb'
-              }
-            }),
-            menu: (base) => ({
-              ...base,
-              backgroundColor: '#1a1a1a',
-              border: '2px solid #374151',
-              borderRadius: '0.75rem',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-            }),
-            singleValue: (base) => ({
-              ...base,
-              color: '#fff'
-            }),
-            dropdownIndicator: (base, state) => ({
-              ...base,
-              color: state.isFocused ? '#3b82f6' : '#6b7280',
-              '&:hover': {
-                color: '#3b82f6'
-              }
-            }),
-            clearIndicator: (base) => ({
-              ...base,
-              color: '#6b7280',
-              '&:hover': {
-                color: '#ef4444'
-              }
-            })
-          }}
-        />
+        <div className="flex gap-4">
+          <StyledSelect
+            options={selectOptions}
+            onChange={handleTableSelect}
+            isClearable
+            placeholder="Search for a table..."
+            width="w-72"
+          />
+
+          <StyledSelect
+            options={selectOptions}
+            onChange={handleTableSelect}
+            isClearable
+            placeholder="Search for a tag..."
+            width="w-72"
+          />
+        </div>
       </div>
       
       {nodes.length > 0 ? (
