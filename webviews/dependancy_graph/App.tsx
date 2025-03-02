@@ -53,7 +53,7 @@ const Flow: React.FC = () => {
   const [fullEdges, setFullEdges] = useState<Edge[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [uniqueTags, setUniqueTags] = useState<string[]>([]);
+  const [__, setUniqueTags] = useState<string[]>([]);
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const [message, setMessage] = useState<string>('');
   const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
