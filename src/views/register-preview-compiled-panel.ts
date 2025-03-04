@@ -609,10 +609,8 @@ export class CompiledQueryPanel {
             <table id="schemaTable" class="display" width="100%"></table>
         </div>
 
-        <div id="schemaCodeBlock" style="display: none; margin-top: 20px;">
-            <div class="code-block-vertical" style="width: 300px; height: 100%; overflow: auto; border-left: 1px solid #ccc; padding: 10px; background-color: #f5f5f5;">
-                <pre><code id="schemaCodeBlockContent" class="language-json"> { "schema": "schema" } </code></pre>
-            </div>
+        <div id="schemaCodeBlockDiv" style="display: none;">
+            <pre><code  id="schemaCodeBlock" class="language-json"></code></pre>
         </div>
 
         <div id="costBlock" style="display: none; margin-top: 20px;">

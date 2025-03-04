@@ -20,7 +20,7 @@ const dataLineageDiv = document.getElementById("dataLineageDiv");
 const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
 const dependencyGraphButton = document.getElementById("dependencyGraph");
-const schemaCodeBlockContent = document.getElementById("schemaCodeBlockContent");
+const schemaCodeBlock = document.getElementById("schemaCodeBlock");
 let fullModelName = "";
 let descriptionData = {}; // Variable to store description data
 
@@ -163,19 +163,19 @@ navLinks.forEach(link => {
             document.getElementById("compilationBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
-            document.getElementById("schemaCodeBlock").style.display = "none";
+            document.getElementById("schemaCodeBlockDiv").style.display = "none";
         } else if (this.getAttribute('href') === '#schema')  {
             modelLinkDiv.style.display = "";
             dataLineageDiv.style.display = "";
             document.getElementById("schemaBlock").style.display = "";
-            document.getElementById("schemaCodeBlock").style.display = "";
+            document.getElementById("schemaCodeBlockDiv").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#cost')  {
             document.getElementById("costBlock").style.display = "";
             document.getElementById("schemaBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
-            document.getElementById("schemaCodeBlock").style.display = "none";
+            document.getElementById("schemaCodeBlockDiv").style.display = "none";
             modelLinkDiv.style.display = "none";
             dataLineageDiv.style.display = "none";
         }
@@ -444,7 +444,7 @@ window.addEventListener('message', event => {
             const fieldName = row.getData().name;
             const newDescription = cell.getValue();
             descriptionData[fieldName] = newDescription;
-            schemaCodeBlockContent.innerHTML = JSON.stringify(descriptionData, null, 2);
+            schemaCodeBlock.textContent = JSON.stringify(descriptionData, null, 2);
         });
 
     }
