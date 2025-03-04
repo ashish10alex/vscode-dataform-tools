@@ -605,11 +605,12 @@ export class CompiledQueryPanel {
 
 
         <div id="schemaCodeBlockDiv" style="display: none;">
-            <pre><code  id="schemaCodeBlock" class="language-json"></code></pre>
+            <pre><code  id="schemaCodeBlock" class="language-javascript"></code></pre>
         </div>
 
         <div id="schemaBlock" style="display: none; margin-top: 20px;">
             <div id="noSchemaBlock"> </div>
+            <p><i>Edit description to generate documentation code for the columns</i></p>
             <table id="schemaTable" class="display" width="100%"></table>
         </div>
 
