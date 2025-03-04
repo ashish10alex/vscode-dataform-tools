@@ -445,6 +445,12 @@ window.addEventListener('message', event => {
             const newDescription = cell.getValue();
             descriptionData[fieldName] = newDescription;
             schemaCodeBlock.textContent = JSON.stringify(descriptionData, null, 2);
+            // remove existing highlight and line numbers
+            schemaCodeBlock.removeAttribute('data-highlighted');
+            schemaCodeBlock.className = schemaCodeBlock.className.replace(/\bhljs\b/, '');
+            // re-apply highlighting
+            hljs.highlightElement(schemaCodeBlock);
+            hljs.lineNumbersBlock(schemaCodeBlock);
         });
 
     }
