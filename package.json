@@ -29,7 +29,6 @@
         "onCommand:extension.runTag",
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
-        "onCommand:extension.formatCurrentfile",
         "onCommand:extension.runFilesTagsWtOptions",
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.showFileMetadataForSidePanel",
@@ -132,13 +131,6 @@
                 "title": "Run current file",
                 "icon": "$(play)",
                 "group": "navigation"
-            },
-            {
-                "command": "vscode-dataform-tools.formatCurrentfile",
-                "category": "Dataform",
-                "title": "Format current file",
-                "icon": "$(sparkle)",
-                "group": "navigation@0"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDeps",
