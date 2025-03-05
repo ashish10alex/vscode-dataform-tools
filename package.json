@@ -153,6 +153,13 @@
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
                 "category": "Dataform",
                 "title": "Show dependency graph"
+            },
+            {
+                "command": "vscode-dataform-tools.formatDocument",
+                "category": "Dataform",
+                "title": "Format Document",
+                "icon": "$(sparkle)",
+                "group": "navigation@0"
             }
         ],
         "languages": [
@@ -192,7 +199,7 @@
                     "group": "navigation@3"
                 },
                 {
-                    "command": "vscode-dataform-tools.formatCurrentfile",
+                    "command": "vscode-dataform-tools.formatDocument",
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "group": "navigation@0"
                 }

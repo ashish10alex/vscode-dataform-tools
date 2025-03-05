@@ -261,6 +261,12 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.formatDocument', () => {
+            vscode.commands.executeCommand('editor.action.formatDocument');
+        })
+    );
+
     logger.info('Dataform Tools extension activated successfully');
 }
 
