@@ -300,6 +300,11 @@
                     "markdownDescription": "Enable debug logging to help troubleshoot issues. Logs will appear in the 'Dataform Tools' output channel."
                 }
             }
+        },
+        "configurationDefaults": {
+            "[sqlx]": {
+                "editor.formatOnSave": false
+            }
         }
     },
     "scripts": {

@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import fs from 'fs';
 import path from 'path';
 import beautify from 'js-beautify';
 import { exec as exec } from 'child_process';
@@ -8,6 +7,35 @@ import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
 import { logger } from './logger';
+
+export async function formatDataformSqlxFile(document:vscode.TextDocument){
+    let formattingCli = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formattingCli");
+    if (formattingCli === "sqlfluff") {
+        const formattedText:any = await formatCurrentFile(diagnosticCollection);
+        if (formattedText) {
+            // Create a text edit that replaces the entire document with the formatted text
+
+            if(!document){
+                document = activeDocumentObj || vscode.window.activeTextEditor?.document;
+                if(!document){
+                    vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
+                    return undefined;
+                }
+            }
+            // get fsPath from document
+            const fsPath = document.uri.fsPath;
+            console.log(`fsPath: ${fsPath}`);
+            const entireRange = new vscode.Range(
+                document.lineAt(0).range.start,
+                document.lineAt(document.lineCount - 1).range.end
+            );
+            return [vscode.TextEdit.replace(entireRange, formattedText)];
+        }
+    } else if (formattingCli === "dataform") {
+        await formatCurrentFileWithDataform();
+    }
+    return [];
+}
 
 
 export async function formatSqlxFile(document:vscode.TextDocument, currentActiveEditorFilePath:string, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath:string){
@@ -64,7 +92,8 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
     const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
     let formatCmd = `${sqlfluffExecutablePath} fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
 
-    await getStdoutFromCliRun(exec, formatCmd).then(async (_) => {
+    try {
+        await getStdoutFromCliRun(exec, formatCmd);
         let formattedSql = await readFile(sqlFileToFormatPath);
         (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
 
@@ -72,19 +101,15 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
             let finalFormattedSqlx = configBlockText + jsBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
             if (!currentActiveEditorFilePath){
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
-                return;
+                return undefined;
             }
-            fs.writeFile(currentActiveEditorFilePath, finalFormattedSqlx, (err: any) => {
-            if (err) {throw err;};
-                vscode.window.showInformationMessage(`Formatted: ${path.basename(currentActiveEditorFilePath)}`);
-                return;
-            });
+            return finalFormattedSqlx;
         }
-    }
-    ).catch((err) => {
+    } catch (err) {
         vscode.window.showErrorMessage(`[Error formatting]: Ran: ${formatCmd}. Error: ${err}`);
-        return;
-    });
+    }
+    
+    return undefined;
 }
 
 export async function formatCurrentFile(diagnosticCollection:any) {
@@ -93,34 +118,31 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         document = activeDocumentObj;
         if (!document) {
             vscode.window.showErrorMessage("[Error formatting]: VS Code document object was undefined");
-            return;
+            return null;
         }
     }
 
     var result = getFileNameFromDocument(document, false);
     if (result.success === false) {
-        return;
-         //{ return {errors: {errorGettingFileNameFromDocument: result.error}}; }
-        //TODO: should we return an error here ?
+        return null;
     }
     const [filename, _, extension] = result.value;
     
     let currentActiveEditorFilePath = document.uri.fsPath;
     logger.debug(`currentActiveEditorFilePath: ${currentActiveEditorFilePath}`);
     if(!currentActiveEditorFilePath){
-        return;
+        return null;
     }
 
     if (filename === "" || extension !== "sqlx") {
         vscode.window.showErrorMessage("Formatting is only supported for .sqlx files");
-        return;
+        return null;
     }
 
     let workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) {
-        return;
+        return null;
     }
-
 
     let compileAndDryRunBeforeFormatting = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compileAndDryRunBeforeFormatting');
     if (compileAndDryRunBeforeFormatting === undefined) {
@@ -132,7 +154,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
         if (allDiagnostics.length > 0 || !completionItems) {
             vscode.window.showErrorMessage("Please resolve the errors on the current file before formatting");
-            return;
+            return null;
         }
     }
 
@@ -146,9 +168,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
         vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
     }
-    await formatSqlxFile(document, currentActiveEditorFilePath, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
-
-    document?.save();
+    return await formatSqlxFile(document, currentActiveEditorFilePath, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 }
 
 export async function formatCurrentFileWithDataform() {
