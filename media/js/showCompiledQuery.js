@@ -20,7 +20,9 @@ const dataLineageDiv = document.getElementById("dataLineageDiv");
 const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
 const dependencyGraphButton = document.getElementById("dependencyGraph");
+const schemaCodeBlock = document.getElementById("schemaCodeBlock");
 let fullModelName = "";
+let descriptionData = {}; // Variable to store description data
 
 function dependencyGraphClickHandler() {
     vscode.postMessage({
@@ -161,16 +163,19 @@ navLinks.forEach(link => {
             document.getElementById("compilationBlock").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("schemaBlock").style.display = "none";
+            document.getElementById("schemaCodeBlockDiv").style.display = "none";
         } else if (this.getAttribute('href') === '#schema')  {
             modelLinkDiv.style.display = "";
             dataLineageDiv.style.display = "";
             document.getElementById("schemaBlock").style.display = "";
+            document.getElementById("schemaCodeBlockDiv").style.display = "";
             document.getElementById("costBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
         } else if (this.getAttribute('href') === '#cost')  {
             document.getElementById("costBlock").style.display = "";
             document.getElementById("schemaBlock").style.display = "none";
             document.getElementById("compilationBlock").style.display = "none";
+            document.getElementById("schemaCodeBlockDiv").style.display = "none";
             modelLinkDiv.style.display = "none";
             dataLineageDiv.style.display = "none";
         }
@@ -406,12 +411,12 @@ window.addEventListener('message', event => {
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
         noSchemaBlockDiv.innerHTML = "";
-        new Tabulator("#schemaTable", {
+        const schemaTable =new Tabulator("#schemaTable", {
             data: compiledQuerySchema.fields,
             columns: [
                 {title: "name", field: "name", headerFilter: "input",  formatter: "plaintext"},
                 {title: "type", field: "type", headerFilter: "input",  formatter: "plaintext"},
-                {title: "description", field: "description",  formatter: "plaintext", width: 900, variableHeight: true },
+                {title: "description", field: "description",  formatter: "plaintext", width: 900, variableHeight: true , editor: "input"},
             ],
             pagination:"local",
             paginationSize:50,
@@ -434,6 +439,20 @@ window.addEventListener('message', event => {
                 return definitions;
             },
         });
+        schemaTable.on("cellEdited", function(cell) {
+            const row = cell.getRow();
+            const fieldName = row.getData().name;
+            const newDescription = cell.getValue();
+            descriptionData[fieldName] = newDescription;
+            schemaCodeBlock.textContent = JSON.stringify(descriptionData, null, 2);
+            // remove existing highlight and line numbers
+            schemaCodeBlock.removeAttribute('data-highlighted');
+            schemaCodeBlock.className = schemaCodeBlock.className.replace(/\bhljs\b/, '');
+            // re-apply highlighting
+            hljs.highlightElement(schemaCodeBlock);
+            hljs.lineNumbersBlock(schemaCodeBlock);
+        });
+
     }
 
 

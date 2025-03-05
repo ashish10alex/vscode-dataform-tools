@@ -26,6 +26,11 @@
     background-color: #252526; /* Slightly lighter background for even rows */
 }
 
+/* when cell is being edited the backgroudn color should be light gray */
+.tabulator .tabulator-cell.tabulator-editing {
+    background-color: #d4d4d4;
+}
+
 .error-column {
     color: #D32F2F;
 }

@@ -604,11 +604,15 @@ export class CompiledQueryPanel {
         </div>
 
 
-        <div id="schemaBlock" style="display: none; margin-top: 20px;">
-            <div id="noSchemaBlock"> </div>
-            <table id="schemaTable" class="display" width="100%"></table>
+        <div id="schemaCodeBlockDiv" style="display: none;">
+            <pre><code  id="schemaCodeBlock" class="language-javascript"></code></pre>
         </div>
 
+        <div id="schemaBlock" style="display: none; margin-top: 20px;">
+            <div id="noSchemaBlock"> </div>
+            <p><i>Edit description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code.</i></p>
+            <table id="schemaTable" class="display" width="100%"></table>
+        </div>
 
         <div id="costBlock" style="display: none; margin-top: 20px;">
             <div class="cost-estimator-header">
