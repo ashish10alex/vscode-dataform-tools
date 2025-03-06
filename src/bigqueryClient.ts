@@ -8,7 +8,7 @@ let isAuthenticated: boolean = false;
 
 export async function createBigQueryClient() {
     try {
-        const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get('bigqueryProjectId');
+        const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
         // default state will be projectId as null and the projectId will be inferred from what the user has set using gcloud cli
         // @ts-ignore 
         bigquery = new BigQuery({ projectId });

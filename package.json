@@ -299,10 +299,10 @@
                     "default": false,
                     "markdownDescription": "Enable debug logging to help troubleshoot issues. Logs will appear in the 'Dataform Tools' output channel."
                 },
-                "vscode-dataform-tools.bigqueryProjectId": {
+                "vscode-dataform-tools.gcpProjectId": {
                     "type": "string",
                     "default": null,
-                    "markdownDescription": "Project ID to use for BigQuery queries. If not provided, the project ID will be inferred from the environment.",
+                    "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
                     "pattern": "^[a-z0-9-]+$"
                 }
             }
