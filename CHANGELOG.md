@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.5...v0.10.6) (2025-03-06)
+
+
+### Bug Fixes
+
+* run current file not getting active document that is not explicitly saved ([8688990](https://github.com/ashish10alex/vscode-dataform-tools/commit/86889909b917cbf9e9c4f82801214131ff539a5d))
+
 ### [0.10.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.4...v0.10.5) (2025-03-06)
 
 
