@@ -91,8 +91,6 @@ Trouble installing or looking for a specific customization ? Please see [FAQ sec
 
 Generate code for schema of the model by editing description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code
 
-Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and run one of the required commands
-
 ![schema_code_gen](media/images/schema_code_gen.gif)
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
@@ -115,6 +113,11 @@ Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> chara
 ### <a id="formatting">Formatting using sqlfluff</a>
 
 ![formatting](media/images/formatting.gif)
+
+## Commands
+
+Most features can be invoked via command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and searching for the following. These key bindings can also be attached to a keybinding to
+further streamline your workflow.
 
 | Command | Description |
 |---------|-------------|
