@@ -20,14 +20,14 @@
 | [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) 🚨 | Native LSP like experience with diagnostics being directly put on sqlx file |
 | [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
+| [Schema code generation](#schema_code_gen) | Edit the schema of the model to genrate code that can be used for documentation |
 | [Cost estimator](#cost_estimator) 💸 | Estimate the cost of running a Tag|
 | [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
 | [Auto-completion](#autocomplete) | - Column names of current model <br> - Dependencies and declarations in `${ref("..")}` trigger when `$` character is typed <br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
-| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet / menu icons |
+| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet or compiled query web view |
 | [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
 | [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
-| [Schema code generation](#schema_code_gen) | Edit the schema of the model to genrate code that can be used for documentation |
 
 ## Requirements
 
@@ -87,6 +87,14 @@ Trouble installing or looking for a specific customization ? Please see [FAQ sec
 
 ![preview_query_results](/media/images/preview_query_results.png)
 
+### <a id="schema_code_gen">Schema code generation</a>
+
+Generate code for schema of the model by editing description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code
+
+Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and run one of the required commands
+
+![schema_code_gen](media/images/schema_code_gen.gif)
+
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
 ![cost_estimator](/media/images/tag_cost_estimator.png)
@@ -100,42 +108,27 @@ from a javascript variable/module from a `.sqlx` file to `js` block or `.js` fil
 
 ### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
-Auto completion support for `dependencies` when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix
-
-![auto-completion](media/images/dependencies_autocompletion.gif)
-
-Declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed
+Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed and `dependencies` and `tags` in config block when `"` or `'` is typed.
 
 ![auto-completion](media/images/sources_autocompletion.gif)
-
-Auto completion support for `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix
-
-![auto-completion](media/images/tags_autocompletion.gif)
 
 ### <a id="formatting">Formatting using sqlfluff</a>
 
 ![formatting](media/images/formatting.gif)
 
-### <a id="schema_code_gen">Schema code generation</a>
-
-Generate code for schema of the model by editing description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code
-
-![schema_code_gen](media/images/schema_code_gen.gif)
-
-### <a id="filetagruns">Run file/tag with dependencies/dependents</a>
-
-Open vscode command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and run one of the required commands
-
-| Commands                                               |
-|------------------------------------------------------  |
-| `Dataform: Run current file`                           |
-| `Dataform: Run current file with dependencies`         |
-| `Dataform: Run current file with dependents`           |
-| `Dataform: Run current tag`                            |
-| `Dataform: Run current tag with dependencies`          |
-| `Dataform: Run current tag with dependents`            |
-| `Dataform: Format current file`                        |
-| `Dataform: Run file(s) / tag(s) with options`          |
+| Command | Description |
+|---------|-------------|
+| `vscode-dataform-tools.showCompiledQueryInWebView` | Show compiled Query in web view |
+| `vscode-dataform-tools.runCurrentFile` | Run current file |
+| `vscode-dataform-tools.runCurrentFileWtDeps` | Run current file with dependencies |
+| `vscode-dataform-tools.runCurrentFileWtDownstreamDeps` | Run current file with dependents |
+| `vscode-dataform-tools.runQuery` | Preview query results |
+| `vscode-dataform-tools.runTag` | Run a tag |
+| `vscode-dataform-tools.runTagWtDeps` | Run a tag with dependencies |
+| `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
+| `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
+| `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
+| `vscode-dataform-tools.formatDocument` | Format Document |
 
 ## Known Issues
 
