@@ -29,7 +29,6 @@
         "onCommand:extension.runTag",
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
-        "onCommand:extension.formatCurrentfile",
         "onCommand:extension.runFilesTagsWtOptions",
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.showFileMetadataForSidePanel",
@@ -134,13 +133,6 @@
                 "group": "navigation"
             },
             {
-                "command": "vscode-dataform-tools.formatCurrentfile",
-                "category": "Dataform",
-                "title": "Format current file",
-                "icon": "$(sparkle)",
-                "group": "navigation@0"
-            },
-            {
                 "command": "vscode-dataform-tools.runCurrentFileWtDeps",
                 "category": "Dataform",
                 "title": "Run current file with dependencies"
@@ -161,6 +153,13 @@
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
                 "category": "Dataform",
                 "title": "Show dependency graph"
+            },
+            {
+                "command": "vscode-dataform-tools.formatDocument",
+                "category": "Dataform",
+                "title": "Format Document",
+                "icon": "$(sparkle)",
+                "group": "navigation@0"
             }
         ],
         "languages": [
@@ -200,7 +199,7 @@
                     "group": "navigation@3"
                 },
                 {
-                    "command": "vscode-dataform-tools.formatCurrentfile",
+                    "command": "vscode-dataform-tools.formatDocument",
                     "when": "resourceExtname == .sqlx || resourceExtname == .js",
                     "group": "navigation@0"
                 }
@@ -282,7 +281,7 @@
                 "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "WARNING!!: only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
+                    "markdownDescription": "Disable this to experience faster formatting, especially if you have enabled format on save. `::WARNING::` only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
                 },
                 "vscode-dataform-tools.bigqueryAuthenticationCheck": {
                     "type": "boolean",
@@ -305,6 +304,11 @@
                     "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
                     "pattern": "^[a-z0-9-]+$"
                 }
+            }
+        },
+        "configurationDefaults": {
+            "[sqlx]": {
+                "editor.formatOnSave": false
             }
         }
     },
