@@ -14,7 +14,7 @@ import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, 
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
-import { formatCurrentFile, formatCurrentFileWithDataform } from './formatCurrentFile';
+import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runFiles';
@@ -190,17 +190,18 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
     );
 
-    /**
-     * NOTE: Takes ~2 seconds as we compile the project (~200 nodes ) and dry run the file to safely format the .sqlx file to avoid loosing user code due to incorrect parsing due to unexptected block terminations, etc.
-     */
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.formatCurrentfile', async () => {
-        let formattingCli = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formattingCli");
-        if (formattingCli === "sqlfluff") {
-            await formatCurrentFile(diagnosticCollection);
-        } else if (formattingCli === "dataform") {
-            await formatCurrentFileWithDataform();
-        }
-    }));
+
+    context.subscriptions.push(
+        vscode.languages.registerDocumentFormattingEditProvider('sqlx', {
+            async provideDocumentFormattingEdits(document): Promise<vscode.TextEdit[]> {
+                const formattingOutput = await formatDataformSqlxFile(document);
+                if (formattingOutput && formattingOutput.length > 0) {
+                    return formattingOutput;
+                }
+                return []; // Return empty array if no formatting was done
+            }
+        })
+    );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false); }));
 
@@ -257,6 +258,12 @@ export async function activate(context: vscode.ExtensionContext) {
                 logger.initialize();
                 logger.info('Logging configuration updated');
             }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.formatDocument', () => {
+            vscode.commands.executeCommand('editor.action.formatDocument');
         })
     );
 

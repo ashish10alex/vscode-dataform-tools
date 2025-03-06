@@ -8,7 +8,8 @@ import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, Suppor
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
-
+import { formatCurrentFile } from "../formatCurrentFile";
+import * as fs from 'fs';
 function showLoadingProgress(
     title: string,
     operation: (
@@ -254,7 +255,15 @@ export class CompiledQueryPanel {
                 }
                 return;
               case 'formatCurrentFile':
-                    await vscode.commands.executeCommand('vscode-dataform-tools.formatCurrentfile');
+                const formattedText:any = await formatCurrentFile(diagnosticCollection);
+                const activeEditorFilePath = activeDocumentObj?.uri.fsPath;
+                if(activeEditorFilePath){
+                    fs.writeFile(activeEditorFilePath, formattedText, (err: any) => {
+                        if (err) {throw err;};
+                        vscode.window.showInformationMessage(`Formatted: ${path.basename(activeEditorFilePath)}`);
+                        return;
+                    });
+                }
                 return;
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
