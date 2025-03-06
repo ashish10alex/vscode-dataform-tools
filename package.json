@@ -302,7 +302,8 @@
                 "vscode-dataform-tools.bigqueryProjectId": {
                     "type": "string",
                     "default": null,
-                    "markdownDescription": "Project ID to use for BigQuery queries. If not provided, the project ID will be inferred from the environment."
+                    "markdownDescription": "Project ID to use for BigQuery queries. If not provided, the project ID will be inferred from the environment.",
+                    "pattern": "^[a-z0-9-]+$"
                 }
             }
         }
