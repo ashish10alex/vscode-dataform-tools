@@ -281,7 +281,7 @@
                 "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "WARNING!!: only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
+                    "markdownDescription": "Disable this to experience faster formatting, especially if you have enabled format on save. `::WARNING::` only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
                 },
                 "vscode-dataform-tools.bigqueryAuthenticationCheck": {
                     "type": "boolean",
