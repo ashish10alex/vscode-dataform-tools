@@ -27,6 +27,7 @@
 | [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet / menu icons |
 | [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
 | [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
+| [Schema code generation](#schema_code_gen) | Edit the schema of the model to genrate code that can be used for documentation |
 
 ## Requirements
 
@@ -114,6 +115,12 @@ Auto completion support for `tags` when `"` or `'` is typed inside the config bl
 ### <a id="formatting">Formatting using sqlfluff</a>
 
 ![formatting](media/images/formatting.gif)
+
+### <a id="schema_code_gen">Schema code generation</a>
+
+Generate code for schema of the model by editing description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code
+
+![schema_code_gen](media/images/schema_code_gen.gif)
 
 ### <a id="filetagruns">Run file/tag with dependencies/dependents</a>
 
