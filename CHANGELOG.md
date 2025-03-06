@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.4...v0.10.5) (2025-03-06)
+
+
+### Features
+
+* **build:** improve debugging experience by automatically running vite build ([a06701b](https://github.com/ashish10alex/vscode-dataform-tools/commit/a06701b77e7ff32c22830915a3a02eaaf161ebbd))
+* create model documentation by directly editing schema table ([#115](https://github.com/ashish10alex/vscode-dataform-tools/issues/115)) ([ec08414](https://github.com/ashish10alex/vscode-dataform-tools/commit/ec08414e7a13ce97817259fa5e0cf430264d7b33))
+* support for native `format Document`  ([#118](https://github.com/ashish10alex/vscode-dataform-tools/issues/118)) ([dc0417c](https://github.com/ashish10alex/vscode-dataform-tools/commit/dc0417ca9d1a9345fd43aa391aa760112d266741))
+* update README ([13f8d96](https://github.com/ashish10alex/vscode-dataform-tools/commit/13f8d9643fdb56d6b43fff8fb1edc06cd6414069))
+
+
+### Bug Fixes
+
+* unable to use bigquery client when global default project does have BigQuery enabled  ([#119](https://github.com/ashish10alex/vscode-dataform-tools/issues/119)) ([13d9605](https://github.com/ashish10alex/vscode-dataform-tools/commit/13d9605188b3b6ab73f681386d11c123c80fb64a))
+
 ### [0.10.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.3...v0.10.4) (2025-03-02)
 
 
