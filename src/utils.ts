@@ -492,6 +492,7 @@ export async function selectWorkspaceFolder() {
         }
         return undefined;
     } 
+    return undefined;
 }
 
 export function getFileNameFromDocument(
