@@ -34,9 +34,11 @@ export const currencySymbolMapping = {
   "INR": "₹",
 };
 
-export function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
+export async function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
 
-    let workspaceFolder = getWorkspaceFolder() || "";
+    if(!workspaceFolder){
+      workspaceFolder = await getWorkspaceFolder();
+    }
     
     let errorMessage = `file <b>"${relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b>"${workspaceFolder}"</b> <br>`;
     errorMessage += `<p>Ignore the error if the file you are in is not expected to produce a sql output</p>`;

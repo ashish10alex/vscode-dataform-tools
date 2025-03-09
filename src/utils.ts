@@ -175,7 +175,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     const [filename, relativeFilePath, extension] = result.value;
     logger.debug(`File name: ${filename}, relative file path: ${relativeFilePath}, extension: ${extension}`);
     if(!workspaceFolder){
-        workspaceFolder = await selectWorkspaceFolder();
+        workspaceFolder = await getWorkspaceFolder();
     }
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);

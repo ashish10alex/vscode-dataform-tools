@@ -334,7 +334,7 @@ export class CompiledQueryPanel {
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
-            const errorMessage = getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
+            const errorMessage = await getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
                 "errorMessage": errorMessage
             });
