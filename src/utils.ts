@@ -457,10 +457,32 @@ export function getRelativePath(filePath: string) {
     if (isRunningOnWindows) {
         relativePath = path.win32.normalize(relativePath);
     }
+    const firstDefinitionIndex = relativePath.indexOf("definitions");
+    if (firstDefinitionIndex !== -1) {
+        relativePath = relativePath.slice(firstDefinitionIndex);
+    }
     return relativePath;
 }
 
+export async function selectWorkspaceFolder() {
+    const availableFolders = vscode.workspace.workspaceFolders;
 
+    if (availableFolders) {
+        const folderOptions = availableFolders.map(folder => {
+            return {
+                label: folder.name,
+                description: folder.uri.fsPath,
+                value: folder.uri.fsPath
+            };
+        });
+
+        const selectedFolder = await vscode.window.showQuickPick(folderOptions);
+        if (selectedFolder) {
+            return selectedFolder.value;
+        }
+        return undefined;
+    } 
+}
 
 export function getFileNameFromDocument(
   document: vscode.TextDocument,

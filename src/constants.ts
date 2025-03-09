@@ -1,6 +1,7 @@
 import os from 'os';
 import path from 'path';
 import { SupportedCurrency as SupportedCurrencies } from './types';
+import { getWorkspaceFolder } from './utils';
 
 const tempDir = os.tmpdir();
 export const sqlFileToFormatPath = path.join(tempDir, "format.sql");
@@ -34,7 +35,10 @@ export const currencySymbolMapping = {
 };
 
 export function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
-    let errorMessage = `file <b>"${relativeFilePath}"</b> not found in Dataform compiled json <br>`;
+
+    let workspaceFolder = getWorkspaceFolder() || "";
+    
+    let errorMessage = `file <b>"${relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b>"${workspaceFolder}"</b> <br>`;
     errorMessage += `<p>Ignore the error if the file you are in is not expected to produce a sql output</p>`;
     errorMessage += `<h4>Possible resolution/fix(s): </h4>`;
 
