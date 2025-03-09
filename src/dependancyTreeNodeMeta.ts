@@ -86,7 +86,7 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
 
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
-        let workspaceFolder = getWorkspaceFolder();
+        let workspaceFolder = await getWorkspaceFolder();
         if (!workspaceFolder) {
             return;
         }

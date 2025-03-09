@@ -16,7 +16,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
     }
     //@ts-ignore
     const [filename, relativeFilePath, extension] = result.value;
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         return;
     }

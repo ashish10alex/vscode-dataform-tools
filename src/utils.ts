@@ -174,7 +174,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
     const [filename, relativeFilePath, extension] = result.value;
     logger.debug(`File name: ${filename}, relative file path: ${relativeFilePath}, extension: ${extension}`);
-    let workspaceFolder = getWorkspaceFolder();
+    if(!workspaceFolder){
+        workspaceFolder = await selectWorkspaceFolder();
+    }
     if (!workspaceFolder) { return {isDataformWorkspace: false}; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);
 
@@ -348,7 +350,9 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     let searchTerm = editor.document.getText(wordRange);
 
-    let workspaceFolder = getWorkspaceFolder();
+    if(!workspaceFolder){
+        workspaceFolder = await selectWorkspaceFolder();
+    }
     if (!workspaceFolder) {
         return;
     }
@@ -476,9 +480,15 @@ export async function selectWorkspaceFolder() {
             };
         });
 
+        if (folderOptions.length === 1) {
+            workspaceFolder = folderOptions[0].value;
+            return workspaceFolder;
+        }
+
         const selectedFolder = await vscode.window.showQuickPick(folderOptions);
         if (selectedFolder) {
-            return selectedFolder.value;
+            workspaceFolder = selectedFolder.value;
+            return workspaceFolder;
         }
         return undefined;
     } 
@@ -511,8 +521,12 @@ export function getFileNameFromDocument(
 //WARN: What if user has multiple workspaces open in the same window
 //TODO: we are taking the first workspace from the active workspaces. Is it possible to handle cases where there are multiple workspaces in the same window ?
 //
-export function getWorkspaceFolder(): string | undefined {
-    let workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+//TODO: What if user has no workspaces open ?
+//
+export async function getWorkspaceFolder(): Promise<string | undefined> {
+    if(!workspaceFolder){
+        workspaceFolder = await selectWorkspaceFolder();
+    }
     if (workspaceFolder === undefined) {
         vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
         return undefined;

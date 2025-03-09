@@ -338,7 +338,7 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": errorMessage
             });
-            const workspaceFolder = await selectWorkspaceFolder();
+            await selectWorkspaceFolder();
             return;
         }
         updateSchemaAutoCompletions(curFileMeta);
@@ -346,7 +346,7 @@ export class CompiledQueryPanel {
         if(curFileMeta.errors?.dataformCompilationErrors){
             let errorString = "<h3>Error compiling Dataform:</h3><ul>";
 
-            let workspaceFolder = getWorkspaceFolder();
+            let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
                 return;
             }
