@@ -1,6 +1,5 @@
 import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } from "./types";
 import { getRelativePath, getVSCodeDocument, getWorkspaceFolder, runCompilation } from "./utils";
-import * as vscode from 'vscode';
 
 const datasetColors = [
     "#FF0000", "#00FF00", "#0000FF", "#FF00FF", "#FFFF00", "#00FFFF",
