@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [0.10.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.6...v0.10.7) (2025-03-13)
 
+### Features
+
+* choose the active document even if it is not explicitly selected (#123) ([#123](https://github.com/ashish10alex/vscode-dataform-tools/pull/123))
+
 ### [0.10.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.5...v0.10.6) (2025-03-06)
 
 
