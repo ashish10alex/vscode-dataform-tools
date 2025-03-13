@@ -1,5 +1,5 @@
 import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } from "./types";
-import { getRelativePath, getWorkspaceFolder, runCompilation } from "./utils";
+import { getRelativePath, getVSCodeDocument, getWorkspaceFolder, runCompilation } from "./utils";
 import * as vscode from 'vscode';
 
 const datasetColors = [
@@ -97,7 +97,7 @@ export async function generateDependancyTreeMetadata(): Promise<any> {
         }
     }
 
-    let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
+    let document = getVSCodeDocument() || activeDocumentObj;
     let currentActiveEditorFilePath = document?.uri?.fsPath;
     let currentActiveEditorRelativePath = "";
     if (currentActiveEditorFilePath) {
