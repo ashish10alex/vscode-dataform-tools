@@ -10,8 +10,6 @@ declare  global {
   var cdnLinks : {
       highlightJsCssUri: string;
       highlightJsUri: string;
-      highlightJsCopyExtUri: string;
-      highlightJsCopyExtCssUri: string;
       highlightJsLineNoExtUri: string;
       tabulatorUri: string;
       tabulatorDarkCssUri: string;
