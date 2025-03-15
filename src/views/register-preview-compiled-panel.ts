@@ -188,7 +188,6 @@ export class CompiledQueryPanel {
 
         this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
           async message => {
-            console.log("message", message);
             const now = Date.now();
             if(this.centerPanel){
                 if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {

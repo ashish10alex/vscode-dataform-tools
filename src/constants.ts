@@ -42,21 +42,13 @@ export async function getFileNotFoundErrorMessageForWebView(relativeFilePath:str
     
     // Create a single HTML string with the error message
     const errorMessage = `
-      <script>
-        function postSelectWorkspaceMessage() {
-          const vscode = acquireVsCodeApi();
-          vscode.postMessage({
-            command: 'selectWorkspaceFolder'
-          });
-        }
-      </script>
       <div>
         <p>File <b>"${relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b>"${workspaceFolder}"</b></p>
         <p>Ignore the error if the file you are in is not expected to produce a sql output</p>
         <h4>Possible resolution/fix(s):</h4>
         <ol>
           <li>Check if running "dataform compile" throws an error</li>
-          <li>Select the workspace folder by <a href="#" onclick="postSelectWorkspaceMessage()">clicking here</a></li>
+          <li>Select the workspace folder by <a href="#" id="selectWorkspaceLink" onclick="selectWorkspaceLinkClickHandler(event)">clicking here</a></li>
           <li>
             Check if case of the file has been changed and the case does not match what is being shown in the error message above, 
             this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. 
