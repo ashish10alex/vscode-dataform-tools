@@ -68,5 +68,9 @@ declare global {
   var activeDocumentObj: any;
 }
 
+declare global {
+  var workspaceFolder: string | undefined;
+}
+
 
 export {};

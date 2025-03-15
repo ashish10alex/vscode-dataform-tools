@@ -52,12 +52,12 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
         onDidSelectItem: (_) => {
             // This is triggered as soon as a item is hovered over
         }
-    }).then((selection) => {
+    }).then(async(selection) => {
         if (!selection) {
             return;
         }
 
-        let workspaceFolder = getWorkspaceFolder();
+        let workspaceFolder = await getWorkspaceFolder();
         if (!workspaceFolder) { return; }
 
         let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
