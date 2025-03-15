@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.8...v0.10.9) (2025-03-15)
+
+
+### Bug Fixes
+
+* css file missing ([9ff2720](https://github.com/ashish10alex/vscode-dataform-tools/commit/9ff27207f9b030f6688cfca8124565c5fee3069e))
+
 ### [0.10.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.7...v0.10.8) (2025-03-15)
 
 
