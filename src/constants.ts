@@ -40,22 +40,36 @@ export async function getFileNotFoundErrorMessageForWebView(relativeFilePath:str
       workspaceFolder = await getWorkspaceFolder();
     }
     
-    let errorMessage = `file <b>"${relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b>"${workspaceFolder}"</b> <br>`;
-    errorMessage += `<p>Ignore the error if the file you are in is not expected to produce a sql output</p>`;
-    errorMessage += `<h4>Possible resolution/fix(s): </h4>`;
-
-    errorMessage += `<ol>`;
-
-    errorMessage += `<li>Check if running "dataform compile" throws an error</li>`;
-    errorMessage += `<li>Check if case of the file has been changed and the case does not match what is being shown in the error message above, this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. A workaround for this is:`;
-
-    errorMessage += `<ol>`;
-    errorMessage += `<li>Change the filename to something arbitrary and save it</li>`;
-    errorMessage += `<li>Reload the VSCode window</li>`;
-    errorMessage += `<li>Change the file name to the case you want and recompile Dataform by saving the file</li>`;
-    errorMessage += `</ol>`;
-
-    errorMessage += `</li>`;
-    errorMessage += `</ol>`;
+    // Create a single HTML string with the error message
+    const errorMessage = `
+      <script>
+        function postSelectWorkspaceMessage() {
+          const vscode = acquireVsCodeApi();
+          vscode.postMessage({
+            command: 'selectWorkspaceFolder'
+          });
+        }
+      </script>
+      <div>
+        <p>File <b>"${relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b>"${workspaceFolder}"</b></p>
+        <p>Ignore the error if the file you are in is not expected to produce a sql output</p>
+        <h4>Possible resolution/fix(s):</h4>
+        <ol>
+          <li>Check if running "dataform compile" throws an error</li>
+          <li>Select the workspace folder by <a href="#" onclick="postSelectWorkspaceMessage()">clicking here</a></li>
+          <li>
+            Check if case of the file has been changed and the case does not match what is being shown in the error message above, 
+            this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660">#123660</a>. 
+            A workaround for this is:
+            <ol>
+              <li>Change the filename to something arbitrary and save it</li>
+              <li>Reload the VSCode window</li>
+              <li>Change the file name to the case you want and recompile Dataform by saving the file</li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+    `;
+    
     return errorMessage;
 }

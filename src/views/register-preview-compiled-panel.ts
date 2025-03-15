@@ -188,6 +188,7 @@ export class CompiledQueryPanel {
 
         this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
           async message => {
+            console.log("message", message);
             const now = Date.now();
             if(this.centerPanel){
                 if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
@@ -199,6 +200,10 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'selectWorkspaceFolder':
+                await selectWorkspaceFolder();
+                vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
+                return;
               case 'dependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
@@ -338,7 +343,6 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": errorMessage
             });
-            await selectWorkspaceFolder();
             return;
         }
         updateSchemaAutoCompletions(curFileMeta);

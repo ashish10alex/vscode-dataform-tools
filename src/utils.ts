@@ -488,7 +488,6 @@ export async function selectWorkspaceFolder() {
         const selectedFolder = await vscode.window.showQuickPick(folderOptions, {placeHolder: "Select the Dataform workspace which this file belongs to"});
         if (selectedFolder) {
             workspaceFolder = selectedFolder.value;
-            vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
             return workspaceFolder;
         }
         return undefined;
