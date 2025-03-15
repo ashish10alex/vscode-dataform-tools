@@ -126,6 +126,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
     const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
     let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
+    const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
+    const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
     const nonce = getNonce();
     // TODO: light theme does not seem to get picked up
     let highlighJstThemeUri = getHighlightJsThemeUri();
@@ -143,8 +145,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
           <script src="${cdnLinks.highlightJsUri}"></script>
-          <script src="${cdnLinks.highlightJsCopyExtUri}"></script>
-          <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
+          <script src="${highlightJsCopyExtUri}"></script>
+          <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
           <link rel="stylesheet" href="${highlighJstThemeUri}">
 
           <link href="${tabulatorCssUri}" rel="stylesheet">

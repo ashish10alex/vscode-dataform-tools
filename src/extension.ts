@@ -47,8 +47,6 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.cdnLinks = {
         highlightJsCssUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css",
         highlightJsUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
-        highlightJsCopyExtUri: "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js",
-        highlightJsCopyExtCssUri: "https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css",
         highlightJsOneDarkThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
         highlightJsOneLightThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css",
         highlightJsLineNoExtUri: "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",

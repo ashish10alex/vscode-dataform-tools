@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.7...v0.10.8) (2025-03-15)
+
+
+### Features
+
+* choose the active document even if it is not explicitly selected ([#123](https://github.com/ashish10alex/vscode-dataform-tools/issues/123)) ([b8e80da](https://github.com/ashish10alex/vscode-dataform-tools/commit/b8e80dabbca39c33ac43e17c24418d2d8e6d4866))
+
+
+### Bug Fixes
+
+* highlightjs-copy cdn links are not working, using minified dist files ([89ffd1a](https://github.com/ashish10alex/vscode-dataform-tools/commit/89ffd1afe50e19cb1194ac49f70d1aec91a0a3b4))
+
+### [0.10.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.6...v0.10.7) (2025-03-13)
+
+### Features
+
+* choose the active document even if it is not explicitly selected (#123) ([#123](https://github.com/ashish10alex/vscode-dataform-tools/pull/123))
+
 ### [0.10.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.5...v0.10.6) (2025-03-06)
 
 

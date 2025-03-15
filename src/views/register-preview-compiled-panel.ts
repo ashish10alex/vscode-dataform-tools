@@ -524,6 +524,8 @@ export class CompiledQueryPanel {
         const showCompiledQueryUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showCompiledQuery.js"));
         const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
         let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
+        const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
+        const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
         const nonce = getNonce();
 
         let highlighJstThemeUri = getHighlightJsThemeUri();
@@ -541,8 +543,8 @@ export class CompiledQueryPanel {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
             <script src="${cdnLinks.highlightJsUri}"></script>
-            <script src="${cdnLinks.highlightJsCopyExtUri}"></script>
-            <link rel="stylesheet" href="${cdnLinks.highlightJsCopyExtCssUri}" />
+            <script src="${highlightJsCopyExtUri}"></script>
+            <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
             <link rel="stylesheet" href="${highlighJstThemeUri}">
             <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
 
