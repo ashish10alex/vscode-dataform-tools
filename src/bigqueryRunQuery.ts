@@ -187,9 +187,11 @@ export async function queryBigQuery(query: string) {
         Object.entries(row).forEach(([key, value]: [any, any]) => {
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
-
-                if ((value[0] && typeof value[0] === "string") || (value.length === 0) || Object.keys(value[0])[0] === "value") {
+                if (Array.isArray(value) && ((value[0] && typeof value[0] === "string") || (value.length === 0) || (value[0] && Object.keys(value[0])[0] === "value"))) {
                     value = convertArrayToObject(value, key);
+                } else if (typeof value === "object" && !Array.isArray(value) && value !== null) {
+                    const structValues = [value];
+                    value = structValues;
                 }
 
                 let _childrens: any = [];
