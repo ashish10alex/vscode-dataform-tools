@@ -155,7 +155,7 @@ window.addEventListener('message', event => {
 
         new Tabulator("#bigqueryResults", {
             layout: "fitDataFill",
-            height: "100%",
+            height: "calc(100vh - 200px)",
             data:results,
             columns:columns,
             // autoColumns:true,
