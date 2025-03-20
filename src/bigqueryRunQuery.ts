@@ -4,6 +4,10 @@ import { QueryResultsOptions } from '@google-cloud/bigquery';
 import { bigQuerytimeoutMs } from './constants';
 import { formatBytes } from './utils';
 
+let bigQueryJob: any;
+let cancelBigQueryJobSignal = false;
+let queryLimit = 1000;
+
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
     if (typeof value === 'object' && value !== null) {
@@ -187,9 +191,14 @@ export async function queryBigQuery(query: string) {
         Object.entries(row).forEach(([key, value]: [any, any]) => {
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
-
-                if ((value[0] && typeof value[0] === "string") || (value.length === 0) || Object.keys(value[0])[0] === "value") {
+                if (Array.isArray(value) && ((value[0] && typeof value[0] === "string") || (value.length === 0) || (value[0] && Object.keys(value[0])[0] === "value"))) {
                     value = convertArrayToObject(value, key);
+                } else if (typeof value === "object" && !Array.isArray(value) && value !== null) {
+                    Object.entries(value).forEach(([fieldName, fieldValue]) => {
+                        const fullFieldName = `${key}_x_${fieldName}`;
+                        obj[fullFieldName] = fieldValue;
+                    });
+                    return;
                 }
 
                 let _childrens: any = [];
