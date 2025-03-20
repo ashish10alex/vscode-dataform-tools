@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.9...v0.10.10) (2025-03-20)
+
+
+### Bug Fixes
+
+* data preview cannot render struct types ([#126](https://github.com/ashish10alex/vscode-dataform-tools/issues/126)) ([8219ade](https://github.com/ashish10alex/vscode-dataform-tools/commit/8219ade03753f9d2a14bc9c6224adb955f925787))
+
 ### [0.10.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.8...v0.10.9) (2025-03-15)
 
 
