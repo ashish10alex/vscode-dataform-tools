@@ -247,7 +247,7 @@ window.addEventListener('message', event => {
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
     const lineageMetadata = event?.data?.lineageMetadata;
-    let modelLastUpdateTime = event?.data?.modelLastUpdateTime;
+    let modelsLastUpdateTimesMeta = event?.data?.modelsLastUpdateTimesMeta;
     if (models){
 
         let targetTablesOrViews = event?.data?.targetTablesOrViews;
@@ -256,17 +256,19 @@ window.addEventListener('message', event => {
             targetTableOrViewLink.style.display = "";
             
             let linksHtml = '';
-            for (const targetTableOrView of targetTablesOrViews) {
+            for (const [index, targetTableOrView] of targetTablesOrViews.entries()) {
                 const modelName = `${targetTableOrView.target.database}.${targetTableOrView.target.schema}.${targetTableOrView.target.name}`;
                 const modelUrl = getUrlToNavigateToTableInBigQuery(targetTableOrView.target.database, targetTableOrView.target.schema, targetTableOrView.target.name);
                 fullModelName = modelName;
 
-                if (modelLastUpdateTime) {
+                if (modelsLastUpdateTimesMeta) {
+                    const modelLastUpdateTime = modelsLastUpdateTimesMeta[index]?.lastModifiedTime;
+                    const modelWasUpdatedToday = modelsLastUpdateTimesMeta[index]?.modelWasUpdatedToday;
                     linksHtml += `
                         <div>
-                            <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
-                                    title="Last modified: ${event?.data?.modelLastUpdateTime}">
-                                <small>Last modified: ${event?.data?.modelLastUpdateTime}</small>
+                            <span class="modified-time ${modelWasUpdatedToday === false ? 'outdated' : ''}" 
+                                    title="Last modified: ${modelLastUpdateTime || 'n/a'}">
+                                <small>Last modified: ${modelLastUpdateTime || 'n/a'}</small>
                             </span><br>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <a href="${modelUrl}">${modelName}</a>

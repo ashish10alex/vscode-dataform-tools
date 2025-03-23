@@ -415,9 +415,9 @@ export class CompiledQueryPanel {
             return;
         }
 
-        const [dryRunResults, modelLastUpdateTimeMeta] = await Promise.all([
+        const [dryRunResults, modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false),
-            getModelLastModifiedTime(targetTablesOrViews[0].target.database, targetTablesOrViews[0].target.schema, targetTablesOrViews[0].target.name)
+            getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
         ]);
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
 
@@ -496,8 +496,7 @@ export class CompiledQueryPanel {
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
-                "modelLastUpdateTime": modelLastUpdateTimeMeta.lastModifiedTime,
-                "modelWasUpdatedToday": modelLastUpdateTimeMeta.modelWasUpdatedToday,
+                "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTablesOrViews, errorMessage, dryRunStat, location};
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
