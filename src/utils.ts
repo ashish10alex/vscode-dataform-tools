@@ -630,48 +630,61 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     let finalTables: any[] = [];
 
     if(tables?.length > 0){
-        const table = tables.find(table => table.fileName === relativeFilePath);
-        if (table) {
-            logger.debug(`Table found: ${table.fileName}`);
-            switch (table.type) {
-                case "table":
-                case "view":
-                    queryMeta.type = table.type;
-                    queryMeta.tableOrViewQuery = table.query.trimStart() + "\n ;";
-                    break;
-                case "incremental":
-                    queryMeta.type = table.type;
-                    queryMeta.nonIncrementalQuery = table.query + ";";
-                    queryMeta.incrementalQuery = table.incrementalQuery + ";";
-                    if (table.incrementalPreOps) {
-                        queryMeta.incrementalPreOpsQuery = table.incrementalPreOps.join("\n") + "\n";
-                    }
-                    break;
-                default:
-                    console.warn(`Unexpected table type: ${table.type}`);
-            }
+        let matchingTables;
+        if (relativeFilePath.endsWith('.js')) {
+            matchingTables = tables.filter(table => table.fileName === relativeFilePath);
+        } else {
+           matchingTables = tables.find(table => table.fileName === relativeFilePath);
+        }
 
-            // Process preOps and postOps
-            if (table.preOps) {
-                queryMeta.preOpsQuery = table.preOps.join("\n") + "\n";
-            }
-            if (table.postOps) {
-                queryMeta.postOpsQuery = table.postOps.join("\n") + "\n";
-            }
+        // make matchingTables an array if it is not already
+        if (matchingTables && !Array.isArray(matchingTables)) {
+            matchingTables = [matchingTables];
+        }
 
-            const tableFound = {
-                type: table.type,
-                tags: table.tags,
-                fileName: relativeFilePath,
-                target: table.target,
-                preOps: table.preOps,
-                postOps: table.postOps,
-                dependencyTargets: table.dependencyTargets,
-                incrementalQuery: table.incrementalQuery ?? "",
-                incrementalPreOps: table.incrementalPreOps ?? [],
-                actionDescriptor: table.actionDescriptor
-            };
-            finalTables.push(tableFound);
+        if (matchingTables && matchingTables.length > 0) {
+            logger.debug(`Found ${matchingTables.length} table(s) with filename: ${relativeFilePath}`);
+            queryMeta.type = matchingTables[0].type;
+
+            matchingTables.forEach(table => {
+
+                switch (table.type) {
+                    case "table":
+                    case "view":
+                        queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
+                        break;
+                    case "incremental":
+                        queryMeta.nonIncrementalQuery += (queryMeta.nonIncrementalQuery ? "\n" : "") + table.query + ";";
+                        queryMeta.incrementalQuery += (queryMeta.incrementalQuery ? "\n" : "") + table.incrementalQuery + ";";
+                        if (table.incrementalPreOps) {
+                            queryMeta.incrementalPreOpsQuery += (queryMeta.incrementalPreOpsQuery ? "\n" : "") + table.incrementalPreOps.join("\n") + "\n";
+                        }
+                        break;
+                    default:
+                        console.warn(`Unexpected table type: ${table.type}`);
+                }
+
+                if (table.preOps) {
+                    queryMeta.preOpsQuery += (queryMeta.preOpsQuery ? "\n" : "") + table.preOps.join("\n") + "\n";
+                }
+                if (table.postOps) {
+                    queryMeta.postOpsQuery += (queryMeta.postOpsQuery ? "\n" : "") + table.postOps.join("\n") + "\n";
+                }
+
+                const tableFound = {
+                    type: table.type,
+                    tags: table.tags,
+                    fileName: relativeFilePath,
+                    target: table.target,
+                    preOps: table.preOps,
+                    postOps: table.postOps,
+                    dependencyTargets: table.dependencyTargets,
+                    incrementalQuery: table.incrementalQuery ?? "",
+                    incrementalPreOps: table.incrementalPreOps ?? [],
+                    actionDescriptor: table.actionDescriptor
+                };
+                finalTables.push(tableFound);
+            });
         }
     }
 
