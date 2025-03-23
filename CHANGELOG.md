@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.10.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.10...v0.10.11) (2025-03-23)
+
+
+### Features
+
+* make multiple views/tables query visible from a single .js file ([#129](https://github.com/ashish10alex/vscode-dataform-tools/issues/129)) ([35f2f3a](https://github.com/ashish10alex/vscode-dataform-tools/commit/35f2f3ae3a97308e44933132f732c002f4f73679))
+
 ### [0.10.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.9...v0.10.10) (2025-03-20)
 
 
