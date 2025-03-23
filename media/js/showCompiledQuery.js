@@ -478,7 +478,7 @@ window.addEventListener('message', event => {
             const fieldName = row.getData().name;
             const newDescription = cell.getValue();
             descriptionData[fieldName] = newDescription;
-            schemaCodeBlock.textContent = JSON.stringify(descriptionData, null, 2);
+            schemaCodeBlock.textContent = JSON.stringify(descriptionData, null, 2).replace(/"([^"]+)":/g, '$1:');
             // remove existing highlight and line numbers
             schemaCodeBlock.removeAttribute('data-highlighted');
             schemaCodeBlock.className = schemaCodeBlock.className.replace(/\bhljs\b/, '');
