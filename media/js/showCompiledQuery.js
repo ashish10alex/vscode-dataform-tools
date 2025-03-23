@@ -6,6 +6,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
+function createCopyButton(modelName){
+    return `
+        <div class="copy-button-container">
+            <button class="copy-model-button" title="Copy model name" onclick="copyModelNameHandler('${modelName}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span class="button-text"></span>
+            </button>
+        </div>
+    `;
+}
+
+
 const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
 const costEstimatorButton = document.getElementById('costEstimator');
@@ -95,9 +110,10 @@ function costEstimatorClickHandler() {
     }, 3000);
 }
 
-function copyModelNameHandler(){
-    const textToCopy = "`" + fullModelName  + "`";
-    const buttonText = copyModelNameButton.querySelector('.button-text');
+function copyModelNameHandler(modelName){
+    const textToCopy = "`" + modelName + "`";
+    const button = event.currentTarget;
+    const buttonText = button.querySelector('.button-text');
     navigator.clipboard.writeText(textToCopy).then(() => {
         buttonText.textContent = 'copied!';
         setTimeout(() => {
@@ -109,7 +125,7 @@ function copyModelNameHandler(){
 }
 
 if(copyModelNameButton){
-    copyModelNameButton.addEventListener('click', copyModelNameHandler);
+    copyModelNameButton.removeEventListener('click', copyModelNameHandler);
 }
 
 if (runModelButton) {
@@ -231,34 +247,48 @@ window.addEventListener('message', event => {
     const dependents = event?.data?.dependents;
     const models = event?.data?.models;
     const lineageMetadata = event?.data?.lineageMetadata;
+    let modelLastUpdateTime = event?.data?.modelLastUpdateTime;
     if (models){
 
-        let targetTableOrView = event?.data?.targetTableOrView;
-        if (targetTableOrView){
+        let targetTablesOrViews = event?.data?.targetTablesOrViews;
+        if (targetTablesOrViews) {
             modelLinkDiv.style.display = "";
             targetTableOrViewLink.style.display = "";
-            targetTableOrViewLink.href = getUrlToNavigateToTableInBigQuery(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name);
-            fullModelName = `${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`;
+            
+            let linksHtml = '';
+            for (const targetTableOrView of targetTablesOrViews) {
+                const modelName = `${targetTableOrView.target.database}.${targetTableOrView.target.schema}.${targetTableOrView.target.name}`;
+                const modelUrl = getUrlToNavigateToTableInBigQuery(targetTableOrView.target.database, targetTableOrView.target.schema, targetTableOrView.target.name);
+                fullModelName = modelName;
 
-            modelLastUpdateTime = event?.data?.modelLastUpdateTime;
-
-            if(!modelLastUpdateTime){
-                targetTableOrViewLink.innerHTML  = `${fullModelName}`;
-                targetTableOrViewLink.innerHTML = `
-                    <span class="modified-time">
-                        <small>Last modified: n/a</small>
-                    </span><br>
-                    ${fullModelName}
-                `;
-            }else{
-                targetTableOrViewLink.innerHTML = `
-                    <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
-                            title="Last modified: ${event?.data?.modelLastUpdateTime}">
-                    <small>Last modified: ${event?.data?.modelLastUpdateTime}</small>
-                    </span><br>
-                    ${fullModelName}
-                `;
+                if (modelLastUpdateTime) {
+                    linksHtml += `
+                        <div>
+                            <span class="modified-time ${event?.data?.modelWasUpdatedToday === false ? 'outdated' : ''}" 
+                                    title="Last modified: ${event?.data?.modelLastUpdateTime}">
+                                <small>Last modified: ${event?.data?.modelLastUpdateTime}</small>
+                            </span><br>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <a href="${modelUrl}">${modelName}</a>
+                                ${createCopyButton(modelName)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    linksHtml += `
+                        <div>
+                            <span class="modified-time">
+                                <small>Last modified: n/a</small>
+                            </span><br>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <a href="${modelUrl}">${modelName}</a>
+                                ${createCopyButton(modelName)}
+                            </div>
+                        </div>
+                    `;
+                }
             }
+            targetTableOrViewLink.innerHTML = linksHtml;
         }
 
 
@@ -359,7 +389,9 @@ window.addEventListener('message', event => {
         for (const dep of dependents) {
             _dependentsList.push(`${dep.database}.${dep.schema}.${dep.name}`);
         }
-        _dependentsList.push((`${targetTableOrView.database}.${targetTableOrView.schema}.${targetTableOrView.name}`));
+        for (const targetTable of targetTablesOrViews) {
+            _dependentsList.push(`${targetTable.target.database}.${targetTable.target.schema}.${targetTable.target.name}`);
+        }
 
         const liniageDependencies = lineageMetadata?.dependencies;
         if (lineageMetadata && liniageDependencies?.length > 0 && !lineageMetadata.error){

@@ -115,7 +115,7 @@ export class CompiledQueryPanel {
     public currentFileMetadata: any;
     private lastMessageTime = 0;
     private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTableOrView:any, errorMessage: string, dryRunStat:any, location: string|undefined};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, location: string|undefined};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata);
@@ -226,7 +226,7 @@ export class CompiledQueryPanel {
                     }
                     const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                     const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                    const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
+                    const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                     const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                     const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
                     this.centerPanel?.webviewPanel.webview.postMessage({
@@ -244,7 +244,7 @@ export class CompiledQueryPanel {
                         "errorMessage": errorMessage,
                         "dryRunStat":  dryRunStat,
                         "compiledQuerySchema": compiledQuerySchema,
-                        "targetTableOrView": targetTableOrView,
+                        "targetTablesOrViews": targetTablesOrViews,
                         "models": curFileMeta.fileMetadata.tables,
                         "dependents": curFileMeta.dependents,
                         "dataformTags": dataformTags,
@@ -268,7 +268,7 @@ export class CompiledQueryPanel {
               case 'lineageMetadata':
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                const targetTableOrView  = this.centerPanel?._cachedResults?.targetTableOrView;
+                const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                 const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                 const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
                 const location = this.centerPanel?._cachedResults?.location || "eu"; // TODO: check if there is way to have a better default
@@ -289,7 +289,7 @@ export class CompiledQueryPanel {
                     "errorMessage": errorMessage,
                     "dryRunStat":  dryRunStat,
                     "compiledQuerySchema": compiledQuerySchema,
-                    "targetTableOrView": targetTableOrView,
+                    "targetTablesOrViews": targetTablesOrViews,
                     "models": curFileMeta.fileMetadata.tables,
                     "dependents": curFileMeta.dependents,
                     "dataformTags": dataformTags,
@@ -386,7 +386,7 @@ export class CompiledQueryPanel {
         }
 
         let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
-        let targetTableOrView = curFileMeta.fileMetadata.tables[0]?.target;
+        let targetTablesOrViews = curFileMeta.fileMetadata.tables;
 
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -400,7 +400,7 @@ export class CompiledQueryPanel {
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compiledQuerySchema": compiledQuerySchema,
-            "targetTableOrView": targetTableOrView,
+            "targetTablesOrViews": targetTablesOrViews,
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
     });
@@ -410,14 +410,14 @@ export class CompiledQueryPanel {
         }
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
-        if (!queryAutoCompMeta || !curFileMeta.document || !targetTableOrView){
+        if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
             //TODO: show some error message in this case
             return;
         }
 
         const [dryRunResults, modelLastUpdateTimeMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false),
-            getModelLastModifiedTime(targetTableOrView.database, targetTableOrView.schema, targetTableOrView.name)
+            getModelLastModifiedTime(targetTablesOrViews[0].target.database, targetTablesOrViews[0].target.schema, targetTablesOrViews[0].target.name)
         ]);
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
 
@@ -492,14 +492,14 @@ export class CompiledQueryPanel {
                 "dryRunStat":  dryRunStat,
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
-                "targetTableOrView": targetTableOrView,
+                "targetTablesOrViews": targetTablesOrViews,
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelLastUpdateTime": modelLastUpdateTimeMeta.lastModifiedTime,
                 "modelWasUpdatedToday": modelLastUpdateTimeMeta.modelWasUpdatedToday,
             });
-            this._cachedResults = { fileMetadata, curFileMeta, targetTableOrView, errorMessage, dryRunStat, location};
+            this._cachedResults = { fileMetadata, curFileMeta, targetTablesOrViews, errorMessage, dryRunStat, location};
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
         }
@@ -582,15 +582,6 @@ export class CompiledQueryPanel {
 
         <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
             <a id="targetTableOrViewLink"></a>
-            <div class="copy-button-container">
-                <button id="copyModelNameButton" class="copy-model-button" title="Copy model name">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    <span class="button-text"></span>
-                </button>
-            </div>
         </div>
 
         <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">
