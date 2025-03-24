@@ -139,7 +139,7 @@ export class CompiledQueryPanel {
                     return;
                 }
 
-                let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(currentFileMetadata);
+                let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
                 if (!queryAutoCompMeta){
                     return;
                 }
@@ -151,7 +151,7 @@ export class CompiledQueryPanel {
                     diagnosticCollection.clear();
                 }
                 if (currentFileMetadata.document){
-                    dryRunAndShowDiagnostics(currentFileMetadata, queryAutoCompMeta, currentFileMetadata.document, diagnosticCollection, false);
+                    dryRunAndShowDiagnostics(currentFileMetadata, currentFileMetadata.document, diagnosticCollection, false);
                 }
                 return;
             }
@@ -409,14 +409,14 @@ export class CompiledQueryPanel {
             diagnosticCollection.clear();
         }
 
-        let queryAutoCompMeta = await gatherQueryAutoCompletionMeta(curFileMeta);
+        let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
             //TODO: show some error message in this case
             return;
         }
 
         const [dryRunResults, modelsLastUpdateTimesMeta] = await Promise.all([
-            dryRunAndShowDiagnostics(curFileMeta, queryAutoCompMeta, curFileMeta.document, diagnosticCollection, false),
+            dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
         ]);
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
