@@ -161,9 +161,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 index,
                 status,
                 query: meta.query,
-                results: meta.results,
-                columns: meta.columns,
-                jobStats: meta.jobStats
               };
             });
             

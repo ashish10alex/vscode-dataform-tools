@@ -197,7 +197,7 @@ window.addEventListener('message', event => {
     const noResults = event?.data?.noResults;
     const jobCostMeta = jobStats?.jobCostMeta;
     const bigQueryJobEndTime = jobStats?.bigQueryJobEndTime;
-    const bigQueryJobId = jobStats?.bigQueryJobId || event?.data?.bigQueryJobId;
+    const bigQueryJobId =  event?.data?.bigQueryJobId || jobStats?.bigQueryJobId;
     const bigQueryJobCancelled = event?.data?.bigQueryJobCancelled;
     const errorMessage = event?.data?.errorMessage;
     const query = event?.data?.query;
@@ -262,13 +262,14 @@ window.addEventListener('message', event => {
         });
     }
 
+    if (bigQueryJobId) {
+        updateBigQueryJobLink(bigQueryJobId);
+    }
+
     if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime);
-        if (bigQueryJobId) {
-            updateBigQueryJobLink(bigQueryJobId);
-        }
         clearInterval(timerInterval);
         clearLoadingMessage();
 
