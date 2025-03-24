@@ -33,9 +33,14 @@ navLinks.forEach(link => {
     if (this.getAttribute('href') === '#results') {
         document.getElementById("resultBlock").style.display = "";
         document.getElementById("codeBlock").style.display = "none";
+        // Also show multi-results block if it's visible
+        if (document.getElementById("multiResultsBlock").style.display !== "none") {
+            document.getElementById("multiResultsBlock").style.display = "";
+        }
     } else {
         document.getElementById("codeBlock").style.display = "";
         document.getElementById("resultBlock").style.display = "none";
+        document.getElementById("multiResultsBlock").style.display = "none";
     }
     });
 });
@@ -73,6 +78,56 @@ if (queryLimit){
     });
 }
 
+// Add event listener for the Back to Summary button
+const backToSummaryButton = document.getElementById('backToSummaryButton');
+if (backToSummaryButton) {
+    backToSummaryButton.addEventListener('click', function() {
+        // Hide the back button
+        document.getElementById('backToSummaryDiv').style.display = 'none';
+        
+        // Hide details view
+        document.getElementById('resultBlock').style.display = 'none';
+        document.getElementById('noResultsDiv').style.display = 'none';
+        document.getElementById('errorsDiv').style.display = 'none';
+        
+        // Clear any displayed data
+        document.getElementById('bigqueryResults').innerHTML = '';
+        document.getElementById('bigqueryerror').textContent = '';
+        
+        // Show multi-results view
+        document.getElementById('multiResultsBlock').style.display = 'block';
+        console.log("currentSummaryData", currentSummaryData);
+        
+        // Recreate the summary table if needed
+        if (currentSummaryData) {
+            const columns = [
+                {title: "Status", field: "status", headerSort: true, width: 120},
+                {title: "Action", field: "index", formatter: function(cell) {
+                    return "<button class='view-result-btn'>View Results</button>";
+                }, cellClick: function(e, cell) {
+                    if (e.target.classList.contains('view-result-btn')) {
+                        const rowData = cell.getRow().getData();
+                        handleViewResultClick(rowData.index);
+                    }
+                }, headerSort: false, width: 120}
+            ];
+            
+            new Tabulator("#multiQueryResults", {
+                layout: "fitDataFill",
+                height: "calc(100vh - 250px)",
+                data: currentSummaryData,
+                columns: columns,
+                pagination: "local",
+                paginationSize: 20,
+                paginationCounter: "rows",
+            });
+        }
+    });
+}
+
+// Store summary data for later use when switching back to summary view
+let currentSummaryData = null;
+
 function updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime) {
     let queryStatsText = bigQueryJobEndTime  + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | billed:  ' + jobCostMeta ;
     document.getElementById('datetime').textContent = "Query results ran at: " + queryStatsText;
@@ -100,13 +155,39 @@ let timerInterval = undefined;
 let elapsedTime = 0;
 let loadingMessage = undefined;
 
-function postRunCleanup(){
-    clearInterval(timerInterval);
-    if (loadingMessage){
+function clearLoadingMessage() {
+    if (loadingMessage && document.body.contains(loadingMessage)) {
         document.body.removeChild(loadingMessage);
     }
+    loadingMessage = undefined;
+}
+
+function postRunCleanup(){
+    clearInterval(timerInterval);
+    clearLoadingMessage();
     updateDateTime(elapsedTime, '0');
     document.getElementById("cancelBigQueryJobButton").disabled = true;
+}
+
+function handleViewResultClick(resultIndex) {
+    // Clear any previous results first
+    document.getElementById('bigqueryResults').innerHTML = '';
+    document.getElementById('noResultsDiv').style.display = 'none';
+    document.getElementById('errorsDiv').style.display = 'none';
+    document.getElementById('bigqueryerror').textContent = '';
+    
+    // Show the back button
+    document.getElementById('backToSummaryDiv').style.display = 'block';
+    
+    // Hide multi-results block and show single result block
+    document.getElementById('multiResultsBlock').style.display = 'none';
+    document.getElementById('resultBlock').style.display = 'block';
+    
+    // Request the specific result
+    vscode.postMessage({
+        command: 'viewResultDetail',
+        resultIndex: resultIndex
+    });
 }
 
 window.addEventListener('message', event => {
@@ -123,7 +204,12 @@ window.addEventListener('message', event => {
     const showLoadingMessage = event?.data?.showLoadingMessage;
     const type = event?.data?.type;
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
-    checkbox.checked = incrementalCheckBox;
+    const multiResults = event?.data?.multiResults;
+    const summaryData = event?.data?.summaryData;
+    
+    if (checkbox) {
+        checkbox.checked = incrementalCheckBox;
+    }
 
     if (type === "incremental"){
        incrementalCheckBoxDiv.style.display = "";
@@ -131,15 +217,60 @@ window.addEventListener('message', event => {
        incrementalCheckBoxDiv.style.display = "none";
     }
 
+    // Handle multiple query results
+    if (multiResults && summaryData) {
+        document.getElementById("runQueryButton").disabled = false;
+        document.getElementById("cancelBigQueryJobButton").disabled = true;
+        clearInterval(timerInterval);
+        clearLoadingMessage();
+        
+        // Hide the single result display
+        document.getElementById('resultBlock').style.display = 'none';
+        
+        // Hide the back button
+        document.getElementById('backToSummaryDiv').style.display = 'none';
+        
+        // Show the multi-results block
+        const multiResultsBlock = document.getElementById('multiResultsBlock');
+        multiResultsBlock.style.display = 'block';
+        
+        // Store summary data for later use
+        currentSummaryData = summaryData;
+        
+        // Create columns for the summary table - removed Query column as requested
+        const columns = [
+            {title: "Status", field: "status", headerSort: true, width: 120},
+            {title: "Action", field: "index", formatter: function(cell) {
+                return "<button class='view-result-btn'>View Results</button>";
+            }, cellClick: function(e, cell) {
+                if (e.target.classList.contains('view-result-btn')) {
+                    const rowData = cell.getRow().getData();
+                    handleViewResultClick(rowData.index);
+                }
+            }, headerSort: false, width: 120}
+        ];
+        
+        // Create the tabulator table
+        new Tabulator("#multiQueryResults", {
+            layout: "fitDataFill",
+            height: "calc(100vh - 250px)",
+            data: summaryData,
+            columns: columns,
+            pagination: "local",
+            paginationSize: 20,
+            paginationCounter: "rows",
+        });
+    }
+
     if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime);
-        updateBigQueryJobLink(bigQueryJobId);
-        clearInterval(timerInterval);
-        if (loadingMessage){
-            document.body.removeChild(loadingMessage);
+        if (bigQueryJobId) {
+            updateBigQueryJobLink(bigQueryJobId);
         }
+        clearInterval(timerInterval);
+        clearLoadingMessage();
 
         const errorMessageBlock = document.getElementById('errorMessage');
         const errorMessageDiv = document.getElementById('errorsDiv');
@@ -147,24 +278,30 @@ window.addEventListener('message', event => {
             if (type === "assertion"){
                 errorMessageDiv.style.display = "";
                 errorMessageBlock.textContent = `Assertion failed !`;
-            } 
+            } else {
+                errorMessageDiv.style.display = "none";
+            }
         }
 
+        // Ensure result block is visible and clear any previous table
+        document.getElementById('resultBlock').style.display = 'block';
+        document.getElementById('bigqueryResults').innerHTML = '';
+        
         // Show the table
         document.getElementById('bigqueryResults').style.display = 'table';
 
         new Tabulator("#bigqueryResults", {
             layout: "fitDataFill",
             height: "calc(100vh - 200px)",
-            data:results,
-            columns:columns,
+            data: results,
+            columns: columns,
             // autoColumns:true,
-            dataTree:true,
-            dataTreeStartExpanded:false,
+            dataTree: true,
+            dataTreeStartExpanded: false,
             rowHeader: { formatter: "rownum", headerSort: false, hozAlign: "center", resizable: false, frozen: true, width: 60 },
-            pagination:"local",
-            paginationSize:20,
-            paginationCounter:"rows",
+            pagination: "local",
+            paginationSize: 20,
+            paginationCounter: "rows",
         });
     }
 
@@ -207,6 +344,10 @@ window.addEventListener('message', event => {
 
     if (showLoadingMessage){
         document.getElementById("cancelBigQueryJobButton").disabled = false;
+        
+        // Clear any existing loading message first
+        clearLoadingMessage();
+        
         // Create a loading message element
         loadingMessage = document.createElement('div');
         loadingMessage.id = 'loading-message';
@@ -223,7 +364,9 @@ window.addEventListener('message', event => {
 
         function updateLoadingMessage() {
             elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-            loadingMessage.textContent = `Loading data... (${elapsedTime} seconds)`;
+            if (loadingMessage) {
+                loadingMessage.textContent = `Loading data... (${elapsedTime} seconds)`;
+            }
             return elapsedTime;
         }
 
