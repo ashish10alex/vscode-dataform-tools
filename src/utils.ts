@@ -1131,24 +1131,26 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
 
     let queryToDryRun = "";
     const type = curFileMeta.fileMetadata.queryMeta.type ;
+    const fileMetadata = curFileMeta.fileMetadata;
+
     if (type === "table" || type === "view") {
-        let preOpsQuery = curFileMeta.fileMetadata.queryMeta.preOpsQuery;
+        let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
         if(preOpsQuery && preOpsQuery !== ""){
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
         }
-        queryToDryRun = preOpsQuery + curFileMeta.fileMetadata.queryMeta.tableOrViewQuery;
+        queryToDryRun = preOpsQuery + fileMetadata.queryMeta.tableOrViewQuery;
     } else if (type === "assertion") {
-        queryToDryRun = curFileMeta.fileMetadata.queryMeta.assertionQuery;
+        queryToDryRun = fileMetadata.queryMeta.assertionQuery;
     } else if (type === "operations") {
-        queryToDryRun = curFileMeta.fileMetadata.queryMeta.preOpsQuery + curFileMeta.fileMetadata.queryMeta.operationsQuery;
+        queryToDryRun = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (type === "incremental") {
         //TODO: defaulting to using incremental query to dry run for now
         // let nonIncrementalQuery = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.nonIncrementalQuery;
-        let preOpsQuery = curFileMeta.fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
+        let preOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
         if(preOpsQuery && preOpsQuery !== ""){
-            preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(curFileMeta.fileMetadata.queryMeta.preOpsQuery);
+            preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(fileMetadata.queryMeta.preOpsQuery);
         }
-        let incrementalQuery = preOpsQuery + curFileMeta.fileMetadata.queryMeta.incrementalQuery.trimStart();
+        let incrementalQuery = preOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
         queryToDryRun = incrementalQuery;
     }
 
@@ -1156,8 +1158,8 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
-        queryDryRun(curFileMeta.fileMetadata.queryMeta.preOpsQuery),
-        queryDryRun(curFileMeta.fileMetadata.queryMeta.postOpsQuery)
+        queryDryRun(fileMetadata.queryMeta.preOpsQuery),
+        queryDryRun(fileMetadata.queryMeta.postOpsQuery)
     ]);
 
     compiledQuerySchema = dryRunResult.schema;
