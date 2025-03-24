@@ -101,7 +101,7 @@ if (backToSummaryButton) {
         // Recreate the summary table if needed
         if (currentSummaryData) {
             const columns = [
-                {title: "Status", field: "status", headerSort: true, width: 120},
+                {title: "Assertion check", field: "status", headerSort: true, width: 120},
                 {title: "Action", field: "index", formatter: function(cell) {
                     return "<button class='view-result-btn'>View Results</button>";
                 }, cellClick: function(e, cell) {
@@ -239,7 +239,7 @@ window.addEventListener('message', event => {
         
         // Create columns for the summary table - removed Query column as requested
         const columns = [
-            {title: "Status", field: "status", headerSort: true, width: 120},
+            {title: "Assertion check", field: "status", headerSort: true, width: 120},
             {title: "Action", field: "index", formatter: function(cell) {
                 return "<button class='view-result-btn'>View Results</button>";
             }, cellClick: function(e, cell) {

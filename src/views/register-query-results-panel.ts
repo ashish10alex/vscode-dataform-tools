@@ -156,7 +156,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             
             // Prepare summary data for the multi-results table
             const summaryData = resultsMetadata.map((meta, index) => {
-              const status = meta.errorMessage ? 'Failed' : (meta.results && meta.results.length > 0) ? 'Success' : 'No results';
+              const status = meta.errorMessage ? 'Failed' : (meta.results && meta.results.length > 0) ? '❌' : '✅';
               return { 
                 index,
                 status,
