@@ -1187,7 +1187,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
         let combinedTableIds = "";
-        curFileMeta.fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+        curFileMeta.fileMetadata.tables.forEach((table: { target: Target }) => {
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
             combinedTableIds += targetTableId;
         });
