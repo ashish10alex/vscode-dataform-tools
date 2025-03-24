@@ -22,5 +22,6 @@ If applicable, add screenshots to help explain your problem.
 **Environment:**
  - Operating system
  - Dataform cli version
+ - Dataform core version
  - Version of the extension
 - ...
