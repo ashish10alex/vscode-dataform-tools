@@ -135,7 +135,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
           this._view.show(true);
-          const allQueries = query.trim().split(";").filter(q => q.trim());
+          let allQueries = [];
+          if(type === "assertion"){
+            allQueries = query.trim().split(";").filter(q => q.trim());
+          } else {
+            allQueries = [query];
+          }
           let resultsMetadata = [];
           
           for (let i = 0; i < allQueries.length; i++) {
