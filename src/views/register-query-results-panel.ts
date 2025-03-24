@@ -95,12 +95,20 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
           this._view.show(true);
-          const { results, columns, jobStats, errorMessage } = await queryBigQuery(query);
-          if(results && !errorMessage){
-            this._cachedResults = { results, columns, jobStats, query };
-            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
-            //TODO: This needs be before we run the query in backend
-            this._view.show(true);
+          const allQueries = query.trim().split(";").filter(q => q.trim());
+          let resultsMetadata = [];
+          for (const query of allQueries) {
+            const { results, columns, jobStats, errorMessage } = await queryBigQuery(query);
+            resultsMetadata.push({results, columns, jobStats, errorMessage});
+          }
+          // TODO: We would most likely need a new UI component to show multiple results
+          for (const resultMetadata of resultsMetadata) {
+            const { results, columns, jobStats, errorMessage } = resultMetadata;
+            if(results && !errorMessage){
+              this._cachedResults = { results, columns, jobStats, query };
+              this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
+              //TODO: This needs be before we run the query in backend
+              this._view.show(true);
           } else if (!errorMessage){
             //TODO: even when there is no results we could shows billed bytes 
             this._cachedResults = { results, columns, jobStats, query };
@@ -111,6 +119,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             this._view.webview.html = this._getHtmlForWebview(this._view.webview);
             this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
             this._view.show(true);
+            }
           }
       } catch (error:any) {
         let errorMessage = error?.message;
