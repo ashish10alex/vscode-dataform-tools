@@ -1103,7 +1103,7 @@ export async function gatherQueryAutoCompletionMeta(){
     if (!CACHED_COMPILED_DATAFORM_JSON){
         return;
     }
-    // all 3 of these together take less than 0.35ms (Dataform repository with 285 nodes)
+    // all 2 of these together take approx less than 0.35ms (Dataform repository with 285 nodes)
     let [declarationsAndTargets, dataformTags] = await Promise.all([
         getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
         getDataformTags(CACHED_COMPILED_DATAFORM_JSON),
