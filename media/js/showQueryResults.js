@@ -82,6 +82,7 @@ if (queryLimit){
 const backToSummaryButton = document.getElementById('backToSummaryButton');
 if (backToSummaryButton) {
     backToSummaryButton.addEventListener('click', function() {
+        hideQuery();
         // Hide the back button
         document.getElementById('backToSummaryDiv').style.display = 'none';
         
@@ -190,6 +191,34 @@ function handleViewResultClick(resultIndex) {
     });
 }
 
+function handleShowQueryClick(query) {
+    // Set the SQL content
+    document.getElementById("sqlCodeBlock").textContent = query;
+    
+    // Highlight the code
+    hljs.highlightElement(document.getElementById("sqlCodeBlock"));
+    
+    // Switch to code view
+    document.getElementById("resultBlock").style.display = "none";
+    document.getElementById("multiResultsBlock").style.display = "none";
+    document.getElementById("codeBlock").style.display = "";
+    
+    // Update the nav links to show the code tab as active
+    const navLinks = document.querySelectorAll('.topnav a');
+    navLinks.forEach(link => link.classList.remove('active'));
+    navLinks[1].classList.add('active');
+}
+
+function hideQuery(){
+    document.getElementById("sqlCodeBlock").textContent = '';
+    document.getElementById("resultBlock").style.display = "block";
+    document.getElementById("multiResultsBlock").style.display = "block";
+    document.getElementById("codeBlock").style.display = "none";
+    const navLinks = document.querySelectorAll('.topnav a');
+    navLinks.forEach(link => link.classList.remove('active'));
+    navLinks[0].classList.add('active');
+}
+
 window.addEventListener('message', event => {
     const results = event?.data?.results;
     const columns = event?.data?.columns;
@@ -219,6 +248,7 @@ window.addEventListener('message', event => {
 
     // Handle multiple query results
     if (multiResults && summaryData) {
+        hideQuery();
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         clearInterval(timerInterval);
