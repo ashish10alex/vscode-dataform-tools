@@ -78,6 +78,16 @@ if (queryLimit){
     });
 }
 
+function hideNavLinks(){
+    navLinks[0].style.display = 'none';
+    navLinks[1].style.display = 'none';
+}
+
+function showNavLinks(){
+    navLinks[0].style.display = '';
+    navLinks[1].style.display = '';
+}
+
 // Add event listener for the Back to Summary button
 const backToSummaryButton = document.getElementById('backToSummaryButton');
 if (backToSummaryButton) {
@@ -109,6 +119,7 @@ if (backToSummaryButton) {
                     if (e.target.classList.contains('view-result-btn')) {
                         const rowData = cell.getRow().getData();
                         handleViewResultClick(rowData.index);
+                        showNavLinks();
                     }
                 }, headerSort: false, width: 120}
             ];
@@ -194,10 +205,7 @@ function handleViewResultClick(resultIndex) {
 function handleShowQueryClick(query) {
     // Set the SQL content
     document.getElementById("sqlCodeBlock").textContent = query;
-    
-    // Highlight the code
-    hljs.highlightElement(document.getElementById("sqlCodeBlock"));
-    
+
     // Switch to code view
     document.getElementById("resultBlock").style.display = "none";
     document.getElementById("multiResultsBlock").style.display = "none";
@@ -249,6 +257,7 @@ window.addEventListener('message', event => {
     // Handle multiple query results
     if (multiResults && summaryData) {
         hideQuery();
+        hideNavLinks();
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         clearInterval(timerInterval);
@@ -276,6 +285,7 @@ window.addEventListener('message', event => {
                 if (e.target.classList.contains('view-result-btn')) {
                     const rowData = cell.getRow().getData();
                     handleViewResultClick(rowData.index);
+                    showNavLinks();
                 }
             }, headerSort: false, width: 120}
         ];
