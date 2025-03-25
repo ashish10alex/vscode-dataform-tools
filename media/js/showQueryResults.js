@@ -128,7 +128,7 @@ if (backToSummaryButton) {
                 }, cellClick: function(e, cell) {
                     if (e.target.classList.contains('view-result-btn')) {
                         const rowData = cell.getRow().getData();
-                        handleViewResultClick(rowData.index);
+                        requestSelectedResultFromMultiResultTable(rowData.index);
                         showNavLinks();
                     }
                 }, headerSort: false, width: 160},
@@ -185,12 +185,12 @@ function postRunCleanup(){
     document.getElementById("cancelBigQueryJobButton").disabled = true;
 }
 
-function handleViewResultClick(resultIndex) {
+function requestSelectedResultFromMultiResultTable(resultIndex) {
     // Clear any previous results first
     document.getElementById('bigqueryResults').innerHTML = '';
+    document.getElementById('bigqueryerror').textContent = '';
     document.getElementById('noResultsDiv').style.display = 'none';
     document.getElementById('errorsDiv').style.display = 'none';
-    document.getElementById('bigqueryerror').textContent = '';
     
     // Show the back button
     document.getElementById('backToSummaryDiv').style.display = 'block';
@@ -289,7 +289,7 @@ window.addEventListener('message', event => {
             }, cellClick: function(e, cell) {
                 if (e.target.classList.contains('view-result-btn')) {
                     const rowData = cell.getRow().getData();
-                    handleViewResultClick(rowData.index);
+                    requestSelectedResultFromMultiResultTable(rowData.index);
                     showNavLinks();
                 }
             }, headerSort: false, width: 160},
