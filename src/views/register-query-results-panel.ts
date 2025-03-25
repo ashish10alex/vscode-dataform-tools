@@ -295,7 +295,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       </div>
 
       <div id="resultBlock" style="height: 400px;">
-        <p  style="color: red"><span id="bigqueryerror"></span></p>
+        <p  style="color: red"><span id="bigqueryError"></span></p>
         <table id="bigqueryResults" class="display" width="100%"></table>
       </div>
 

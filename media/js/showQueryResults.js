@@ -131,7 +131,7 @@ if (backToSummaryButton) {
         
         // Clear any displayed data
         document.getElementById('bigqueryResults').innerHTML = '';
-        document.getElementById('bigqueryerror').textContent = '';
+        document.getElementById('bigqueryError').textContent = '';
         
         // Show multi-results view
         document.getElementById('multiResultsBlock').style.display = 'block';
@@ -191,7 +191,7 @@ function postRunCleanup(){
 function requestSelectedResultFromMultiResultTable(resultIndex) {
     // Clear any previous results first
     document.getElementById('bigqueryResults').innerHTML = '';
-    document.getElementById('bigqueryerror').textContent = '';
+    document.getElementById('bigqueryError').textContent = '';
     document.getElementById('noResultsDiv').style.display = 'none';
     document.getElementById('errorsDiv').style.display = 'none';
     
@@ -279,7 +279,7 @@ window.addEventListener('message', event => {
        incrementalCheckBoxDiv.style.display = "none";
     }
 
-    // Handle multiple query results
+    // Handle multiple query results, currently only used to separate multiple assertions queries
     if (multiResults && summaryData) {
         hideQuery();
         hideNavLinks();
@@ -383,7 +383,7 @@ window.addEventListener('message', event => {
 
     if (errorMessage){
         postRunCleanup();
-        document.getElementById('bigqueryerror').textContent = errorMessage;
+        document.getElementById('bigqueryError').textContent = errorMessage;
     }
 
     if (showLoadingMessage){
