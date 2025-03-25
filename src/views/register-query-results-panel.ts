@@ -9,6 +9,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     private _invokedByCommand: boolean = false; 
     private queryType: string = "";
     private _cachedResults?: { results: any[] | undefined, columns:any | undefined, jobStats: any, query:string|undefined };
+    private _cachedMultiResults?: { multiResultsMetadata: any[], query:string|undefined };
     private _query?:string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -39,12 +40,16 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       webviewView.onDidChangeVisibility(async() => {
         // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
-        if (webviewView.visible && this._cachedResults) {
-          this._view?.webview.postMessage(this._cachedResults);
-        } else {
-          let curFileMeta = await getCurrentFileMetadata(false);
-          let type = curFileMeta?.fileMetadata?.queryMeta.type;
-          this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox});
+        if (webviewView.visible) {
+          if (this._cachedResults) {
+            this._view?.webview.postMessage(this._cachedResults);
+          } else if (this._cachedMultiResults) {
+            this._view?.webview.postMessage(this._cachedMultiResults);
+          } else {
+            let curFileMeta = await getCurrentFileMetadata(false);
+            let type = curFileMeta?.fileMetadata?.queryMeta.type;
+            this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox});
+          }
         }
       });
 
@@ -62,6 +67,41 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 return;
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+                return;
+              case 'viewResultDetail':
+                if (this._cachedMultiResults && message.resultIndex !== undefined) {
+                  const index = message.resultIndex;
+                  const resultMetadata = this._cachedMultiResults.multiResultsMetadata[index];
+                  if (resultMetadata) {
+                    const { results, columns, jobStats, errorMessage, query } = resultMetadata;
+                    
+                    if (results && !errorMessage) {
+                      this._view?.webview.postMessage({
+                        "results": results, 
+                        "columns": columns, 
+                        "jobStats": jobStats, 
+                        "query": query,
+                        "type": this.queryType, 
+                        "incrementalCheckBox": incrementalCheckBox 
+                      });
+                    } else if (!errorMessage) {
+                      this._view?.webview.postMessage({
+                        "noResults": true, 
+                        "jobStats": jobStats, 
+                        "query": query, 
+                        "type": this.queryType, 
+                        "incrementalCheckBox": incrementalCheckBox
+                      });
+                    } else {
+                      this._view?.webview.postMessage({
+                        "errorMessage": errorMessage, 
+                        "query": query, 
+                        "type": this.queryType, 
+                        "incrementalCheckBox": incrementalCheckBox
+                      });
+                    }
+                  }
+                }
                 return;
               //@ts-ignore
               case 'queryLimit':
@@ -95,22 +135,66 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
           this._view.show(true);
-          const { results, columns, jobStats, errorMessage } = await queryBigQuery(query);
-          if(results && !errorMessage){
-            this._cachedResults = { results, columns, jobStats, query };
-            this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
-            //TODO: This needs be before we run the query in backend
+          let allQueries = [];
+          if(type === "assertion"){
+            allQueries = query.trim().split(";").filter(q => q.trim());
+          } else {
+            allQueries = [query];
+          }
+          let resultsMetadata = [];
+          
+          for (let i = 0; i < allQueries.length; i++) {
+            const singleQuery = allQueries[i];
+            const { results, columns, jobStats, errorMessage } = await queryBigQuery(singleQuery);
+            resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery});
+          }
+          
+          // If we have multiple queries, show a summary table
+          if (resultsMetadata.length > 1) {
+            this._cachedMultiResults = { multiResultsMetadata: resultsMetadata, query };
+            this._cachedResults = undefined;
+            
+            // Prepare summary data for the multi-results table
+            const summaryData = resultsMetadata.map((meta, index) => {
+              const status = meta.errorMessage ? 'Failed' : (meta.results && meta.results.length > 0) ? '❌' : '✅';
+              return { 
+                index,
+                status,
+                query: meta.query,
+              };
+            });
+            
+            this._view.webview.postMessage({
+              "multiResults": true,
+              "summaryData": summaryData,
+              "type": type,
+              "incrementalCheckBox": incrementalCheckBox
+            });
+            
             this._view.show(true);
-          } else if (!errorMessage){
-            //TODO: even when there is no results we could shows billed bytes 
-            this._cachedResults = { results, columns, jobStats, query };
-            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-            this._view.show(true);
-            this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
-          } else if(errorMessage){
-            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-            this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
-            this._view.show(true);
+          } else if (resultsMetadata.length === 1) {
+            // Single query result - use existing logic
+            const resultMetadata = resultsMetadata[0];
+            const { results, columns, jobStats, errorMessage } = resultMetadata;
+            
+            if(results && !errorMessage){
+              this._cachedResults = { results, columns, jobStats, query };
+              this._cachedMultiResults = undefined;
+              this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
+              this._view.show(true);
+            } else if (!errorMessage){
+              this._cachedResults = { results, columns, jobStats, query };
+              this._cachedMultiResults = undefined;
+              this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+              this._view.show(true);
+              this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
+            } else if(errorMessage){
+              this._cachedResults = undefined;
+              this._cachedMultiResults = undefined;
+              this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+              this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
+              this._view.show(true);
+            }
           }
       } catch (error:any) {
         let errorMessage = error?.message;
@@ -196,13 +280,22 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <p><span id="noResults"></span></p>
       </div>
 
+      <div id="multiResultsBlock" style="display: none;">
+        <h3>Assertion Checks</h3>
+        <table id="multiQueryResults" class="display" width="100%"></table>
+      </div>
+
+      <div id="backToSummaryDiv" style="display: none; margin-bottom: 10px; margin-top: 10px;">
+        <button id="backToSummaryButton" style="padding: 5px 10px; background-color: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">← Back to results summary</button>
+      </div>
+
       <div id="codeBlock" style="display: none;">
         <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </div>
 
       <div id="resultBlock" style="height: 400px;">
-        <p  style="color: red"><span id="bigqueryerror"></span></p>
+        <p  style="color: red"><span id="bigqueryError"></span></p>
         <table id="bigqueryResults" class="display" width="100%"></table>
       </div>
 

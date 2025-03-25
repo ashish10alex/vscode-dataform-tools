@@ -8,6 +8,13 @@ let bigQueryJob: any;
 let cancelBigQueryJobSignal = false;
 let queryLimit = 1000;
 
+function convertArrayToObject(array: any, columnName: string) {
+    if (array.length === 0) {
+        return [{ [columnName]: null }];
+    }
+    return array.map((item: any) => ({ [columnName]: item }));
+}
+
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
     if (typeof value === 'object' && value !== null) {
@@ -107,19 +114,19 @@ function transformBigValues(obj: any) {
     return obj;
 }
 
-export async function queryBigQuery(query: string) {
+export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
     await checkAuthentication();
 
     const bigquery = getBigQueryClient();
     if (!bigquery) {
         vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
-        return { results: undefined, columns: undefined, jobStats: undefined };
+        return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery client not available. Please check your authentication." };
     }
 
     if (cancelBigQueryJobSignal) {
         vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
         cancelBigQueryJobSignal = false;
-        return { results: undefined, columns: undefined, jobStats: undefined };
+        return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
     }
 
     try {
@@ -127,11 +134,11 @@ export async function queryBigQuery(query: string) {
     } catch (error: any) {
         try {
             await handleBigQueryError(error);
-            // If handleBigQueryError didn't throw, retry the query
-            return await queryBigQuery(query);
+            //NOTE: If handleBigQueryError didn't throw, retry the query
+            return await runQueryInBigQuery(query);
         } catch (finalError: any) {
             vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
-            return { results: undefined, columns: undefined, jobStats: undefined, errorMessage: finalError.message};
+            return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};
         }
     }
 
@@ -139,7 +146,7 @@ export async function queryBigQuery(query: string) {
     if (cancelBigQueryJobSignal) {
         await cancelBigQueryJob();
         cancelBigQueryJobSignal = false;
-        return { results: undefined, columns: undefined, jobStats: undefined };
+        return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
     }
 
     const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs:bigQuerytimeoutMs };
@@ -151,11 +158,8 @@ export async function queryBigQuery(query: string) {
         [rows] = await bigQueryJob.getQueryResults(options);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
-        return { results: undefined, columns: undefined, jobStats: undefined, errorMessage: error.message };
+        return { rows: undefined, jobStats: undefined, errorMessage: error.message };
     }
-
-    // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
-    queryLimit = 1000;
 
     let totalBytesBilled;
     let bigQueryJobId;
@@ -174,16 +178,22 @@ export async function queryBigQuery(query: string) {
         }
         bigQueryJob = undefined;
     }
+    return { rows: rows, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))}, errorMessage: undefined };
+}
 
-    if (rows.length === 0) {
-        return { results: undefined, columns: undefined, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
+export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+
+    // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
+    queryLimit = 1000;
+
+    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
+
+    if (errorMessage) {
+        return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };
     }
 
-    function convertArrayToObject(array: any, columnName: string) {
-        if (array.length === 0) {
-            return [{ [columnName]: null }];
-        }
-        return array.map((item: any) => ({ [columnName]: item }));
+    if (!rows || rows.length === 0) {
+        return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: undefined};
     }
 
     let results = rows.map((row: { [s: string]: unknown }) => {
@@ -233,7 +243,7 @@ export async function queryBigQuery(query: string) {
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))} };
+    return { results: results, columns: columns, jobStats: jobStats, errorMessage: errorMessage };
 }
 
 export async function cancelBigQueryJob() {
