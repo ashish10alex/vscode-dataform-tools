@@ -295,7 +295,7 @@ export type LastModifiedTimeMeta = {
     error: {
         message: string | undefined,
     }
-};
+}[];
 
 
 export type DependancyModelMetadata = {

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import { bigQueryDryRunCostOneGbByCurrency } from './constants';
-import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency } from './types';
+import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency, Target } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -119,39 +119,40 @@ function isModelWasUpdatedToday(lastModifiedTime:Date) {
 }
 
 
-export async function getModelLastModifiedTime(projectId: string, datasetId: string, tableId: string): Promise<LastModifiedTimeMeta> {
+export async function getModelLastModifiedTime(targetTablesOrViews: Target[]): Promise<LastModifiedTimeMeta | undefined> {
     const bigqueryClient = getBigQueryClient();
     if (!bigqueryClient) {
-        return {
-            lastModifiedTime: undefined,
-            modelWasUpdatedToday: undefined,
-            error: { message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}` }
-        };
+        return undefined;
     }
+    let lastModifiedTimeMeta: LastModifiedTimeMeta = [];
 
-    try {
-        const [table] = await bigqueryClient.dataset(datasetId, { projectId }).table(tableId).get();
-        let lastModifiedTime = table?.metadata?.lastModifiedTime;
-        lastModifiedTime = new Date(parseInt(lastModifiedTime));
-        const formattedLastModifiedTime = formatTimestamp(lastModifiedTime);
-        const modelWasUpdatedToday = isModelWasUpdatedToday(lastModifiedTime);
+    for (const targetTableOrView of targetTablesOrViews) {
+        const projectId = targetTableOrView.database;
+        const datasetId = targetTableOrView.schema;
+        const tableId = targetTableOrView.name;
 
-        return lastModifiedTime
-            ? { lastModifiedTime: formattedLastModifiedTime, modelWasUpdatedToday : modelWasUpdatedToday, error: { message: undefined } }
-            : {
+        try {
+            const [table] = await bigqueryClient.dataset(datasetId, { projectId }).table(tableId).get();
+            let lastModifiedTime = table?.metadata?.lastModifiedTime;
+            lastModifiedTime = new Date(parseInt(lastModifiedTime));
+            const formattedLastModifiedTime = formatTimestamp(lastModifiedTime);
+            const modelWasUpdatedToday = isModelWasUpdatedToday(lastModifiedTime);
+
+            lastModifiedTimeMeta.push({
+                lastModifiedTime: formattedLastModifiedTime,
+                modelWasUpdatedToday : modelWasUpdatedToday,
+                error: { message: undefined }
+            });
+        } catch (error: any) {
+            lastModifiedTimeMeta.push({
                 lastModifiedTime: undefined,
                 modelWasUpdatedToday: undefined,
                 error: {
                     message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
                 }
-            };
-    } catch (error: any) {
-        return {
-            lastModifiedTime: undefined,
-            modelWasUpdatedToday: undefined,
-            error: {
-                message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
-            }
-        };
+            });
+        }
     }
+    return lastModifiedTimeMeta;
 }
+
