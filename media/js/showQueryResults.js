@@ -111,8 +111,6 @@ if (queryLimit){
     });
 }
 
-
-// Function to get the column definitions for the summary table
 function getSummaryTableColumns() {
     return [
         {title: "Id", field: "index", headerSort: true, width: 80},
@@ -130,7 +128,6 @@ function getSummaryTableColumns() {
     ];
 }
 
-// Add event listener for the Back to Summary button
 const backToSummaryButton = document.getElementById('backToSummaryButton');
 if (backToSummaryButton) {
     backToSummaryButton.addEventListener('click', function() {
@@ -222,21 +219,6 @@ function requestSelectedResultFromMultiResultTable(resultIndex) {
         command: 'viewResultDetail',
         resultIndex: resultIndex
     });
-}
-
-function handleShowQueryClick(query) {
-    // Set the SQL content
-    document.getElementById("sqlCodeBlock").textContent = query;
-
-    // Switch to code view
-    document.getElementById("resultBlock").style.display = "none";
-    document.getElementById("multiResultsBlock").style.display = "none";
-    document.getElementById("codeBlock").style.display = "";
-    
-    // Update the nav links to show the code tab as active
-    const navLinks = document.querySelectorAll('.topnav a');
-    navLinks.forEach(link => link.classList.remove('active'));
-    navLinks[1].classList.add('active');
 }
 
 function hideQuery(){
