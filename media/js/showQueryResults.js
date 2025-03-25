@@ -113,7 +113,8 @@ if (backToSummaryButton) {
         // Recreate the summary table if needed
         if (currentSummaryData) {
             const columns = [
-                {title: "Assertion check", field: "status", headerSort: true, width: 120},
+                {title: "Id", field: "index", headerSort: true, width: 80},
+                {title: "Status", field: "status", headerSort: true, width: 120},
                 {title: "Action", field: "index", formatter: function(cell) {
                     return "<button class='view-result-btn'>View Results</button>";
                 }, cellClick: function(e, cell) {
@@ -122,7 +123,8 @@ if (backToSummaryButton) {
                         handleViewResultClick(rowData.index);
                         showNavLinks();
                     }
-                }, headerSort: false, width: 120}
+                }, headerSort: false, width: 160},
+                {title: "Query", field: "query", headerSort: true, width: 2500},
             ];
             
             new Tabulator("#multiQueryResults", {
@@ -279,7 +281,8 @@ window.addEventListener('message', event => {
         
         // Create columns for the summary table - removed Query column as requested
         const columns = [
-            {title: "Assertion check", field: "status", headerSort: true, width: 120},
+            {title: "Id", field: "index", headerSort: true, width: 80},
+            {title: "Status", field: "status", headerSort: true, width: 120},
             {title: "Action", field: "index", formatter: function(cell) {
                 return "<button class='view-result-btn'>View Results</button>";
             }, cellClick: function(e, cell) {
@@ -288,7 +291,8 @@ window.addEventListener('message', event => {
                     handleViewResultClick(rowData.index);
                     showNavLinks();
                 }
-            }, headerSort: false, width: 120}
+            }, headerSort: false, width: 160},
+            {title: "Query", field: "query", headerSort: true, width: 2500}
         ];
         
         // Create the tabulator table

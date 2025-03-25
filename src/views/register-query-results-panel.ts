@@ -281,7 +281,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       </div>
 
       <div id="multiResultsBlock" style="display: none;">
-        <h3>Multiple Query Results</h3>
+        <h3>Assertion Checks</h3>
         <table id="multiQueryResults" class="display" width="100%"></table>
       </div>
 
