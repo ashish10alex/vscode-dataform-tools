@@ -249,6 +249,18 @@ function createTabulatorTable(elementId, data, columns, options = {}) {
     });
 }
 
+function clearHighlighting(element) {
+    if (element) {
+        // Remove highlight.js classes
+        element.className = element.className.replace(/hljs\S*/g, '');
+        // Remove data-highlighted attribute
+        element.removeAttribute('data-highlighted');
+        // Remove any copy buttons
+        const copyButtons = element.parentElement?.querySelectorAll('.hljs-copy-button');
+        copyButtons?.forEach(button => button.remove());
+    }
+}
+
 window.addEventListener('message', event => {
     const results = event?.data?.results;
     const columns = event?.data?.columns;
@@ -371,8 +383,10 @@ window.addEventListener('message', event => {
     }
 
     if (query){
-        document.getElementById("sqlCodeBlock").textContent = query;
-        hljs.addPlugin( new CopyButtonPlugin({
+        const sqlCodeBlock = document.getElementById("sqlCodeBlock");
+        clearHighlighting(sqlCodeBlock);
+        sqlCodeBlock.textContent = query;
+        hljs.addPlugin(new CopyButtonPlugin({
             autohide: false, // Always show the copy button
         }));
         hljs.highlightAll();
