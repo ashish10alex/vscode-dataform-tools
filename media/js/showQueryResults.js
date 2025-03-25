@@ -99,6 +99,16 @@ function showNavLinks(){
     navLinks[1].style.display = '';
 }
 
+function hideQuery(){
+    document.getElementById("sqlCodeBlock").textContent = '';
+    document.getElementById("resultBlock").style.display = "block";
+    document.getElementById("multiResultsBlock").style.display = "block";
+    document.getElementById("codeBlock").style.display = "none";
+    const navLinks = document.querySelectorAll('.topnav a');
+    navLinks.forEach(link => link.classList.remove('active'));
+    navLinks[0].classList.add('active');
+}
+
 
 const queryLimit = document.getElementById('queryLimit');
 if (queryLimit){
@@ -219,16 +229,6 @@ function requestSelectedResultFromMultiResultTable(resultIndex) {
         command: 'viewResultDetail',
         resultIndex: resultIndex
     });
-}
-
-function hideQuery(){
-    document.getElementById("sqlCodeBlock").textContent = '';
-    document.getElementById("resultBlock").style.display = "block";
-    document.getElementById("multiResultsBlock").style.display = "block";
-    document.getElementById("codeBlock").style.display = "none";
-    const navLinks = document.querySelectorAll('.topnav a');
-    navLinks.forEach(link => link.classList.remove('active'));
-    navLinks[0].classList.add('active');
 }
 
 // Function to create a Tabulator table with common configuration
