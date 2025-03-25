@@ -97,6 +97,24 @@ if (queryLimit){
 }
 
 
+// Function to get the column definitions for the summary table
+function getSummaryTableColumns() {
+    return [
+        {title: "Id", field: "index", headerSort: true, width: 80},
+        {title: "Status", field: "status", headerSort: true, width: 120},
+        {title: "Action", field: "index", formatter: function(cell) {
+            return "<button class='view-result-btn'>View Results</button>";
+        }, cellClick: function(e, cell) {
+            if (e.target.classList.contains('view-result-btn')) {
+                const rowData = cell.getRow().getData();
+                requestSelectedResultFromMultiResultTable(rowData.index);
+                showNavLinks();
+            }
+        }, headerSort: false, width: 160},
+        {title: "Query", field: "query", headerSort: true, width: 2500}
+    ];
+}
+
 // Add event listener for the Back to Summary button
 const backToSummaryButton = document.getElementById('backToSummaryButton');
 if (backToSummaryButton) {
@@ -120,26 +138,11 @@ if (backToSummaryButton) {
         
         // Recreate the summary table if needed
         if (currentSummaryData) {
-            const columns = [
-                {title: "Id", field: "index", headerSort: true, width: 80},
-                {title: "Status", field: "status", headerSort: true, width: 120},
-                {title: "Action", field: "index", formatter: function(cell) {
-                    return "<button class='view-result-btn'>View Results</button>";
-                }, cellClick: function(e, cell) {
-                    if (e.target.classList.contains('view-result-btn')) {
-                        const rowData = cell.getRow().getData();
-                        requestSelectedResultFromMultiResultTable(rowData.index);
-                        showNavLinks();
-                    }
-                }, headerSort: false, width: 160},
-                {title: "Query", field: "query", headerSort: true, width: 2500},
-            ];
-            
             new Tabulator("#multiQueryResults", {
                 layout: "fitDataFill",
                 height: "calc(100vh - 250px)",
                 data: currentSummaryData,
-                columns: columns,
+                columns: getSummaryTableColumns(),
                 pagination: "local",
                 paginationSize: 20,
                 paginationCounter: "rows",
@@ -298,24 +301,8 @@ window.addEventListener('message', event => {
         // Store summary data for later use
         currentSummaryData = summaryData;
         
-        // Create columns for the summary table - removed Query column as requested
-        const columns = [
-            {title: "Id", field: "index", headerSort: true, width: 80},
-            {title: "Status", field: "status", headerSort: true, width: 120},
-            {title: "Action", field: "index", formatter: function(cell) {
-                return "<button class='view-result-btn'>View Results</button>";
-            }, cellClick: function(e, cell) {
-                if (e.target.classList.contains('view-result-btn')) {
-                    const rowData = cell.getRow().getData();
-                    requestSelectedResultFromMultiResultTable(rowData.index);
-                    showNavLinks();
-                }
-            }, headerSort: false, width: 160},
-            {title: "Query", field: "query", headerSort: true, width: 2500}
-        ];
-        
         // Create the tabulator table
-        createTabulatorTable("#multiQueryResults", summaryData, columns);
+        createTabulatorTable("#multiQueryResults", summaryData, getSummaryTableColumns());
     }
 
     if (bigQueryJobId) {
