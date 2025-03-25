@@ -67,15 +67,11 @@ if (cancelBigQueryJobButton){
     });
 }
 
-const queryLimit = document.getElementById('queryLimit');
-if (queryLimit){
-    document.getElementById("queryLimit").addEventListener("change", function() {
-    var selectedValue = this.value;
-    vscode.postMessage({
-        command: 'queryLimit',
-        value: selectedValue
-    });
-    });
+function clearLoadingMessage() {
+    if (loadingMessage && document.body.contains(loadingMessage)) {
+        document.body.removeChild(loadingMessage);
+    }
+    loadingMessage = undefined;
 }
 
 function hideNavLinks(){
@@ -87,6 +83,19 @@ function showNavLinks(){
     navLinks[0].style.display = '';
     navLinks[1].style.display = '';
 }
+
+
+const queryLimit = document.getElementById('queryLimit');
+if (queryLimit){
+    document.getElementById("queryLimit").addEventListener("change", function() {
+    var selectedValue = this.value;
+    vscode.postMessage({
+        command: 'queryLimit',
+        value: selectedValue
+    });
+    });
+}
+
 
 // Add event listener for the Back to Summary button
 const backToSummaryButton = document.getElementById('backToSummaryButton');
@@ -108,7 +117,6 @@ if (backToSummaryButton) {
         
         // Show multi-results view
         document.getElementById('multiResultsBlock').style.display = 'block';
-        console.log("currentSummaryData", currentSummaryData);
         
         // Recreate the summary table if needed
         if (currentSummaryData) {
@@ -169,13 +177,6 @@ if (bigQueryResults){
 let timerInterval = undefined;
 let elapsedTime = 0;
 let loadingMessage = undefined;
-
-function clearLoadingMessage() {
-    if (loadingMessage && document.body.contains(loadingMessage)) {
-        document.body.removeChild(loadingMessage);
-    }
-    loadingMessage = undefined;
-}
 
 function postRunCleanup(){
     clearInterval(timerInterval);
