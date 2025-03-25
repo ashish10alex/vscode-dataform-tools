@@ -231,6 +231,24 @@ function hideQuery(){
     navLinks[0].classList.add('active');
 }
 
+// Function to create a Tabulator table with common configuration
+function createTabulatorTable(elementId, data, columns, options = {}) {
+    const defaultConfig = {
+        layout: "fitDataFill",
+        height: "calc(100vh - 250px)",
+        data: data,
+        columns: columns,
+        pagination: "local",
+        paginationSize: 20,
+        paginationCounter: "rows"
+    };
+
+    return new Tabulator(elementId, {
+        ...defaultConfig,
+        ...options
+    });
+}
+
 window.addEventListener('message', event => {
     const results = event?.data?.results;
     const columns = event?.data?.columns;
@@ -297,15 +315,7 @@ window.addEventListener('message', event => {
         ];
         
         // Create the tabulator table
-        new Tabulator("#multiQueryResults", {
-            layout: "fitDataFill",
-            height: "calc(100vh - 250px)",
-            data: summaryData,
-            columns: columns,
-            pagination: "local",
-            paginationSize: 20,
-            paginationCounter: "rows",
-        });
+        createTabulatorTable("#multiQueryResults", summaryData, columns);
     }
 
     if (bigQueryJobId) {
@@ -337,18 +347,18 @@ window.addEventListener('message', event => {
         // Show the table
         document.getElementById('bigqueryResults').style.display = 'table';
 
-        new Tabulator("#bigqueryResults", {
-            layout: "fitDataFill",
+        createTabulatorTable("#bigqueryResults", results, columns, {
             height: "calc(100vh - 200px)",
-            data: results,
-            columns: columns,
-            // autoColumns:true,
             dataTree: true,
             dataTreeStartExpanded: false,
-            rowHeader: { formatter: "rownum", headerSort: false, hozAlign: "center", resizable: false, frozen: true, width: 60 },
-            pagination: "local",
-            paginationSize: 20,
-            paginationCounter: "rows",
+            rowHeader: { 
+                formatter: "rownum", 
+                headerSort: false, 
+                hozAlign: "center", 
+                resizable: false, 
+                frozen: true, 
+                width: 60 
+            }
         });
     }
 
