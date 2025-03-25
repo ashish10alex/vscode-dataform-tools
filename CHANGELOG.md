@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.11.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.11...v0.11.0) (2025-03-25)
+
+
+### Features
+
+* remove double quotes from resulting json column document generation ([5747fda](https://github.com/ashish10alex/vscode-dataform-tools/commit/5747fda4553097ac84a02c6832e9b7c3fa63bd82))
+* remove redundant active model metadata parsing ([#130](https://github.com/ashish10alex/vscode-dataform-tools/issues/130)) ([1b4ab7f](https://github.com/ashish10alex/vscode-dataform-tools/commit/1b4ab7f78c04d6029fb138140baba9778d39b818))
+
+
+### Bug Fixes
+
+* multiple assertions when ran does not show the correctly show failed assertions ([#132](https://github.com/ashish10alex/vscode-dataform-tools/issues/132)) ([e6b568a](https://github.com/ashish10alex/vscode-dataform-tools/commit/e6b568acf06e1f74a53703fe359606f2963c41e5))
+
 ### [0.10.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.10...v0.10.11) (2025-03-23)
 
 
