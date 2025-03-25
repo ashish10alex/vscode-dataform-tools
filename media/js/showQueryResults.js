@@ -2,6 +2,21 @@ const vscode = acquireVsCodeApi();
 
 let incrementalCheckBoxDiv =  document.getElementById("incrementalCheckBoxDiv");
 
+function createLoadingMessage(){
+    // Create a loading message element
+    loadingMessageDiv = document.createElement('div');
+    loadingMessageDiv.id = 'loading-message';
+    loadingMessageDiv.textContent = 'Loading data...';
+    loadingMessageDiv.style.cssText = `
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 12px;
+    `;
+    return loadingMessageDiv;
+}
+
 const checkbox = document.getElementById('incrementalCheckbox');
 checkbox.addEventListener('change', function() {
     if (this.checked) {
@@ -68,10 +83,10 @@ if (cancelBigQueryJobButton){
 }
 
 function clearLoadingMessage() {
-    if (loadingMessage && document.body.contains(loadingMessage)) {
-        document.body.removeChild(loadingMessage);
+    if (loadingMessageDiv && document.body.contains(loadingMessageDiv)) {
+        document.body.removeChild(loadingMessageDiv);
     }
-    loadingMessage = undefined;
+    loadingMessageDiv = undefined;
 }
 
 function hideNavLinks(){
@@ -179,7 +194,7 @@ if (bigQueryResults){
 
 let timerInterval = undefined;
 let elapsedTime = 0;
-let loadingMessage = undefined;
+let loadingMessageDiv = undefined;
 
 function postRunCleanup(){
     clearInterval(timerInterval);
@@ -391,31 +406,21 @@ window.addEventListener('message', event => {
         
         // Clear any existing loading message first
         clearLoadingMessage();
+        let loadingMessageDiv = createLoadingMessage();
         
-        // Create a loading message element
-        loadingMessage = document.createElement('div');
-        loadingMessage.id = 'loading-message';
-        loadingMessage.textContent = 'Loading data...';
-        loadingMessage.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 12px;
-        `;
-
         let startTime = Date.now();
 
         function updateLoadingMessage() {
             elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-            if (loadingMessage) {
-                loadingMessage.textContent = `Loading data... (${elapsedTime} seconds)`;
+            if (loadingMessageDiv) {
+                loadingMessageDiv.textContent = `Loading data... (${elapsedTime} seconds)`;
             }
             return elapsedTime;
         }
+    
 
         elapsedTime = updateLoadingMessage();
         timerInterval = setInterval(updateLoadingMessage, 1000);
-        document.body.appendChild(loadingMessage);
+        document.body.appendChild(loadingMessageDiv);
     }
 });
