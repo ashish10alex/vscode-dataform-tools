@@ -93,6 +93,7 @@ const backToSummaryButton = document.getElementById('backToSummaryButton');
 if (backToSummaryButton) {
     backToSummaryButton.addEventListener('click', function() {
         hideQuery();
+        hideNavLinks();
         // Hide the back button
         document.getElementById('backToSummaryDiv').style.display = 'none';
         
