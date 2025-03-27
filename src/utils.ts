@@ -529,12 +529,15 @@ export async function getWorkspaceFolder(): Promise<string | undefined> {
         workspaceFolder = await selectWorkspaceFolder();
     }
     if (workspaceFolder === undefined) {
+        logger.debug(`Workspace could not be determined. Please open folder with your dataform project`);
         vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
         return undefined;
     }
     if (isDataformWorkspace(workspaceFolder)) {
+        logger.debug(`Workspace: ${workspaceFolder} is a Dataform workspace`);
         return workspaceFolder;
     }
+    logger.debug(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
     vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
     return undefined;
 }
