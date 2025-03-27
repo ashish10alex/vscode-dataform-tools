@@ -59,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.schemaAutoCompletions = [];
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
+    globalThis.workspaceFolder = undefined;
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -72,7 +73,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     //TODO: check if user has multiple workspace folders open
     //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
-    let workspaceFolder = getWorkspaceFolder();
+    workspaceFolder = await getWorkspaceFolder();
 
     if (workspaceFolder) {
         await createBigQueryClient();
