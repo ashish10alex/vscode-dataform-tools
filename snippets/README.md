@@ -1,0 +1,1 @@
+BigQuery snippets are copied from [vscode-language-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) VSCode extension. Full credit goes to the autor @shinichi-takii.

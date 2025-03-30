@@ -1,12 +1,5 @@
-/***
-Copied snippets from https://github.com/shinichi-takii/vscode-language-sql-bigquery
-full credit goes to the autor @shinichi-takii
-
-Table references is replaced to better work with sqlx syntax (project.dataset.table -> table_reference)
-***/
 {
   ".source.sql-bigquery": {
-    // SQL Prefix
     "#standardSQL": {
       "prefix": "standard",
       "body": "#standardSQL"
@@ -15,7 +8,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "prefix": "legacy",
       "body": "#legacySQL"
     },
-    // Data types
     "ARRAY type": {"prefix": "ARRAY type", "body": "ARRAY<${1:T}>"},
     "BOOL type": {"prefix": "BOOL type", "body": "BOOL"},
     "BYTES type": {"prefix": "BYTES type", "body": "BYTES${1:[(L)]}"},
@@ -31,7 +23,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
     "STRUCT type": {"prefix": "STRUCT type", "body": "STRUCT<${1:T}>"},
     "TIME type": {"prefix": "TIME type", "body": "TIME"},
     "TIMESTAMP type": {"prefix": "TIMESTAMP type", "body": "TIMESTAMP"},
-    // Query
     "`TABLE-NAME`": {
       "prefix": "TABLE",
       "body": "${1:table_reference}"
@@ -200,7 +191,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
         "\t)"
       ]
     },
-    // Keyword
     "DISTINCT": {
       "prefix": "DISTINCT",
       "body": "DISTINCT"
@@ -220,12 +210,10 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
         "WHERE ${4:condition}"
       ]
     },
-    // Debugging statements
     "ASSERT": {
       "prefix": "ASSERT",
       "body": "ASSERT ${1:expression}${2: [AS \"description\"]}"
     },
-    // Scripting
     "CALL PROCEDURE": {
       "prefix": "CALL PROCEDURE",
       "body": [
@@ -373,7 +361,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "RETURN;",
       "description": "RETURN terminates execution of the current script."
     },
-    // Functions
     "ANY_VALUE()": {
       "prefix": "ANY_VALUE",
       "body": "ANY_VALUE(${1:expr}) ${2:[OVER (...)]}",
@@ -861,7 +848,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
         "Computes the hash of the input using the SHA-512 algorithm."
       ]
     },
-    // Conversion functions
     "CAST()": {
       "prefix": "CAST",
       "body": "CAST(${1:expr} AS ${2:type})",
@@ -887,7 +873,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "PARSE_NUMERIC(${1:string_expression})",
       "description": "Converts a string to a NUMERIC value."
     },
-    // String functions
     "ASCII()": {
       "prefix": "ascii",
       "body": "ASCII(${1:value})",
@@ -1162,7 +1147,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
         "For STRING arguments, returns the original string with all alphabetic characters in uppercase."
       ]
     },
-    // JSON functions
     "JSON_EXTRACT()": {
       "prefix": "json_extract",
       "body": "JSON_EXTRACT(${1:'json_string_expr'}, ${2:'json_path'})",
@@ -1271,7 +1255,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "SAFE_ORDINAL(${1:one_based_offset})",
       "description": "Identical to `OFFSET` and `ORDINAL`, except returns `NULL` if the index is out of range."
     },
-    // Date functions
     "CURRENT_DATE()": {
       "prefix": "CURRENT_DATE",
       "body": "CURRENT_DATE(${1:[time_zone]})",
@@ -1353,7 +1336,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "body": "UNIX_DATE(${1:date_expression})",
       "description": "Returns the number of days since 1970-01-01."
     },
-    // Datetime functions
     "CURRENT_DATETIME()": {
       "prefix": "CURRENT_DATETIME",
       "body": "CURRENT_DATETIME(${1:[timezone]})",
@@ -1756,7 +1738,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "prefix": "hour",
       "body": "EXTRACT(HOUR FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
     },
-    // Debugging functions
     "ERROR()": {
       "prefix": "ERROR",
       "body": "ERROR(${1:error_message})",
@@ -1816,7 +1797,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
         "\t${5:[STRUCT(<threshold FLOAT64> AS threshold)]})"
       ]
     },
-    // Geography functions
     "ST_AREA()": {
       "prefix": "st_area",
       "body": "ST_AREA(${1:geography_expression[, spheroid=FALSE]})"
@@ -2021,7 +2001,6 @@ Table references is replaced to better work with sqlx syntax (project.dataset.ta
       "prefix": "st_y",
       "body": "ST_Y(${1:geography_expression})"
     },
-    // AEAD encryption functions
     "KEYS.NEW_KEYSET": {
       "prefix": "KEYSNEW_KEYSET",
       "body": "KEYS.NEW_KEYSET(${1:key_type})"

@@ -410,3 +410,36 @@ export class DataformConfigProvider implements vscode.HoverProvider {
     return undefined;
   }
 }
+
+export class DataformBigQueryHoverProvider implements vscode.HoverProvider {
+    provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.Hover> {
+            // Get the word at the current position
+            const range = document.getWordRangeAtPosition(position);
+            if (!range) {
+                return null;
+            }
+            
+            const word = document.getText(range);
+            
+            // Check if the word matches any snippet name
+            if (bigQuerySnippetMetadata[`${word}()`]) {
+                const snippet = bigQuerySnippetMetadata[`${word}()`];
+                
+                // Create hover content from snippet description
+                const hoverContent = new vscode.MarkdownString();
+                
+                if (Array.isArray(snippet.description)) {
+                    hoverContent.appendMarkdown(snippet.description.join('\n\n'));
+                } else if (snippet.description) {
+                    hoverContent.appendMarkdown(snippet.description);
+                }
+                
+                // Add the snippet syntax as a code block
+                hoverContent.appendCodeblock(snippet.body, 'yourLanguageId');
+                
+                return new vscode.Hover(hoverContent, range);
+            }
+            
+            return null;
+        }
+};
