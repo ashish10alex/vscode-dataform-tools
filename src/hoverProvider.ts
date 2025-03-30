@@ -413,7 +413,6 @@ export class DataformConfigProvider implements vscode.HoverProvider {
 
 export class DataformBigQueryHoverProvider implements vscode.HoverProvider {
     provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.Hover> {
-            // Get the word at the current position
             const range = document.getWordRangeAtPosition(position);
             if (!range) {
                 return null;
@@ -421,11 +420,9 @@ export class DataformBigQueryHoverProvider implements vscode.HoverProvider {
             
             const word = document.getText(range);
             
-            // Check if the word matches any snippet name
             if (bigQuerySnippetMetadata[`${word}()`]) {
                 const snippet = bigQuerySnippetMetadata[`${word}()`];
                 
-                // Create hover content from snippet description
                 const hoverContent = new vscode.MarkdownString();
                 
                 if (Array.isArray(snippet.description)) {
@@ -434,8 +431,7 @@ export class DataformBigQueryHoverProvider implements vscode.HoverProvider {
                     hoverContent.appendMarkdown(snippet.description);
                 }
                 
-                // Add the snippet syntax as a code block
-                hoverContent.appendCodeblock(snippet.body, 'yourLanguageId');
+                hoverContent.appendCodeblock(snippet.body, 'sqlx');
                 
                 return new vscode.Hover(hoverContent, range);
             }
