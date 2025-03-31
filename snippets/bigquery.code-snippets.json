@@ -589,7 +589,14 @@
     "ROW_NUMBER()": {
       "prefix": "ROW_NUMBER",
       "body": "ROW_NUMBER()",
-      "description": "Does not require the `ORDER BY` clause."
+      "description": [
+        "Returns the 1-based row number of the current row within the partition. Does not require the `ORDER BY` clause.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#row_number",
+        "",
+        "Examples:",
+        "ROW_NUMBER() over (order by name) as row_number",
+        "ROW_NUMBER() over (partition by name order by age) as row_number"
+      ]
     },
     "FIRST_VALUE()": {
       "prefix": "FIRST_VALUE",
@@ -851,7 +858,14 @@
     "CAST()": {
       "prefix": "CAST",
       "body": "CAST(${1:expr} AS ${2:type})",
-      "description": "Cast syntax is used in a query to indicate that the result type of an expression should be converted to some other type."
+      "description": [
+        "Cast syntax is used in a query to indicate that the result type of an expression should be converted to some other type.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#cast",
+        "",
+        "Examples:",
+        "CAST(1 AS STRING) returns '1'",
+        "CAST('1' AS INT64) returns 1"
+      ]
     },
     "CAST(... FORMAT)": {
       "prefix": "cast format",
@@ -861,7 +875,16 @@
     "SAFE_CAST()": {
       "prefix": "SAFE_CAST",
       "body": "SAFE_CAST(${1:expr} AS ${3:type})",
-      "description": "SAFE_CAST is identical to CAST, except it returns NULL instead of raising an error."
+      "description": [
+        "SAFE_CAST is identical to CAST, except it returns NULL instead of raising an error.",
+        "",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#safe_casting",
+        "",
+        "Examples:",
+        "SAFE_CAST(1.5 AS INT64) returns 2",
+        "SAFE_CAST('1.5' AS INT64) returns NULL",
+        "SAFE_CAST('apple' AS INT64) returns NULL"
+      ]
     },
     "PARSE_BIGNUMERIC()": {
       "prefix": "parse_bignumeric",
@@ -1297,14 +1320,20 @@
       "prefix": "DATE_DIFF",
       "body": "DATE_DIFF(${1:date_expression}, ${2:date_expression}, ${3:date_part})",
       "description": [
-        "Returns the number of `date_part` boundaries between the two `date_expression`s."
+        "Returns the number of `date_part` boundaries between the two `date_expression`s.",
+        "",
+        "Example:",
+        "DATE_DIFF('2023-12-31', '2023-01-01', MONTH) returns 11"
       ]
     },
     "DATE_TRUNC()": {
       "prefix": "DATE_TRUNC",
       "body": "DATE_TRUNC(${1:date_expression}, ${2:date_part})",
       "description": [
-        "Truncates the date to the specified granularity."
+        "Truncates the date to the specified granularity.",
+        "",
+        "Example:",
+        "DATE_TRUNC('2023-12-13', MONTH) returns 2023-12-01"
       ]
     },
     "DATE_FROM_UNIX_DATE()": {
@@ -1316,7 +1345,12 @@
       "prefix": "FORMAT_DATE",
       "body": "FORMAT_DATE(${1:format_string}, ${2:date_expr})",
       "description": [
-        "Formats the `date_expr` according to the specified `format_string`."
+        "Formats the `date_expr` according to the specified `format_string`.",
+        "",
+        "Examples:",
+        "FORMAT_DATE('%Y-%m-%d', '2023-12-13', 'UTC') returns 2023-12-13",
+        "FORMAT_DATE('%A, %B %d, %Y', '2023-12-13', 'America/New_York') returns Wednesday, December 13, 2023",
+        "FORMAT_DATE('%Q', '2023-12-13') returns 4"
       ]
     },
     "LAST_DAY()": {
