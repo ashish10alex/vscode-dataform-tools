@@ -22,7 +22,7 @@ export async function runFilesTagsWtOptions() {
     }
 
     let multipleFileSelection: string | undefined;
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder){ return; }
     if (firstStageSelection === "run multiple files"){
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);

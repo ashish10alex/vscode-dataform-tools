@@ -61,6 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.schemaAutoCompletions = [];
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
+    globalThis.workspaceFolder = undefined;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
@@ -78,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     //TODO: check if user has multiple workspace folders open
     //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
-    let workspaceFolder = getWorkspaceFolder();
+    workspaceFolder = await getWorkspaceFolder();
 
     if (workspaceFolder) {
         await createBigQueryClient();

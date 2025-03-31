@@ -78,4 +78,9 @@ declare global {
   };
 }
 
+declare global {
+  var workspaceFolder: string | undefined;
+}
+
+
 export {};
