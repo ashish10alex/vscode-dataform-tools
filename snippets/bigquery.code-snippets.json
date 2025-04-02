@@ -1356,7 +1356,15 @@
     "LAST_DAY()": {
       "prefix": "LAST_DAY",
       "body": "LAST_DAY(${1:date_expression}${2:[, date_part]})",
-      "description": "Returns the last day from a date expression."
+      "description": [
+          "Returns the last day from a date expression.",
+          "",
+          "Examples:",
+          "SELECT LAST_DAY('2023-10-13') `returns 2023-10-30`",
+          "SELECT LAST_DAY('2023-10-13', WEEK) `returns 2023-10-14`",
+          "SELECT LAST_DAY('2023-10-13', QUARTER) `returns 2023-12-31`",
+          "SELECT LAST_DAY('2023-10-13', YEAR) `returns 2023-12-31`"
+      ]
     },
     "PARSE_DATE()": {
       "prefix": "PARSE_DATE",
