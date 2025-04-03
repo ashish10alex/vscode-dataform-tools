@@ -1385,7 +1385,7 @@
         "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc",
         "",
         "Examples:",
-        "`DATE_TRUNC('2023-12-13', MONTH)` returns 2023-12-01",
+        "`SELECT DATE_TRUNC('2023-12-13', MONTH)` returns 2023-12-01",
         "",
         "Date granularity definitions:",
         "DAY, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR",
@@ -1405,9 +1405,9 @@
         "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#format_date",
         "",
         "Examples:",
-        "FORMAT_DATE('%Y-%m-%d', '2023-12-13', 'UTC') returns 2023-12-13",
-        "FORMAT_DATE('%A, %B %d, %Y', '2023-12-13', 'America/New_York') returns Wednesday, December 13, 2023",
-        "FORMAT_DATE('%Q', '2023-12-13') returns 4"
+        "`SELECT FORMAT_DATE('%Y-%m-%d', '2023-12-13')` returns 2023-12-13",
+        "`SELECT FORMAT_DATE('%A, %B %d, %Y', '2023-12-13')` returns Wednesday, December 13, 2023",
+        "`SELECT FORMAT_DATE('%Q', '2023-12-13')` returns 4"
       ]
     },
     "LAST_DAY()": {
@@ -1765,7 +1765,14 @@
     "IF()": {
       "prefix": "IF",
       "body": "IF(${1:cond}, ${2:true_result}, ${3:else_result})",
-      "description": "If `cond` is true, returns `true_result`, else returns `else_result`."
+      "description": [
+        "If `cond` is true, returns `true_result`, else returns `else_result`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#if",
+        "",
+        "Examples:",
+        "`SELECT IF(1 = 2, 'yes', 'no')` returns 'no'",
+        "`SELECT IF(1 = 1, 'yes', 'no')` returns 'yes'"
+      ]
     },
     "IFNULL()": {
       "prefix": "ifnull",
