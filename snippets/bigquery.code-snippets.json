@@ -1343,7 +1343,11 @@
       "prefix": "DATE_SUB",
       "body": "DATE_SUB(${1:date_expression}, INTERVAL ${2:INT64_expr date_part})",
       "description": [
-        "Subtracts a specified time interval from a DATE."
+        "Subtracts a specified time interval from a DATE.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_sub",
+        "",
+        "Examples:",
+        "`SELECT DATE_SUB('2023-01-01', INTERVAL 1 DAY)` returns 2022-12-31"
       ]
     },
     "DATE_DIFF()": {
@@ -1351,6 +1355,7 @@
       "body": "DATE_DIFF(${1:date_expression}, ${2:date_expression}, ${3:date_part})",
       "description": [
         "Returns the number of `date_part` boundaries between the two `date_expression`s.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_diff",
         "",
         "Example:",
         "DATE_DIFF('2023-12-31', '2023-01-01', MONTH) returns 11"
@@ -1358,12 +1363,17 @@
     },
     "DATE_TRUNC()": {
       "prefix": "DATE_TRUNC",
-      "body": "DATE_TRUNC(${1:date_expression}, ${2:date_part})",
+      "body": "DATE_TRUNC(${1:date_value}, ${2:date_granularity})",
       "description": [
         "Truncates the date to the specified granularity.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc",
         "",
-        "Example:",
-        "DATE_TRUNC('2023-12-13', MONTH) returns 2023-12-01"
+        "Examples:",
+        "`DATE_TRUNC('2023-12-13', MONTH)` returns 2023-12-01",
+        "",
+        "Date granularity definitions:",
+        "DAY, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR",
+        "WEEK(WEEKDAY): The first day in the week that contains the value to truncate. Weeks begin on WEEKDAY. WEEKDAY must be one of the following: SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, or SATURDAY. Default: WEEK(SUNDAY)"
       ]
     },
     "DATE_FROM_UNIX_DATE()": {
@@ -1749,6 +1759,25 @@
       "prefix": "NULLIF",
       "body": "NULLIF(${1:expression}, ${2:expression_to_match})",
       "description": "Returns `NULL` if `expression = expression_to_match` is true, otherwise returns `expression`."
+    },
+    "EXTRACT()": {
+      "prefix": "EXTRACT",
+      "body": "EXTRACT(${1:date_part} FROM ${2:date_expression})",
+      "description": [
+        "Extracts a part of a date or timestamp.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#extract",
+        "",
+        "Examples:",
+        "date_part: DAY, DAYOFWEEK, DAYOFYEAR, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR",
+        "SELECT EXTRACT(DAY FROM DATE '2013-12-25') returns 25",
+        "SELECT EXTRACT(DAYOFWEEK FROM DATE '2013-12-25') returns 4",
+        "SELECT EXTRACT(DAYOFYEAR FROM DATE '2013-12-25') returns 359",
+        "SELECT EXTRACT(WEEK FROM DATE '2013-12-25') returns 51",
+        "SELECT EXTRACT(WEEK(MONDAY) FROM DATE '2013-12-25') returns 51",
+        "SELECT EXTRACT(ISOWEEK FROM DATE '2013-12-25') returns 52",
+        "SELECT EXTRACT(QUARTER FROM DATE '2013-12-25') returns 4",
+        "SELECT EXTRACT(YEAR FROM DATE '2013-12-25') returns 2013"
+      ]
     },
     "EXTRACT(DAYOFWEEK FROM date_expression)": {
       "prefix": "dayofweek",
