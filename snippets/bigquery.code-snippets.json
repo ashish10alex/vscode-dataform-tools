@@ -2176,10 +2176,16 @@
       "body": "EXTERNAL_QUERY(${1:connection_id}, ${2:external_database_query}${3:[, options]})",
       "description": "Executes the query in Cloud SQL and returns results as a temporary table."
     },
-    "EXCEPT": {
+    "EXCEPT()": {
       "prefix": "EXCEPT",
       "body": "EXCEPT (${1:column1}${2:, column2})",
-      "description": "EXCEPT clause excludes specified columns from the result set in BigQuery. Syntax looks like SELECT * EXCEPT(column_name, ...) FROM table"
+      "description": [
+        "A SELECT * EXCEPT statement specifies the names of one or more columns to exclude from the result. All matching column names are omitted from the output.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_except",
+        "",
+        "Examples:",
+        "`SELECT * EXCEPT(column1, column2) FROM table`"
+      ]
     }
   }
 }
