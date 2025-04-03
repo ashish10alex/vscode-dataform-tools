@@ -1054,13 +1054,25 @@
     "REPLACE()": {
       "prefix": "REPLACE",
       "body": "REPLACE(${1:original_value}, ${2:from_value}, ${3:to_value})",
-      "description": "Replaces all occurrences of `from_value` with `to_value` in `original_value`."
+      "description": [
+        "Replaces all occurrences of `from_value` with `to_value` in `original_value`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#replace",
+        "",
+        "Examples:",
+        "`SELECT REPLACE('hello world', 'world', 'there')` returns 'hello there'",
+        "`SELECT REPLACE('hello world', 'l', 'L')` returns 'heLLo worLd'"
+      ]
     },
     "REPEAT()": {
       "prefix": "repeat",
       "body": "REPEAT(${1:original_value}, ${2:repetitions})",
       "description": [
-        "Returns a value that consists of `original_value`, repeated."
+        "Returns a value that consists of `original_value`, repeated.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#repeat",
+        "",
+        "Examples:",
+        "`SELECT REPEAT('hello', 3)` returns 'hellohellohello'",
+        "`SELECT REPEAT('abc', 2)` returns 'abcabc'"
       ]
     },
     "REVERSE()": {
