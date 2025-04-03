@@ -1229,28 +1229,58 @@
       "prefix": "ARRAY_TO_STRING",
       "body": "ARRAY_TO_STRING(${1:array_expression}, ${2:delimiter[, null_text]})",
       "description": [
-        "Returns a concatenation of the elements in `array_expression` as a STRING. The value for `array_expression` can either be an array of STRING or BYTES data types."
+        "Returns a concatenation of the elements in `array_expression` as a STRING. The value for `array_expression` can either be an array of STRING or BYTES data types.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#array_to_string",
+        "",
+        "Examples:",
+        "`SELECT ARRAY_TO_STRING(['foo', 'bar', 'baz'], ',')` returns 'foo,bar,baz'",
+        "`SELECT ARRAY_TO_STRING(['coffee', 'tea', 'milk', NULL], '--', 'MISSING')` returns 'coffee--tea--milk--MISSING'"
       ]
     },
     "GENERATE_ARRAY()": {
       "prefix": "generate_array",
       "body": "GENERATE_ARRAY(${1:start_expression})",
       "description": [
-        "Returns an array of values. The `start_expression` and `end_expression` parameters determine the inclusive start and end of the array."
+        "Returns an array of values. The `start_expression` and `end_expression` parameters determine the inclusive start and end of the array.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_array",
+        "",
+        "Examples:",
+        "`SELECT GENERATE_ARRAY(1, 5)` returns [1, 2, 3, 4, 5]",
+        "`SELECT GENERATE_ARRAY(1, 5, 2)` returns [1, 3, 5]"
       ]
     },
     "GENERATE_DATE_ARRAY()": {
       "prefix": "GENERATE_DATE_ARRAY",
       "body": "GENERATE_DATE_ARRAY(${1:start_date}, ${2:end_date[, INTERVAL INT64_expr date_part]})",
       "description": [
-        "Returns an array of dates. The `start_date` and `end_date` parameters determine the inclusive start and end of the array."
+        "Returns an array of dates. The `start_date` and `end_date` parameters determine the inclusive start and end of the array.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_date_array",
+        "",
+        "Examples:",
+        "`SELECT GENERATE_DATE_ARRAY('2023-01-01', '2023-01-05')` returns ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05']",
+        "`SELECT GENERATE_DATE_ARRAY('2023-01-01', '2023-01-05', INTERVAL 2 DAY)` returns ['2023-01-01', '2023-01-03', '2023-01-05']"
+      ]
+    },
+    "UNNEST()": {
+      "prefix": "UNNEST",
+      "body": "UNNEST(${1:array_expression})",
+      "description": [
+        "Returns a table with a single column containing the elements of `array_expression`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#unnest",
+        "Examples:",
+        "`SELECT * FROM UNNEST([1, 2, 3])` returns [1, 2, 3]",
+        "`SELECT * FROM UNNEST(GENERATE_ARRAY(2, 10, 2))` returns [2, 4, 6, 8, 10]",
+        "`SELECT * FROM UNNEST(GENERATE_DATE_ARRAY('2023-01-01', '2023-01-05', INTERVAL 2 DAY))` returns ['2023-01-01', '2023-01-03', '2023-01-05']"
       ]
     },
     "GENERATE_TIMESTAMP_ARRAY()": {
       "prefix": "generate_timestamp_array",
       "body": "GENERATE_TIMESTAMP_ARRAY(${1:start_timestamp}, ${2:end_timestamp[, INTERVAL step_expression date_part]})",
       "description": [
-        "Returns an `ARRAY` of `TIMESTAMPS` separated by a given interval."
+        "Returns an `ARRAY` of `TIMESTAMPS` separated by a given interval.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_timestamp_array",
+        "Examples:",
+        "`GENERATE_TIMESTAMP_ARRAY('2023-01-01 00:00:00', '2023-01-05 00:00:00', INTERVAL 2 DAY)` returns ['2023-01-01 00:00:00', '2023-01-03 00:00:00', '2023-01-05 00:00:00']"
       ]
     },
     "[OFFSET(zero_based_offset)]": {
