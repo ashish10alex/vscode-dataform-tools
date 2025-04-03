@@ -1348,7 +1348,11 @@
       "prefix": "DATE_ADD",
       "body": "DATE_ADD(${1:date_expression}, INTERVAL ${2:INT64_expr date_part})",
       "description": [
-        "Adds a specified time interval to a DATE."
+        "Adds a specified time interval to a DATE.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_add",
+        "",
+        "Examples:",
+        "`SELECT DATE_ADD('2023-01-01', INTERVAL 1 DAY)` returns 2023-01-02"
       ]
     },
     "DATE_SUB()": {
@@ -1398,6 +1402,7 @@
       "body": "FORMAT_DATE(${1:format_string}, ${2:date_expr})",
       "description": [
         "Formats the `date_expr` according to the specified `format_string`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#format_date",
         "",
         "Examples:",
         "FORMAT_DATE('%Y-%m-%d', '2023-12-13', 'UTC') returns 2023-12-13",
