@@ -1116,14 +1116,26 @@
       "prefix": "substr",
       "body": "SUBSTR(${1:value}, ${2:position}${3:[, length]})",
       "description": [
-        "Returns a substring of the supplied `value`."
+        "Returns a substring of the supplied `value`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#substr",
+        "",
+        "Examples:",
+        "`SELECT SUBSTR('Hello, world!', 8, 5)` returns 'world'",
+        "`SELECT SUBSTR('Hello, world!', 8)` returns 'world!'",
+        "`SELECT SUBSTR('Hello, world!', -5)` returns 'orld!'"
       ]
     },
     "SUBSTRING()": {
       "prefix": "SUBSTRING",
       "body": "SUBSTRING(${1:value}, ${2:position}${3:[, length]})",
       "description": [
-        "Returns a substring of the supplied `value`. (Alias for SUBSTR)"
+        "Returns a substring of the supplied `value`. (Alias for SUBSTR)",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#substring",
+        "",
+        "Examples:",
+        "`SELECT SUBSTRING('Hello, world!', 8, 5)` returns 'world'",
+        "`SELECT SUBSTRING('Hello, world!', 8)` returns 'world!'",
+        "`SELECT SUBSTRING('Hello, world!', -5)` returns 'orld!'"
       ]
     },
     "TO_BASE32()": {
@@ -1768,7 +1780,6 @@
         "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#extract",
         "",
         "Examples:",
-        "date_part: DAY, DAYOFWEEK, DAYOFYEAR, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR",
         "SELECT EXTRACT(DAY FROM DATE '2013-12-25') returns 25",
         "SELECT EXTRACT(DAYOFWEEK FROM DATE '2013-12-25') returns 4",
         "SELECT EXTRACT(DAYOFYEAR FROM DATE '2013-12-25') returns 359",
@@ -1776,7 +1787,9 @@
         "SELECT EXTRACT(WEEK(MONDAY) FROM DATE '2013-12-25') returns 51",
         "SELECT EXTRACT(ISOWEEK FROM DATE '2013-12-25') returns 52",
         "SELECT EXTRACT(QUARTER FROM DATE '2013-12-25') returns 4",
-        "SELECT EXTRACT(YEAR FROM DATE '2013-12-25') returns 2013"
+        "SELECT EXTRACT(YEAR FROM DATE '2013-12-25') returns 2013",
+        "",
+        "Valid date_part values: DAY, DAYOFWEEK, DAYOFYEAR, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR"
       ]
     },
     "EXTRACT(DAYOFWEEK FROM date_expression)": {
