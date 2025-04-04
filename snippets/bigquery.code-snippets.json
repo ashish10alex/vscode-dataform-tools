@@ -650,35 +650,40 @@
       "prefix": "FIRST_VALUE",
       "body": "FIRST_VALUE(${1:value_expression [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
-        "Returns the value of the `value_expression` for the first row in the current window frame."
+        "Returns the value of the `value_expression` for the first row in the current window frame.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#first_value"
       ]
     },
     "LAST_VALUE()": {
       "prefix": "LAST_VALUE",
       "body": "LAST_VALUE(${1:value_expression [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
-        "Returns the value of the `value_expression` for the last row in the current window frame."
+        "Returns the value of the `value_expression` for the last row in the current window frame.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#last_value"
       ]
     },
     "NTH_VALUE()": {
       "prefix": "NTH_VALUE",
       "body": "NTH_VALUE(${1:value_expression, constant_integer_expression [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
-        "Returns the value of `value_expression` at the Nth row of the current window frame, where Nth is defined by `constant_integer_expression`. Returns NULL if there is no such row."
+        "Returns the value of `value_expression` at the Nth row of the current window frame, where Nth is defined by `constant_integer_expression`. Returns NULL if there is no such row.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#nth_value"
       ]
     },
     "LEAD()": {
       "prefix": "LEAD",
       "body": "LEAD(${1:value_expression, [, offset [, default_expression]]})",
       "description": [
-        "Returns the value of the `value_expression` on a subsequent row."
+        "Returns the value of the `value_expression` on a subsequent row.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#lead"
       ]
     },
     "LAG()": {
       "prefix": "LAG",
       "body": "LAG(${1:value_expression, [, offset [, default_expression]]})",
       "description": [
-        "Returns the value of the `value_expression` on a preceding row."
+        "Returns the value of the `value_expression` on a preceding row.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#lag"
       ]
     },
     "PERCENTILE_CONT()": {
