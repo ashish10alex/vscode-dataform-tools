@@ -390,7 +390,14 @@
         "          [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
         "${2:[OVER (...)]}"
       ],
-      "description": "Returns an ARRAY of `expression` values."
+      "description": [
+        "Returns an ARRAY of `expression` values.",
+        "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#array_agg",
+        "",
+        "Examples:",
+        "`SELECT ARRAY_AGG(fruit) AS array_agg FROM UNNEST(['apple', 'pear', 'banana', 'pear']) AS fruit;`",
+        "```markdown           \n| array_agg                   |\n|-----------------------------|\n| [apple, pear, banana, pear] |\n```"
+      ]
     },
     "ARRAY_CONCAT_AGG()": {
       "prefix": "ARRAY_CONCAT_AGG",
@@ -459,7 +466,14 @@
         "${2:[OVER (...)]}"
       ],
       "description": [
-        "Returns a value (either STRING or BYTES) obtained by concatenating non-null values."
+        "Returns a value (either STRING or BYTES) obtained by concatenating non-NULL values. If a delimiter is specified, concatenated values are separated by that delimiter; otherwise, a comma is used as a delimiter.",
+        "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#string_agg",
+        "",
+        "Examples:",
+        "SELECT STRING_AGG(fruit) AS string_agg FROM UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit; ",
+        "```markdown \n| string_agg                |\n|---------------------------|\n| apple, pear, banana, pear |\n```",
+        "SELECT STRING_AGG(fruit, ' & ') AS string_agg FROM UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit; ",
+        "```markdown \n| string_agg                   |\n|------------------------------|\n| apple & pear & banana & pear |\n```"
       ]
     },
     "SUM()": {
