@@ -1012,7 +1012,16 @@
     "LEFT()": {
       "prefix": "LEFT",
       "body": "LEFT(${1:value}, ${2:length})",
-      "description": "Return the specified leftmost number of characters."
+      "description": [
+        "Returns a STRING or BYTES value that consists of the specified number of leftmost characters or bytes from value. The length is an INT64 that specifies the length of the returned value.",
+        "If value is of type BYTES, length is the number of leftmost bytes to return. If value is STRING, length is the number of leftmost characters to return.",
+        "If length is 0, an empty STRING or BYTES value will be returned. If length is negative, an error will be returned. If length exceeds the number of characters or bytes from value, the original value will be returned.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#left",
+        "",
+        "Examples:",
+        "`SELECT LEFT('banana', 3)` returns 'ban'"
+      ]
+
     },
     "LENGTH()": {
       "prefix": "length",
@@ -1172,7 +1181,14 @@
     "STRPOS()": {
       "prefix": "STRPOS",
       "body": "STRPOS(${1:string}, ${2:substring})",
-      "description": "Returns the 1-based index of the first occurrence of `substring` inside `string`. Returns 0 if `substring` is not found."
+      "description": [
+        "Takes two STRING or BYTES values. Returns the 1-based position of the first occurrence of subvalue inside value. Returns 0 if subvalue isn't found.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#strpos",
+        "",
+        "Examples:",
+        "`SELECT STRPOS('foo@example.com', '@')` returns 4",
+        "`SELECT STRPOS('foo@example.com', 'z')` returns 0"
+      ]
     },
     "SUBSTR()": {
       "prefix": "substr",
@@ -1230,7 +1246,15 @@
     "TRIM()": {
       "prefix": "TRIM",
       "body": "TRIM(${1:value1[, value2]})",
-      "description": "Removes all leading and trailing characters that match `value2`."
+      "description": [
+        "Removes all leading and trailing characters that match `value2`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#trim",
+        "",
+        "Examples:",
+        "`SELECT TRIM('   apple   ')` returns 'apple'",
+        "`SELECT TRIM('***apple***', '*')` returns 'apple'",
+        "`SELECT TRIM('xzxapplexxy', 'xyz')` returns 'apple'"
+      ]
     },
     "UNICODE()": {
       "prefix": "unicode",
