@@ -165,7 +165,7 @@
       ],
       "description": "Time travel to access data at any point within the last 7 days."
     },
-    "PIVOT": {
+    "PIVOT()": {
       "prefix": "PIVOT",
       "body": [
         "SELECT",
@@ -176,6 +176,17 @@
         "\t\tFOR ${5:input_column}",
         "\t\tIN (${6:pivot_column, ...})",
         "\t)"
+      ],
+      "description": [
+        "The PIVOT operator rotates rows into columns, using aggregation. PIVOT is part of the FROM clause.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#pivot_operator",
+        "",
+        "Examples:",
+        "`SELECT * FROM (SELECT name, age FROM users) PIVOT(MAX(age) FOR name IN ('Alice', 'Bob', 'Charlie'))`",
+        "Above query returns the following result:",
+        "`| name | Alice | Bob | Charlie |`",
+        "`|------|-------|-----|---------|`",
+        "`| age  | 25    | 30  | 35      |`"
       ]
     },
     "UNPIVOT": {

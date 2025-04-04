@@ -325,7 +325,6 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     const regex = /\$\{([^}]+)\}/g;
     let match;
     while ((match = regex.exec(line)) !== null) {
-        // console.log(`Found reference: ${match[0]}, Content: ${match[1]}`);
         const content =  (match[1]);
         if (content.includes(".")){
           const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
@@ -426,12 +425,17 @@ export class DataformBigQueryHoverProvider implements vscode.HoverProvider {
                 const hoverContent = new vscode.MarkdownString();
                 
                 if (Array.isArray(snippet.description)) {
-                    hoverContent.appendMarkdown(snippet.description.join('\n\n'));
+                    const markdownDescription = snippet.description.join('\n\n');
+                    hoverContent.appendMarkdown(markdownDescription);
                 } else if (snippet.description) {
                     hoverContent.appendMarkdown(snippet.description);
                 }
                 
-                hoverContent.appendCodeblock(snippet.body, 'sqlx');
+                if (Array.isArray(snippet.body)) {
+                    hoverContent.appendCodeblock(snippet.body.join('\n'), 'sqlx');
+                } else {
+                    hoverContent.appendCodeblock(snippet.body, 'sqlx');
+                }
                 
                 return new vscode.Hover(hoverContent, range);
             }
