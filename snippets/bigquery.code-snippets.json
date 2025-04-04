@@ -564,17 +564,34 @@
     "RANK()": {
       "prefix": "RANK",
       "body": "RANK()",
-      "description": "Returns the ordinal (1-based) rank of each row within the ordered partition."
+      "description": [
+        "Returns the ordinal (1-based) rank of each row within the ordered partition. All peer rows receive the same rank value. The next row or set of peer rows receives a rank value which increments by the number of peers with the previous rank value, instead of DENSE_RANK, which always increments by 1.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#rank",
+        "",
+        "Examples:",
+        "`RANK() OVER (PARTITION BY division ORDER BY finish_time ASC)`returns the rank of each row within the partition. [INT64]"
+      ]
     },
     "DENSE_RANK()": {
       "prefix": "DENSE_RANK",
       "body": "DENSE_RANK()",
-      "description": "Returns the ordinal (1-based) rank of each row within the window partition."
+      "description": [
+        "Returns the ordinal (1-based) rank of each row within the window partition. All peer rows receive the same rank value, and the subsequent rank value is incremented by one.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#dense_rank",
+        "",
+        "Examples:",
+        "`DENSE_RANK() OVER (PARTITION BY division ORDER BY finish_time ASC)`returns the rank of each row within the partition. [INT64]"
+      ]
     },
     "PERCENT_RANK()": {
       "prefix": "PERCENT_RANK",
       "body": "PERCENT_RANK()",
-      "description": "Return the percentile rank of a row defined as (RK-1)/(NR-1), where RK is the `RANK` of the row and NR is the number of rows in the partition. Returns 0 if NR=1."
+      "description": [
+        "Return the percentile rank of a row defined as (RK-1)/(NR-1), where RK is the `RANK` of the row and NR is the number of rows in the partition. Returns 0 if NR=1.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#percent_rank",
+        "Examples:",
+        "`PERCENT_RANK() OVER (PARTITION BY division ORDER BY finish_time ASC)`returns the percentile rank of each row within the partition. [FLOAT64]"
+      ]
     },
     "CUME_DIST()": {
       "prefix": "CUME_DIST",
@@ -590,12 +607,12 @@
       "prefix": "ROW_NUMBER",
       "body": "ROW_NUMBER()",
       "description": [
-        "Returns the 1-based row number of the current row within the partition. Does not require the `ORDER BY` clause.",
+        "Doesn't require the ORDER BY clause. Returns the sequential row ordinal (1-based) of each row for each ordered partition. If the ORDER BY clause is unspecified then the result is non-deterministic.",
         "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#row_number",
         "",
         "Examples:",
-        "ROW_NUMBER() over (order by name) as row_number",
-        "ROW_NUMBER() over (partition by name order by age) as row_number"
+        "`ROW_NUMBER() over (order by name) as row_number`",
+        "`ROW_NUMBER() over (partition by name order by age) as row_number`"
       ]
     },
     "FIRST_VALUE()": {
