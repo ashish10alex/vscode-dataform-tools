@@ -183,13 +183,10 @@
         "",
         "Examples:",
         "`SELECT * FROM (SELECT name, age FROM users) PIVOT(MAX(age) FOR name IN ('Alice', 'Bob', 'Charlie'))`",
-        "Above query returns the following result:",
-        "`| name | Alice | Bob | Charlie |`",
-        "`|------|-------|-----|---------|`",
-        "`| age  | 25    | 30  | 35      |`"
+        "```markdown \n| name    | Alice | Bob   | Charlie |\n|---------|-------|-------|---------|\n| age     | 25    | 30    | 35      |\n```"
       ]
     },
-    "UNPIVOT": {
+    "UNPIVOT()": {
       "prefix": "UNPIVOT",
       "body": [
         "SELECT",
@@ -200,6 +197,15 @@
         "\t\tFOR ${6:dimension_column_name}",
         "\t\tIN (${7:unpivot_column, ...})",
         "\t)"
+      ],
+      "description": [
+        "The UNPIVOT operator rotates columns into rows. UNPIVOT is part of the FROM clause.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#unpivot_operator",
+        "",
+        "Examples:",
+        "`SELECT * FROM (SELECT name, age FROM users) UNPIVOT(age FOR name IN ('Alice', 'Bob', 'Charlie'))`",
+        "Above query returns the following result:",
+        "```markdown \n| name    | age |\n|---------|-----|\n| Alice   | 25  |\n| Bob     | 30  |\n| Charlie | 35  |\n```"
       ]
     },
     "DISTINCT": {
