@@ -1063,27 +1063,43 @@
     "REGEXP_EXTRACT()": {
       "prefix": "regexp_extract",
       "body": "REGEXP_EXTRACT(${1:value}, r\"${2:regex}\"${3:[, position[, occurrence]]})",
-      "description": "Returns the first substring in `value` that matches the regular expression, `regex`. Returns NULL if there is no match."
+      "description": [
+        "Returns the first substring in `value` that matches the regular expression, `regex`. Returns NULL if there is no match.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_extract"
+      ]
     },
     "REGEXP_EXTRACT_ALL()": {
       "prefix": "REGEXP_EXTRACT_ALL",
       "body": "REGEXP_EXTRACT_ALL(${1:value}, r\"${2:regex}\")",
-      "description": "Returns an array of all substrings of `value` that match the regular expression, `regex`."
+      "description": [
+        "Returns an array of all substrings of `value` that match the regular expression, `regex`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_extract_all"
+      ]
     },
     "REGEXP_INSTR()": {
       "prefix": "regexp_instr",
       "body": "REGEXP_INSTR(${1:source_value}, r\"${2:regex}\"${3:[, position[, occurrence, [occurrence_position]]]})",
-      "description": "Returns the lowest 1-based index of a regular expression, regexp, in source_value."
+      "description": [
+        "Returns the lowest 1-based index of a regular expression, regexp, in source_value.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_instr"
+
+      ]
     },
     "REGEXP_REPLACE()": {
       "prefix": "REGEXP_REPLACE",
       "body": "REGEXP_REPLACE(${1:value}, r\"${2:regex}\", ${3:replacement})",
-      "description": "Returns a STRING where all substrings of `value` that match regular expression `regex` are replaced with `replacement`."
+      "description": [
+        "Returns a STRING where all substrings of `value` that match regular expression `regex` are replaced with `replacement`.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_replace"
+      ]
     },
     "REGEXP_SUBSTR()": {
       "prefix": "regexp_substr",
       "body": "REGEXP_SUBSTR(${1:value}, r\"${2:regex}\"${3:[, position[, occurrence]]})",
-      "description": "Synonym for REGEXP_EXTRACT."
+      "description": [
+        "Returns the first substring in `value` that matches the regular expression, `regex`. Returns NULL if there is no match. Synonym for REGEXP_EXTRACT",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_substr"
+      ]
     },
     "REPLACE()": {
       "prefix": "REPLACE",
