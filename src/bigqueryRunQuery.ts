@@ -64,7 +64,6 @@ function parseObject(key:any, obj: any, _childrens: any) {
                         _childrens.push({ ..._children, [key]: item });
                     });
                 } else {
-                    // Handle arrays of objects as before
                     let new_children = parseObject(key, value, _childrens);
                     if (new_children.constructor.name === "Array") {
                         new_children.forEach((_: any, idx: any) => {
