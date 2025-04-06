@@ -29,11 +29,11 @@ const extractValue: any = (value: any) => {
     return value;
 };
 
-function parseObject(obj: any, _childrens: any) {
+function parseObject(key:any, obj: any, _childrens: any) {
     // Check if obj is an array of primitive values
     if (Array.isArray(obj) && obj.length > 0 && (typeof obj[0] !== 'object' || obj[0] === null)) {
         obj.forEach((value) => {
-            _childrens.push({ value });
+            _childrens.push({ [key]: value });
         });
         return _childrens;
     }
@@ -65,7 +65,7 @@ function parseObject(obj: any, _childrens: any) {
                     });
                 } else {
                     // Handle arrays of objects as before
-                    let new_children = parseObject(value, _childrens);
+                    let new_children = parseObject(key, value, _childrens);
                     if (new_children.constructor.name === "Array") {
                         new_children.forEach((_: any, idx: any) => {
                             new_children[idx] = transformBigValues(new_children[idx]);
@@ -228,7 +228,7 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
                 }
 
                 let _childrens: any = [];
-                _childrens = parseObject(value, _childrens);
+                _childrens = parseObject(key, value, _childrens);
 
                 // Nested object in Tabulator are displayed by adding the key _children to the exsisting array
                 if (obj._children) {
