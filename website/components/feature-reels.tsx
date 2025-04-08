@@ -19,45 +19,17 @@ export default function FeatureReels() {
   const features: Feature[] = [
     {
       id: "compile-sql",
-      title: "Compile SQL",
+      title: "Installation and features",
       description: "Compile your SQLX files to SQL with a single click. View the compiled SQL directly in VSCode.",
       videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
       thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
     },
     {
       id: "schema-explorer",
-      title: "Schema Explorer",
-      description: "Explore your project's schema, including tables, views, and their relationships.",
-      videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
-      thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
-    },
-    {
-      id: "dependency-graph",
-      title: "Dependency Graph",
-      description: "Visualize dependencies between your Dataform objects with an interactive graph.",
-      videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
-      thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
-    },
-    {
-      id: "code-snippets",
-      title: "Code Snippets",
-      description: "Use built-in snippets to quickly create common Dataform patterns and structures.",
-      videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
-      thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
-    },
-    {
-      id: "syntax-highlighting",
-      title: "Syntax Highlighting",
-      description: "Enhanced syntax highlighting for SQLX files with Dataform-specific keywords.",
-      videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
-      thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
-    },
-    {
-      id: "auto-completion",
-      title: "Auto-completion",
-      description: "Intelligent auto-completion for Dataform JavaScript API and SQL keywords.",
-      videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
-      thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
+      title: "Windows installation",
+      description: "Windows installation",
+      videoUrl: "https://youtu.be/8AsSwzmzhV4?si=QOPmqpvwGmQEIy96",
+      thumbnail: "https://img.youtube.com/vi/8AsSwzmzhV4/maxresdefault.jpg",
     },
   ];
 
@@ -69,8 +41,8 @@ export default function FeatureReels() {
   };
 
   return (
-    <div className="grid gap-8 w-full">
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl w-full place-items-center">
+    <div className="grid gap-8">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto w-full">
         {features.map((feature) => (
           <Card key={feature.id} className="overflow-hidden">
             <div className="relative aspect-video bg-muted">
