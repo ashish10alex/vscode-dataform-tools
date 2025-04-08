@@ -4,6 +4,7 @@ import { Github } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
@@ -51,6 +52,9 @@ export function SiteHeader() {
               FAQ
             </Link>
           </nav>
+        </div>
+        <div className="flex items-center space-x-2">
+          <ThemeToggle />
         </div>
       </div>
     </header>
