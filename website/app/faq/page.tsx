@@ -22,7 +22,10 @@ export default function FAQPage() {
         <div className="space-y-6">
           {faqs.map((faq, index) => (
             <div key={index} className="border-b pb-6">
-              <h3 className="text-lg font-semibold mb-2">{faq.question}</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                <span className="mr-2 text-primary">{index + 1}.</span>
+                {faq.question}
+              </h3>
               <p className="text-muted-foreground">{faq.answer}</p>
             </div>
           ))}
