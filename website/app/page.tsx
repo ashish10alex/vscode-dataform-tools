@@ -6,9 +6,9 @@ import FeatureReels from "@/components/feature-reels";
 
 export default function Home() {
   return (
-    <main className="flex-1">
-      <section className="container py-3 md:py-4 lg:py-5">
-        <div className="mx-auto max-w-3xl text-center">
+    <main className="flex-1 flex flex-col items-center">
+      <section className="w-full flex justify-center py-3 md:py-4 lg:py-5">
+        <div className="mx-auto max-w-4xl text-center px-4">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
             Supercharge Your Dataform Workflow
           </h1>
@@ -40,8 +40,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container py-6 md:py-8">
-        <div className="mx-auto max-w-7xl rounded-lg border bg-card p-4 md:p-6 shadow-sm">
+      <section className="container-fluid py-6 md:py-8">
+        <div className="mx-auto max-w-[95%] rounded-lg border bg-card p-4 md:p-6 shadow-sm">
           <div className="flex justify-center items-center overflow-hidden rounded-md">
             <img
               src="compiled_query_preview.png"
