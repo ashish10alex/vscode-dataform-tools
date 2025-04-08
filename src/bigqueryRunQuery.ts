@@ -29,7 +29,15 @@ const extractValue: any = (value: any) => {
     return value;
 };
 
-function parseObject(obj: any, _childrens: any) {
+function parseObject(key:any, obj: any, _childrens: any) {
+    // Check if obj is an array of primitive values
+    if (Array.isArray(obj) && obj.length > 0 && (typeof obj[0] !== 'object' || obj[0] === null)) {
+        obj.forEach((value) => {
+            _childrens.push({ [key]: value });
+        });
+        return _childrens;
+    }
+    
     let _children: any = {};
     Object.entries(obj).forEach(([key, value]: [any, any]) => {
         if (typeof value === 'object' && value !== null) {
@@ -50,12 +58,19 @@ function parseObject(obj: any, _childrens: any) {
 
             }
             else if (value.constructor.name === 'Array') {
-                let new_children = parseObject(value, _childrens);
-                if (new_children.constructor.name === "Array") {
-                    new_children.forEach((_: any, idx: any) => {
-                        new_children[idx] = transformBigValues(new_children[idx]);
-                        new_children[idx] = { ..._children, ...new_children[idx] };
+                // Handle arrays of primitive values directly
+                if (value.length > 0 && (typeof value[0] !== 'object' || value[0] === null)) {
+                    value.forEach((item: any) => {
+                        _childrens.push({ ..._children, [key]: item });
                     });
+                } else {
+                    let new_children = parseObject(key, value, _childrens);
+                    if (new_children.constructor.name === "Array") {
+                        new_children.forEach((_: any, idx: any) => {
+                            new_children[idx] = transformBigValues(new_children[idx]);
+                            new_children[idx] = { ..._children, ...new_children[idx] };
+                        });
+                    }
                 }
             }
             else {
@@ -212,7 +227,7 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
                 }
 
                 let _childrens: any = [];
-                _childrens = parseObject(value, _childrens);
+                _childrens = parseObject(key, value, _childrens);
 
                 // Nested object in Tabulator are displayed by adding the key _children to the exsisting array
                 if (obj._children) {
