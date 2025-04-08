@@ -570,7 +570,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
 
     if (!workspaceFolder) {
         return;
