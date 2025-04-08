@@ -23,6 +23,12 @@ export function SiteHeader() {
               Home
             </Link>
             <Link
+              href="/install"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+            Install
+            </Link>
+            <Link
               href="/features"
               className="text-sm font-medium text-muted-foreground hover:text-foreground"
             >
