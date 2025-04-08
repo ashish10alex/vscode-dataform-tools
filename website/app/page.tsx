@@ -9,11 +9,11 @@ export default function Home() {
       <section className="w-full flex justify-center py-3 md:py-4 lg:py-5">
         <div className="mx-auto max-w-4xl text-center px-4">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
-            Supercharge Your Dataform Workflow
+          Dataform Tools VSCode Extension
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
-            Dataform Tools enhances your development experience with powerful features for SQL compilation, schema
-            exploration, and more.
+            A powerful VS Code extension for Dataform (v2.x & v3.x) with features like compiled query previews, dependency graphs, 
+            inline diagnostics, schema generation, cost estimation, formatting, and more.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
             <Button asChild>
