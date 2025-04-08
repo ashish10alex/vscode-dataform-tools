@@ -52,28 +52,6 @@ export function SiteHeader() {
             </Link>
           </nav>
         </div>
-        <div className="flex items-center justify-end space-x-4">
-          <Button variant="outline" size="sm" className="h-8 px-4 transition-colors" asChild>
-            <Link
-              href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Install Extension
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 transition-colors" asChild>
-            <Link
-              href="https://github.com/ashish10alex/vscode-dataform-tools"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-primary"
-            >
-              <Github className="h-4 w-4" />
-              <span className="sr-only">GitHub</span>
-            </Link>
-          </Button>
-        </div>
       </div>
     </header>
   );
