@@ -1,30 +1,16 @@
 export default function FAQPage() {
   const faqs = [
     {
-      question: "What is Dataform Tools?",
+      question: "What operating systems does Dataform Tools support?",
       answer:
-        "Dataform Tools is a VSCode extension that enhances your development experience with Dataform, providing features for SQL compilation, schema exploration, and more efficient workflow management.",
+        "Dataform Tools supports Windows, MacOS, and Linux.",
     },
     {
-      question: "How do I install Dataform Tools?",
+      question: "What is the minimum version of VSCode required to use Dataform Tools?",
       answer:
-        "You can install Dataform Tools directly from the VSCode Marketplace. Simply search for 'Dataform Tools' in the Extensions tab of VSCode or click the Install Extension button on our website.",
+        "Dataform Tools requires VSCode version 1.89.0 or higher.",
     },
-    {
-      question: "What features does Dataform Tools offer?",
-      answer:
-        "Dataform Tools offers several key features including SQL compilation, schema exploration, code completion, and various development workflow enhancements specifically designed for Dataform projects.",
-    },
-    {
-      question: "Is Dataform Tools free to use?",
-      answer:
-        "Yes, Dataform Tools is completely free and open-source. You can find the source code on our GitHub repository.",
-    },
-    {
-      question: "How can I report issues or request features?",
-      answer:
-        "You can report issues or request features by creating an issue on our GitHub repository. We welcome community contributions and feedback.",
-    },
+    
   ];
 
   return (
