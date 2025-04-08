@@ -36,6 +36,7 @@ const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
 const dependencyGraphButton = document.getElementById("dependencyGraph");
 const schemaCodeBlock = document.getElementById("schemaCodeBlock");
+const selectWorkspaceLink = document.getElementById("selectWorkspaceLink");
 let fullModelName = "";
 let descriptionData = {}; // Variable to store description data
 
@@ -44,6 +45,17 @@ function dependencyGraphClickHandler() {
         command: 'dependencyGraph',
         value: true
     });
+}
+
+function selectWorkspaceLinkClickHandler(event) {
+    event.preventDefault(); // Prevent default link behavior
+    vscode.postMessage({
+        command: 'selectWorkspaceFolder'
+    });
+}
+
+if (selectWorkspaceLink) {
+    selectWorkspaceLink.addEventListener('click', selectWorkspaceLinkClickHandler);
 }
 
 if (dependencyGraphButton) {

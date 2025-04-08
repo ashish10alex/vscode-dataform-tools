@@ -70,7 +70,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                     const filePath = message.value.filePath;
                     const type = message.value.type;
                     if (filePath) {
-                        const workspaceFolder = getWorkspaceFolder();
+                        const workspaceFolder = await getWorkspaceFolder();
                         if (workspaceFolder) {
                             const fullFilePath = path.join(workspaceFolder, filePath);
                             const filePathUri = vscode.Uri.file(fullFilePath);
