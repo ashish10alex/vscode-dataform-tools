@@ -43,4 +43,4 @@ node_modules/undici-types/**
 node_modules/@types/**
 node_modules/@emotion*/**
 node_modules/concurrently*/**
-website/*
+website/**
