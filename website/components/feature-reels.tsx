@@ -69,8 +69,8 @@ export default function FeatureReels() {
   };
 
   return (
-    <div className="grid gap-8">
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto w-full">
+    <div className="grid gap-8 w-full">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl w-full place-items-center">
         {features.map((feature) => (
           <Card key={feature.id} className="overflow-hidden">
             <div className="relative aspect-video bg-muted">

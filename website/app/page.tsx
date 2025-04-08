@@ -40,16 +40,16 @@ export default function Home() {
       </header>
 
       <main className="flex-1">
-        <section className="container py-12 md:py-16 lg:py-20">
+        <section className="container py-3 md:py-4 lg:py-5">
           <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
               Supercharge Your Dataform Workflow
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground md:text-xl">
+            <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
               Dataform Tools enhances your development experience with powerful features for SQL compilation, schema
               exploration, and more.
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
               <Button asChild>
                 <Link
                   href="https://marketplace.visualstudio.com/items?itemName=ashish10alex.dataform-tools"
@@ -73,9 +73,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="container py-8 md:py-12">
-          <h2 className="mb-8 text-center text-2xl font-bold tracking-tight md:text-3xl">Feature Showcase</h2>
-          <FeatureReels />
+        <section className="container flex justify-center items-center py-4 md:py-6">
+          <div className="w-full max-w-7xl mx-auto px-4">
+            <FeatureReels />
+          </div>
         </section>
       </main>
 
