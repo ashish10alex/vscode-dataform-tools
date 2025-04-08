@@ -2,7 +2,6 @@ import { Github } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import FeatureReels from "@/components/feature-reels";
 
 export default function Home() {
   return (
