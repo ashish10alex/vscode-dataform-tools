@@ -690,7 +690,26 @@
       "prefix": "PERCENTILE_CONT",
       "body": "PERCENTILE_CONT(${1:value_expression, percentile [{RESPECT | IGNORE\\} NULLS]})",
       "description": [
-        "Computes the specified percentile value for the value_expression, with linear interpolation."
+        "Computes the specified percentile value for the value_expression, with linear interpolation.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#percentile_cont",
+        "",
+        "Examples:",
+        "",
+        "SELECT",
+        "  PERCENTILE_CONT(x, 0) OVER() AS min,",
+        "  PERCENTILE_CONT(x, 0.01) OVER() AS percentile1,",
+        "  PERCENTILE_CONT(x, 0.5) OVER() AS median,",
+        "  PERCENTILE_CONT(x, 0.9) OVER() AS percentile90,",
+        "  PERCENTILE_CONT(x, 1) OVER() AS max",
+        "FROM UNNEST([0, 3, NULL, 1, 2]) AS x LIMIT 1;",
+        "",
+        "```sql",
+        "/*-----+-------------+--------+--------------+-----*",
+        " | min | percentile1 | median | percentile90 | max |",
+        " +-----+-------------+--------+--------------+-----+",
+        " | 0   | 0.03        | 1.5    | 2.7          | 3   |",
+        " *-----+-------------+--------+--------------+-----*/",
+        "```"
       ]
     },
     "PERCENTILE_DISC()": {
