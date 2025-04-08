@@ -10,6 +10,7 @@ interface Feature {
   title: string
   description: string
   videoUrl: string
+  videoId: string
   thumbnail: string
 }
 
@@ -22,6 +23,7 @@ export default function FeatureReels() {
       title: "Installation and features",
       description: "Compile your SQLX files to SQL with a single click. View the compiled SQL directly in VSCode.",
       videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
+      videoId: "nb_OFh6YgOc",
       thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
     },
     {
@@ -29,6 +31,7 @@ export default function FeatureReels() {
       title: "Windows installation",
       description: "Windows installation",
       videoUrl: "https://youtu.be/8AsSwzmzhV4?si=QOPmqpvwGmQEIy96",
+      videoId: "8AsSwzmzhV4",
       thumbnail: "https://img.youtube.com/vi/8AsSwzmzhV4/maxresdefault.jpg",
     },
   ];
@@ -48,7 +51,7 @@ export default function FeatureReels() {
             <div className="relative aspect-video bg-muted">
               {playing[feature.id] ? (
                 <iframe
-                  src={`https://www.youtube.com/embed/${feature.videoUrl}?autoplay=1&rel=0`}
+                  src={`https://www.youtube.com/embed/${feature.videoId}?autoplay=1&rel=0`}
                   className="absolute inset-0 h-full w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
