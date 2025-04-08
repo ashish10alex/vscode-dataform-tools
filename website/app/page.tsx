@@ -51,6 +51,18 @@ export default function Home() {
               height={675}
             />
           </div>
+          <div className="flex justify-center mt-4 mb-2">
+            <Button
+              asChild
+              size="lg"
+              variant="default"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <Link href="/features">
+                Explore Features →
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
