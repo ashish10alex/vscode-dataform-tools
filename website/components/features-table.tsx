@@ -141,7 +141,7 @@ export default function FeaturesTable() {
   }, [selectedFeature, carouselApi, featureImages, currentSlide]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-10 md:px-10">
       {/* Features table */}
       <div className="w-full overflow-hidden">
         <div className="rounded-md border">
