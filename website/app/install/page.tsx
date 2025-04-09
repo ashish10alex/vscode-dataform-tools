@@ -12,6 +12,8 @@ export default function InstallationGuidePage() {
             <div className="max-w-3xl md:max-w-none px-4">
               <p className="text-muted-foreground mb-8 dark:text-gray-400">
                 Installation steps for Dataform tools VSCode extension.
+                Once you have installed the extension on VSCode, follow the steps below.
+                Alternatively, you can watch one of the setup videos shown on the right.
               </p>
               
               <div className="space-y-10">
@@ -28,7 +30,7 @@ export default function InstallationGuidePage() {
                     language="bash"
                   />
                   <p className="mt-2 text-sm text-muted-foreground dark:text-gray-400">
-                    Run <code className="px-1.5 py-0.5 rounded-md bg-muted dark:bg-gray-800 text-muted-foreground font-mono text-sm dark:text-gray-300">dataform compile</code> from the root of your Dataform project to ensure that you are able to use the CLI.
+                    Run <code className="px-1.5 py-0.5 rounded-md bg-muted dark:bg-gray-800 text-muted-foreground font-mono text-sm dark:text-gray-300">dataform compile</code> from the <b>root of your Dataform project </b> to ensure that you are able to use the CLI.
                   </p>
                 </div>
 
