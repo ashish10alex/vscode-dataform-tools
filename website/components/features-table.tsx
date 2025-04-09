@@ -201,9 +201,6 @@ export default function FeaturesTable() {
                             className="object-contain"
                             priority={feature.anchor === selectedFeature}
                           />
-                          <div className="absolute bottom-0 left-0 right-0 text-center py-2 text-sm font-medium bg-background/80 backdrop-blur-sm">
-                            {feature.name}
-                          </div>
                         </div>
                       ) : (
                         <div className="text-muted text-center p-8">
