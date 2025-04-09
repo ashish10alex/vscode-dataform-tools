@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.12.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.11.0...v0.12.0) (2025-04-09)
+
+
+### Features
+
+* **hover:** show documentation for commonly used BigQuery functions on hover ([#134](https://github.com/ashish10alex/vscode-dataform-tools/issues/134)) ([4439d11](https://github.com/ashish10alex/vscode-dataform-tools/commit/4439d11ae1e72f82c31888bb7468362bf4b72de7))
+* **snippets:** add bigquery labels to snippets ([#138](https://github.com/ashish10alex/vscode-dataform-tools/issues/138)) ([e48aaff](https://github.com/ashish10alex/vscode-dataform-tools/commit/e48aaff123d39e52108bc9d9a8891e04ea0393b6))
+* website for dataform tools vscode extension ([#139](https://github.com/ashish10alex/vscode-dataform-tools/issues/139)) ([3426118](https://github.com/ashish10alex/vscode-dataform-tools/commit/342611880d41e48d2fed0552147a50d9306e3fdb))
+* **website:** show features available in table format with preview ([#141](https://github.com/ashish10alex/vscode-dataform-tools/issues/141)) ([20295d8](https://github.com/ashish10alex/vscode-dataform-tools/commit/20295d8e4f638048bad10cb2a5e008909e19afaf))
+
+
+### Bug Fixes
+
+* nav links not appearing on mobile ([#140](https://github.com/ashish10alex/vscode-dataform-tools/issues/140)) ([68d334c](https://github.com/ashish10alex/vscode-dataform-tools/commit/68d334cac506054e990c51d50d963e27ad465910))
+* unnested struct columns not showing in results preview ([#136](https://github.com/ashish10alex/vscode-dataform-tools/issues/136)) ([0de34ca](https://github.com/ashish10alex/vscode-dataform-tools/commit/0de34ca67bc86a022ba1064e75dbc5ba2069166c))
+* **website:** make main page fully visible in default view port ([#142](https://github.com/ashish10alex/vscode-dataform-tools/issues/142)) ([9e98b42](https://github.com/ashish10alex/vscode-dataform-tools/commit/9e98b42b1ee3dd69f27741b5290f9e53d434784c))
+
 ## [0.11.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.10.11...v0.11.0) (2025-03-25)
 
 
