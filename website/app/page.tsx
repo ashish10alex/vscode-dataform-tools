@@ -14,7 +14,7 @@ export default function Home() {
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
             A powerful VS Code extension for Dataform (v2.x & v3.x) with features like compiled query previews, dependency graphs, 
-            inline diagnostics, schema generation, cost estimation, formatting, and more.
+            inline diagnostics, schema generation, cost estimation, and more.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
             <Button asChild>
@@ -40,8 +40,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container-fluid py-6 md:py-8">
-        <div className="mx-auto max-w-[95%] rounded-lg border bg-card p-4 md:p-6 shadow-sm">
+      <section className="container-fluid py-4 md:py-6">
+        <div className="mx-auto max-w-[90%] rounded-lg border bg-card p-3 md:p-5 shadow-sm">
           <div className="flex justify-center items-center overflow-hidden rounded-md">
             <ThemeImage 
               lightSrc="compiled_query_preview_light_mode.png"
@@ -52,10 +52,9 @@ export default function Home() {
               height={788}
             />
           </div>
-          <div className="flex justify-center mt-6 mb-2">
+          <div className="flex justify-center mt-4 mb-2">
             <Button
               asChild
-              size="lg"
               variant="default"
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             >
