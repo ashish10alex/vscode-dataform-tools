@@ -16,9 +16,9 @@ export default function FeaturesTable() {
   const features: FeatureItem[] = [
     {
       name: "Compiled Query & Dry run stats",
-      description: "Compiled query with dry run stats in a vertical split",
+      description: "Compiled query with dry run stats in a vertical split on saving the file",
       anchor: "compilation",
-      image: "/compiled_query_preview_dark_mode.png",
+      image: "/compiled_query_preview.png",
     },
     {
       name: "Dependancy graph",
@@ -64,9 +64,9 @@ export default function FeaturesTable() {
     },
     {
       name: "Code actions",
-      description: "Apply dry run suggestions at the speed of thought",
+      description: "Apply quick fixes at the speed of thought",
       anchor: "codeactions",
-      image: "",
+      image: "/quick_fix.png",
     },
     {
       name: "Run file(s)/tag(s)",
@@ -76,13 +76,13 @@ export default function FeaturesTable() {
     },
     {
       name: "Format using Sqlfluff 🪄",
-      description: "Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)",
+      description: "Format `.sqlx` files using <a href='https://github.com/sqlfluff/sqlfluff' target='_blank' rel='noopener noreferrer'>sqlfluff</a>",
       anchor: "formatting",
       image: "formatting.gif",
     },
     {
       name: "BigQuery snippets",
-      description: "Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension",
+      description: "Code snippets for generic BigQuery functions taken from <a href='https://github.com/shinichi-takii/vscode-language-sql-bigquery' target='_blank' rel='noopener noreferrer'>vscode-langauge-sql-bigquery</a> extension",
       anchor: "snippets",
       image: "",
     },
@@ -134,7 +134,7 @@ export default function FeaturesTable() {
                       {feature.name}
                     </Link>
                   </td>
-                  <td className="p-4 align-middle">{feature.description}</td>
+                  <td className="p-4 align-middle" dangerouslySetInnerHTML={{ __html: feature.description as string }}></td>
                 </tr>
               ))}
             </tbody>
@@ -145,7 +145,7 @@ export default function FeaturesTable() {
       <div className="flex flex-col">
         <div className="rounded-md border p-4 h-full flex flex-col">
           <h2 className="text-xl font-bold mb-2" id={currentFeature.anchor}>{currentFeature.name}</h2>
-          <p className="mb-4">{currentFeature.description}</p>
+          <p className="mb-4" dangerouslySetInnerHTML={{ __html: currentFeature.description as string }}></p>
           
           <div className="relative flex-1 bg-muted/20 rounded-md overflow-hidden flex items-center justify-center">
             {currentFeature.image ? (
