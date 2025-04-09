@@ -2,6 +2,7 @@ import { Github } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ThemeImage } from "@/components/theme-image";
 
 export default function Home() {
   return (
@@ -42,8 +43,9 @@ export default function Home() {
       <section className="container-fluid py-6 md:py-8">
         <div className="mx-auto max-w-[95%] rounded-lg border bg-card p-4 md:p-6 shadow-sm">
           <div className="flex justify-center items-center overflow-hidden rounded-md">
-            <img
-              src="compiled_query_preview.png"
+            <ThemeImage 
+              lightSrc="compiled_query_preview_light_mode.png"
+              darkSrc="compiled_query_preview_dark_mode.png"
               alt="Dataform Tools VSCode Extension Preview"
               className="w-full max-w-[1400px] h-auto object-contain"
               width={1400}

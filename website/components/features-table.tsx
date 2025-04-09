@@ -18,7 +18,7 @@ export default function FeaturesTable() {
       name: "Compiled Query & Dry run stats",
       description: "Compiled query with dry run stats in a vertical split",
       anchor: "compilation",
-      image: "/compiled_query_preview.png",
+      image: "/compiled_query_preview_dark_mode.png",
     },
     {
       name: "Dependancy graph",
