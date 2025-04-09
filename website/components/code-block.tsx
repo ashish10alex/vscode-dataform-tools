@@ -46,7 +46,7 @@ export function CodeBlock({ code, language = "bash", title, className }: CodeBlo
   return (
     <div className={cn("border border-border rounded-lg overflow-hidden dark:border-gray-700", className)}>
       {title && (
-        <div className="bg-muted py-3 px-4 border-b border-border dark:bg-gray-800 dark:border-gray-700">
+        <div className="bg-muted py-3 px-4 border-b border-border dark:bg-gray-1000 dark:border-gray-700">
           <p className="text-sm font-medium dark:text-gray-300">{title}</p>
         </div>
       )}

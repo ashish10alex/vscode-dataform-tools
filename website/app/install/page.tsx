@@ -1,5 +1,6 @@
 import FeatureReels from "@/components/feature-reels";
 import { CodeBlock } from "@/components/code-block";
+import { InstallationStepHeader } from "@/components/installation-step-header";
 
 export default function InstallationGuidePage() {
   return (
@@ -10,16 +11,17 @@ export default function InstallationGuidePage() {
           <div className="md:col-span-7">
             <div className="max-w-3xl md:max-w-none px-4">
               <p className="text-muted-foreground mb-8 dark:text-gray-400">
-                How to install and set up the required tools for Dataform tools VSCode extension.
+                Installation steps for Dataform tools VSCode extension.
               </p>
               
               <div className="space-y-10">
                 {/* Dataform CLI */}
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight mb-4 flex items-center gap-2 dark:text-white">
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary text-sm">1</span>
-                    <a href="https://cloud.google.com/dataform/docs/use-dataform-cli" className="hover:underline">Dataform CLI</a>
-                  </h2>
+                  <InstallationStepHeader 
+                    number={1} 
+                    title="Dataform CLI" 
+                    link="https://cloud.google.com/dataform/docs/use-dataform-cli" 
+                  />
                   <CodeBlock 
                     title="Install Dataform CLI using npm (requires nodejs)"
                     code="npm i -g @dataform/cli"
@@ -32,10 +34,11 @@ export default function InstallationGuidePage() {
 
                 {/* Install gcloud CLI */}
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight mb-4 flex items-center gap-2 dark:text-white">
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary text-sm">2</span>
-                    <a href="https://cloud.google.com/sdk/docs/install" className="hover:underline">Google Cloud CLI</a>
-                  </h2>
+                  <InstallationStepHeader 
+                    number={2} 
+                    title="Google Cloud CLI" 
+                    link="https://cloud.google.com/sdk/docs/install" 
+                  />
                   <CodeBlock 
                     title="Initialize gcloud:"
                     code="gcloud init"
@@ -59,10 +62,11 @@ export default function InstallationGuidePage() {
 
                 {/* SQLFluff */}
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight mb-4 flex items-center gap-2 dark:text-white">
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary text-sm">3</span>
-                    <a href="https://github.com/sqlfluff/sqlfluff" className="hover:underline">SQLFluff</a>
-                  </h2>
+                  <InstallationStepHeader 
+                    number={3} 
+                    title="SQLFluff" 
+                    link="https://github.com/sqlfluff/sqlfluff" 
+                  />
                   <CodeBlock 
                     title="Install SQLFluff for SQL formatting (requires python):"
                     code="pip install sqlfluff"
@@ -72,18 +76,19 @@ export default function InstallationGuidePage() {
 
                 {/* Error Lens */}
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight mb-4 flex items-center gap-2 dark:text-white">
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary text-sm">4</span>
-                    <a href="https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens" className="hover:underline">Error Lens Extension</a>
-                    <span className="text-xs bg-muted text-muted-foreground rounded-full px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">Optional</span>
-                  </h2>
+                  <InstallationStepHeader 
+                    number={4} 
+                    title="Error Lens Extension" 
+                    link="https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens" 
+                    isOptional={true}
+                  />
                   <p className="text-sm text-muted-foreground dark:text-gray-400">
                     Install the Error Lens VS Code extension for prettier diagnostic messages.
                   </p>
                 </div>
 
                 {/* Note */}
-                <div className="rounded-lg border border-border bg-muted p-4 dark:border-gray-700 dark:bg-gray-800">
+                <div className="rounded-lg border border-border bg-muted p-4 dark:border-gray-700 dark:bg-gray-1000">
                   <div className="flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
                       <path d="M12 16h.01"></path>
@@ -94,7 +99,7 @@ export default function InstallationGuidePage() {
                   </div>
                   <div className="mt-2 text-sm text-muted-foreground dark:text-gray-300">
                     <p>
-                      Trouble installing or looking for a specific customization? Please see <a href="FAQ.md" className="font-medium underline underline-offset-4">FAQ section</a>, if you are still stuck, please <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" className="font-medium underline underline-offset-4">raise an issue here</a>.
+                      Trouble installing or looking for a specific customization? Please see <a href="/faq" className="font-medium underline underline-offset-4">FAQ section</a>, if you are still stuck, please <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" className="font-medium underline underline-offset-4">raise an issue here</a>.
                     </p>
                   </div>
                 </div>
