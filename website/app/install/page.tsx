@@ -8,7 +8,7 @@ export default function InstallationGuidePage() {
       <section className="container py-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           {/* Installation Section - Left Side */}
-          <div className="md:col-span-7">
+          <div className="md:col-span-7 pl-[10px]">
             <div className="max-w-3xl md:max-w-none px-4">
               <p className="text-muted-foreground mb-8 dark:text-gray-400">
                 Installation steps for Dataform tools VS Code extension.

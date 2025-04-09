@@ -13,8 +13,8 @@ export function SiteHeader() {
 
   const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/install", label: "Install" },
     { href: "/features", label: "Features" },
+    { href: "/install", label: "Install" },
     { href: "/faq", label: "FAQ" },
   ];
 
