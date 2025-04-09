@@ -7,7 +7,7 @@ import { SiteHeader } from "@/app/components/site-header";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Dataform Tools - VSCode Extension",
+  title: "Dataform Tools - VS Code Extension",
   description:
     "Enhance your Dataform development experience with powerful tools for SQL compilation, schema exploration, and more.",
 };

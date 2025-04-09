@@ -10,7 +10,7 @@ export default function Home() {
       <section className="w-full flex justify-center py-3 md:py-4 lg:py-5">
         <div className="mx-auto max-w-4xl text-center px-4">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
-          Dataform Tools VSCode Extension
+          Dataform Tools VS Code Extension
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
             A powerful VS Code extension for Dataform (v2.x & v3.x) with features like compiled query previews, dependency graphs, 
@@ -46,7 +46,7 @@ export default function Home() {
             <ThemeImage 
               lightSrc="compiled_query_preview_light_mode.png"
               darkSrc="compiled_query_preview_dark_mode.png"
-              alt="Dataform Tools VSCode Extension Preview"
+              alt="Dataform Tools VS Code Extension Preview"
               className="w-full max-w-[1400px] h-auto object-contain"
               width={1400}
               height={788}

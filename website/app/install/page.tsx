@@ -11,8 +11,8 @@ export default function InstallationGuidePage() {
           <div className="md:col-span-7">
             <div className="max-w-3xl md:max-w-none px-4">
               <p className="text-muted-foreground mb-8 dark:text-gray-400">
-                Installation steps for Dataform tools VSCode extension.
-                Once you have installed the extension on VSCode, follow the steps below.
+                Installation steps for Dataform tools VS Code extension.
+                Once you have installed the extension on VS Code, follow the steps below.
                 Alternatively, you can watch one of the setup videos shown on the right.
               </p>
               

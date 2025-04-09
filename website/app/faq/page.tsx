@@ -6,9 +6,9 @@ export default function FAQPage() {
         "Dataform Tools supports Windows, MacOS, and Linux.",
     },
     {
-      question: "What is the minimum version of VSCode required to use Dataform Tools?",
+      question: "What is the minimum version of VS Code required to use Dataform Tools?",
       answer:
-        "Dataform Tools requires VSCode version 1.89.0 or higher.",
+        "Dataform Tools requires VS Code version 1.89.0 or higher.",
     },
     
   ];
