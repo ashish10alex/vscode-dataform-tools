@@ -100,6 +100,11 @@ export default function FeaturesTable() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
       {/* Features table */}
       <div className="w-full overflow-hidden">
+        <div className="bg-yellow-100 dark:bg-yellow-900/30 border-2 border-yellow-400 dark:border-yellow-500/70 rounded-md p-3 mb-4 relative overflow-hidden shadow-sm">
+          <div className="flex items-center justify-center">
+            <span className="font-medium text-yellow-800 dark:text-yellow-200">Click on any feature to see its demonstration</span>
+          </div>
+        </div>
         <div className="rounded-md border">
           <table className="w-full caption-bottom text-sm">
             <thead className="border-b bg-muted/50">
