@@ -1,7 +1,15 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 interface FeatureItem {
   name: string;
@@ -12,6 +20,8 @@ interface FeatureItem {
 
 export default function FeaturesTable() {
   const [selectedFeature, setSelectedFeature] = useState<string>("compilation");
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   const features: FeatureItem[] = [
     {
@@ -76,7 +86,7 @@ export default function FeaturesTable() {
     },
     {
       name: "Format using Sqlfluff 🪄",
-      description: "Format `.sqlx` files using <a href='https://github.com/sqlfluff/sqlfluff' target='_blank' rel='noopener noreferrer'>sqlfluff</a>",
+      description: "Format sqlx files with javascript blocks using <a href='https://github.com/sqlfluff/sqlfluff' target='_blank' rel='noopener noreferrer'>sqlfluff</a>",
       anchor: "formatting",
       image: "formatting.gif",
     },
@@ -94,17 +104,46 @@ export default function FeaturesTable() {
     },
   ];
 
+  const featureImages = features.filter(feature => feature.image);
   const currentFeature = features.find(f => f.anchor === selectedFeature) || features[0];
+  
+  const onSelect = useCallback(() => {
+    if (!carouselApi) {return;}
+    
+    const selectedIndex = carouselApi.selectedScrollSnap();
+    setCurrentSlide(selectedIndex);
+    
+    if (featureImages[selectedIndex]) {
+      setSelectedFeature(featureImages[selectedIndex].anchor);
+    }
+  }, [carouselApi, featureImages]);
+
+  useEffect(() => {
+    if (!carouselApi) {return;}
+    
+    carouselApi.on("select", onSelect);
+    // Initial slide
+    onSelect();
+    
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
+  }, [carouselApi, onSelect]);
+
+  // Sync table selection with carousel
+  useEffect(() => {
+    if (!carouselApi) {return;}
+    
+    const featureIndex = featureImages.findIndex(f => f.anchor === selectedFeature);
+    if (featureIndex !== -1 && featureIndex !== currentSlide) {
+      carouselApi.scrollTo(featureIndex);
+    }
+  }, [selectedFeature, carouselApi, featureImages, currentSlide]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
       {/* Features table */}
       <div className="w-full overflow-hidden">
-        <div className="bg-yellow-100 dark:bg-yellow-900/30 border-2 border-yellow-400 dark:border-yellow-500/70 rounded-md p-3 mb-4 relative overflow-hidden shadow-sm">
-          <div className="flex items-center justify-center">
-            <span className="font-medium text-yellow-800 dark:text-yellow-200">Click on any feature to see its demonstration</span>
-          </div>
-        </div>
         <div className="rounded-md border">
           <table className="w-full caption-bottom text-sm">
             <thead className="border-b bg-muted/50">
@@ -147,21 +186,37 @@ export default function FeaturesTable() {
           <h2 className="text-xl font-bold mb-2" id={currentFeature.anchor}>{currentFeature.name}</h2>
           <p className="mb-4" dangerouslySetInnerHTML={{ __html: currentFeature.description as string }}></p>
           
-          <div className="relative flex-1 bg-muted/20 rounded-md overflow-hidden flex items-center justify-center">
-            {currentFeature.image ? (
-              <div className="relative w-full h-full min-h-[300px]">
-                <Image 
-                  src={currentFeature.image}
-                  alt={`${currentFeature.name} demonstration`}
-                  fill
-                  className="object-contain"
-                />
-              </div>
-            ) : (
-              <div className="text-muted text-center p-8">
-                Feature demonstration coming soon
-              </div>
-            )}
+          <div className="relative flex-1 bg-muted/20 rounded-md overflow-hidden flex items-center justify-center" style={{ minHeight: '80vh' }}>
+            <Carousel className="w-full h-full" setApi={setCarouselApi}>
+              <CarouselContent className="h-full">
+                {featureImages.map((feature) => (
+                  <CarouselItem key={feature.anchor} className="h-full">
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      {feature.image ? (
+                        <div className="relative w-full" style={{ height: '75vh' }}>
+                          <Image 
+                            src={feature.image}
+                            alt={`${feature.name} demonstration`}
+                            fill
+                            className="object-contain"
+                            priority={feature.anchor === selectedFeature}
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 text-center py-2 text-sm font-medium bg-background/80 backdrop-blur-sm">
+                            {feature.name}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-muted text-center p-8">
+                          Feature demonstration coming soon
+                        </div>
+                      )}
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="h-10 w-10 left-4" />
+              <CarouselNext className="h-10 w-10 right-4" />
+            </Carousel>
           </div>
         </div>
       </div>
