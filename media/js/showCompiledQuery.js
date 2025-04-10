@@ -52,7 +52,7 @@ if (dependencyGraphButton) {
 }
 
 if (compilerOptionsInput) {
-    compilerOptionsInput.addEventListener('input', debounce(updateCompilerOptions, 500));
+    compilerOptionsInput.addEventListener('input', debounce(updateCompilerOptions, 1000));
     
     // Debounce function to delay execution until user stops typing
     function debounce(func, wait) {
