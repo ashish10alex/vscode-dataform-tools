@@ -36,6 +36,7 @@ const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
 const dependencyGraphButton = document.getElementById("dependencyGraph");
 const schemaCodeBlock = document.getElementById("schemaCodeBlock");
+const compilerOptionsInput = document.getElementById("compilerOptionsInput");
 let fullModelName = "";
 let descriptionData = {}; // Variable to store description data
 
@@ -48,6 +49,31 @@ function dependencyGraphClickHandler() {
 
 if (dependencyGraphButton) {
     dependencyGraphButton.addEventListener('click', dependencyGraphClickHandler);
+}
+
+if (compilerOptionsInput) {
+    compilerOptionsInput.addEventListener('input', debounce(updateCompilerOptions, 500));
+    
+    // Debounce function to delay execution until user stops typing
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            const context = this;
+            const args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func.apply(context, args);
+            }, wait);
+        };
+    }
+}
+
+function updateCompilerOptions() {
+    const compilerOptions = compilerOptionsInput.value;
+    vscode.postMessage({
+        command: 'updateCompilerOptions',
+        value: compilerOptions
+    });
 }
 
 function populateDropdown(tags, defaultTag = undefined) {
