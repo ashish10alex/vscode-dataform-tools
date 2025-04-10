@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.0...v0.12.1) (2025-04-10)
+
+
+### Features
+
+* add ability to specify compiler options directly from the ui ([#145](https://github.com/ashish10alex/vscode-dataform-tools/issues/145)) ([5c53a52](https://github.com/ashish10alex/vscode-dataform-tools/commit/5c53a52a3bdeb991cc1d8f1cf40d56aae3359a2d))
+* **website:** update images shown in feature demo to have vertical aspect ratio ([bfc87e9](https://github.com/ashish10alex/vscode-dataform-tools/commit/bfc87e92e83e8b0aadffa43b82b6cbeeee6c2933))
+* **website:** use carousel to flip through images ([#143](https://github.com/ashish10alex/vscode-dataform-tools/issues/143)) ([c19b1aa](https://github.com/ashish10alex/vscode-dataform-tools/commit/c19b1aa67c058b2d4576ccc5d6c9c9b20348e5ca))
+
+
+### Documentation
+
+* **website:** add more faqs ([239fdd4](https://github.com/ashish10alex/vscode-dataform-tools/commit/239fdd4fefc5713bffe141964d77170de08a80a0))
+
 ## [0.12.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.11.0...v0.12.0) (2025-04-09)
 
 
