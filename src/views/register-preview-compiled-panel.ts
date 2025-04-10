@@ -199,6 +199,10 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'updateCompilerOptions':
+                const compilerOptions = message.value;
+                vscode.workspace.getConfiguration('vscode-dataform-tools').update('compilerOptions', compilerOptions);
+                return;
               case 'dependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
@@ -521,6 +525,10 @@ export class CompiledQueryPanel {
         const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
         const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
         const nonce = getNonce();
+        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
+        const escapedCompilerOptions = compilerOptions && typeof compilerOptions === 'string' 
+            ? compilerOptions.replace(/"/g, "&quot;") 
+            : "";
 
         let highlighJstThemeUri = getHighlightJsThemeUri();
 
@@ -694,6 +702,17 @@ export class CompiledQueryPanel {
             </div>
 
             <div>
+                <div class="compiler-options-input-container">
+                    <label for="compilerOptionsInput" class="compiler-options-label">Compiler options:</label>
+                    <input 
+                        type="text" 
+                        id="compilerOptionsInput" 
+                        class="compiler-options-input" 
+                        title="Additional compiler options to pass to dataform cli commands e.g. --table-prefix=&quot;AA&quot; --vars=someKey=someValue,a=b"
+                        style="width: 40%;"
+                        value="${escapedCompilerOptions}"
+                    />
+                </div>
                 <div class="checkbox-group">
                     <label class="model-checkbox-container">
                         <input type="checkbox" id="includeDependencies" class="checkbox">
