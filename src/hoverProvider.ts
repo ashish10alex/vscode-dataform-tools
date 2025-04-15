@@ -264,7 +264,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     if (line.indexOf("${") === -1) {
       return undefined;
     }
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder){return;}
 
     if (line.indexOf("${ref") !== -1) {
