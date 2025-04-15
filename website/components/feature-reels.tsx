@@ -20,19 +20,27 @@ export default function FeatureReels() {
   const features: Feature[] = [
     {
       id: "compile-sql",
-      title: "Installation and features",
-      description: "Compile your SQLX files to SQL with a single click. View the compiled SQL directly in VSCode.",
+      title: "",
+      description: "Installation and features",
       videoUrl: "https://youtu.be/nb_OFh6YgOc?si=OO0Lsa7IpAUvlvJn",
       videoId: "nb_OFh6YgOc",
       thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
     },
     {
       id: "schema-explorer",
-      title: "Windows installation",
+      title: "",
       description: "Windows installation",
       videoUrl: "https://youtu.be/8AsSwzmzhV4?si=QOPmqpvwGmQEIy96",
       videoId: "8AsSwzmzhV4",
       thumbnail: "https://img.youtube.com/vi/8AsSwzmzhV4/maxresdefault.jpg",
+    },
+    {
+      id: "dev-container",
+      title: "",
+      description: "Using in Dev container",
+      videoUrl: "https://youtu.be/nb_OFh6YgOc?si=ilyrHrLDylKdRXna",
+      videoId: "nb_OFh6YgOc",
+      thumbnail: "https://img.youtube.com/vi/nb_OFh6YgOc/maxresdefault.jpg",
     },
   ];
 

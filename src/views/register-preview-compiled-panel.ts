@@ -203,6 +203,10 @@ export class CompiledQueryPanel {
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
                 return;
+              case 'updateCompilerOptions':
+                const compilerOptions = message.value;
+                vscode.workspace.getConfiguration('vscode-dataform-tools').update('compilerOptions', compilerOptions);
+                return;
               case 'dependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
@@ -525,6 +529,10 @@ export class CompiledQueryPanel {
         const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
         const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
         const nonce = getNonce();
+        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
+        const escapedCompilerOptions = compilerOptions && typeof compilerOptions === 'string'
+            ? compilerOptions.replace(/"/g, "&quot;")
+            : "";
 
         let highlighJstThemeUri = getHighlightJsThemeUri();
 
@@ -688,9 +696,9 @@ export class CompiledQueryPanel {
                 <span id="relativeFilePath"></span>
                 <button id="formatButton" class="format-button" title="Format Model">
                     <svg class="format-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z" 
+                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z"
                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1" 
+                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1"
                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Format
@@ -698,6 +706,17 @@ export class CompiledQueryPanel {
             </div>
 
             <div>
+                <div class="compiler-options-input-container">
+                    <label for="compilerOptionsInput" class="compiler-options-label">Compiler options:</label>
+                    <input
+                        type="text"
+                        id="compilerOptionsInput"
+                        class="compiler-options-input"
+                        title="Additional compiler options to pass to dataform cli commands e.g. --table-prefix=&quot;AA&quot; --vars=someKey=someValue,a=b"
+                        style="width: 40%;"
+                        value="${escapedCompilerOptions}"
+                    />
+                </div>
                 <div class="checkbox-group">
                     <label class="model-checkbox-container">
                         <input type="checkbox" id="includeDependencies" class="checkbox">

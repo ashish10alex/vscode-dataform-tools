@@ -72,5 +72,14 @@ declare global {
   var workspaceFolder: string | undefined;
 }
 
+declare global {
+  var bigQuerySnippetMetadata: {
+    [key: string]: {
+      prefix: string;
+      body: string;
+      description: string[];
+    };
+  };
+}
 
 export {};

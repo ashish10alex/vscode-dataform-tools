@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import os from 'os';
+import fs from 'fs';
 import { DataformCompiledJson } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
-import { DataformConfigProvider, DataformHoverProvider } from './hoverProvider';
+import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate} from './utils';
 import { executableIsAvailable } from './utils';
@@ -21,6 +22,7 @@ import { runCurrentFile } from './runFiles';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
+import path from 'path';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -60,6 +62,10 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;
+
+    const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
+    const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
+    globalThis.bigQuerySnippetMetadata = JSON.parse(snippetsContent)[".source.sql-bigquery"];
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -151,6 +157,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerHoverProvider(
         { language: 'sqlx' },
         new DataformHoverProvider()
+    ));
+
+    context.subscriptions.push(vscode.languages.registerHoverProvider(
+        { language: 'sqlx' },
+        new DataformBigQueryHoverProvider()
     ));
 
     context.subscriptions.push(vscode.languages.registerHoverProvider(
