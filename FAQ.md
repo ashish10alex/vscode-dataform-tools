@@ -33,3 +33,8 @@
      settings and select local for `Dataform Cli Scope` as shown in the screenshot below.
 
      ![cli_scope](/media/images/cli_scope.png)
+
+7. [I do not see go to definition option when right clicking references `${ref('table_name')}`]()
+   * Check if you language mode when sqlx file is open is set to `sqlx`. VSCode sometimes sets it as a different flavour of sql. You can change that by opening the command pallet and searching for `change language mode`
+   followed by `Configure language association for "sqlx"` and selecting `sqlx` from the list of available options. This should also resolve hover information not being visible as the all the language specific behaviors
+   are tied to file being inferred as `sqlx` file.
