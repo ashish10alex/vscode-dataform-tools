@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.1...v0.12.2) (2025-04-16)
+
+
+### Features
+
+* add blog section to website ([#146](https://github.com/ashish10alex/vscode-dataform-tools/issues/146)) ([92afeab](https://github.com/ashish10alex/vscode-dataform-tools/commit/92afeab4583cfb91516dad20fb846d91a0d54397))
+
+
+### Documentation
+
+* add faq to resolve `go to definition` functionality ([5e41d34](https://github.com/ashish10alex/vscode-dataform-tools/commit/5e41d342cd63b9d6b114b51cea8132cb12a5413b))
+
 ### [0.12.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.0...v0.12.1) (2025-04-10)
 
 
