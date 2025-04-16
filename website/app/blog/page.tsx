@@ -10,12 +10,12 @@ export default function BlogPage() {
       <div className="space-y-4 pl-10">
         <h1 className="text-4xl font-bold tracking-tighter">Blogs</h1>
       </div>
-      
+
       <div className="grid gap-8 mt-12 pl-10">
-        <BlogPostCard 
+        <BlogPostCard
           title="Using Compiler options in Dataform"
           description="Learn how to use compiler options in Dataform to set things like table prefix, schema prefix and adding variables the the query compilation or execution."
-          date="May 15, 2025"
+          date="April 16, 2025"
           slug="compiler-options"
         />
       </div>
@@ -32,8 +32,8 @@ function BlogPostCard({ title, description, date, slug }: { title: string, descr
           {title}
         </h2>
         <p className="text-muted-foreground">{description}</p>
-        <a 
-          href={`/blog/${slug}`} 
+        <a
+          href={`/blog/${slug}`}
           className="inline-block text-primary font-medium mt-4 hover:underline"
         >
           Read more →
@@ -41,4 +41,4 @@ function BlogPostCard({ title, description, date, slug }: { title: string, descr
       </div>
     </div>
   );
-} 
+}
