@@ -7,8 +7,8 @@ import { ClientBlogContent } from "@/app/components/ClientBlogContent";
 const getBlogPost = async (slug: string) => {
   const posts = {
     "compiler-options": {
-      title: "Using Compiler options in Dataform",
-      date: "May 15, 2023",
+      title: "Using Compiler Options in Dataform",
+      date: "April 16, 2025",
       content: `
 Compiler options can be used to set things like table prefix, schema prefix and adding variables the the query compilation or execution.
 
@@ -20,12 +20,24 @@ For example, to set the table prefix to \`AA\`, you can run:
 dataform compile --table-prefix=AA
 \`\`\`
 
-
 \`your-project.your-dataset.your-table\` would become \`your-project.your-dataset.AA_your-table\`
 
-This is especially useful for organizing tables in your data warehouse or when working with multiple environments (development, staging, production).
 
-Here is the full list of compiler options:
+Compiler options can also be used with \`dataform run\` to set the table prefix for the run.
+
+\`\`\`bash
+dataform run --actions "your-project.your-dataset.your-table" --table-prefix=AA
+\`\`\`
+
+
+> You can use table prefixes to isolate your development work from production tables. For example, use \`dev_\` for development and \`prod_\` for production tables.
+
+> [!TIP]
+> In Dataform Tools VSCode extension, you can set the table prefix directly in the compiled query webview by adding \`--table-prefix=AA\` to the text box.
+
+Be careful when using table prefixes in production environments. Make sure all your references are consistent and your workflows are updated accordingly.
+
+This is especially useful for isolating development from production environments. Here is the full list of compiler options:
 
 \`\`\`bash
 ❯ dataform compile --help
