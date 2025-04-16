@@ -57,21 +57,21 @@ Options:
       `
     },
   };
-  
+
   return posts[slug as keyof typeof posts] || null;
 };
 
 export const generateMetadata = async ({ params }: { params: { slug: string } }): Promise<Metadata> => {
-  const resolvedParams = params;
+  const resolvedParams = await params;
   const post = await getBlogPost(resolvedParams.slug);
-  
+
   if (!post) {
     return {
       title: "Blog Post Not Found",
       description: "The requested blog post could not be found."
     };
   }
-  
+
   return {
     title: post.title,
     description: `${post.title} - Published on ${post.date}`
@@ -79,30 +79,30 @@ export const generateMetadata = async ({ params }: { params: { slug: string } })
 };
 
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const resolvedParams = params;
+  const resolvedParams = await params;
   const post = await getBlogPost(resolvedParams.slug);
-  
+
   if (!post) {
     notFound();
   }
-  
+
   return (
     <div className="py-12 px-8 w-full max-w-[95%] mx-auto">
-      <Link 
-        href="/blog" 
+      <Link
+        href="/blog"
         className="text-primary hover:underline mb-6 inline-flex items-center"
       >
         ← Back to Blog
       </Link>
-      
+
       <article className="prose prose-lg dark:prose-invert max-w-none mt-6">
         <h1 className="text-2xl font-bold tracking-tighter">{post.title}</h1>
         <div className="text-sm text-muted-foreground mb-8">
           Published on {post.date}
         </div>
-        
+
         <ClientBlogContent content={post.content} />
       </article>
     </div>
   );
-} 
+}
