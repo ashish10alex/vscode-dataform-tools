@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClientBlogContent } from "@/app/components/ClientBlogContent";
 
-// This would be replaced with actual data fetching in a real implementation
 const getBlogPost = async (slug: string) => {
   const posts = {
     "compiler-options": {
@@ -12,9 +11,7 @@ const getBlogPost = async (slug: string) => {
       content: `
 Compiler options can be used to set things like table prefix, schema prefix and adding variables the the query compilation or execution.
 
-List of compiler options can be seen by running \`dataform compile --help\` in your terminal:
-
-For example, to set the table prefix to \`AA\`, you can run:
+For example, to add the table prefix to \`AA\` in all tables, you can run:
 
 \`\`\`bash
 dataform compile --table-prefix=AA
@@ -23,27 +20,21 @@ dataform compile --table-prefix=AA
 \`your-project.your-dataset.your-table\` would become \`your-project.your-dataset.AA_your-table\`
 
 
-Compiler options can also be used with \`dataform run\` to set the table prefix for the run.
+Compiler options can also be used with \`dataform run\` to add the table prefix to a specific execution as follows:
 
 \`\`\`bash
 dataform run --actions "your-project.your-dataset.your-table" --table-prefix=AA
 \`\`\`
 
 
-> You can use table prefixes to isolate your development work from production tables. For example, use \`dev_\` for development and \`prod_\` for production tables.
+You can use table prefixes to isolate your development work from production tables. For example, use \`dev_\` for development and \`prod_\` for production tables.
 
 > [!TIP]
 > In Dataform Tools VSCode extension, you can set the table prefix directly in the compiled query webview by adding \`--table-prefix=AA\` to the text box.
 
-Be careful when using table prefixes in production environments. Make sure all your references are consistent and your workflows are updated accordingly.
-
-This is especially useful for isolating development from production environments. Here is the full list of compiler options:
+Available compiler options can be seen by running \`dataform compile --help\` in your terminal:
 
 \`\`\`bash
-❯ dataform compile --help
-dataform compile [project-dir]
-
-Compile the dataform project. Produces JSON output describing the non-executable graph.
 
 Positionals:
   project-dir  The Dataform project directory.  [default: "."]
@@ -72,8 +63,7 @@ Options:
 };
 
 export const generateMetadata = async ({ params }: { params: { slug: string } }): Promise<Metadata> => {
-  // Await the params object before accessing its properties
-  const resolvedParams = await params;
+  const resolvedParams = params;
   const post = await getBlogPost(resolvedParams.slug);
   
   if (!post) {
@@ -90,8 +80,7 @@ export const generateMetadata = async ({ params }: { params: { slug: string } })
 };
 
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  // Await the params object before accessing its properties
-  const resolvedParams = await params;
+  const resolvedParams = params;
   const post = await getBlogPost(resolvedParams.slug);
   
   if (!post) {
@@ -108,7 +97,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
       </Link>
       
       <article className="prose prose-lg dark:prose-invert max-w-none mt-6">
-        <h1>{post.title}</h1>
+        <h1 className="text-2xl font-bold tracking-tighter">{post.title}</h1>
         <div className="text-sm text-muted-foreground mb-8">
           Published on {post.date}
         </div>

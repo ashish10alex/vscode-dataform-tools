@@ -2,21 +2,16 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Blog",
-  description: "Read the latest articles about our product features and updates.",
 };
 
 export default function BlogPage() {
   return (
     <div className="container py-12 max-w-screen-lg">
-      <div className="space-y-4">
-        <h1 className="text-4xl font-bold tracking-tighter">Blog</h1>
-        <p className="text-muted-foreground text-lg">
-          Read the latest articles about our product, features, and updates.
-        </p>
+      <div className="space-y-4 pl-10">
+        <h1 className="text-4xl font-bold tracking-tighter">Blogs</h1>
       </div>
       
-      <div className="grid gap-8 mt-12">
-        {/* Blog post entries */}
+      <div className="grid gap-8 mt-12 pl-10">
         <BlogPostCard 
           title="Using Compiler options in Dataform"
           description="Learn how to use compiler options in Dataform to set things like table prefix, schema prefix and adding variables the the query compilation or execution."
