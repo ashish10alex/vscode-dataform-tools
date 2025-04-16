@@ -703,7 +703,9 @@ export class CompiledQueryPanel {
 
             <div>
                 <div class="compiler-options-input-container">
-                    <label for="compilerOptionsInput" class="compiler-options-label">Compiler options:</label>
+                    <label for="compilerOptionsInput" class="compiler-options-label">
+                        <a href="https://dataformtools.com/blog/compiler-options" target="_blank" class="compiler-options-link">Compiler options: </a>
+                    </label>
                     <input 
                         type="text" 
                         id="compilerOptionsInput" 

@@ -1,3 +1,6 @@
+/* Add highlight.js styles */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,6 +13,19 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* Custom styling for code blocks */
+pre {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9rem;
 }
 
 @layer base {

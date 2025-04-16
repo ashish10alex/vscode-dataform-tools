@@ -15,6 +15,7 @@ export function SiteHeader() {
     { href: "/", label: "Home" },
     { href: "/features", label: "Features" },
     { href: "/install", label: "Install" },
+    { href: "/blog", label: "Blog" },
     { href: "/faq", label: "FAQ" },
   ];
 
