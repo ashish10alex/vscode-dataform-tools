@@ -58,7 +58,6 @@ Options:
     },
   };
   
-  // Use type assertion to fix the TypeScript error
   return posts[slug as keyof typeof posts] || null;
 };
 
