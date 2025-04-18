@@ -162,7 +162,7 @@ if (backToSummaryButton) {
         if (currentSummaryData) {
             new Tabulator("#multiQueryResults", {
                 layout: "fitDataFill",
-                height: "calc(100vh - 250px)",
+                height: "100%",
                 data: currentSummaryData,
                 columns: getSummaryTableColumns(),
                 pagination: "local",
@@ -235,7 +235,7 @@ function requestSelectedResultFromMultiResultTable(resultIndex) {
 function createTabulatorTable(elementId, data, columns, options = {}) {
     const defaultConfig = {
         layout: "fitDataFill",
-        height: "calc(100vh - 250px)",
+        height: "100%",
         data: data,
         columns: columns,
         pagination: "local",
@@ -344,7 +344,7 @@ window.addEventListener('message', event => {
         document.getElementById('bigqueryResults').style.display = 'table';
 
         createTabulatorTable("#bigqueryResults", results, columns, {
-            height: "calc(100vh - 200px)",
+            height: "100%",
             dataTree: true,
             dataTreeStartExpanded: false,
             rowHeader: { 
