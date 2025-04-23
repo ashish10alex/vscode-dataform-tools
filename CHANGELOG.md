@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.2...v0.12.3) (2025-04-23)
+
+
+### Bug Fixes
+
+* bigquery results table not taking the container height ([5ec0d1f](https://github.com/ashish10alex/vscode-dataform-tools/commit/5ec0d1f7582149768a1d485c5f422cc88d9b417d))
+
 ### [0.12.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.1...v0.12.2) (2025-04-16)
 
 
