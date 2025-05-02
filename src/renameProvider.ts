@@ -15,16 +15,16 @@ export const renameProvider = vscode.languages.registerRenameProvider('sqlx', {
         const edit = new vscode.WorkspaceEdit();
 
         // Find all occurrences in the document and replace
+        const wordRegex = new RegExp(`\\b${oldName}\\b`, 'g');
         for (let line = 0; line < document.lineCount; line++) {
           const lineText = document.lineAt(line).text;
-          let idx = lineText.indexOf(oldName);
-          while (idx !== -1) {
+          let match;
+          while ((match = wordRegex.exec(lineText)) !== null) {
             const range = new vscode.Range(
-              new vscode.Position(line, idx),
-              new vscode.Position(line, idx + oldName.length)
+              new vscode.Position(line, match.index),
+              new vscode.Position(line, match.index + oldName.length)
             );
             edit.replace(document.uri, range, newName);
-            idx = lineText.indexOf(oldName, idx + oldName.length);
           }
         }
         return edit;
