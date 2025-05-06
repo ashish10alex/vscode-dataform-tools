@@ -6,7 +6,6 @@ import { formatBytes } from './utils';
 
 let bigQueryJob: any;
 let cancelBigQueryJobSignal = false;
-// let queryLimit = 100;
 
 function convertArrayToObject(array: any, columnName: string) {
     if (array.length === 0) {
@@ -141,7 +140,7 @@ export async function runQueryInBigQuery(
         jobCostMeta: string | undefined
     } | undefined,
     errorMessage: string | undefined,
-    pageToken?: string
+    nextPageToken?: string
 }> {
     await checkAuthentication();
 
@@ -160,8 +159,7 @@ export async function runQueryInBigQuery(
 
     if (pageToken && jobIdForPagination) {
         try {
-            jobToProcess = bigquery.job(jobIdForPagination);
-            bigQueryJob = jobToProcess;
+            jobToProcess = globalThis.bigqueryJobObject;
         } catch (error: any) {
             vscode.window.showErrorMessage(`Error referencing existing BigQuery job ${jobIdForPagination}: ${error.message}`);
             return { rows: undefined, jobStats: undefined, errorMessage: `Error referencing job ${jobIdForPagination}: ${error.message}` };
@@ -177,14 +175,14 @@ export async function runQueryInBigQuery(
         }
         try {
             [jobToProcess] = await bigquery.createQueryJob({ query, jobTimeoutMs: bigQuerytimeoutMs });
-            bigQueryJob = jobToProcess;
-        } catch (error: any) {
+            globalThis.bigqueryJobObject = jobToProcess;
+            } catch (error: any) {
             try {
                 await handleBigQueryError(error);
                 return await runQueryInBigQuery(query, pageToken, undefined);
             } catch (finalError: any) {
                 vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
-                return { rows: undefined, jobStats: undefined, errorMessage: finalError.message };
+                return { rows: undefined, jobStats: undefined, errorMessage: finalError.message, nextPageToken: pageToken };
             }
         }
     }
@@ -269,7 +267,7 @@ export async function runQueryInBigQuery(
             jobCostMeta: formatBytes(Number(totalBytesBilled))
         } : undefined,
         errorMessage: undefined,
-        pageToken: nextPageToken
+        nextPageToken: nextPageToken
     };
 }
 
@@ -286,13 +284,11 @@ export async function queryBigQuery(
         jobCostMeta: string | undefined
     } | undefined,
     errorMessage: string | undefined,
-    pageToken?: string,
     nextPageToken?: string
 }> {
     // queryLimit = 100;
 
-    let { rows, jobStats, errorMessage, pageToken: nextPageToken } = 
-        await runQueryInBigQuery(query, pageToken, jobIdForPagination);
+    let { rows, jobStats, errorMessage, nextPageToken} = await runQueryInBigQuery(query, pageToken, jobIdForPagination);
 
     if (errorMessage) {
         return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };
@@ -351,7 +347,7 @@ export async function queryBigQuery(
         columns: columns, 
         jobStats: jobStats, 
         errorMessage: errorMessage,
-        pageToken: nextPageToken 
+        nextPageToken: nextPageToken 
     };
 }
 

@@ -78,4 +78,8 @@ declare global {
   };
 }
 
+declare global {
+  var bigqueryJobObject: any
+}
+
 export {};

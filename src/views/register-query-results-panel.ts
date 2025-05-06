@@ -13,7 +13,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         columns: any | undefined, 
         jobStats: any, 
         query: string | undefined,
-        pageToken?: string,
         nextPageToken?: string
     };
     private _cachedMultiResults?: { multiResultsMetadata: any[], query: string | undefined };
@@ -119,9 +118,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 incrementalCheckBox = message.value;
                 return;
               case 'loadNextPage':
-                if (this._cachedResults?.query && this._cachedResults?.pageToken) {
+                if (this._cachedResults?.query && this._cachedResults?.nextPageToken) {
                     const query = this._cachedResults.query;
-                    const pageToken = this._cachedResults.pageToken;
                     const jobIdForPagination = this._cachedResults.jobStats?.bigQueryJobId;
                     const nextPageToken = this._cachedResults.nextPageToken;
 
@@ -144,7 +142,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         this._cachedResults = {
                             ...this._cachedResults, // Preserves original query, columns, initial jobStats
                             results: allResults,
-                            pageToken: nextPageData.pageToken, // Update with the new page token
+                            nextPageToken: nextPageData.nextPageToken, // Update with the new page token
                             // We can update jobStats if it contains new relevant info, e.g., an updated end time for the entire job process.
                             // For now, runQueryInBigQuery returns stats for the job which should be consistent.
                             jobStats: nextPageData.jobStats || this._cachedResults.jobStats 
@@ -155,7 +153,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                             results: this._cachedResults.results,
                             columns: this._cachedResults.columns, // Send original columns definition
                             jobStats: this._cachedResults.jobStats,
-                            pageToken: this._cachedResults.pageToken
+                            nextPageToken: this._cachedResults.nextPageToken
                         });
                     } else if (nextPageData.errorMessage) {
                         vscode.window.showErrorMessage(`Error loading next page: ${nextPageData.errorMessage}`);
@@ -167,7 +165,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         // No more results or an empty page, effectively means pagination ends here.
                         this._cachedResults = {
                             ...this._cachedResults,
-                            pageToken: undefined // Clear page token
+                            nextPageToken: undefined // Clear page token
                         };
                         this._view?.webview.postMessage({
                             type: 'updateResults', 
@@ -213,8 +211,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           
           for (let i = 0; i < allQueries.length; i++) {
             const singleQuery = allQueries[i];
-            const { results, columns, jobStats, errorMessage, pageToken, nextPageToken } = await queryBigQuery(singleQuery);
-            resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery, pageToken, nextPageToken});
+            const { results, columns, jobStats, errorMessage, nextPageToken } = await queryBigQuery(singleQuery);
+            resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery, nextPageToken});
           }
           
           // If we have multiple queries, show a summary table
@@ -243,15 +241,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           } else if (resultsMetadata.length === 1) {
             // Single query result - use existing logic
             const resultMetadata = resultsMetadata[0];
-            const { results, columns, jobStats, errorMessage, pageToken, nextPageToken } = resultMetadata;
+            const { results, columns, jobStats, errorMessage, nextPageToken } = resultMetadata;
             
             if(results && !errorMessage){
-              this._cachedResults = { results, columns, jobStats, query, pageToken, nextPageToken };
+              this._cachedResults = { results, columns, jobStats, query, nextPageToken };
               this._cachedMultiResults = undefined;
               this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
               this._view.show(true);
             } else if (!errorMessage){
-              this._cachedResults = { results, columns, jobStats, query, pageToken, nextPageToken };
+              this._cachedResults = { results, columns, jobStats, query, nextPageToken };
               this._cachedMultiResults = undefined;
               this._view.webview.html = this._getHtmlForWebview(this._view.webview);
               this._view.show(true);
