@@ -203,7 +203,9 @@ export async function runQueryInBigQuery(
     const options: QueryResultsOptions = {
         maxResults: 100,
         timeoutMs: bigQuerytimeoutMs,
-        pageToken: pageToken
+        pageToken: pageToken,
+        startIndex: "0", // NOTE: this seems to be key to go to the last x rows of the results 
+        // autoPaginate: false // NOTE: not sure if this is needed when using startIndex
     };
 
     let rows;
