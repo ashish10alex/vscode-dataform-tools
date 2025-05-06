@@ -203,16 +203,17 @@ export async function runQueryInBigQuery(
     }
 
     const options: QueryResultsOptions = {
-        maxResults: 50,
+        maxResults: 100,
         timeoutMs: bigQuerytimeoutMs,
         pageToken: pageToken
     };
 
     let rows;
     let queryResultsResponseMetadata;
+    let totalRows;
 
     try {
-        [rows, queryResultsResponseMetadata] = await jobToProcess.getQueryResults(options);
+        [rows, queryResultsResponseMetadata, totalRows] = await jobToProcess.getQueryResults(options);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
         if (bigQueryJob === jobToProcess) {
