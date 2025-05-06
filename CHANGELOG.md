@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.3...v0.12.4) (2025-05-06)
+
+
+### Features
+
+* **language:** add support for rename provider ([#149](https://github.com/ashish10alex/vscode-dataform-tools/issues/149)) ([11f3260](https://github.com/ashish10alex/vscode-dataform-tools/commit/11f326072a12595c3344ec681a7fc97b387acbe0))
+* show min 200 rows when doing results preview ([c76be3b](https://github.com/ashish10alex/vscode-dataform-tools/commit/c76be3b365d1d32472858fc1beb3b0f027f52c87))
+
+
+### Bug Fixes
+
+* extension tests not running due to path issues ([#147](https://github.com/ashish10alex/vscode-dataform-tools/issues/147)) ([df73663](https://github.com/ashish10alex/vscode-dataform-tools/commit/df736635d1940f1e2d91307f193b79c59900095c))
+
 ### [0.12.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.2...v0.12.3) (2025-04-23)
 
 
