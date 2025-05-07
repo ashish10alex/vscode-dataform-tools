@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
@@ -199,6 +199,10 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'selectWorkspaceFolder':
+                await selectWorkspaceFolder();
+                vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
+                return;
               case 'updateCompilerOptions':
                 const compilerOptions = message.value;
                 vscode.workspace.getConfiguration('vscode-dataform-tools').update('compilerOptions', compilerOptions);
@@ -338,7 +342,7 @@ export class CompiledQueryPanel {
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
-            const errorMessage = getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
+            const errorMessage = await getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
                 "errorMessage": errorMessage
             });
@@ -349,7 +353,7 @@ export class CompiledQueryPanel {
         if(curFileMeta.errors?.dataformCompilationErrors){
             let errorString = "<h3>Error compiling Dataform:</h3><ul>";
 
-            let workspaceFolder = getWorkspaceFolder();
+            let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
                 return;
             }
@@ -526,8 +530,8 @@ export class CompiledQueryPanel {
         const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
         const nonce = getNonce();
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
-        const escapedCompilerOptions = compilerOptions && typeof compilerOptions === 'string' 
-            ? compilerOptions.replace(/"/g, "&quot;") 
+        const escapedCompilerOptions = compilerOptions && typeof compilerOptions === 'string'
+            ? compilerOptions.replace(/"/g, "&quot;")
             : "";
 
         let highlighJstThemeUri = getHighlightJsThemeUri();
@@ -692,9 +696,9 @@ export class CompiledQueryPanel {
                 <span id="relativeFilePath"></span>
                 <button id="formatButton" class="format-button" title="Format Model">
                     <svg class="format-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z" 
+                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z"
                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1" 
+                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1"
                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Format
@@ -706,10 +710,10 @@ export class CompiledQueryPanel {
                     <label for="compilerOptionsInput" class="compiler-options-label">
                         <a href="https://dataformtools.com/blog/compiler-options" target="_blank" class="compiler-options-link">Compiler options: </a>
                     </label>
-                    <input 
-                        type="text" 
-                        id="compilerOptionsInput" 
-                        class="compiler-options-input" 
+                    <input
+                        type="text"
+                        id="compilerOptionsInput"
+                        class="compiler-options-input"
                         title="Additional compiler options to pass to dataform cli commands e.g. --table-prefix=&quot;AA&quot; --vars=someKey=someValue,a=b"
                         style="width: 40%;"
                         value="${escapedCompilerOptions}"

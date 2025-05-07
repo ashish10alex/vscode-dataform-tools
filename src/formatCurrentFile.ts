@@ -139,7 +139,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         return null;
     }
 
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         return null;
     }
@@ -172,7 +172,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
 }
 
 export async function formatCurrentFileWithDataform() {
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         vscode.window.showErrorMessage("No workspace folder found");
         return;
