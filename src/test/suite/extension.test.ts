@@ -13,11 +13,15 @@ NOTE: Also, we are having to remove `.vscode-test/user-data` before running `vsc
 WARN: These tests currently are only tested to be running on mac os. We will need to change the script for `npm run test` in package.json for it to work in multiple platforms
 */
 import { suite, test } from 'mocha';
+import { findProjectRoot } from './helper';
+
+// Get the project root once
+const projectRoot = findProjectRoot(__dirname);
+const testWorkspacePath = path.join(projectRoot, 'src', 'test', 'test-workspace');
 
 suite('GetMetadataForSqlxFileBlocks', () => {
     test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async () => {
-        const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-        const uri = vscode.Uri.file(path.join(workspacePath, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
+        const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
         //console.log('[TEST] URI:', uri.toString());
 
         await vscode.workspace.openTextDocument(uri);
@@ -42,8 +46,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
     test("Config block with assertion and has pre_operations, post_operations", async function() {
         this.timeout(9000);
         try {
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
+            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
             //console.log('[TEST] URI:', uri.toString());
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
@@ -73,8 +76,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 
     test('Single line config with pre_operations post_operations blocks', async () => {
         try {
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/0100_SINGLE_LINE_CONFIG.sqlx"));
+            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/0100_SINGLE_LINE_CONFIG.sqlx"));
             //console.log('[TEST] URI:', uri.toString());
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
@@ -103,8 +105,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 
     test('Multiple pre/post operation blocks are present', async () => {
         try {
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
+            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
             let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
@@ -145,8 +146,7 @@ suite("setDiagnostics", () => {
     test("Able to set multiple diagnostics at correct line numbers", function(done) {
         this.timeout(9000);
 
-        const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-        const uri = vscode.Uri.file(path.join(workspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
+        const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
 
         (async () => {
             try {
@@ -263,8 +263,7 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors } = await compileDataform(workspacePath);
+            let { compiledString, errors } = await compileDataform(testWorkspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -306,8 +305,7 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0100_CLUBS.sqlx";
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors } = await compileDataform(workspacePath);
+            let { compiledString, errors } = await compileDataform(testWorkspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -344,8 +342,7 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0300_INCREMENTAL.sqlx";
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors } = await compileDataform(workspacePath);
+            let { compiledString, errors } = await compileDataform(testWorkspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -383,8 +380,7 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/assertions/0100_CLUBS_ASSER.sqlx";
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors } = await compileDataform(workspacePath);
+            let { compiledString, errors } = await compileDataform(testWorkspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
@@ -422,8 +418,7 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";
-            const workspacePath = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'test-workspace');
-            let { compiledString, errors } = await compileDataform(workspacePath);
+            let { compiledString, errors } = await compileDataform(testWorkspacePath);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {

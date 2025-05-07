@@ -145,24 +145,24 @@ if (backToSummaryButton) {
         hideNavLinks();
         // Hide the back button
         document.getElementById('backToSummaryDiv').style.display = 'none';
-        
+
         // Hide details view
         document.getElementById('resultBlock').style.display = 'none';
         document.getElementById('noResultsDiv').style.display = 'none';
         document.getElementById('errorsDiv').style.display = 'none';
-        
+
         // Clear any displayed data
         document.getElementById('bigqueryResults').innerHTML = '';
         document.getElementById('bigqueryError').textContent = '';
-        
+
         // Show multi-results view
         document.getElementById('multiResultsBlock').style.display = 'block';
-        
+
         // Recreate the summary table if needed
         if (currentSummaryData) {
             new Tabulator("#multiQueryResults", {
                 layout: "fitDataFill",
-                height: "calc(100vh - 250px)",
+                height: "100%",
                 data: currentSummaryData,
                 columns: getSummaryTableColumns(),
                 pagination: "local",
@@ -188,7 +188,7 @@ function updateBigQueryJobLink(bigQueryJobId) {
     const jobId = bigQueryJobId.split(':')[1].replace('.', ':');
     const bigQueryLink = `https://console.cloud.google.com/bigquery?project=${projectId}&j=bq:${jobId}&page=queryresults`;
 
-    bigQueryJobLinkDivider.textContent = ' | '; 
+    bigQueryJobLinkDivider.textContent = ' | ';
     bigQueryJobLink.href = bigQueryLink;
     bigQueryJobLink.textContent = `View job in BigQuery`;
 }
@@ -216,14 +216,14 @@ function requestSelectedResultFromMultiResultTable(resultIndex) {
     document.getElementById('bigqueryError').textContent = '';
     document.getElementById('noResultsDiv').style.display = 'none';
     document.getElementById('errorsDiv').style.display = 'none';
-    
+
     // Show the back button
     document.getElementById('backToSummaryDiv').style.display = 'block';
-    
+
     // Hide multi-results block and show single result block
     document.getElementById('multiResultsBlock').style.display = 'none';
     document.getElementById('resultBlock').style.display = 'block';
-    
+
     // Request the specific result
     vscode.postMessage({
         command: 'viewResultDetail',
@@ -235,11 +235,11 @@ function requestSelectedResultFromMultiResultTable(resultIndex) {
 function createTabulatorTable(elementId, data, columns, options = {}) {
     const defaultConfig = {
         layout: "fitDataFill",
-        height: "calc(100vh - 250px)",
+        height: "100%",
         data: data,
         columns: columns,
         pagination: "local",
-        paginationSize: 20,
+        paginationSize: 200,
         paginationCounter: "rows"
     };
 
@@ -277,7 +277,7 @@ window.addEventListener('message', event => {
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
     const multiResults = event?.data?.multiResults;
     const summaryData = event?.data?.summaryData;
-    
+
     if (checkbox) {
         checkbox.checked = incrementalCheckBox;
     }
@@ -296,20 +296,20 @@ window.addEventListener('message', event => {
         document.getElementById("cancelBigQueryJobButton").disabled = true;
         clearInterval(timerInterval);
         clearLoadingMessage();
-        
+
         // Hide the single result display
         document.getElementById('resultBlock').style.display = 'none';
-        
+
         // Hide the back button
         document.getElementById('backToSummaryDiv').style.display = 'none';
-        
+
         // Show the multi-results block
         const multiResultsBlock = document.getElementById('multiResultsBlock');
         multiResultsBlock.style.display = 'block';
-        
+
         // Store summary data for later use
         currentSummaryData = summaryData;
-        
+
         // Create the tabulator table
         createTabulatorTable("#multiQueryResults", summaryData, getSummaryTableColumns());
     }
@@ -339,21 +339,21 @@ window.addEventListener('message', event => {
         // Ensure result block is visible and clear any previous table
         document.getElementById('resultBlock').style.display = 'block';
         document.getElementById('bigqueryResults').innerHTML = '';
-        
+
         // Show the table
         document.getElementById('bigqueryResults').style.display = 'table';
 
         createTabulatorTable("#bigqueryResults", results, columns, {
-            height: "calc(100vh - 200px)",
+            height: "100%",
             dataTree: true,
             dataTreeStartExpanded: false,
-            rowHeader: { 
-                formatter: "rownum", 
-                headerSort: false, 
-                hozAlign: "center", 
-                resizable: false, 
-                frozen: true, 
-                width: 60 
+            rowHeader: {
+                formatter: "rownum",
+                headerSort: false,
+                hozAlign: "center",
+                resizable: false,
+                frozen: true,
+                width: 60
             }
         });
     }
@@ -399,11 +399,11 @@ window.addEventListener('message', event => {
 
     if (showLoadingMessage){
         document.getElementById("cancelBigQueryJobButton").disabled = false;
-        
+
         // Clear any existing loading message first
         clearLoadingMessage();
         let loadingMessageDiv = createLoadingMessage();
-        
+
         let startTime = Date.now();
 
         function updateLoadingMessage() {
@@ -413,7 +413,7 @@ window.addEventListener('message', event => {
             }
             return elapsedTime;
         }
-    
+
 
         elapsedTime = updateLoadingMessage();
         timerInterval = setInterval(updateLoadingMessage, 1000);

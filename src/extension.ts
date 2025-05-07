@@ -15,6 +15,7 @@ import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, 
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
+import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
@@ -276,6 +277,8 @@ export async function activate(context: vscode.ExtensionContext) {
             vscode.commands.executeCommand('editor.action.formatDocument');
         })
     );
+
+    context.subscriptions.push(renameProvider);
 
     logger.info('Dataform Tools extension activated successfully');
 }

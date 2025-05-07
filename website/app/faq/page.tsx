@@ -40,6 +40,12 @@ export default function FAQPage() {
       answer:
         "If you need different Dataform CLI versions for different workspaces, you can install dataform CLI locally by running `npm install @dataform/cli` (without the `-g` flag) in your project directory. This will install dataform CLI at `./node_modules/.bin/dataform`. To make the extension use the locally installed CLI, open settings and select `local` for the `Dataform CLI Scope` option.",
     },
+    {
+      question: "I do not see go to definition option when right clicking references `${ref('table_name')}`",
+      answer:
+        "Check if you language mode when sqlx file is open is set to `sqlx`. VSCode sometimes sets it as a different flavour of sql. You can change that by opening the command pallet and searching for `change language mode` followed by `Configure language association for sqlx` and selecting `sqlx` from the list of available options. This should also resolve hover information not being visible as the all the language specific behaviors are tied to file being inferred as sqlx file.",
+    }
+
   ];
 
   return (

@@ -294,7 +294,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
       </div>
 
-      <div id="resultBlock" style="height: 400px;">
+      <div id="resultBlock">
         <p  style="color: red"><span id="bigqueryError"></span></p>
         <table id="bigqueryResults" class="display" width="100%"></table>
       </div>
