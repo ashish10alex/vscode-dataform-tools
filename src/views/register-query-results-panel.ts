@@ -109,11 +109,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                   }
                 }
                 return;
-              //@ts-ignore
-              case 'queryLimit':
-                if (message.value){
-                  queryLimit = message.value;
-                }
               case 'incrementalCheckBox':
                 incrementalCheckBox = message.value;
                 return;
@@ -322,12 +317,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 Incremental
         </label>
       </div>
-
-      <select id="queryLimit">
-        <option value="1000" selected>Limit: 1000</option>
-        <option value="2000">Limit: 2000</option>
-        <option value="5000">Limit: 5000</option>
-      </select>
 
       <button id="runQueryButton" class="runQueryButton">RUN</button>
       <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>

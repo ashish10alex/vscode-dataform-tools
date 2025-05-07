@@ -123,18 +123,6 @@ function hideQuery(){
     navLinks[0].classList.add('active');
 }
 
-
-const queryLimit = document.getElementById('queryLimit');
-if (queryLimit){
-    document.getElementById("queryLimit").addEventListener("change", function() {
-    var selectedValue = this.value;
-    vscode.postMessage({
-        command: 'queryLimit',
-        value: selectedValue
-    });
-    });
-}
-
 function getSummaryTableColumns() {
     return [
         {title: "Id", field: "index", headerSort: true, width: 80},

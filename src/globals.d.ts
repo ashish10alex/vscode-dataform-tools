@@ -40,13 +40,8 @@ declare global {
 }
 
 declare global {
-  var queryLimit: number
-}
-
-declare global {
   var diagnosticCollection: vscode.DiagnosticCollection | undefined;
 }
-
 
 declare global {
   var compiledQuerySchema: CompiledQuerySchema | undefined;

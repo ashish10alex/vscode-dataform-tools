@@ -288,7 +288,6 @@ export async function queryBigQuery(
     errorMessage: string | undefined,
     nextPageToken?: string
 }> {
-    // queryLimit = 100;
 
     let { rows, jobStats, errorMessage, nextPageToken} = await runQueryInBigQuery(query, pageToken, jobIdForPagination);
 
