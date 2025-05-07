@@ -73,6 +73,20 @@ if (runQueryButton){
     });
 }
 
+
+const loadNextPage = document.getElementById('loadNextPage');
+if (loadNextPage) {
+    loadNextPage.addEventListener('click', function() {
+        console.log("loadMoreButtonGlobal clicked");
+        vscode.postMessage({
+            command: 'loadNextPage'
+        });
+        // Optionally disable the button to prevent multiple clicks until response
+        // loadMoreButtonGlobal.disabled = true;
+        // Show a small loading indicator near the button if desired
+    });
+}
+
 const cancelBigQueryJobButton = document.getElementById('cancelBigQueryJobButton');
 if (cancelBigQueryJobButton){
     document.getElementById('cancelBigQueryJobButton').addEventListener('click', function() {
@@ -107,18 +121,6 @@ function hideQuery(){
     const navLinks = document.querySelectorAll('.topnav a');
     navLinks.forEach(link => link.classList.remove('active'));
     navLinks[0].classList.add('active');
-}
-
-
-const queryLimit = document.getElementById('queryLimit');
-if (queryLimit){
-    document.getElementById("queryLimit").addEventListener("change", function() {
-    var selectedValue = this.value;
-    vscode.postMessage({
-        command: 'queryLimit',
-        value: selectedValue
-    });
-    });
 }
 
 function getSummaryTableColumns() {
@@ -277,6 +279,10 @@ window.addEventListener('message', event => {
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
     const multiResults = event?.data?.multiResults;
     const summaryData = event?.data?.summaryData;
+    const eventType = event?.data?.type; // Capture the event type if present
+
+    const loadMoreButton = document.getElementById('load-more');
+    const errorDisplayElement = document.getElementById('bigqueryError'); // Assuming this is your primary error display for query results
 
     if (checkbox) {
         checkbox.checked = incrementalCheckBox;
@@ -321,18 +327,27 @@ window.addEventListener('message', event => {
     if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
-        updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime);
+        if (jobStats) { // Ensure jobStats is available before using it
+            updateDateTime(elapsedTime, jobStats.jobCostMeta, jobStats.bigQueryJobEndTime);
+        }
         clearInterval(timerInterval);
         clearLoadingMessage();
 
         const errorMessageBlock = document.getElementById('errorMessage');
-        const errorMessageDiv = document.getElementById('errorsDiv');
-        if (errorMessageBlock){
-            if (type === "assertion"){
-                errorMessageDiv.style.display = "";
+        const errorsDiv = document.getElementById('errorsDiv');
+        const noResultsDiv = document.getElementById('noResultsDiv');
+
+        // Clear previous single-result errors/messages if we have new results
+        if (errorDisplayElement) errorDisplayElement.textContent = '';
+        if (errorsDiv) errorsDiv.style.display = "none";
+        if (noResultsDiv) noResultsDiv.style.display = "none";
+
+        if (errorMessageBlock && errorsDiv) {
+            if (type === "assertion" && results.length === 0) { // Assertion specific logic for failure
+                errorsDiv.style.display = "";
                 errorMessageBlock.textContent = `Assertion failed !`;
             } else {
-                errorMessageDiv.style.display = "none";
+                errorsDiv.style.display = "none";
             }
         }
 
@@ -356,6 +371,12 @@ window.addEventListener('message', event => {
                 width: 60
             }
         });
+
+        // Show/hide load more button based on pageToken from the event data
+        // if (loadMoreButton) {
+        //     loadMoreButton.style.display = event?.data?.pageToken ? 'block' : 'none';
+        //     loadMoreButton.disabled = false; // Re-enable if it was disabled
+        // }
     }
 
     if (bigQueryJobCancelled && bigQueryJobId){
@@ -395,6 +416,21 @@ window.addEventListener('message', event => {
     if (errorMessage){
         postRunCleanup();
         document.getElementById('bigqueryError').textContent = errorMessage;
+    }
+
+    // Handle pagination-specific error type from register-query-results-panel.ts
+    if (eventType === 'paginationError') {
+        if (errorDisplayElement) {
+            errorDisplayElement.textContent = 'Error loading more results: ' + errorMessage;
+            errorDisplayElement.style.display = 'block'; // Make sure error is visible
+        }
+        if (loadMoreButton) {
+            loadMoreButton.style.display = 'none'; // Hide load more button on pagination error
+        }
+        // Clear any loading indicators for pagination
+        clearLoadingMessage(); 
+        if(timerInterval) clearInterval(timerInterval);
+        document.getElementById("cancelBigQueryJobButton").disabled = true; // Or handle appropriately
     }
 
     if (showLoadingMessage){

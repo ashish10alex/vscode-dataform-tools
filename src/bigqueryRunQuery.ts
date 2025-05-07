@@ -6,7 +6,6 @@ import { formatBytes } from './utils';
 
 let bigQueryJob: any;
 let cancelBigQueryJobSignal = false;
-let queryLimit = 1000;
 
 function convertArrayToObject(array: any, columnName: string) {
     if (array.length === 0) {
@@ -129,7 +128,20 @@ function transformBigValues(obj: any) {
     return obj;
 }
 
-export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function runQueryInBigQuery(
+    query: string,
+    pageToken?: string,
+    jobIdForPagination?: string
+): Promise<{
+    rows: any[] | undefined,
+    jobStats: {
+        bigQueryJobEndTime: Date | undefined,
+        bigQueryJobId: string | undefined,
+        jobCostMeta: string | undefined
+    } | undefined,
+    errorMessage: string | undefined,
+    nextPageToken?: string
+}> {
     await checkAuthentication();
 
     const bigquery = getBigQueryClient();
@@ -138,70 +150,146 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
         return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery client not available. Please check your authentication." };
     }
 
-    if (cancelBigQueryJobSignal) {
-        vscode.window.showInformationMessage(`BigQuery query execution aborted, job not created`);
-        cancelBigQueryJobSignal = false;
+    if (cancelBigQueryJobSignal && !(pageToken && jobIdForPagination)) {
+        vscode.window.showInformationMessage(`BigQuery query execution aborted before job creation/retrieval.`);
         return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
     }
 
-    try {
-        [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: bigQuerytimeoutMs });
-    } catch (error: any) {
+    let jobToProcess: any;
+
+    if (pageToken && jobIdForPagination) {
         try {
-            await handleBigQueryError(error);
-            //NOTE: If handleBigQueryError didn't throw, retry the query
-            return await runQueryInBigQuery(query);
-        } catch (finalError: any) {
-            vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
-            return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};
+            jobToProcess = globalThis.bigqueryJobObject;
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Error referencing existing BigQuery job ${jobIdForPagination}: ${error.message}`);
+            return { rows: undefined, jobStats: undefined, errorMessage: `Error referencing job ${jobIdForPagination}: ${error.message}` };
+        }
+    } else if (pageToken && !jobIdForPagination) {
+        vscode.window.showErrorMessage('Pagination error: pageToken was provided without a job ID.');
+        return { rows: undefined, jobStats: undefined, errorMessage: 'Pagination error: pageToken provided without a job ID.' };
+    } else {
+        if (cancelBigQueryJobSignal) {
+            vscode.window.showInformationMessage(`BigQuery query execution aborted before new job creation.`);
+            cancelBigQueryJobSignal = false;
+            return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
+        }
+        try {
+            [jobToProcess] = await bigquery.createQueryJob({ query, jobTimeoutMs: bigQuerytimeoutMs });
+            globalThis.bigqueryJobObject = jobToProcess;
+            } catch (error: any) {
+            try {
+                await handleBigQueryError(error);
+                return await runQueryInBigQuery(query, pageToken, undefined);
+            } catch (finalError: any) {
+                vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
+                return { rows: undefined, jobStats: undefined, errorMessage: finalError.message, nextPageToken: pageToken };
+            }
         }
     }
 
-    //TODO: Not sure if this is needed as if the job is created the job id should be removed when cancelBigQueryJob() is called
+    if (!jobToProcess) {
+        vscode.window.showErrorMessage('BigQuery job could not be established.');
+        return { rows: undefined, jobStats: undefined, errorMessage: 'BigQuery job could not be established.' };
+    }
+    
     if (cancelBigQueryJobSignal) {
-        await cancelBigQueryJob();
+        if (bigQueryJob) {
+            await cancelBigQueryJob();
+        }
         cancelBigQueryJobSignal = false;
-        return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
+        return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted." };
     }
 
-    const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs:bigQuerytimeoutMs };
+    const options: QueryResultsOptions = {
+        maxResults: 100,
+        timeoutMs: bigQuerytimeoutMs,
+        pageToken: pageToken,
+        startIndex: "0", // NOTE: this seems to be key to go to the last x rows of the results 
+        // autoPaginate: false // NOTE: not sure if this is needed when using startIndex
+    };
 
-    //TODO: even when the job has been cancelled it might return results, handle this
-    //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
     let rows;
+    let queryResultsResponseMetadata;
+    let totalRows;
+
     try {
-        [rows] = await bigQueryJob.getQueryResults(options);
+        [rows, queryResultsResponseMetadata, totalRows] = await jobToProcess.getQueryResults(options);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
+        if (bigQueryJob === jobToProcess) {
+             bigQueryJob = undefined;
+        }
         return { rows: undefined, jobStats: undefined, errorMessage: error.message };
     }
+    const nextPageToken = queryResultsResponseMetadata?.pageToken;
 
     let totalBytesBilled;
-    let bigQueryJobId;
+    let returnedJobId;
     let bigQueryJobEndTime;
 
-    if (bigQueryJob) {
-        let jobMetadata = await bigQueryJob.getMetadata();
-        let jobStats = jobMetadata[0].statistics.query;
-        bigQueryJobId = jobMetadata[0].id;
-        totalBytesBilled = jobStats.totalBytesBilled;
+    if (jobToProcess) {
         try {
-            const jobEndTime = parseInt(jobMetadata[0].statistics.endTime, 10);
-            bigQueryJobEndTime = new Date(jobEndTime);
-        } catch (error:any) {
+            let jobMetadataResponse = await jobToProcess.getMetadata();
+            const jobMetadata = jobMetadataResponse[0];
+            
+            if (jobMetadata && jobMetadata.statistics && jobMetadata.statistics.query) {
+                let jobQueryStats = jobMetadata.statistics.query;
+                returnedJobId = jobMetadata.id || jobToProcess.id;
+                totalBytesBilled = jobQueryStats.totalBytesBilled;
+                if (jobMetadata.statistics.endTime) {
+                    try {
+                        const jobEndTimeMs = parseInt(jobMetadata.statistics.endTime, 10);
+                        bigQueryJobEndTime = !isNaN(jobEndTimeMs) ? new Date(jobEndTimeMs) : new Date();
+                    } catch (e) {
+                        bigQueryJobEndTime = new Date();
+                    }
+                } else {
+                    bigQueryJobEndTime = new Date();
+                }
+            } else {
+                returnedJobId = jobToProcess.id;
+                bigQueryJobEndTime = new Date();
+                console.warn("Detailed query statistics not available in job metadata for job:", returnedJobId);
+            }
+        } catch (metaError: any) {
+            vscode.window.showErrorMessage(`Error fetching job metadata: ${metaError.message}`);
+            returnedJobId = jobToProcess.id;
             bigQueryJobEndTime = new Date();
         }
-        bigQueryJob = undefined;
+        if (bigQueryJob === jobToProcess) {
+             bigQueryJob = undefined;
+        }
     }
-    return { rows: rows, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))}, errorMessage: undefined };
+
+    return {
+        rows: rows,
+        jobStats: returnedJobId ? {
+            bigQueryJobEndTime: bigQueryJobEndTime,
+            bigQueryJobId: returnedJobId,
+            jobCostMeta: formatBytes(Number(totalBytesBilled))
+        } : undefined,
+        errorMessage: undefined,
+        nextPageToken: nextPageToken
+    };
 }
 
-export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function queryBigQuery(
+    query: string,
+    pageToken?: string,
+    jobIdForPagination?: string
+): Promise<{
+    results: any[] | undefined,
+    columns: any[] | undefined,
+    jobStats: {
+        bigQueryJobEndTime: Date | undefined,
+        bigQueryJobId: string | undefined,
+        jobCostMeta: string | undefined
+    } | undefined,
+    errorMessage: string | undefined,
+    nextPageToken?: string
+}> {
 
-    // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
-    queryLimit = 1000;
-
-    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
+    let { rows, jobStats, errorMessage, nextPageToken} = await runQueryInBigQuery(query, pageToken, jobIdForPagination);
 
     if (errorMessage) {
         return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };
@@ -214,7 +302,6 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
     let results = rows.map((row: { [s: string]: unknown }) => {
         const obj: { [key: string]: any } = {};
         Object.entries(row).forEach(([key, value]: [any, any]) => {
-            //TODO:  Handling nested BigQuery rows. This if statement might not be robust
             if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
                 if (Array.isArray(value) && ((value[0] && typeof value[0] === "string") || (value.length === 0) || (value[0] && Object.keys(value[0])[0] === "value"))) {
                     value = convertArrayToObject(value, key);
@@ -229,13 +316,11 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
                 let _childrens: any = [];
                 _childrens = parseObject(key, value, _childrens);
 
-                // Nested object in Tabulator are displayed by adding the key _children to the exsisting array
                 if (obj._children) {
                     for (let i = 0; i < _childrens.length; i++) {
                         if (obj._children[i]) {
                             obj._children[i] = { ...obj._children[i], ..._childrens[i] };
                         } else {
-                            // we need to fill the _children to have all the data for each column so we will fill null values for the rest of the keys
                             let keys = Object.keys(obj._children[0]);
                             let newChildren = {};
                             keys.forEach((_key: string) => {
@@ -258,7 +343,13 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
 
     let columns = createTabulatorColumns(results[0]);
 
-    return { results: results, columns: columns, jobStats: jobStats, errorMessage: errorMessage };
+    return { 
+        results: results, 
+        columns: columns, 
+        jobStats: jobStats, 
+        errorMessage: errorMessage,
+        nextPageToken: nextPageToken 
+    };
 }
 
 export async function cancelBigQueryJob() {

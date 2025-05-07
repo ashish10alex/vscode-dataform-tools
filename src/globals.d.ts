@@ -40,13 +40,8 @@ declare global {
 }
 
 declare global {
-  var queryLimit: number
-}
-
-declare global {
   var diagnosticCollection: vscode.DiagnosticCollection | undefined;
 }
-
 
 declare global {
   var compiledQuerySchema: CompiledQuerySchema | undefined;
@@ -76,6 +71,10 @@ declare global {
       description: string[];
     };
   };
+}
+
+declare global {
+  var bigqueryJobObject: any
 }
 
 export {};

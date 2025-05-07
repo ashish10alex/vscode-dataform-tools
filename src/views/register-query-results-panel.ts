@@ -8,9 +8,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
     private _invokedByCommand: boolean = false; 
     private queryType: string = "";
-    private _cachedResults?: { results: any[] | undefined, columns:any | undefined, jobStats: any, query:string|undefined };
-    private _cachedMultiResults?: { multiResultsMetadata: any[], query:string|undefined };
-    private _query?:string;
+    private _cachedResults?: { 
+        results: any[] | undefined, 
+        columns: any | undefined, 
+        jobStats: any, 
+        query: string | undefined,
+        nextPageToken?: string
+    };
+    private _cachedMultiResults?: { multiResultsMetadata: any[], query: string | undefined };
+    private _query?: string;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
   
@@ -103,13 +109,68 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                   }
                 }
                 return;
-              //@ts-ignore
-              case 'queryLimit':
-                if (message.value){
-                  queryLimit = message.value;
-                }
               case 'incrementalCheckBox':
                 incrementalCheckBox = message.value;
+                return;
+              case 'loadNextPage':
+                if (this._cachedResults?.query && this._cachedResults?.nextPageToken) {
+                    const query = this._cachedResults.query;
+                    const jobIdForPagination = this._cachedResults.jobStats?.bigQueryJobId;
+                    const nextPageToken = this._cachedResults.nextPageToken;
+
+                    if (!jobIdForPagination) {
+                        vscode.window.showErrorMessage('Cannot load next page: Original Job ID is missing.');
+                        // Optionally update UI to reflect this error
+                        this._view?.webview.postMessage({
+                            type: 'paginationError',
+                            errorMessage: 'Original Job ID is missing. Cannot load more results.'
+                        });
+                        return;
+                    }
+
+                    const nextPageData = await queryBigQuery(query, nextPageToken, jobIdForPagination);
+
+                    if (nextPageData.results && nextPageData.columns) {
+                        const existingResults = this._cachedResults.results || [];
+                        const allResults = [...existingResults, ...nextPageData.results];
+
+                        this._cachedResults = {
+                            ...this._cachedResults, // Preserves original query, columns, initial jobStats
+                            results: allResults,
+                            nextPageToken: nextPageData.nextPageToken, // Update with the new page token
+                            // We can update jobStats if it contains new relevant info, e.g., an updated end time for the entire job process.
+                            // For now, runQueryInBigQuery returns stats for the job which should be consistent.
+                            jobStats: nextPageData.jobStats || this._cachedResults.jobStats 
+                        };
+
+                        this._view?.webview.postMessage({
+                            type: 'updateResults', // Webview can use this to know it's an update vs initial load
+                            results: this._cachedResults.results,
+                            columns: this._cachedResults.columns, // Send original columns definition
+                            jobStats: this._cachedResults.jobStats,
+                            nextPageToken: this._cachedResults.nextPageToken
+                        });
+                    } else if (nextPageData.errorMessage) {
+                        vscode.window.showErrorMessage(`Error loading next page: ${nextPageData.errorMessage}`);
+                        this._view?.webview.postMessage({
+                            type: 'paginationError',
+                            errorMessage: nextPageData.errorMessage
+                        });
+                    } else {
+                        // No more results or an empty page, effectively means pagination ends here.
+                        this._cachedResults = {
+                            ...this._cachedResults,
+                            nextPageToken: undefined // Clear page token
+                        };
+                        this._view?.webview.postMessage({
+                            type: 'updateResults', 
+                            results: this._cachedResults.results,
+                            columns: this._cachedResults.columns,
+                            jobStats: this._cachedResults.jobStats,
+                            pageToken: undefined // Signal no more pages
+                        });
+                    }
+                }
                 return;
             }
           },
@@ -145,8 +206,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           
           for (let i = 0; i < allQueries.length; i++) {
             const singleQuery = allQueries[i];
-            const { results, columns, jobStats, errorMessage } = await queryBigQuery(singleQuery);
-            resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery});
+            const { results, columns, jobStats, errorMessage, nextPageToken } = await queryBigQuery(singleQuery);
+            resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery, nextPageToken});
           }
           
           // If we have multiple queries, show a summary table
@@ -175,15 +236,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           } else if (resultsMetadata.length === 1) {
             // Single query result - use existing logic
             const resultMetadata = resultsMetadata[0];
-            const { results, columns, jobStats, errorMessage } = resultMetadata;
+            const { results, columns, jobStats, errorMessage, nextPageToken } = resultMetadata;
             
             if(results && !errorMessage){
-              this._cachedResults = { results, columns, jobStats, query };
+              this._cachedResults = { results, columns, jobStats, query, nextPageToken };
               this._cachedMultiResults = undefined;
               this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
               this._view.show(true);
             } else if (!errorMessage){
-              this._cachedResults = { results, columns, jobStats, query };
+              this._cachedResults = { results, columns, jobStats, query, nextPageToken };
               this._cachedMultiResults = undefined;
               this._view.webview.html = this._getHtmlForWebview(this._view.webview);
               this._view.show(true);
@@ -257,14 +318,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         </label>
       </div>
 
-      <select id="queryLimit">
-        <option value="1000" selected>Limit: 1000</option>
-        <option value="2000">Limit: 2000</option>
-        <option value="5000">Limit: 5000</option>
-      </select>
-
       <button id="runQueryButton" class="runQueryButton">RUN</button>
       <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
+      <button id="loadNextPage" class="pagination-button">Load More</button>
 
       <p>
       <span id="datetime"></span>
