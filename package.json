@@ -9,6 +9,9 @@
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
     "version": "0.12.4",
+    "sponsor": {
+       "url": "https://buymeacoffee.com/ashishalexj"
+    },
     "engines": {
         "vscode": "^1.89.0"
     },
