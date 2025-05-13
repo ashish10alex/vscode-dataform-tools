@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -62,6 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.schemaAutoCompletions = [];
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
+    globalThis.workspaceFolder = undefined;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
@@ -79,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     //TODO: check if user has multiple workspace folders open
     //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
-    let workspaceFolder = getWorkspaceFolder();
+    workspaceFolder = await getWorkspaceFolder();
 
     if (workspaceFolder) {
         await createBigQueryClient();
@@ -116,6 +117,8 @@ export async function activate(context: vscode.ExtensionContext) {
     }, null, context.subscriptions);
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.selectWorkspaceFolder', async () => { await selectWorkspaceFolder(); }));
 
     const assertionCodeLensProvider = new AssertionRunnerCodeLensProvider();
     context.subscriptions.push(

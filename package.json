@@ -35,7 +35,8 @@
         "onCommand:extension.runFilesTagsWtOptions",
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.showFileMetadataForSidePanel",
-        "onCommand:extension.dependencyGraphPanel"
+        "onCommand:extension.dependencyGraphPanel",
+        "onCommand:extension.selectWorkspaceFolder"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
@@ -163,6 +164,11 @@
                 "title": "Format Document",
                 "icon": "$(sparkle)",
                 "group": "navigation@0"
+            },
+            {
+                "command": "vscode-dataform-tools.selectWorkspaceFolder",
+                "category": "Dataform",
+                "title": "Select workspace folder"
             }
         ],
         "languages": [

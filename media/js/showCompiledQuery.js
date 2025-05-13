@@ -36,6 +36,7 @@ const modelLinkDiv = document.getElementById("modelLinkDiv");
 const copyModelNameButton = document.getElementById("copyModelNameButton");
 const dependencyGraphButton = document.getElementById("dependencyGraph");
 const schemaCodeBlock = document.getElementById("schemaCodeBlock");
+const selectWorkspaceLink = document.getElementById("selectWorkspaceLink");
 const compilerOptionsInput = document.getElementById("compilerOptionsInput");
 let fullModelName = "";
 let descriptionData = {}; // Variable to store description data
@@ -47,13 +48,24 @@ function dependencyGraphClickHandler() {
     });
 }
 
+function selectWorkspaceLinkClickHandler(event) {
+    event.preventDefault(); // Prevent default link behavior
+    vscode.postMessage({
+        command: 'selectWorkspaceFolder'
+    });
+}
+
+if (selectWorkspaceLink) {
+    selectWorkspaceLink.addEventListener('click', selectWorkspaceLinkClickHandler);
+}
+
 if (dependencyGraphButton) {
     dependencyGraphButton.addEventListener('click', dependencyGraphClickHandler);
 }
 
 if (compilerOptionsInput) {
     compilerOptionsInput.addEventListener('input', debounce(updateCompilerOptions, 1000));
-    
+
     // Debounce function to delay execution until user stops typing
     function debounce(func, wait) {
         let timeout;
@@ -280,7 +292,7 @@ window.addEventListener('message', event => {
         if (targetTablesOrViews) {
             modelLinkDiv.style.display = "";
             targetTableOrViewLink.style.display = "";
-            
+
             let linksHtml = '';
             for (const [index, targetTableOrView] of targetTablesOrViews.entries()) {
                 const modelName = `${targetTableOrView.target.database}.${targetTableOrView.target.schema}.${targetTableOrView.target.name}`;
@@ -292,7 +304,7 @@ window.addEventListener('message', event => {
                     const modelWasUpdatedToday = modelsLastUpdateTimesMeta[index]?.modelWasUpdatedToday;
                     linksHtml += `
                         <div>
-                            <span class="modified-time ${modelWasUpdatedToday === false ? 'outdated' : ''}" 
+                            <span class="modified-time ${modelWasUpdatedToday === false ? 'outdated' : ''}"
                                     title="Last modified: ${modelLastUpdateTime || 'n/a'}">
                                 <small>Last modified: ${modelLastUpdateTime || 'n/a'}</small>
                             </span><br>
@@ -569,7 +581,7 @@ window.addEventListener('message', event => {
                     // Parse the dryRunStat to separate the bytes and cost
                     const [bytes, cost] = value.split(' (');
                     const formattedCost = cost ? ` (${cost}` : '';
-                    
+
                     element.innerHTML = `
                         <div class="stats-content">
                             <span class="stats-label">Query will process:</span>

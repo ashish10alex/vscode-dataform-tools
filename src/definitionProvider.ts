@@ -41,7 +41,7 @@ function getLocationFromPath(locationPath: string, line: number = 0): vscode.Loc
 async function getLocationForRefsAndResolve(document: vscode.TextDocument, searchTerm:string){
     let sourcesJsUri: vscode.Uri = document.uri;
 
-    let workspaceFolder = getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder){return;}
     let dataformCompiledJson: DataformCompiledJson | undefined;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
@@ -111,7 +111,7 @@ export class DataformRequireDefinitionProvider implements vscode.DefinitionProvi
         }
 
         const searchTerm = match[1];
-        const workspaceFolder = getWorkspaceFolder();
+        const workspaceFolder = await getWorkspaceFolder();
 
         // Return if no workspace folder is available
         if (!workspaceFolder) {
@@ -273,7 +273,7 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
             return undefined;
         }
         const searchTerm = document.getText(wordRange);
-        const workspaceFolder = getWorkspaceFolder();
+        const workspaceFolder = await getWorkspaceFolder();
 
         // Return if no workspace folder is available
         if (!workspaceFolder) {
