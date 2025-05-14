@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.4...v0.12.5) (2025-05-14)
+
+
+### Features
+
+* add multi-root workspace support ([#121](https://github.com/ashish10alex/vscode-dataform-tools/issues/121)) ([4fb8151](https://github.com/ashish10alex/vscode-dataform-tools/commit/4fb815146004450b963e9d298b2ac805a0ccd2e1))
+
 ### [0.12.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.3...v0.12.4) (2025-05-06)
 
 
