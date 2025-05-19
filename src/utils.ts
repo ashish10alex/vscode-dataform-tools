@@ -751,27 +751,32 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         queryMeta.assertionQuery = assertionQueries.join('');
     }
 
-    if (operations?.length > 0 && finalTables.length === 0) {
-        const operation = operations.find(op => op.fileName === relativeFilePath);
-        if (operation) {
-            logger.debug(`Operations found: ${operation.fileName}`);
+    if (operations?.length > 0) {
+        if ((relativeFilePath.endsWith('.sqlx') && finalTables.length === 0 ) || relativeFilePath.endsWith('.js')) {
+        const operationsForFile = operations.filter(op => op.fileName === relativeFilePath);
+        if (operationsForFile.length > 0) {
+            logger.debug(`Found ${operationsForFile.length} operation(s) with filename: ${relativeFilePath}`);
             queryMeta.type = "operations";
-            const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
-                return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
-            }, "");
+            
+            operationsForFile.forEach(operation => {
+                const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+                    return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
+                }, "");
 
-            queryMeta.operationsQuery += finalOperationQuery;
+                queryMeta.operationsQuery += finalOperationQuery;
 
-            finalTables.push({
-                type: "operations",
-                tags: operation.tags,
-                fileName: relativeFilePath,
-                query: finalOperationQuery,
-                target: operation.target,
-                dependencyTargets: operation.dependencyTargets,
-                incrementalQuery: "",
-                incrementalPreOps: []
+                finalTables.push({
+                    type: "operations",
+                    tags: operation.tags,
+                    fileName: relativeFilePath,
+                    query: finalOperationQuery,
+                    target: operation.target,
+                    dependencyTargets: operation.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: []
+                });
             });
+        }
         }
     }
 
