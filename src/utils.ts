@@ -28,7 +28,7 @@ export function getNonce() {
 function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string, modelObjType:string){
     return relativeFilePath.endsWith(".js")
     ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
-        <b>Canonical target:</b> ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
+        Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
         <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
     `
     : ` Query could not be determined for  ${relativeFilePath} <br>.
@@ -773,18 +773,37 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             queryMeta.type = "assertion";
         }
         const assertionQueries = assertionsForFile.map((assertion, index) => {
-            finalTables.push({
-                type: "assertion",
-                tags: assertion.tags,
-                fileName: relativeFilePath,
-                query: assertion.query,
-                target: assertion.target,
-                dependencyTargets: assertion.dependencyTargets,
-                incrementalQuery: "",
-                incrementalPreOps: []
-            });
-            logger.debug(`Assertion found: ${assertion.fileName}`);
-            return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+            if(assertion?.query){
+                finalTables.push({
+                    type: "assertion",
+                    tags: assertion.tags,
+                    fileName: relativeFilePath,
+                    query: assertion.query,
+                    target: assertion.target,
+                    dependencyTargets: assertion.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: []
+                });
+                logger.debug(`Assertion found: ${assertion.fileName}`);
+                return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+            } else {
+                let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions");
+                queryMeta.error += errorString;
+                finalTables.push({
+                    type: "assertion",
+                    tags: assertion.tags,
+                    fileName: relativeFilePath,
+                    query: assertion.query,
+                    target: assertion.target,
+                    dependencyTargets: assertion.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: [],
+                    error: errorString
+                });
+                logger.debug(`Assertion found: ${assertion.fileName}`);
+                logger.debug(`Error in assertion: ${errorString}`);
+                return `\n -- Assertions: [${index + 1}] \n ${errorString}; \n`;
+            }
         });
         queryMeta.assertionQuery = assertionQueries.join('');
     }
