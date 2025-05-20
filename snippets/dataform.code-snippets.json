@@ -192,6 +192,31 @@
 		"uniqueKey: ['${1:key1}'],"
 	],
 	"description": "Generate a uniqueKey assertion for Dataform"
+	},
+
+	"publish": {
+		"scope": "javascript",
+		"prefix": "publish [Dataform](js)",
+		"body": [
+			"publish('${1:view_name}', '${2:query}')"
+		],
+		"description": "Generate a model of type table in js file"
+	},
+	"operate": {
+		"scope": "javascript",
+		"prefix": "operate [Dataform](js)",
+		"body": [
+			"operate('${1:operation_name}', '${2:create or replace table project-id.dataset_id.table_id as select 1 as a}')"
+		],
+		"description": "Generate a model of type operation in js file"
+	},
+	"assertion": {
+		"scope": "javascript",
+		"prefix": "assertion [Dataform](js)",
+		"body": [
+			"assert('${1:assertion_name}', '${2:query}')"
+		],
+		"description": "Generate a model of type assertion in js file"
 	}
 
 }
