@@ -45,6 +45,8 @@ export interface QueryMeta {
 export interface TablesWtFullQuery {
     tables: Table[];
     queryMeta: QueryMeta
+    queryMetaError: string | undefined
+    
 }
 
 export interface Assertion {
@@ -245,7 +247,7 @@ export type SchemaMetadata = {
 
 export type CurrentFileMetadata = {
   isDataformWorkspace?: boolean;
-  errors?: { errorGettingFileNameFromDocument?:string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean;}
+  errors?: { errorGettingFileNameFromDocument?:string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean; queryMetaError?: string | undefined}
   fileMetadata?: TablesWtFullQuery;
   possibleResolutions?: any[];
   dependents?: any;

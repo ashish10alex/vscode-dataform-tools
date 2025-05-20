@@ -347,6 +347,11 @@ export class CompiledQueryPanel {
                 "errorMessage": errorMessage
             });
             return;
+        } else if (curFileMeta?.errors?.queryMetaError){
+            await webview.postMessage({
+                "errorMessage": curFileMeta.errors.queryMetaError
+            });
+            return;
         }
         updateSchemaAutoCompletions(curFileMeta);
 

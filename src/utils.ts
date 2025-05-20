@@ -194,6 +194,15 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                             relativeFilePath: relativeFilePath
                         },
                     };
+                } else if (fileMetadata?.queryMetaError){
+                    return {
+                        errors: { queryMetaError: fileMetadata?.queryMetaError },
+                        pathMeta: {
+                            filename: filename,
+                            extension: extension,
+                            relativeFilePath: relativeFilePath
+                        },
+                    };
                 };
 
                 const targetToSearch = fileMetadata?.tables[0]?.target;
@@ -654,6 +663,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     const { tables, assertions, operations } = compiledJson;
+    let queryMetaError = undefined
 
     //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
@@ -691,7 +701,12 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 switch (table.type) {
                     case "table":
                     case "view":
-                        queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
+                        if(!table?.query){
+                            queryMeta.tableOrViewQuery = ""
+                            queryMetaError = `Query could not be determined for  ${relativeFilePath}`
+                        } else {
+                            queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
+                        }
                         break;
                     case "incremental":
                         queryMeta.nonIncrementalQuery += (queryMeta.nonIncrementalQuery ? "\n" : "") + table.query + ";";
@@ -780,7 +795,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         }
     }
 
-    return { tables: finalTables, queryMeta: queryMeta };
+    return { tables: finalTables, queryMeta: queryMeta, queryMetaError: queryMetaError};
 };
 
 
