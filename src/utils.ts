@@ -249,6 +249,18 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         } else {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
 
+
+            if (fileMetadata?.queryMetaError){
+                return {
+                    errors: { queryMetaError: fileMetadata?.queryMetaError },
+                    pathMeta: {
+                        filename: filename,
+                        extension: extension,
+                        relativeFilePath: relativeFilePath
+                    },
+                };
+            }
+
             const targetToSearch = fileMetadata?.tables[0]?.target;
             let dependents = undefined;
             if(targetToSearch){
