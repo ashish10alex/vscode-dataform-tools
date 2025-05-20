@@ -715,7 +715,11 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     case "view":
                         if(!table?.query){
                             queryMeta.tableOrViewQuery = ""
-                            queryMetaError = `Query could not be determined for  ${relativeFilePath}`
+                            queryMetaError = relativeFilePath.endsWith(".js")
+                            ? ` Query could not be determined for  ${relativeFilePath}. <br>
+                                <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
+                            `
+                            : `Query could not be determined for  ${relativeFilePath}.`
                         } else {
                             queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
                         }
