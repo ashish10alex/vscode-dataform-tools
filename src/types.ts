@@ -40,13 +40,12 @@ export interface QueryMeta {
     postOpsQuery: string
     assertionQuery: string
     operationsQuery: string
+    error: string
 }
 
 export interface TablesWtFullQuery {
     tables: Table[];
     queryMeta: QueryMeta
-    queryMetaError: string | undefined
-    
 }
 
 export interface Assertion {

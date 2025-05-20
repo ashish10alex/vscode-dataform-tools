@@ -25,6 +25,17 @@ export function getNonce() {
     return text;
 }
 
+function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string){
+    return relativeFilePath.endsWith(".js")
+    ? ` Query could not be determined for  ${relativeFilePath} <br>
+        <b>Canonical target:</b> ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
+        <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
+    `
+    : ` Query could not be determined for  ${relativeFilePath} <br>.
+        Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
+    `;
+}
+
 export function formatBytes(bytes: number) {
     if (bytes === 0) {return '0 B';}
 
@@ -194,9 +205,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                             relativeFilePath: relativeFilePath
                         },
                     };
-                } else if (fileMetadata?.queryMetaError){
+                } else if (fileMetadata?.queryMeta.error !== ""){
                     return {
-                        errors: { queryMetaError: fileMetadata?.queryMetaError },
+                        errors: { queryMetaError: fileMetadata?.queryMeta.error },
                         pathMeta: {
                             filename: filename,
                             extension: extension,
@@ -250,9 +261,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
 
 
-            if (fileMetadata?.queryMetaError){
+            if (fileMetadata?.queryMeta.error !== ""){
                 return {
-                    errors: { queryMetaError: fileMetadata?.queryMetaError },
+                    errors: { queryMetaError: fileMetadata?.queryMeta.error },
                     pathMeta: {
                         filename: filename,
                         extension: extension,
@@ -675,7 +686,6 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
     const { tables, assertions, operations } = compiledJson;
-    let queryMetaError = undefined
 
     //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
@@ -688,6 +698,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         postOpsQuery: "",
         assertionQuery: "",
         operationsQuery: "",
+        error: "",
     };
     let finalTables: any[] = [];
 
@@ -714,12 +725,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     case "table":
                     case "view":
                         if(!table?.query){
-                            queryMeta.tableOrViewQuery = ""
-                            queryMetaError = relativeFilePath.endsWith(".js")
-                            ? ` Query could not be determined for  ${relativeFilePath}. <br>
-                                <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
-                            `
-                            : `Query could not be determined for  ${relativeFilePath}.`
+                            queryMeta.tableOrViewQuery = "";
+                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath);
                         } else {
                             queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
                         }
@@ -790,28 +797,44 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             queryMeta.type = "operations";
             
             operationsForFile.forEach(operation => {
-                const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
-                    return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
-                }, "");
+                if(operation?.queries){
+                    const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+                        return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
+                    }, "");
 
-                queryMeta.operationsQuery += finalOperationQuery;
+                    queryMeta.operationsQuery += finalOperationQuery;
 
-                finalTables.push({
-                    type: "operations",
-                    tags: operation.tags,
-                    fileName: relativeFilePath,
-                    query: finalOperationQuery,
-                    target: operation.target,
-                    dependencyTargets: operation.dependencyTargets,
-                    incrementalQuery: "",
-                    incrementalPreOps: []
-                });
+                    finalTables.push({
+                        type: "operations",
+                        tags: operation.tags,
+                        fileName: relativeFilePath,
+                        query: finalOperationQuery,
+                        target: operation.target,
+                        dependencyTargets: operation.dependencyTargets,
+                        incrementalQuery: "",
+                        incrementalPreOps: []
+                    });
+                } else {
+                    let errorString = createQueryMetaErrorString(operation, relativeFilePath);
+                    queryMeta.error += errorString;
+                    finalTables.push({
+                        type: "operations",
+                        tags: operation.tags,
+                        fileName: relativeFilePath,
+                        query: undefined,
+                        target: operation.target,
+                        dependencyTargets: operation.dependencyTargets,
+                        incrementalQuery: "",
+                        incrementalPreOps: [],
+                        error: errorString,
+                    });
+                }
             });
         }
         }
     }
 
-    return { tables: finalTables, queryMeta: queryMeta, queryMetaError: queryMetaError};
+    return { tables: finalTables, queryMeta: queryMeta};
 };
 
 
