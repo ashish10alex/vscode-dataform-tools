@@ -25,9 +25,9 @@ export function getNonce() {
     return text;
 }
 
-function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string){
+function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string, modelObjType:string){
     return relativeFilePath.endsWith(".js")
-    ? ` Query could not be determined for  ${relativeFilePath} <br>
+    ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
         <b>Canonical target:</b> ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
         <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
     `
@@ -726,7 +726,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     case "view":
                         if(!table?.query){
                             queryMeta.tableOrViewQuery = "";
-                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath);
+                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type);
                         } else {
                             queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
                         }
@@ -815,7 +815,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         incrementalPreOps: []
                     });
                 } else {
-                    let errorString = createQueryMetaErrorString(operation, relativeFilePath);
+                    let errorString = createQueryMetaErrorString(operation, relativeFilePath, "operations");
                     queryMeta.error += errorString;
                     finalTables.push({
                         type: "operations",
