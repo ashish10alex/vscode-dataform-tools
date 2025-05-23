@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.5...v0.12.6) (2025-05-23)
+
+
+### Features
+
+* **snippets:** publish, operate, assertion snippets for js files ([aa0398e](https://github.com/ashish10alex/vscode-dataform-tools/commit/aa0398e1f78215236a8723b0b6952655f49644f8))
+
+
+### Bug Fixes
+
+* js file with both operate and publish only shows first of of the two ([#154](https://github.com/ashish10alex/vscode-dataform-tools/issues/154)) ([906b63a](https://github.com/ashish10alex/vscode-dataform-tools/commit/906b63af6f1dfa033ae066e1a0f997a264d2bdff))
+
 ### [0.12.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.4...v0.12.5) (2025-05-14)
 
 
