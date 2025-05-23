@@ -453,6 +453,75 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
+    test("able to get model of type: js", async function() {
+        this.timeout(9000);
+        try {
+            const relativeFilePath = "definitions/010_JS_MULTIPLE.js";
+            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            if (compiledString) {
+                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+                if (dataformCompiledJson) {
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    assert.strictEqual(sqlxBlockMetadata.tables.length, 4);
+
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "js");
+
+                    sqlxBlockMetadata.tables.forEach(table => {
+                        assert.strictEqual(table.fileName, relativeFilePath);
+                    });
+
+                    const expectedTypes = ["view", "view", "assertion", "operations"];
+
+                    const expectedTargets = [
+                        {
+                            schema: "dataform",
+                            name: "test_js_table_1",
+                            database: "drawingfire-b72a8"
+                        },
+                        {
+                            schema: "dataform",
+                            name: "test_js_table_2",
+                            database: "drawingfire-b72a8"
+                        },
+                        {
+                            schema: "dataform_assertions", 
+                            name: "test_js_assert",
+                            database: "drawingfire-b72a8"
+                        },
+                        {
+                            schema: "dataform",
+                            name: "test_js_ops",
+                            database: "drawingfire-b72a8"
+                        }
+                    ];
+
+                    expectedTypes.forEach((type, i) => assert.strictEqual(sqlxBlockMetadata.tables[i].type, type));
+
+                    sqlxBlockMetadata.tables.forEach((table, i) => {
+                        assert.ok(table.target, `Table ${i} should have a target`);
+                        assert.strictEqual(table.target.schema, expectedTargets[i].schema, `Table ${i} expected schema: ${expectedTargets[i].schema}, got: ${table.target.schema}`);
+                        assert.strictEqual(table.target.name, expectedTargets[i].name, `Table ${i} expected name: ${expectedTargets[i].name}, got: ${table.target.name}`);
+                        assert.strictEqual(table.target.database, expectedTargets[i].database, `Table ${i} expected database: ${expectedTargets[i].database}, got: ${table.target.database}`);
+                    });
+
+                    sqlxBlockMetadata.tables.forEach(table => {
+                        assert.strictEqual(table.fileName, relativeFilePath);
+                    });
+
+                } else {
+                    throw new Error('Compilation failed');
+                }
+            }
+            if (errors) {
+                throw new Error(errors.join('\n'));
+            }
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+
 });
 
 suite('format bytes from dry run in human readable format', () => {

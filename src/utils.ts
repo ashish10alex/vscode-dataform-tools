@@ -25,6 +25,17 @@ export function getNonce() {
     return text;
 }
 
+function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string, modelObjType:string, isJsFile:boolean){
+    return isJsFile
+    ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
+        Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
+        <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
+    `
+    : ` Query could not be determined for  ${relativeFilePath} <br>.
+        Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
+    `;
+}
+
 export function formatBytes(bytes: number) {
     if (bytes === 0) {return '0 B';}
 
@@ -194,6 +205,15 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                             relativeFilePath: relativeFilePath
                         },
                     };
+                } else if (fileMetadata?.queryMeta.error !== ""){
+                    return {
+                        errors: { queryMetaError: fileMetadata?.queryMeta.error },
+                        pathMeta: {
+                            filename: filename,
+                            extension: extension,
+                            relativeFilePath: relativeFilePath
+                        },
+                    };
                 };
 
                 const targetToSearch = fileMetadata?.tables[0]?.target;
@@ -239,6 +259,18 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         } else {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+
+
+            if (fileMetadata?.queryMeta.error !== ""){
+                return {
+                    errors: { queryMetaError: fileMetadata?.queryMeta.error },
+                    pathMeta: {
+                        filename: filename,
+                        extension: extension,
+                        relativeFilePath: relativeFilePath
+                    },
+                };
+            }
 
             const targetToSearch = fileMetadata?.tables[0]?.target;
             let dependents = undefined;
@@ -666,12 +698,21 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         postOpsQuery: "",
         assertionQuery: "",
         operationsQuery: "",
+        error: "",
     };
     let finalTables: any[] = [];
 
+
+    const isJsFile = relativeFilePath.endsWith('.js');
+    const isSqlxFile = relativeFilePath.endsWith('.sqlx');
+
+    if(isJsFile){
+        queryMeta.type = "js";
+    }
+    
     if(tables?.length > 0){
         let matchingTables;
-        if (relativeFilePath.endsWith('.js')) {
+        if (isJsFile) {
             matchingTables = tables.filter(table => table.fileName === relativeFilePath);
         } else {
            matchingTables = tables.find(table => table.fileName === relativeFilePath);
@@ -684,14 +725,19 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
         if (matchingTables && matchingTables.length > 0) {
             logger.debug(`Found ${matchingTables.length} table(s) with filename: ${relativeFilePath}`);
-            queryMeta.type = matchingTables[0].type;
+            queryMeta.type = queryMeta.type === "js" ? "js" : matchingTables[0].type;
 
             matchingTables.forEach(table => {
 
                 switch (table.type) {
                     case "table":
                     case "view":
-                        queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
+                        if(!table?.query){
+                            queryMeta.tableOrViewQuery = "";
+                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type, isJsFile);
+                        } else {
+                            queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
+                        }
                         break;
                     case "incremental":
                         queryMeta.nonIncrementalQuery += (queryMeta.nonIncrementalQuery ? "\n" : "") + table.query + ";";
@@ -732,50 +778,90 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
         const assertionCountForFile = assertionsForFile.length;
         if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
-            queryMeta.type = "assertion";
+            queryMeta.type = queryMeta.type === "js" ? "js" : "assertion";
         }
         const assertionQueries = assertionsForFile.map((assertion, index) => {
-            finalTables.push({
-                type: "assertion",
-                tags: assertion.tags,
-                fileName: relativeFilePath,
-                query: assertion.query,
-                target: assertion.target,
-                dependencyTargets: assertion.dependencyTargets,
-                incrementalQuery: "",
-                incrementalPreOps: []
-            });
-            logger.debug(`Assertion found: ${assertion.fileName}`);
-            return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+            if(assertion?.query){
+                finalTables.push({
+                    type: "assertion",
+                    tags: assertion.tags,
+                    fileName: relativeFilePath,
+                    query: assertion.query,
+                    target: assertion.target,
+                    dependencyTargets: assertion.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: []
+                });
+                logger.debug(`Assertion found: ${assertion.fileName}`);
+                return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+            } else {
+                let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions", isJsFile);
+                queryMeta.error += errorString;
+                finalTables.push({
+                    type: "assertion",
+                    tags: assertion.tags,
+                    fileName: relativeFilePath,
+                    query: assertion.query,
+                    target: assertion.target,
+                    dependencyTargets: assertion.dependencyTargets,
+                    incrementalQuery: "",
+                    incrementalPreOps: [],
+                    error: errorString
+                });
+                logger.debug(`Assertion found: ${assertion.fileName}`);
+                logger.debug(`Error in assertion: ${errorString}`);
+                return `\n -- Assertions: [${index + 1}] \n ${errorString}; \n`;
+            }
         });
         queryMeta.assertionQuery = assertionQueries.join('');
     }
 
-    if (operations?.length > 0 && finalTables.length === 0) {
-        const operation = operations.find(op => op.fileName === relativeFilePath);
-        if (operation) {
-            logger.debug(`Operations found: ${operation.fileName}`);
-            queryMeta.type = "operations";
-            const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
-                return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
-            }, "");
+    if (operations?.length > 0) {
+        if ((isSqlxFile && finalTables.length === 0 ) || isJsFile) {
+        const operationsForFile = operations.filter(op => op.fileName === relativeFilePath);
+        if (operationsForFile.length > 0) {
+            logger.debug(`Found ${operationsForFile.length} operation(s) with filename: ${relativeFilePath}`);
+            queryMeta.type = queryMeta.type === "js" ? "js" : "operations";
+            
+            operationsForFile.forEach(operation => {
+                if(operation?.queries){
+                    const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+                        return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
+                    }, "");
 
-            queryMeta.operationsQuery += finalOperationQuery;
+                    queryMeta.operationsQuery += finalOperationQuery;
 
-            finalTables.push({
-                type: "operations",
-                tags: operation.tags,
-                fileName: relativeFilePath,
-                query: finalOperationQuery,
-                target: operation.target,
-                dependencyTargets: operation.dependencyTargets,
-                incrementalQuery: "",
-                incrementalPreOps: []
+                    finalTables.push({
+                        type: "operations",
+                        tags: operation.tags,
+                        fileName: relativeFilePath,
+                        query: finalOperationQuery,
+                        target: operation.target,
+                        dependencyTargets: operation.dependencyTargets,
+                        incrementalQuery: "",
+                        incrementalPreOps: []
+                    });
+                } else {
+                    let errorString = createQueryMetaErrorString(operation, relativeFilePath, "operations", isJsFile);
+                    queryMeta.error += errorString;
+                    finalTables.push({
+                        type: "operations",
+                        tags: operation.tags,
+                        fileName: relativeFilePath,
+                        query: undefined,
+                        target: operation.target,
+                        dependencyTargets: operation.dependencyTargets,
+                        incrementalQuery: "",
+                        incrementalPreOps: [],
+                        error: errorString,
+                    });
+                }
             });
+        }
         }
     }
 
-    return { tables: finalTables, queryMeta: queryMeta };
+    return { tables: finalTables, queryMeta: queryMeta};
 };
 
 
