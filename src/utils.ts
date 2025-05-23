@@ -25,8 +25,8 @@ export function getNonce() {
     return text;
 }
 
-function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string, modelObjType:string){
-    return relativeFilePath.endsWith(".js")
+function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string, modelObjType:string, isJsFile:boolean){
+    return isJsFile
     ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
         Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
         <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
@@ -702,9 +702,17 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     };
     let finalTables: any[] = [];
 
+
+    const isJsFile = relativeFilePath.endsWith('.js');
+    const isSqlxFile = relativeFilePath.endsWith('.sqlx');
+
+    if(isJsFile){
+        queryMeta.type = "js";
+    }
+    
     if(tables?.length > 0){
         let matchingTables;
-        if (relativeFilePath.endsWith('.js')) {
+        if (isJsFile) {
             matchingTables = tables.filter(table => table.fileName === relativeFilePath);
         } else {
            matchingTables = tables.find(table => table.fileName === relativeFilePath);
@@ -717,7 +725,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
         if (matchingTables && matchingTables.length > 0) {
             logger.debug(`Found ${matchingTables.length} table(s) with filename: ${relativeFilePath}`);
-            queryMeta.type = matchingTables[0].type;
+            queryMeta.type = queryMeta.type === "js" ? "js" : matchingTables[0].type;
 
             matchingTables.forEach(table => {
 
@@ -726,7 +734,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     case "view":
                         if(!table?.query){
                             queryMeta.tableOrViewQuery = "";
-                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type);
+                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type, isJsFile);
                         } else {
                             queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
                         }
@@ -770,7 +778,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
         const assertionCountForFile = assertionsForFile.length;
         if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
-            queryMeta.type = "assertion";
+            queryMeta.type = queryMeta.type === "js" ? "js" : "assertion";
         }
         const assertionQueries = assertionsForFile.map((assertion, index) => {
             if(assertion?.query){
@@ -787,7 +795,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 logger.debug(`Assertion found: ${assertion.fileName}`);
                 return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
             } else {
-                let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions");
+                let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions", isJsFile);
                 queryMeta.error += errorString;
                 finalTables.push({
                     type: "assertion",
@@ -809,11 +817,11 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
 
     if (operations?.length > 0) {
-        if ((relativeFilePath.endsWith('.sqlx') && finalTables.length === 0 ) || relativeFilePath.endsWith('.js')) {
+        if ((isSqlxFile && finalTables.length === 0 ) || isJsFile) {
         const operationsForFile = operations.filter(op => op.fileName === relativeFilePath);
         if (operationsForFile.length > 0) {
             logger.debug(`Found ${operationsForFile.length} operation(s) with filename: ${relativeFilePath}`);
-            queryMeta.type = "operations";
+            queryMeta.type = queryMeta.type === "js" ? "js" : "operations";
             
             operationsForFile.forEach(operation => {
                 if(operation?.queries){
@@ -834,7 +842,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         incrementalPreOps: []
                     });
                 } else {
-                    let errorString = createQueryMetaErrorString(operation, relativeFilePath, "operations");
+                    let errorString = createQueryMetaErrorString(operation, relativeFilePath, "operations", isJsFile);
                     queryMeta.error += errorString;
                     finalTables.push({
                         type: "operations",

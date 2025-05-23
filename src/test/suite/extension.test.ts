@@ -464,6 +464,8 @@ suite('getQueryMetaForCurrentFile', () => {
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 4);
 
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "js");
+
                     sqlxBlockMetadata.tables.forEach(table => {
                         assert.strictEqual(table.fileName, relativeFilePath);
                     });
