@@ -432,9 +432,8 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
         ]);
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult] = dryRunResults;
 
-        let dryRunStat = formatBytes(dryRunResult?.statistics?.totalBytesProcessed);
 
         let currency = "USD" as SupportedCurrency;
         let currencySymbol = "$";
@@ -443,9 +442,26 @@ export class CompiledQueryPanel {
             currency = dryRunResult?.statistics?.cost?.currency as SupportedCurrency;
             currencySymbol = currencySymbolMapping[currency];
         }
-        let dryRunCost = currencySymbol + (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00");
 
-        let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message: "");
+        let dryRunStat = "";
+        const formatCost = (result: any, type: string) => {
+            if(result?.statistics?.cost){
+                return formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + (type ? " (" + type + ")" : "") + "<br>";
+            }
+            return "";
+        };
+        dryRunStat = formatCost(dryRunResult, "") + "<br>";
+        dryRunStat += formatCost(preOpsDryRunResult, "Pre operations") + "<br>";
+        dryRunStat += formatCost(postOpsDryRunResult, "Post operations") + "<br>";
+        dryRunStat += formatCost(incrementalDryRunResult, "Incremental") + "<br>";
+        dryRunStat += formatCost(nonIncrementalDryRunResult, "Non incremental") + "<br>";
+
+        let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "")
+                            + dryRunResult?.error.message 
+                            + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message
+                            + (incrementalDryRunResult?.error.message ? "<br>" + incrementalDryRunResult?.error.message : "")
+                            + (nonIncrementalDryRunResult?.error.message ? "<br>" + nonIncrementalDryRunResult?.error.message : "")
+                            : "");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
@@ -461,8 +477,6 @@ export class CompiledQueryPanel {
         }
         if(!dryRunStat){
             dryRunStat = "0 B";
-        }else{
-            dryRunStat += ` (${dryRunCost})`;
         }
 
         if (compiledQuerySchema?.fields) {

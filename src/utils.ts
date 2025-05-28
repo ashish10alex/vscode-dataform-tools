@@ -1256,6 +1256,8 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     }
 
     let queryToDryRun = "";
+    let nonIncrementalQuery = "";
+    let incrementalQuery = "";
     const type = curFileMeta.fileMetadata.queryMeta.type ;
     const fileMetadata = curFileMeta.fileMetadata;
 
@@ -1276,21 +1278,24 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         if(preOpsQuery && preOpsQuery !== ""){
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(fileMetadata.queryMeta.preOpsQuery);
         }
-        let incrementalQuery = preOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
-        queryToDryRun = incrementalQuery;
+        incrementalQuery = preOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
+        nonIncrementalQuery = preOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery.trimStart();
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = await Promise.all([
+    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
-        queryDryRun(fileMetadata.queryMeta.postOpsQuery)
+        queryDryRun(fileMetadata.queryMeta.postOpsQuery),
+        queryDryRun(nonIncrementalQuery),
+        queryDryRun(incrementalQuery)
     ]);
 
     compiledQuerySchema = dryRunResult.schema;
 
-    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError) {
+    // check if we need to handle errors from non incremental query here 
+    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
             [undefined , undefined, undefined];
@@ -1306,9 +1311,13 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         }
 
         if (sqlxBlockMetadata) {
+            if (type === "incremental") {
+                // check if we need to handle errors from non incremental query here 
+                dryRunResult.error = incrementalDryRunResult.error;
+            }
             setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult];
+        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -1319,7 +1328,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult];
+    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {
