@@ -446,7 +446,7 @@ export class CompiledQueryPanel {
         let dryRunStat = "";
         const formatCost = (result: any, type: string) => {
             if(result?.statistics?.cost){
-                return (type ? type + ": " : "") + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00");
+                return (type ? type + ": " : "") + "(" + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
             }
             return "";
         };
