@@ -446,15 +446,15 @@ export class CompiledQueryPanel {
         let dryRunStat = "";
         const formatCost = (result: any, type: string) => {
             if(result?.statistics?.cost){
-                return formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + (type ? " (" + type + ")" : "") + "<br>";
+                return formatBytes(result?.statisticS?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + (type ? " (" + type + ")" : "");
             }
             return "";
         };
-        dryRunStat = formatCost(dryRunResult, "") + "<br>";
-        dryRunStat += formatCost(preOpsDryRunResult, "Pre operations") + "<br>";
-        dryRunStat += formatCost(postOpsDryRunResult, "Post operations") + "<br>";
-        dryRunStat += formatCost(incrementalDryRunResult, "Incremental") + "<br>";
-        dryRunStat += formatCost(nonIncrementalDryRunResult, "Non incremental") + "<br>";
+        dryRunStat = formatCost(dryRunResult, "Main query") + "<br>";
+        dryRunStat += (formatCost(preOpsDryRunResult, "Pre operations") ? formatCost(preOpsDryRunResult, "Pre operations") + "<br>" : "");
+        dryRunStat += (formatCost(postOpsDryRunResult, "Post operations") ? formatCost(postOpsDryRunResult, "Post operations") + "<br>" : "");
+        dryRunStat += (formatCost(incrementalDryRunResult, "Incremental") ? formatCost(incrementalDryRunResult, "Incremental") + "<br>" : "");
+        dryRunStat += (formatCost(nonIncrementalDryRunResult, "Non incremental") ? formatCost(nonIncrementalDryRunResult, "Non incremental") + "<br>" : "");
 
         let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "")
                             + dryRunResult?.error.message 

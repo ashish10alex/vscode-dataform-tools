@@ -578,21 +578,11 @@ window.addEventListener('message', event => {
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
-                    // Parse the dryRunStat to separate the bytes and cost
                     console.log(`value: ${value}`);
-                    const parts = value.split('<br>');
-                    const bytes = parts[0];
-                    const costs = parts.slice(1).filter(cost => cost.trim());
-
                     element.innerHTML = `
+                        <span class="stats-label">Query will process:</span><br>
                         <div class="stats-content">
-                            <span class="stats-label">Query will process:</span>
-                            <span class="stats-value">${bytes}</span>
-                            ${costs.map(cost => `
-                                <div class="stats-cost-row">
-                                    <span class="stats-cost">${cost}</span>
-                                </div>
-                            `).join('')}
+                            <span class="stats-value">${value}</span>
                         </div>
                     `;
                 }
