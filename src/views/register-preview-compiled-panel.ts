@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -450,11 +450,20 @@ export class CompiledQueryPanel {
             }
             return "";
         };
-        dryRunStat = formatCost(dryRunResult, "Main query") + "<br>";
-        dryRunStat += (formatCost(preOpsDryRunResult, "Pre operations") ? formatCost(preOpsDryRunResult, "Pre operations") + "<br>" : "");
-        dryRunStat += (formatCost(postOpsDryRunResult, "Post operations") ? formatCost(postOpsDryRunResult, "Post operations") + "<br>" : "");
-        dryRunStat += (formatCost(incrementalDryRunResult, "Incremental") ? formatCost(incrementalDryRunResult, "Incremental") + "<br>" : "");
-        dryRunStat += (formatCost(nonIncrementalDryRunResult, "Non incremental") ? formatCost(nonIncrementalDryRunResult, "Non incremental") + "<br>" : "");
+
+        const dryRunResultsMeta: { result: BigQueryDryRunResponse, label: string }[] = [
+            { result: dryRunResult, label: "Main query" },
+            { result: preOpsDryRunResult, label: "Pre operations" },
+            { result: postOpsDryRunResult, label: "Post operations" },
+            { result: incrementalDryRunResult, label: "Incremental" },
+            { result: nonIncrementalDryRunResult, label: "Non incremental" }
+        ];
+
+        for (const { result, label } of dryRunResultsMeta) {
+            const cost = formatCost(result, label);
+            dryRunStat += (cost ? cost + "<br>" : "");
+        }
+
 
         let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "")
                             + dryRunResult?.error.message 
