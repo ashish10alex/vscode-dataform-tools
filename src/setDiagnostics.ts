@@ -26,7 +26,7 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
             errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            dryRunError.message = "(fullQuery): " + dryRunError.message;
+            dryRunError.message = dryRunError.message;
             const regularBlockDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
             diagnostics.push(regularBlockDiagnostic);
         }
@@ -34,14 +34,14 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
         if(preOpsError.hasError){
             errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            preOpsError.message = "(preOps): " + preOpsError.message;
+            preOpsError.message = preOpsError.message;
             const preOpsDiagnostic = new vscode.Diagnostic(range, preOpsError.message, severity);
             diagnostics.push(preOpsDiagnostic);
         }
         if(postOpsError.hasError){
             errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            postOpsError.message = "(postOps): " + postOpsError.message;
+            postOpsError.message = postOpsError.message;
             const postOpsDiagnostic = new vscode.Diagnostic(range, postOpsError.message, severity);
             diagnostics.push(postOpsDiagnostic);
         }

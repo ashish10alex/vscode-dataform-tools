@@ -1283,22 +1283,23 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult] = await Promise.all([
+    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, assertionDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
         queryDryRun(fileMetadata.queryMeta.postOpsQuery),
         queryDryRun(nonIncrementalQuery),
-        queryDryRun(incrementalQuery)
+        queryDryRun(incrementalQuery),
+        queryDryRun(fileMetadata.queryMeta.assertionQuery),
     ]);
 
     compiledQuerySchema = dryRunResult.schema;
 
     // check if we need to handle errors from non incremental query here 
-    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError) {
+    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
-            [undefined , undefined, undefined];
+            [undefined , undefined, undefined, undefined, undefined, undefined];
         }
 
         let offSet = 0;
@@ -1317,7 +1318,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
             }
             setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult];
+        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, assertionDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -1328,7 +1329,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult];
+    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, assertionDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

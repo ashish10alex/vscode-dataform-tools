@@ -432,7 +432,7 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
         ]);
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult] = dryRunResults;
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, assertionDryRunResult] = dryRunResults;
 
 
         let currency = "USD" as SupportedCurrency;
@@ -456,7 +456,8 @@ export class CompiledQueryPanel {
             { result: preOpsDryRunResult, label: "Pre operations" },
             { result: postOpsDryRunResult, label: "Post operations" },
             { result: incrementalDryRunResult, label: "Incremental" },
-            { result: nonIncrementalDryRunResult, label: "Non incremental" }
+            { result: nonIncrementalDryRunResult, label: "Non incremental" },
+            { result: assertionDryRunResult, label: "Assertion" }
         ];
 
         for (const { result, label } of dryRunResultsMeta) {
@@ -465,12 +466,13 @@ export class CompiledQueryPanel {
         }
 
 
-        let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "")
-                            + dryRunResult?.error.message 
-                            + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message
-                            + (incrementalDryRunResult?.error.message ? "<br>" + incrementalDryRunResult?.error.message : "")
-                            + (nonIncrementalDryRunResult?.error.message ? "<br>" + nonIncrementalDryRunResult?.error.message : "")
-                            : "");
+        let errorMessage = (preOpsDryRunResult?.error.message ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
+                            + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
+                            + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
+                            + (assertionDryRunResult?.error.message ? "(Assertion): " + assertionDryRunResult?.error.message + "<br>" : "")
+                            + (incrementalDryRunResult?.error.message ? "(Incremental): " + incrementalDryRunResult?.error.message + "<br>" : "")
+                            + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "");
+        errorMessage = errorMessage.replace(/<br><br>/g, "<br>");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
