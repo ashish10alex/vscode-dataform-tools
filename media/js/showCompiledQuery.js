@@ -578,7 +578,6 @@ window.addEventListener('message', event => {
                     divElement.style.display = "none";
                 } else {
                     divElement.style.display = "";
-                    console.log(`value: ${value}`);
                     element.innerHTML = `
                         <span class="stats-label">Query will process:</span><br>
                         <div class="stats-content">
