@@ -227,13 +227,31 @@ suite("setDiagnostics", () => {
                 };
 
                 let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
-                setDiagnostics(document, mockDryRunError, mockPreOpsDryRunError, mockPostOpsDryRunError, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset);
+                let errorMeta = {
+                    mainQueryError: mockDryRunError,
+                    preOpsError: mockPreOpsDryRunError,
+                    postOpsError: mockPostOpsDryRunError,
+                    nonIncrementalError: {
+                        hasError: false,
+                        message: "",
+                        location: undefined,
+                    },
+                    incrementalError: {
+                        hasError: false,
+                        message: "",
+                        location: undefined,
+                    },
+                    assertionError: {
+                        hasError: false,
+                        message: "",
+                        location: undefined,
+                    },
+                };
+                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset);
                 let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
 
                 const exppectedCountOfDiagnostics = 3;
                 assert.deepEqual(allDiagnostics.length, exppectedCountOfDiagnostics, `Expected ${exppectedCountOfDiagnostics} diagnostic, got ${allDiagnostics.length}`);
-
-                //console.log(`[TEST] allDiagnostics:`, allDiagnostics);
 
                 let fullQueryDiagnosticRange = allDiagnostics[0].range;
                 const expectedLineNumber = 21;

@@ -1316,7 +1316,15 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
                 // check if we need to handle errors from non incremental query here 
                 dryRunResult.error = incrementalDryRunResult.error;
             }
-            setDiagnostics(document, dryRunResult.error, preOpsDryRunResult.error, postOpsDryRunResult.error, diagnosticCollection, sqlxBlockMetadata, offSet);
+            let errorMeta = {
+                mainQueryError: dryRunResult.error,
+                preOpsError: preOpsDryRunResult.error,
+                postOpsError: postOpsDryRunResult.error,
+                nonIncrementalError: nonIncrementalDryRunResult.error,
+                incrementalError: incrementalDryRunResult.error,
+                assertionError: assertionDryRunResult.error,
+            };
+            setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
         return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, assertionDryRunResult];
     }
