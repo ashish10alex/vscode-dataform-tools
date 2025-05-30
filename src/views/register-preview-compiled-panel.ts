@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -432,9 +432,8 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
         ]);
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult] = dryRunResults;
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = dryRunResults;
 
-        let dryRunStat = formatBytes(dryRunResult?.statistics?.totalBytesProcessed);
 
         let currency = "USD" as SupportedCurrency;
         let currencySymbol = "$";
@@ -443,9 +442,39 @@ export class CompiledQueryPanel {
             currency = dryRunResult?.statistics?.cost?.currency as SupportedCurrency;
             currencySymbol = currencySymbolMapping[currency];
         }
-        let dryRunCost = currencySymbol + (dryRunResult?.statistics?.cost?.value.toFixed(3) || "0.00");
 
-        let errorMessage = (preOpsDryRunResult?.error.message ? preOpsDryRunResult?.error.message + "<br>" : "") + dryRunResult?.error.message + (postOpsDryRunResult?.error.message ?  "<br>" + postOpsDryRunResult?.error.message: "");
+        let dryRunStat = "";
+        const formatCost = (result: any, type: string) => {
+            if(result?.statistics?.cost && result?.error?.hasError === false){
+                return (type ? type + ": " : "") + "(" + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
+            }
+            return "";
+        };
+
+        const dryRunResultsMeta: { result: BigQueryDryRunResponse, label: string }[] = [
+            { result: dryRunResult, label: "Main query" },
+            { result: preOpsDryRunResult, label: "Pre operations" },
+            { result: postOpsDryRunResult, label: "Post operations" },
+            { result: incrementalPreOpsDryRunResult, label: "Incremental pre operations" },
+            { result: incrementalDryRunResult, label: "Incremental" },
+            { result: nonIncrementalDryRunResult, label: "Non incremental" },
+            { result: assertionDryRunResult, label: "Assertion" }
+        ];
+
+        for (const { result, label } of dryRunResultsMeta) {
+            const cost = formatCost(result, label);
+            dryRunStat += (cost ? cost + "<br>" : "");
+        }
+
+
+        let errorMessage = (preOpsDryRunResult?.error.message ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
+                            + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
+                            + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
+                            + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")
+                            + (assertionDryRunResult?.error.message ? "(Assertion): " + assertionDryRunResult?.error.message + "<br>" : "")
+                            + (incrementalDryRunResult?.error.message ? "(Incremental): " + incrementalDryRunResult?.error.message + "<br>" : "")
+                            + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "");
+        errorMessage = errorMessage.replace(/<br><br>/g, "<br>");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = " ";
@@ -460,9 +489,7 @@ export class CompiledQueryPanel {
              </ol>`;
         }
         if(!dryRunStat){
-            dryRunStat = "0 B";
-        }else{
-            dryRunStat += ` (${dryRunCost})`;
+            dryRunStat = "";
         }
 
         if (compiledQuerySchema?.fields) {
