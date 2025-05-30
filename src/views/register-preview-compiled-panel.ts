@@ -432,7 +432,7 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
         ]);
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, assertionDryRunResult] = dryRunResults;
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = dryRunResults;
 
 
         let currency = "USD" as SupportedCurrency;
@@ -455,6 +455,7 @@ export class CompiledQueryPanel {
             { result: dryRunResult, label: "Main query" },
             { result: preOpsDryRunResult, label: "Pre operations" },
             { result: postOpsDryRunResult, label: "Post operations" },
+            { result: incrementalPreOpsDryRunResult, label: "Incremental pre operations" },
             { result: incrementalDryRunResult, label: "Incremental" },
             { result: nonIncrementalDryRunResult, label: "Non incremental" },
             { result: assertionDryRunResult, label: "Assertion" }
@@ -469,6 +470,7 @@ export class CompiledQueryPanel {
         let errorMessage = (preOpsDryRunResult?.error.message ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
                             + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
                             + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
+                            + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")
                             + (assertionDryRunResult?.error.message ? "(Assertion): " + assertionDryRunResult?.error.message + "<br>" : "")
                             + (incrementalDryRunResult?.error.message ? "(Incremental): " + incrementalDryRunResult?.error.message + "<br>" : "")
                             + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "");

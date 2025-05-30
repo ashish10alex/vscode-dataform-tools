@@ -1283,13 +1283,14 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, assertionDryRunResult] = await Promise.all([
+    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = await Promise.all([
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
         queryDryRun(fileMetadata.queryMeta.postOpsQuery),
         queryDryRun(nonIncrementalQuery),
         queryDryRun(incrementalQuery),
+        queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
     ]);
 
@@ -1322,11 +1323,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
                 postOpsError: postOpsDryRunResult.error,
                 nonIncrementalError: nonIncrementalDryRunResult.error,
                 incrementalError: incrementalDryRunResult.error,
+                incrementalPreOpsError: incrementalPreOpsDryRunResult.error,
                 assertionError: assertionDryRunResult.error,
             };
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, assertionDryRunResult];
+        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -1337,7 +1339,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, assertionDryRunResult];
+    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {
