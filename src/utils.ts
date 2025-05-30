@@ -1300,7 +1300,6 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
-            [undefined , undefined, undefined, undefined, undefined, undefined];
         }
 
         let offSet = 0;

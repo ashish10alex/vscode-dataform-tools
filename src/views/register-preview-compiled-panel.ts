@@ -445,7 +445,7 @@ export class CompiledQueryPanel {
 
         let dryRunStat = "";
         const formatCost = (result: any, type: string) => {
-            if(result?.statistics?.cost){
+            if(result?.statistics?.cost && result?.error?.hasError === false){
                 return (type ? type + ": " : "") + "(" + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
             }
             return "";
@@ -489,7 +489,7 @@ export class CompiledQueryPanel {
              </ol>`;
         }
         if(!dryRunStat){
-            dryRunStat = "0 B";
+            dryRunStat = "";
         }
 
         if (compiledQuerySchema?.fields) {

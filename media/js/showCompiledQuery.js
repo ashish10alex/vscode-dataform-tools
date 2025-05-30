@@ -574,16 +574,16 @@ window.addEventListener('message', event => {
             }
             else if (key === "dryRunStat") {
                 dryRunloadingIcon.style.display = "none";
-                if (event?.data?.errorMessage !== " ") {
-                    divElement.style.display = "none";
-                } else {
+                if (divElement) {
                     divElement.style.display = "";
-                    element.innerHTML = `
-                        <span class="stats-label">Query will process:</span><br>
-                        <div class="stats-content">
-                            <span class="stats-value">${value}</span>
-                        </div>
-                    `;
+                    if (element) {
+                        element.innerHTML = `
+                            <span class="stats-label">Query will process:</span><br>
+                            <div class="stats-content">
+                                <span class="stats-value">${value}</span>
+                            </div>
+                        `;
+                    }
                 }
             } else {
                 if (divElement?.style){
