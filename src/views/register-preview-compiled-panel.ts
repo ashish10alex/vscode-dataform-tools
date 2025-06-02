@@ -257,6 +257,7 @@ export class CompiledQueryPanel {
                         "dependents": curFileMeta.dependents,
                         "dataformTags": dataformTags,
                         "selectedTag": selectedTag,
+                        "modelType": fileMetadata.queryMeta.type,
                     });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
@@ -301,6 +302,7 @@ export class CompiledQueryPanel {
                     "models": curFileMeta.fileMetadata.tables,
                     "dependents": curFileMeta.dependents,
                     "dataformTags": dataformTags,
+                    "modelType": fileMetadata.queryMeta.type,
                 });
                 return;
             }
@@ -416,6 +418,7 @@ export class CompiledQueryPanel {
             "targetTablesOrViews": targetTablesOrViews,
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
+            "modelType": fileMetadata.queryMeta.type,
     });
 
         if(diagnosticCollection){
@@ -453,7 +456,7 @@ export class CompiledQueryPanel {
 
         const dryRunResultsMeta: { result: BigQueryDryRunResponse, label: string }[] = [
             { result: dryRunResult, label: "Main query" },
-            { result: preOpsDryRunResult, label: "Pre operations" },
+            { result: preOpsDryRunResult, label: fileMetadata.queryMeta.type === "incremental" ? "Non incremental pre operations" : "Pre operations" },
             { result: postOpsDryRunResult, label: "Post operations" },
             { result: incrementalPreOpsDryRunResult, label: "Incremental pre operations" },
             { result: incrementalDryRunResult, label: "Incremental" },
@@ -536,6 +539,7 @@ export class CompiledQueryPanel {
                 "models": curFileMeta.fileMetadata.tables,
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
+                "modelType": fileMetadata.queryMeta.type,
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta
             });
             this._cachedResults = { fileMetadata, curFileMeta, targetTablesOrViews, errorMessage, dryRunStat, location};
@@ -779,7 +783,7 @@ export class CompiledQueryPanel {
 
             <div id="codeBlock">
                 <div id="preOperationsDiv" style="display: none;">
-                    <h4>Pre Operations</h4>
+                    <h4 id="preOperationsTitle">Pre Operations</h4>
                     <pre><code  id="preOperations" class="language-sql"></code></pre>
                 </div>
 

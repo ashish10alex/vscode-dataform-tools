@@ -266,6 +266,7 @@ window.addEventListener('message', event => {
         "relativeFilePath": event?.data?.relativeFilePath,
         "errorMessage": event?.data?.errorMessage,
         "dryRunStat": event?.data?.dryRunStat,
+        "modelType": event?.data?.modelType,
     };
     removeExistingCopyElements();
 
@@ -542,6 +543,12 @@ window.addEventListener('message', event => {
     Object.entries(data).forEach(([key, value]) => {
         const element = document.getElementById(key);
         const divElement = document.getElementById(key + "Div");
+
+        if(data?.modelType === "incremental"){
+            preOperationsTitle.textContent = "Non Incremental Pre Operations";
+        } else {
+            preOperationsTitle.textContent = "Pre Operations";
+        }
 
         if (value === undefined || value === null || value === "") {
             if (divElement?.style){
