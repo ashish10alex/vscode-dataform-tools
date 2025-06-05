@@ -1,8 +1,8 @@
 
 import * as vscode from 'vscode';
-import {DryRunError, SqlxBlockMetadata} from './types';
+import {ErrorMeta, SqlxBlockMetadata} from './types';
 
-export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRunError, preOpsError:DryRunError, postOpsError:DryRunError, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
+export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMeta, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
 
         const diagnostics: vscode.Diagnostic[] = [];
         const severity = vscode.DiagnosticSeverity.Error;
@@ -10,9 +10,9 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
         let errLineNumber;
         let errColumnNumber = 0;
 
-        if (dryRunError.hasError){
-            let errLineNumber = dryRunError.location?.line;
-            let errColumnNumber = dryRunError.location?.column;
+        if (errorMeta.mainQueryError.hasError){
+            let errLineNumber = errorMeta.mainQueryError.location?.line;
+            let errColumnNumber = errorMeta.mainQueryError.location?.column;
             if (errLineNumber === undefined || errColumnNumber === undefined) {
                 vscode.window.showErrorMessage(`Error in setting diagnostics. Error location is undefined.`);
                 return;
@@ -26,24 +26,27 @@ export function setDiagnostics(document: vscode.TextDocument, dryRunError: DryRu
             errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            dryRunError.message = "(fullQuery): " + dryRunError.message;
-            const regularBlockDiagnostic = new vscode.Diagnostic(range, dryRunError.message, severity);
+            const regularBlockDiagnostic = new vscode.Diagnostic(range, `(Main Query): ${errorMeta.mainQueryError.message}`, severity);
             diagnostics.push(regularBlockDiagnostic);
         }
 
-        if(preOpsError.hasError){
+        if(errorMeta?.preOpsError?.hasError){
             errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            preOpsError.message = "(preOps): " + preOpsError.message;
-            const preOpsDiagnostic = new vscode.Diagnostic(range, preOpsError.message, severity);
+            const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, severity);
             diagnostics.push(preOpsDiagnostic);
         }
-        if(postOpsError.hasError){
+        if(errorMeta?.postOpsError?.hasError){
             errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            postOpsError.message = "(postOps): " + postOpsError.message;
-            const postOpsDiagnostic = new vscode.Diagnostic(range, postOpsError.message, severity);
+            const postOpsDiagnostic = new vscode.Diagnostic(range, `(Post-Ops): ${errorMeta.postOpsError.message}`, severity);
             diagnostics.push(postOpsDiagnostic);
+        }
+
+        if (errorMeta?.assertionError?.hasError){
+            const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
+            const assertionDiagnostic = new vscode.Diagnostic(range, `(Assertion): ${errorMeta.assertionError.message}`, severity);
+            diagnostics.push(assertionDiagnostic);
         }
 
         if (document !== undefined) {

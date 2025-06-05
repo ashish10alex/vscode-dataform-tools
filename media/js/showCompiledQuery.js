@@ -266,6 +266,7 @@ window.addEventListener('message', event => {
         "relativeFilePath": event?.data?.relativeFilePath,
         "errorMessage": event?.data?.errorMessage,
         "dryRunStat": event?.data?.dryRunStat,
+        "modelType": event?.data?.modelType,
     };
     removeExistingCopyElements();
 
@@ -543,6 +544,12 @@ window.addEventListener('message', event => {
         const element = document.getElementById(key);
         const divElement = document.getElementById(key + "Div");
 
+        if(data?.modelType === "incremental"){
+            preOperationsTitle.textContent = "Non Incremental Pre Operations";
+        } else {
+            preOperationsTitle.textContent = "Pre Operations";
+        }
+
         if (value === undefined || value === null || value === "") {
             if (divElement?.style){
                 divElement.style.display = "none";
@@ -574,21 +581,16 @@ window.addEventListener('message', event => {
             }
             else if (key === "dryRunStat") {
                 dryRunloadingIcon.style.display = "none";
-                if (event?.data?.errorMessage !== " ") {
-                    divElement.style.display = "none";
-                } else {
+                if (divElement) {
                     divElement.style.display = "";
-                    // Parse the dryRunStat to separate the bytes and cost
-                    const [bytes, cost] = value.split(' (');
-                    const formattedCost = cost ? ` (${cost}` : '';
-
-                    element.innerHTML = `
-                        <div class="stats-content">
-                            <span class="stats-label">Query will process:</span>
-                            <span class="stats-value">${bytes}</span>
-                            <span class="stats-cost">${formattedCost}</span>
-                        </div>
-                    `;
+                    if (element) {
+                        element.innerHTML = `
+                            <span class="stats-label">Query will process:</span><br>
+                            <div class="stats-content">
+                                <span class="stats-value">${value}</span>
+                            </div>
+                        `;
+                    }
                 }
             } else {
                 if (divElement?.style){
