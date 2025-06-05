@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.13.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.6...v0.13.0) (2025-06-05)
+
+
+### Features
+
+* show multiple costs & diagnostics for each operation ([#155](https://github.com/ashish10alex/vscode-dataform-tools/issues/155)) ([6bfbbc9](https://github.com/ashish10alex/vscode-dataform-tools/commit/6bfbbc9e08204860d8808bec8c5db232222c5d6c))
+
 ### [0.12.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.5...v0.12.6) (2025-05-23)
 
 
