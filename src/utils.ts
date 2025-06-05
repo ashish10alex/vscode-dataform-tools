@@ -1261,7 +1261,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     const type = curFileMeta.fileMetadata.queryMeta.type ;
     const fileMetadata = curFileMeta.fileMetadata;
 
-    if (type === "table" || type === "view") {
+    let isMultiModalJsType = type === "js" && fileMetadata.tables.map((table: any) => {
+        return table.type === "table" || table.type === "view" ;
+    }).length >= 1;
+
+    if (type === "table" || type === "view" || isMultiModalJsType) {
         let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
         if(preOpsQuery && preOpsQuery !== ""){
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
