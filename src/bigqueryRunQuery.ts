@@ -134,8 +134,8 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
 
     const bigquery = getBigQueryClient();
     if (!bigquery) {
-        vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
-        return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery client not available. Please check your authentication." };
+        vscode.window.showErrorMessage('Error creating BigQuery client Please check your authentication.');
+        return { rows: undefined, jobStats: undefined, errorMessage: "Error creating BigQuery client Please check your authentication." };
     }
 
     if (cancelBigQueryJobSignal) {

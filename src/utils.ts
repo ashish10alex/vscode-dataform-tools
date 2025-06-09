@@ -56,7 +56,7 @@ export async function getTableSchema(projectId: string, datasetId: string, table
         await checkAuthentication();
         const bigquery = getBigQueryClient();
         if (!bigquery) {
-            vscode.window.showErrorMessage('BigQuery client not available. Please check your authentication.');
+            vscode.window.showErrorMessage('Error creating BigQuery client Please check your authentication.');
             return [];
         }
         const dataset = bigquery.dataset(datasetId, { projectId: projectId });
