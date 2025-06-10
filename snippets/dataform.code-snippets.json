@@ -147,6 +147,15 @@
 		"description": "Generate pre_operation block"
 	},
 
+	"self": {
+		"scope": "sqlx",
+        "prefix": "${self [Dataform]",
+		"body": [
+			"${self()}"
+		],
+		"description": "Reference the model itself"
+	},
+
 	"post operations": {
 		"scope": "sqlx",
         "prefix": "post_operations [Dataform]",
