@@ -267,19 +267,23 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
     if (line.indexOf("${self()}") !== -1) {
 
+      let workspaceFolder = await getWorkspaceFolder();
+      if (!workspaceFolder){return;}
+
       let dataformCompiledJson: DataformCompiledJson | undefined;
       if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage(
           "Compile the Dataform project once for faster go to definition"
         );
+        let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        dataformCompiledJson = dataformCompiledJson;
+      } else {
+        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
       }
-      dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+
       let tables = dataformCompiledJson?.tables;
       let operations = dataformCompiledJson?.operations;
       let assertions = dataformCompiledJson?.assertions;
-
-      let workspaceFolder = await getWorkspaceFolder();
-      if (!workspaceFolder){return;}
 
       let relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
       const getHoverForTarget = (target: Target) => {
