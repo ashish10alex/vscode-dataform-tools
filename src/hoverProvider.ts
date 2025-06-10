@@ -9,7 +9,7 @@ import {
 // @ts-ignore
 import {parse as commentParser} from 'comment-parser';
 
-import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
+import { Assertion, DataformCompiledJson, Operation, Table, Target } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
@@ -264,6 +264,47 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     if (line.indexOf("${") === -1) {
       return undefined;
     }
+
+    if (line.indexOf("${self()}") !== -1) {
+
+      let dataformCompiledJson: DataformCompiledJson | undefined;
+      if (!CACHED_COMPILED_DATAFORM_JSON) {
+        vscode.window.showWarningMessage(
+          "Compile the Dataform project once for faster go to definition"
+        );
+      }
+      dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+      let tables = dataformCompiledJson?.tables;
+      let operations = dataformCompiledJson?.operations;
+      let assertions = dataformCompiledJson?.assertions;
+
+      let workspaceFolder = await getWorkspaceFolder();
+      if (!workspaceFolder){return;}
+
+      let relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
+      let matchingTables = tables?.filter(table => table.fileName === relativeFilePath);
+      let matchingOperations = operations?.filter(operation => operation.fileName === relativeFilePath);
+      let matchingAssertions = assertions?.filter(assertion => assertion.fileName === relativeFilePath);
+
+      let target: Target = {
+        name: "",
+        database: "",
+        schema: "",
+      };
+
+      if (matchingTables && matchingTables.length > 0) {
+        target = matchingTables[0].target;
+      } else if (matchingOperations && matchingOperations.length > 0) {
+        target = matchingOperations[0].target;
+      } else if (matchingAssertions && matchingAssertions.length > 0) {
+        target = matchingAssertions[0].target;
+      }
+
+      const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+      return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
+    }
+
+
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder){return;}
 
