@@ -282,32 +282,22 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       if (!workspaceFolder){return;}
 
       let relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
-
-      let target: Target = {
-        name: "",
-        database: "",
-        schema: "",
+      const getHoverForTarget = (target: Target) => {
+        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
       };
 
-      let matchingTables = tables?.filter(table => table.fileName === relativeFilePath);
-      if (matchingTables && matchingTables.length > 0) {
-        target = matchingTables[0].target;
-        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
-      }
+      const findMatchingTarget = (items?: Table[] | Operation[] | Assertion[]) => {
+        const match = items?.find(item => item.fileName === relativeFilePath);
+        return match?.target;
+      };
 
-      let matchingOperations = operations?.filter(operation => operation.fileName === relativeFilePath);
-      if (matchingOperations && matchingOperations.length > 0) {
-        target = matchingOperations[0].target;
-        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
-      }
+      const target = findMatchingTarget(tables) || 
+                    findMatchingTarget(operations) || 
+                    findMatchingTarget(assertions);
 
-      let matchingAssertions = assertions?.filter(assertion => assertion.fileName === relativeFilePath);
-      if (matchingAssertions && matchingAssertions.length > 0) {
-        target = matchingAssertions[0].target;
-        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
+      if (target) {
+        return getHoverForTarget(target);
       }
 
     }
