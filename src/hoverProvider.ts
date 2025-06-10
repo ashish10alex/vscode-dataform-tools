@@ -1,15 +1,15 @@
 import * as vscode from "vscode";
 import {
   getWorkspaceFolder,
-  runCompilation,
   getTextByLineRange,
+  getOrCompileDataformJson,
 } from "./utils";
 
 // the comment-parser library does not have types in it so we have ignore the typescript error
 // @ts-ignore
 import {parse as commentParser} from 'comment-parser';
 
-import { Assertion, DataformCompiledJson, Operation, Table, Target } from "./types";
+import { Assertion, Operation, Table, Target } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
@@ -265,20 +265,15 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       return undefined;
     }
 
+    const workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
     if (line.indexOf("${self()}") !== -1) {
-
-      let workspaceFolder = await getWorkspaceFolder();
-      if (!workspaceFolder){return;}
-
-      let dataformCompiledJson: DataformCompiledJson | undefined;
-      if (!CACHED_COMPILED_DATAFORM_JSON) {
-        vscode.window.showWarningMessage(
-          "Compile the Dataform project once for faster go to definition"
-        );
-        let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
-        dataformCompiledJson = dataformCompiledJson;
-      } else {
-        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+      const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+      if (!dataformCompiledJson) {
+        return;
       }
 
       let tables = dataformCompiledJson?.tables;
@@ -304,22 +299,12 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
     }
 
-
-    let workspaceFolder = await getWorkspaceFolder();
-    if (!workspaceFolder){return;}
-
     if (line.indexOf("${ref") !== -1) {
     let hoverMeta: vscode.Hover | undefined;
 
-    let dataformCompiledJson: DataformCompiledJson | undefined;
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
-      vscode.window.showWarningMessage(
-        "Compile the Dataform project once for faster go to definition"
-      );
-      let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
-      dataformCompiledJson = dataformCompiledJson;
-    } else {
-      dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    if (!dataformCompiledJson) {
+        return;
     }
 
     let declarations = dataformCompiledJson?.declarations;

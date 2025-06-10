@@ -388,17 +388,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     if (!workspaceFolder) {
         return;
     }
-    let dataformCompiledJson: DataformCompiledJson | undefined;
-
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
-        vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        let {dataformCompiledJson} = await runCompilation(workspaceFolder);
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
-    } else {
-        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-    }
+    let dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
 
     let declarations = dataformCompiledJson?.declarations;
     let tables = dataformCompiledJson?.tables;
@@ -580,6 +570,19 @@ export function isDataformWorkspace(workspacePath: string) {
         let filePath = path.join(workspacePath, file);
         return fs.existsSync(filePath);
     });
+}
+
+export async function getOrCompileDataformJson(
+    workspaceFolder: string
+): Promise<DataformCompiledJson | undefined> {
+    if (CACHED_COMPILED_DATAFORM_JSON) {
+        return CACHED_COMPILED_DATAFORM_JSON;
+    }
+    vscode.window.showWarningMessage(
+        "Compiling Dataform project, this may take a few moments..."
+    );
+    const { dataformCompiledJson } = await runCompilation(workspaceFolder);
+    return dataformCompiledJson;
 }
 
 export function runCommandInTerminal(command: string) {
