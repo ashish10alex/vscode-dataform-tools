@@ -292,9 +292,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         return match?.target;
       };
 
-      const target = findMatchingTarget(tables) || 
-                    findMatchingTarget(operations) || 
-                    findMatchingTarget(assertions);
+      const target = findMatchingTarget(operations) || findMatchingTarget(tables) || findMatchingTarget(assertions);
 
       if (target) {
         return getHoverForTarget(target);
