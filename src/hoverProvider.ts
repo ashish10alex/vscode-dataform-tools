@@ -282,9 +282,6 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       if (!workspaceFolder){return;}
 
       let relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
-      let matchingTables = tables?.filter(table => table.fileName === relativeFilePath);
-      let matchingOperations = operations?.filter(operation => operation.fileName === relativeFilePath);
-      let matchingAssertions = assertions?.filter(assertion => assertion.fileName === relativeFilePath);
 
       let target: Target = {
         name: "",
@@ -292,16 +289,27 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         schema: "",
       };
 
+      let matchingTables = tables?.filter(table => table.fileName === relativeFilePath);
       if (matchingTables && matchingTables.length > 0) {
         target = matchingTables[0].target;
-      } else if (matchingOperations && matchingOperations.length > 0) {
-        target = matchingOperations[0].target;
-      } else if (matchingAssertions && matchingAssertions.length > 0) {
-        target = matchingAssertions[0].target;
+        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
       }
 
-      const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-      return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
+      let matchingOperations = operations?.filter(operation => operation.fileName === relativeFilePath);
+      if (matchingOperations && matchingOperations.length > 0) {
+        target = matchingOperations[0].target;
+        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
+      }
+
+      let matchingAssertions = assertions?.filter(assertion => assertion.fileName === relativeFilePath);
+      if (matchingAssertions && matchingAssertions.length > 0) {
+        target = matchingAssertions[0].target;
+        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
+      }
+
     }
 
 
