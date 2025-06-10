@@ -1,15 +1,15 @@
 import * as vscode from "vscode";
 import {
   getWorkspaceFolder,
-  runCompilation,
   getTextByLineRange,
+  getOrCompileDataformJson,
 } from "./utils";
 
 // the comment-parser library does not have types in it so we have ignore the typescript error
 // @ts-ignore
 import {parse as commentParser} from 'comment-parser';
 
-import { Assertion, DataformCompiledJson, Operation, Table } from "./types";
+import { Assertion, Operation, Table, Target } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
@@ -264,21 +264,47 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     if (line.indexOf("${") === -1) {
       return undefined;
     }
-    let workspaceFolder = await getWorkspaceFolder();
-    if (!workspaceFolder){return;}
+
+    const workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
+    if (line.indexOf("${self()}") !== -1) {
+      const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+      if (!dataformCompiledJson) {
+        return;
+      }
+
+      let tables = dataformCompiledJson?.tables;
+      let operations = dataformCompiledJson?.operations;
+      let assertions = dataformCompiledJson?.assertions;
+
+      let relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
+      const getHoverForTarget = (target: Target) => {
+        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
+      };
+
+      const findMatchingTarget = (items?: Table[] | Operation[] | Assertion[]) => {
+        const match = items?.find(item => item.fileName === relativeFilePath);
+        return match?.target;
+      };
+
+      const target = findMatchingTarget(operations) || findMatchingTarget(tables) || findMatchingTarget(assertions);
+
+      if (target) {
+        return getHoverForTarget(target);
+      }
+
+    }
 
     if (line.indexOf("${ref") !== -1) {
     let hoverMeta: vscode.Hover | undefined;
 
-    let dataformCompiledJson: DataformCompiledJson | undefined;
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
-      vscode.window.showWarningMessage(
-        "Compile the Dataform project once for faster go to definition"
-      );
-      let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
-      dataformCompiledJson = dataformCompiledJson;
-    } else {
-      dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    if (!dataformCompiledJson) {
+        return;
     }
 
     let declarations = dataformCompiledJson?.declarations;
