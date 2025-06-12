@@ -6,7 +6,7 @@ let authenticationCheckInterval: NodeJS.Timeout | undefined;
 let lastAuthCheck: number = 0;
 let isAuthenticated: boolean = false;
 
-export async function createBigQueryClient() {
+export async function createBigQueryClient(): Promise<string | undefined> {
     try {
         const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
         // default state will be projectId as null and the projectId will be inferred from what the user has set using gcloud cli
@@ -14,10 +14,13 @@ export async function createBigQueryClient() {
         bigquery = new BigQuery({ projectId });
         await verifyAuthentication();
         vscode.window.showInformationMessage('BigQuery client created successfully.');
-    } catch (error) {
+        return undefined;
+    } catch (error: any) {
         bigquery = undefined;
         isAuthenticated = false;
-        vscode.window.showErrorMessage(`Error creating BigQuery client: ${error}`);
+        const errorMessage = `Error creating BigQuery client: ${error?.message}`;
+        vscode.window.showErrorMessage(errorMessage);
+        return errorMessage;
     }
 }
 
@@ -35,10 +38,9 @@ async function verifyAuthentication() {
     }
 }
 
-export async function checkAuthentication() {
+export async function checkAuthentication(): Promise<string | undefined> {
     if (!bigquery || !isAuthenticated) {
-        await createBigQueryClient();
-        return;
+        return await createBigQueryClient();
     }
 
     const useIntervalCheck = vscode.workspace.getConfiguration('vscode-dataform-tools').get('bigqueryAuthenticationCheck', true);
@@ -50,10 +52,11 @@ export async function checkAuthentication() {
                 await verifyAuthentication();
             } catch (error) {
                 vscode.window.showWarningMessage('BigQuery authentication expired. Recreating client...');
-                await createBigQueryClient();
+                return await createBigQueryClient();
             }
         }
     }
+    return undefined;
 }
 
 export function getBigQueryClient(): BigQuery | undefined {

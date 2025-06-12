@@ -28,7 +28,7 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
         };
     }
 
-    await checkAuthentication();
+    const errorMessage = await checkAuthentication();
 
     const bigqueryClient = getBigQueryClient();
     if (!bigqueryClient) {
@@ -36,7 +36,7 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
             schema: undefined,
             location: undefined,
             statistics: { totalBytesProcessed: 0 },
-            error: { hasError: true, message: "BigQuery client not available." }
+            error: { hasError: true, message: errorMessage || "Error creating BigQuery client" }
         };
     }
 
