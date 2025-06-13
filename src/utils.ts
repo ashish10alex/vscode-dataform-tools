@@ -1215,15 +1215,15 @@ export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery){
     const postOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.postOpsQuery);
 
     if(!preOpsEndsWithSemicolon && fileMetadata.queryMeta.preOpsQuery !== "" ){
-        fileMetadata.queryMeta.preOpsQuery = fileMetadata.queryMeta.preOpsQuery + ";";
+        fileMetadata.queryMeta.preOpsQuery = fileMetadata.queryMeta.preOpsQuery.trimEnd() + ";" + "\n";
     }
 
     if(!icrementalPreOpsEndsWithSemicolon && fileMetadata.queryMeta.incrementalPreOpsQuery !== "" ){
-        fileMetadata.queryMeta.incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery + ";";
+        fileMetadata.queryMeta.incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimEnd() + ";" + "\n";
     }
 
     if(!postOpsEndsWithSemicolon && fileMetadata.queryMeta.postOpsQuery !== "" ){
-        fileMetadata.queryMeta.postOpsQuery = fileMetadata.queryMeta.postOpsQuery + ";";
+        fileMetadata.queryMeta.postOpsQuery = fileMetadata.queryMeta.postOpsQuery.trimEnd() + ";" + "\n";
     }
     return fileMetadata;
 }
