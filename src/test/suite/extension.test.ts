@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, getQueryMetaForCurrentFile } from '../../utils';
+import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
@@ -555,4 +555,33 @@ suite('format bytes from dry run in human readable format', () => {
         assert.strictEqual(formatBytes(1500), '1.46 KB');
         assert.strictEqual(formatBytes(1024 * 1024 * 1.5), '1.50 MB');
     });
+});
+
+suite.only('handleSemicolonPrePostOps', () => {
+
+    test(`Termination of different preOps e.g. there is new line at the end of the query
+         , no semicolons on the end or if the query is empty`, () => {
+        const fileMetadata = {
+            tables: [],
+            queryMeta: {
+                preOpsQuery: "SELECT 1\n\n",
+                incrementalPreOpsQuery: "SELECT 2;",
+                postOpsQuery: "",
+                type: "",
+                tableOrViewQuery: "",
+                nonIncrementalQuery: "",
+                incrementalQuery: "",
+                assertionQuery: "",
+                operationsQuery: "",
+                error: "",
+            }
+        };
+
+        const result = handleSemicolonPrePostOps(fileMetadata as any);
+
+        assert.strictEqual(result.queryMeta.preOpsQuery, "SELECT 1;\n");
+        assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, "SELECT 2;");
+        assert.strictEqual(result.queryMeta.postOpsQuery, "");
+    });
+
 });
