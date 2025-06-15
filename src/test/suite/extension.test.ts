@@ -559,12 +559,22 @@ suite('format bytes from dry run in human readable format', () => {
 
 suite('handleSemicolonPrePostOps', () => {
 
-    test(`Termination of different preOps e.g. there is new line at the end of the query
-         , no semicolons on the end or if the query is empty`, () => {
+    test(`Termination of different preOps e.g.
+        1. nonIncrementalPreOpsQuery has new lines at the end, they should be removed and semicolon added on the same line as where the comment ends
+        2. incrementalPreOpsQuery has already a semicolon at the end, so no change is needed
+        3. If the query is empty, no change is needed`, () => {
         const fileMetadata = {
             tables: [],
             queryMeta: {
-                preOpsQuery: "SELECT 1\n\n",
+                    // simulating scenario when there is a comment before incrementalPreOpsQuery and there is no non-incrementalPreOpsQuery
+                    preOpsQuery: `
+                DECLARE MY_VAR INT64;
+                SET MY_VAR = 1;
+                -- delete the previous day's data
+
+
+
+                `,
                 incrementalPreOpsQuery: "SELECT 2;",
                 postOpsQuery: "",
                 type: "",
@@ -579,9 +589,13 @@ suite('handleSemicolonPrePostOps', () => {
 
         const result = handleSemicolonPrePostOps(fileMetadata as any);
 
-        assert.strictEqual(result.queryMeta.preOpsQuery, "SELECT 1;\n");
-        assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, "SELECT 2;");
-        assert.strictEqual(result.queryMeta.postOpsQuery, "");
+        assert.strictEqual(result.queryMeta.preOpsQuery, `
+                DECLARE MY_VAR INT64;
+                SET MY_VAR = 1;
+                -- delete the previous day's data;
+`);
+        assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, result.queryMeta.incrementalPreOpsQuery);
+        assert.strictEqual(result.queryMeta.postOpsQuery, result.queryMeta.postOpsQuery);
     });
 
 });
