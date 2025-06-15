@@ -557,7 +557,7 @@ suite('format bytes from dry run in human readable format', () => {
     });
 });
 
-suite.only('handleSemicolonPrePostOps', () => {
+suite('handleSemicolonPrePostOps', () => {
 
     test(`Termination of different preOps e.g. there is new line at the end of the query
          , no semicolons on the end or if the query is empty`, () => {
