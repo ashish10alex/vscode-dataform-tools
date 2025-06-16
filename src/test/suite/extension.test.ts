@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, getQueryMetaForCurrentFile } from '../../utils';
+import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
@@ -555,4 +555,47 @@ suite('format bytes from dry run in human readable format', () => {
         assert.strictEqual(formatBytes(1500), '1.46 KB');
         assert.strictEqual(formatBytes(1024 * 1024 * 1.5), '1.50 MB');
     });
+});
+
+suite('handleSemicolonPrePostOps', () => {
+
+    test(`Termination of different preOps e.g.
+        1. nonIncrementalPreOpsQuery has new lines at the end, they should be removed and semicolon added on the same line as where the comment ends
+        2. incrementalPreOpsQuery has already a semicolon at the end, so no change is needed
+        3. If the query is empty, no change is needed`, () => {
+        const fileMetadata = {
+            tables: [],
+            queryMeta: {
+                    // simulating scenario when there is a comment before incrementalPreOpsQuery and there is no non-incrementalPreOpsQuery
+                    preOpsQuery: `
+                DECLARE MY_VAR INT64;
+                SET MY_VAR = 1;
+                -- delete the previous day's data
+
+
+
+                `,
+                incrementalPreOpsQuery: "SELECT 2;",
+                postOpsQuery: "",
+                type: "",
+                tableOrViewQuery: "",
+                nonIncrementalQuery: "",
+                incrementalQuery: "",
+                assertionQuery: "",
+                operationsQuery: "",
+                error: "",
+            }
+        };
+
+        const result = handleSemicolonPrePostOps(fileMetadata as any);
+
+        assert.strictEqual(result.queryMeta.preOpsQuery, `
+                DECLARE MY_VAR INT64;
+                SET MY_VAR = 1;
+                -- delete the previous day's data;
+`);
+        assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, result.queryMeta.incrementalPreOpsQuery);
+        assert.strictEqual(result.queryMeta.postOpsQuery, result.queryMeta.postOpsQuery);
+    });
+
 });
