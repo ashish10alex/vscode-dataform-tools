@@ -270,7 +270,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       return;
     }
 
-    if (line.indexOf("${self()}") !== -1) {
+    if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
       const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
       if (!dataformCompiledJson) {
         return;
