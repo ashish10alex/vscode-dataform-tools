@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.13.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.13.0...v0.13.1) (2025-06-16)
+
+
+### Features
+
+* add hover & snippet support for `${self()}` ([#159](https://github.com/ashish10alex/vscode-dataform-tools/issues/159)) ([e765d94](https://github.com/ashish10alex/vscode-dataform-tools/commit/e765d940968971124c2a2d83caec1a129cc29c06))
+* surface authentication error to the compiled query ui ([#158](https://github.com/ashish10alex/vscode-dataform-tools/issues/158)) ([0a9ff28](https://github.com/ashish10alex/vscode-dataform-tools/commit/0a9ff2874314e5e71a5c7d97e48dd7b057030362))
+
+
+### Bug Fixes
+
+* incorrect termination of pre-orations when comment is present ([#161](https://github.com/ashish10alex/vscode-dataform-tools/issues/161)) ([99e2157](https://github.com/ashish10alex/vscode-dataform-tools/commit/99e2157012b03a8c4f74a053798e244b701fb440))
+
 ## [0.13.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.12.6...v0.13.0) (2025-06-05)
 
 
