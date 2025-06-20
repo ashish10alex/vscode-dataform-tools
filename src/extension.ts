@@ -3,7 +3,6 @@ import os from 'os';
 import fs from 'fs';
 import { DataformCompiledJson } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
-import { registerWebViewProvider } from './views/register-sidebar-panel';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
@@ -90,7 +89,6 @@ export async function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
-    registerWebViewProvider(context);
     registerCompiledQueryPanel(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);

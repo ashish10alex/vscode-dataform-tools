@@ -34,20 +34,12 @@
         "onCommand:extension.runTagWtDownstreamDeps",
         "onCommand:extension.runFilesTagsWtOptions",
         "onCommand:extension.showCompiledQueryInWebView",
-        "onCommand:extension.showFileMetadataForSidePanel",
         "onCommand:extension.dependencyGraphPanel",
         "onCommand:extension.selectWorkspaceFolder"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
         "viewsContainers": {
-            "activitybar": [
-                {
-                    "id": "dataform-sidebar-view",
-                    "title": "Dataform",
-                    "icon": "media/dataform.svg"
-                }
-            ],
             "panel": [
                 {
                     "id": "queryResultsContainer",
@@ -57,15 +49,6 @@
             ]
         },
         "views": {
-            "dataform-sidebar-view": [
-                {
-                    "type": "webview",
-                    "id": "dataform-sidebar",
-                    "name": "Dataform",
-                    "icon": "media/dataform.svg",
-                    "contextualTitle": "Dataform"
-                }
-            ],
             "queryResultsContainer": [
                 {
                     "type": "webview",
@@ -93,11 +76,6 @@
                 "command": "vscode-dataform-tools.runQuery",
                 "category": "Dataform",
                 "title": "Preview query results"
-            },
-            {
-                "command": "vscode-dataform-tools.showFileMetadataForSidePanel",
-                "category": "Dataform",
-                "title": "Show file metadata in side panel"
             },
             {
                 "command": "vscode-dataform-tools.cancelQuery",
