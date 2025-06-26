@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.14.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.13.1...v0.14.0) (2025-06-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sidebar:** side bar web view will no longer be available
+
+### Features
+
+* filter to only dataform workspaces when having multiple folders ([#164](https://github.com/ashish10alex/vscode-dataform-tools/issues/164)) ([810a47d](https://github.com/ashish10alex/vscode-dataform-tools/commit/810a47df6d1af46f2635788e548ed3c6b7cca3d5))
+* update units to binary standard (GiB) instead of decimal (GB) ([#166](https://github.com/ashish10alex/vscode-dataform-tools/issues/166)) ([9cfd848](https://github.com/ashish10alex/vscode-dataform-tools/commit/9cfd8484097432d817b0b9801f613b60d7086b7e))
+
+
+### Bug Fixes
+
+* cost estimate table not loading ([#165](https://github.com/ashish10alex/vscode-dataform-tools/issues/165)) ([871f9be](https://github.com/ashish10alex/vscode-dataform-tools/commit/871f9be44ac0eb40bbc4060983442c074b923562))
+
+
+### Performance
+
+* **sidebar:** deprecate sidebar as most of it is shown in compiled query web panel ([#162](https://github.com/ashish10alex/vscode-dataform-tools/issues/162)) ([33675d4](https://github.com/ashish10alex/vscode-dataform-tools/commit/33675d4f38710e14fdaacea0b4c15888def2422a))
+
 ### [0.13.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.13.0...v0.13.1) (2025-06-16)
 
 
