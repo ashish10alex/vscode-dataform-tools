@@ -494,13 +494,20 @@ export async function selectWorkspaceFolder() {
     const availableFolders = vscode.workspace.workspaceFolders;
 
     if (availableFolders) {
-        const folderOptions = availableFolders.map(folder => {
+        let folderOptions = availableFolders.map(folder => {
             return {
                 label: folder.name,
                 description: folder.uri.fsPath,
                 value: folder.uri.fsPath
             };
         });
+
+        if (folderOptions.length === 1) {
+            workspaceFolder = folderOptions[0].value;
+            return workspaceFolder;
+        }
+
+        folderOptions = folderOptions.filter(folder => isDataformWorkspace(folder.description));
 
         if (folderOptions.length === 1) {
             workspaceFolder = folderOptions[0].value;
