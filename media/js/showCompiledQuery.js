@@ -626,7 +626,7 @@ window.addEventListener('message', event => {
             {title: "Statement type", field: "statementType", headerFilter: "input", formatter: "plaintext"},
             {title: "Accuracy", field: "totalBytesProcessedAccuracy", headerFilter: "input", formatter: "plaintext"},
             {
-                title: "GB proc.",
+                title: "GiB proc.",
                 field: "totalGBProcessed",
                 formatter: function(cell, formatterParams) {
                         const value = parseFloat(cell.getValue());
