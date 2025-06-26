@@ -39,7 +39,7 @@ function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, rela
 export function formatBytes(bytes: number) {
     if (bytes === 0) {return '0 B';}
 
-    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
     const k = 1024; // Use 1024 for binary prefixes (e.g., KiB) or 1000 for decimal
 
     // Find the appropriate unit level
