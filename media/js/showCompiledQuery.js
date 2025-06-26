@@ -596,15 +596,17 @@ window.addEventListener('message', event => {
                 if (divElement?.style){
                     divElement.style.display = "";
                 }
-                element.textContent = value;
+                if (element !== null){
+                    element.textContent = value;
 
-                // Reset highlighting
-                element.removeAttribute('data-highlighted');
-                element.className = element.className.replace(/\bhljs\b/, '');
+                    // Reset highlighting
+                    element.removeAttribute('data-highlighted');
+                    element.className = element.className.replace(/\bhljs\b/, '');
 
-                // Re-apply highlighting
-                hljs.highlightElement(element);
-                hljs.lineNumbersBlock(element);
+                    // Re-apply highlighting
+                    hljs.highlightElement(element);
+                    hljs.lineNumbersBlock(element);
+                }
             }
         }
     });
