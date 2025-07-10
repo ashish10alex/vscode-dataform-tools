@@ -200,10 +200,6 @@ export interface ColumnMetadata {
     description?:string;
 };
 
-export interface CompiledQuerySchema {
-    fields: ColumnMetadata[]
-};
-
 export interface ErrorLocation {
         line: number;
         column: number;

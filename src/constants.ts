@@ -34,6 +34,32 @@ export const currencySymbolMapping = {
   "INR": "₹",
 };
 
+
+export const sqlKeywordsToExcludeFromHoverDefinition = [
+    "select",
+    "from",
+    "where",
+    "limit",
+    "group",
+    "order",
+    "partition",
+    "offset",
+    "join",
+    "on",
+    "as",
+    "with",
+    "union",
+    "intersect",
+    "except",
+    "case",
+    "when",
+    "then",
+    "else",
+    "end",
+    "all",
+    "not",
+  ];
+
 export async function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
 
     if(!workspaceFolder){

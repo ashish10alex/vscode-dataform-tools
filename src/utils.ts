@@ -1308,7 +1308,18 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
     ]);
 
-    compiledQuerySchema = dryRunResult.schema;
+    if(dryRunResult.schema){
+        compiledQuerySchema = dryRunResult.schema;
+    } else if (dryRunResult.schema === undefined && dryRunResult.error.hasError === false){
+        compiledQuerySchema = {
+        fields: [
+            {
+            name: "",
+            type: "",
+            }
+        ]};
+    }
+
 
     // check if we need to handle errors from non incremental query here 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError) {
