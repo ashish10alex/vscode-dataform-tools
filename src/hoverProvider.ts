@@ -447,8 +447,9 @@ export class DataformConfigProvider implements vscode.HoverProvider {
           const columnMetadata = columnHoverDescription.fields.filter((item:ColumnMetadata) => item.name.toLowerCase() === word.toLocaleLowerCase());
           if(columnMetadata.length > 0){
             const description = columnMetadata[0].description;
+            const type = columnMetadata[0].type;
             if(description){
-              return new vscode.Hover(new vscode.MarkdownString(description));
+              return new vscode.Hover(new vscode.MarkdownString(`${description} \n\n type: [${type}]`));
             }
           }
         }
