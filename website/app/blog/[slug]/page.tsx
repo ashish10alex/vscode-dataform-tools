@@ -9,9 +9,9 @@ const getBlogPost = async (slug: string) => {
       title: "Using Compiler Options in Dataform",
       date: "April 16, 2025",
       content: `
-Compiler options can be used to set things like table prefix, schema prefix and adding variables the the query compilation or execution.
+Compiler options can be used to set things like table prefix, schema & dataset suffix and adding variables the the query compilation or execution.
 
-For example, to add the table prefix to \`AA\` in all tables, you can run:
+    1. To add the table prefix \`AA\` in all tables, you can run:
 
 \`\`\`bash
 dataform compile --table-prefix=AA
@@ -19,8 +19,25 @@ dataform compile --table-prefix=AA
 
 \`your-project.your-dataset.your-table\` would become \`your-project.your-dataset.AA_your-table\`
 
+    2. To add the schema suffix to \`AA\`, you can run:
 
-Compiler options can also be used with \`dataform run\` to add the table prefix to a specific execution as follows:
+\`\`\`bash
+dataform compile --schema-suffix=AA
+\`\`\`
+
+\`your-project.your-dataset.your-table\` would become \`your-project.your-dataset_AA.your-table\` . Note, that schema is dataform cli translates to BigQuery database
+
+    3. To add the databse suffix to \`AA\`, you can run:
+
+\`\`\`bash
+dataform compile --database-suffix=AA
+\`\`\`
+
+\`your-project.your-dataset.your-table\` would become \`your-project_AA.your-dataset.your-table\` . Note, that database is dataform cli translates to BigQuery project
+
+
+
+    Compiler options can also be used with \`dataform run\` to add the table prefix to a specific execution as follows:
 
 \`\`\`bash
 dataform run --actions "your-project.your-dataset.your-table" --table-prefix=AA
