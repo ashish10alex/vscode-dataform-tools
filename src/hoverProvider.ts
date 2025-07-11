@@ -9,11 +9,12 @@ import {
 // @ts-ignore
 import {parse as commentParser} from 'comment-parser';
 
-import { Assertion, Operation, Table, Target } from "./types";
+import { Assertion, ColumnMetadata, Operation, Table, Target } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
+import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -431,7 +432,29 @@ export class DataformConfigProvider implements vscode.HoverProvider {
 
     } else if (line.includes("assertions:")){
       return new vscode.Hover(new vscode.MarkdownString(`#### [Dataform assertion documentation](https://cloud.google.com/dataform/docs/assertions)`));
+    } else {
+        const range = document.getWordRangeAtPosition(position);
+        if (!range) {
+            return null;
+        }
+        const word = document.getText(range);
+
+        if(sqlKeywordsToExcludeFromHoverDefinition.includes(word.toLowerCase())){
+          return null;
+        }
+
+        if(columnHoverDescription){
+          const columnMetadata = columnHoverDescription.fields.filter((item:ColumnMetadata) => item.name.toLowerCase() === word.toLocaleLowerCase());
+          if(columnMetadata.length > 0){
+            const description = columnMetadata[0].description;
+            const type = columnMetadata[0].type;
+            if(description){
+              return new vscode.Hover(new vscode.MarkdownString(`${description} \n\n type: [${type}]`));
+            }
+          }
+        }
     }
+
     return undefined;
   }
 }

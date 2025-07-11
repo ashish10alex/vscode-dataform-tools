@@ -59,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
     globalThis.schemaAutoCompletions = [];
+    globalThis.columnHoverDescription = {fields: []};
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;

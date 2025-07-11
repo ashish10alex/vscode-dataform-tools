@@ -61,6 +61,10 @@ declare global {
 }
 
 declare global {
+  var columnHoverDescription: CompiledQuerySchema | undefined;
+}
+
+declare global {
   var activeEditorFileName: string | undefined;
 }
 

@@ -512,12 +512,27 @@ export class CompiledQueryPanel {
                         columnMetadata.description = description;
                     }
                 });
+
+                    columnHoverDescription = {
+                        ...compiledQuerySchema,
+                        fields: (compiledQuerySchema?.fields || []).filter((field: any) => field.description)
+                    };
             }
             //TODO: there seem to be any issue with loading many columns
             // compiledQuerySchema.fields = compiledQuerySchema.fields.slice(0, 69);
         } else {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
+
+        schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
+            if (column.metadata.description) {
+                columnHoverDescription?.fields.push({
+                    name: column.name,
+                    type: column.metadata.type,
+                    description: column.metadata.description,
+                });
+            }
+        });
 
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
@@ -660,7 +675,9 @@ export class CompiledQueryPanel {
 
         <div id="schemaBlock" style="display: none; margin-top: 20px;">
             <div id="noSchemaBlock"> </div>
-            <p><i>Edit description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code.</i></p>
+            <p>
+            <i>Edit description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code.</i><br>
+            </p>
             <table id="schemaTable" class="display" width="100%"></table>
         </div>
 
