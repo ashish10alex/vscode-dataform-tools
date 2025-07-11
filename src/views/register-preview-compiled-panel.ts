@@ -512,6 +512,22 @@ export class CompiledQueryPanel {
                         columnMetadata.description = description;
                     }
                 });
+
+                    columnHoverDescription = {
+                        ...compiledQuerySchema,
+                        fields: (compiledQuerySchema?.fields || []).filter((field: any) => field.description)
+                    };
+
+                    schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
+                        if (column.metadata.description) {
+                            columnHoverDescription?.fields.push({
+                                name: column.name,
+                                type: column.metadata.type,
+                                description: column.metadata.description,
+                            });
+                        }
+                    });
+
             }
             //TODO: there seem to be any issue with loading many columns
             // compiledQuerySchema.fields = compiledQuerySchema.fields.slice(0, 69);
