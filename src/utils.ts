@@ -1320,6 +1320,20 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         ]};
     }
 
+    columnHoverDescription = {
+        ...compiledQuerySchema,
+        fields: (compiledQuerySchema?.fields || []).filter((field: any) => field.description)
+    };
+
+    schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
+        if (column.metadata.description) {
+            columnHoverDescription?.fields.push({
+                name: column.name,
+                type: column.metadata.type,
+                description: column.metadata.description,
+            });
+        }
+    });
 
     // check if we need to handle errors from non incremental query here 
     if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError) {

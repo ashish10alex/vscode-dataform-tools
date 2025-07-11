@@ -443,10 +443,13 @@ export class DataformConfigProvider implements vscode.HoverProvider {
           return null;
         }
 
-        if(compiledQuerySchema){
-          const columnMetadata = compiledQuerySchema.fields.find((item:ColumnMetadata) => item.name === word);
-          if(columnMetadata){
-            return new vscode.Hover(new vscode.MarkdownString(columnMetadata.description));
+        if(columnHoverDescription){
+          const columnMetadata = columnHoverDescription.fields.filter((item:ColumnMetadata) => item.name.toLowerCase() === word.toLocaleLowerCase());
+          if(columnMetadata.length > 0){
+            const description = columnMetadata[0].description;
+            if(description){
+              return new vscode.Hover(new vscode.MarkdownString(description));
+            }
           }
         }
     }
