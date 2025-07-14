@@ -446,10 +446,23 @@ export class DataformConfigProvider implements vscode.HoverProvider {
         if(columnHoverDescription){
           const columnMetadata = columnHoverDescription.fields.filter((item:ColumnMetadata) => item.name.toLowerCase() === word.toLocaleLowerCase());
           if(columnMetadata.length > 0){
-            const description = columnMetadata[0].description;
-            const type = columnMetadata[0].type;
-            if(description){
-              return new vscode.Hover(new vscode.MarkdownString(`${description} \n\n type: [${type}]`));
+            let columnHoverDescription = "";
+            let columnKeysSeen: ColumnMetadata[] = [];
+            columnMetadata.forEach((colMeta:ColumnMetadata) => {
+              // check if we have already seen this column and only add if the description is different
+              if(columnKeysSeen.find((item:ColumnMetadata) => item.name === colMeta.name && item.description === colMeta.description)){
+                return;
+              } else {
+                columnKeysSeen.push(colMeta);
+                const description = colMeta.description;
+                const type = colMeta.type;
+                if(description){
+                    columnHoverDescription += `${description} \n\n type: [${type}] \n\n`;
+                }
+              }
+            });
+            if(columnHoverDescription && columnHoverDescription !== ""){
+              return new vscode.Hover(new vscode.MarkdownString(columnHoverDescription));
             }
           }
         }
