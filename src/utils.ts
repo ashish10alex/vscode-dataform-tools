@@ -1311,6 +1311,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     if(dryRunResult.schema){
         compiledQuerySchema = dryRunResult.schema;
     } else if (dryRunResult.schema === undefined && dryRunResult.error.hasError === false){
+        // happens when Dataform config type is operation and dry run api response has no schema
         compiledQuerySchema = {
         fields: [
             {
