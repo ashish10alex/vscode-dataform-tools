@@ -512,26 +512,23 @@ export class CompiledQueryPanel {
                         columnMetadata.description = description;
                     }
                 });
-
-                    columnHoverDescription = {
-                        ...compiledQuerySchema,
-                        fields: (compiledQuerySchema?.fields || []).filter((field: any) => field.description)
-                    };
             }
-            //TODO: there seem to be any issue with loading many columns
-            // compiledQuerySchema.fields = compiledQuerySchema.fields.slice(0, 69);
         } else {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
 
+        columnHoverDescription = {
+            ...compiledQuerySchema,
+            fields: (compiledQuerySchema?.fields || [])
+        };
+        columnHoverDescription.fields = Array.from(new Set(columnHoverDescription.fields || []));
+
         schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
-            if (column.metadata.description) {
                 columnHoverDescription?.fields.push({
                     name: column.name,
                     type: column.metadata.type,
                     description: column.metadata.description,
                 });
-            }
         });
 
         dataformTags = queryAutoCompMeta.dataformTags;

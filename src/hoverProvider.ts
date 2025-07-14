@@ -444,25 +444,42 @@ export class DataformConfigProvider implements vscode.HoverProvider {
         }
 
         if(columnHoverDescription){
-          const columnMetadata = columnHoverDescription.fields.filter((item:ColumnMetadata) => item.name.toLowerCase() === word.toLocaleLowerCase());
-          if(columnMetadata.length > 0){
-            let columnHoverDescription = "";
-            let columnKeysSeen: ColumnMetadata[] = [];
-            columnMetadata.forEach((colMeta:ColumnMetadata) => {
-              // check if we have already seen this column and only add if the description is different
-              if(columnKeysSeen.find((item:ColumnMetadata) => item.name === colMeta.name && item.description === colMeta.description)){
-                return;
-              } else {
-                columnKeysSeen.push(colMeta);
-                const description = colMeta.description;
-                const type = colMeta.type;
-                if(description){
-                    columnHoverDescription += `${description} \n\n type: [${type}] \n\n`;
-                }
+          const matchingColumns = columnHoverDescription.fields.filter(
+            (item: ColumnMetadata) => item.name.toLowerCase() === word.toLowerCase()
+          );
+          
+          if(matchingColumns.length > 0){
+            // Collect unique descriptions (non-empty) and types
+            const uniqueDescriptions = new Set<string>();
+            const types = new Set<string>();
+            
+            matchingColumns.forEach((column: ColumnMetadata) => {
+              if(column.description && column.description.trim() !== ""){
+                uniqueDescriptions.add(column.description.trim());
+              }
+              if(column.type){
+                types.add(column.type);
               }
             });
-            if(columnHoverDescription && columnHoverDescription !== ""){
-              return new vscode.Hover(new vscode.MarkdownString(columnHoverDescription));
+            
+            // Build hover content
+            let hoverContent = "";
+            
+            // Add unique descriptions if any exist
+            if(uniqueDescriptions.size > 0){
+              Array.from(uniqueDescriptions).forEach((description) => {
+                hoverContent += `${description}\n\n`;
+              });
+            }
+            
+            // Add type information
+            if(types.size > 0){
+              const typeList = Array.from(types).join(", ");
+              hoverContent += `type: [${typeList}]\n\n`;
+            }
+            
+            if(hoverContent.trim() !== ""){
+              return new vscode.Hover(new vscode.MarkdownString(hoverContent.trim()));
             }
           }
         }
