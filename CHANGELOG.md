@@ -15,6 +15,19 @@ All notable changes to this project will be documented in this file. See [standa
 
 * **blog:** add more examples of using compiler options ([4db19e8](https://github.com/ashish10alex/vscode-dataform-tools/commit/4db19e80cbd55f73554e2cb00e3169a343f212fc))
 
+## [0.15.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.14.0...v0.15.0) (2025-07-15)
+
+
+### Features
+
+* **hover:** add column description & type hover definition ([#168](https://github.com/ashish10alex/vscode-dataform-tools/issues/168)) ([a0ddd79](https://github.com/ashish10alex/vscode-dataform-tools/commit/a0ddd79061136bcbcd4cdbe16d6d7c96558464f2))
+* **snippet:** snippet to add description of columns to a model ([e0025aa](https://github.com/ashish10alex/vscode-dataform-tools/commit/e0025aa2a0ac5e2be52681656e4cd4aef72af41d))
+
+
+### Documentation
+
+* **blog:** add more examples of using compiler options ([4db19e8](https://github.com/ashish10alex/vscode-dataform-tools/commit/4db19e80cbd55f73554e2cb00e3169a343f212fc))
+
 ## [0.14.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.13.1...v0.14.0) (2025-06-26)
 
 
