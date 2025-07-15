@@ -226,6 +226,13 @@
 			"assert('${1:assertion_name}', '${2:query}')"
 		],
 		"description": "Generate a model of type assertion in js file"
+	},
+	"columns": {
+		"prefix": "columns [Dataform]",
+		"body": [
+			"columns: {${1:}},"
+		],
+		"description": "Column descriptions for the active model"
 	}
 
 }
