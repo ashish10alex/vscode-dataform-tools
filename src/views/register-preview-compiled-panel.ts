@@ -521,7 +521,6 @@ export class CompiledQueryPanel {
             ...compiledQuerySchema,
             fields: (compiledQuerySchema?.fields || [])
         };
-        columnHoverDescription.fields = Array.from(new Set(columnHoverDescription.fields || []));
 
         schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
                 columnHoverDescription?.fields.push({
