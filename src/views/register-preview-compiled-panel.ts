@@ -519,7 +519,7 @@ export class CompiledQueryPanel {
 
         columnHoverDescription = {
             ...compiledQuerySchema,
-            fields: (compiledQuerySchema?.fields || [])
+            fields: [...(compiledQuerySchema?.fields || [])]
         };
 
         schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
