@@ -483,8 +483,17 @@ window.addEventListener('message', event => {
 
     let compiledQuerySchema =  event?.data?.compiledQuerySchema;
     if (compiledQuerySchema){
+        if(hasError){
+            compiledQuerySchema = {
+            fields: [
+                {
+                name: "",
+                type: "",
+                }
+            ]};
+        }
         noSchemaBlockDiv.innerHTML = "";
-        const schemaTable =new Tabulator("#schemaTable", {
+        const schemaTable = new Tabulator("#schemaTable", {
             data: compiledQuerySchema.fields,
             columns: [
                 {title: "name", field: "name", headerFilter: "input",  formatter: "plaintext"},

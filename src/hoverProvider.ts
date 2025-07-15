@@ -9,11 +9,12 @@ import {
 // @ts-ignore
 import {parse as commentParser} from 'comment-parser';
 
-import { Assertion, Operation, Table, Target } from "./types";
+import { Assertion, ColumnMetadata, Operation, Table, Target } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
+import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -431,7 +432,59 @@ export class DataformConfigProvider implements vscode.HoverProvider {
 
     } else if (line.includes("assertions:")){
       return new vscode.Hover(new vscode.MarkdownString(`#### [Dataform assertion documentation](https://cloud.google.com/dataform/docs/assertions)`));
+    } else {
+        const range = document.getWordRangeAtPosition(position);
+        if (!range) {
+            return null;
+        }
+        const word = document.getText(range);
+
+        if(sqlKeywordsToExcludeFromHoverDefinition.includes(word.toLowerCase())){
+          return null;
+        }
+
+        if(columnHoverDescription){
+          const matchingColumns = columnHoverDescription.fields.filter(
+            (item: ColumnMetadata) => item.name.toLowerCase() === word.toLowerCase()
+          );
+          
+          if(matchingColumns.length > 0){
+            // Collect unique descriptions (non-empty) and types
+            const uniqueDescriptions = new Set<string>();
+            const types = new Set<string>();
+            
+            matchingColumns.forEach((column: ColumnMetadata) => {
+              if(column.description && column.description.trim() !== ""){
+                uniqueDescriptions.add(column.description.trim());
+              }
+              if(column.type){
+                types.add(column.type);
+              }
+            });
+            
+            // Build hover content
+            let hoverContent = "";
+            
+            // Add unique descriptions if any exist
+            if(uniqueDescriptions.size > 0){
+              Array.from(uniqueDescriptions).forEach((description) => {
+                hoverContent += `${description}\n\n`;
+              });
+            }
+            
+            // Add type information
+            if(types.size > 0){
+              const typeList = Array.from(types).join(", ");
+              hoverContent += `type: [${typeList}]\n\n`;
+            }
+            
+            if(hoverContent.trim() !== ""){
+              return new vscode.Hover(new vscode.MarkdownString(hoverContent.trim()));
+            }
+          }
+        }
     }
+
     return undefined;
   }
 }

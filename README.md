@@ -28,7 +28,7 @@
 | [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet or compiled query web view |
 | [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
 | [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
-| [BigQuery hover definition provider](#hover) | Hover definition for commonly used BigQuery functions |
+| [BigQuery hover definition provider](#hover) | Hover definition for column descriptions, type and commonly used BigQuery functions |
 
 ## Requirements
 
