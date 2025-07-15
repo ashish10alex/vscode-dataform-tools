@@ -120,6 +120,22 @@ button:disabled,
 	background: whitesmoke;
 }
 
+/* Warning message styles */
+.warning-message-container {
+	padding: 12px 16px;
+	margin: 16px 0;
+	font-size: 13px;
+	line-height: 1.5;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+	position: relative;
+	overflow: hidden;
+	border-left: 4px solid #b38600;
+	color: #b38600;
+	background: whitesmoke;
+}
+
 /* Success message styles */
 .no-errors-container {
 	padding: 12px 16px;

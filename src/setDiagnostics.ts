@@ -10,7 +10,8 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
         let errLineNumber;
         let errColumnNumber = 0;
 
-        if (errorMeta.mainQueryError.hasError){
+        const mainQueryHasError = errorMeta.mainQueryError.hasError;
+        if (mainQueryHasError){
             let errLineNumber = errorMeta.mainQueryError.location?.line;
             let errColumnNumber = errorMeta.mainQueryError.location?.column;
             if (errLineNumber === undefined || errColumnNumber === undefined) {
@@ -33,7 +34,11 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
         if(errorMeta?.preOpsError?.hasError){
             errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, severity);
+            let preOpsDiagnosticSeverity = severity;
+            if(!mainQueryHasError){
+                preOpsDiagnosticSeverity = vscode.DiagnosticSeverity.Warning;
+            }
+            const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, preOpsDiagnosticSeverity);
             diagnostics.push(preOpsDiagnostic);
         }
         if(errorMeta?.postOpsError?.hasError){

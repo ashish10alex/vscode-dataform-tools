@@ -115,7 +115,7 @@ export class CompiledQueryPanel {
     public currentFileMetadata: any;
     private lastMessageTime = 0;
     private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, location: string|undefined};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, location: string|undefined, mainQueryHasError: boolean, preOpsHasError: boolean};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata);
@@ -237,6 +237,8 @@ export class CompiledQueryPanel {
                     const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                     const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                     const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+                    const mainQueryHasError = this.centerPanel?._cachedResults?.mainQueryHasError || false;
+                    const preOpsHasError = this.centerPanel?._cachedResults?.preOpsHasError || false;
                     this.centerPanel?.webviewPanel.webview.postMessage({
                         "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
                         "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -250,6 +252,8 @@ export class CompiledQueryPanel {
                         "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
+                        "mainQueryHasError": mainQueryHasError,
+                        "preOpsHasError": preOpsHasError,
                         "dryRunStat":  dryRunStat,
                         "compiledQuerySchema": compiledQuerySchema,
                         "targetTablesOrViews": targetTablesOrViews,
@@ -470,6 +474,8 @@ export class CompiledQueryPanel {
         }
 
 
+        const mainQueryHasError = dryRunResult?.error.message;
+        const preOpsHasError = preOpsDryRunResult?.error.message;
         let errorMessage = (preOpsDryRunResult?.error.message ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
                             + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
                             + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
@@ -544,6 +550,8 @@ export class CompiledQueryPanel {
                 "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "errorMessage": errorMessage,
+                "mainQueryHasError": mainQueryHasError,
+                "preOpsHasError": preOpsHasError,
                 "dryRunStat":  dryRunStat,
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
@@ -554,7 +562,16 @@ export class CompiledQueryPanel {
                 "modelType": fileMetadata.queryMeta.type,
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta
             });
-            this._cachedResults = { fileMetadata, curFileMeta, targetTablesOrViews, errorMessage, dryRunStat, location};
+            this._cachedResults = { 
+                fileMetadata, 
+                curFileMeta, 
+                targetTablesOrViews, 
+                errorMessage, 
+                dryRunStat, 
+                location, 
+                mainQueryHasError: typeof mainQueryHasError === "boolean" ? mainQueryHasError : false, 
+                preOpsHasError: typeof preOpsHasError === "boolean" ? preOpsHasError : false
+            };
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
         }
