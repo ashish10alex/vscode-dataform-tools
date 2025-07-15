@@ -95,6 +95,7 @@ export const sqlKeywordsToExcludeFromHoverDefinition = [
   "window",
   "current",
   "row",
+  "number",
   "preceding",
   "following",
   "true",
