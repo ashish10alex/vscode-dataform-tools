@@ -474,8 +474,8 @@ export class CompiledQueryPanel {
         }
 
 
-        const mainQueryHasError = dryRunResult?.error.message;
-        const preOpsHasError = preOpsDryRunResult?.error.message;
+        const mainQueryHasError = dryRunResult?.error.hasError;
+        const preOpsHasError = preOpsDryRunResult?.error.hasError;
         let errorMessage = (preOpsDryRunResult?.error.message ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
                             + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
                             + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
