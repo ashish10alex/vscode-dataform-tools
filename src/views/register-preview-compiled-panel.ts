@@ -569,8 +569,8 @@ export class CompiledQueryPanel {
                 errorMessage, 
                 dryRunStat, 
                 location, 
-                mainQueryHasError: typeof mainQueryHasError === "boolean" ? mainQueryHasError : false, 
-                preOpsHasError: typeof preOpsHasError === "boolean" ? preOpsHasError : false
+                mainQueryHasError, 
+                preOpsHasError,
             };
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
