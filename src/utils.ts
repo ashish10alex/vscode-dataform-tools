@@ -746,7 +746,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                             queryMeta.tableOrViewQuery = "";
                             queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type, isJsFile);
                         } else {
-                            queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + table.query.trimStart() + "\n;";
+                            const curTableQuery  = (table.query.trimStart() !== "" ? table.query.trimStart() + "\n;" : "");
+                            queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + curTableQuery;
                         }
                         break;
                     case "incremental":

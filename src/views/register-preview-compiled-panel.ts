@@ -470,7 +470,7 @@ export class CompiledQueryPanel {
         }
 
 
-        let errorMessage = (preOpsDryRunResult?.error.message ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
+        let errorMessage = (preOpsDryRunResult?.error.message && !errorInPreOpsDenyList ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
                             + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
                             + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
                             + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")
@@ -554,7 +554,14 @@ export class CompiledQueryPanel {
                 "modelType": fileMetadata.queryMeta.type,
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta
             });
-            this._cachedResults = { fileMetadata, curFileMeta, targetTablesOrViews, errorMessage, dryRunStat, location};
+            this._cachedResults = { 
+                fileMetadata, 
+                curFileMeta, 
+                targetTablesOrViews, 
+                errorMessage, 
+                dryRunStat, 
+                location, 
+            };
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
             return webview;
         }
