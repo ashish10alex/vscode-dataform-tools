@@ -41,15 +41,13 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
 
-            let ignorePreOpsError = false;
             errorDenylist.some((errorMessage: string) => {
-                ignorePreOpsError = (errorMeta?.preOpsError?.message.includes(errorMessage) || false); 
+                errorInPreOpsDenyList = (errorMeta?.preOpsError?.message.includes(errorMessage) || false); 
             });
-            if(!ignorePreOpsError){
+
+            if(!errorInPreOpsDenyList){
                 const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, severity);
                 diagnostics.push(preOpsDiagnostic);
-            }else{
-                errorInPreOpsDenyList = true;
             }
         }
         if(errorMeta?.postOpsError?.hasError){
