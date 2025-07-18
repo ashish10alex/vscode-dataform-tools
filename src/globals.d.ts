@@ -76,6 +76,10 @@ declare global {
   var workspaceFolder: string | undefined;
 }
 
+declare global  {
+  var errorInPreOpsDenyList: boolean
+}
+
 declare global {
   var bigQuerySnippetMetadata: {
     [key: string]: {

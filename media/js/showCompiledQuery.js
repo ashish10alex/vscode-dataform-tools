@@ -272,9 +272,6 @@ window.addEventListener('message', event => {
 
     const hasError = event?.data?.errorMessage && event?.data?.errorMessage !== " ";
 
-    const mainQueryHasError = event?.data?.mainQueryHasError || false;
-    const preOpsHasError = event?.data?.preOpsHasError || false;
-
     const formatButton = document.getElementById('formatButton');
     if (formatButton) {
         formatButton.disabled = hasError;
@@ -572,14 +569,6 @@ window.addEventListener('message', event => {
                 if (value === " "){
                     divElement.style.display = "none";
                 } else {
-                    // if main query does not have error then use the warning message container and remove the error message container
-                    if(!mainQueryHasError){
-                        divElement.classList.add("warning-message-container");
-                        divElement.classList.remove("error-message-container");
-                    } else {
-                        divElement.classList.add("error-message-container");
-                        divElement.classList.remove("warning-message-container");
-                    }
                     divElement.style.display = "";
                     // Check if the error message contains HTML
                     if (value.includes('<')) {

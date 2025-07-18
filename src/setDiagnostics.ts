@@ -1,11 +1,13 @@
 
 import * as vscode from 'vscode';
 import {ErrorMeta, SqlxBlockMetadata} from './types';
+import {errorDenylist} from './constants';
 
 export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMeta, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
 
         const diagnostics: vscode.Diagnostic[] = [];
         const severity = vscode.DiagnosticSeverity.Error;
+        errorInPreOpsDenyList = false;
 
         let errLineNumber;
         let errColumnNumber = 0;
@@ -34,12 +36,17 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
         if(errorMeta?.preOpsError?.hasError){
             errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            let preOpsDiagnosticSeverity = severity;
-            if(!mainQueryHasError){
-                preOpsDiagnosticSeverity = vscode.DiagnosticSeverity.Warning;
+
+            let ignorePreOpsError = false;
+            errorDenylist.some((errorMessage: string) => {
+                ignorePreOpsError = (errorMeta?.preOpsError?.message.includes(errorMessage) || false); 
+            });
+            if(!ignorePreOpsError){
+                const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, severity);
+                diagnostics.push(preOpsDiagnostic);
+            }else{
+                errorInPreOpsDenyList = true;
             }
-            const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, preOpsDiagnosticSeverity);
-            diagnostics.push(preOpsDiagnostic);
         }
         if(errorMeta?.postOpsError?.hasError){
             errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;

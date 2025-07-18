@@ -63,6 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;
+    globalThis.errorInPreOpsDenyList = false;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
