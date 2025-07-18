@@ -26,7 +26,11 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             if (sqlxBlockMetadata.preOpsBlock.preOpsList.length > 0){
                 preOpsOffset = (sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine - sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine) + 1;
             }
-            errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
+            if(errLineNumber === 0 && sqlQueryStartLineNumber === 0){
+                errLineNumber = 0;
+            } else {
+                errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
+            }
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
             const regularBlockDiagnostic = new vscode.Diagnostic(range, `(Main Query): ${errorMeta.mainQueryError.message}`, severity);
