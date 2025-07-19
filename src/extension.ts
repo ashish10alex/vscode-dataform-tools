@@ -70,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
-        executableIsAvailable(executable);
+        executableIsAvailable(executable, true); // Show error if not found
     }
 
     // Clean up on deactivation
