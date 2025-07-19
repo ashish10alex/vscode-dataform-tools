@@ -6,9 +6,9 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage } from './constants';
+import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import { GitHubContentResponse } from './types';
+import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -263,9 +263,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 document: document
             };
         }
-        } else {
-            logger.debug('Using cached compilation data');
-            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+    } else {
+        logger.debug('Using cached compilation data');
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -470,9 +470,6 @@ export async function fetchGitHubFileContent(): Promise<string> {
 }
 
 // Cache for executable path resolution to avoid repeated filesystem calls
-const executablePathCache = new Map<string, { path: string | null; timestamp: number }>();
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
-
 export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false): boolean {
     const foundPath = findExecutableInPaths(name);
 
@@ -487,13 +484,15 @@ export function executableIsAvailable(name: string, showErrorOnNotFound: boolean
     return !!foundPath;
 }
 
+const executablePathCache: ExecutablePathCache = new Map<string, ExecutablePathInfo>();
+
 // Find executable using built-in detection + user overrides
 function findExecutableInPaths(executableName: string): string | null {
     const cacheKey = `${executableName}:${process.platform}`;
     const cached = executablePathCache.get(cacheKey);
 
     // Return cached result if still valid
-    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION_MS) {
+    if (cached && (Date.now() - cached.timestamp) < cacheDurationMs) {
         logger.debug(`Binary path cache hit for ${executableName}: ${cached.path}`);
         return cached.path;
     }
@@ -557,7 +556,7 @@ function findExecutableInSystemPath(executableName: string): string | null {
     try {
         const command = isRunningOnWindows ? 'where' : 'which';
         logger.debug(`Searching for ${executableName} using '${command}' command`);
-        
+
         const result = execSync(`${command} ${executableName}`, {
             encoding: 'utf8',
             timeout: 5000,
@@ -567,7 +566,7 @@ function findExecutableInSystemPath(executableName: string): string | null {
         if (result) {
             const firstPath = result.split('\n')[0].trim();
             logger.debug(`System PATH search result for ${executableName}: ${firstPath}`);
-            
+
             if (isValidExecutablePath(firstPath)) {
                 logger.debug(`Validated system PATH for ${executableName}: ${firstPath}`);
                 return firstPath;
@@ -1157,7 +1156,7 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
     const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
     logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
-    
+
     if (dataformCliScope === 'local') {
         const dataformCliLocalScopePath = isRunningOnWindows
             ? path.join('node_modules', '.bin', 'dataform.cmd')
@@ -1166,7 +1165,7 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
         logger.debug(`Using local dataform CLI: ${fullLocalPath}`);
         return fullLocalPath;
     }
-    
+
     const resolvedPath = findExecutableInPaths('dataform') || dataformCliBase;
     logger.debug(`Using global dataform CLI: ${resolvedPath}`);
     return resolvedPath;
