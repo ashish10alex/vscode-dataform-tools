@@ -192,6 +192,11 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     logger.debug(`Workspace folder: ${workspaceFolder}`);
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+        if (freshCompilation) {
+            logger.debug('Fresh compilation requested, ignoring cache');
+        } else {
+            logger.debug('No cached compilation found, performing fresh compilation');
+        }
         let { dataformCompiledJson, errors, possibleResolutions } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
@@ -242,6 +247,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
+            logger.debug('Clearing compilation cache due to errors');
             return {
                 isDataformWorkspace: true,
                 errors: { dataformCompilationErrors: errors },
@@ -257,9 +263,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 document: document
             };
         }
-    } else {
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
-
+        } else {
+            logger.debug('Using cached compilation data');
+            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -488,12 +494,16 @@ function findExecutableInPaths(executableName: string): string | null {
 
     // Return cached result if still valid
     if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION_MS) {
+        logger.debug(`Binary path cache hit for ${executableName}: ${cached.path}`);
         return cached.path;
     }
+
+    logger.debug(`Binary path cache miss for ${executableName}, searching...`);
 
     // 1. Check user-specified exact path first (highest priority)
     const specificPath = getSpecificExecutablePath(executableName);
     if (specificPath) {
+        logger.debug(`Found ${executableName} via user config: ${specificPath}`);
         executablePathCache.set(cacheKey, { path: specificPath, timestamp: Date.now() });
         return specificPath;
     }
@@ -501,12 +511,18 @@ function findExecutableInPaths(executableName: string): string | null {
     // 2. Check system PATH with enhanced detection
     const systemPath = findExecutableInSystemPath(executableName);
     if (systemPath) {
+        logger.debug(`Found ${executableName} via system PATH: ${systemPath}`);
         executablePathCache.set(cacheKey, { path: systemPath, timestamp: Date.now() });
         return systemPath;
     }
 
     // 3. Check common tool manager and installation locations  
     const commonPath = findExecutableInCommonLocations(executableName);
+    if (commonPath) {
+        logger.debug(`Found ${executableName} via common locations: ${commonPath}`);
+    } else {
+        logger.debug(`${executableName} not found in any location`);
+    }
     executablePathCache.set(cacheKey, { path: commonPath, timestamp: Date.now() });
     return commonPath;
 }
@@ -518,13 +534,19 @@ function getSpecificExecutablePath(executableName: string): string | null {
         const configKey = `${executableName}ExecutablePath`;
         const specificPath = vscodeConfig.get<string>(configKey);
 
+        logger.debug(`Checking user config for ${executableName} at key '${configKey}': ${specificPath || 'not set'}`);
+
         if (specificPath && isValidExecutablePath(specificPath)) {
+            logger.debug(`Validated user-specified path for ${executableName}: ${specificPath}`);
             return specificPath;
+        }
+
+        if (specificPath && !isValidExecutablePath(specificPath)) {
+            logger.debug(`Invalid user-specified path for ${executableName}: ${specificPath}`);
         }
 
         return null;
     } catch (error) {
-        // Only log errors if there's an actual issue with configuration reading
         logger.debug(`Configuration error for ${executableName}: ${error instanceof Error ? error.message : String(error)}`);
         return null;
     }
@@ -534,6 +556,8 @@ function getSpecificExecutablePath(executableName: string): string | null {
 function findExecutableInSystemPath(executableName: string): string | null {
     try {
         const command = isRunningOnWindows ? 'where' : 'which';
+        logger.debug(`Searching for ${executableName} using '${command}' command`);
+        
         const result = execSync(`${command} ${executableName}`, {
             encoding: 'utf8',
             timeout: 5000,
@@ -542,12 +566,19 @@ function findExecutableInSystemPath(executableName: string): string | null {
 
         if (result) {
             const firstPath = result.split('\n')[0].trim();
+            logger.debug(`System PATH search result for ${executableName}: ${firstPath}`);
+            
             if (isValidExecutablePath(firstPath)) {
+                logger.debug(`Validated system PATH for ${executableName}: ${firstPath}`);
                 return firstPath;
+            } else {
+                logger.debug(`Invalid system PATH result for ${executableName}: ${firstPath}`);
             }
+        } else {
+            logger.debug(`No system PATH result for ${executableName}`);
         }
     } catch (error) {
-        // Silent failure - this is expected when executable isn't in PATH
+        logger.debug(`System PATH search failed for ${executableName}: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     return null;
@@ -556,13 +587,17 @@ function findExecutableInSystemPath(executableName: string): string | null {
 // Check common tool manager and installation locations
 function findExecutableInCommonLocations(executableName: string): string | null {
     const commonPaths = getCommonExecutablePaths(executableName);
+    logger.debug(`Searching ${commonPaths.length} common locations for ${executableName}`);
 
     for (const testPath of commonPaths) {
+        logger.debug(`Testing common location: ${testPath}`);
         if (isValidExecutablePath(testPath)) {
+            logger.debug(`Found ${executableName} at common location: ${testPath}`);
             return testPath;
         }
     }
 
+    logger.debug(`${executableName} not found in any common location`);
     return null;
 }
 
@@ -776,8 +811,10 @@ export async function getOrCompileDataformJson(
     workspaceFolder: string
 ): Promise<DataformCompiledJson | undefined> {
     if (CACHED_COMPILED_DATAFORM_JSON) {
+        logger.debug('Returning cached compiled dataform JSON');
         return CACHED_COMPILED_DATAFORM_JSON;
     }
+    logger.debug('No cached compilation found, compiling dataform project...');
     vscode.window.showWarningMessage(
         "Compiling Dataform project, this may take a few moments..."
     );
@@ -1119,13 +1156,20 @@ export function getSqlfluffExecutablePathFromSettings() {
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
     const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
+    
     if (dataformCliScope === 'local') {
         const dataformCliLocalScopePath = isRunningOnWindows
             ? path.join('node_modules', '.bin', 'dataform.cmd')
             : path.join('node_modules', '.bin', 'dataform');
-        return path.join(workspaceFolder, dataformCliLocalScopePath);
+        const fullLocalPath = path.join(workspaceFolder, dataformCliLocalScopePath);
+        logger.debug(`Using local dataform CLI: ${fullLocalPath}`);
+        return fullLocalPath;
     }
-    return dataformCliBase;
+    
+    const resolvedPath = findExecutableInPaths('dataform') || dataformCliBase;
+    logger.debug(`Using global dataform CLI: ${resolvedPath}`);
+    return resolvedPath;
 }
 
 export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined }> {
@@ -1258,6 +1302,7 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
                 dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
             }
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
             return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions };
         }
         return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions };
@@ -1430,8 +1475,10 @@ export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
 
 export async function gatherQueryAutoCompletionMeta() {
     if (!CACHED_COMPILED_DATAFORM_JSON) {
+        logger.debug('No cached compilation available for autocompletion');
         return;
     }
+    logger.debug('Using cached compilation for autocompletion metadata');
     // all 2 of these together take approx less than 0.35ms (Dataform repository with 285 nodes)
     let [declarationsAndTargets, dataformTags] = await Promise.all([
         getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
