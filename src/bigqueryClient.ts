@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { BigQuery } from '@google-cloud/bigquery';
+import { resolveBigQueryConfig, getConfigSourceSummary } from './bigqueryConfigResolver';
+import { logger } from './logger';
 
 let bigquery: BigQuery | undefined;
 let authenticationCheckInterval: NodeJS.Timeout | undefined;
@@ -8,18 +10,37 @@ let isAuthenticated: boolean = false;
 
 export async function createBigQueryClient(): Promise<string | undefined> {
     try {
-        const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        // default state will be projectId as null and the projectId will be inferred from what the user has set using gcloud cli
-        // @ts-ignore 
-        bigquery = new BigQuery({ projectId });
+        const { config, sources } = await resolveBigQueryConfig();
+        const sourceSummary = getConfigSourceSummary(sources);
+        
+        logger.info(`Creating BigQuery client with config: ${JSON.stringify(config)}`);
+        logger.info(`Configuration sources: ${sourceSummary}`);
+        
+        // Create BigQuery client with resolved config
+        const clientOptions: any = {};
+        if (config.projectId) {
+            clientOptions.projectId = config.projectId;
+        }
+        if (config.location) {
+            clientOptions.location = config.location;
+        }
+        
+        bigquery = new BigQuery(clientOptions);
         await verifyAuthentication();
-        vscode.window.showInformationMessage('BigQuery client created successfully.');
+        
+        const statusMessage = config.projectId 
+            ? `BigQuery client created successfully for project: ${config.projectId}${config.location ? ` in ${config.location}` : ''}`
+            : 'BigQuery client created successfully with default project';
+        
+        vscode.window.showInformationMessage(statusMessage);
+        logger.info(`${statusMessage} (${sourceSummary})`);
         return undefined;
     } catch (error: any) {
         bigquery = undefined;
         isAuthenticated = false;
         const errorMessage = `Error creating BigQuery client: ${error?.message}`;
         vscode.window.showErrorMessage(errorMessage);
+        logger.error(errorMessage, error);
         return errorMessage;
     }
 }
@@ -88,4 +109,11 @@ export async function handleBigQueryError(error: any): Promise<void> {
         await createBigQueryClient();
     }
     throw error;
+}
+
+/**
+ * Gets the current BigQuery configuration for debugging/display purposes
+ */
+export async function getCurrentBigQueryConfig() {
+    return await resolveBigQueryConfig();
 }
