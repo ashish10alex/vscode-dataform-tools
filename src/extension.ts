@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
-    logger.debug('Initialized global cache');
+    logger.debug('Extension activated - initialized global cache (CACHED_COMPILED_DATAFORM_JSON = undefined)');
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
@@ -70,7 +70,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
-        executableIsAvailable(executable);
+        logger.debug(`Checking executable availability: ${executable}`);
+        executableIsAvailable(executable, true); // Show error if not found
     }
 
     // Clean up on deactivation
