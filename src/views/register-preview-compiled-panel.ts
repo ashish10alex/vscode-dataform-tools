@@ -8,6 +8,7 @@ import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, Suppor
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
+import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 function showLoadingProgress(
@@ -225,6 +226,7 @@ export class CompiledQueryPanel {
 
                 const selectedTag = message.value.selectedTag;
                 if(CACHED_COMPILED_DATAFORM_JSON){
+                    logger.debug('Using cached compilation for tag cost estimation');
                     const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
                     let currency = "USD" as SupportedCurrency;
                     let currencySymbol = "$";
@@ -497,7 +499,7 @@ export class CompiledQueryPanel {
         }
 
         if (compiledQuerySchema?.fields) {
-            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata.tables[0].actionDescriptor;
+            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
             // Remove 'mode' attribute from each field
             compiledQuerySchema.fields = compiledQuerySchema.fields.map(({ mode, ...rest }) => rest);
 

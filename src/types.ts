@@ -17,10 +17,10 @@ export interface Table {
     incrementalPreOps: string[];
     dependencyTargets: Target[];
     bigquery: TableBigQueryConfig;
-    actionDescriptor:ActionDescription;
+    actionDescriptor: ActionDescription;
 }
 
-export interface ActionDescription{
+export interface ActionDescription {
     description: string;
     columns: Column[]
 }
@@ -31,7 +31,7 @@ export interface Column {
 }
 
 export interface QueryMeta {
-    type:string,
+    type: string,
     tableOrViewQuery: string
     nonIncrementalQuery: string
     incrementalQuery: string
@@ -117,7 +117,7 @@ export interface Operation {
     bigquery?: TableBigQueryConfig;
 }
 
-type GraphErrors  = {
+type GraphErrors = {
     compilationErrors: {
         fileName: string,
         message: string,
@@ -150,7 +150,7 @@ export interface ConfigBlockMetadata {
     exists: boolean;
 }
 
-interface BlockMeta{
+interface BlockMeta {
     startLine: number;
     endLine: number;
     exists: boolean;
@@ -189,20 +189,20 @@ export interface TableBigQueryConfig {
 }
 
 export type GraphError = {
-  error: string;
-  fileName: string;
+    error: string;
+    fileName: string;
 };
 
 export interface ColumnMetadata {
     name: string;
     type: string;
     mode?: string;
-    description?:string;
+    description?: string;
 };
 
 export interface ErrorLocation {
-        line: number;
-        column: number;
+    line: number;
+    column: number;
 };
 
 interface DryRunErorr {
@@ -216,7 +216,7 @@ export interface BigQueryDryRunResponse {
     location: string | undefined;
     statistics: {
         totalBytesProcessed: number;
-        cost?:{
+        cost?: {
             currency: string
             value: number
         };
@@ -227,11 +227,11 @@ export interface BigQueryDryRunResponse {
 }
 
 export interface CompiledQuerySchema {
-    fields:  ColumnMetadata[];
+    fields: ColumnMetadata[];
 }
 
 export type Metadata = {
-    type:string,
+    type: string,
     description: string,
     fullTableId: string,
 };
@@ -241,32 +241,32 @@ export type SchemaMetadata = {
 };
 
 export type CurrentFileMetadata = {
-  isDataformWorkspace?: boolean;
-  errors?: { errorGettingFileNameFromDocument?:string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean; queryMetaError?: string | undefined}
-  fileMetadata?: TablesWtFullQuery;
-  possibleResolutions?: any[];
-  dependents?: any;
-  lineageMetadata?: {
-    dependencies: undefined;
-    error: undefined;
-  };
-  pathMeta?: {
-    filename: string;
-    extension: string;
-    relativeFilePath: string;
-  };
-  document?: TextDocument;
+    isDataformWorkspace?: boolean;
+    errors?: { errorGettingFileNameFromDocument?: string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean; queryMetaError?: string | undefined }
+    fileMetadata?: TablesWtFullQuery;
+    possibleResolutions?: any[];
+    dependents?: any;
+    lineageMetadata?: {
+        dependencies: undefined;
+        error: undefined;
+    };
+    pathMeta?: {
+        filename: string;
+        extension: string;
+        relativeFilePath: string;
+    };
+    document?: TextDocument;
 };
 
 export type TagDryRunStats = {
-  type: string;
-  targetName: string;
-  costOfRunningModel: number;
-  currency: SupportedCurrency;
-  totalGBProcessed: string;
-  totalBytesProcessedAccuracy: string | undefined;
-  statementType: string | undefined;
-  error: string
+    type: string;
+    targetName: string;
+    costOfRunningModel: number;
+    currency: SupportedCurrency;
+    totalGBProcessed: string;
+    totalBytesProcessedAccuracy: string | undefined;
+    statementType: string | undefined;
+    error: string
 };
 
 export type TagDryRunStatsMeta = {
@@ -275,13 +275,13 @@ export type TagDryRunStatsMeta = {
 };
 
 export const supportedCurrencies = {
-  USD: "USD",
-  EUR: "EUR",
-  GBP: "GBP",
-  JPY: "JPY",
-  CAD: "CAD",
-  AUD: "AUD",
-  INR: "INR",
+    USD: "USD",
+    EUR: "EUR",
+    GBP: "GBP",
+    JPY: "JPY",
+    CAD: "CAD",
+    AUD: "AUD",
+    INR: "INR",
 } as const;
 
 export type SupportedCurrency = keyof typeof supportedCurrencies;
@@ -309,3 +309,11 @@ export type ErrorMeta = {
     incrementalError?: DryRunError;
     assertionError?: DryRunError;
 };
+
+export type ExecutablePathInfo = {
+    path: string | null;
+    timestamp: number;
+};
+
+export type ExecutablePathCache = Map<string, ExecutablePathInfo>;
+

@@ -5,7 +5,7 @@ import { getWorkspaceFolder } from './utils';
 
 const tempDir = os.tmpdir();
 export const sqlFileToFormatPath = path.join(tempDir, "format.sql");
-export const executablesToCheck = ['dataform', 'gcloud'];
+export const executablesToCheck: ('dataform' | 'gcloud')[] = ['dataform', 'gcloud'];
 export const tableQueryOffset = 2;
 export const incrementalTableOffset = 1;
 export const assertionQueryOffset = 4;
@@ -107,15 +107,17 @@ export const sqlKeywordsToExcludeFromHoverDefinition = [
   "qualify"
 ];
 
+export const cacheDurationMs = 5 * 60 * 1000; // 5 minutes
 
-export async function getFileNotFoundErrorMessageForWebView(relativeFilePath:string){
 
-    if(!workspaceFolder){
-      workspaceFolder = await getWorkspaceFolder();
-    }
-    
-    // Create a single HTML string with the error message
-    const errorMessage = `
+export async function getFileNotFoundErrorMessageForWebView(relativeFilePath: string) {
+
+  if (!workspaceFolder) {
+    workspaceFolder = await getWorkspaceFolder();
+  }
+
+  // Create a single HTML string with the error message
+  const errorMessage = `
       <div>
         <p>File <b>"${relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b>"${workspaceFolder}"</b></p>
         <p>Ignore the error if the file you are in is not expected to produce a sql output</p>
@@ -136,6 +138,6 @@ export async function getFileNotFoundErrorMessageForWebView(relativeFilePath:str
         </ol>
       </div>
     `;
-    
-    return errorMessage;
+
+  return errorMessage;
 }

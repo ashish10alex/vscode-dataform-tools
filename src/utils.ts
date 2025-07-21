@@ -6,9 +6,9 @@ import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
-import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage } from './constants';
+import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import { GitHubContentResponse } from './types';
+import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -25,19 +25,19 @@ export function getNonce() {
     return text;
 }
 
-function createQueryMetaErrorString(modelObj:Table | Operation | Assertion, relativeFilePath:string, modelObjType:string, isJsFile:boolean){
+function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, relativeFilePath: string, modelObjType: string, isJsFile: boolean) {
     return isJsFile
-    ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
+        ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
         Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
         <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
     `
-    : ` Query could not be determined for  ${relativeFilePath} <br>.
+        : ` Query could not be determined for  ${relativeFilePath} <br>.
         Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
     `;
 }
 
 export function formatBytes(bytes: number) {
-    if (bytes === 0) {return '0 B';}
+    if (bytes === 0) { return '0 B'; }
 
     const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
     const k = 1024; // Use 1024 for binary prefixes (e.g., KiB) or 1000 for decimal
@@ -49,9 +49,9 @@ export function formatBytes(bytes: number) {
     const value = (bytes / Math.pow(k, i)).toFixed(2);
 
     return `${value} ${units[i]}`;
-  }
+}
 
-export async function getTableSchema(projectId: string, datasetId: string, tableId: string): Promise<{name: string, metadata: {fullTableId: string}}[]> {
+export async function getTableSchema(projectId: string, datasetId: string, tableId: string): Promise<{ name: string, metadata: { fullTableId: string } }[]> {
     try {
         await checkAuthentication();
         const bigquery = getBigQueryClient();
@@ -61,7 +61,7 @@ export async function getTableSchema(projectId: string, datasetId: string, table
         }
         const dataset = bigquery.dataset(datasetId, { projectId: projectId });
         const [table] = await dataset.table(tableId).get();
-        return table.metadata.schema.fields.map((field: {name: string, type:string, description:string}) => {
+        return table.metadata.schema.fields.map((field: { name: string, type: string, description: string }) => {
             return {
                 name: field.name,
                 metadata: {
@@ -79,7 +79,7 @@ export async function getTableSchema(projectId: string, datasetId: string, table
 }
 
 
-export function sendNotifactionToUserOnExtensionUpdate(context: vscode.ExtensionContext){
+export function sendNotifactionToUserOnExtensionUpdate(context: vscode.ExtensionContext) {
     const extensionPath = context.extensionPath;
     const packageJsonPath = path.join(extensionPath, 'package.json');
     const userConfigPath = path.join(extensionPath, 'user_config.json');
@@ -99,39 +99,39 @@ export function sendNotifactionToUserOnExtensionUpdate(context: vscode.Extension
 
     if (currentVersion !== lastVersion) {
         vscode.window.showInformationMessage(
-        `Dataform tools extension updated to version ${currentVersion}. Check out the new features!`,
-        'View Changelog'
+            `Dataform tools extension updated to version ${currentVersion}. Check out the new features!`,
+            'View Changelog'
         ).then(selection => {
-        if (selection === 'View Changelog') {
-            // Open changelog or release notes
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/ashish10alex/vscode-dataform-tools/releases'));
-        }
+            if (selection === 'View Changelog') {
+                // Open changelog or release notes
+                vscode.env.openExternal(vscode.Uri.parse('https://github.com/ashish10alex/vscode-dataform-tools/releases'));
+            }
         });
         userConfig.lastVersion = currentVersion;
         fs.writeFileSync(userConfigPath, JSON.stringify(userConfig));
     }
 }
 
-export function getHighlightJsThemeUri(){
+export function getHighlightJsThemeUri() {
     let themeKind = vscode.window.activeColorTheme.kind;
-    if(themeKind === vscode.ColorThemeKind.HighContrastLight || themeKind === vscode.ColorThemeKind.Light){
+    if (themeKind === vscode.ColorThemeKind.HighContrastLight || themeKind === vscode.ColorThemeKind.Light) {
         return cdnLinks.highlightJsOneLightThemeUri;
     } else {
         return cdnLinks.highlightJsOneDarkThemeUri;
     }
 }
 
-export function getTabulatorThemeUri(){
+export function getTabulatorThemeUri() {
     let themeKind = vscode.window.activeColorTheme.kind;
-    if(themeKind === vscode.ColorThemeKind.HighContrastLight || themeKind === vscode.ColorThemeKind.Light){
-        return {tabulatorCssUri: cdnLinks.tabulatorLightCssUri, type: "light"};
+    if (themeKind === vscode.ColorThemeKind.HighContrastLight || themeKind === vscode.ColorThemeKind.Light) {
+        return { tabulatorCssUri: cdnLinks.tabulatorLightCssUri, type: "light" };
     } else {
-        return {tabulatorCssUri: cdnLinks.tabulatorDarkCssUri, type: "dark"};
+        return { tabulatorCssUri: cdnLinks.tabulatorDarkCssUri, type: "dark" };
     }
 }
 
 //@ts-ignore
-function getTreeRootFromWordInStruct(struct: Table[]|Operation[]|Assertion[]|Declarations[], searchTerm: string): string | undefined {
+function getTreeRootFromWordInStruct(struct: Table[] | Operation[] | Assertion[] | Declarations[], searchTerm: string): string | undefined {
     if (struct) {
         for (let i = 0; i < struct.length; i++) {
             let declarationName = struct[i].target.name;
@@ -142,17 +142,17 @@ function getTreeRootFromWordInStruct(struct: Table[]|Operation[]|Assertion[]|Dec
     }
 }
 
-function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Assertion[]|Operation[], targetToSearch:Target){
-    if(!targetObjList?.length){
+function updateDependentsGivenObj(dependents: Target[], targetObjList: Table[] | Assertion[] | Operation[], targetToSearch: Target) {
+    if (!targetObjList?.length) {
         return dependents;
     }
-    for(let i=0; i<targetObjList.length; i++){
+    for (let i = 0; i < targetObjList.length; i++) {
         const tableTargets = targetObjList[i].dependencyTargets;
-        if(!tableTargets || tableTargets.length === 0){
+        if (!tableTargets || tableTargets.length === 0) {
             continue;
         } else {
-            tableTargets.forEach((tableTarget:Target) => {
-                if(tableTarget.name===targetToSearch.name && tableTarget.schema===targetToSearch.schema  && tableTarget.database===targetToSearch.database){
+            tableTargets.forEach((tableTarget: Target) => {
+                if (tableTarget.name === targetToSearch.name && tableTarget.schema === targetToSearch.schema && tableTarget.database === targetToSearch.database) {
                     dependents.push(targetObjList[i].target);
                 }
             });
@@ -162,13 +162,13 @@ function updateDependentsGivenObj(dependents:Target[], targetObjList:Table[]|Ass
 }
 
 async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJson: DataformCompiledJson) {
-  const { tables, assertions, operations } = dataformCompiledJson;
+    const { tables, assertions, operations } = dataformCompiledJson;
 
-  return Promise.all([
-    updateDependentsGivenObj([], tables, targetToSearch),
-    updateDependentsGivenObj([], assertions, targetToSearch),
-    updateDependentsGivenObj([], operations, targetToSearch)
-  ]).then(results => results.flat());
+    return Promise.all([
+        updateDependentsGivenObj([], tables, targetToSearch),
+        updateDependentsGivenObj([], assertions, targetToSearch),
+        updateDependentsGivenObj([], operations, targetToSearch)
+    ]).then(results => results.flat());
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean): Promise<CurrentFileMetadata | undefined> {
@@ -180,88 +180,37 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
 
     var result = getFileNameFromDocument(document, false);
     if (result.success === false) {
-         { return {errors: {errorGettingFileNameFromDocument: result.error}}; }
+        { return { errors: { errorGettingFileNameFromDocument: result.error } }; }
     }
 
     const [filename, relativeFilePath, extension] = result.value;
     logger.debug(`File name: ${filename}, relative file path: ${relativeFilePath}, extension: ${extension}`);
-    if(!workspaceFolder){
+    if (!workspaceFolder) {
         workspaceFolder = await getWorkspaceFolder();
     }
-    if (!workspaceFolder) { return {isDataformWorkspace: false}; }
+    if (!workspaceFolder) { return { isDataformWorkspace: false }; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        let {dataformCompiledJson, errors, possibleResolutions} = await runCompilation(workspaceFolder); // Takes ~1100ms
-            if(dataformCompiledJson){
-                let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+        if (freshCompilation) {
+            logger.debug('Fresh compilation requested, ignoring cache');
+        } else {
+            logger.debug('No cached compilation found, performing fresh compilation');
+        }
+        let { dataformCompiledJson, errors, possibleResolutions } = await runCompilation(workspaceFolder); // Takes ~1100ms
+        if (dataformCompiledJson) {
+            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
 
-                if(fileMetadata?.tables?.length === 0){
-                    return {
-                        errors: { fileNotFoundError: true },
-                        pathMeta: {
-                            filename: filename,
-                            extension: extension,
-                            relativeFilePath: relativeFilePath
-                        },
-                    };
-                } else if (fileMetadata?.queryMeta.error !== ""){
-                    return {
-                        errors: { queryMetaError: fileMetadata?.queryMeta.error },
-                        pathMeta: {
-                            filename: filename,
-                            extension: extension,
-                            relativeFilePath: relativeFilePath
-                        },
-                    };
-                };
-
-                const targetToSearch = fileMetadata?.tables[0]?.target;
-                let dependents = undefined;
-                if(targetToSearch){
-                    dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
-                }
-
+            if (fileMetadata?.tables?.length === 0) {
                 return {
-                    isDataformWorkspace: true,
-                    errors: { dataformCompilationErrors: errors },
-                    possibleResolutions:possibleResolutions,
-                    fileMetadata: fileMetadata,
-                    dependents: dependents,
-                    lineageMetadata: {
-                        dependencies: undefined,
-                        error: undefined,
-                    },
+                    errors: { fileNotFoundError: true },
                     pathMeta: {
                         filename: filename,
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
-                    document: document
                 };
-            }
-        else if (errors?.length!==0){
-            CACHED_COMPILED_DATAFORM_JSON = undefined;
-            return {
-                isDataformWorkspace: true,
-                errors: { dataformCompilationErrors: errors },
-                possibleResolutions:possibleResolutions,
-                fileMetadata: undefined,
-                dependents: undefined,
-                lineageMetadata: undefined,
-                pathMeta: {
-                    filename: filename,
-                    extension: extension,
-                    relativeFilePath: relativeFilePath
-                },
-                document: document
-            };
-        }
-        } else {
-            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
-
-
-            if (fileMetadata?.queryMeta.error !== ""){
+            } else if (fileMetadata?.queryMeta.error !== "") {
                 return {
                     errors: { queryMetaError: fileMetadata?.queryMeta.error },
                     pathMeta: {
@@ -270,16 +219,18 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         relativeFilePath: relativeFilePath
                     },
                 };
-            }
+            };
 
             const targetToSearch = fileMetadata?.tables[0]?.target;
             let dependents = undefined;
-            if(targetToSearch){
-                dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
+            if (targetToSearch) {
+                dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
             }
 
             return {
                 isDataformWorkspace: true,
+                errors: { dataformCompilationErrors: errors },
+                possibleResolutions: possibleResolutions,
                 fileMetadata: fileMetadata,
                 dependents: dependents,
                 lineageMetadata: {
@@ -294,8 +245,63 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 document: document
             };
         }
-        return undefined;
+        else if (errors?.length !== 0) {
+            CACHED_COMPILED_DATAFORM_JSON = undefined;
+            logger.debug('Clearing compilation cache due to errors');
+            return {
+                isDataformWorkspace: true,
+                errors: { dataformCompilationErrors: errors },
+                possibleResolutions: possibleResolutions,
+                fileMetadata: undefined,
+                dependents: undefined,
+                lineageMetadata: undefined,
+                pathMeta: {
+                    filename: filename,
+                    extension: extension,
+                    relativeFilePath: relativeFilePath
+                },
+                document: document
+            };
+        }
+    } else {
+        logger.debug('Using cached compilation data');
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+
+        if (fileMetadata?.queryMeta.error !== "") {
+            return {
+                errors: { queryMetaError: fileMetadata?.queryMeta.error },
+                pathMeta: {
+                    filename: filename,
+                    extension: extension,
+                    relativeFilePath: relativeFilePath
+                },
+            };
+        }
+
+        const targetToSearch = fileMetadata?.tables[0]?.target;
+        let dependents = undefined;
+        if (targetToSearch) {
+            dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
+        }
+
+        return {
+            isDataformWorkspace: true,
+            fileMetadata: fileMetadata,
+            dependents: dependents,
+            lineageMetadata: {
+                dependencies: undefined,
+                error: undefined,
+            },
+            pathMeta: {
+                filename: filename,
+                extension: extension,
+                relativeFilePath: relativeFilePath
+            },
+            document: document
+        };
     }
+    return undefined;
+}
 
 //@ts-ignore
 export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, searchTerm: string) {
@@ -320,12 +326,12 @@ export async function getPostionOfSourceDeclaration(sourcesJsUri: vscode.Uri, se
 }
 
 //@ts-ignore
-export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDocument | vscode.Uri, searchTerm:string, startLine:number, endLine:number) {
-    if (document instanceof vscode.Uri){
+export async function getPostionOfVariableInJsFileOrBlock(document: vscode.TextDocument | vscode.Uri, searchTerm: string, startLine: number, endLine: number) {
+    if (document instanceof vscode.Uri) {
         document = await vscode.workspace.openTextDocument(document);
     }
 
-    if (endLine === -1){
+    if (endLine === -1) {
         endLine = document.lineCount;
     }
 
@@ -338,7 +344,7 @@ export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDo
     for (let lineNum = startLine; lineNum < endLine; lineNum++) {
         const lineText = document.lineAt(lineNum).text;
 
-        if ( (varRegex.test(lineText) || funcRegex.test(lineText))) {
+        if ((varRegex.test(lineText) || funcRegex.test(lineText))) {
             line = lineNum;
             const wordIndex = lineText.indexOf(searchTerm);
             character = wordIndex;
@@ -351,22 +357,22 @@ export async function getPostionOfVariableInJsFileOrBlock(document:vscode.TextDo
 }
 
 export async function getTextByLineRange(filePathUri: vscode.Uri, startLine: number, endLine: number): Promise<string | undefined> {
-  // Get the document from the workspace using the URI
-  const document = await vscode.workspace.openTextDocument(filePathUri);
-  if(endLine === -1){
-    endLine = document.lineCount-1;
-  }
+    // Get the document from the workspace using the URI
+    const document = await vscode.workspace.openTextDocument(filePathUri);
+    if (endLine === -1) {
+        endLine = document.lineCount - 1;
+    }
 
-  // Check if the document is valid and has enough lines
-  if (document && startLine >= 0 && endLine < document.lineCount) {
-    const start = new vscode.Position(startLine, 0);
-    const end = new vscode.Position(endLine, document.lineAt(endLine).text.length);
-    const range = new vscode.Range(start, end);
-    return document.getText(range);
-  } else {
-    console.error('Invalid document or line range.');
-    return undefined; // Return undefined if the document is invalid or line range is out of bounds
-  }
+    // Check if the document is valid and has enough lines
+    if (document && startLine >= 0 && endLine < document.lineCount) {
+        const start = new vscode.Position(startLine, 0);
+        const end = new vscode.Position(endLine, document.lineAt(endLine).text.length);
+        const range = new vscode.Range(start, end);
+        return document.getText(range);
+    } else {
+        console.error('Invalid document or line range.');
+        return undefined; // Return undefined if the document is invalid or line range is out of bounds
+    }
 }
 
 export async function getTreeRootFromRef(): Promise<string | undefined> {
@@ -382,7 +388,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     let searchTerm = editor.document.getText(wordRange);
 
-    if(!workspaceFolder){
+    if (!workspaceFolder) {
         workspaceFolder = await selectWorkspaceFolder();
     }
     if (!workspaceFolder) {
@@ -463,18 +469,239 @@ export async function fetchGitHubFileContent(): Promise<string> {
     return Buffer.from(data.content, 'base64').toString('utf-8');
 }
 
-export function executableIsAvailable(name: string) {
-    const shell = (cmd: string) => execSync(cmd, { encoding: 'utf8' });
-    const command = isRunningOnWindows ? "where.exe" : "which";
-    try { shell(`${command} ${name}`); return true; }
-    catch (error) {
-    vscode.window.showErrorMessage(`${name} cli not found in path`, "Installation steps").then(selection => {
-        if (selection === "Installation steps") {
-            vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#requirements"));
+// Cache for executable path resolution to avoid repeated filesystem calls
+export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false): boolean {
+    const foundPath = findExecutableInPaths(name);
+
+    if (!foundPath && showErrorOnNotFound) {
+        vscode.window.showErrorMessage(`${name} cli not found`, "Installation Guide").then(selection => {
+            if (selection === "Installation Guide") {
+                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#requirements"));
+            }
+        });
+    }
+
+    return !!foundPath;
+}
+
+const executablePathCache: ExecutablePathCache = new Map<string, ExecutablePathInfo>();
+
+// Find executable using built-in detection + user overrides
+function findExecutableInPaths(executableName: string): string | null {
+    const cacheKey = `${executableName}:${process.platform}`;
+    const cached = executablePathCache.get(cacheKey);
+
+    // Return cached result if still valid
+    if (cached && (Date.now() - cached.timestamp) < cacheDurationMs) {
+        logger.debug(`Binary path cache hit for ${executableName}: ${cached.path}`);
+        return cached.path;
+    }
+
+    logger.debug(`Binary path cache miss for ${executableName}, searching...`);
+
+    // 1. Check user-specified exact path first (highest priority)
+    const specificPath = getSpecificExecutablePath(executableName);
+    if (specificPath) {
+        logger.debug(`Found ${executableName} via user config: ${specificPath}`);
+        executablePathCache.set(cacheKey, { path: specificPath, timestamp: Date.now() });
+        return specificPath;
+    }
+
+    // 2. Check system PATH with enhanced detection
+    const systemPath = findExecutableInSystemPath(executableName);
+    if (systemPath) {
+        logger.debug(`Found ${executableName} via system PATH: ${systemPath}`);
+        executablePathCache.set(cacheKey, { path: systemPath, timestamp: Date.now() });
+        return systemPath;
+    }
+
+    // 3. Check common tool manager and installation locations  
+    const commonPath = findExecutableInCommonLocations(executableName);
+    if (commonPath) {
+        logger.debug(`Found ${executableName} via common locations: ${commonPath}`);
+    } else {
+        logger.debug(`${executableName} not found in any location`);
+    }
+    executablePathCache.set(cacheKey, { path: commonPath, timestamp: Date.now() });
+    return commonPath;
+}
+
+// Get user-specified exact path for executable
+function getSpecificExecutablePath(executableName: string): string | null {
+    try {
+        const vscodeConfig = vscode.workspace.getConfiguration('vscode-dataform-tools');
+        const configKey = `${executableName}ExecutablePath`;
+        const specificPath = vscodeConfig.get<string>(configKey);
+
+        logger.debug(`Checking user config for ${executableName} at key '${configKey}': ${specificPath || 'not set'}`);
+
+        if (specificPath && isValidExecutablePath(specificPath)) {
+            logger.debug(`Validated user-specified path for ${executableName}: ${specificPath}`);
+            return specificPath;
+        }
+
+        if (specificPath && !isValidExecutablePath(specificPath)) {
+            logger.debug(`Invalid user-specified path for ${executableName}: ${specificPath}`);
+        }
+
+        return null;
+    } catch (error) {
+        logger.debug(`Configuration error for ${executableName}: ${error instanceof Error ? error.message : String(error)}`);
+        return null;
+    }
+}
+
+// Enhanced system PATH search
+function findExecutableInSystemPath(executableName: string): string | null {
+    try {
+        const command = isRunningOnWindows ? 'where' : 'which';
+        logger.debug(`Searching for ${executableName} using '${command}' command`);
+
+        const result = execSync(`${command} ${executableName}`, {
+            encoding: 'utf8',
+            timeout: 5000,
+            windowsHide: true
+        }).trim();
+
+        if (result) {
+            const firstPath = result.split('\n')[0].trim();
+            logger.debug(`System PATH search result for ${executableName}: ${firstPath}`);
+
+            if (isValidExecutablePath(firstPath)) {
+                logger.debug(`Validated system PATH for ${executableName}: ${firstPath}`);
+                return firstPath;
+            } else {
+                logger.debug(`Invalid system PATH result for ${executableName}: ${firstPath}`);
+            }
+        } else {
+            logger.debug(`No system PATH result for ${executableName}`);
+        }
+    } catch (error) {
+        logger.debug(`System PATH search failed for ${executableName}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    return null;
+}
+
+// Check common tool manager and installation locations
+function findExecutableInCommonLocations(executableName: string): string | null {
+    const commonPaths = getCommonExecutablePaths(executableName);
+    logger.debug(`Searching ${commonPaths.length} common locations for ${executableName}`);
+
+    for (const testPath of commonPaths) {
+        logger.debug(`Testing common location: ${testPath}`);
+        if (isValidExecutablePath(testPath)) {
+            logger.debug(`Found ${executableName} at common location: ${testPath}`);
+            return testPath;
+        }
+    }
+
+    logger.debug(`${executableName} not found in any common location`);
+    return null;
+}
+
+// Get common paths where executables might be installed
+function getCommonExecutablePaths(executableName: string): string[] {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    const extensions = getExecutableExtensions();
+    const paths: string[] = [];
+
+    // Common tool manager locations
+    const toolManagerDirs = [
+        `${homeDir}/.local/share/mise/shims`,
+        `${homeDir}/.asdf/shims`,
+        `${homeDir}/.nvm/current/bin`,
+        `${homeDir}/.nodenv/shims`,
+        `${homeDir}/.rbenv/shims`,
+        `${homeDir}/.pyenv/shims`,
+        `${homeDir}/.local/bin`,
+        `${homeDir}/bin`,
+        `${homeDir}/.cargo/bin`,
+        // Homebrew
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+        // Standard system locations
+        '/usr/bin',
+        '/bin'
+    ];
+
+    // Executable-specific locations
+    if (executableName === 'gcloud') {
+        toolManagerDirs.push(
+            `${homeDir}/google-cloud-sdk/bin`,
+            '/usr/local/google-cloud-sdk/bin',
+            '/usr/local/opt/google-cloud-sdk/bin',
+            '/snap/bin'
+        );
+    }
+
+    // Generate full paths with extensions
+    for (const dir of toolManagerDirs) {
+        for (const ext of extensions) {
+            paths.push(path.join(dir, executableName + ext));
+        }
+    }
+
+    return paths;
+}
+
+// Cross-platform executable extensions
+function getExecutableExtensions(): string[] {
+    return isRunningOnWindows ? ['.exe', '.cmd', '.bat', ''] : [''];
+}
+
+// Cross-platform executable validation
+function isValidExecutablePath(filePath: string): boolean {
+    try {
+        const stats = fs.statSync(filePath);
+
+        if (!stats.isFile()) {
+            return false;
+        }
+
+        if (isRunningOnWindows) {
+            // On Windows, check file extension or try to access
+            const ext = path.extname(filePath).toLowerCase();
+            return ['.exe', '.cmd', '.bat'].includes(ext) || ext === '';
+        } else {
+            // On Unix systems, check if file is executable
+            try {
+                fs.accessSync(filePath, fs.constants.F_OK | fs.constants.X_OK);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+    } catch {
+        return false;
+    }
+}
+
+// Clear cache when needed (for testing or configuration changes)
+export function clearExecutablePathCache(): void {
+    executablePathCache.clear();
+}
+
+// Debug function for troubleshooting executable detection issues
+export function debugExecutablePaths(): void {
+    // Clear cache for fresh testing
+    clearExecutablePathCache();
+
+    const executables: string[] = ['dataform', 'gcloud'];
+    const results: string[] = [];
+
+    executables.forEach(exe => {
+        const foundPath = findExecutableInPaths(exe);
+        results.push(`${exe}: ${foundPath || 'Not found'}`);
+    });
+
+    // Show concise results to user
+    const message = `Executable Detection Results:\n\n${results.join('\n')}`;
+    vscode.window.showInformationMessage('Debug Results', 'Show Details').then(selection => {
+        if (selection === 'Show Details') {
+            vscode.window.showInformationMessage(message);
         }
     });
-    return false;
-    }
 }
 
 export function getRelativePath(filePath: string) {
@@ -514,37 +741,37 @@ export async function selectWorkspaceFolder() {
             return workspaceFolder;
         }
 
-        const selectedFolder = await vscode.window.showQuickPick(folderOptions, {placeHolder: "Select the Dataform workspace which this file belongs to"});
+        const selectedFolder = await vscode.window.showQuickPick(folderOptions, { placeHolder: "Select the Dataform workspace which this file belongs to" });
         if (selectedFolder) {
             workspaceFolder = selectedFolder.value;
             return workspaceFolder;
         }
         return undefined;
-    } 
+    }
     return undefined;
 }
 
 export function getFileNameFromDocument(
-  document: vscode.TextDocument,
-  showErrorMessage: boolean
+    document: vscode.TextDocument,
+    showErrorMessage: boolean
 ): FileNameMetadataResult<FileNameMetadata, string> {
-  const filePath = document.uri.fsPath;
-  const basenameSplit = path.basename(filePath).split('.');
-  const extension = basenameSplit[1];
-  const relativeFilePath = getRelativePath(filePath);
-  const validFileType = supportedExtensions.includes(extension);
+    const filePath = document.uri.fsPath;
+    const basenameSplit = path.basename(filePath).split('.');
+    const extension = basenameSplit[1];
+    const relativeFilePath = getRelativePath(filePath);
+    const validFileType = supportedExtensions.includes(extension);
 
-  if (!validFileType) {
-    if (showErrorMessage) {
-      vscode.window.showErrorMessage(
-        `File type not supported. Supported file types are ${supportedExtensions.join(', ')}`
-      );
+    if (!validFileType) {
+        if (showErrorMessage) {
+            vscode.window.showErrorMessage(
+                `File type not supported. Supported file types are ${supportedExtensions.join(', ')}`
+            );
+        }
+        return { success: false, error: `File type not supported. Supported file types are ${supportedExtensions.join(', ')}` };
     }
-    return { success: false, error: `File type not supported. Supported file types are ${supportedExtensions.join(', ')}` };
-  }
 
-  const rawFileName = basenameSplit[0];
-  return { success: true, value: [rawFileName, relativeFilePath, extension] };
+    const rawFileName = basenameSplit[0];
+    return { success: true, value: [rawFileName, relativeFilePath, extension] };
 }
 
 //
@@ -554,7 +781,7 @@ export function getFileNameFromDocument(
 //TODO: What if user has no workspaces open ?
 //
 export async function getWorkspaceFolder(): Promise<string | undefined> {
-    if(!workspaceFolder){
+    if (!workspaceFolder) {
         workspaceFolder = await selectWorkspaceFolder();
     }
     if (workspaceFolder === undefined) {
@@ -583,8 +810,10 @@ export async function getOrCompileDataformJson(
     workspaceFolder: string
 ): Promise<DataformCompiledJson | undefined> {
     if (CACHED_COMPILED_DATAFORM_JSON) {
+        logger.debug('Returning cached compiled dataform JSON');
         return CACHED_COMPILED_DATAFORM_JSON;
     }
+    logger.debug('No cached compilation found, compiling dataform project...');
     vscode.window.showWarningMessage(
         "Compiling Dataform project, this may take a few moments..."
     );
@@ -716,16 +945,16 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     const isJsFile = relativeFilePath.endsWith('.js');
     const isSqlxFile = relativeFilePath.endsWith('.sqlx');
 
-    if(isJsFile){
+    if (isJsFile) {
         queryMeta.type = "js";
     }
-    
-    if(tables?.length > 0){
+
+    if (tables?.length > 0) {
         let matchingTables;
         if (isJsFile) {
             matchingTables = tables.filter(table => table.fileName === relativeFilePath);
         } else {
-           matchingTables = tables.find(table => table.fileName === relativeFilePath);
+            matchingTables = tables.find(table => table.fileName === relativeFilePath);
         }
 
         // make matchingTables an array if it is not already
@@ -742,7 +971,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 switch (table.type) {
                     case "table":
                     case "view":
-                        if(!table?.query){
+                        if (!table?.query) {
                             queryMeta.tableOrViewQuery = "";
                             queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type, isJsFile);
                         } else {
@@ -758,7 +987,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         }
                         break;
                     default:
-                        console.warn(`Unexpected table type: ${table.type}`);
+                        logger.debug(`Unexpected table type: ${table.type}`);
                 }
 
                 if (table.preOps) {
@@ -785,14 +1014,14 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         }
     }
 
-    if(assertions?.length > 0){
+    if (assertions?.length > 0) {
         const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
         const assertionCountForFile = assertionsForFile.length;
         if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
             queryMeta.type = queryMeta.type === "js" ? "js" : "assertion";
         }
         const assertionQueries = assertionsForFile.map((assertion, index) => {
-            if(assertion?.query){
+            if (assertion?.query) {
                 finalTables.push({
                     type: "assertion",
                     tags: assertion.tags,
@@ -828,51 +1057,51 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
 
     if (operations?.length > 0) {
-        if ((isSqlxFile && finalTables.length === 0 ) || isJsFile) {
-        const operationsForFile = operations.filter(op => op.fileName === relativeFilePath);
-        if (operationsForFile.length > 0) {
-            logger.debug(`Found ${operationsForFile.length} operation(s) with filename: ${relativeFilePath}`);
-            queryMeta.type = queryMeta.type === "js" ? "js" : "operations";
-            
-            operationsForFile.forEach(operation => {
-                if(operation?.queries){
-                    const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
-                        return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
-                    }, "");
+        if ((isSqlxFile && finalTables.length === 0) || isJsFile) {
+            const operationsForFile = operations.filter(op => op.fileName === relativeFilePath);
+            if (operationsForFile.length > 0) {
+                logger.debug(`Found ${operationsForFile.length} operation(s) with filename: ${relativeFilePath}`);
+                queryMeta.type = queryMeta.type === "js" ? "js" : "operations";
 
-                    queryMeta.operationsQuery += finalOperationQuery;
+                operationsForFile.forEach(operation => {
+                    if (operation?.queries) {
+                        const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
+                            return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
+                        }, "");
 
-                    finalTables.push({
-                        type: "operations",
-                        tags: operation.tags,
-                        fileName: relativeFilePath,
-                        query: finalOperationQuery,
-                        target: operation.target,
-                        dependencyTargets: operation.dependencyTargets,
-                        incrementalQuery: "",
-                        incrementalPreOps: []
-                    });
-                } else {
-                    let errorString = createQueryMetaErrorString(operation, relativeFilePath, "operations", isJsFile);
-                    queryMeta.error += errorString;
-                    finalTables.push({
-                        type: "operations",
-                        tags: operation.tags,
-                        fileName: relativeFilePath,
-                        query: undefined,
-                        target: operation.target,
-                        dependencyTargets: operation.dependencyTargets,
-                        incrementalQuery: "",
-                        incrementalPreOps: [],
-                        error: errorString,
-                    });
-                }
-            });
-        }
+                        queryMeta.operationsQuery += finalOperationQuery;
+
+                        finalTables.push({
+                            type: "operations",
+                            tags: operation.tags,
+                            fileName: relativeFilePath,
+                            query: finalOperationQuery,
+                            target: operation.target,
+                            dependencyTargets: operation.dependencyTargets,
+                            incrementalQuery: "",
+                            incrementalPreOps: []
+                        });
+                    } else {
+                        let errorString = createQueryMetaErrorString(operation, relativeFilePath, "operations", isJsFile);
+                        queryMeta.error += errorString;
+                        finalTables.push({
+                            type: "operations",
+                            tags: operation.tags,
+                            fileName: relativeFilePath,
+                            query: undefined,
+                            target: operation.target,
+                            dependencyTargets: operation.dependencyTargets,
+                            incrementalQuery: "",
+                            incrementalPreOps: [],
+                            error: errorString,
+                        });
+                    }
+                });
+            }
         }
     }
 
-    return { tables: finalTables, queryMeta: queryMeta};
+    return { tables: finalTables, queryMeta: queryMeta };
 };
 
 
@@ -927,20 +1156,27 @@ export function getSqlfluffExecutablePathFromSettings() {
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
     const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
+
     if (dataformCliScope === 'local') {
         const dataformCliLocalScopePath = isRunningOnWindows
             ? path.join('node_modules', '.bin', 'dataform.cmd')
             : path.join('node_modules', '.bin', 'dataform');
-        return path.join(workspaceFolder, dataformCliLocalScopePath);
+        const fullLocalPath = path.join(workspaceFolder, dataformCliLocalScopePath);
+        logger.debug(`Using local dataform CLI: ${fullLocalPath}`);
+        return fullLocalPath;
     }
-    return dataformCliBase;
+
+    const resolvedPath = findExecutableInPaths('dataform') || dataformCliBase;
+    logger.debug(`Using global dataform CLI: ${resolvedPath}`);
+    return resolvedPath;
 }
 
-export function compileDataform(workspaceFolder: string): Promise<{compiledString:string|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
+export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined }> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
-    let compilerOptions:string[] = [];
-    if (dataformCompilerOptions !== ""){
+    let compilerOptions: string[] = [];
+    if (dataformCompilerOptions !== "") {
         compilerOptions.push(dataformCompilerOptions);
     }
     logger.debug(`compilerOptions: ${compilerOptions}`);
@@ -948,7 +1184,7 @@ export function compileDataform(workspaceFolder: string): Promise<{compiledStrin
         let spawnedProcess;
         let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
         logger.debug(`customDataformCliPath: ${customDataformCliPath}`);
-        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions , "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions, "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
 
         let stdOut = '';
         let errorOutput = '';
@@ -963,53 +1199,53 @@ export function compileDataform(workspaceFolder: string): Promise<{compiledStrin
 
         spawnedProcess.on('close', async (code: number) => {
             if (code === 0) {
-                resolve({compiledString: stdOut, errors:undefined, possibleResolutions:undefined});
+                resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {
-                    let compiledJson:  DataformCompiledJson;
-                    try{
+                    let compiledJson: DataformCompiledJson;
+                    try {
                         compiledJson = JSON.parse(stdOut.toString());
                     } catch (parseError) {
                         compiledJson = extractDataformJsonFromMultipleJson(stdOut.toString());
                     }
 
                     let graphErrors = compiledJson?.graphErrors?.compilationErrors;
-                    if(!graphErrors){
+                    if (!graphErrors) {
                         const dataformPackageJsonMissingHint = "(missing dataform.json file)";
-                    const dataformInstallHintv2 = "Could not find a recent installed version of @dataform/core in the project";
+                        const dataformInstallHintv2 = "Could not find a recent installed version of @dataform/core in the project";
                         const possibleResolutions = [];
-                        if(errorOutput.includes(dataformPackageJsonMissingHint)){
+                        if (errorOutput.includes(dataformPackageJsonMissingHint)) {
                             possibleResolutions.push("Run `<b>dataform compile</b>` in terminal to get full error");
                             possibleResolutions.push("Verify the dataform version of the project matches the version used in the project (<b>dataform --version</b> in terminal)");
                             possibleResolutions.push("If your project is using dataform version 3.x run <b>npm i -g @dataform/cli</b> in terminal)");
-                        } else if (errorOutput.includes(dataformInstallHintv2)){
+                        } else if (errorOutput.includes(dataformInstallHintv2)) {
                             possibleResolutions.push("run `<b>dataform install</b>` in terminal followed by reload window and compile the file again");
                         }
-                        resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
+                        resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions });
                         return;
                     }
 
-                    let errors:GraphError[] = [];
-                    graphErrors.forEach((graphError: {message:string, fileName:string}) => {
-                        errors.push({error: graphError.message, fileName: graphError.fileName});
+                    let errors: GraphError[] = [];
+                    graphErrors.forEach((graphError: { message: string, fileName: string }) => {
+                        errors.push({ error: graphError.message, fileName: graphError.fileName });
                     });
-                    resolve({compiledString: undefined, errors:errors, possibleResolutions:undefined});
+                    resolve({ compiledString: undefined, errors: errors, possibleResolutions: undefined });
                 } else {
                     let possibleResolutions = [];
                     const dataformInstallHintv3 = "If using `package.json`, then run `dataform install`";
-                    if(errorOutput.includes(dataformInstallHintv3)){
+                    if (errorOutput.includes(dataformInstallHintv3)) {
                         const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-                        if(_workspaceFolder){
+                        if (_workspaceFolder) {
                             const filePath = path.join(_workspaceFolder, 'package.json');
-                            const packageJsonExsists =  await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-                            if(packageJsonExsists){
+                            const packageJsonExsists = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+                            if (packageJsonExsists) {
                                 possibleResolutions.push("run `<b>dataform install</b>` in terminal");
                             }
                         }
-                    }else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)){
+                    } else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)) {
                         possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
                     };
-                    resolve({compiledString: undefined, errors:[{error:`Error compiling Dataform: ${errorOutput}`, fileName:""}], possibleResolutions:possibleResolutions});
+                    resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions });
                 }
             }
         });
@@ -1020,7 +1256,7 @@ export function compileDataform(workspaceFolder: string): Promise<{compiledStrin
     });
 }
 
-function parseMultipleJSON(str:string) {
+function parseMultipleJSON(str: string) {
     /*
     NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string
     so we need to parse them separately to ensure there is no error in parsing and we get the compilation metadata of Dataform project
@@ -1030,22 +1266,22 @@ function parseMultipleJSON(str:string) {
     let openBraces = 0;
 
     for (let i = startIndex; i < str.length; i++) {
-      if (str[i] === '{') {
-        if (openBraces === 0) {startIndex = i;};
-        openBraces++;
-      } else if (str[i] === '}') {
-        openBraces--;
-        if (openBraces === 0) {
-          const jsonStr = str.substring(startIndex, i + 1);
-          result.push(JSON.parse(jsonStr));
+        if (str[i] === '{') {
+            if (openBraces === 0) { startIndex = i; };
+            openBraces++;
+        } else if (str[i] === '}') {
+            openBraces--;
+            if (openBraces === 0) {
+                const jsonStr = str.substring(startIndex, i + 1);
+                result.push(JSON.parse(jsonStr));
+            }
         }
-      }
     }
 
     return result;
-  }
+}
 
-  function extractDataformJsonFromMultipleJson(compiledString: string){
+function extractDataformJsonFromMultipleJson(compiledString: string) {
     //NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string. From observation, index 1 is the JSON object that has Dataform compilation metadata
     const parsedObjects = parseMultipleJSON(compiledString);
     if (parsedObjects.length > 0) {
@@ -1053,12 +1289,12 @@ function parseMultipleJSON(str:string) {
     } else {
         throw new Error("Failed to parse JSON");
     }
-  }
+}
 
-export async function runCompilation(workspaceFolder: string): Promise<{dataformCompiledJson:DataformCompiledJson|undefined, errors:GraphError[]|undefined, possibleResolutions:string[]|undefined}> {
+export async function runCompilation(workspaceFolder: string): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined }> {
     try {
-        let {compiledString, errors, possibleResolutions} = await compileDataform(workspaceFolder);
-        if(compiledString){
+        let { compiledString, errors, possibleResolutions } = await compileDataform(workspaceFolder);
+        if (compiledString) {
             let dataformCompiledJson: DataformCompiledJson;
             try {
                 dataformCompiledJson = JSON.parse(compiledString);
@@ -1066,11 +1302,12 @@ export async function runCompilation(workspaceFolder: string): Promise<{dataform
                 dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
             }
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            return {dataformCompiledJson: dataformCompiledJson, errors:errors, possibleResolutions:possibleResolutions};
+            logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
+            return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions };
         }
-        return {dataformCompiledJson: undefined, errors:errors, possibleResolutions:possibleResolutions};
-    } catch (error:any) {
-        return {dataformCompiledJson: undefined, errors:[{error: `Error compiling Dataform: ${error.message}`, fileName: ""}], possibleResolutions:undefined};
+        return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions };
+    } catch (error: any) {
+        return { dataformCompiledJson: undefined, errors: [{ error: `Error compiling Dataform: ${error.message}`, fileName: "" }], possibleResolutions: undefined };
     }
 }
 
@@ -1217,29 +1454,31 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
     runCommandInTerminal(dataformActionCmd);
 }
 
-export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery){
+export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
     const preOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.preOpsQuery);
     const icrementalPreOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.incrementalPreOpsQuery);
     const postOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.postOpsQuery);
 
-    if(!preOpsEndsWithSemicolon && fileMetadata.queryMeta.preOpsQuery !== "" ){
+    if (!preOpsEndsWithSemicolon && fileMetadata.queryMeta.preOpsQuery !== "") {
         fileMetadata.queryMeta.preOpsQuery = fileMetadata.queryMeta.preOpsQuery.trimEnd() + ";" + "\n";
     }
 
-    if(!icrementalPreOpsEndsWithSemicolon && fileMetadata.queryMeta.incrementalPreOpsQuery !== "" ){
+    if (!icrementalPreOpsEndsWithSemicolon && fileMetadata.queryMeta.incrementalPreOpsQuery !== "") {
         fileMetadata.queryMeta.incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimEnd() + ";" + "\n";
     }
 
-    if(!postOpsEndsWithSemicolon && fileMetadata.queryMeta.postOpsQuery !== "" ){
+    if (!postOpsEndsWithSemicolon && fileMetadata.queryMeta.postOpsQuery !== "") {
         fileMetadata.queryMeta.postOpsQuery = fileMetadata.queryMeta.postOpsQuery.trimEnd() + ";" + "\n";
     }
     return fileMetadata;
 }
 
-export async function gatherQueryAutoCompletionMeta(){
-    if (!CACHED_COMPILED_DATAFORM_JSON){
+export async function gatherQueryAutoCompletionMeta() {
+    if (!CACHED_COMPILED_DATAFORM_JSON) {
+        logger.debug('No cached compilation available for autocompletion');
         return;
     }
+    logger.debug('Using cached compilation for autocompletion metadata');
     // all 2 of these together take approx less than 0.35ms (Dataform repository with 285 nodes)
     let [declarationsAndTargets, dataformTags] = await Promise.all([
         getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
@@ -1251,11 +1490,11 @@ export async function gatherQueryAutoCompletionMeta(){
 
 }
 
-function replaceQueryLabelWtEmptyStringForDryRun(query:string) {
+function replaceQueryLabelWtEmptyStringForDryRun(query: string) {
     return query.replace(/SET\s+@@query_label\s*=\s*(['"]).*?\1\s*;/gi, '');
 }
 
-export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode.TextDocument, diagnosticCollection:any, showCompiledQueryInVerticalSplitOnSave:boolean|undefined){
+export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscode.TextDocument, diagnosticCollection: any, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (curFileMeta.pathMeta.extension === "sqlx") {
@@ -1269,16 +1508,16 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
     let queryToDryRun = "";
     let nonIncrementalQuery = "";
     let incrementalQuery = "";
-    const type = curFileMeta.fileMetadata.queryMeta.type ;
+    const type = curFileMeta.fileMetadata.queryMeta.type;
     const fileMetadata = curFileMeta.fileMetadata;
 
     let isMultiModalJsType = type === "js" && fileMetadata.tables.map((table: any) => {
-        return table.type === "table" || table.type === "view" ;
+        return table.type === "table" || table.type === "view";
     }).length >= 1;
 
     if (type === "table" || type === "view" || isMultiModalJsType) {
         let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
-        if(preOpsQuery && preOpsQuery !== ""){
+        if (preOpsQuery && preOpsQuery !== "") {
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
         }
         queryToDryRun = preOpsQuery + fileMetadata.queryMeta.tableOrViewQuery;
@@ -1290,7 +1529,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         //TODO: defaulting to using incremental query to dry run for now
         // let nonIncrementalQuery = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.nonIncrementalQuery;
         let preOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
-        if(preOpsQuery && preOpsQuery !== ""){
+        if (preOpsQuery && preOpsQuery !== "") {
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(fileMetadata.queryMeta.preOpsQuery);
         }
         incrementalQuery = preOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
@@ -1309,17 +1548,18 @@ export async function dryRunAndShowDiagnostics(curFileMeta:any,  document:vscode
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
     ]);
 
-    if(dryRunResult.schema){
+    if (dryRunResult.schema) {
         compiledQuerySchema = dryRunResult.schema;
-    } else if (dryRunResult.schema === undefined && dryRunResult.error.hasError === false){
+    } else if (dryRunResult.schema === undefined && dryRunResult.error.hasError === false) {
         // happens when Dataform config type is operation and dry run api response has no schema
         compiledQuerySchema = {
-        fields: [
-            {
-            name: "",
-            type: "",
-            }
-        ]};
+            fields: [
+                {
+                    name: "",
+                    type: "",
+                }
+            ]
+        };
     }
 
     // check if we need to handle errors from non incremental query here 
@@ -1372,12 +1612,12 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let curFileMeta = await getCurrentFileMetadata(true);
 
-    if(!CACHED_COMPILED_DATAFORM_JSON || !curFileMeta){
+    if (!CACHED_COMPILED_DATAFORM_JSON || !curFileMeta) {
         return;
     }
 
     let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
-    if (!queryAutoCompMeta){
+    if (!queryAutoCompMeta) {
         return;
     }
 

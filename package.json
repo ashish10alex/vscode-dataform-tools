@@ -265,6 +265,18 @@
                     "default": "global",
                     "markdownDescription": "Dataform installation scope to use. Default to `global` which uses the dataform cli installed in global scope when running `dataform install -g @dataform/cli`. Selecting `local` scope would mean dataform cli installation in your workspace folder in `./node_modules/.bin/dataform` will be used. This is created when `npm install @dataform/cli` is ran from the root of the workspace folder."
                 },
+                "vscode-dataform-tools.dataformExecutablePath": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "**Override path to dataform executable**\n\n⚠️ **Only use this if the extension cannot find dataform automatically**\n\nThe extension automatically searches:\n- System PATH\n- Common tool managers (mise, asdf, nvm, etc.)\n- Standard installation locations\n\nUse this setting for:\n- **Specific versions** for testing: `/path/to/dataform-v3.0.25`\n- **Company-approved versions**: `/opt/company-tools/dataform`\n- **Non-standard locations**: Custom installation paths\n\n**Example**: `/usr/local/bin/dataform` or `${HOME}/.local/share/mise/installs/npm-dataform-cli/3.0.26/bin/dataform`",
+                    "pattern": "^.*dataform(?:\\.cmd|\\.exe)?$"
+                },
+                "vscode-dataform-tools.gcloudExecutablePath": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "**Override path to gcloud executable**\n\n⚠️ **Only use this if the extension cannot find gcloud automatically**\n\nThe extension automatically searches:\n- System PATH\n- Common tool managers (mise, asdf, etc.)\n- Standard gcloud installation locations\n\nUse this setting for:\n- **Specific versions** for testing: `/path/to/gcloud-v530.0.0`\n- **Company-approved versions**: `/opt/company-tools/gcloud`\n- **Non-standard locations**: Custom installation paths\n\n**Example**: `/usr/local/bin/gcloud` or `${HOME}/google-cloud-sdk/bin/gcloud`",
+                    "pattern": "^.*gcloud(?:\\.cmd|\\.exe)?$"
+                },
                 "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
                     "type": "boolean",
                     "default": true,
