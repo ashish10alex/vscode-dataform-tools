@@ -499,7 +499,7 @@ export class CompiledQueryPanel {
         }
 
         if (compiledQuerySchema?.fields) {
-            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata.tables[0].actionDescriptor;
+            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
             // Remove 'mode' attribute from each field
             compiledQuerySchema.fields = compiledQuerySchema.fields.map(({ mode, ...rest }) => rest);
 
