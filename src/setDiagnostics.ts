@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import {ErrorMeta, SqlxBlockMetadata} from './types';
 import {errorDenylist} from './constants';
+import { logger } from './logger';
 
 export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMeta, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
 
@@ -44,6 +45,7 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             errorDenylist.some((errorMessage: string) => {
                 errorInPreOpsDenyList = (errorMeta?.preOpsError?.message.includes(errorMessage) || false); 
             });
+            logger.debug(`errorInPreOpsDenyList: ${errorInPreOpsDenyList}`);
 
             if(!errorInPreOpsDenyList){
                 const preOpsDiagnostic = new vscode.Diagnostic(range, `(Pre-Ops): ${errorMeta.preOpsError.message}`, severity);
