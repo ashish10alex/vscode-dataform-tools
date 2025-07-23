@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.16.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.15.0...v0.16.0) (2025-07-23)
+
+
+### Features
+
+* refactored CLI binary location to be more resilient ([#172](https://github.com/ashish10alex/vscode-dataform-tools/issues/172)) ([9931281](https://github.com/ashish10alex/vscode-dataform-tools/commit/99312815b526bd05eac46c05fa5ddddc328449ce))
+
+
+### Bug Fixes
+
+* error when accessing `actionDescriptor` when moving to js file ([0526a71](https://github.com/ashish10alex/vscode-dataform-tools/commit/0526a712adb56584644d4d32bad102102df15503))
+* use deny list of error messages for pre/post ops dry run ([#171](https://github.com/ashish10alex/vscode-dataform-tools/issues/171)) ([8a944c8](https://github.com/ashish10alex/vscode-dataform-tools/commit/8a944c85a445b2589e1e20b486b44cc2277d1165))
+
 ## [0.15.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.14.0...v0.15.0) (2025-07-15)
 
 
