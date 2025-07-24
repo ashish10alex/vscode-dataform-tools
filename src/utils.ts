@@ -822,6 +822,9 @@ export async function getOrCompileDataformJson(
 }
 
 export function runCommandInTerminal(command: string) {
+    if(isRunningOnWindows){
+        command = "cmd /C " + command;
+    }
     if (vscode.window.activeTerminal === undefined) {
         const terminal = vscode.window.createTerminal('dataform');
         terminal.sendText(command);
