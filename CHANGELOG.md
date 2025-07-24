@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.0...v0.16.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* **windows:** running dataform commands spawning new shell in windows platform ([1779b35](https://github.com/ashish10alex/vscode-dataform-tools/commit/1779b3522fc9ce111667f2f46d91304e0ebd43b4))
+
 ## [0.16.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.15.0...v0.16.0) (2025-07-23)
 
 
