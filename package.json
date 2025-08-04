@@ -33,6 +33,7 @@
         "onCommand:extension.runTagWtDeps",
         "onCommand:extension.runTagWtDownstreamDeps",
         "onCommand:extension.runFilesTagsWtOptions",
+        "onCommand:extension.initDataformProject",
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.dependencyGraphPanel",
         "onCommand:extension.selectWorkspaceFolder"
@@ -86,6 +87,11 @@
                 "command": "vscode-dataform-tools.runFilesTagsWtOptions",
                 "category": "Dataform",
                 "title": "Run file(s) / tag(s) with options"
+            },
+            {
+                "command": "vscode-dataform-tools.initDataformProject",
+                "category": "Dataform",
+                "title": "Initialize a new Dataform project"
             },
             {
                 "command": "vscode-dataform-tools.runTag",

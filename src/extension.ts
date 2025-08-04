@@ -12,6 +12,7 @@ import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExte
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
+import { initDataformProject } from './initDataformProject';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
@@ -204,6 +205,9 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
     );
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.initDataformProject', initDataformProject)
+    );
 
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider('sqlx', {
