@@ -5,10 +5,7 @@ import path from 'path';
 
 export async function initDataformProject(){
 
-    let prompt ="Enter the full path for the Dataform project directory";
-    let placeHolder = "/Users/username/path/to/project";
-    let validationErrorMessage = "Path can not be empty";
-    const projectDir = await enterProjectDir(prompt, placeHolder, validationErrorMessage);
+    const projectDir = await openFolderSelector();
     if (!projectDir) {
         vscode.window.showInformationMessage("Project directory path not provided, aborting...");
         return;
@@ -19,9 +16,9 @@ export async function initDataformProject(){
         return;
     }
 
-    prompt ="Enter default location";
-    placeHolder = "europe-west2";
-    validationErrorMessage = "Location can not be empty";
+    let prompt ="Enter default location";
+    let placeHolder = "europe-west2";
+    let validationErrorMessage = "Location can not be empty";
     const defaultLocation = await enterProjectDir(prompt, placeHolder, validationErrorMessage);
 
     if (!defaultLocation) {
@@ -61,4 +58,18 @@ async function enterProjectDir(prompt: string, placeHolder:string, validationErr
     });
 
     return projectDir;
+}
+
+async function openFolderSelector(){
+    const folderUris = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: "Dataform project folder",
+        canSelectFiles: false // only folders selectable
+    });
+
+    if (folderUris && folderUris.length > 0) {
+        return folderUris[0].fsPath;
+    }
+    return undefined;
 }
