@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { getDataformCliCmdBasedOnScope, isDataformWorkspace, runCommandInTerminal } from "./utils";
 import path from 'path';
+import { gcloudComputeRegions } from './constants';
 
 
 export async function initDataformProject(){
@@ -16,20 +17,19 @@ export async function initDataformProject(){
         return;
     }
 
-    let prompt ="Enter default location";
-    let placeHolder = "europe-west2";
+    let placeHolder ="Enter default location. E.g. europe-west2";
     let validationErrorMessage = "Location can not be empty";
-    const defaultLocation = await enterProjectDir(prompt, placeHolder, validationErrorMessage);
+    const defaultLocation = await createSelector(gcloudComputeRegions, placeHolder);
 
     if (!defaultLocation) {
         vscode.window.showInformationMessage("Default location not provided, aborting...");
         return;
     }
 
-    prompt ="Enter GCP project id";
+    let prompt ="Enter GCP project id";
     placeHolder = "gcp-project-id";
     validationErrorMessage = "GCP project id can not be empty";
-    const gcpProjectId = await enterProjectDir(prompt, placeHolder, validationErrorMessage);
+    const gcpProjectId = await createInputBox(prompt, placeHolder, validationErrorMessage);
 
     if (!gcpProjectId) {
         vscode.window.showInformationMessage("GCP project id not provided, aborting...");
@@ -44,8 +44,8 @@ export async function initDataformProject(){
     await vscode.commands.executeCommand('vscode.openFolder', folderUri, { forceNewWindow: false });
 }
 
-async function enterProjectDir(prompt: string, placeHolder:string, validationErrorMessage: string): Promise<string | undefined> {
-    const projectDir = await vscode.window.showInputBox({
+async function createInputBox(prompt: string, placeHolder:string, validationErrorMessage: string): Promise<string | undefined> {
+    const inputValue = await vscode.window.showInputBox({
         prompt: prompt,
         placeHolder: placeHolder,
         ignoreFocusOut: true,  // keeps the input open if user clicks outside
@@ -57,8 +57,15 @@ async function enterProjectDir(prompt: string, placeHolder:string, validationErr
         }
     });
 
-    return projectDir;
+    return inputValue;
 }
+
+async function createSelector(selectionItems:string[], placeHolder: string): Promise<string | undefined>{
+     return await vscode.window.showQuickPick(selectionItems, {
+        placeHolder: placeHolder
+    });
+}
+
 
 async function openFolderSelector(){
     const folderUris = await vscode.window.showOpenDialog({
