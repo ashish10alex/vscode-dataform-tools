@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformCliCmdBasedOnScope, isDataformWorkspace, runCommandInTerminal } from "./utils";
+import { delay, getDataformCliCmdBasedOnScope, isDataformWorkspace, runCommandInTerminal } from "./utils";
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
 
@@ -38,10 +38,14 @@ export async function initDataformProject(){
 
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder=projectDir);
     runCommandInTerminal(`${customDataformCliPath} init --project-dir "${projectDir}" --default-database "${gcpProjectId}" --default-location "${defaultLocation}"`);
+    // NOTE: wait for half a second before a new vscode workspace at projectDir
+    // NOTE: otherwise opening the folder make the terminal command not run as the terminal context is somehow lost
+    await delay(1500); 
 
     const folderUri = vscode.Uri.file(path.resolve(projectDir));
 
     await vscode.commands.executeCommand('vscode.openFolder', folderUri, { forceNewWindow: false });
+
 }
 
 async function createInputBox(prompt: string, placeHolder:string, validationErrorMessage: string): Promise<string | undefined> {
