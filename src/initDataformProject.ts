@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { delay, getDataformCliCmdBasedOnScope, isDataformWorkspace, runCommandInTerminal } from "./utils";
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
+import { ProjectsClient } from '@google-cloud/resource-manager';
 
 
 export async function initDataformProject(){
@@ -17,19 +18,26 @@ export async function initDataformProject(){
         return;
     }
 
-    let placeHolder ="Enter default location. E.g. europe-west2";
-    let validationErrorMessage = "Location can not be empty";
+    let placeHolder ="Select default location. E.g. europe-west2";
     const defaultLocation = await createSelector(gcloudComputeRegions, placeHolder);
 
     if (!defaultLocation) {
         vscode.window.showInformationMessage("Default location not provided, aborting...");
         return;
     }
+    placeHolder = "Select GCP project id";
+    let gcpProjectIds = [];
 
-    let prompt ="Enter GCP project id";
-    placeHolder = "gcp-project-id";
-    validationErrorMessage = "GCP project id can not be empty";
-    const gcpProjectId = await createInputBox(prompt, placeHolder, validationErrorMessage);
+    //TODO: need to check what happens when there is an error ?
+    const client = new ProjectsClient();
+    const projects = client.searchProjectsAsync();
+    vscode.window.showInformationMessage("Loading available GCP projects...");
+    for await (const project of projects) {
+        if(project.projectId){
+            gcpProjectIds.push(project.projectId);
+        }
+    }
+    const gcpProjectId = await createSelector(gcpProjectIds, placeHolder);
 
     if (!gcpProjectId) {
         vscode.window.showInformationMessage("GCP project id not provided, aborting...");
@@ -48,25 +56,9 @@ export async function initDataformProject(){
 
 }
 
-async function createInputBox(prompt: string, placeHolder:string, validationErrorMessage: string): Promise<string | undefined> {
-    const inputValue = await vscode.window.showInputBox({
-        prompt: prompt,
-        placeHolder: placeHolder,
-        ignoreFocusOut: true,  // keeps the input open if user clicks outside
-        validateInput: (input) => {
-            if (!input || input.trim() === "") {
-                return validationErrorMessage;
-            }
-            return null;
-        }
-    });
-
-    return inputValue;
-}
-
 async function createSelector(selectionItems:string[], placeHolder: string): Promise<string | undefined>{
      return await vscode.window.showQuickPick(selectionItems, {
-        placeHolder: placeHolder
+        placeHolder: placeHolder,
     });
 }
 
