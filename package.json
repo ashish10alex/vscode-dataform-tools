@@ -45,13 +45,14 @@
                 {
                     "id": "queryResultsContainer",
                     "title": "Dataform tools",
-                    "icon": "path/to/icon.svg"
+                    "icon": ""
                 }
             ]
         },
         "views": {
             "queryResultsContainer": [
                 {
+                    "icon": "",
                     "type": "webview",
                     "id": "queryResultsView",
                     "name": "Dataform tools"
