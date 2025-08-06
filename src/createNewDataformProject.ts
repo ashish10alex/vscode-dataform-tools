@@ -5,7 +5,7 @@ import { gcloudComputeRegions } from './constants';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 
 
-export async function initDataformProject(){
+export async function createNewDataformProject(){
 
     const projectDir = await openFolderSelector();
     if (!projectDir) {
@@ -48,7 +48,7 @@ export async function initDataformProject(){
     runCommandInTerminal(`${customDataformCliPath} init --project-dir "${projectDir}" --default-database "${gcpProjectId}" --default-location "${defaultLocation}"`);
     // NOTE: wait for half a second before a new vscode workspace at projectDir
     // NOTE: otherwise opening the folder make the terminal command not run as the terminal context is somehow lost
-    await delay(1500); 
+    await delay(2500); 
 
     const folderUri = vscode.Uri.file(path.resolve(projectDir));
 
