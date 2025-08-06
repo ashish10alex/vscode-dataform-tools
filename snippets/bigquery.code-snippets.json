@@ -810,7 +810,10 @@
     "SAFE_DIVIDE()": {
       "prefix": "safe_divide",
       "body": "SAFE_DIVIDE(${1:X}, ${2:Y})",
-      "description": "Equivalent to the division operator (`/`)."
+      "description": [
+        "Equivalent to the division operator `(X / Y)`, but returns NULL if an error occurs, such as a division by zero error.",
+        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#safe_divide"
+    ]
     },
     "MOD()": {
       "prefix": "MOD",
