@@ -505,13 +505,40 @@ export class CompiledQueryPanel {
 
             if (curFileActionDescriptor?.columns) {
                 const columnMap = new Map(
-                    curFileActionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
+                    curFileActionDescriptor.columns.map((column: Column) =>  {
+                        //TODO: assumes that there will only be one level of nesting. We can do something dynamically by recursively searching
+                        // NOTE: record type columns have their path as [BASE_COLUMN_NAME, NESTED_COLUMN_NAME]. Which is why we have to do column.path[1]
+                        if(column.path.length === 2){
+                            return [column.path[1], column.description];
+                        }
+                         return[column.path[0], column.description || ""];
+                        })
                 );
 
                 compiledQuerySchema.fields.forEach((columnMetadata: ColumnMetadata) => {
-                    const description = columnMap.get(columnMetadata.name);
-                    if (description !== undefined) {
-                        columnMetadata.description = description;
+                    if(columnMetadata?.name){
+                        const description = columnMap.get(columnMetadata.name);
+                        if (description !== undefined) {
+                            columnMetadata.description = description;
+                        }
+                    }
+                    if (columnMetadata?.fields){
+                        columnMetadata?.fields.forEach((columnMetadata: ColumnMetadata) => {
+                            if(columnMetadata?.name){
+                                const description = columnMap.get(columnMetadata.name);
+                                if (description !== undefined) {
+                                    columnMetadata.description = description;
+                                }
+                                compiledQuerySchema?.fields.push(
+                                    {
+                                        name: columnMetadata.name,
+                                        type: columnMetadata.type,
+                                        description: columnMetadata.description,
+                                    }
+
+                                );
+                            }
+                        });
                     }
                 });
             }
