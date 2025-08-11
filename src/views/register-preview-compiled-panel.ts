@@ -505,13 +505,38 @@ export class CompiledQueryPanel {
 
             if (curFileActionDescriptor?.columns) {
                 const columnMap = new Map(
-                    curFileActionDescriptor.columns.map((column: Column) => [column.path[0], column.description || ""])
+                    curFileActionDescriptor.columns.map((column: Column) =>  {
+                        if(column.path.length === 2){
+                            return [column.path[1], column.description];
+                        }
+                         return[column.path[0], column.description || ""];
+                        })
                 );
 
                 compiledQuerySchema.fields.forEach((columnMetadata: ColumnMetadata) => {
-                    const description = columnMap.get(columnMetadata.name);
-                    if (description !== undefined) {
-                        columnMetadata.description = description;
+                    if(columnMetadata?.name){
+                        const description = columnMap.get(columnMetadata.name);
+                        if (description !== undefined) {
+                            columnMetadata.description = description;
+                        }
+                    }
+                    if (columnMetadata?.fields){
+                        columnMetadata?.fields.forEach((columnMetadata: ColumnMetadata) => {
+                            if(columnMetadata?.name){
+                                const description = columnMap.get(columnMetadata.name);
+                                if (description !== undefined) {
+                                    columnMetadata.description = description;
+                                }
+                                compiledQuerySchema?.fields.push(
+                                    {
+                                        name: columnMetadata.name,
+                                        type: columnMetadata.type,
+                                        description: columnMetadata.description,
+                                    }
+
+                                );
+                            }
+                        });
                     }
                 });
             }

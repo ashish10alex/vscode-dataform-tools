@@ -193,11 +193,19 @@ export type GraphError = {
     fileName: string;
 };
 
+interface ColumnMetadataCore {
+    name: string;
+    type: string;
+    mode?: string;
+    description?: string;
+}
+
 export interface ColumnMetadata {
     name: string;
     type: string;
     mode?: string;
     description?: string;
+    fields?: ColumnMetadataCore[]
 };
 
 export interface ErrorLocation {
