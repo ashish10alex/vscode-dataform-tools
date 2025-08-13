@@ -15,6 +15,10 @@ let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
+export function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function getNonce() {
     let text = "";
     const possible =
