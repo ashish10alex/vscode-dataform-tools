@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.1...v0.16.2) (2025-08-13)
+
+
+### Features
+
+* command to create a new Dataform project ([#177](https://github.com/ashish10alex/vscode-dataform-tools/issues/177)) ([c5a6f60](https://github.com/ashish10alex/vscode-dataform-tools/commit/c5a6f603f98fd9f39bdae75c5582cfcbba20d73f))
+* show hover description for columns of type record ([#178](https://github.com/ashish10alex/vscode-dataform-tools/issues/178)) ([8ed4eb7](https://github.com/ashish10alex/vscode-dataform-tools/commit/8ed4eb75edde82e1c4d0f8b1cc1b941748a47ac3))
+
 ### [0.16.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.0...v0.16.1) (2025-07-24)
 
 
