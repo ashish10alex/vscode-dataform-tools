@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.2...v0.16.3) (2025-08-14)
+
+
+### Bug Fixes
+
+* **windows:** running multiple files using multi select ([4a64c66](https://github.com/ashish10alex/vscode-dataform-tools/commit/4a64c666b42d1ac9665cb660ec89b92dfb719b88))
+
 ### [0.16.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.1...v0.16.2) (2025-08-13)
 
 
