@@ -240,7 +240,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           <link href="${customTabulatorCss}" rel="stylesheet">
       </head>
 
-      <body>
+      <body id="query-results-body">
 
       <div class="topnav">
         <a class="active" href="#results">Results</a>
@@ -296,7 +296,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       <div id="resultBlock">
         <p  style="color: red"><span id="bigqueryError"></span></p>
-        <table id="bigqueryResults" class="display" width="100%"></table>
+        <table id="bigqueryResults" width="100%"></table>
       </div>
 
       </body>
