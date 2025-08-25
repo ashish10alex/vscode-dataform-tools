@@ -15,6 +15,10 @@ let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
+export function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function getNonce() {
     let text = "";
     const possible =
@@ -871,7 +875,12 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
     const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
     let files = await vscode.workspace.findFiles(globPattern);
-    const fileList = files.map(file => vscode.workspace.asRelativePath(file));
+    const fileList = files.map((file) => {
+        if (isRunningOnWindows) {
+            return path.win32.normalize(vscode.workspace.asRelativePath(file));
+        }
+        return vscode.workspace.asRelativePath(file);
+    });
     return fileList;
 }
 
