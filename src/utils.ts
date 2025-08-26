@@ -10,6 +10,7 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDa
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
+import { ProjectsClient } from '@google-cloud/resource-manager';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -17,6 +18,37 @@ export let declarationsAndTargets: string[] = [];
 
 export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function createSelector(selectionItems:string[], placeHolder: string): Promise<string | undefined>{
+     return await vscode.window.showQuickPick(selectionItems, {
+        placeHolder: placeHolder,
+    });
+}
+
+export async function getLocationOfGcpProject(projectId: string){
+    const client = new ProjectsClient();
+    const [project] = await client.getProject({
+        name: `projects/${projectId}`
+    });
+    return project.labels?.application_region;
+}
+
+
+
+export async function getGcpProjectIds(){
+    let gcpProjectIds = [];
+
+    //TODO: need to check what happens when there is an error ?
+    const client = new ProjectsClient();
+    const projects = client.searchProjectsAsync();
+    vscode.window.showInformationMessage("Loading available GCP projects...");
+    for await (const project of projects) {
+        if(project.projectId){
+            gcpProjectIds.push(project.projectId);
+        }
+    }
+    return gcpProjectIds;
 }
 
 export function getNonce() {

@@ -97,7 +97,7 @@ interface ProjectConfig {
     assertionSchema: string;
     defaultDatabase: string;
     tablePrefix: string;
-    defualtLocation: string;
+    defaultLocation: string;
 }
 
 export interface Operation {
