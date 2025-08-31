@@ -200,6 +200,9 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'lineageNavigation':
+                console.log(message.value);
+                return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");

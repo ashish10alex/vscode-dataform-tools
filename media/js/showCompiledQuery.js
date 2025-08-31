@@ -349,9 +349,33 @@ window.addEventListener('message', event => {
 
                 const li = document.createElement('li');
                 const link = document.createElement('a');
+
+                // Create the icon (SVG example)
+                const icon = document.createElement('span');
+                icon.id = `${fullTableId}`;
+                icon.innerHTML = `
+                <svg 
+                    width="16" height="16" viewBox="0 0 16 16" fill="none" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    style="vertical-align: middle; margin-right: 5px;">
+                    <path d="M10 2L14 2L14 6" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M6 10L14 2" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="2" y="2" width="8" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                `;
+                 icon.onclick = function() {
+                    console.log(`icon ${icon.id} clicked`);
+                    vscode.postMessage({
+                        command: 'lineageNavigation',
+                        value: `${icon.id}`
+                    });
+                };
+
+
                 link.href = getUrlToNavigateToTableInBigQuery(tableTargets[j].database, tableTargets[j].schema, tableTargets[j].name);
                 link.textContent = fullTableId;
                 li.appendChild(link);
+                li.appendChild(icon); // Add icon before the link
                 dependencyList.appendChild(li);
             }
         }
@@ -371,9 +395,33 @@ window.addEventListener('message', event => {
 
                     const li = document.createElement('li');
                     const link = document.createElement('a');
+
+                    const icon = document.createElement('span');
+                    icon.id = `${fullTableId}`;
+                    icon.innerHTML = `
+                    <svg 
+                        width="16" height="16" viewBox="0 0 16 16" fill="none" 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        style="vertical-align: middle; margin-right: 5px;">
+                        <path d="M10 2L14 2L14 6" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M6 10L14 2" stroke="currentColor" stroke-width="1.5"/>
+                        <rect x="2" y="2" width="8" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    `;
+
+                    icon.onclick = function() {
+                        console.log(`icon ${icon.id} clicked`);
+                        vscode.postMessage({
+                            command: 'lineageNavigation',
+                            value: `${icon.id}`
+                        });
+                    };
+
+
                     link.href = getUrlToNavigateToTableInBigQuery(dependents[j].database, dependents[j].schema, dependents[j].name);
                     link.textContent = fullTableId;
                     li.appendChild(link);
+                    li.appendChild(icon); // Add icon before the link
                     dependentsList.appendChild(li);
             }
             depsDiv.appendChild(downstreamHeader);
