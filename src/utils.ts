@@ -56,7 +56,7 @@ export async function openFileOnLeftEditorPane(filePath: string){
     }
 }
 
-export function findModelFromTarget(target:any, model: Operation[] | Assertion[] | Table[]): string | undefined {
+export function findModelFromTarget(target:any, model: Operation[] | Assertion[] | Table[] | Declarations[]): string | undefined {
     for (let i = 0; i < model.length; i++) {
         if (target.tableId === model[i].target.name && target.projectId === model[i].target.database && target.datasetId === model[i].target.schema) {
             return model[i].fileName;

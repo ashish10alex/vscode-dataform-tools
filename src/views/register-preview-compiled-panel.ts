@@ -214,12 +214,14 @@ export class CompiledQueryPanel {
                 let tables = CACHED_COMPILED_DATAFORM_JSON?.tables;
                 let operations = CACHED_COMPILED_DATAFORM_JSON?.operations;
                 let assertions = CACHED_COMPILED_DATAFORM_JSON?.assertions;
+                let declarations = CACHED_COMPILED_DATAFORM_JSON?.declarations;
 
-                const modelTypes = [tables, operations, assertions];
+                const modelTypes = [tables, operations, assertions, declarations];
                 for (const model of modelTypes) {
                     if (model) {
                         const filePath = findModelFromTarget({ projectId, tableId, datasetId }, model);
                         if (filePath) {
+                            // need to implement navigation to the line where declaration is being defined
                             openFileOnLeftEditorPane(filePath);
                         }
                     }
