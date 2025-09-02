@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, Operation, Assertion, Table } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -202,6 +202,57 @@ export class CompiledQueryPanel {
             switch (message.command) {
               case 'lineageNavigation':
                 console.log(message.value);
+                const projectId = message.value.split(".")[0];
+                const datasetId = message.value.split(".")[1];
+                const tableId = message.value.split(".")[2];
+                console.log(`projectId ${projectId} datasetId ${datasetId} tableId ${tableId}`);
+
+                let dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+                // let declarations = dataformCompiledJson?.declarations;
+                let tables = dataformCompiledJson?.tables;
+                let operations = dataformCompiledJson?.operations;
+                let assertions = dataformCompiledJson?.assertions;
+                // let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
+
+                function getSearchTermLocationFromStruct(target:any, struct: Operation[] | Assertion[] | Table[]): string | undefined {
+                    for (let i = 0; i < struct.length; i++) {
+                        if (target.tableId === struct[i].target.name && target.projectId === struct[i].target.database && target.datasetId === struct[i].target.schema) {
+                            return struct[i].fileName;
+                        }
+                    }
+                    return undefined;
+                }
+
+                let filePath;
+                if (tables) {
+                    filePath = getSearchTermLocationFromStruct({projectId, tableId, datasetId}, tables);
+                    console.log(filePath);
+
+                    const workspaceFolder = await getWorkspaceFolder();
+                    if(workspaceFolder && filePath){
+                        const fullFilePath = path.join(workspaceFolder, filePath);
+                        const filePathUri = vscode.Uri.file(fullFilePath);
+                        const document = await vscode.workspace.openTextDocument(filePathUri);
+
+                        vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
+                            const range = new vscode.Range(0, 0, 0, 0);
+                            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                            editor.selection = new vscode.Selection(0, 0, 0, 0);
+                        });
+                    }
+
+                }
+
+                if (operations) {
+                    filePath = getSearchTermLocationFromStruct(tableId, operations);
+                    console.log(filePath);
+                }
+
+                if (assertions) {
+                    filePath = getSearchTermLocationFromStruct(tableId, assertions);
+                    console.log(filePath);
+                }
+
                 return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();
@@ -311,6 +362,7 @@ export class CompiledQueryPanel {
                 });
                 return;
             }
+            return;
           },
           undefined,
           undefined,
