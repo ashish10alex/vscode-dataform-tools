@@ -205,14 +205,11 @@ export class CompiledQueryPanel {
                 const projectId = message.value.split(".")[0];
                 const datasetId = message.value.split(".")[1];
                 const tableId = message.value.split(".")[2];
-                console.log(`projectId ${projectId} datasetId ${datasetId} tableId ${tableId}`);
 
                 let dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-                // let declarations = dataformCompiledJson?.declarations;
                 let tables = dataformCompiledJson?.tables;
                 let operations = dataformCompiledJson?.operations;
                 let assertions = dataformCompiledJson?.assertions;
-                // let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
 
                 function getSearchTermLocationFromStruct(target:any, struct: Operation[] | Assertion[] | Table[]): string | undefined {
                     for (let i = 0; i < struct.length; i++) {
@@ -223,11 +220,7 @@ export class CompiledQueryPanel {
                     return undefined;
                 }
 
-                let filePath;
-                if (tables) {
-                    filePath = getSearchTermLocationFromStruct({projectId, tableId, datasetId}, tables);
-                    console.log(filePath);
-
+                async function openFileOnLeftEditorPane(filePath: string){
                     const workspaceFolder = await getWorkspaceFolder();
                     if(workspaceFolder && filePath){
                         const fullFilePath = path.join(workspaceFolder, filePath);
@@ -240,19 +233,17 @@ export class CompiledQueryPanel {
                             editor.selection = new vscode.Selection(0, 0, 0, 0);
                         });
                     }
-
                 }
-
-                if (operations) {
-                    filePath = getSearchTermLocationFromStruct(tableId, operations);
-                    console.log(filePath);
+                
+                const sets = [tables, operations, assertions];
+                for (const set of sets) {
+                    if (set) {
+                        const filePath = getSearchTermLocationFromStruct({ projectId, tableId, datasetId }, set);
+                        if (filePath) {
+                            openFileOnLeftEditorPane(filePath);
+                        }
+                    }
                 }
-
-                if (assertions) {
-                    filePath = getSearchTermLocationFromStruct(tableId, assertions);
-                    console.log(filePath);
-                }
-
                 return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();
