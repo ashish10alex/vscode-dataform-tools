@@ -1,10 +1,10 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, Operation, Assertion, Table } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -206,39 +206,19 @@ export class CompiledQueryPanel {
                 const datasetId = message.value.split(".")[1];
                 const tableId = message.value.split(".")[2];
 
-                let dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
-                let tables = dataformCompiledJson?.tables;
-                let operations = dataformCompiledJson?.operations;
-                let assertions = dataformCompiledJson?.assertions;
-
-                function getSearchTermLocationFromStruct(target:any, struct: Operation[] | Assertion[] | Table[]): string | undefined {
-                    for (let i = 0; i < struct.length; i++) {
-                        if (target.tableId === struct[i].target.name && target.projectId === struct[i].target.database && target.datasetId === struct[i].target.schema) {
-                            return struct[i].fileName;
-                        }
-                    }
-                    return undefined;
+                if(!CACHED_COMPILED_DATAFORM_JSON){
+                    // this should never happen as the view exposing the dependents can only be created when compilation is done;
+                    vscode.window.showWarningMessage(`compile Dataform project before navigating to dependencies & dependents`);
                 }
 
-                async function openFileOnLeftEditorPane(filePath: string){
-                    const workspaceFolder = await getWorkspaceFolder();
-                    if(workspaceFolder && filePath){
-                        const fullFilePath = path.join(workspaceFolder, filePath);
-                        const filePathUri = vscode.Uri.file(fullFilePath);
-                        const document = await vscode.workspace.openTextDocument(filePathUri);
+                let tables = CACHED_COMPILED_DATAFORM_JSON?.tables;
+                let operations = CACHED_COMPILED_DATAFORM_JSON?.operations;
+                let assertions = CACHED_COMPILED_DATAFORM_JSON?.assertions;
 
-                        vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
-                            const range = new vscode.Range(0, 0, 0, 0);
-                            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-                            editor.selection = new vscode.Selection(0, 0, 0, 0);
-                        });
-                    }
-                }
-                
-                const sets = [tables, operations, assertions];
-                for (const set of sets) {
-                    if (set) {
-                        const filePath = getSearchTermLocationFromStruct({ projectId, tableId, datasetId }, set);
+                const modelTypes = [tables, operations, assertions];
+                for (const model of modelTypes) {
+                    if (model) {
+                        const filePath = findModelFromTarget({ projectId, tableId, datasetId }, model);
                         if (filePath) {
                             openFileOnLeftEditorPane(filePath);
                         }
