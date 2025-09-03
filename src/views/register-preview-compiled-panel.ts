@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
@@ -216,16 +216,44 @@ export class CompiledQueryPanel {
                 let assertions = CACHED_COMPILED_DATAFORM_JSON?.assertions;
                 let declarations = CACHED_COMPILED_DATAFORM_JSON?.declarations;
 
-                const modelTypes = [tables, operations, assertions, declarations];
+                const modelTypes = [tables, operations, assertions];
                 for (const model of modelTypes) {
                     if (model) {
-                        const filePath = findModelFromTarget({ projectId, tableId, datasetId }, model);
-                        if (filePath) {
-                            // need to implement navigation to the line where declaration is being defined
-                            openFileOnLeftEditorPane(filePath);
+                        const result = findModelFromTarget({ projectId, tableId, datasetId }, model);
+                        if(result){
+                            const { filePath } = result;
+                            if (filePath) {
+                                // need to implement navigation to the line where declaration is being defined
+                                openFileOnLeftEditorPane(filePath);
+                                return;
+                            }
                         }
                     }
                 }
+
+                if(declarations){
+                    const result = findModelFromTarget({ projectId, tableId, datasetId }, declarations);
+                    if(result){
+                            const { filePath, targetName } = result;
+                            const workspaceFolder = await getWorkspaceFolder();
+                            if(workspaceFolder){
+                                const fullFilePath = path.join(workspaceFolder, filePath);
+                                const filePathUri = vscode.Uri.file(fullFilePath);
+                                const document = await vscode.workspace.openTextDocument(filePathUri);
+                                const position = await getPostionOfSourceDeclaration(filePathUri, targetName);
+
+                                if(position){
+                                    vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
+                                            const range = new vscode.Range(position, position);
+                                            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                                            editor.selection = new vscode.Selection(position, position);
+                                    });
+                                    return;
+                                }
+                            }
+                }
+                }
+
                 return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();

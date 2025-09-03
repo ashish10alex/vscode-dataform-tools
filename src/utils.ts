@@ -56,10 +56,10 @@ export async function openFileOnLeftEditorPane(filePath: string){
     }
 }
 
-export function findModelFromTarget(target:any, model: Operation[] | Assertion[] | Table[] | Declarations[]): string | undefined {
+export function findModelFromTarget(target:any, model: Operation[] | Assertion[] | Table[] | Declarations[]): { filePath: string; targetName: string } | undefined {
     for (let i = 0; i < model.length; i++) {
         if (target.tableId === model[i].target.name && target.projectId === model[i].target.database && target.datasetId === model[i].target.schema) {
-            return model[i].fileName;
+            return { filePath: model[i].fileName, targetName: model[i].target.name };
         }
     }
     return undefined;
