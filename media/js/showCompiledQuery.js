@@ -350,7 +350,6 @@ window.addEventListener('message', event => {
                 const li = document.createElement('li');
                 const link = document.createElement('a');
 
-                // Create the icon (SVG example)
                 const icon = document.createElement('span');
                 icon.id = `${fullTableId}`;
                 icon.innerHTML = `
