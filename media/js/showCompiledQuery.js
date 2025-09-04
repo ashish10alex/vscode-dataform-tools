@@ -375,7 +375,6 @@ window.addEventListener('message', event => {
                 </svg>
                 `;
                  icon.onclick = function() {
-                    console.log(`icon ${icon.id} clicked`);
                     vscode.postMessage({
                         command: 'lineageNavigation',
                         value: `${icon.id}`
@@ -421,7 +420,6 @@ window.addEventListener('message', event => {
                     `;
 
                     icon.onclick = function() {
-                        console.log(`icon ${icon.id} clicked`);
                         vscode.postMessage({
                             command: 'lineageNavigation',
                             value: `${icon.id}`
