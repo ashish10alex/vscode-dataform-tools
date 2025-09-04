@@ -20,6 +20,29 @@ function createCopyButton(modelName){
     `;
 }
 
+const iconHtml = `
+<style>
+    svg:hover {
+        cursor: pointer; /* Changes the cursor to a hand icon */
+        transform: scale(1.1); /* Slightly increases the size */
+        stroke: #007acc; /* Changes the stroke color, if desired */
+        transition: transform 0.2s ease-in-out; /* Adds a smooth transition */
+    }
+
+    svg:active {
+        transform: scale(0.95); /* Slightly decreases the size to give a "press" effect */
+    }
+</style>
+<svg 
+width="16" height="16" viewBox="0 0 16 16" fill="none" 
+xmlns="http://www.w3.org/2000/svg" 
+style="vertical-align: middle; margin-right: 5px;">
+<path d="M10 2L14 2L14 6" stroke="currentColor" stroke-width="1.5"/>
+<path d="M6 10L14 2" stroke="currentColor" stroke-width="1.5"/>
+<rect x="2" y="2" width="8" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+</svg>
+`;
+
 
 const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
@@ -352,28 +375,7 @@ window.addEventListener('message', event => {
 
                 const icon = document.createElement('span');
                 icon.id = `${fullTableId}`;
-                icon.innerHTML = `
-                <style>
-                    svg:hover {
-                        cursor: pointer; /* Changes the cursor to a hand icon */
-                        transform: scale(1.1); /* Slightly increases the size */
-                        stroke: #007acc; /* Changes the stroke color, if desired */
-                        transition: transform 0.2s ease-in-out; /* Adds a smooth transition */
-                    }
-
-                    svg:active {
-                        transform: scale(0.95); /* Slightly decreases the size to give a "press" effect */
-                    }
-                    </style>
-                <svg 
-                    width="16" height="16" viewBox="0 0 16 16" fill="none" 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    style="vertical-align: middle; margin-right: 5px;">
-                    <path d="M10 2L14 2L14 6" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M6 10L14 2" stroke="currentColor" stroke-width="1.5"/>
-                    <rect x="2" y="2" width="8" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                `;
+                icon.innerHTML = iconHtml;
                  icon.onclick = function() {
                     vscode.postMessage({
                         command: 'lineageNavigation',
@@ -408,16 +410,7 @@ window.addEventListener('message', event => {
 
                     const icon = document.createElement('span');
                     icon.id = `${fullTableId}`;
-                    icon.innerHTML = `
-                    <svg 
-                        width="16" height="16" viewBox="0 0 16 16" fill="none" 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        style="vertical-align: middle; margin-right: 5px;">
-                        <path d="M10 2L14 2L14 6" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="M6 10L14 2" stroke="currentColor" stroke-width="1.5"/>
-                        <rect x="2" y="2" width="8" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                    </svg>
-                    `;
+                    icon.innerHTML = iconHtml;
 
                     icon.onclick = function() {
                         vscode.postMessage({
