@@ -223,8 +223,8 @@ export class CompiledQueryPanel {
                         if(result){
                             const { filePath } = result;
                             if (filePath) {
-                                // need to implement navigation to the line where declaration is being defined
-                                openFileOnLeftEditorPane(filePath);
+                                const position =  new vscode.Position(0, 0);
+                                openFileOnLeftEditorPane(filePath, position);
                                 return;
                             }
                         }
@@ -239,15 +239,10 @@ export class CompiledQueryPanel {
                             if(workspaceFolder){
                                 const fullFilePath = path.join(workspaceFolder, filePath);
                                 const filePathUri = vscode.Uri.file(fullFilePath);
-                                const document = await vscode.workspace.openTextDocument(filePathUri);
                                 const position = await getPostionOfSourceDeclaration(filePathUri, targetName);
 
                                 if(position){
-                                    vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
-                                            const range = new vscode.Range(position, position);
-                                            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-                                            editor.selection = new vscode.Selection(position, position);
-                                    });
+                                    openFileOnLeftEditorPane(filePath, position);
                                     return;
                                 }
                             }

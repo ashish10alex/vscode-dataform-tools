@@ -41,7 +41,7 @@ function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, rel
 }
 
 
-export async function openFileOnLeftEditorPane(filePath: string){
+export async function openFileOnLeftEditorPane(filePath: string, position: vscode.Position){
     const workspaceFolder = await getWorkspaceFolder();
     if(workspaceFolder && filePath){
         const fullFilePath = path.join(workspaceFolder, filePath);
@@ -49,9 +49,9 @@ export async function openFileOnLeftEditorPane(filePath: string){
         const document = await vscode.workspace.openTextDocument(filePathUri);
 
         vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
-            const range = new vscode.Range(0, 0, 0, 0);
+            const range = new vscode.Range(position, position);
             editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-            editor.selection = new vscode.Selection(0, 0, 0, 0);
+            editor.selection = new vscode.Selection(position, position);
         });
     }
 }
