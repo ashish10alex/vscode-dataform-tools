@@ -385,7 +385,7 @@ window.addEventListener('message', event => {
                 link.href = getUrlToNavigateToTableInBigQuery(tableTargets[j].database, tableTargets[j].schema, tableTargets[j].name);
                 link.textContent = fullTableId;
                 li.appendChild(link);
-                li.appendChild(icon); // Add icon before the link
+                li.appendChild(icon);
                 dependencyList.appendChild(li);
             }
         }
