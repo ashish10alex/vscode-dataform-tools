@@ -40,6 +40,32 @@ function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, rel
     `;
 }
 
+
+export async function openFileOnLeftEditorPane(filePath: string, position: vscode.Position){
+    const workspaceFolder = await getWorkspaceFolder();
+    if(workspaceFolder && filePath){
+        const fullFilePath = path.join(workspaceFolder, filePath);
+        const filePathUri = vscode.Uri.file(fullFilePath);
+        const document = await vscode.workspace.openTextDocument(filePathUri);
+
+        vscode.window.showTextDocument(document, vscode.ViewColumn.One, false).then(editor => {
+            const range = new vscode.Range(position, position);
+            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+            editor.selection = new vscode.Selection(position, position);
+        });
+    }
+}
+
+export function findModelFromTarget(target:any, model: Operation[] | Assertion[] | Table[] | Declarations[]): { filePath: string; targetName: string } | undefined {
+    for (let i = 0; i < model.length; i++) {
+        if (target.tableId === model[i].target.name && target.projectId === model[i].target.database && target.datasetId === model[i].target.schema) {
+            return { filePath: model[i].fileName, targetName: model[i].target.name };
+        }
+    }
+    return undefined;
+}
+
+
 export function formatBytes(bytes: number) {
     if (bytes === 0) { return '0 B'; }
 
