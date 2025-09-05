@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.4...v0.16.5) (2025-09-04)
+
+
+### Features
+
+* navigate to dependencies and dependents  ([#186](https://github.com/ashish10alex/vscode-dataform-tools/issues/186)) ([9ef872b](https://github.com/ashish10alex/vscode-dataform-tools/commit/9ef872b8ed6293be3289cbc24fd8ac2451d9c23f))
+
+### [0.16.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.3...v0.16.4) (2025-08-26)
+
+
+### Bug Fixes
+
+* prevent data preview table from overflowing ([#184](https://github.com/ashish10alex/vscode-dataform-tools/issues/184)) ([d45043a](https://github.com/ashish10alex/vscode-dataform-tools/commit/d45043a92877085ebc65cdba93bf6c7cf83d5728))
+
 ### [0.16.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.2...v0.16.3) (2025-08-14)
 
 

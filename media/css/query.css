@@ -1,3 +1,16 @@
+/* Base page styles to prevent overflows */
+html, body {
+	width: 100%;
+	height: 100%;
+}
+
+body#query-results-body {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	padding: 0;
+}
+
 /* Base button styles */
 button {
 	padding: 5px 10px;
@@ -235,8 +248,20 @@ button:disabled,
 	cursor: pointer;
 }
 
+
+#resultBlock {
+	display: flex;
+	flex-direction: column;
+	/* Disable the contents from overflowing this container, forcing the table to show its scrollbars instead */
+	overflow: hidden;
+
+	/* Make block fill the remaining space */
+	flex-grow: 1;
+	flex-shrink: 1;
+}
+
 #bigqueryResults {
-	margin-top: 20px;
+	flex-grow: 1;
 }
 
 #queryLimit {
@@ -1103,3 +1128,5 @@ body.vscode-dark .copy-model-button:hover {
     opacity: 1;
     transform: translateY(0);
 }
+
+

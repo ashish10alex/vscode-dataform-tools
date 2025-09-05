@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runFiles";
@@ -200,6 +200,56 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'lineageNavigation':
+                console.log(message.value);
+                const projectId = message.value.split(".")[0];
+                const datasetId = message.value.split(".")[1];
+                const tableId = message.value.split(".")[2];
+
+                if(!CACHED_COMPILED_DATAFORM_JSON){
+                    // this should never happen as the view exposing the dependents can only be created when compilation is done;
+                    vscode.window.showWarningMessage(`compile Dataform project before navigating to dependencies & dependents`);
+                }
+
+                let tables = CACHED_COMPILED_DATAFORM_JSON?.tables;
+                let operations = CACHED_COMPILED_DATAFORM_JSON?.operations;
+                let assertions = CACHED_COMPILED_DATAFORM_JSON?.assertions;
+                let declarations = CACHED_COMPILED_DATAFORM_JSON?.declarations;
+
+                const modelTypes = [tables, operations, assertions];
+                for (const model of modelTypes) {
+                    if (model) {
+                        const result = findModelFromTarget({ projectId, tableId, datasetId }, model);
+                        if(result){
+                            const { filePath } = result;
+                            if (filePath) {
+                                const position =  new vscode.Position(0, 0);
+                                openFileOnLeftEditorPane(filePath, position);
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                if(declarations){
+                    const result = findModelFromTarget({ projectId, tableId, datasetId }, declarations);
+                    if(result){
+                            const { filePath, targetName } = result;
+                            const workspaceFolder = await getWorkspaceFolder();
+                            if(workspaceFolder){
+                                const fullFilePath = path.join(workspaceFolder, filePath);
+                                const filePathUri = vscode.Uri.file(fullFilePath);
+                                const position = await getPostionOfSourceDeclaration(filePathUri, targetName);
+
+                                if(position){
+                                    openFileOnLeftEditorPane(filePath, position);
+                                    return;
+                                }
+                            }
+                }
+                }
+
+                return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
@@ -308,6 +358,7 @@ export class CompiledQueryPanel {
                 });
                 return;
             }
+            return;
           },
           undefined,
           undefined,

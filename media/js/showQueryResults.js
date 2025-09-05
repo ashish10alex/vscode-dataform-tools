@@ -337,11 +337,11 @@ window.addEventListener('message', event => {
         }
 
         // Ensure result block is visible and clear any previous table
-        document.getElementById('resultBlock').style.display = 'block';
+        document.getElementById('resultBlock').style.removeProperty('display');
         document.getElementById('bigqueryResults').innerHTML = '';
 
         // Show the table
-        document.getElementById('bigqueryResults').style.display = 'table';
+        document.getElementById('bigqueryResults').style.removeProperty('display');
 
         createTabulatorTable("#bigqueryResults", results, columns, {
             height: "100%",
