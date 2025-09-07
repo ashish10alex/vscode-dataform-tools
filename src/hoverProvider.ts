@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+const { BigQuery } = require('@google-cloud/bigquery');
 import {
   getWorkspaceFolder,
   getTextByLineRange,
@@ -115,11 +116,37 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
    return visit(sourceFile);
 }
 
+async function getTableSchema(projectId: string, datasetId:string, tableId:string) {
+  try {
 
-function getTableInformationFromRef(
+  const bigqueryClient = new BigQuery({ projectId });
+
+    if(bigqueryClient){
+
+    const table = bigqueryClient.dataset(datasetId).table(tableId);
+
+    const [metadata] = await table.getMetadata();
+    const schema = metadata.schema;
+
+     if (schema && schema.fields) {
+      schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
+     }
+
+    return import('tablemark').then(({ default: tablemark }) => {
+      const output = tablemark(schema.fields);
+      return output;
+    });
+    }
+  } catch (err) {
+    console.error('Error:', err);
+  }
+  return ``;
+}
+
+async function getTableInformationFromRef(
   searchTerm: string,
   struct: Table[]
-): vscode.Hover | undefined {
+): Promise<vscode.Hover | undefined> {
   let hoverMeta: vscode.Hover | undefined;
   for (let i = 0; i < struct.length; i++) {
     let targetName = struct[i].target.name;
@@ -130,11 +157,7 @@ function getTableInformationFromRef(
       const partition = struct[i].bigquery?.partitionBy 
         ? `**Partition:** \`${struct[i].bigquery.partitionBy}\`` 
         : '';
-      const dependencies = struct[i].dependencyTargets
-        ? `**Dependencies:**\n${struct[i].dependencyTargets
-            .map(dep => `- \`${dep.database}.${dep.schema}.${dep.name}\``)
-            .join('\n')}`
-        : '';
+      const tableSchema = await getTableSchema(struct[i].target.database, struct[i].target.schema, struct[i].target.name);
 
       const hoverMarkdownString = new vscode.MarkdownString();
       hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
@@ -142,8 +165,8 @@ function getTableInformationFromRef(
       if (partition) {
         hoverMarkdownString.appendMarkdown(`${partition}\n\n`);
       }
-      if (dependencies) {
-        hoverMarkdownString.appendMarkdown(`${dependencies}\n`);
+      if (tableSchema) {
+        hoverMarkdownString.appendMarkdown(`${tableSchema}\n`);
       }
 
       hoverMarkdownString.isTrusted = true; // Allows command links
@@ -320,7 +343,10 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         if (searchTerm === declarationName) {
           const markdownTableIdWtLink = getMarkdownTableIdWtLink(declarations[i].target);
           const hoverMarkdownString = new vscode.MarkdownString();
-          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}`);
+          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink} \n`);
+
+          const tableSchema = await getTableSchema(declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
+          hoverMarkdownString.appendMarkdown(tableSchema);
           hoverMarkdownString.isTrusted = true; // Allows command links
           return new vscode.Hover(hoverMarkdownString);
         }
@@ -332,7 +358,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     }
 
     if (tables) {
-      hoverMeta = getTableInformationFromRef(searchTerm, tables);
+      hoverMeta = await getTableInformationFromRef(searchTerm, tables);
     }
     if (hoverMeta) {
       return hoverMeta;
