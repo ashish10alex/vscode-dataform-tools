@@ -361,6 +361,7 @@
         "postcss": "^8.5.2",
         "pretest": "^1.1.0",
         "react-select": "^5.10.0",
+        "tablemark": "^3.1.0",
         "typescript": "^5.7.3"
     }
 }

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+const { BigQuery } = require('@google-cloud/bigquery');
 import {
   getWorkspaceFolder,
   getTextByLineRange,
@@ -115,11 +116,47 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
    return visit(sourceFile);
 }
 
+async function getTableSchemaAsMarkdown(projectId: string, datasetId:string, tableId:string) {
+  try {
 
-function getTableInformationFromRef(
+  const bigqueryClient = new BigQuery({ projectId });
+
+    if(bigqueryClient){
+
+    const table = bigqueryClient.dataset(datasetId).table(tableId);
+
+    const [metadata] = await table.getMetadata();
+    const schema = metadata.schema;
+
+     if (schema && schema.fields) {
+      schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
+      schema.fields.forEach((field:any) => {
+        field.name = field.name || "";
+        field.type = field.type || "";
+        field.description = field.description || "";
+        Object.keys(field).forEach(key => {
+          if (!["name", "type", "description"].includes(key)) {
+            delete field[key];
+          }
+        });
+      });
+}
+
+    return import('tablemark').then(({ default: tablemark }) => {
+      const output = tablemark(schema.fields);
+      return output;
+    });
+    }
+  } catch (err) {
+    console.error('Error:', err);
+  }
+  return ``;
+}
+
+async function getTableInformationFromRef(
   searchTerm: string,
   struct: Table[]
-): vscode.Hover | undefined {
+): Promise<vscode.Hover | undefined> {
   let hoverMeta: vscode.Hover | undefined;
   for (let i = 0; i < struct.length; i++) {
     let targetName = struct[i].target.name;
@@ -130,11 +167,7 @@ function getTableInformationFromRef(
       const partition = struct[i].bigquery?.partitionBy 
         ? `**Partition:** \`${struct[i].bigquery.partitionBy}\`` 
         : '';
-      const dependencies = struct[i].dependencyTargets
-        ? `**Dependencies:**\n${struct[i].dependencyTargets
-            .map(dep => `- \`${dep.database}.${dep.schema}.${dep.name}\``)
-            .join('\n')}`
-        : '';
+      const tableSchema = await getTableSchemaAsMarkdown(struct[i].target.database, struct[i].target.schema, struct[i].target.name);
 
       const hoverMarkdownString = new vscode.MarkdownString();
       hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
@@ -142,8 +175,8 @@ function getTableInformationFromRef(
       if (partition) {
         hoverMarkdownString.appendMarkdown(`${partition}\n\n`);
       }
-      if (dependencies) {
-        hoverMarkdownString.appendMarkdown(`${dependencies}\n`);
+      if (tableSchema) {
+        hoverMarkdownString.appendMarkdown(`${tableSchema}\n`);
       }
 
       hoverMarkdownString.isTrusted = true; // Allows command links
@@ -155,17 +188,18 @@ function getTableInformationFromRef(
   return hoverMeta;
 }
 
-function getFullTableNameFromRef(
+async function getFullTableNameFromRef(
   searchTerm: string,
   struct: Operation[] | Assertion[]
-): vscode.Hover | undefined {
+): Promise<vscode.Hover | undefined> {
   let hoverMeta: vscode.Hover | undefined;
   for (let i = 0; i < struct.length; i++) {
     let targetName = struct[i].target.name;
     if (searchTerm === targetName) {
 
       const markdownTableIdWtLink = getMarkdownTableIdWtLink(struct[i].target);
-      const hoverData = new vscode.MarkdownString(markdownTableIdWtLink);
+      const tableSchema = await getTableSchemaAsMarkdown(struct[i].target.database, struct[i].target.schema, struct[i].target.name);
+      const hoverData = new vscode.MarkdownString(markdownTableIdWtLink + "\n" + tableSchema);
       return new vscode.Hover(hoverData);
     }
   }
@@ -320,7 +354,10 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         if (searchTerm === declarationName) {
           const markdownTableIdWtLink = getMarkdownTableIdWtLink(declarations[i].target);
           const hoverMarkdownString = new vscode.MarkdownString();
-          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}`);
+          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink} \n`);
+
+          const tableSchema = await getTableSchemaAsMarkdown(declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
+          hoverMarkdownString.appendMarkdown(tableSchema);
           hoverMarkdownString.isTrusted = true; // Allows command links
           return new vscode.Hover(hoverMarkdownString);
         }
@@ -332,21 +369,21 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     }
 
     if (tables) {
-      hoverMeta = getTableInformationFromRef(searchTerm, tables);
+      hoverMeta = await getTableInformationFromRef(searchTerm, tables);
     }
     if (hoverMeta) {
       return hoverMeta;
     }
 
     if (operations) {
-      hoverMeta = getFullTableNameFromRef(searchTerm, operations);
+      hoverMeta = await getFullTableNameFromRef(searchTerm, operations);
     }
     if (hoverMeta) {
       return hoverMeta;
     }
 
     if (assertions) {
-      return getFullTableNameFromRef(searchTerm, assertions);
+      return await getFullTableNameFromRef(searchTerm, assertions);
     }
   } else {
     const regex = /\$\{([^}]+)\}/g;
