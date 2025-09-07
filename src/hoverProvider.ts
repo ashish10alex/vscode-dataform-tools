@@ -130,7 +130,17 @@ async function getTableSchema(projectId: string, datasetId:string, tableId:strin
 
      if (schema && schema.fields) {
       schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
-     }
+      schema.fields.forEach((field:any) => {
+        field.name = field.name || "";
+        field.type = field.type || "";
+        field.description = field.description || "";
+        Object.keys(field).forEach(key => {
+          if (!["name", "type", "description"].includes(key)) {
+            delete field[key];
+          }
+        });
+      });
+}
 
     return import('tablemark').then(({ default: tablemark }) => {
       const output = tablemark(schema.fields);
