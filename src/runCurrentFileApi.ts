@@ -64,10 +64,14 @@ export async function runDataformWorkflow() {
         vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
         vscode.window.showInformationMessage("\n🚀 Step 2: Creating workflow invocation...");
 
+        //TODO: load tags dynamically
+
+        //NOTE: Decide if we should have separate command for tags and files ? 
+
         const INVOCATION_CONFIG = {
             // includedTags: ["engines"], 
             includedTargets: [
-            { database: "jlr-it-scanalytics-dev", schema: "daily_production_report", name: "050_SHUTDOWN_DAYS" },
+            { database: "project_id", schema: "dataset_name", name: "table_name" },
             ],
             transitiveDependenciesIncluded: false, 
             fullyRefreshIncrementalTablesEnabled: false, 
