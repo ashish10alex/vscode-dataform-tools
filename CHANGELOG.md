@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.5...v0.16.6) (2025-09-07)
+
+
+### Features
+
+* show model schema on hover over a ref ([#188](https://github.com/ashish10alex/vscode-dataform-tools/issues/188)) ([0a28130](https://github.com/ashish10alex/vscode-dataform-tools/commit/0a2813051890fef377c97d7c5971f422399484a5))
+
 ### [0.16.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.4...v0.16.5) (2025-09-04)
 
 
