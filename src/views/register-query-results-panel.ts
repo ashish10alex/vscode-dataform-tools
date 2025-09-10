@@ -78,6 +78,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                     const tempDir = os.tmpdir();
                     const alternateFilePath = path.join(tempDir, fileName);
                     const filePath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || alternateFilePath, fileName);
+                    vscode.window.showInformationMessage("Saving data as csv ...");
                     await saveCsvFile(filePath, this._cachedResults.results);
                 }
                 return;
