@@ -13,6 +13,7 @@ function waitForBigQueryJob(timeout = 20000): Promise<Job> { // default timeout 
 
     const pollInterval = setInterval(() => {
       if (bigQueryJob) {
+        globalThis.bigQueryJob = bigQueryJob;
         clearInterval(pollInterval);
         resolve(bigQueryJob);
       } else if (Date.now() - start > timeout) {
@@ -90,8 +91,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               case 'downloadDataAsCsv':
                   
                   if(this._cachedResults?.results){
-                    const timestamp = new Date().toISOString();
-                    const fileName = `res_${timestamp}.csv`;
+                    const fileNameSuffix = _bigQueryJobId;
+                    const fileName = `res_${fileNameSuffix}.csv`;
                     const tempDir = os.tmpdir();
                     const alternateFilePath = path.join(tempDir, fileName);
                     //TODO: we can have the folder to write the results in to be use configurable via settings

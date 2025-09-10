@@ -144,6 +144,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
 
     try {
         [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: bigQuerytimeoutMs });
+        _bigQueryJobId = bigQueryJob?.id;
     } catch (error: any) {
         try {
             await handleBigQueryError(error);

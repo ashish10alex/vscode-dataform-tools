@@ -44,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
     globalThis.bigQueryJob = undefined;
+    globalThis._bigQueryJobId = undefined;
     globalThis.cancelBigQueryJobSignal = false;
     globalThis.queryLimit = 1000;
     globalThis.diagnosticCollection = undefined;
