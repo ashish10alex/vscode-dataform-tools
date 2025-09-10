@@ -94,6 +94,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                     const fileName = `res_${timestamp}.csv`;
                     const tempDir = os.tmpdir();
                     const alternateFilePath = path.join(tempDir, fileName);
+                    //TODO: we can have the folder to write the results in to be use configurable via settings
                     const filePath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || alternateFilePath, fileName);
                     vscode.window.showInformationMessage("Saving data as csv ...");
                     await saveCsvFile(filePath, this._cachedResults.results);
