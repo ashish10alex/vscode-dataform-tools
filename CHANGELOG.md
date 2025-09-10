@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.6...v0.16.7) (2025-09-10)
+
+
+### Features
+
+* export bigquery preview data as csv and show job id ([#189](https://github.com/ashish10alex/vscode-dataform-tools/issues/189)) ([4d15cb8](https://github.com/ashish10alex/vscode-dataform-tools/commit/4d15cb8f648cd2d779ee9e40312d6ec1d4abf29c))
+
 ### [0.16.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.5...v0.16.6) (2025-09-07)
 
 
