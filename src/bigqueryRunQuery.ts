@@ -6,7 +6,6 @@ import { formatBytes } from './utils';
 
 let bigQueryJob: any;
 let cancelBigQueryJobSignal = false;
-let queryLimit = 1000;
 
 function convertArrayToObject(array: any, columnName: string) {
     if (array.length === 0) {
@@ -197,9 +196,6 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
 }
 
 export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
-
-    // TODO: reset limit back to 1000, forcing user to not fetch large number of rows
-    queryLimit = 1000;
 
     let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
 
