@@ -7,12 +7,17 @@ import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
 import { Job } from '@google-cloud/bigquery';
 
-function waitForBigQueryJob(): Promise<Job> {
-  return new Promise((resolve) => {
+function waitForBigQueryJob(timeout = 20000): Promise<Job> { // default timeout 20 seconds
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+
     const pollInterval = setInterval(() => {
       if (bigQueryJob) {
         clearInterval(pollInterval);
         resolve(bigQueryJob);
+      } else if (Date.now() - start > timeout) {
+        clearInterval(pollInterval);
+        reject(new Error('Timed out waiting for bigQueryJob'));
       }
     }, 100);
   });
