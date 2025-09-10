@@ -17,6 +17,14 @@ function createLoadingMessage(){
     return loadingMessageDiv;
 }
 
+const downloadCsvButton = document.getElementById("downloadCsvButton");
+downloadCsvButton.addEventListener('click', function() {
+    vscode.postMessage({
+        command: 'downloadDataAsCsv',
+        value: true
+    });
+});
+
 const checkbox = document.getElementById('incrementalCheckbox');
 checkbox.addEventListener('change', function() {
     if (this.checked) {

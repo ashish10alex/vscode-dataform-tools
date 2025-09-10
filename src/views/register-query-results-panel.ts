@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce } from '../utils';
+import path from 'path';
+import os from 'os';
+import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
 
@@ -68,6 +70,18 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 return;
+              case 'downloadDataAsCsv':
+                  
+                  if(this._cachedResults?.results){
+                    const timestamp = new Date().toISOString();
+                    const fileName = `res_${timestamp}`;
+                    const tempDir = os.tmpdir();
+                    const alternateFilePath = path.join(tempDir, fileName);
+                    const filePath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || alternateFilePath, fileName);
+                    await saveCsvFile(filePath, this._cachedResults.results);
+                }
+                return;
+
               case 'viewResultDetail':
                 if (this._cachedMultiResults && message.resultIndex !== undefined) {
                   const index = message.resultIndex;
@@ -265,6 +279,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
       <button id="runQueryButton" class="runQueryButton">RUN</button>
       <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
+      <button id="downloadCsvButton" class="downloadCsvButton">Download CSV</button>
+
 
       <p>
       <span id="datetime"></span>
