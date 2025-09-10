@@ -309,8 +309,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <select id="queryLimit">
         <option value="1000">Limit: 1000</option>
         <option value="10000">Limit: 10000</option>
-        <option value="20000">Limit: 50000</option>
-        <option value="20000">Limit: 100000</option>
+        <option value="50000">Limit: 50000</option>
+        <option value="100000">Limit: 100000</option>
       </select>
 
       <button id="runQueryButton" class="runQueryButton">RUN</button>
