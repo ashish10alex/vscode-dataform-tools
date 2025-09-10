@@ -276,7 +276,7 @@ button:disabled,
 #downloadCsvButton {
 	position: absolute;
 	top: 6px;
-	right: 325px;
+	right: 355px;
 	padding: 5px 10px;
 	border-radius: 5px;
 	cursor: pointer;
