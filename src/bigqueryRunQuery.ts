@@ -4,7 +4,6 @@ import { QueryResultsOptions } from '@google-cloud/bigquery';
 import { bigQuerytimeoutMs } from './constants';
 import { formatBytes } from './utils';
 
-let bigQueryJob: any;
 let cancelBigQueryJobSignal = false;
 
 function convertArrayToObject(array: any, columnName: string) {
@@ -145,7 +144,6 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
 
     try {
         [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: bigQuerytimeoutMs });
-        vscode.window.showInformationMessage(`JobId: ${bigQueryJob.id}`);
     } catch (error: any) {
         try {
             await handleBigQueryError(error);

@@ -5,6 +5,18 @@ import os from 'os';
 import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
+import { Job } from '@google-cloud/bigquery';
+
+function waitForBigQueryJob(): Promise<Job> {
+  return new Promise((resolve) => {
+    const pollInterval = setInterval(() => {
+      if (bigQueryJob) {
+        clearInterval(pollInterval);
+        resolve(bigQueryJob);
+      }
+    }, 100);
+  });
+}
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
@@ -98,7 +110,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "query": query,
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox ,
-                        "queryLimit":  queryLimit
+                        "queryLimit":  queryLimit,
+                        "bigQueryJobId": bigQueryJob?.id
                       });
                     } else if (!errorMessage) {
                       this._view?.webview.postMessage({
@@ -107,7 +120,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "query": query, 
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
-                        "queryLimit":  queryLimit
+                        "queryLimit":  queryLimit,
+                        "bigQueryJobId": bigQueryJob?.id
                       });
                     } else {
                       this._view?.webview.postMessage({
@@ -115,7 +129,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "query": query, 
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
-                        "queryLimit":  queryLimit
+                        "queryLimit":  queryLimit,
+                        "bigQueryJobId": bigQueryJob?.id
                       });
                     }
                   }
@@ -163,7 +178,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           
           for (let i = 0; i < allQueries.length; i++) {
             const singleQuery = allQueries[i];
-            const { results, columns, jobStats, errorMessage } = await queryBigQuery(singleQuery);
+            const queryOutput = queryBigQuery(singleQuery);
+            // const { results, columns, jobStats, errorMessage } = queryBigQuery(singleQuery);
+            const job = await waitForBigQueryJob();
+
+            if (this?._view?.webview) {
+              this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id });
+          }
+
+            const {results, columns, jobStats, errorMessage} = await queryOutput;
             resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery});
           }
           
