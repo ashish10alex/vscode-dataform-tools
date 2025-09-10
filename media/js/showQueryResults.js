@@ -118,8 +118,8 @@ function hideQuery(){
 }
 
 
-const queryLimit = document.getElementById('queryLimit');
-if (queryLimit){
+const queryLimitDropDown = document.getElementById('queryLimit');
+if (queryLimitDropDown){
     document.getElementById("queryLimit").addEventListener("change", function() {
     var selectedValue = this.value;
     vscode.postMessage({
@@ -285,6 +285,11 @@ window.addEventListener('message', event => {
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
     const multiResults = event?.data?.multiResults;
     const summaryData = event?.data?.summaryData;
+    const queryLimit = event?.data?.queryLimit;
+
+    if(queryLimit){
+        queryLimitDropDown.value = queryLimit;
+    }
 
     if (checkbox) {
         checkbox.checked = incrementalCheckBox;
