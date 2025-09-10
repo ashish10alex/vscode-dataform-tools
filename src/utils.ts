@@ -42,24 +42,25 @@ function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, rel
 
 
 export function arrayToCsv(data: Record<string, any>[]): string {
-const separator = ',';
-const keys = Object.keys(data[0] ?? {});
-const csvRows = [
-    keys.join(separator),
-    ...data.map(row =>
-        keys.map(key => {
-            let cell = row[key] === null || row[key] === undefined ? '' : row[key];
-            cell = cell instanceof Date
-                ? cell.toLocaleString()
-                : String(cell).replace(/"/g, '""');
-            if (cell.search(/("|,|\n)/g) >= 0) {
-                cell = `"${cell}"`;
-            }
-            return cell;
-        }).join(separator)
-    )
-];
-return csvRows.join('\n');
+    // FIXME: we do not support elegant exports of nested columns outputs yet
+    const separator = ',';
+    const keys = Object.keys(data[0] ?? {});
+    const csvRows = [
+        keys.join(separator),
+        ...data.map(row =>
+            keys.map(key => {
+                let cell = row[key] === null || row[key] === undefined ? '' : row[key];
+                cell = cell instanceof Date
+                    ? cell.toLocaleString()
+                    : String(cell).replace(/"/g, '""');
+                if (cell.search(/("|,|\n)/g) >= 0) {
+                    cell = `"${cell}"`;
+                }
+                return cell;
+            }).join(separator)
+        )
+    ];
+    return csvRows.join('\n');
 }
 
 export async function saveCsvFile(filename: string, data: Record<string, any>[]) {
