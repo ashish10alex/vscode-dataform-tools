@@ -67,7 +67,14 @@ export async function saveCsvFile(filename: string, data: Record<string, any>[])
     const uint8array = new TextEncoder().encode(csvContent);
     const fileUri = vscode.Uri.file(filename);
     await vscode.workspace.fs.writeFile(fileUri, uint8array);
-    vscode.window.showInformationMessage(`csv exported: ${fileUri.toString()}`);
+    vscode.window.showInformationMessage(
+    `csv exported: ${fileUri.toString()}`,
+    "Open folder"
+).then(selection => {
+    if (selection === "Open folder") {
+        vscode.commands.executeCommand('revealFileInOS', fileUri);
+    }
+});
 
 }
 
