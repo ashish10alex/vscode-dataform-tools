@@ -1,8 +1,28 @@
 import * as vscode from 'vscode';
 import {  Uri } from "vscode";
-import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce } from '../utils';
+import path from 'path';
+import os from 'os';
+import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { QueryWtType } from '../types';
+import { Job } from '@google-cloud/bigquery';
+
+function waitForBigQueryJob(timeout = 20000): Promise<Job> { // default timeout 20 seconds
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+
+    const pollInterval = setInterval(() => {
+      if (bigQueryJob) {
+        globalThis.bigQueryJob = bigQueryJob;
+        clearInterval(pollInterval);
+        resolve(bigQueryJob);
+      } else if (Date.now() - start > timeout) {
+        clearInterval(pollInterval);
+        reject(new Error('Timed out waiting for bigQueryJob'));
+      }
+    }, 100);
+  });
+}
 
 export class CustomViewProvider implements vscode.WebviewViewProvider {
     public _view?: vscode.WebviewView;
@@ -35,20 +55,20 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         let curFileMeta = await getCurrentFileMetadata(false);
         let type = curFileMeta?.fileMetadata?.queryMeta.type;
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
+        this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
       }
 
       webviewView.onDidChangeVisibility(async() => {
         // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
         if (webviewView.visible) {
           if (this._cachedResults) {
-            this._view?.webview.postMessage(this._cachedResults);
+            this._view?.webview.postMessage({...this._cachedResults, "queryLimit":  queryLimit});
           } else if (this._cachedMultiResults) {
-            this._view?.webview.postMessage(this._cachedMultiResults);
+            this._view?.webview.postMessage({...this._cachedMultiResults, "queryLimit":  queryLimit});
           } else {
             let curFileMeta = await getCurrentFileMetadata(false);
             let type = curFileMeta?.fileMetadata?.queryMeta.type;
-            this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox});
+            this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit});
           }
         }
       });
@@ -61,13 +81,27 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 cancelBigQueryJobSignal = false;
                 if (resp.cancelled && this._view){
                   this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true});
+                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true, "queryLimit":  queryLimit});
                   this._view.show(true);
                 }
                 return;
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 return;
+              case 'downloadDataAsCsv':
+                  
+                  if(this._cachedResults?.results){
+                    const fileNameSuffix = _bigQueryJobId;
+                    const fileName = `res_${fileNameSuffix}.csv`;
+                    const tempDir = os.tmpdir();
+                    const alternateFilePath = path.join(tempDir, fileName);
+                    //TODO: we can have the folder to write the results in to be use configurable via settings
+                    const filePath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || alternateFilePath, fileName);
+                    vscode.window.showInformationMessage("Saving data as csv ...");
+                    await saveCsvFile(filePath, this._cachedResults.results);
+                }
+                return;
+
               case 'viewResultDetail':
                 if (this._cachedMultiResults && message.resultIndex !== undefined) {
                   const index = message.resultIndex;
@@ -82,7 +116,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "jobStats": jobStats, 
                         "query": query,
                         "type": this.queryType, 
-                        "incrementalCheckBox": incrementalCheckBox 
+                        "incrementalCheckBox": incrementalCheckBox ,
+                        "queryLimit":  queryLimit,
+                        "bigQueryJobId": bigQueryJob?.id
                       });
                     } else if (!errorMessage) {
                       this._view?.webview.postMessage({
@@ -90,14 +126,18 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "jobStats": jobStats, 
                         "query": query, 
                         "type": this.queryType, 
-                        "incrementalCheckBox": incrementalCheckBox
+                        "incrementalCheckBox": incrementalCheckBox,
+                        "queryLimit":  queryLimit,
+                        "bigQueryJobId": bigQueryJob?.id
                       });
                     } else {
                       this._view?.webview.postMessage({
                         "errorMessage": errorMessage, 
                         "query": query, 
                         "type": this.queryType, 
-                        "incrementalCheckBox": incrementalCheckBox
+                        "incrementalCheckBox": incrementalCheckBox,
+                        "queryLimit":  queryLimit,
+                        "bigQueryJobId": bigQueryJob?.id
                       });
                     }
                   }
@@ -133,7 +173,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     }
       try {
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox });
+          this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
           this._view.show(true);
           let allQueries = [];
           if(type === "assertion"){
@@ -145,7 +185,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           
           for (let i = 0; i < allQueries.length; i++) {
             const singleQuery = allQueries[i];
-            const { results, columns, jobStats, errorMessage } = await queryBigQuery(singleQuery);
+            const queryOutput = queryBigQuery(singleQuery);
+            // const { results, columns, jobStats, errorMessage } = queryBigQuery(singleQuery);
+            const job = await waitForBigQueryJob();
+
+            if (this?._view?.webview) {
+              this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id });
+          }
+
+            const {results, columns, jobStats, errorMessage} = await queryOutput;
             resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery});
           }
           
@@ -168,7 +216,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               "multiResults": true,
               "summaryData": summaryData,
               "type": type,
-              "incrementalCheckBox": incrementalCheckBox
+              "incrementalCheckBox": incrementalCheckBox,
+              "queryLimit":  queryLimit
             });
             
             this._view.show(true);
@@ -180,19 +229,19 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             if(results && !errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
+              this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit});
               this._view.show(true);
             } else if (!errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
               this._view.webview.html = this._getHtmlForWebview(this._view.webview);
               this._view.show(true);
-              this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox });
+              this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit});
             } else if(errorMessage){
               this._cachedResults = undefined;
               this._cachedMultiResults = undefined;
               this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-              this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
+              this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit});
               this._view.show(true);
             }
           }
@@ -200,7 +249,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         let errorMessage = error?.message;
         if(errorMessage){
           this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox });
+          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
           this._view.show(true);
         }
       }
@@ -258,13 +307,16 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       </div>
 
       <select id="queryLimit">
-        <option value="1000" selected>Limit: 1000</option>
-        <option value="2000">Limit: 2000</option>
-        <option value="5000">Limit: 5000</option>
+        <option value="1000">Limit: 1000</option>
+        <option value="10000">Limit: 10000</option>
+        <option value="50000">Limit: 50000</option>
+        <option value="100000">Limit: 100000</option>
       </select>
 
       <button id="runQueryButton" class="runQueryButton">RUN</button>
       <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
+      <button id="downloadCsvButton" class="downloadCsvButton">Download CSV</button>
+
 
       <p>
       <span id="datetime"></span>

@@ -273,6 +273,16 @@ button:disabled,
 	cursor: pointer;
 }
 
+#downloadCsvButton {
+	position: absolute;
+	top: 6px;
+	right: 355px;
+	padding: 5px 10px;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+
 .topnav {
 	display: flex;
 	justify-content: flex-start;

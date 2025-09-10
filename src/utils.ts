@@ -41,6 +41,50 @@ function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, rel
 }
 
 
+export function arrayToCsv(data: Record<string, any>[]): string {
+    // FIXME: we do not support elegant exports of nested columns outputs yet
+    const separator = ',';
+    const keys = Object.keys(data[0] ?? {});
+    const csvRows = [
+        keys.join(separator),
+        ...data.map(row =>
+            keys.map(key => {
+                let cell = row[key] === null || row[key] === undefined ? '' : row[key];
+                cell = cell instanceof Date
+                    ? cell.toLocaleString()
+                    : String(cell).replace(/"/g, '""');
+                if (cell.search(/("|,|\n)/g) >= 0) {
+                    cell = `"${cell}"`;
+                }
+                return cell;
+            }).join(separator)
+        )
+    ];
+    return csvRows.join('\n');
+}
+
+export async function saveCsvFile(filename: string, data: Record<string, any>[]) {
+    const csvContent = arrayToCsv(data);
+    const uint8array = new TextEncoder().encode(csvContent);
+    const fileUri = vscode.Uri.file(filename);
+    await vscode.workspace.fs.writeFile(fileUri, uint8array);
+    vscode.window.showInformationMessage(
+    `csv exported: ${fileUri.toString()}`,
+    "Open folder"
+).then(selection => {
+    if (selection === "Open folder") {
+        vscode.commands.executeCommand('revealFileInOS', fileUri);
+        if (vscode.env.remoteName === 'wsl') {
+            vscode.commands.executeCommand('remote-wsl.revealInExplorer', fileUri);
+        } else {
+            vscode.commands.executeCommand('revealFileInOS', fileUri);
+        }
+    }
+});
+
+}
+
+
 export async function openFileOnLeftEditorPane(filePath: string, position: vscode.Position){
     const workspaceFolder = await getWorkspaceFolder();
     if(workspaceFolder && filePath){
