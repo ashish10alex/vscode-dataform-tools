@@ -154,6 +154,11 @@
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
                 "category": "Dataform",
                 "title": "Select workspace folder"
+            },
+            {
+                "command": "vscode-dataform-tools.showBigQueryConfig",
+                "category": "Dataform",
+                "title": "Show BigQuery configuration"
             }
         ],
         "languages": [
@@ -307,7 +312,13 @@
                 "vscode-dataform-tools.gcpProjectId": {
                     "type": "string",
                     "default": null,
-                    "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
+                    "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be resolved in the following order: 1) workflow_settings.yaml (defaultProject), 2) Environment variables (GOOGLE_CLOUD_PROJECT, etc.), 3) gcloud config, 4) This setting",
+                    "pattern": "^[a-z0-9-]+$"
+                },
+                "vscode-dataform-tools.gcpRegion": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "GCP region/location to use for BigQuery queries (e.g., 'us-central1', 'europe-west2'). When not provided, the region will be resolved in the following order: 1) workflow_settings.yaml (defaultLocation), 2) Environment variables (GOOGLE_CLOUD_REGION, etc.), 3) gcloud config, 4) This setting. See https://cloud.google.com/bigquery/docs/locations for supported values.",
                     "pattern": "^[a-z0-9-]+$"
                 }
             }

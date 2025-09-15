@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
 import { DataformCompiledJson } from './types';
-import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
+import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval, getCurrentBigQueryConfig } from './bigqueryClient';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
@@ -122,6 +122,50 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.selectWorkspaceFolder', async () => { await selectWorkspaceFolder(); }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.showBigQueryConfig', async () => {
+        const { config, sources } = await getCurrentBigQueryConfig();
+        
+        const configDetails = [
+            `**Project ID:** ${config.projectId || 'Not configured'}`,
+            `**Region/Location:** ${config.location || 'Not configured'}`,
+            '',
+            '**Configuration Sources:**'
+        ];
+        
+        if (sources.length === 0) {
+            configDetails.push('- No configuration sources found');
+        } else {
+            sources.forEach(source => {
+                const sourceType = source.source.replace('_', ' ');
+                const details = [];
+                if (source.projectId) {
+                    details.push(`project: ${source.projectId}`);
+                }
+                if (source.location) {
+                    details.push(`location: ${source.location}`);
+                }
+                
+                if (details.length > 0) {
+                    configDetails.push(`- **${sourceType}**: ${details.join(', ')}`);
+                }
+            });
+        }
+        
+        configDetails.push('');
+        configDetails.push('**Resolution Priority:**');
+        configDetails.push('1. workflow_settings.yaml (defaultProject, defaultLocation)');
+        configDetails.push('2. Environment variables (GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_REGION, etc.)');
+        configDetails.push('3. gcloud config (gcloud config get-value project/region)');
+        configDetails.push('4. VS Code settings (vscode-dataform-tools.gcpProjectId/gcpRegion)');
+        
+        const configMarkdown = configDetails.join('\n');
+        
+        await vscode.window.showInformationMessage(
+            'BigQuery Configuration',
+            { modal: true, detail: configMarkdown }
+        );
+    }));
 
     const assertionCodeLensProvider = new AssertionRunnerCodeLensProvider();
     context.subscriptions.push(
