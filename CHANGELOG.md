@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.7...v0.16.8) (2025-09-18)
+
+
+### Features
+
+* enable use of service account key to access bigquery ([#191](https://github.com/ashish10alex/vscode-dataform-tools/issues/191)) ([2d7748b](https://github.com/ashish10alex/vscode-dataform-tools/commit/2d7748bdee90463a3c0427290b0bf040ec2e4739))
+* increase limit to 500k rows ([f7c1b3d](https://github.com/ashish10alex/vscode-dataform-tools/commit/f7c1b3d0a4911c2708b43cd9b3db9866ed01ee59))
+
+
+### Styling
+
+* shift download csv to right ([c7a04e4](https://github.com/ashish10alex/vscode-dataform-tools/commit/c7a04e41726f83b26eb20146ac6ddc0be894494f))
+
 ### [0.16.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.6...v0.16.7) (2025-09-10)
 
 
