@@ -123,7 +123,7 @@ async function getTableSchemaAsMarkdown(projectId: string, datasetId:string, tab
     let options = {projectId};
     if(serviceAccountJsonPath){
     // @ts-ignore 
-        options = {... options , keyFilename: serviceAccountJsonPath}
+        options = {... options , keyFilename: serviceAccountJsonPath};
     }
     const bigqueryClient = new BigQuery(options);
 

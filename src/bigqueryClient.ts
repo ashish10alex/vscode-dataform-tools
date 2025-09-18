@@ -14,8 +14,9 @@ export async function createBigQueryClient(): Promise<string | undefined> {
         // default state will be projectId as null and the projectId will be inferred from what the user has set using gcloud cli
         let options = {projectId};
         if(serviceAccountJsonPath){
-        // @ts-ignore 
-            options = {... options , keyFilename: serviceAccountJsonPath}
+            vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
+            // @ts-ignore 
+            options = {... options , keyFilename: serviceAccountJsonPath};
         }
 
         // @ts-ignore 
