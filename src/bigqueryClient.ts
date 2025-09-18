@@ -9,9 +9,18 @@ let isAuthenticated: boolean = false;
 export async function createBigQueryClient(): Promise<string | undefined> {
     try {
         const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+
         // default state will be projectId as null and the projectId will be inferred from what the user has set using gcloud cli
+        let options = {projectId};
+        if(serviceAccountJsonPath){
+            vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
+            // @ts-ignore 
+            options = {... options , keyFilename: serviceAccountJsonPath};
+        }
+
         // @ts-ignore 
-        bigquery = new BigQuery({ projectId });
+        bigquery = new BigQuery(options);
         await verifyAuthentication();
         vscode.window.showInformationMessage('BigQuery client created successfully.');
         return undefined;

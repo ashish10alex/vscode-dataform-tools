@@ -309,6 +309,11 @@
                     "default": null,
                     "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
                     "pattern": "^[a-z0-9-]+$"
+                },
+                "vscode-dataform-tools.serviceAccountJsonPath": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "Path to the json file when the service account exsists"
                 }
             }
         },
