@@ -119,7 +119,13 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
 async function getTableSchemaAsMarkdown(projectId: string, datasetId:string, tableId:string) {
   try {
 
-  const bigqueryClient = new BigQuery({ projectId });
+    const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+    let options = {projectId};
+    if(serviceAccountJsonPath){
+    // @ts-ignore 
+        options = {... options , keyFilename: serviceAccountJsonPath};
+    }
+    const bigqueryClient = new BigQuery(options);
 
     if(bigqueryClient){
 
