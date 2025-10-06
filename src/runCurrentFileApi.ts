@@ -28,7 +28,7 @@ export async function runDataformWorkflow() {
     vscode.window.showInformationMessage("Retriving execution location from gcloud...");
     const gcpProjectLocation = await getLocationOfGcpProject(projectId);
     if(!gcpProjectLocation){
-        vscode.window.showErrorMessage("Could not gcp project location");
+        vscode.window.showErrorMessage("Could not get gcp project location using api !");
         return;
     }
 

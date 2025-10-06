@@ -27,11 +27,17 @@ export async function createSelector(selectionItems:string[], placeHolder: strin
 }
 
 export async function getLocationOfGcpProject(projectId: string){
-    const client = new ProjectsClient();
-    const [project] = await client.getProject({
-        name: `projects/${projectId}`
-    });
-    return project.labels?.application_region;
+    try{
+        const client = new ProjectsClient();
+        const [project] = await client.getProject({
+            name: `projects/${projectId}`
+        });
+        return project.labels?.application_region;
+    } catch(err){
+        const e = err instanceof Error ? err : new Error(String(err));
+        vscode.window.showErrorMessage(`Run failed: ${e.message}`); 
+        return undefined;
+    }
 }
 
 
