@@ -26,10 +26,15 @@ export async function runDataformWorkflow() {
     }
 
     vscode.window.showInformationMessage("Retriving execution location from gcloud...");
-    const gcpProjectLocation = await getLocationOfGcpProject(projectId);
+    let gcpProjectLocation = await getLocationOfGcpProject(projectId);
     if(!gcpProjectLocation){
-        vscode.window.showErrorMessage("Could not get gcp project location using api !");
-        return;
+        vscode.window.showWarningMessage("Could not determine gcp project location using api.");
+        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
+            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
+            vscode.window.showWarningMessage(`Using ${gcpProjectLocation} as gcp project location`);
+        }else{
+            return;
+        }
     }
 
     vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
