@@ -786,8 +786,9 @@ export function getFileNameFromDocument(
     showErrorMessage: boolean
 ): FileNameMetadataResult<FileNameMetadata, string> {
     const filePath = document.uri.fsPath;
-    const basenameSplit = path.basename(filePath).split('.');
-    const extension = basenameSplit[1];
+    const extWithDot = path.extname(filePath);
+    const extension = extWithDot.startsWith('.') ? extWithDot.slice(1) : extWithDot;
+    const rawFileName = path.basename(filePath, extWithDot);
     const relativeFilePath = getRelativePath(filePath);
     const validFileType = supportedExtensions.includes(extension);
 
@@ -799,8 +800,6 @@ export function getFileNameFromDocument(
         }
         return { success: false, error: `File type not supported. Supported file types are ${supportedExtensions.join(', ')}` };
     }
-
-    const rawFileName = basenameSplit[0];
     return { success: true, value: [rawFileName, relativeFilePath, extension] };
 }
 
