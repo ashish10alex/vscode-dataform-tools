@@ -17,6 +17,14 @@ function createLoadingMessage(){
     return loadingMessageDiv;
 }
 
+const downloadCsvButton = document.getElementById("downloadCsvButton");
+downloadCsvButton.addEventListener('click', function() {
+    vscode.postMessage({
+        command: 'downloadDataAsCsv',
+        value: true
+    });
+});
+
 const checkbox = document.getElementById('incrementalCheckbox');
 checkbox.addEventListener('change', function() {
     if (this.checked) {
@@ -110,8 +118,8 @@ function hideQuery(){
 }
 
 
-const queryLimit = document.getElementById('queryLimit');
-if (queryLimit){
+const queryLimitDropDown = document.getElementById('queryLimit');
+if (queryLimitDropDown){
     document.getElementById("queryLimit").addEventListener("change", function() {
     var selectedValue = this.value;
     vscode.postMessage({
@@ -176,8 +184,8 @@ if (backToSummaryButton) {
 // Store summary data for later use when switching back to summary view
 let currentSummaryData = null;
 
-function updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime) {
-    let queryStatsText = bigQueryJobEndTime  + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | billed:  ' + jobCostMeta ;
+function updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime, bigQueryJobId) {
+    let queryStatsText = bigQueryJobEndTime  + ' | Took:  (' + elapsedTime + ' seconds) ' + ' | billed:  ' + jobCostMeta + ' | jobId:  ' + bigQueryJobId ;
     document.getElementById('datetime').textContent = "Query results ran at: " + queryStatsText;
 }
 
@@ -277,6 +285,39 @@ window.addEventListener('message', event => {
     const incrementalCheckBox = event?.data?.incrementalCheckBox;
     const multiResults = event?.data?.multiResults;
     const summaryData = event?.data?.summaryData;
+    const queryLimit = event?.data?.queryLimit;
+
+
+    if (showLoadingMessage){
+        document.getElementById("cancelBigQueryJobButton").disabled = false;
+
+        // Clear any existing loading message first
+        clearLoadingMessage();
+        let loadingMessageDiv = createLoadingMessage();
+
+        let startTime = Date.now();
+
+        function updateLoadingMessage() {
+            elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            if (loadingMessageDiv) {
+                let jobIdMeta = "";
+                if(bigQueryJobId){
+                    jobIdMeta = `JobId: ${bigQueryJobId}`;
+                }
+                loadingMessageDiv.textContent = `Loading data... (${elapsedTime} seconds.) ${jobIdMeta}`;
+            }
+            return elapsedTime;
+        }
+
+
+        elapsedTime = updateLoadingMessage();
+        timerInterval = setInterval(updateLoadingMessage, 1000);
+        document.body.appendChild(loadingMessageDiv);
+    }
+
+    if(queryLimit){
+        queryLimitDropDown.value = queryLimit;
+    }
 
     if (checkbox) {
         checkbox.checked = incrementalCheckBox;
@@ -321,7 +362,7 @@ window.addEventListener('message', event => {
     if (results && columns) {
         document.getElementById("runQueryButton").disabled = false;
         document.getElementById("cancelBigQueryJobButton").disabled = true;
-        updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime);
+        updateDateTime(elapsedTime, jobCostMeta, bigQueryJobEndTime, bigQueryJobId);
         clearInterval(timerInterval);
         clearLoadingMessage();
 
@@ -397,26 +438,4 @@ window.addEventListener('message', event => {
         document.getElementById('bigqueryError').textContent = errorMessage;
     }
 
-    if (showLoadingMessage){
-        document.getElementById("cancelBigQueryJobButton").disabled = false;
-
-        // Clear any existing loading message first
-        clearLoadingMessage();
-        let loadingMessageDiv = createLoadingMessage();
-
-        let startTime = Date.now();
-
-        function updateLoadingMessage() {
-            elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-            if (loadingMessageDiv) {
-                loadingMessageDiv.textContent = `Loading data... (${elapsedTime} seconds)`;
-            }
-            return elapsedTime;
-        }
-
-
-        elapsedTime = updateLoadingMessage();
-        timerInterval = setInterval(updateLoadingMessage, 1000);
-        document.body.appendChild(loadingMessageDiv);
-    }
 });

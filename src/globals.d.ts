@@ -36,6 +36,10 @@ declare global {
 }
 
 declare global {
+  var _bigQueryJobId: string |  undefined
+}
+
+declare global {
   var cancelBigQueryJobSignal: boolean
 }
 

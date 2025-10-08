@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.16.6",
+    "version": "0.16.8",
     "sponsor": {
         "url": "https://buymeacoffee.com/ashishalexj"
     },
@@ -316,6 +316,11 @@
                     "default": null,
                     "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
                     "pattern": "^[a-z0-9-]+$"
+                },
+                "vscode-dataform-tools.serviceAccountJsonPath": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "Path to the json file when the service account exsists"
                 }
             }
         },
