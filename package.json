@@ -25,6 +25,7 @@
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
         "onCommand:extension.runCurrentFile",
+        "onCommand:extension.runFilesWtApi",
         "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
         "onCommand:extension.runCurrentFileWtDownstreamDeps",
@@ -119,6 +120,12 @@
                 "category": "Dataform",
                 "title": "Run current file",
                 "icon": "$(play)",
+                "group": "navigation"
+            },
+            {
+                "command": "vscode-dataform-tools.runFilesWtApi",
+                "category": "Dataform",
+                "title": "Run file(s) with Dataform API",
                 "group": "navigation"
             },
             {

@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { getLocationOfGcpProject, getWorkspaceFolder, runCompilation } from './utils';
+import { getLocationOfGcpProject, getWorkspaceFolder, runCompilation, getMultipleFileSelection, getQueryMetaForCurrentFile} from './utils';
 import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient } from '@google-cloud/dataform';
 
-export async function runDataformWorkflow() {
+export async function runDataformUsingApi() {
 
     if (!CACHED_COMPILED_DATAFORM_JSON) {
 
@@ -21,20 +21,22 @@ export async function runDataformWorkflow() {
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
-        vscode.window.showErrorMessage("Could not determine projectId");
+        vscode.window.showErrorMessage("Could not determine projectId from dataform config file");
         return;
     }
 
     vscode.window.showInformationMessage("Retriving execution location from gcloud...");
-    let gcpProjectLocation = await getLocationOfGcpProject(projectId);
+
+    let gcpProjectLocation = undefined;
+    if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
+        gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
+    }else{
+        gcpProjectLocation = await getLocationOfGcpProject(projectId);
+    }
+
     if(!gcpProjectLocation){
-        vscode.window.showWarningMessage("Could not determine gcp project location using api.");
-        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-            vscode.window.showWarningMessage(`Using ${gcpProjectLocation} as gcp project location`);
-        }else{
-            return;
-        }
+        vscode.window.showErrorMessage("GCP project location could not be determined from the config file or the api");
+        return;
     }
 
     vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
@@ -69,15 +71,41 @@ export async function runDataformWorkflow() {
         vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
         vscode.window.showInformationMessage("\n🚀 Step 2: Creating workflow invocation...");
 
-        //TODO: load tags dynamically
+        let workspaceFolder = await getWorkspaceFolder();
+        if (!workspaceFolder){ return; }
+        let multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
+        if(!multipleFileSelection){return;}
 
-        //NOTE: Decide if we should have separate command for tags and files ? 
+        let fileMetadatas: any[] = [];
+    
+        if(!CACHED_COMPILED_DATAFORM_JSON){
+            vscode.window.showErrorMessage("Compile project before running actions using API");
+            return;
+        }
+        let dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+
+        if (multipleFileSelection && dataformCompiledJson !== undefined) {
+            for (let i = 0; i < multipleFileSelection.length; i++) {
+                let relativeFilepath = multipleFileSelection[i];
+                if (dataformCompiledJson && relativeFilepath) {
+                    fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson));
+                }
+            }
+        }
+
+        let actionsList: {database:string, schema: string, name:string}[] = [];
+        fileMetadatas.forEach(fileMetadata => {
+            if (fileMetadata) {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                    const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
+                    actionsList.push(action);
+                });
+            }
+        });
 
         const INVOCATION_CONFIG = {
             // includedTags: ["engines"], 
-            includedTargets: [
-            { database: "project_id", schema: "dataset_name", name: "table_name" },
-            ],
+            includedTargets: actionsList,
             transitiveDependenciesIncluded: false, 
             fullyRefreshIncrementalTablesEnabled: false, 
         };
