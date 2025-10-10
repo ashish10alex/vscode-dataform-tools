@@ -19,7 +19,7 @@ import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
-import { runCurrentFile, runCurrentFileWtApi } from './runFiles';
+import { runCurrentFile, runCurrentFileWtApi } from './runFile';
 // import { runDataformUsingApi } from './runCurrentFileApi';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
