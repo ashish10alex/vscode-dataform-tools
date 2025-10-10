@@ -13,17 +13,20 @@ interface NodeData {
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
   fullTableName: string;
-  goToNodeFile?: (nodeId: string) => void;
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, datasetColor, type, onNodeClick, isExternalSource, fullTableName, fileName, goToNodeFile } = data;
+  const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, fullTableName, fileName } = data;
   const [isHovered, setIsHovered] = React.useState(false);
 
   const handleClick = () => {
     if (onNodeClick) {
       onNodeClick(id);
     }
+  };
+
+  const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
+    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
   };
 
   const nodeStyle = {
@@ -90,7 +93,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
               type: type,
             }
           });
-          if (goToNodeFile) goToNodeFile(id);
+          // if (goToNodeFile) {goToNodeFile(id);}
         }}
         className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
         title="Open File"
@@ -110,6 +113,35 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
           />
         </svg>
       </button>
+
+      <button
+        onClick={(e) => {
+            e.stopPropagation();
+
+
+          getVsCodeApi().postMessage({
+            type: 'goToBigQuery',
+            value: {
+              url: getUrlToNavigateToTableInBigQuery(projectId, datasetId, modelName)
+            }
+          });
+
+
+        }}
+      style={{
+          backgroundColor: "#f44336", // bright red
+          color: "white",
+          fontWeight: "bold",
+          border: "2px solid #222",
+          borderRadius: "6px",
+          padding: "8px 16px",
+          cursor: "pointer",
+          boxShadow: "0px 2px 6px rgba(0,0,0,0.3)",
+        }}
+        title="Go to bigQuery"
+      >
+      </button>
+
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
 

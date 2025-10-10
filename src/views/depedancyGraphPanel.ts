@@ -54,6 +54,12 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
     panel.webview.onDidReceiveMessage(
         async (message) => {
             switch (message.type) {
+                case 'goToBigQuery':
+                    const url = message.value.url;
+                    if (url) {
+                        vscode.env.openExternal(vscode.Uri.parse(url));
+                    }
+                    break;
                 case 'webviewReady':
                     // Send data only after the webview signals it's ready
                     panel.webview.postMessage({
