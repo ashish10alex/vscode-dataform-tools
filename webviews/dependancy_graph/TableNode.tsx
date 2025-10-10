@@ -116,31 +116,22 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
 
       <button
         onClick={(e) => {
-            e.stopPropagation();
-
-
+          e.stopPropagation();
           getVsCodeApi().postMessage({
             type: 'goToBigQuery',
             value: {
               url: getUrlToNavigateToTableInBigQuery(projectId, datasetId, modelName)
             }
           });
-
-
         }}
-      style={{
-          backgroundColor: "#f44336", // bright red
-          color: "white",
-          fontWeight: "bold",
-          border: "2px solid #222",
-          borderRadius: "6px",
-          padding: "8px 16px",
-          cursor: "pointer",
-          boxShadow: "0px 2px 6px rgba(0,0,0,0.3)",
-        }}
-        title="Go to bigQuery"
+        title="Open in BigQuery"
       >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 13a5.001 5.001 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       </button>
+
 
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
