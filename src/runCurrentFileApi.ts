@@ -2,7 +2,32 @@ import * as vscode from 'vscode';
 import { getLocationOfGcpProject, getWorkspaceFolder, runCompilation, getMultipleFileSelection, getQueryMetaForCurrentFile} from './utils';
 import { getGitBranchAndRepoName } from './getGitMeta';
 
-import { DataformClient } from '@google-cloud/dataform';
+import { DataformClient  } from '@google-cloud/dataform';
+import { protos } from '@google-cloud/dataform';
+
+type CreateCompilationResultResponse = Promise<
+  [
+    protos.google.cloud.dataform.v1beta1.ICompilationResult,
+    protos.google.cloud.dataform.v1beta1.ICreateCompilationResultRequest | undefined,
+    {} | undefined
+  ]
+>;
+
+export async function getCompilationResult(client:DataformClient, parent:string, gitBranch:string): CreateCompilationResultResponse{
+    vscode.window.showInformationMessage("🚀 Step 1: Creating compilation result...");
+
+    const compilationResult = {
+        gitCommitish: gitBranch,
+    };
+
+    const createCompilationResultRequest = {
+        parent: parent,
+        compilationResult: compilationResult,
+    };
+
+    const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
+    return createdCompilationResult;
+}
 
 export async function runDataformUsingApi() {
 
@@ -39,20 +64,7 @@ export async function runDataformUsingApi() {
         return;
     }
 
-    vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
-    //TODO: user might not have git extension, we need a fallback ?
-    const gitMetaData = await getGitBranchAndRepoName();
-    const gitRepoName = gitMetaData?.gitRepoName;
-    const gitBranch = gitMetaData?.gitBranch;
-
-    // Initialize the Dataform client.
-    // The client automatically picks up credentials from the environment (e.g., GOOGLE_APPLICATION_CREDENTIALS)
-    // or from a service account key file path provided in the constructor like:
-    // new DataformClient({ keyFilename: 'path/to/your-key.json' });
-    const client = new DataformClient();
-
-    const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
-
+    let dataformClient = undefined;
     try {
 
         let workspaceFolder = await getWorkspaceFolder();
@@ -87,18 +99,21 @@ export async function runDataformUsingApi() {
             }
         });
 
-        vscode.window.showInformationMessage("🚀 Step 1: Creating compilation result...");
+        vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
+        //TODO: user might not have git extension, we need a fallback ?
+        const gitMetaData = await getGitBranchAndRepoName();
+        const gitRepoName = gitMetaData?.gitRepoName;
+        const gitBranch = gitMetaData?.gitBranch;
 
-        const compilationResult = {
-            gitCommitish: gitBranch,
-        };
+        // Initialize the Dataform client.
+        // The client automatically picks up credentials from the environment (e.g., GOOGLE_APPLICATION_CREDENTIALS)
+        // or from a service account key file path provided in the constructor like:
+        // new DataformClient({ keyFilename: 'path/to/your-key.json' });
+        dataformClient = new DataformClient();
 
-        const createCompilationResultRequest = {
-            parent: parent,
-            compilationResult: compilationResult,
-        };
+        const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
 
-        const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
+        const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
         vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
@@ -122,7 +137,7 @@ export async function runDataformUsingApi() {
             workflowInvocation: workflowInvocation,
         };
 
-        const createdWorkflowInvocation = await client.createWorkflowInvocation(createWorkflowInvocationRequest);
+        const createdWorkflowInvocation = await dataformClient.createWorkflowInvocation(createWorkflowInvocationRequest);
         if(createdWorkflowInvocation[0]?.name){
             const workflowInvocationId = createdWorkflowInvocation[0].name.split("/").pop();
             const workflowExecutionUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${gitRepoName}/workflows/${workflowInvocationId}?project=${projectId}`;
@@ -143,7 +158,8 @@ export async function runDataformUsingApi() {
     } catch (error:any) {
         vscode.window.showErrorMessage(JSON.stringify(error));
     } finally {
-        // Close the client to release resources.
-        client.close();
+        if(dataformClient){
+            dataformClient.close();
+        }
     }
 }
