@@ -22,8 +22,6 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         return;
     }
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-
     let currFileMetadata;
     let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
 
@@ -40,6 +38,8 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         let actionsList: string[] = currFileMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
 
         let dataformActionCmd = "";
+
+        let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
         // create the dataform run command for the list of actions from actionsList
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);
