@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.16.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.8...v0.16.9) (2025-10-10)
+
+
+### Features
+
+* add navigate to BigQuery & copy model name from dependancy graph ([#196](https://github.com/ashish10alex/vscode-dataform-tools/issues/196)) ([94746cc](https://github.com/ashish10alex/vscode-dataform-tools/commit/94746ccac21b446ea66466eef3128f6443c1ea41))
+
+
+### Bug Fixes
+
+* file extension not correctly inferred when multiple period symbols in filename ([#193](https://github.com/ashish10alex/vscode-dataform-tools/issues/193)) ([71b5a99](https://github.com/ashish10alex/vscode-dataform-tools/commit/71b5a99c3c6388bac49df8e1aa8d0e260afc0144))
+
 ### [0.16.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.7...v0.16.8) (2025-09-18)
 
 
