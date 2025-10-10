@@ -13,12 +13,12 @@ interface NodeData {
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
   fullTableName: string;
-  goToNodeFile?: (nodeId: string) => void;
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, datasetColor, type, onNodeClick, isExternalSource, fullTableName, fileName, goToNodeFile } = data;
+  const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, fullTableName, fileName } = data;
   const [isHovered, setIsHovered] = React.useState(false);
+  const [showNotification, setShowNotification] = React.useState(false);
 
   const handleClick = () => {
     if (onNodeClick) {
@@ -26,11 +26,25 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
     }
   };
 
+
+  const handleCopy = (e:any) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(fullTableName).then(() => {
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 2000); // Hide notification after 2 seconds
+    });
+  };
+
+  const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
+    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
+  };
+
   const nodeStyle = {
     background: isExternalSource ? datasetColor : '#ffffff',
     border: `1px solid ${datasetColor}`,
     borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
     position: 'relative' as const,
+    height: 80
   };
 
   const typeStyle = {
@@ -90,26 +104,56 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
               type: type,
             }
           });
-          if (goToNodeFile) goToNodeFile(id);
         }}
         className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
-        title="Open File"
+        title="Open model in editor"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3.5 w-3.5 text-gray-600 group-hover:text-gray-800"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-          />
-        </svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 2H6C5.44772 2 5 2.44772 5 3V21C5 21.5523 5.44772 22 6 22H18C18.5523 22 19 21.5523 19 21V8L14 2Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 2V8H19" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       </button>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          getVsCodeApi().postMessage({
+            type: 'goToBigQuery',
+            value: {
+              url: getUrlToNavigateToTableInBigQuery(projectId, datasetId, modelName)
+            }
+          });
+        }}
+        className="absolute bottom-1 right-20 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
+        title="Open in BigQuery"
+      >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 13a5.001 5.001 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      </button>
+
+
+      <button
+        onClick={handleCopy}
+        className="absolute bottom-1 right-10 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
+        title="Copy table name"
+      >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 4H16C17.1 4 18 4.9 18 6V14C18 15.1 17.1 16 16 16H8C6.9 16 6 15.1 6 14V6C6 4.9 6.9 4 8 4Z" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M16 16V18C16 19.1 15.1 20 14 20H6C4.9 20 4 19.1 4 18V10C4 8.9 4.9 8 6 8H8" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      </button>
+
+      { showNotification && (
+        <div 
+          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-green-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10"
+        >
+          Copied {fullTableName} to clipboard
+        </div>
+      )}
+
+
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
 
