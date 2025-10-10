@@ -44,3 +44,5 @@ node_modules/@types/**
 node_modules/@emotion*/**
 node_modules/concurrently*/**
 website/**
+
+user_config.json
