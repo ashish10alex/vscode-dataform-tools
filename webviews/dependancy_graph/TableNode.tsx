@@ -44,6 +44,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
     border: `1px solid ${datasetColor}`,
     borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
     position: 'relative' as const,
+    height: 80
   };
 
   const typeStyle = {
@@ -103,25 +104,14 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
               type: type,
             }
           });
-          // if (goToNodeFile) {goToNodeFile(id);}
         }}
         className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
-        title="Open File"
+        title="Open model in editor"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3.5 w-3.5 text-gray-600 group-hover:text-gray-800"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-          />
-        </svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 2H6C5.44772 2 5 2.44772 5 3V21C5 21.5523 5.44772 22 6 22H18C18.5523 22 19 21.5523 19 21V8L14 2Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 2V8H19" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       </button>
 
       <button
@@ -134,6 +124,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
             }
           });
         }}
+        className="absolute bottom-1 right-20 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
         title="Open in BigQuery"
       >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -145,6 +136,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
 
       <button
         onClick={handleCopy}
+        className="absolute bottom-1 right-10 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
         title="Copy table name"
       >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
