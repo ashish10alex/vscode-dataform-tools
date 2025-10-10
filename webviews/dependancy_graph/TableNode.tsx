@@ -18,11 +18,21 @@ interface NodeData {
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
   const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, fullTableName, fileName } = data;
   const [isHovered, setIsHovered] = React.useState(false);
+  const [showNotification, setShowNotification] = React.useState(false);
 
   const handleClick = () => {
     if (onNodeClick) {
       onNodeClick(id);
     }
+  };
+
+
+  const handleCopy = (e:any) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(fullTableName).then(() => {
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 2000); // Hide notification after 2 seconds
+    });
   };
 
   const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -131,6 +141,25 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
         <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       </button>
+
+
+      <button
+        onClick={handleCopy}
+        title="Copy table name"
+      >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 4H16C17.1 4 18 4.9 18 6V14C18 15.1 17.1 16 16 16H8C6.9 16 6 15.1 6 14V6C6 4.9 6.9 4 8 4Z" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M16 16V18C16 19.1 15.1 20 14 20H6C4.9 20 4 19.1 4 18V10C4 8.9 4.9 8 6 8H8" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      </button>
+
+      { showNotification && (
+        <div 
+          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-green-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10"
+        >
+          Copied {fullTableName} to clipboard
+        </div>
+      )}
 
 
 
