@@ -19,8 +19,8 @@ import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
-import { runCurrentFile } from './runFiles';
-import { runDataformUsingApi } from './runCurrentFileApi';
+import { runCurrentFile, runCurrentFileWtApi } from './runFiles';
+// import { runDataformUsingApi } from './runCurrentFileApi';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
@@ -203,7 +203,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runFilesWtApi', () => {runDataformUsingApi();}));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runFilesWtApi', () => { runCurrentFileWtApi();}) );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
