@@ -54,22 +54,6 @@ export async function runDataformUsingApi() {
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
 
     try {
-        vscode.window.showInformationMessage("🚀 Step 1: Creating compilation result...");
-
-        const compilationResult = {
-            gitCommitish: gitBranch,
-        };
-
-        const createCompilationResultRequest = {
-            parent: parent,
-            compilationResult: compilationResult,
-        };
-
-        const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
-        const fullCompilationResultName = createdCompilationResult[0].name;
-
-        vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
-        vscode.window.showInformationMessage("\n🚀 Step 2: Creating workflow invocation...");
 
         let workspaceFolder = await getWorkspaceFolder();
         if (!workspaceFolder){ return; }
@@ -102,6 +86,23 @@ export async function runDataformUsingApi() {
                 });
             }
         });
+
+        vscode.window.showInformationMessage("🚀 Step 1: Creating compilation result...");
+
+        const compilationResult = {
+            gitCommitish: gitBranch,
+        };
+
+        const createCompilationResultRequest = {
+            parent: parent,
+            compilationResult: compilationResult,
+        };
+
+        const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
+        const fullCompilationResultName = createdCompilationResult[0].name;
+
+        vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
+        vscode.window.showInformationMessage("\n🚀 Step 2: Creating workflow invocation...");
 
         const INVOCATION_CONFIG = {
             // includedTags: ["engines"], 
