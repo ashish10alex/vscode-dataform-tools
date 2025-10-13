@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
-import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection } from './runTag';
-import { runCurrentFile } from './runFile';
+import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
+import { runCurrentFile, runCurrentFileApi } from './runFile';
 
-export async function runFilesTagsWtOptions() {
+export async function runFilesTagsWtOptions(executionMode: string) {
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
@@ -76,18 +76,34 @@ export async function runFilesTagsWtOptions() {
         fullRefresh = true;
     }
 
-    if (firstStageSelection === "run current file") {
-        runCurrentFile(includeDependencies, includeDependents, fullRefresh);
-    } else if (firstStageSelection === "run a tag") {
-        if(!tagSelection){return;};
-        let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-        let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime, includeDependencies, includeDependents, fullRefresh);
-        runCommandInTerminal(runTagsWtDepsCommand);
-    } else if (firstStageSelection === "run multiple files"){
-        if(!multipleFileSelection){return;};
-        runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh);
-    } else if (firstStageSelection === "run multiple tags"){
-        if(!multipleTagsSelection){return;};
-        runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
+
+    if (executionMode == "cli"){
+        if (firstStageSelection === "run current file") {
+            runCurrentFile(includeDependencies, includeDependents, fullRefresh);
+        } else if (firstStageSelection === "run a tag") {
+            if(!tagSelection){return;};
+            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+            let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime, includeDependents, includeDependents, fullRefresh);
+            runCommandInTerminal(runTagsWtDepsCommand);
+        } else if (firstStageSelection === "run multiple files"){
+            if(!multipleFileSelection){return;};
+            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
+        } else if (firstStageSelection === "run multiple tags"){
+            if(!multipleTagsSelection){return;};
+            runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
+        }
+    } else if (executionMode == "api"){
+        if (firstStageSelection === "run current file") {
+            runCurrentFileApi(includeDependencies, includeDependents, fullRefresh);
+        } else if (firstStageSelection === "run a tag") {
+            if(!tagSelection){return;};
+            runTagWtApi(includeDependencies, includeDependents, fullRefresh)
+        } else if (firstStageSelection === "run multiple files"){
+            if(!multipleFileSelection){return;};
+            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "api");
+        } else if (firstStageSelection === "run multiple tags"){
+            if(!multipleTagsSelection){return;};
+            runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
+        }
     }
 }

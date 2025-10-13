@@ -39,6 +39,7 @@
         "onCommand:extension.runTagWtDependenciesApi",
         "onCommand:extension.runTagWtDependentsApi",
         "onCommand:extension.runFilesTagsWtOptions",
+        "onCommand:extension.runFilesTagsWtOptionsApi",
         "onCommand:extension.createNewDataformProject",
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.dependencyGraphPanel",
@@ -96,6 +97,11 @@
                 "title": "Run file(s) / tag(s) with options"
             },
             {
+                "command": "vscode-dataform-tools.runFilesTagsWtOptionsApi",
+                "category": "Dataform",
+                "title": "Run file(s) / tag(s) with options using API"
+            },
+            {
                 "command": "vscode-dataform-tools.createNewDataformProject",
                 "category": "Dataform",
                 "title": "create new Dataform project"
@@ -145,19 +151,19 @@
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDependenciesApi",
                 "category": "Dataform",
-                "title": "Run current file with Dependencies using Dataform API",
+                "title": "Run current file with Dependencies using API",
                 "group": "navigation"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDependentsApi",
                 "category": "Dataform",
-                "title": "Run current file with Dependents using Dataform API",
+                "title": "Run current file with Dependents using API",
                 "group": "navigation"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtApi",
                 "category": "Dataform",
-                "title": "Run current file with Dataform API",
+                "title": "Run current file with API",
                 "group": "navigation"
             },
             {

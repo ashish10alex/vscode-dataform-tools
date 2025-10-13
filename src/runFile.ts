@@ -48,7 +48,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
 }
 
 
-export async function runCurrentFileWtApi(transitiveDependenciesIncluded:boolean,transitiveDependentsIncluded:boolean,fullyRefreshIncrementalTablesEnabled:boolean) {
+export async function runCurrentFileApi(transitiveDependenciesIncluded:boolean,transitiveDependentsIncluded:boolean,fullyRefreshIncrementalTablesEnabled:boolean) {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {

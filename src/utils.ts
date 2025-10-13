@@ -12,6 +12,7 @@ import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from '
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
+import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -1589,7 +1590,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:string) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -1603,20 +1604,56 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         }
     }
 
-    let actionsList: string[] = [];
-    fileMetadatas.forEach(fileMetadata => {
-        if (fileMetadata) {
-            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
-                actionsList.push(action);
-            });
-        }
-    });
+    if(executionMode == "api"){
+        let includedTargets: {database:string, schema: string, name:string}[] = [];
+        fileMetadatas.forEach(fileMetadata => {
+            if (fileMetadata) {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                    includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
+                });
+            }
+        });
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-    let dataformActionCmd = "";
-    dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);
-    runCommandInTerminal(dataformActionCmd);
+        const invocationConfig = {
+            includedTargets: includedTargets,
+            transitiveDependenciesIncluded: includeDependencies,
+            transitiveDependentsIncluded: includeDownstreamDependents,
+            fullyRefreshIncrementalTablesEnabled: fullRefresh,
+        };
+
+        const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
+        if(!projectId){
+            vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
+            return;
+        }
+
+        let gcpProjectLocation = undefined;
+        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
+            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
+        }else{
+            gcpProjectLocation = await getLocationOfGcpProject(projectId);
+        }
+
+        if(!gcpProjectLocation){
+            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
+            return;
+        }
+        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+    } else if (executionMode == "cli") {
+        let actionsList: string[] = [];
+        fileMetadatas.forEach(fileMetadata => {
+            if (fileMetadata) {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                    const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
+                    actionsList.push(action);
+                });
+            }
+        });
+        let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+        let dataformActionCmd = "";
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);
+        runCommandInTerminal(dataformActionCmd);
+    }
 }
 
 export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
