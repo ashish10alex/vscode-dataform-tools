@@ -10,7 +10,7 @@ export async function getGitBranchAndRepoName() {
   // Activate the Git extension if not already activated
   const git = gitExtension.getAPI(1);
   if (!git.repositories.length) {
-    vscode.window.showInformationMessage('No Git repositories found.');
+    vscode.window.showErrorMessage('No Git repositories found.');
     return;
   }
 
