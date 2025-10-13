@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
-import { runCurrentFile, runCurrentFileApi } from './runFile';
+import { runCurrentFile } from './runCurrentFile';
 
 export async function runFilesTagsWtOptions(executionMode: string) {
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];
@@ -79,7 +79,7 @@ export async function runFilesTagsWtOptions(executionMode: string) {
 
     if (executionMode == "cli"){
         if (firstStageSelection === "run current file") {
-            runCurrentFile(includeDependencies, includeDependents, fullRefresh);
+            runCurrentFile(includeDependencies, includeDependents, fullRefresh, "cli");
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -94,7 +94,7 @@ export async function runFilesTagsWtOptions(executionMode: string) {
         }
     } else if (executionMode == "api"){
         if (firstStageSelection === "run current file") {
-            runCurrentFileApi(includeDependencies, includeDependents, fullRefresh);
+            runCurrentFile(includeDependencies, includeDependents, fullRefresh, "api");
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             runTagWtApi(tagSelection, includeDependencies, includeDependents, fullRefresh)
