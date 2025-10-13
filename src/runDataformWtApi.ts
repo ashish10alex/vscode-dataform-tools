@@ -13,6 +13,8 @@ type CreateCompilationResultResponse = Promise<
   ]
 >;
 
+type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig
+
 
 /**
  * Creates compilation object from the latest state of the git branch of the remote repo
@@ -38,7 +40,14 @@ export async function getCompilationResult(client:DataformClient, parent:string,
     return createdCompilationResult;
 }
 
-export async function createDataformWorkflowInvocation(projectId:string, gcpProjectLocation:string, actionsList:any[]){
+/**
+ * Creates workflow invocation from the latest state of the git branch of the remote repository
+ *
+ * @param  projectId - GCP porject Id
+ * @param  gcpPojectLocation - Compute location to use in the GCP project
+ * @param  invocationConfig -  Targets / tags to execute with or without dependecies. https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1alpha2.workflowinvocation.iinvocationconfig
+ */
+export async function createDataformWorkflowInvocation(projectId:string, gcpProjectLocation:string, invocationConfig:InvocationConfig){
     let dataformClient: DataformClient|undefined = undefined;
     try {
 
@@ -60,17 +69,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
-        // vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
         vscode.window.showInformationMessage("Creating workflow invocation...");
-
-        const invocationConfig = {
-            includedTags: [], // NOTE: shouldn't the tags and targets be mutually exclusive ?
-            includedTargets: actionsList,
-            transitiveDependenciesIncluded: false,
-            transitiveDependentsIncluded: false,
-            fullyRefreshIncrementalTablesEnabled: false,
-        };
-
 
         const workflowInvocation = {
             compilationResult: fullCompilationResultName,
@@ -175,5 +174,13 @@ export async function runMultipleFilesUsingDataformApi() {
             });
         }
     });
-    createDataformWorkflowInvocation(projectId, gcpProjectLocation, actionsList);
+    
+    const invocationConfig = {
+        includedTargets: actionsList,
+        transitiveDependenciesIncluded: false,
+        transitiveDependentsIncluded: false,
+        fullyRefreshIncrementalTablesEnabled: false,
+    };
+
+    createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
 }

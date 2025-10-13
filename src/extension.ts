@@ -203,7 +203,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { runCurrentFileWtApi();}) );
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runCurrentFileWtApi(transitiveDependenciesIncluded,transitiveDependentsIncluded,fullyRefreshIncrementalTablesEnabled) 
+    }) );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)

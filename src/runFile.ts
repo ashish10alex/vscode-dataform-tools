@@ -48,7 +48,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
 }
 
 
-export async function runCurrentFileWtApi() {
+export async function runCurrentFileWtApi(transitiveDependenciesIncluded:boolean,transitiveDependentsIncluded:boolean,fullyRefreshIncrementalTablesEnabled:boolean) {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {
@@ -113,5 +113,13 @@ export async function runCurrentFileWtApi() {
     if(!gcpProjectLocation){
         return;
     }
-    createDataformWorkflowInvocation(projectId, gcpProjectLocation, actionsList);
+    
+    const invocationConfig = {
+        includedTargets: actionsList,
+        transitiveDependenciesIncluded: transitiveDependenciesIncluded,
+        transitiveDependentsIncluded: transitiveDependentsIncluded,
+        fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,
+    };
+
+    createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
 }
