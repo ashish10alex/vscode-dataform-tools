@@ -26,6 +26,8 @@
         "workspaceContains:**/*.sqlx",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.runCurrentFileWtApi",
+        "onCommand:extension.runCurrentFileWtDependenciesApi",
+        "onCommand:extension.runCurrentFileWtDependentsApi",
         "onCommand:extension.showDependentsInGraph",
         "onCommand:extension.runCurrentFileWtDeps",
         "onCommand:extension.runCurrentFileWtDownstreamDeps",
@@ -120,6 +122,18 @@
                 "category": "Dataform",
                 "title": "Run current file",
                 "icon": "$(play)",
+                "group": "navigation"
+            },
+            {
+                "command": "vscode-dataform-tools.runCurrentFileWtDependenciesApi",
+                "category": "Dataform",
+                "title": "Run current file with Dependencies using Dataform API",
+                "group": "navigation"
+            },
+            {
+                "command": "vscode-dataform-tools.runCurrentFileWtDependentsApi",
+                "category": "Dataform",
+                "title": "Run current file with Dependents using Dataform API",
                 "group": "navigation"
             },
             {
