@@ -18,8 +18,6 @@ export async function getMultipleTagsSelection() {
     return selectedTags;
 }
 
-
-
 export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
     let dataformCompilerOptions = getDataformCompilerOptions();
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
@@ -44,7 +42,7 @@ export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string | 
     return cmd;
 }
 
-export async function runTag(includeDependencies: boolean, includeDependents: boolean) {
+export async function runTag(includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:string) {
     if (dataformTags.length === 0) {
         vscode.window.showInformationMessage('No tags found in project');
         return;
@@ -61,63 +59,52 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
         let workspaceFolder = await getWorkspaceFolder();
         if (!workspaceFolder) { return; }
 
-        let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-        let cmd = "";
-        if (includeDependencies) {
-            cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, true, false, false);
-        } else if (includeDependents) {
-            cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, true, false);
-        } else {
-            cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, false, false);
+        if(executionMode === "cli"){
+
+            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+            let cmd = "";
+            if (includeDependencies) {
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, true, false, false);
+            } else if (includeDependents) {
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, true, false);
+            } else {
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, false, false);
+            }
+            if (cmd !== "") {
+                runCommandInTerminal(cmd);
+            }
+        } else if (executionMode === "api"){
+            runTagWtApi(selection,includeDependencies, includeDependents, fullRefresh)
+
         }
-        if (cmd !== "") {
-            runCommandInTerminal(cmd);
-        }
+
     });
 }
 
+export async function runTagWtApi(tagToRun: string, transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean ){
+    let workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) { return; }
 
+    const invocationConfig = {
+        includedTags:[tagToRun],
+        transitiveDependenciesIncluded: transitiveDependenciesIncluded,
+        transitiveDependentsIncluded: transitiveDependentsIncluded,
+        fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,
+    };
 
-export async function runTagWtApi(transitiveDependenciesIncluded:boolean,transitiveDependentsIncluded:boolean,fullyRefreshIncrementalTablesEnabled:boolean) {
-    if (dataformTags.length === 0) {
-        vscode.window.showInformationMessage('No tags found in project.');
+    const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
+    if(!projectId){
+        //TODO: raise an error ? or show input to user to put something. Check if we can have a Dataform project wihout defaultDatabase
+        vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
         return;
     }
-    vscode.window.showQuickPick(dataformTags, {
-        onDidSelectItem: (_) => {
-            // This is triggered as soon as a item is hovered over
-        }
-    }).then(async(selection) => {
-        if (!selection) {
-            return;
-        }
 
-        let workspaceFolder = await getWorkspaceFolder();
-        if (!workspaceFolder) { return; }
+    if(!CACHED_COMPILED_DATAFORM_JSON){
+        // TODO: compile dataform porject if not already compiled
+        return;
+    }
 
-        const invocationConfig = {
-            includedTags:[selection],
-            transitiveDependenciesIncluded: transitiveDependenciesIncluded,
-            transitiveDependentsIncluded: transitiveDependentsIncluded,
-            fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,
-        };
+    let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
 
-        const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
-        if(!projectId){
-            //TODO: raise an error ? or show input to user to put something. Check if we can have a Dataform project wihout defaultDatabase
-            vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
-            return;
-        }
-
-        if(!CACHED_COMPILED_DATAFORM_JSON){
-            // TODO: compile dataform porject if not already compiled
-            return;
-        }
-
-        let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
-
-        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
-
-    });
+    createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
 }
-

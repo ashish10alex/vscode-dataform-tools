@@ -18,7 +18,7 @@ import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
-import { runTag, runTagWtApi } from './runTag';
+import { runTag } from './runTag';
 import { runCurrentFile, runCurrentFileApi } from './runFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
@@ -227,21 +227,21 @@ export async function activate(context: vscode.ExtensionContext) {
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTagWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled);
+        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => { 
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTagWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled);
+        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => { 
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTagWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled);
+        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(
@@ -280,19 +280,22 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
         let includeDependencies = false;
         let includeDependents = false;
-        runTag(includeDependencies, includeDependents);
+        let fullRefresh = false;
+        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
         let includeDependencies = true;
         let includeDependents = false;
-        runTag(includeDependencies, includeDependents);
+        let fullRefresh = false;
+        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
         let includeDependencies = false;
         let includeDependents = true;
-        runTag(includeDependencies, includeDependents);
+        let fullRefresh = false;
+        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     if (vscode.workspace.getConfiguration("vscode-dataform-tools").get("recommendErrorLensExtension")) {

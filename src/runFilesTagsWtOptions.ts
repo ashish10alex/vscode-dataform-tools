@@ -97,7 +97,7 @@ export async function runFilesTagsWtOptions(executionMode: string) {
             runCurrentFileApi(includeDependencies, includeDependents, fullRefresh);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            runTagWtApi(includeDependencies, includeDependents, fullRefresh)
+            runTagWtApi(tagSelection, includeDependencies, includeDependents, fullRefresh)
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "api");
