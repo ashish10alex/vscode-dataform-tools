@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject } from "./utils";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getGcpProjectLocationDataform } from "./utils";
 import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
@@ -81,6 +81,10 @@ export async function runCurrentFileWtApi(transitiveDependenciesIncluded:boolean
         }
     }
 
+    if(!CACHED_COMPILED_DATAFORM_JSON){
+        return;
+    }
+
     let currFileMetadata;
     if (CACHED_COMPILED_DATAFORM_JSON) {
         currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
@@ -96,24 +100,14 @@ export async function runCurrentFileWtApi(transitiveDependenciesIncluded:boolean
         const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
         actionsList.push(action);
     });
-    // console.log(actionsList);
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
         return;
     }
 
-    let gcpProjectLocation = undefined;
-    if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-        gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-    }else{
-        gcpProjectLocation = await getLocationOfGcpProject(projectId);
-    }
+    let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
 
-    if(!gcpProjectLocation){
-        return;
-    }
-    
     const invocationConfig = {
         includedTargets: actionsList,
         transitiveDependenciesIncluded: transitiveDependenciesIncluded,

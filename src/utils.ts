@@ -40,6 +40,22 @@ export async function getLocationOfGcpProject(projectId: string){
     }
 }
 
+export async function getGcpProjectLocationDataform(projectId:string, compiledDataformJson:DataformCompiledJson) {
+    let gcpProjectLocation;
+
+    if (compiledDataformJson?.projectConfig?.defaultLocation) {
+        gcpProjectLocation = compiledDataformJson.projectConfig.defaultLocation;
+    } else {
+        gcpProjectLocation = await getLocationOfGcpProject(projectId);
+    }
+
+    if (!gcpProjectLocation) {
+        throw new Error(`Unable to determine GCP project location for project ID: ${projectId}`);
+    }
+
+    return gcpProjectLocation;
+}
+
 
 
 export async function getGcpProjectIds(){

@@ -1,4 +1,5 @@
-import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getWorkspaceFolder, runCommandInTerminal } from "./utils";
+import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal } from "./utils";
+import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 import * as vscode from 'vscode';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
@@ -72,6 +73,50 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
         if (cmd !== "") {
             runCommandInTerminal(cmd);
         }
+    });
+}
+
+
+
+export async function runTagWtApi(transitiveDependenciesIncluded:boolean,transitiveDependentsIncluded:boolean,fullyRefreshIncrementalTablesEnabled:boolean) {
+    if (dataformTags.length === 0) {
+        vscode.window.showInformationMessage('No tags found in project.');
+        return;
+    }
+    vscode.window.showQuickPick(dataformTags, {
+        onDidSelectItem: (_) => {
+            // This is triggered as soon as a item is hovered over
+        }
+    }).then(async(selection) => {
+        if (!selection) {
+            return;
+        }
+
+        let workspaceFolder = await getWorkspaceFolder();
+        if (!workspaceFolder) { return; }
+
+        const invocationConfig = {
+            includedTags:[selection],
+            transitiveDependenciesIncluded: transitiveDependenciesIncluded,
+            transitiveDependentsIncluded: transitiveDependentsIncluded,
+            fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,
+        };
+
+        const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
+        if(!projectId){
+            //TODO: raise an error ? or show input to user to put something. Check if we can have a Dataform project wihout defaultDatabase
+            return;
+        }
+
+        if(!CACHED_COMPILED_DATAFORM_JSON){
+            // TODO: compile dataform porject if not already compiled
+            return;
+        }
+
+        let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
+
+        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+
     });
 }
 
