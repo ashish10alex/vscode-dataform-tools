@@ -103,6 +103,7 @@ export async function runCurrentFileWtApi(transitiveDependenciesIncluded:boolean
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
+        vscode.window.showErrorMessage(`Unable to determine GCP project location to use for Dataform API run`);
         return;
     }
 
