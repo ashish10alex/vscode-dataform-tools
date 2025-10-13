@@ -11,6 +11,8 @@ import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
+import { GoogleAuth } from 'google-auth-library';
+
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -24,6 +26,17 @@ export async function createSelector(selectionItems:string[], placeHolder: strin
      return await vscode.window.showQuickPick(selectionItems, {
         placeHolder: placeHolder,
     });
+}
+
+export async function getCurrentGcpProjectId(): Promise<string | undefined> {
+    try {
+        const auth = new GoogleAuth();
+        const projectId = await auth.getProjectId();
+        return projectId;
+    } catch (err) {
+        console.error("Failed to get project ID:", err);
+        return undefined;
+    }
 }
 
 export async function getLocationOfGcpProject(projectId: string){
@@ -46,6 +59,7 @@ export async function getGcpProjectLocationDataform(projectId:string, compiledDa
     if (compiledDataformJson?.projectConfig?.defaultLocation) {
         gcpProjectLocation = compiledDataformJson.projectConfig.defaultLocation;
     } else {
+        vscode.window.showWarningMessage(`Determing GCP compute location using API. Define it in Dataform config for faster invocation`);
         gcpProjectLocation = await getLocationOfGcpProject(projectId);
     }
 
@@ -56,6 +70,22 @@ export async function getGcpProjectLocationDataform(projectId:string, compiledDa
     return gcpProjectLocation;
 }
 
+export async function getGcpProjectIdDataform(compiledDataformJson:DataformCompiledJson) {
+    let gcpProjectId;
+
+    if (compiledDataformJson?.projectConfig?.defaultDatabase) {
+        gcpProjectId = compiledDataformJson.projectConfig.defaultDatabase;
+    } else {
+        vscode.window.showWarningMessage(`Determing GCP project ID using API. Define it in Dataform config for faster invocation`);
+        gcpProjectId = await getCurrentGcpProjectId();
+    }
+
+    if (!gcpProjectId) {
+        throw new Error(`Unable to determine GCP project id`);
+    }
+
+    return gcpProjectId;
+}
 
 
 export async function getGcpProjectIds(){

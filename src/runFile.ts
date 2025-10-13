@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getGcpProjectLocationDataform } from "./utils";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getGcpProjectLocationDataform, getGcpProjectIdDataform } from "./utils";
 import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 
 export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
@@ -101,7 +101,7 @@ export async function runCurrentFileWtApi(transitiveDependenciesIncluded:boolean
         actionsList.push(action);
     });
 
-    const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
+    const projectId = await getGcpProjectIdDataform(CACHED_COMPILED_DATAFORM_JSON);
     if(!projectId){
         vscode.window.showErrorMessage(`Unable to determine GCP project location to use for Dataform API run`);
         return;
