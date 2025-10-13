@@ -203,7 +203,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runFilesWtApi', () => { runCurrentFileWtApi();}) );
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { runCurrentFileWtApi();}) );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)

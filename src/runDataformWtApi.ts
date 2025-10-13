@@ -13,6 +13,15 @@ type CreateCompilationResultResponse = Promise<
   ]
 >;
 
+
+/**
+ * Creates compilation object from the latest state of the git branch of the remote repo
+ *
+ * @param  client - Dataform client
+ * @param  parent - string of the format `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`
+ * @param  gitBranch - name of the git branch from which compilation object is being generated
+ * @returns createdCompilationResult
+ */
 export async function getCompilationResult(client:DataformClient, parent:string, gitBranch:string): CreateCompilationResultResponse{
     vscode.window.showInformationMessage("Creating compilation result...");
 
@@ -36,18 +45,9 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         // TODO: user might not have git extension, we need a fallback ?
         // TODO: show the information in logger only ?
         // vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
-        const gitMetaData = await getGitBranchAndRepoName();
-        const gitRepoName = gitMetaData?.gitRepoName;
-        const gitBranch = gitMetaData?.gitBranch;
-
-        // Initialize the Dataform client.
-        // The client automatically picks up credentials from the environment (e.g., GOOGLE_APPLICATION_CREDENTIALS)
-        // or from a service account key file path provided in the constructor like:
-        // new DataformClient({ keyFilename: 'path/to/your-key.json' });
         dataformClient = new DataformClient();
-
+        const {gitRepoName, gitBranch} = await getGitBranchAndRepoName() || {}; 
         const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
-
         const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
@@ -55,10 +55,10 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         vscode.window.showInformationMessage("Creating workflow invocation...");
 
         const INVOCATION_CONFIG = {
-            // includedTags: ["engines"], 
+            // includedTags: ["engines"],
             includedTargets: actionsList,
-            transitiveDependenciesIncluded: false, 
-            fullyRefreshIncrementalTablesEnabled: false, 
+            transitiveDependenciesIncluded: false,
+            fullyRefreshIncrementalTablesEnabled: false,
         };
 
 
