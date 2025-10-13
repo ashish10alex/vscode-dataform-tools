@@ -116,6 +116,21 @@
                 "title": "Run a tag with dependents"
             },
             {
+                "command": "vscode-dataform-tools.runTagWtApi",
+                "category": "Dataform",
+                "title": "Run a tag using API"
+            },
+            {
+                "command": "vscode-dataform-tools.runTagWtDependenciesApi",
+                "category": "Dataform",
+                "title": "Run tag with dependencies using API"
+            },
+            {
+                "command": "vscode-dataform-tools.runTagWtDependentsApi",
+                "category": "Dataform",
+                "title": "Run tag with dependents using API"
+            },
+            {
                 "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
                 "category": "Dataform",
                 "title": "Run current file with dependents"

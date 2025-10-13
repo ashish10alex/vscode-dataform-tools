@@ -13,7 +13,7 @@ type CreateCompilationResultResponse = Promise<
   ]
 >;
 
-type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig
+type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
 
 
 /**
