@@ -45,7 +45,16 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         // TODO: user might not have git extension, we need a fallback ?
         // TODO: show the information in logger only ?
         // vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
-        dataformClient = new DataformClient();
+        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+        let options = {projectId};
+        if(serviceAccountJsonPath){
+            // vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
+            // @ts-ignore 
+            options = {... options , keyFilename: serviceAccountJsonPath};
+        }
+
+
+        dataformClient = new DataformClient(options);
         const {gitRepoName, gitBranch} = await getGitBranchAndRepoName() || {}; 
         const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
         const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
