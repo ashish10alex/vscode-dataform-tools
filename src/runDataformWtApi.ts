@@ -63,7 +63,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         // vscode.window.showInformationMessage(`✅ Compilation Result created: ${fullCompilationResultName}`);
         vscode.window.showInformationMessage("Creating workflow invocation...");
 
-        const INVOCATION_CONFIG = {
+        const invocationConfig = {
             includedTags: [], // NOTE: shouldn't the tags and targets be mutually exclusive ?
             includedTargets: actionsList,
             transitiveDependenciesIncluded: false,
@@ -74,7 +74,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 
         const workflowInvocation = {
             compilationResult: fullCompilationResultName,
-            invocationConfig: INVOCATION_CONFIG,
+            invocationConfig: invocationConfig,
         };
 
         const createWorkflowInvocationRequest = {
