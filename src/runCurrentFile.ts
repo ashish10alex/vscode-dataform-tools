@@ -89,7 +89,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
             fullyRefreshIncrementalTablesEnabled: fullRefresh,
         };
 
-        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+        return createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
 
     }
 }

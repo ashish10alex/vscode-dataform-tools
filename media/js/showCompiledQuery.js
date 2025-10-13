@@ -313,8 +313,13 @@ window.addEventListener('message', event => {
         "errorMessage": event?.data?.errorMessage,
         "dryRunStat": event?.data?.dryRunStat,
         "modelType": event?.data?.modelType,
+        "apiUrl": event?.data?.apiUrl,
     };
     removeExistingCopyElements();
+
+    document.getElementById('dataformLink').setAttribute('href', data.apiUrl);
+    document.getElementById('dataformLink').setAttribute('title', data.apiUrl);
+
 
     const hasError = event?.data?.errorMessage && event?.data?.errorMessage !== " ";
 

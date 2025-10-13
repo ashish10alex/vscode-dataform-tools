@@ -275,7 +275,26 @@ export class CompiledQueryPanel {
                 const _includeDependencies = message.value.includeDependencies;
                 const _includeDependents = message.value.includeDependents;
                 const _fullRefresh = message.value.fullRefresh;
-                await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
+                const apiUrl =  runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
+                    this.centerPanel?.webviewPanel.webview.postMessage({
+                        "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
+                        "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
+                        "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
+                        "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
+                        "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
+                        "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
+                        "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
+                        "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
+                        "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta.relativeFilePath,
+                        "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
+                        "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
+                        "compiledQuerySchema": compiledQuerySchema,
+                        "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
+                        "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
+                        "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
+                        "dataformTags": dataformTags,
+                        "apiUrl": apiUrl,
+                    });
                 return;
               case 'costEstimator':
 
@@ -892,6 +911,8 @@ export class CompiledQueryPanel {
                 </div>
 
             </div>
+
+            <a id="dataformLink" href="https://google.com" >Dataform API execution link</a>
 
             <div id="codeBlock">
                 <div id="preOperationsDiv" style="display: none;">

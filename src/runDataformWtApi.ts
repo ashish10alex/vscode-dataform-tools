@@ -94,6 +94,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
                     vscode.env.openExternal(vscode.Uri.parse(workflowExecutionUrlGCP));
                 }
             });
+            return workflowExecutionUrlGCP;
 
         }else{
             vscode.window.showErrorMessage(`Workflow invocation could not be determined`);
