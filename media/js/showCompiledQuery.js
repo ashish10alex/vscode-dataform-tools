@@ -46,6 +46,7 @@ style="vertical-align: middle; margin-right: 5px;">
 
 const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
+const runModelApiButton = document.getElementById('runModelApi');
 const costEstimatorButton = document.getElementById('costEstimator');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
@@ -154,6 +155,24 @@ function runModelClickHandler() {
     }, 10000);
 }
 
+function runModelApiClickHandler() {
+    runModelApiButton.disabled = true;
+    vscode.postMessage({
+        command: 'runModelApi',
+        value: {
+            runMode: true,
+            includeDependents: includeDependentsCheckBox.checked,
+            includeDependencies: includeDependenciesCheckbox.checked,
+            fullRefresh: fullRefreshCheckBox.checked,
+        }
+    });
+
+    setTimeout(() => {
+        runModelApiButton.disabled = false;
+    }, 10000);
+}
+
+
 function costEstimatorClickHandler() {
     costEstimatorloadingIcon.style.display = "";
     costEstimatorButton.disabled = true;
@@ -191,6 +210,10 @@ if(copyModelNameButton){
 
 if (runModelButton) {
     runModelButton.addEventListener('click', runModelClickHandler);
+}
+
+if (runModelApiButton) {
+    runModelApiButton.addEventListener('click', runModelApiClickHandler);
 }
 
 if(costEstimatorButton){

@@ -201,7 +201,6 @@ export class CompiledQueryPanel {
 
             switch (message.command) {
               case 'lineageNavigation':
-                console.log(message.value);
                 const projectId = message.value.split(".")[0];
                 const datasetId = message.value.split(".")[1];
                 const tableId = message.value.split(".")[2];
@@ -268,9 +267,15 @@ export class CompiledQueryPanel {
                 return;
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;
-                const includeDependents  = message.value.includeDependents;
-                const fullRefresh  = message.value.fullRefresh;
+                const includeDependents = message.value.includeDependents;
+                const fullRefresh = message.value.fullRefresh;
                 await runCurrentFile(includeDependencies, includeDependents, fullRefresh, "cli");
+                return;
+              case 'runModelApi':
+                const _includeDependencies = message.value.includeDependencies;
+                const _includeDependents = message.value.includeDependents;
+                const _fullRefresh = message.value.fullRefresh;
+                await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
                 return;
               case 'costEstimator':
 
@@ -877,7 +882,7 @@ export class CompiledQueryPanel {
                 <div class="button-container">
                     <button class="run-model" id="dependencyGraph" title="Dependency Graph">Dependency Graph</button>
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
-                    <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run</button>
+                    <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run (CLI) </button>
                     <div class="button-wrapper run-model">
                         <button class="run-model" id="runModelApi" title="Execute the model in BigQuery Dataform API">
                         Run (API)
