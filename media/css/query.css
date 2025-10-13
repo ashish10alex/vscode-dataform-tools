@@ -752,6 +752,25 @@ form {
 	background-color: #3291d0;
 }
 
+.button-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.new-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background-color: #f39c12;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  z-index: 1;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+
 .model-checkbox-container {
 	display: inline-flex;
 	align-items: center;
