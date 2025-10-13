@@ -18,9 +18,8 @@ import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
-import { runTag } from './runTag';
+import { runTag, runTagWtApi } from './runTag';
 import { runCurrentFile, runCurrentFileWtApi } from './runFile';
-// import { runDataformUsingApi } from './runCurrentFileApi';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
@@ -222,6 +221,27 @@ export async function activate(context: vscode.ExtensionContext) {
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
         runCurrentFileWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded ,fullyRefreshIncrementalTablesEnabled) 
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runTagWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled) 
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => { 
+        let transitiveDependenciesIncluded = true;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runTagWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled) 
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = true;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runTagWtApi(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled) 
     }) );
 
     context.subscriptions.push(
