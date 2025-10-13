@@ -2,7 +2,7 @@ import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig,
 import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 import * as vscode from 'vscode';
 
-export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
     let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
     runCommandInTerminal(runmultitagscommand);
@@ -15,10 +15,10 @@ export async function getMultipleTagsSelection() {
         ignoreFocusOut: true,
     };
     let selectedTags = await vscode.window.showQuickPick(dataformTags, options);
-    return selectedTags;
+    return selectedTags as string[] | undefined;
 }
 
-export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
+export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
     let dataformCompilerOptions = getDataformCompilerOptions();
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
     let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
@@ -64,29 +64,29 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
             let cmd = "";
             if (includeDependencies) {
-                cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, true, false, false);
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], defaultDataformCompileTime, true, false, false);
             } else if (includeDependents) {
-                cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, true, false);
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], defaultDataformCompileTime, false, true, false);
             } else {
-                cmd = getRunTagsWtOptsCommand(workspaceFolder, selection, defaultDataformCompileTime, false, false, false);
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], defaultDataformCompileTime, false, false, false);
             }
             if (cmd !== "") {
                 runCommandInTerminal(cmd);
             }
         } else if (executionMode === "api"){
-            runTagWtApi(selection,includeDependencies, includeDependents, fullRefresh);
+            runTagWtApi([selection],includeDependencies, includeDependents, fullRefresh);
 
         }
 
     });
 }
 
-export async function runTagWtApi(tagToRun: string, transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean ){
+export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean ){
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) { return; }
 
     const invocationConfig = {
-        includedTags:[tagToRun],
+        includedTags: tagsToRun,
         transitiveDependenciesIncluded: transitiveDependenciesIncluded,
         transitiveDependentsIncluded: transitiveDependentsIncluded,
         fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,

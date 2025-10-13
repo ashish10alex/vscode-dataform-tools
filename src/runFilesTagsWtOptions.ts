@@ -28,7 +28,7 @@ export async function runFilesTagsWtOptions(executionMode: string) {
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
     }
 
-    let multipleTagsSelection: string | undefined;
+    let multipleTagsSelection: string[] | undefined;
     if (firstStageSelection === "run multiple tags"){
         multipleTagsSelection = await getMultipleTagsSelection();
     }
@@ -83,7 +83,7 @@ export async function runFilesTagsWtOptions(executionMode: string) {
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-            let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, tagSelection, defaultDataformCompileTime, includeDependents, includeDependents, fullRefresh);
+            let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, [tagSelection], defaultDataformCompileTime, includeDependents, includeDependents, fullRefresh);
             runCommandInTerminal(runTagsWtDepsCommand);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
@@ -97,13 +97,13 @@ export async function runFilesTagsWtOptions(executionMode: string) {
             runCurrentFile(includeDependencies, includeDependents, fullRefresh, "api");
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            runTagWtApi(tagSelection, includeDependencies, includeDependents, fullRefresh);
+            runTagWtApi([tagSelection], includeDependencies, includeDependents, fullRefresh);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "api");
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
-            runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
+            runTagWtApi(multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
         }
     }
 }
