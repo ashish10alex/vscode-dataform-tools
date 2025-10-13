@@ -11,9 +11,8 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
 
     var result = getFileNameFromDocument(document, false);
     if (result.success === false) {
+        vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`)
         return;
-         //{ return {errors: {errorGettingFileNameFromDocument: result.error}}; }
-        //TODO: should we return an error here ?
     }
     //@ts-ignore
     const [filename, relativeFilePath, extension] = result.value;
@@ -46,7 +45,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
         currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
     }
     if(!currFileMetadata){
-        //TODO: throw some error here
+        vscode.window.showErrorMessage(`Unable to get metadata for the current file`);
         return;
     }
 

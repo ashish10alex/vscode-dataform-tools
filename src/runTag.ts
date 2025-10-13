@@ -94,13 +94,12 @@ export async function runTagWtApi(tagToRun: string, transitiveDependenciesInclud
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
-        //TODO: raise an error ? or show input to user to put something. Check if we can have a Dataform project wihout defaultDatabase
         vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
         return;
     }
 
     if(!CACHED_COMPILED_DATAFORM_JSON){
-        // TODO: compile dataform porject if not already compiled
+        vscode.window.showErrorMessage(`Unable to compile dataform project. Run "dataform compile" in the terminal to check`);
         return;
     }
 
