@@ -314,11 +314,21 @@ window.addEventListener('message', event => {
         "dryRunStat": event?.data?.dryRunStat,
         "modelType": event?.data?.modelType,
         "apiUrl": event?.data?.apiUrl,
+        "apiUrlLoading": event?.data?.apiUrlLoading,
     };
     removeExistingCopyElements();
 
-    document.getElementById('dataformLink').setAttribute('href', data.apiUrl);
-    document.getElementById('dataformLink').setAttribute('title', data.apiUrl);
+    if(data.apiUrl){
+        document.getElementById('dataformLinkLoading').style.display = "none";
+        document.getElementById('dataformLink').style.display = "";
+        document.getElementById('dataformLink').setAttribute('href', data.apiUrl);
+        document.getElementById('dataformLink').setAttribute('title', data.apiUrl);
+    }else if(data.apiUrlLoading){
+        document.getElementById('dataformLinkLoading').style.display = "flex";
+        document.getElementById('dataformLink').style.display = "none";
+    } else {
+        document.getElementById('dataformLink').style.display = "none";
+    }
 
 
     const hasError = event?.data?.errorMessage && event?.data?.errorMessage !== " ";

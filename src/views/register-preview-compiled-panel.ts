@@ -275,26 +275,46 @@ export class CompiledQueryPanel {
                 const _includeDependencies = message.value.includeDependencies;
                 const _includeDependents = message.value.includeDependents;
                 const _fullRefresh = message.value.fullRefresh;
-                const apiUrl =  runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
-                    this.centerPanel?.webviewPanel.webview.postMessage({
-                        "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
-                        "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
-                        "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
-                        "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
-                        "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
-                        "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
-                        "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
-                        "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
-                        "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta.relativeFilePath,
-                        "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
-                        "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
-                        "compiledQuerySchema": compiledQuerySchema,
-                        "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
-                        "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
-                        "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
-                        "dataformTags": dataformTags,
-                        "apiUrl": apiUrl,
-                    });
+                // FIXME: there must be a way to avoid double calls before and after function invocation ?
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
+                    "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
+                    "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
+                    "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
+                    "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
+                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
+                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
+                    "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
+                    "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
+                    "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
+                    "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
+                    "compiledQuerySchema": compiledQuerySchema,
+                    "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
+                    "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
+                    "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
+                    "dataformTags": dataformTags,
+                    "apiUrlLoading": true,
+                });
+                const apiUrl = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
+                    "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
+                    "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
+                    "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
+                    "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
+                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
+                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
+                    "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
+                    "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
+                    "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
+                    "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
+                    "compiledQuerySchema": compiledQuerySchema,
+                    "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
+                    "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
+                    "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
+                    "dataformTags": dataformTags,
+                    "apiUrl": apiUrl,
+                });
                 return;
               case 'costEstimator':
 
@@ -739,15 +759,16 @@ export class CompiledQueryPanel {
             </div>
         </div>
 
-        <div id="compiledQueryloadingIcon">
+        <div id="compiledQueryloadingIcon" style="display: flex; align-items: center; gap: 10px;">
             <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
-                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                        values="0 126;126 126;126 0"/>
-                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                        values="0;-126;-252"/>
-                    </circle>
+                <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
+                    <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                            values="0 126;126 126;126 0"/>
+                    <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                            values="0;-126;-252"/>
+                </circle>
             </svg>
+            <span>Compiling Dataform...</span>
         </div>
 
         <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
@@ -840,15 +861,16 @@ export class CompiledQueryPanel {
 
         <div id="compilationBlock" style="display: block;">
 
-            <div id="dryRunloadingIcon">
+            <div id="dryRunloadingIcon" style="display: flex; align-items: center; gap: 10px;">
                 <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="25" cy="25" r="10" fill="none" stroke="#32cd32" stroke-width="4">
-                            <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                            values="0 126;126 126;126 0"/>
-                            <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                            values="0;-126;-252"/>
-                        </circle>
+                    <circle cx="25" cy="25" r="10" fill="none" stroke="#32cd32" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                                values="0 126;126 126;126 0"/>
+                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                                values="0;-126;-252"/>
+                    </circle>
                 </svg>
+                <span>Loading dry run stats...</span>
             </div>
 
             <span class="bigquery-job-cancelled"></span>
@@ -912,7 +934,19 @@ export class CompiledQueryPanel {
 
             </div>
 
-            <a id="dataformLink" href="https://google.com" >Dataform API execution link</a>
+            <a id="dataformLink" href="" style="display: none;" >Dataform API execution link</a>
+
+            <div id="dataformLinkLoading" style="display: none; align-items: center; gap: 10px;">
+                <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="25" cy="25" r="10" fill="none" stroke="green" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                                values="0 126;126 126;126 0"/>
+                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                                values="0;-126;-252"/>
+                    </circle>
+                </svg>
+                <span>Creating compilation object & workflow invocation...</span>
+            </div>
 
             <div id="codeBlock">
                 <div id="preOperationsDiv" style="display: none;">
