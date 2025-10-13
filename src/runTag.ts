@@ -74,7 +74,7 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
                 runCommandInTerminal(cmd);
             }
         } else if (executionMode === "api"){
-            runTagWtApi(selection,includeDependencies, includeDependents, fullRefresh)
+            runTagWtApi(selection,includeDependencies, includeDependents, fullRefresh);
 
         }
 

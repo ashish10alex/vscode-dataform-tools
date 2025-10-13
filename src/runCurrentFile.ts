@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject } from "./utils";
 import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 
-export async function runCurrentFile(includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:string) {
+export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string) {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {
@@ -56,7 +56,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
         let dataformActionCmd = "";
 
         // create the dataform run command for the list of actions from actionsList
-        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
         runCommandInTerminal(dataformActionCmd);
     } else if (executionMode === "api"){
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
@@ -85,9 +85,9 @@ export async function runCurrentFile(includDependencies: boolean, includeDownstr
 
         const invocationConfig = {
             includedTargets: actionsList,
-            transitiveDependenciesIncluded: false,
-            transitiveDependentsIncluded: false,
-            fullyRefreshIncrementalTablesEnabled: false,
+            transitiveDependenciesIncluded: includDependencies,
+            transitiveDependentsIncluded: includeDependents,
+            fullyRefreshIncrementalTablesEnabled: fullRefresh,
         };
 
         createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
