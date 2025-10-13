@@ -96,7 +96,6 @@ export async function runCurrentFileWtApi() {
         const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
         actionsList.push(action);
     });
-    // console.log(actionsList);
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
@@ -113,5 +112,13 @@ export async function runCurrentFileWtApi() {
     if(!gcpProjectLocation){
         return;
     }
-    createDataformWorkflowInvocation(projectId, gcpProjectLocation, actionsList);
+
+    const invocationConfig = {
+        includedTargets: actionsList,
+        transitiveDependenciesIncluded: false,
+        transitiveDependentsIncluded: false,
+        fullyRefreshIncrementalTablesEnabled: false,
+    };
+
+    createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
 }
