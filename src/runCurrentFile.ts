@@ -11,7 +11,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
 
     var result = getFileNameFromDocument(document, false);
     if (result.success === false) {
-        vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`)
+        vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`);
         return;
     }
     //@ts-ignore
