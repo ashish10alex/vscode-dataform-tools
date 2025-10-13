@@ -105,7 +105,7 @@ export async function runTagWtApi(transitiveDependenciesIncluded:boolean,transit
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
         if(!projectId){
             //TODO: raise an error ? or show input to user to put something. Check if we can have a Dataform project wihout defaultDatabase
-            vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`)
+            vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
             return;
         }
 
