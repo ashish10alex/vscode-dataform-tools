@@ -64,9 +64,10 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         vscode.window.showInformationMessage("Creating workflow invocation...");
 
         const INVOCATION_CONFIG = {
-            // includedTags: ["engines"],
+            includedTags: [], // NOTE: shouldn't the tags and targets be mutually exclusive ?
             includedTargets: actionsList,
             transitiveDependenciesIncluded: false,
+            transitiveDependentsIncluded: false,
             fullyRefreshIncrementalTablesEnabled: false,
         };
 
