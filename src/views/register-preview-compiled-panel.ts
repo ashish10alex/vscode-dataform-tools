@@ -925,7 +925,7 @@ export class CompiledQueryPanel {
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
                     <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run (CLI) </button>
                     <div class="button-wrapper run-model">
-                        <button class="run-model" id="runModelApi" title="Execute the model in BigQuery Dataform API">
+                        <button class="run-model" id="runModelApi" title="Execute the model using Dataform API in its remote git stage">
                         Run (API)
                         </button>
                         <span class="new-badge">New</span>
@@ -934,7 +934,7 @@ export class CompiledQueryPanel {
 
             </div>
 
-            <a id="dataformLink" href="" style="display: none;" >Dataform API execution link</a>
+            <a id="dataformLink" href="" style="display: none;" >Dataform API workflow execution link</a>
 
             <div id="dataformLinkLoading" style="display: none; align-items: center; gap: 10px;">
                 <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
