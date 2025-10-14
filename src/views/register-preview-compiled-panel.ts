@@ -89,6 +89,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
             if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
+                CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
+                    "recompiling": true
+                })
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
                 CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
