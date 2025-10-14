@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject } from "./utils";
 import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 
-export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string): Promise<{ workflowInvocationUrlGCP: string; errorWorkflowInvocation: string; } | undefined> {
+export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {
@@ -25,11 +25,6 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
 
     let currFileMetadata;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
-
-        let workspaceFolder = await getWorkspaceFolder();
-        if (!workspaceFolder) {
-            return;
-        }
 
         let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
         if(errors && errors.length > 0){
@@ -57,6 +52,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
         // create the dataform run command for the list of actions from actionsList
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
         runCommandInTerminal(dataformActionCmd);
+        return;
     } else if (executionMode === "api"){
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
         if(!projectId){
@@ -90,6 +86,6 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
         };
 
         return createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
-
     }
+    return;
 }
