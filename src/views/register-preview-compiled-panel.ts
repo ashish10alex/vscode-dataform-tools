@@ -927,6 +927,10 @@ export class CompiledQueryPanel {
 
             <a id="dataformLink" href="" style="display: none;" >Dataform API workflow execution link</a>
 
+            <div id="dataformApiError" class="error-message-container" style="display: none;">
+                <p></p>
+            </div>
+
             <div id="dataformLinkLoading" style="display: none; align-items: center; gap: 10px;">
                 <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="25" cy="25" r="10" fill="none" stroke="green" stroke-width="4">

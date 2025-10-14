@@ -330,6 +330,8 @@ window.addEventListener('message', event => {
     } else if (data.errorWorkflowInvocation){
         document.getElementById('dataformLinkLoading').style.display = "none";
         document.getElementById('dataformLink').style.display = "none";
+        document.getElementById('dataformApiError').style.display = "flex";
+        document.getElementById('dataformApiError').innerText = data.errorWorkflowInvocation;
     }
      else {
         document.getElementById('dataformLink').style.display = "none";
