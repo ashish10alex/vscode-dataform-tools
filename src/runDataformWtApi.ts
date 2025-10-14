@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { getLocationOfGcpProject, getWorkspaceFolder, runCompilation, getMultipleFileSelection, getQueryMetaForCurrentFile} from './utils';
 import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
