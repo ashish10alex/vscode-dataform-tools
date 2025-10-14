@@ -345,7 +345,7 @@ export interface WebviewMessage {
   models?: any; 
   dependents?: any; 
   dataformTags?: string[]; 
-  workflowInvocationLoading?: boolean;
+  apiUrlLoading?: boolean;
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
 }

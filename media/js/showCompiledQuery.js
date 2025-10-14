@@ -315,27 +315,27 @@ window.addEventListener('message', event => {
         "modelType": event?.data?.modelType,
         "workflowInvocationUrlGCP": event?.data?.workflowInvocationUrlGCP,
         "errorWorkflowInvocation": event?.data?.errorWorkflowInvocation,
-        "workflowInvocationLoading": event?.data?.workflowInvocationLoading,
+        "apiUrlLoading": event?.data?.apiUrlLoading,
     };
     removeExistingCopyElements();
 
     if(data.workflowInvocationUrlGCP){
-        document.getElementById('workflowInvocationLoading').style.display = "none";
+        document.getElementById('dataformLinkLoading').style.display = "none";
         document.getElementById('dataformApiError').style.display = "none";
-        document.getElementById('workflowInvocationLink').style.display = "";
-        document.getElementById('workflowInvocationLink').setAttribute('href', data.workflowInvocationUrlGCP);
-        document.getElementById('workflowInvocationLink').setAttribute('title', data.workflowInvocationUrlGCP);
-    }else if(data.workflowInvocationLoading){
-        document.getElementById('workflowInvocationLoading').style.display = "flex";
-        document.getElementById('workflowInvocationLink').style.display = "none";
+        document.getElementById('dataformLink').style.display = "";
+        document.getElementById('dataformLink').setAttribute('href', data.workflowInvocationUrlGCP);
+        document.getElementById('dataformLink').setAttribute('title', data.workflowInvocationUrlGCP);
+    }else if(data.apiUrlLoading){
+        document.getElementById('dataformLinkLoading').style.display = "flex";
+        document.getElementById('dataformLink').style.display = "none";
     } else if (data.errorWorkflowInvocation){
-        document.getElementById('workflowInvocationLoading').style.display = "none";
-        document.getElementById('workflowInvocationLink').style.display = "none";
+        document.getElementById('dataformLinkLoading').style.display = "none";
+        document.getElementById('dataformLink').style.display = "none";
         document.getElementById('dataformApiError').style.display = "flex";
         document.getElementById('dataformApiError').innerText = data.errorWorkflowInvocation;
     }
      else {
-        document.getElementById('workflowInvocationLink').style.display = "none";
+        document.getElementById('dataformLink').style.display = "none";
     }
 
 
