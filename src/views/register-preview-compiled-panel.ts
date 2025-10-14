@@ -916,7 +916,7 @@ export class CompiledQueryPanel {
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
                     <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run (CLI) </button>
                     <div class="button-wrapper run-model">
-                        <button class="run-model" id="runModelApi" title="Execute the model using Dataform API in its remote git stage">
+                        <button class="run-model" id="runModelApi" title="Execute the model using Dataform API in its remote git state">
                         Run (API)
                         </button>
                         <span class="new-badge">New</span>
