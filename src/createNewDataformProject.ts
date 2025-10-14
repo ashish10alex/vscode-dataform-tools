@@ -1,9 +1,7 @@
 import * as vscode from 'vscode';
-import { delay, getDataformCliCmdBasedOnScope, isDataformWorkspace, runCommandInTerminal } from "./utils";
+import { createSelector, delay, getDataformCliCmdBasedOnScope, getGcpProjectIds, isDataformWorkspace, runCommandInTerminal } from "./utils";
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
-import { ProjectsClient } from '@google-cloud/resource-manager';
-
 
 export async function createNewDataformProject(){
 
@@ -26,17 +24,7 @@ export async function createNewDataformProject(){
         return;
     }
     placeHolder = "Select GCP project id";
-    let gcpProjectIds = [];
-
-    //TODO: need to check what happens when there is an error ?
-    const client = new ProjectsClient();
-    const projects = client.searchProjectsAsync();
-    vscode.window.showInformationMessage("Loading available GCP projects...");
-    for await (const project of projects) {
-        if(project.projectId){
-            gcpProjectIds.push(project.projectId);
-        }
-    }
+    const gcpProjectIds = await getGcpProjectIds();
     const gcpProjectId = await createSelector(gcpProjectIds, placeHolder);
 
     if (!gcpProjectId) {
@@ -55,13 +43,6 @@ export async function createNewDataformProject(){
     await vscode.commands.executeCommand('vscode.openFolder', folderUri, { forceNewWindow: false });
 
 }
-
-async function createSelector(selectionItems:string[], placeHolder: string): Promise<string | undefined>{
-     return await vscode.window.showQuickPick(selectionItems, {
-        placeHolder: placeHolder,
-    });
-}
-
 
 async function openFolderSelector(){
     const folderUris = await vscode.window.showOpenDialog({

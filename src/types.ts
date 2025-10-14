@@ -97,7 +97,7 @@ interface ProjectConfig {
     assertionSchema: string;
     defaultDatabase: string;
     tablePrefix: string;
-    defualtLocation: string;
+    defaultLocation: string;
 }
 
 export interface Operation {
@@ -325,3 +325,27 @@ export type ExecutablePathInfo = {
 
 export type ExecutablePathCache = Map<string, ExecutablePathInfo>;
 
+
+export interface WebviewMessage {
+}
+export interface WebviewMessage {
+  tableOrViewQuery?: string;
+  assertionQuery?: string;
+  preOperations?: string;
+  postOperations?: string;
+  incrementalPreOpsQuery?: string;
+  incrementalQuery?: string;
+  nonIncrementalQuery?: string;
+  operationsQuery?: string;
+  relativeFilePath?: string;
+  errorMessage?: string;
+  dryRunStat?: any; 
+  compiledQuerySchema?: any;
+  targetTablesOrViews?: any;
+  models?: any; 
+  dependents?: any; 
+  dataformTags?: string[]; 
+  apiUrlLoading?: boolean;
+  workflowInvocationUrlGCP?: string;
+  errorWorkflowInvocation?: string;
+}

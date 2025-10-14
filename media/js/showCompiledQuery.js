@@ -46,6 +46,7 @@ style="vertical-align: middle; margin-right: 5px;">
 
 const costEstimatorloadingIcon = document.getElementById("costEstimatorloadingIcon");
 const runModelButton = document.getElementById('runModel');
+const runModelApiButton = document.getElementById('runModelApi');
 const costEstimatorButton = document.getElementById('costEstimator');
 const includeDependenciesCheckbox = document.getElementById('includeDependencies');
 const includeDependentsCheckBox = document.getElementById('includeDependents');
@@ -154,6 +155,24 @@ function runModelClickHandler() {
     }, 10000);
 }
 
+function runModelApiClickHandler() {
+    runModelApiButton.disabled = true;
+    vscode.postMessage({
+        command: 'runModelApi',
+        value: {
+            runMode: true,
+            includeDependents: includeDependentsCheckBox.checked,
+            includeDependencies: includeDependenciesCheckbox.checked,
+            fullRefresh: fullRefreshCheckBox.checked,
+        }
+    });
+
+    setTimeout(() => {
+        runModelApiButton.disabled = false;
+    }, 3000);
+}
+
+
 function costEstimatorClickHandler() {
     costEstimatorloadingIcon.style.display = "";
     costEstimatorButton.disabled = true;
@@ -191,6 +210,10 @@ if(copyModelNameButton){
 
 if (runModelButton) {
     runModelButton.addEventListener('click', runModelClickHandler);
+}
+
+if (runModelApiButton) {
+    runModelApiButton.addEventListener('click', runModelApiClickHandler);
 }
 
 if(costEstimatorButton){
@@ -290,8 +313,31 @@ window.addEventListener('message', event => {
         "errorMessage": event?.data?.errorMessage,
         "dryRunStat": event?.data?.dryRunStat,
         "modelType": event?.data?.modelType,
+        "workflowInvocationUrlGCP": event?.data?.workflowInvocationUrlGCP,
+        "errorWorkflowInvocation": event?.data?.errorWorkflowInvocation,
+        "apiUrlLoading": event?.data?.apiUrlLoading,
     };
     removeExistingCopyElements();
+
+    if(data.workflowInvocationUrlGCP){
+        document.getElementById('dataformLinkLoading').style.display = "none";
+        document.getElementById('dataformApiError').style.display = "none";
+        document.getElementById('dataformLink').style.display = "";
+        document.getElementById('dataformLink').setAttribute('href', data.workflowInvocationUrlGCP);
+        document.getElementById('dataformLink').setAttribute('title', data.workflowInvocationUrlGCP);
+    }else if(data.apiUrlLoading){
+        document.getElementById('dataformLinkLoading').style.display = "flex";
+        document.getElementById('dataformLink').style.display = "none";
+    } else if (data.errorWorkflowInvocation){
+        document.getElementById('dataformLinkLoading').style.display = "none";
+        document.getElementById('dataformLink').style.display = "none";
+        document.getElementById('dataformApiError').style.display = "flex";
+        document.getElementById('dataformApiError').innerText = data.errorWorkflowInvocation;
+    }
+     else {
+        document.getElementById('dataformLink').style.display = "none";
+    }
+
 
     const hasError = event?.data?.errorMessage && event?.data?.errorMessage !== " ";
 

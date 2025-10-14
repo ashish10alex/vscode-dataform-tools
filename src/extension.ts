@@ -19,7 +19,7 @@ import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
-import { runCurrentFile } from './runFiles';
+import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
@@ -200,10 +200,58 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(tagsAutoCompletionDisposable());
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false); }));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false, "cli"); }));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false, "cli"); }));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runCurrentFile(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependenciesApi', () => { 
+        let transitiveDependenciesIncluded = true;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runCurrentFile(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependentsApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = true;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runCurrentFile(transitiveDependenciesIncluded, transitiveDependentsIncluded ,fullyRefreshIncrementalTablesEnabled, "api");
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => { 
+        let transitiveDependenciesIncluded = true;
+        let transitiveDependentsIncluded = false;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+    }) );
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => { 
+        let transitiveDependenciesIncluded = false;
+        let transitiveDependentsIncluded = true;
+        let fullyRefreshIncrementalTablesEnabled = false;
+        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+    }) );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', runFilesTagsWtOptions)
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => {runFilesTagsWtOptions("cli");})
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi', () => {runFilesTagsWtOptions("api");})
     );
 
     context.subscriptions.push(
@@ -222,10 +270,6 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false); }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false); }));
-
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryWtDryRun', async (_editor) => {
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
@@ -234,19 +278,22 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
         let includeDependencies = false;
         let includeDependents = false;
-        runTag(includeDependencies, includeDependents);
+        let fullRefresh = false;
+        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
         let includeDependencies = true;
         let includeDependents = false;
-        runTag(includeDependencies, includeDependents);
+        let fullRefresh = false;
+        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
         let includeDependencies = false;
         let includeDependents = true;
-        runTag(includeDependencies, includeDependents);
+        let fullRefresh = false;
+        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     if (vscode.workspace.getConfiguration("vscode-dataform-tools").get("recommendErrorLensExtension")) {

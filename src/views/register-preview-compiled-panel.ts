@@ -3,14 +3,15 @@ import * as vscode from 'vscode';
 import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
-import { runCurrentFile } from "../runFiles";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse } from "../types";
+import { runCurrentFile } from "../runCurrentFile";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
+
 function showLoadingProgress(
     title: string,
     operation: (
@@ -201,7 +202,6 @@ export class CompiledQueryPanel {
 
             switch (message.command) {
               case 'lineageNavigation':
-                console.log(message.value);
                 const projectId = message.value.split(".")[0];
                 const datasetId = message.value.split(".")[1];
                 const tableId = message.value.split(".")[2];
@@ -268,9 +268,44 @@ export class CompiledQueryPanel {
                 return;
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;
-                const includeDependents  = message.value.includeDependents;
-                const fullRefresh  = message.value.fullRefresh;
-                await runCurrentFile(includeDependencies, includeDependents, fullRefresh);
+                const includeDependents = message.value.includeDependents;
+                const fullRefresh = message.value.fullRefresh;
+                await runCurrentFile(includeDependencies, includeDependents, fullRefresh, "cli");
+                return;
+              case 'runModelApi':
+                const _includeDependencies = message.value.includeDependencies;
+                const _includeDependents = message.value.includeDependents;
+                const _fullRefresh = message.value.fullRefresh;
+                // FIXME: there must be a way to avoid double calls before and after function invocation ?
+                let messageDict: WebviewMessage = {
+                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
+                    "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
+                    "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
+                    "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
+                    "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
+                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
+                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
+                    "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
+                    "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
+                    "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
+                    "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
+                    "compiledQuerySchema": compiledQuerySchema,
+                    "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
+                    "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
+                    "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
+                    "dataformTags": dataformTags,
+                    "apiUrlLoading": true,
+                };
+                this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
+                const result = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
+                if(!result){
+                    return;
+                }
+                const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
+                if(errorWorkflowInvocation){
+                }
+                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
+                this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
               case 'costEstimator':
 
@@ -715,15 +750,16 @@ export class CompiledQueryPanel {
             </div>
         </div>
 
-        <div id="compiledQueryloadingIcon">
+        <div id="compiledQueryloadingIcon" style="display: flex; align-items: center; gap: 10px;">
             <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
-                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                        values="0 126;126 126;126 0"/>
-                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                        values="0;-126;-252"/>
-                    </circle>
+                <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
+                    <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                            values="0 126;126 126;126 0"/>
+                    <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                            values="0;-126;-252"/>
+                </circle>
             </svg>
+            <span>Compiling Dataform...</span>
         </div>
 
         <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
@@ -816,15 +852,16 @@ export class CompiledQueryPanel {
 
         <div id="compilationBlock" style="display: block;">
 
-            <div id="dryRunloadingIcon">
+            <div id="dryRunloadingIcon" style="display: flex; align-items: center; gap: 10px;">
                 <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="25" cy="25" r="10" fill="none" stroke="#32cd32" stroke-width="4">
-                            <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                            values="0 126;126 126;126 0"/>
-                            <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                            values="0;-126;-252"/>
-                        </circle>
+                    <circle cx="25" cy="25" r="10" fill="none" stroke="#32cd32" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                                values="0 126;126 126;126 0"/>
+                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                                values="0;-126;-252"/>
+                    </circle>
                 </svg>
+                <span>Loading dry run stats...</span>
             </div>
 
             <span class="bigquery-job-cancelled"></span>
@@ -877,9 +914,33 @@ export class CompiledQueryPanel {
                 <div class="button-container">
                     <button class="run-model" id="dependencyGraph" title="Dependency Graph">Dependency Graph</button>
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
-                    <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run</button>
+                    <button class="run-model" id="runModel" title="Execute the model in BigQuery using Dataform cli">Run (CLI) </button>
+                    <div class="button-wrapper run-model">
+                        <button class="run-model" id="runModelApi" title="Execute the model using Dataform API in its remote git state">
+                        Run (API)
+                        </button>
+                        <span class="new-badge">New</span>
+                    </div>
                 </div>
 
+            </div>
+
+            <a id="dataformLink" href="" style="display: none;" >Dataform API workflow execution link</a>
+
+            <div id="dataformApiError" class="error-message-container" style="display: none;">
+                <p></p>
+            </div>
+
+            <div id="dataformLinkLoading" style="display: none; align-items: center; gap: 10px;">
+                <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="25" cy="25" r="10" fill="none" stroke="green" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
+                                values="0 126;126 126;126 0"/>
+                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
+                                values="0;-126;-252"/>
+                    </circle>
+                </svg>
+                <span>Creating compilation object & workflow invocation...</span>
             </div>
 
             <div id="codeBlock">

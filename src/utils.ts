@@ -10,6 +10,10 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDa
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
+import { ProjectsClient } from '@google-cloud/resource-manager';
+import { GoogleAuth } from 'google-auth-library';
+import { createDataformWorkflowInvocation } from "./runDataformWtApi";
+
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -17,6 +21,87 @@ export let declarationsAndTargets: string[] = [];
 
 export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function createSelector(selectionItems:string[], placeHolder: string): Promise<string | undefined>{
+     return await vscode.window.showQuickPick(selectionItems, {
+        placeHolder: placeHolder,
+    });
+}
+
+export async function getCurrentGcpProjectId(): Promise<string | undefined> {
+    try {
+        const auth = new GoogleAuth();
+        const projectId = await auth.getProjectId();
+        return projectId;
+    } catch (err) {
+        console.error("Failed to get project ID:", err);
+        return undefined;
+    }
+}
+
+export async function getLocationOfGcpProject(projectId: string){
+    try{
+        const client = new ProjectsClient();
+        const [project] = await client.getProject({
+            name: `projects/${projectId}`
+        });
+        return project.labels?.application_region;
+    } catch(err){
+        const e = err instanceof Error ? err : new Error(String(err));
+        vscode.window.showErrorMessage(`Run failed: ${e.message}`); 
+        return undefined;
+    }
+}
+
+export async function getGcpProjectLocationDataform(projectId:string, compiledDataformJson:DataformCompiledJson) {
+    let gcpProjectLocation;
+
+    if (compiledDataformJson?.projectConfig?.defaultLocation) {
+        gcpProjectLocation = compiledDataformJson.projectConfig.defaultLocation;
+    } else {
+        vscode.window.showWarningMessage(`Determing GCP compute location using API. Define it in Dataform config for faster invocation`);
+        gcpProjectLocation = await getLocationOfGcpProject(projectId);
+    }
+
+    if (!gcpProjectLocation) {
+        throw new Error(`Unable to determine GCP project location for project ID: ${projectId}`);
+    }
+
+    return gcpProjectLocation;
+}
+
+export async function getGcpProjectIdDataform(compiledDataformJson:DataformCompiledJson) {
+    let gcpProjectId;
+
+    if (compiledDataformJson?.projectConfig?.defaultDatabase) {
+        gcpProjectId = compiledDataformJson.projectConfig.defaultDatabase;
+    } else {
+        vscode.window.showWarningMessage(`Determing GCP project ID using API. Define it in Dataform config for faster invocation`);
+        gcpProjectId = await getCurrentGcpProjectId();
+    }
+
+    if (!gcpProjectId) {
+        throw new Error(`Unable to determine GCP project id`);
+    }
+
+    return gcpProjectId;
+}
+
+
+export async function getGcpProjectIds(){
+    let gcpProjectIds = [];
+
+    //TODO: need to check what happens when there is an error ?
+    const client = new ProjectsClient();
+    const projects = client.searchProjectsAsync();
+    vscode.window.showInformationMessage("Loading available GCP projects...");
+    for await (const project of projects) {
+        if(project.projectId){
+            gcpProjectIds.push(project.projectId);
+        }
+    }
+    return gcpProjectIds;
 }
 
 export function getNonce() {
@@ -1505,7 +1590,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:string) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -1519,20 +1604,56 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         }
     }
 
-    let actionsList: string[] = [];
-    fileMetadatas.forEach(fileMetadata => {
-        if (fileMetadata) {
-            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
-                actionsList.push(action);
-            });
-        }
-    });
+    if(executionMode === "api"){
+        let includedTargets: {database:string, schema: string, name:string}[] = [];
+        fileMetadatas.forEach(fileMetadata => {
+            if (fileMetadata) {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                    includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
+                });
+            }
+        });
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-    let dataformActionCmd = "";
-    dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDownstreamDependents, fullRefresh);
-    runCommandInTerminal(dataformActionCmd);
+        const invocationConfig = {
+            includedTargets: includedTargets,
+            transitiveDependenciesIncluded: includeDependencies,
+            transitiveDependentsIncluded: includeDownstreamDependents,
+            fullyRefreshIncrementalTablesEnabled: fullRefresh,
+        };
+
+        const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
+        if(!projectId){
+            vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
+            return;
+        }
+
+        let gcpProjectLocation = undefined;
+        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
+            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
+        }else{
+            gcpProjectLocation = await getLocationOfGcpProject(projectId);
+        }
+
+        if(!gcpProjectLocation){
+            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
+            return;
+        }
+        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+    } else if (executionMode === "cli") {
+        let actionsList: string[] = [];
+        fileMetadatas.forEach(fileMetadata => {
+            if (fileMetadata) {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                    const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
+                    actionsList.push(action);
+                });
+            }
+        });
+        let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+        let dataformActionCmd = "";
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);
+        runCommandInTerminal(dataformActionCmd);
+    }
 }
 
 export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
