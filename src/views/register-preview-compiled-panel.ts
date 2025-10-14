@@ -295,13 +295,13 @@ export class CompiledQueryPanel {
                     "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
                     "dataformTags": dataformTags,
                     "apiUrlLoading": true,
-                }
+                };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 const result = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
                 if(!result){
                     return;
                 }
-                const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result
+                const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
                 if(errorWorkflowInvocation){
                 }
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };

@@ -1604,7 +1604,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         }
     }
 
-    if(executionMode == "api"){
+    if(executionMode === "api"){
         let includedTargets: {database:string, schema: string, name:string}[] = [];
         fileMetadatas.forEach(fileMetadata => {
             if (fileMetadata) {
@@ -1639,7 +1639,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             return;
         }
         createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
-    } else if (executionMode == "cli") {
+    } else if (executionMode === "cli") {
         let actionsList: string[] = [];
         fileMetadatas.forEach(fileMetadata => {
             if (fileMetadata) {

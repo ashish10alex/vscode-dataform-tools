@@ -104,12 +104,12 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
     }
         catch (error:any) {
             vscode.window.showErrorMessage(JSON.stringify(error));
-            errorWorkflowInvocation = error.toString()
-            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation}
+            errorWorkflowInvocation = error.toString();
+            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
         } finally {
             if(dataformClient){
                 dataformClient.close();
             }
-            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation}
+            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
         }
 }
