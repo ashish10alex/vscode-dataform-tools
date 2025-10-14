@@ -25,7 +25,7 @@
 | [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
 | [Auto-completion](#autocomplete) | - Column names of current model <br> - Dependencies and declarations in `${ref("..")}` trigger when `$` character is typed <br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
 | [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
-| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet or compiled query web view |
+| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or Dataform api |
 | [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
 | [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
 | [BigQuery hover definition provider](#hover) | Hover definition for column descriptions, type and commonly used BigQuery functions |
@@ -137,8 +137,13 @@ further streamline your workflow.
 | `vscode-dataform-tools.runTagWtDeps` | Run a tag with dependencies |
 | `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
 | `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
+| `vscode-dataform-tools.runFilesTagsWtOptionsApi` | Run file(s) / tag(s) with options using API |
 | `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
-| `vscode-dataform-tools.formatDocument` | Format Document |
+| `vscode-dataform-tools.runTagWtApi` | Run a tag using API |
+| `vscode-dataform-tools.runTagWtDependenciesApi` | Run tag with dependencies using API |
+| `vscode-dataform-tools.runCurrentFileWtApi` | Run current file using API |
+| `vscode-dataform-tools.runCurrentFileWtDependenciesApi` | Run current file with dependencies using API |
+| `vscode-dataform-tools.runCurrentFileWtDependentsApi` | Run current file with dependents using API |
 
 ## Known Issues
 
