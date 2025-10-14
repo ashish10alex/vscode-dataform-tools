@@ -169,7 +169,7 @@ function runModelApiClickHandler() {
 
     setTimeout(() => {
         runModelApiButton.disabled = false;
-    }, 10000);
+    }, 3000);
 }
 
 
@@ -321,6 +321,7 @@ window.addEventListener('message', event => {
 
     if(data.workflowInvocationUrlGCP){
         document.getElementById('dataformLinkLoading').style.display = "none";
+        document.getElementById('dataformApiError').style.display = "none";
         document.getElementById('dataformLink').style.display = "";
         document.getElementById('dataformLink').setAttribute('href', data.workflowInvocationUrlGCP);
         document.getElementById('dataformLink').setAttribute('title', data.workflowInvocationUrlGCP);
