@@ -46,7 +46,9 @@ export async function getCompilationResult(client:DataformClient, parent:string,
  * @param  gcpPojectLocation - Compute location to use in the GCP project
  * @param  invocationConfig -  Targets / tags to execute with or without dependecies. https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1alpha2.workflowinvocation.iinvocationconfig
  */
-export async function createDataformWorkflowInvocation(projectId:string, gcpProjectLocation:string, invocationConfig:InvocationConfig){
+export async function createDataformWorkflowInvocation(projectId:string, gcpProjectLocation:string, invocationConfig:InvocationConfig): Promise<{workflowInvocationUrlGCP: string|undefined, errorWorkflowInvocation: string|undefined} | undefined>{
+    let workflowInvocationUrlGCP: string | undefined = undefined;
+    let errorWorkflowInvocation: string | undefined = undefined;
     let dataformClient: DataformClient|undefined = undefined;
     try {
 
@@ -83,28 +85,31 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         const createdWorkflowInvocation = await dataformClient.createWorkflowInvocation(createWorkflowInvocationRequest);
         if(createdWorkflowInvocation[0]?.name){
             const workflowInvocationId = createdWorkflowInvocation[0].name.split("/").pop();
-            const workflowInvocationUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${gitRepoName}/workflows/${workflowInvocationId}?project=${projectId}`;
+            workflowInvocationUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${gitRepoName}/workflows/${workflowInvocationId}?project=${projectId}`;
 
             vscode.window.showInformationMessage(
                 `Workflow invocation created`,
                 'View workflow execution'
             ).then(selection => {
                 if (selection === 'View workflow execution') {
-                    vscode.env.openExternal(vscode.Uri.parse(workflowInvocationUrlGCP));
+                    if(workflowInvocationUrlGCP){
+                        vscode.env.openExternal(vscode.Uri.parse(workflowInvocationUrlGCP));
+                    }
                 }
             });
-            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP};
-
+            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
         }else{
             vscode.window.showErrorMessage(`Workflow invocation could not be determined`);
         }
     }
         catch (error:any) {
             vscode.window.showErrorMessage(JSON.stringify(error));
-            return {"errorWorkflowInvocation": error.toString()}
+            errorWorkflowInvocation = error.toString()
+            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation}
         } finally {
             if(dataformClient){
                 dataformClient.close();
             }
+            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation}
         }
 }
