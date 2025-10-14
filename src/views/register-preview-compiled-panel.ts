@@ -4,13 +4,14 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
+
 function showLoadingProgress(
     title: string,
     operation: (
@@ -276,7 +277,7 @@ export class CompiledQueryPanel {
                 const _includeDependents = message.value.includeDependents;
                 const _fullRefresh = message.value.fullRefresh;
                 // FIXME: there must be a way to avoid double calls before and after function invocation ?
-                this.centerPanel?.webviewPanel.webview.postMessage({
+                let messageDict: WebviewMessage = {
                     "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
                     "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
                     "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
@@ -294,27 +295,11 @@ export class CompiledQueryPanel {
                     "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
                     "dataformTags": dataformTags,
                     "apiUrlLoading": true,
-                });
+                }
+                this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 const apiUrl = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
-                this.centerPanel?.webviewPanel.webview.postMessage({
-                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
-                    "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
-                    "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
-                    "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
-                    "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
-                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
-                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
-                    "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
-                    "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
-                    "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
-                    "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
-                    "compiledQuerySchema": compiledQuerySchema,
-                    "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
-                    "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
-                    "dependents": this.centerPanel?._cachedResults?.curFileMeta.dependents,
-                    "dataformTags": dataformTags,
-                    "apiUrl": apiUrl,
-                });
+                messageDict = { ...messageDict, "apiUrl": apiUrl };
+                this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
               case 'costEstimator':
 
