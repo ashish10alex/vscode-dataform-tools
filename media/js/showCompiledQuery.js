@@ -345,6 +345,7 @@ window.addEventListener('message', event => {
     }
      else {
         document.getElementById('dataformLink').style.display = "none";
+        document.getElementById('dataformApiError').style.display = "none";
     }
 
 
