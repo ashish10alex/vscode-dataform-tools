@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject } from "./utils";
 import { createDataformWorkflowInvocation } from "./runDataformWtApi";
 
-export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string) {
+export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string): Promise<{ workflowInvocationUrlGCP: string; errorWorkflowInvocation: string; } | undefined> {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {

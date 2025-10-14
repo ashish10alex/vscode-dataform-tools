@@ -297,8 +297,14 @@ export class CompiledQueryPanel {
                     "apiUrlLoading": true,
                 }
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
-                const apiUrl = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
-                messageDict = { ...messageDict, "apiUrl": apiUrl };
+                const result = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
+                if(!result){
+                    return;
+                }
+                const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result
+                if(errorWorkflowInvocation){
+                }
+                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
               case 'costEstimator':

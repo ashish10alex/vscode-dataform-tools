@@ -313,20 +313,25 @@ window.addEventListener('message', event => {
         "errorMessage": event?.data?.errorMessage,
         "dryRunStat": event?.data?.dryRunStat,
         "modelType": event?.data?.modelType,
-        "apiUrl": event?.data?.apiUrl,
+        "workflowInvocationUrlGCP": event?.data?.workflowInvocationUrlGCP,
+        "errorWorkflowInvocation": event?.data?.errorWorkflowInvocation,
         "apiUrlLoading": event?.data?.apiUrlLoading,
     };
     removeExistingCopyElements();
 
-    if(data.apiUrl){
+    if(data.workflowInvocationUrlGCP){
         document.getElementById('dataformLinkLoading').style.display = "none";
         document.getElementById('dataformLink').style.display = "";
-        document.getElementById('dataformLink').setAttribute('href', data.apiUrl);
-        document.getElementById('dataformLink').setAttribute('title', data.apiUrl);
+        document.getElementById('dataformLink').setAttribute('href', data.workflowInvocationUrlGCP);
+        document.getElementById('dataformLink').setAttribute('title', data.workflowInvocationUrlGCP);
     }else if(data.apiUrlLoading){
         document.getElementById('dataformLinkLoading').style.display = "flex";
         document.getElementById('dataformLink').style.display = "none";
-    } else {
+    } else if (data.errorWorkflowInvocation){
+        document.getElementById('dataformLinkLoading').style.display = "none";
+        document.getElementById('dataformLink').style.display = "none";
+    }
+     else {
         document.getElementById('dataformLink').style.display = "none";
     }
 

@@ -25,7 +25,7 @@ type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
  * @returns createdCompilationResult
  */
 export async function getCompilationResult(client:DataformClient, parent:string, gitBranch:string): CreateCompilationResultResponse{
-    vscode.window.showInformationMessage("Creating compilation result...");
+    // vscode.window.showInformationMessage("Creating compilation result...");
 
     const compilationResult = {
         gitCommitish: gitBranch,
@@ -69,7 +69,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
-        vscode.window.showInformationMessage("Creating workflow invocation...");
+        // vscode.window.showInformationMessage("Creating workflow invocation...");
 
         const workflowInvocation = {
             compilationResult: fullCompilationResultName,
@@ -84,17 +84,17 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         const createdWorkflowInvocation = await dataformClient.createWorkflowInvocation(createWorkflowInvocationRequest);
         if(createdWorkflowInvocation[0]?.name){
             const workflowInvocationId = createdWorkflowInvocation[0].name.split("/").pop();
-            const workflowExecutionUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${gitRepoName}/workflows/${workflowInvocationId}?project=${projectId}`;
+            const workflowInvocationUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${gitRepoName}/workflows/${workflowInvocationId}?project=${projectId}`;
 
             vscode.window.showInformationMessage(
                 `Workflow invocation created`,
                 'View workflow execution'
             ).then(selection => {
                 if (selection === 'View workflow execution') {
-                    vscode.env.openExternal(vscode.Uri.parse(workflowExecutionUrlGCP));
+                    vscode.env.openExternal(vscode.Uri.parse(workflowInvocationUrlGCP));
                 }
             });
-            return workflowExecutionUrlGCP;
+            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP};
 
         }else{
             vscode.window.showErrorMessage(`Workflow invocation could not be determined`);
@@ -102,6 +102,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
     }
         catch (error:any) {
             vscode.window.showErrorMessage(JSON.stringify(error));
+            return {"errorWorkflowInvocation": error.toString()}
         } finally {
             if(dataformClient){
                 dataformClient.close();
