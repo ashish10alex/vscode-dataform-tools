@@ -914,7 +914,7 @@ export class CompiledQueryPanel {
                 <div class="button-container">
                     <button class="run-model" id="dependencyGraph" title="Dependency Graph">Dependency Graph</button>
                     <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
-                    <button class="run-model" id="runModel" title="Execute the model in BigQuery with specified settings">Run (CLI) </button>
+                    <button class="run-model" id="runModel" title="Execute the model in BigQuery using Dataform cli">Run (CLI) </button>
                     <div class="button-wrapper run-model">
                         <button class="run-model" id="runModelApi" title="Execute the model using Dataform API in its remote git state">
                         Run (API)
