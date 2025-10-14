@@ -316,7 +316,16 @@ window.addEventListener('message', event => {
         "workflowInvocationUrlGCP": event?.data?.workflowInvocationUrlGCP,
         "errorWorkflowInvocation": event?.data?.errorWorkflowInvocation,
         "apiUrlLoading": event?.data?.apiUrlLoading,
+        "recompiling": event?.data?.recompiling
     };
+
+    if(data.recompiling){
+        compiledQueryloadingIcon.style.display = "flex";
+        errorMessageDiv.style.display = "none";
+        dryRunStatDiv.style.display = "none";
+        return;
+    }
+
     removeExistingCopyElements();
 
     if(data.workflowInvocationUrlGCP){
