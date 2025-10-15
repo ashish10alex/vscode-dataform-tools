@@ -23,6 +23,9 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
+// import {createDataformWorkspace, writeFileToWorkspace} from "./runDataformWtApi";
+// import { writeFileToWorkspace} from "./runDataformWtApi";
+import { runWorkflowInvocationWorkspace} from "./runDataformWtApi";
 import path from 'path';
 
 // This method is called when your extension is activated
@@ -203,6 +206,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
+
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', () => { 
+        runWorkflowInvocationWorkspace();
+    }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
         let transitiveDependenciesIncluded = false;

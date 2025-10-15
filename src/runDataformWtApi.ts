@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs/promises'; 
 import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
+import {getGitStatusFiles} from "./getGitMeta";
 
 type CreateCompilationResultResponse = Promise<
   [
@@ -70,8 +72,6 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
         const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
-        // vscode.window.showInformationMessage("Creating workflow invocation...");
-
         const workflowInvocation = {
             compilationResult: fullCompilationResultName,
             invocationConfig: invocationConfig,
@@ -112,4 +112,128 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
             }
             return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
         }
+}
+
+
+export async function createDataformWorkspace(){
+    const projectId = "drawingfire-b72a8";
+    const location = "europe-west2";
+    const repositoryId = "football_dataform";
+    const workspaceId = "dev_test_new";
+
+    const client = new DataformClient();
+    try {
+        const parent = `projects/${projectId}/locations/${location}/repositories/${repositoryId}`;
+        const request = {
+            parent: parent,
+            workspaceId: workspaceId,
+        };
+
+        const [workspace] = await client.createWorkspace(request);
+        vscode.window.showInformationMessage(`Workspace created: ${workspace}`);
+        return workspace.name;
+  } catch (error:any) {
+        vscode.window.showErrorMessage('Error creating workspace:', error.message);
+        throw error;
+  }
+}
+
+
+export async function writeFileToWorkspace(workspace:string, relativePath:string, fullPath:string) {
+    const client = new DataformClient();
+
+    try {
+        const data = await fs.readFile(fullPath, 'utf8');
+
+        const request = {
+            workspace: workspace,
+            path: relativePath,
+            contents: Buffer.from(data),
+        };
+
+        await client.writeFile(request);
+        vscode.window.showInformationMessage(`File written to workspace: ${fullPath}`);
+
+    } catch (error: any) {
+        console.error('Operation Error:', error);
+        vscode.window.showErrorMessage('Error writing file to workspace:', error.message);
+    }
+}
+
+export async function deleteFileInWorkspace(workspace:string, relativePath:string, fullPath:string) {
+    const client = new DataformClient();
+    try {
+        const request = {
+            workspace: workspace,
+            path: relativePath,
+        };
+
+        await client.removeFile(request);
+        vscode.window.showInformationMessage(`Deleted ${fullPath} in workspace`);
+
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Error deleting ${fullPath} to workspace:', error.message`);
+    }
+}
+
+
+export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilationResultResponse | undefined>{
+    const projectId = "drawingfire-b72a8";
+    const gcpProjectLocation  = "europe-west2";
+    const dataformRepositoryName = "football_dataform";
+    const workspaceId = "dev_test_new";
+    const tagsToRun = ["nested"];
+    const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
+    const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
+
+    const filesWtGitStatus = await getGitStatusFiles();
+
+    filesWtGitStatus.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
+        switch (status) {
+            case "D":
+                deleteFileInWorkspace(workspace, relativePath, fullPath);
+                break;
+            default:
+                writeFileToWorkspace(workspace, relativePath, fullPath);
+                break;
+        }
+    });
+
+    const compilationResult = {
+        workspace: workspace,
+    };
+
+    const invocationConfig = {
+        includedTags: tagsToRun,
+        transitiveDependenciesIncluded: false,
+        transitiveDependentsIncluded: false,
+        fullyRefreshIncrementalTablesEnabled: false,
+    };
+
+    const createCompilationResultRequest = {
+        parent: parent,
+        compilationResult: compilationResult,
+    };
+
+    try{
+        const client = new DataformClient();
+        const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
+        const fullCompilationResultName = createdCompilationResult[0].name;
+
+        const workflowInvocation = {
+            compilationResult: fullCompilationResultName,
+            invocationConfig: invocationConfig
+        };
+
+        const createWorkflowInvocationRequest = {
+            parent: parent,
+            workflowInvocation: workflowInvocation,
+        };
+
+        const createdWorkflowInvocation = await client.createWorkflowInvocation(createWorkflowInvocationRequest);
+        return createdWorkflowInvocation;
+    } catch(error:any){
+        vscode.window.showErrorMessage(error.message);
+    }
+    return;
 }

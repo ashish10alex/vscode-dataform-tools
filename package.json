@@ -24,6 +24,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
+        "onCommand:extension.syncInvokeWorkflow",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.runCurrentFileWtApi",
         "onCommand:extension.runCurrentFileWtDependenciesApi",
@@ -158,6 +159,12 @@
                 "command": "vscode-dataform-tools.runCurrentFileWtDependentsApi",
                 "category": "Dataform",
                 "title": "Run current file with Dependents using API",
+                "group": "navigation"
+            },
+            {
+                "command": "vscode-dataform-tools.syncInvokeWorkflow",
+                "category": "Dataform",
+                "title": "sync and invoke workflow",
                 "group": "navigation"
             },
             {
