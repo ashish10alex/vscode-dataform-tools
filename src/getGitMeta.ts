@@ -25,6 +25,19 @@ export async function getGitBranchAndRepoName() {
   return { gitBranch, gitRepoName };
 }
 
+function gitStatusToHumanReadable(statusCode:string){
+    switch (statusCode) {
+        case "M":
+            return "MODIFIED";
+        case "??":
+            return "ADDED";
+        case "D":
+            return "DELETED";
+        default:
+            return statusCode;
+    }
+}
+
 export async function getGitStatusFiles() {
     let workspaceFolders = vscode.workspace?.workspaceFolders;
     let projectRoot = "";
@@ -41,8 +54,8 @@ export async function getGitStatusFiles() {
         return files.filter((file:any) => 
             (file.filePath.endsWith('.sqlx') || file.filePath.endsWith('.js'))
         ).map((file:any) => ({
-            status: file.status === "??" ? "N" : file.status,
-            relativePath: file.filePath,
+            state: gitStatusToHumanReadable(file.status),
+            path: file.filePath,
             fullPath: path.join(projectRoot, file.filePath)
         }));
     } catch (error:any) {

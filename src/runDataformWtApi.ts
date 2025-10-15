@@ -4,7 +4,7 @@ import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
-import {getGitStatusFiles} from "./getGitMeta";
+import {getGitStatusFiles as getLocalGitState} from "./getGitMeta";
 
 type CreateCompilationResultResponse = Promise<
   [
@@ -195,6 +195,22 @@ export async function deleteFileInWorkspace(client:DataformClient, workspace:str
 }
 
 
+async function getRemoteGitState(client: DataformClient, workspace:string) {
+  try {
+    // Define the request object
+    const request = {
+      name: workspace
+    };
+
+    const output = await client.fetchFileGitStatuses(request);
+    return output;
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return undefined;
+  }
+}
+
+
 export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilationResultResponse | undefined>{
     const projectId = "drawingfire-b72a8";
     const gcpProjectLocation  = "europe-west2";
@@ -204,10 +220,12 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
-    const filesWtGitStatus = await getGitStatusFiles();
+    const gitStatusLocal = await getLocalGitState();
     const client = new DataformClient();
 
-    filesWtGitStatus.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
+    let gitStatusRemote = await getRemoteGitState(client, workspace);
+
+    gitStatusLocal.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
         switch (status) {
             case "D":
                 deleteFileInWorkspace(client, workspace, relativePath, fullPath);
