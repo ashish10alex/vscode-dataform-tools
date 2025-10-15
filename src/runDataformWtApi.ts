@@ -160,19 +160,37 @@ export async function writeFileToWorkspace(workspace:string, relativePath:string
     }
 }
 
-export async function deleteFileInWorkspace(workspace:string, relativePath:string, fullPath:string) {
-    const client = new DataformClient();
+async function fileExistsInWorkspace(client: DataformClient, workspace:string, relativePath:string) {
     try {
-        const request = {
+        await client.readFile({
             workspace: workspace,
-            path: relativePath,
-        };
+            path: relativePath
+        });
+        return true;
+    } catch (error:any) {
+        if (error.code === 5) { // NOT_FOUND
+            vscode.window.showWarningMessage(`${relativePath} does not exsist`);
+            return false;
+        }
+        throw error; // Rethrow unexpected errors
+    }
+}
 
-        await client.removeFile(request);
-        vscode.window.showInformationMessage(`Deleted ${fullPath} in workspace`);
+export async function deleteFileInWorkspace(client:DataformClient, workspace:string, relativePath:string, fullPath:string) {
+    if(await fileExistsInWorkspace(client, workspace, relativePath)){
+        const client = new DataformClient();
+        try {
+            const request = {
+                workspace: workspace,
+                path: relativePath,
+            };
+            await client.removeFile(request);
+            vscode.window.showInformationMessage(`Deleted ${fullPath} in workspace`);
 
-    } catch (error: any) {
-        vscode.window.showErrorMessage(`Error deleting ${fullPath} to workspace:', error.message`);
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Error deleting ${fullPath} to workspace:', error.message`);
+        }
+
     }
 }
 
@@ -187,11 +205,12 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
     const filesWtGitStatus = await getGitStatusFiles();
+    const client = new DataformClient();
 
     filesWtGitStatus.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
         switch (status) {
             case "D":
-                deleteFileInWorkspace(workspace, relativePath, fullPath);
+                deleteFileInWorkspace(client, workspace, relativePath, fullPath);
                 break;
             default:
                 writeFileToWorkspace(workspace, relativePath, fullPath);
@@ -216,7 +235,6 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     };
 
     try{
-        const client = new DataformClient();
         const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
