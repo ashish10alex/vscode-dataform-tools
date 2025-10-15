@@ -224,6 +224,7 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const client = new DataformClient();
 
     let gitStatusRemote = await getRemoteGitState(client, workspace);
+    //TODO: compare gitStatusLocal and gitStatusRemote
 
     gitStatusLocal.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
         switch (status) {
