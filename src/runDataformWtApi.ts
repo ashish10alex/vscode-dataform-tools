@@ -231,11 +231,12 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     }
     const gitStatusRemoteUncommitedChanges = gitStatusRemote[0].uncommittedFileChanges;
     //@ts-ignore
+    //FIXME: fix the typing error
     const gitStatusRemoteMap = Object.fromEntries(gitStatusRemoteUncommitedChanges?.map((item) => [item.path, item.state]));
     const gitStatusLocalMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.state]));
     const gitStatusLocalFullPathMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.fullPath]));
 
-    //TODO: compare gitStatusLocal and gitStatusRemote
+    //TODO: ADD logs to know what is happening
     gitStatusLocal.forEach(({localGitState, path, fullPath}: {localGitState:string, path:string, fullPath:string}) => {
         if((localGitState==="ADDED" || localGitState ==="MODIFIED")){
             writeFileToWorkspace(workspace, path, fullPath);
@@ -246,6 +247,7 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
 
     if(gitStatusRemoteMap){
         //@ts-ignore
+        //FIXME: fix the typing error
         gitStatusRemoteUncommitedChanges.forEach(async({path: remotePath, state}: {path: string, state:string}) => {
             const workspaceFolder = await getWorkspaceFolder();
             if(!workspaceFolder){
