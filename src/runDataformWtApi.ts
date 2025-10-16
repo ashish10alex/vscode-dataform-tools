@@ -224,7 +224,22 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const client = new DataformClient();
 
     let gitStatusRemote = await getRemoteGitState(client, workspace);
+    if(!gitStatusRemote){
+        return;
+    }
+    const gitStatusRemoteUncommitedChanges = gitStatusRemote[0].uncommittedFileChanges;
+    //@ts-ignore
+    const gitStatusRemoteMap = Object.fromEntries(gitStatusRemoteUncommitedChanges?.map((item) => [item.path, item.state]));
+
     //TODO: compare gitStatusLocal and gitStatusRemote
+    gitStatusLocal.forEach(({state, path}: {state:string, path:string}) => {
+        console.log(`filePath: ${path}`);
+        console.log(`Local status: ${state}`);
+        if(gitStatusRemoteMap){
+            console.log(`Remote status: ${gitStatusRemoteMap[path]}`);
+        }
+        
+    });
 
     gitStatusLocal.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
         switch (status) {
