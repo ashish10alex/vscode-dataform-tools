@@ -230,27 +230,32 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const gitStatusRemoteUncommitedChanges = gitStatusRemote[0].uncommittedFileChanges;
     //@ts-ignore
     const gitStatusRemoteMap = Object.fromEntries(gitStatusRemoteUncommitedChanges?.map((item) => [item.path, item.state]));
+    const gitStatusLocalMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.state]));
+    const gitStatusLocalFullPathMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.fullPath]));
 
     //TODO: compare gitStatusLocal and gitStatusRemote
-    gitStatusLocal.forEach(({state, path}: {state:string, path:string}) => {
-        console.log(`filePath: ${path}`);
-        console.log(`Local status: ${state}`);
-        if(gitStatusRemoteMap){
-            console.log(`Remote status: ${gitStatusRemoteMap[path]}`);
+    gitStatusLocal.forEach(({localGitState, path, fullPath}: {localGitState:string, path:string, fullPath:string}) => {
+        if((localGitState==="ADDED" || localGitState ==="MODIFIED")){
+            writeFileToWorkspace(workspace, path, fullPath);
+        } else if(localGitState==="DELETED"){
+            deleteFileInWorkspace(client, workspace, path, fullPath);
         }
-        
     });
 
-    gitStatusLocal.forEach(({status, relativePath, fullPath}: {status: string, relativePath: string, fullPath: string}) => {
-        switch (status) {
-            case "D":
-                deleteFileInWorkspace(client, workspace, relativePath, fullPath);
+    if(gitStatusRemoteMap){
+        //@ts-ignore
+        gitStatusRemoteUncommitedChanges.forEach(({path, state}: {path: string, state:string}) => {
+            switch (state){
+                case("DELETED"):
+                if(gitStatusLocalMap[path]!== state){
+                    //FIXME: breaks when gitStatusLocalMap[path] is undefined
+                    writeFileToWorkspace(workspace, path, gitStatusLocalFullPathMap[path]);
+                }
                 break;
-            default:
-                writeFileToWorkspace(workspace, relativePath, fullPath);
-                break;
-        }
-    });
+            }
+        });
+
+    }
 
     const compilationResult = {
         workspace: workspace,
