@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
+import path from 'path';
 import * as fs from 'fs/promises'; 
 import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
 import {getGitStatusFiles as getLocalGitState} from "./getGitMeta";
+import { getWorkspaceFolder } from './utils';
 
 type CreateCompilationResultResponse = Promise<
   [
@@ -244,12 +246,20 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
 
     if(gitStatusRemoteMap){
         //@ts-ignore
-        gitStatusRemoteUncommitedChanges.forEach(({path, state}: {path: string, state:string}) => {
+        gitStatusRemoteUncommitedChanges.forEach(async({path: remotePath, state}: {path: string, state:string}) => {
+            const workspaceFolder = await getWorkspaceFolder();
+            if(!workspaceFolder){
+                return;
+            }
             switch (state){
                 case("DELETED"):
-                if(gitStatusLocalMap[path]!== state){
-                    //FIXME: breaks when gitStatusLocalMap[path] is undefined
-                    writeFileToWorkspace(workspace, path, gitStatusLocalFullPathMap[path]);
+                if(gitStatusLocalMap[remotePath]!== state){
+                    if(gitStatusLocalMap[remotePath]){
+                        writeFileToWorkspace(workspace, remotePath, gitStatusLocalFullPathMap[remotePath]);
+                    } else {
+                        const fullPath = path.join(workspaceFolder,remotePath);
+                        writeFileToWorkspace(workspace, remotePath, fullPath);
+                    }
                 }
                 break;
             }
