@@ -228,6 +228,8 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
+    //TODO: handle cases when changes are commited locally, not pushed. We need to indetify the files that have been modified and sync remote
+    //We can use the data in `git show --name-status --pretty="format:commmit_hash: %H" origin/<branch_name>..HEAD`
     const gitStatusLocal = await getLocalGitState();
     if(gitStatusLocal.length === 0){
         const request = {
