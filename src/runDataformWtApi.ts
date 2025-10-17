@@ -228,12 +228,14 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
-    //TODO: call getLocalGitState, getGitStatusCommitedFiles simultaneously 
-    const gitStatusLocal = await getLocalGitState();
-    if(gitStatusLocal.length === 0){
-        //FIXME: we might need to call this regardless of weather there are any uncommited git changes locally ?
-        const gitStatusLocalCommited = await getGitStatusCommitedFiles(workspaceId);
-        console.log(gitStatusLocalCommited);
+    const [gitStatusLocalUnCommited, gitStatusLocalCommited] = await Promise.all([
+        await getLocalGitState(),
+        await getGitStatusCommitedFiles(workspaceId)
+    ]);
+
+    // TODO: create an object with git status to use for a file based on commited and uncommited changes
+
+    if(gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0){
         const request = {
             name: workspace,
             clean: true
@@ -249,11 +251,11 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     //@ts-ignore
     //FIXME: fix the typing error
     const gitStatusRemoteMap = Object.fromEntries(gitStatusRemoteUncommitedChanges?.map((item) => [item.path, item.state]));
-    const gitStatusLocalMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.state]));
-    const gitStatusLocalFullPathMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.fullPath]));
+    const gitStatusLocalMap = Object.fromEntries(gitStatusLocalUnCommited?.map((item:any) => [item.path, item.state]));
+    const gitStatusLocalFullPathMap = Object.fromEntries(gitStatusLocalUnCommited?.map((item:any) => [item.path, item.fullPath]));
 
     vscode.window.showInformationMessage("[...] Syncronising remote workspace with local state");
-    await Promise.all(gitStatusLocal.map(async ({ state, path, fullPath } : {state: string, path:string, fullPath:string}) => {
+    await Promise.all(gitStatusLocalUnCommited.map(async ({ state, path, fullPath } : {state: string, path:string, fullPath:string}) => {
         if (state === "ADDED" || state === "MODIFIED") {
             await writeFileToWorkspace(workspace, path, fullPath);
         } else if (state === "DELETED") {
