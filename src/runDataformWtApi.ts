@@ -234,6 +234,7 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     ]);
 
     // TODO: create an object with git status to use for a file based on commited and uncommited changes
+    // TODO: check if we can ignore the later earlier status of the file from a previous commit in gitStatusLocalCommited
 
     if(gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0){
         const request = {
