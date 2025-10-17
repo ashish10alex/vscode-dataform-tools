@@ -8,7 +8,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, getGcpProjectLocationDataform} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -210,7 +210,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', async() => { 
         // console.time("runWorkflowInvocationWorkspace");
-        await runWorkflowInvocationWorkspace();
+        const projectId = "drawingfire-b72a8";
+        const gcpProjectLocation  = "europe-west2";
+        const dataformRepositoryName = "football_dataform";
+        const workspaceId = "dev_test_new";
+        const tagsToRun = ["nested"];
+        // 1. Create workspace for the current branch name if it does not exsists
+        // 2. Fetch the workspace and its metadata such as location ??
+        await runWorkflowInvocationWorkspace(projectId, gcpProjectLocation, dataformRepositoryName, workspaceId, tagsToRun);
         // console.timeEnd("runWorkflowInvocationWorkspace");
     }) );
 

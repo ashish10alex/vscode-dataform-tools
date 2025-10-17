@@ -235,12 +235,8 @@ async function getRemoteGitState(client: DataformClient, workspace:string) {
 }
 
 
-export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilationResultResponse | undefined>{
-    const projectId = "drawingfire-b72a8";
-    const gcpProjectLocation  = "europe-west2";
-    const dataformRepositoryName = "football_dataform";
-    const workspaceId = "dev_test_new";
-    const tagsToRun = ["nested"];
+export async function runWorkflowInvocationWorkspace(projectId:string, gcpProjectLocation:string, dataformRepositoryName:string, workspaceId:string, tagsToRun:string[]): Promise<CreateCompilationResultResponse | undefined>{
+
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
