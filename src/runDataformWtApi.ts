@@ -43,6 +43,28 @@ export async function getCompilationResult(client:DataformClient, parent:string,
     return createdCompilationResult;
 }
 
+async function _createDataformWorkflowInvocation(client: DataformClient, projectId:string, gcpProjectLocation:string, repositoryName:string, workspaceId:string, createWorkflowInvocationRequest:any){
+    vscode.window.showInformationMessage("Creating workflow invocation");
+    const createdWorkflowInvocation = await client.createWorkflowInvocation(createWorkflowInvocationRequest);
+    if(createdWorkflowInvocation[0]?.name){
+        const workflowInvocationId = createdWorkflowInvocation[0].name.split("/").pop();
+        const workflowInvocationUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${repositoryName}/workspaces/${workspaceId}/workflows/${workflowInvocationId}?project=${projectId}`;
+        // https://console.cloud.google.com/bigquery/dataform/locations/europe-west2/repositories/football_dataform/workspaces/dev_test_new/workflows/1760705131-4205af3f-1a7e-4063-a58a-2db11c345641?project=drawingfire-b72a8
+
+        vscode.window.showInformationMessage(
+            `Workflow invocation created`,
+            'View workflow execution'
+        ).then(selection => {
+            if (selection === 'View workflow execution') {
+                if(workflowInvocationUrlGCP){
+                    vscode.env.openExternal(vscode.Uri.parse(workflowInvocationUrlGCP));
+                }
+            }
+        });
+    }
+    return createdWorkflowInvocation;
+}
+
 /**
  * Creates workflow invocation from the latest state of the git branch of the remote repository
  *
@@ -179,7 +201,8 @@ async function fileExistsInWorkspace(client: DataformClient, workspace:string, r
 }
 
 export async function deleteFileInWorkspace(client:DataformClient, workspace:string, relativePath:string, fullPath:string) {
-    if(await fileExistsInWorkspace(client, workspace, relativePath)){
+    const fileExsistInRemoteWorkspace = await fileExistsInWorkspace(client, workspace, relativePath);
+    if(fileExsistInRemoteWorkspace){
         const client = new DataformClient();
         try {
             const request = {
@@ -195,7 +218,6 @@ export async function deleteFileInWorkspace(client:DataformClient, workspace:str
 
     }
 }
-
 
 async function getRemoteGitState(client: DataformClient, workspace:string) {
   try {
@@ -222,6 +244,7 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
+    //FIXME: what if some files are stages and some are not ??
     const gitStatusLocal = await getLocalGitState();
     const client = new DataformClient();
 
@@ -236,19 +259,18 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     const gitStatusLocalMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.state]));
     const gitStatusLocalFullPathMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.fullPath]));
 
-    //TODO: ADD logs to know what is happening
-    gitStatusLocal.forEach(({localGitState, path, fullPath}: {localGitState:string, path:string, fullPath:string}) => {
-        if((localGitState==="ADDED" || localGitState ==="MODIFIED")){
-            writeFileToWorkspace(workspace, path, fullPath);
-        } else if(localGitState==="DELETED"){
-            deleteFileInWorkspace(client, workspace, path, fullPath);
+    await Promise.all(gitStatusLocal.map(async ({ state, path, fullPath } : {state: string, path:string, fullPath:string}) => {
+        if (state === "ADDED" || state === "MODIFIED") {
+            await writeFileToWorkspace(workspace, path, fullPath);
+        } else if (state === "DELETED") {
+            await deleteFileInWorkspace(client, workspace, path, fullPath);
         }
-    });
+    }));
 
     if(gitStatusRemoteMap){
         //@ts-ignore
         //FIXME: fix the typing error
-        gitStatusRemoteUncommitedChanges.forEach(async({path: remotePath, state}: {path: string, state:string}) => {
+        await Promise.all(gitStatusRemoteUncommitedChanges.map(async({path: remotePath, state}: {path: string, state:string}) => {
             const workspaceFolder = await getWorkspaceFolder();
             if(!workspaceFolder){
                 return;
@@ -257,16 +279,15 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
                 case("DELETED"):
                 if(gitStatusLocalMap[remotePath]!== state){
                     if(gitStatusLocalMap[remotePath]){
-                        writeFileToWorkspace(workspace, remotePath, gitStatusLocalFullPathMap[remotePath]);
+                        await writeFileToWorkspace(workspace, remotePath, gitStatusLocalFullPathMap[remotePath]);
                     } else {
                         const fullPath = path.join(workspaceFolder,remotePath);
-                        writeFileToWorkspace(workspace, remotePath, fullPath);
+                        await writeFileToWorkspace(workspace, remotePath, fullPath);
                     }
                 }
                 break;
             }
-        });
-
+        }));
     }
 
     const compilationResult = {
@@ -286,6 +307,7 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
     };
 
     try{
+        vscode.window.showInformationMessage("Creating compilation result");
         const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
         const fullCompilationResultName = createdCompilationResult[0].name;
 
@@ -299,7 +321,7 @@ export async function runWorkflowInvocationWorkspace(): Promise<CreateCompilatio
             workflowInvocation: workflowInvocation,
         };
 
-        const createdWorkflowInvocation = await client.createWorkflowInvocation(createWorkflowInvocationRequest);
+        const createdWorkflowInvocation = await _createDataformWorkflowInvocation(client, projectId, gcpProjectLocation, dataformRepositoryName, workspaceId, createWorkflowInvocationRequest);
         return createdWorkflowInvocation;
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);

@@ -208,8 +208,10 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
 
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', () => { 
-        runWorkflowInvocationWorkspace();
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', async() => { 
+        // console.time("runWorkflowInvocationWorkspace");
+        await runWorkflowInvocationWorkspace();
+        // console.timeEnd("runWorkflowInvocationWorkspace");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
