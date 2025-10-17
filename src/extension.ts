@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
+import path from 'path';
 import { DataformCompiledJson } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { CustomViewProvider } from './views/register-query-results-panel';
@@ -8,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, getGcpProjectLocationDataform} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -23,10 +24,9 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-// import {createDataformWorkspace, writeFileToWorkspace} from "./runDataformWtApi";
-// import { writeFileToWorkspace} from "./runDataformWtApi";
-import { runWorkflowInvocationWorkspace} from "./runDataformWtApi";
-import path from 'path';
+import { DataformClient  } from '@google-cloud/dataform';
+import { runWorkflowInvocationWorkspace, createDataformWorkspace} from "./runDataformWtApi";
+import {getGitBranchAndRepoName} from "./getGitMeta";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -210,14 +210,29 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', async() => { 
         // console.time("runWorkflowInvocationWorkspace");
+
         const projectId = "drawingfire-b72a8";
         const gcpProjectLocation  = "europe-west2";
         const dataformRepositoryName = "football_dataform";
-        const workspaceId = "dev_test_new";
         const tagsToRun = ["nested"];
+
+        // 0. Get local gitRepo and branch name.
+        const {gitRepoName, gitBranch} = await getGitBranchAndRepoName() || {}; 
+        console.log(gitRepoName, gitBranch);
+
+        const client = new DataformClient();
         // 1. Create workspace for the current branch name if it does not exsists
+        try{
+            await createDataformWorkspace(client, projectId, gcpProjectLocation, dataformRepositoryName, gitBranch);
+        } catch (error:any){
+            if (error.code === 6) {  // workspace already exsists, skip creation and move to workflow invocation
+                vscode.window.showWarningMessage(error.message);
+            } else {
+                return;
+            }
+        }
         // 2. Fetch the workspace and its metadata such as location ??
-        await runWorkflowInvocationWorkspace(projectId, gcpProjectLocation, dataformRepositoryName, workspaceId, tagsToRun);
+        await runWorkflowInvocationWorkspace(client, projectId, gcpProjectLocation, dataformRepositoryName, gitBranch, tagsToRun);
         // console.timeEnd("runWorkflowInvocationWorkspace");
     }) );
 

@@ -139,27 +139,16 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 }
 
 
-export async function createDataformWorkspace(){
-    const projectId = "drawingfire-b72a8";
-    const location = "europe-west2";
-    const repositoryId = "football_dataform";
-    const workspaceId = "dev_test_new";
+export async function createDataformWorkspace(client: DataformClient, projectId:string, location: string, dataformRepositoryName:string, workspaceId:string){
+    const parent = `projects/${projectId}/locations/${location}/repositories/${dataformRepositoryName}`;
+    const request = {
+        parent: parent,
+        workspaceId: workspaceId,
+    };
 
-    const client = new DataformClient();
-    try {
-        const parent = `projects/${projectId}/locations/${location}/repositories/${repositoryId}`;
-        const request = {
-            parent: parent,
-            workspaceId: workspaceId,
-        };
-
-        const [workspace] = await client.createWorkspace(request);
-        vscode.window.showInformationMessage(`Workspace created: ${workspace}`);
-        return workspace.name;
-  } catch (error:any) {
-        vscode.window.showErrorMessage('Error creating workspace:', error.message);
-        throw error;
-  }
+    const [workspace] = await client.createWorkspace(request);
+    vscode.window.showInformationMessage(`Workspace created: ${workspace}`);
+    return workspace.name;
 }
 
 
@@ -235,14 +224,13 @@ async function getRemoteGitState(client: DataformClient, workspace:string) {
 }
 
 
-export async function runWorkflowInvocationWorkspace(projectId:string, gcpProjectLocation:string, dataformRepositoryName:string, workspaceId:string, tagsToRun:string[]): Promise<CreateCompilationResultResponse | undefined>{
+export async function runWorkflowInvocationWorkspace(client: DataformClient, projectId:string, gcpProjectLocation:string, dataformRepositoryName:string, workspaceId:string, tagsToRun:string[]): Promise<CreateCompilationResultResponse | undefined>{
 
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
     //FIXME: what if some files are stages and some are not ??
     const gitStatusLocal = await getLocalGitState();
-    const client = new DataformClient();
 
     let gitStatusRemote = await getRemoteGitState(client, workspace);
     if(!gitStatusRemote){
@@ -255,6 +243,7 @@ export async function runWorkflowInvocationWorkspace(projectId:string, gcpProjec
     const gitStatusLocalMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.state]));
     const gitStatusLocalFullPathMap = Object.fromEntries(gitStatusLocal?.map((item:any) => [item.path, item.fullPath]));
 
+    vscode.window.showInformationMessage("[...] Syncronising remote workspace with local state");
     await Promise.all(gitStatusLocal.map(async ({ state, path, fullPath } : {state: string, path:string, fullPath:string}) => {
         if (state === "ADDED" || state === "MODIFIED") {
             await writeFileToWorkspace(workspace, path, fullPath);
@@ -285,6 +274,7 @@ export async function runWorkflowInvocationWorkspace(projectId:string, gcpProjec
             }
         }));
     }
+    vscode.window.showInformationMessage("[done] Syncronised remote workspace with local state");
 
     const compilationResult = {
         workspace: workspace,
