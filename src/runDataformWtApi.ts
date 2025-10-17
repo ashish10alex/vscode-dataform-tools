@@ -5,7 +5,7 @@ import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
-import {getGitStatusFiles as getLocalGitState} from "./getGitMeta";
+import {getGitStatusFiles as getLocalGitState, getGitStatusCommitedFiles} from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 
 type CreateCompilationResultResponse = Promise<
@@ -229,9 +229,11 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
     //TODO: handle cases when changes are commited locally, not pushed. We need to indetify the files that have been modified and sync remote
-    //We can use the data in `git show --name-status --pretty="format:commmit_hash: %H" origin/<branch_name>..HEAD`
     const gitStatusLocal = await getLocalGitState();
     if(gitStatusLocal.length === 0){
+        //FIXME: we might need to call this regardless of weather there are any uncommited git changes locally ?
+        const gitStatusLocalCommited = await getGitStatusCommitedFiles(workspaceId);
+        console.log(gitStatusLocalCommited);
         const request = {
             name: workspace,
             clean: true

@@ -38,7 +38,7 @@ function gitStatusToHumanReadable(statusCode:string){
     }
 }
 
-export async function getGitStatusFiles() {
+export async function getGitStatusFiles(): Promise<{state: string, path: string, fullPath:string}[]> {
     let workspaceFolders = vscode.workspace?.workspaceFolders;
     let projectRoot = "";
     if(workspaceFolders){
@@ -50,13 +50,52 @@ export async function getGitStatusFiles() {
             const [status, filePath] = line.trim().split(/\s+/);
             return { status, filePath: filePath.replace(/\\/g, '/') };
         });
-        // Filter for .sqlx files in definitions/
         return files.filter((file:any) => 
             (file.filePath.endsWith('.sqlx') || file.filePath.endsWith('.js'))
         ).map((file:any) => ({
             state: gitStatusToHumanReadable(file.status),
             path: file.filePath,
             fullPath: path.join(projectRoot, file.filePath)
+        }));
+    } catch (error:any) {
+        console.error('Error running git status:', error);
+        vscode.window.showErrorMessage(`Error running git status: ${error.message}`);
+        throw error;
+    }
+}
+
+
+export async function getGitStatusCommitedFiles(gitBranchName: string): Promise<{state:string, path:string, fullPath:string, commitIndex:number}[]> {
+    const gitCommand = `git show --name-status --pretty="format:commit_hash: %H" origin/${gitBranchName}..HEAD`;
+    let workspaceFolders = vscode.workspace?.workspaceFolders;
+    let projectRoot = "";
+    if(workspaceFolders){
+        projectRoot = workspaceFolders[0].uri?.fsPath;
+    }
+    try {
+        const { stdout } = await execPromise(gitCommand, { cwd: projectRoot });
+        const lines = stdout.split("\n").filter((line:string) => line.trim());
+        const committedFiles = [];
+        let currentCommitIndex = 1; // Start with 1 for the most recent commit
+        for (const line of lines) {
+            if(line.startsWith("commit_hash:")){
+                continue;
+            }
+            const [status, filePath] = line.trim().split(/\s+/);
+            committedFiles.push({
+                 status,
+                 filePath: filePath.replace(/\\/g, '/') ,
+                 commitIndex: currentCommitIndex
+            }); 
+            currentCommitIndex+=1;
+        }
+        return committedFiles.filter((file:any) => 
+            (file.filePath.endsWith('.sqlx') || file.filePath.endsWith('.js'))
+        ).map((file:any) => ({
+            state: gitStatusToHumanReadable(file.status),
+            path: file.filePath,
+            fullPath: path.join(projectRoot, file.filePath),
+            commitIndex: file.commitIndex
         }));
     } catch (error:any) {
         console.error('Error running git status:', error);
