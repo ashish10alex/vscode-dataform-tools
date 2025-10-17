@@ -252,7 +252,7 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
         }
     }));
 
-    if(gitStatusRemoteMap){
+    if(gitStatusRemoteMap && Object.keys(gitStatusRemoteMap).length > 0){
         //@ts-ignore
         //FIXME: fix the typing error
         await Promise.all(gitStatusRemoteUncommitedChanges.map(async({path: remotePath, state}: {path: string, state:string}) => {
