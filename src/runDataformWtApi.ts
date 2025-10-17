@@ -210,7 +210,6 @@ export async function deleteFileInWorkspace(client:DataformClient, workspace:str
 
 async function getRemoteGitState(client: DataformClient, workspace:string) {
   try {
-    // Define the request object
     const request = {
       name: workspace
     };
@@ -229,8 +228,14 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
-    //FIXME: what if some files are stages and some are not ??
     const gitStatusLocal = await getLocalGitState();
+    if(gitStatusLocal.length === 0){
+        const request = {
+            name: workspace,
+            clean: true
+        };
+        await client.resetWorkspaceChanges(request);
+    }
 
     let gitStatusRemote = await getRemoteGitState(client, workspace);
     if(!gitStatusRemote){
