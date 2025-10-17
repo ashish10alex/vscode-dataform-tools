@@ -228,7 +228,7 @@ export async function runWorkflowInvocationWorkspace(client: DataformClient, pro
     const workspace = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}/workspaces/${workspaceId}`;
     const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${dataformRepositoryName}`;
 
-    //TODO: handle cases when changes are commited locally, not pushed. We need to indetify the files that have been modified and sync remote
+    //TODO: call getLocalGitState, getGitStatusCommitedFiles simultaneously 
     const gitStatusLocal = await getLocalGitState();
     if(gitStatusLocal.length === 0){
         //FIXME: we might need to call this regardless of weather there are any uncommited git changes locally ?
