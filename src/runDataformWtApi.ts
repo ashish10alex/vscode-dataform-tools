@@ -147,7 +147,17 @@ export async function createDataformWorkspace(client: DataformClient, projectId:
     };
 
     const [workspace] = await client.createWorkspace(request);
-    vscode.window.showInformationMessage(`Workspace created: ${workspace}`);
+    vscode.window.showInformationMessage(`Workspace created: ${workspace.name}`);
+    await client.pullGitCommits({
+        name: workspace.name,
+        //TODO: make this dynamic
+        author: {
+            name: "ashish alex",
+            emailAddress: "ashish.alex10@gmail.com"
+        },
+        remoteBranch: workspaceId
+    });
+    vscode.window.showInformationMessage(`[done] pulled latest changes from remote: ${workspace.name}`);
     return workspace.name;
 }
 
