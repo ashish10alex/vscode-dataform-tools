@@ -118,5 +118,11 @@ class DataformApi {
         return createdCompilationResult;
     }
 
+    async  getRemoteWorkspaceGitState() {
+        const request = {
+            name: this.workspaceName
+        };
+        return await this.client.fetchFileGitStatuses(request);
+    }
 
 }
