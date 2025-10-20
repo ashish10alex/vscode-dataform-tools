@@ -125,4 +125,13 @@ class DataformApi {
         return await this.client.fetchFileGitStatuses(request);
     }
 
+    async resetWorkspaceChanges(clean:boolean){
+        // NOTE: similar to `git restore . `
+        const request = {
+            name: this.workspaceName,
+            clean: clean
+        };
+        await this.client.resetWorkspaceChanges(request);
+    }
+
 }
