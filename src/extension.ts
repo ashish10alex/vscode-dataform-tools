@@ -217,8 +217,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const tagsToRun = ["nested"];
 
         // 0. Get local gitRepo and branch name.
-        const {gitRepoName, gitBranch} = await getGitBranchAndRepoName() || {}; 
-        console.log(gitRepoName, gitBranch);
+        const {gitBranch} = getGitBranchAndRepoName() || {}; 
 
         const client = new DataformClient();
         // 1. Create workspace for the current branch name if it does not exsists

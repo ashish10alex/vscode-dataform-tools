@@ -5,7 +5,7 @@ import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
-import {getGitStatusFiles as getLocalGitState, getGitStatusCommitedFiles, getGitUserMeta} from "./getGitMeta";
+import {getLocalGitState as getLocalGitState, getGitStatusCommitedFiles, getGitUserMeta} from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 
 type CreateCompilationResultResponse = Promise<
@@ -28,8 +28,6 @@ type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
  * @returns createdCompilationResult
  */
 export async function getCompilationResult(client:DataformClient, parent:string, gitBranch:string): CreateCompilationResultResponse{
-    // vscode.window.showInformationMessage("Creating compilation result...");
-
     const compilationResult = {
         gitCommitish: gitBranch,
     };
@@ -49,8 +47,6 @@ async function _createDataformWorkflowInvocation(client: DataformClient, project
     if(createdWorkflowInvocation[0]?.name){
         const workflowInvocationId = createdWorkflowInvocation[0].name.split("/").pop();
         const workflowInvocationUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${repositoryName}/workspaces/${workspaceId}/workflows/${workflowInvocationId}?project=${projectId}`;
-        // https://console.cloud.google.com/bigquery/dataform/locations/europe-west2/repositories/football_dataform/workspaces/dev_test_new/workflows/1760705131-4205af3f-1a7e-4063-a58a-2db11c345641?project=drawingfire-b72a8
-
         vscode.window.showInformationMessage(
             `Workflow invocation created`,
             'View workflow execution'
@@ -91,7 +87,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 
 
         dataformClient = new DataformClient(options);
-        const {gitRepoName, gitBranch} = await getGitBranchAndRepoName() || {}; 
+        const {gitRepoName, gitBranch} = getGitBranchAndRepoName() || {}; 
         const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
         const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
         const fullCompilationResultName = createdCompilationResult[0].name;

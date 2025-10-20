@@ -4,7 +4,7 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
-export async function getGitBranchAndRepoName() {
+export function getGitBranchAndRepoName() {
   const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
   if (!gitExtension) {
     vscode.window.showErrorMessage('Git extension not found.');
@@ -38,7 +38,7 @@ function gitStatusToHumanReadable(statusCode:string){
     }
 }
 
-export async function getGitStatusFiles(): Promise<{state: string, path: string, fullPath:string}[]> {
+export async function getLocalGitState(): Promise<{state: string, path: string, fullPath:string}[]> {
     let workspaceFolders = vscode.workspace?.workspaceFolders;
     let projectRoot = "";
     if(workspaceFolders){
