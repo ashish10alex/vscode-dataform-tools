@@ -1,5 +1,6 @@
 
 import { DataformClient  } from '@google-cloud/dataform';
+import * as fs from 'fs/promises'; 
 import { protos } from '@google-cloud/dataform';
 import {getLocalGitState, getGitStatusCommitedFiles, getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
 
@@ -66,6 +67,33 @@ class DataformApi {
         }
     }
 
+    //TODO: can we somehow avoid passing both full and relative paths ?
+    async writeFileToWorkspace(fullPath:string, relativePath:string) {
+        const data = await fs.readFile(fullPath, 'utf8');
+        const request = {
+            workspace: this.workspaceName,
+            path: relativePath,
+            contents: Buffer.from(data),
+        };
+        await this.client.writeFile(request);
+    }
+
+
+    async fileExistsInWorkspace(relativePath:string) {
+        try {
+            await this.client.readFile({
+                workspace: this.workspaceName,
+                path: relativePath
+            });
+            return true;
+        } catch (error: any) {
+            const ERROR_CODE_FILE_NOT_FOUND = 5;
+            if (error.code === ERROR_CODE_FILE_NOT_FOUND) { 
+                return false;
+            }
+            throw error;
+        }
+    }
 
     async getCompilationResult(): CreateCompilationResultResponse{
         const compilationResult = {
