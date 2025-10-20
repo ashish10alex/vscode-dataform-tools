@@ -134,4 +134,37 @@ class DataformApi {
         await this.client.resetWorkspaceChanges(request);
     }
 
+    async  createDataformWorkflowInvocation(invocationConfig: any, compilationResultName:string){
+        /*
+        const out = await obj.getCompilationResult();
+        // NOTE: I think we are making an assumption here that only one compilation result invocation is being made by previous function call
+        const compilationResultName = out[0].name;
+        */
+        const workflowInvocation = {
+            compilationResult: compilationResultName,
+            invocationConfig: invocationConfig
+        };
+
+        const createWorkflowInvocationRequest = {
+            parent: this.parent,
+            workflowInvocation: workflowInvocation,
+        };
+
+        // NOTE: I think we are making an assumption here that only one workflow invocation is being made by this call
+        const createdWorkflowInvocation = await this.client.createWorkflowInvocation(createWorkflowInvocationRequest);
+        const createdWorkflowInvocationName = createdWorkflowInvocation[0]?.name;
+
+        let workflowInvocationUrlGCP = undefined;
+        let workflowInvocationId = undefined;
+
+        if(createdWorkflowInvocationName){
+            const workflowInvocationId = createdWorkflowInvocationName.split("/").pop();
+            if(workflowInvocationId){
+            workflowInvocationUrlGCP = this.getWorkflowInvocationUrl(workflowInvocationId);
+            }
+        }
+        return {name: createdWorkflowInvocationName, url: workflowInvocationUrlGCP, id: workflowInvocationId};
+    }
+
+
 }
