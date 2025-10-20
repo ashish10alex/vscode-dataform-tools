@@ -95,6 +95,15 @@ class DataformApi {
         }
     }
 
+    async deleteFileInWorkspace(relativePath:string) {
+            const request = {
+                workspace: this.workspaceName,
+                path: relativePath,
+            };
+            await this.client.removeFile(request);
+    }
+
+
     async getCompilationResult(): CreateCompilationResultResponse{
         const compilationResult = {
             gitCommitish: this.gitBranch,
