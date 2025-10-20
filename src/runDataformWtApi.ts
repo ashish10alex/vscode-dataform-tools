@@ -5,7 +5,7 @@ import { getGitBranchAndRepoName } from './getGitMeta';
 
 import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
-import {getGitStatusFiles as getLocalGitState, getGitStatusCommitedFiles} from "./getGitMeta";
+import {getGitStatusFiles as getLocalGitState, getGitStatusCommitedFiles, getGitUserMeta} from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 
 type CreateCompilationResultResponse = Promise<
@@ -148,16 +148,18 @@ export async function createDataformWorkspace(client: DataformClient, projectId:
 
     const [workspace] = await client.createWorkspace(request);
     vscode.window.showInformationMessage(`Workspace created: ${workspace.name}`);
-    await client.pullGitCommits({
-        name: workspace.name,
-        //TODO: make this dynamic
-        author: {
-            name: "ashish alex",
-            emailAddress: "ashish.alex10@gmail.com"
-        },
-        remoteBranch: workspaceId
-    });
-    vscode.window.showInformationMessage(`[done] pulled latest changes from remote: ${workspace.name}`);
+    const gitUserMeta = await getGitUserMeta();
+    if(gitUserMeta && gitUserMeta.name && gitUserMeta.email){
+        await client.pullGitCommits({
+            name: workspace.name,
+            author: {
+                name: gitUserMeta.name,
+                emailAddress: gitUserMeta.email
+            },
+            remoteBranch: workspaceId
+        });
+        vscode.window.showInformationMessage(`[done] pulled latest changes from remote: ${workspace.name}`);
+    }
     return workspace.name;
 }
 

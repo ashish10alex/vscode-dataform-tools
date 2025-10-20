@@ -103,3 +103,33 @@ export async function getGitStatusCommitedFiles(gitBranchName: string): Promise<
         throw error;
     }
 }
+
+
+export async function getGitUserMeta(): Promise<{name: string | undefined, email: string | undefined}  | undefined> {
+    let workspaceFolders = vscode.workspace?.workspaceFolders;
+    let projectRoot = "";
+    if(workspaceFolders){
+        projectRoot = workspaceFolders[0].uri?.fsPath;
+    }
+    try {
+        const { stdout } = await execPromise('git config --get-regexp "^user\.(name|email)$"', { cwd: projectRoot });
+        const lines = stdout.trim("").split("\n");
+        let name = "";
+        let email = "";
+        for (const line of lines) {
+            if(line.startsWith("user.name")){
+                name = line.split(" ")[1];
+            }
+            if(line.startsWith("user.email")){
+                email = line.split(" ")[1];
+            }
+        }
+        return {
+                name:  name, email: email
+        };
+    } catch(error:any){
+        console.error('Error getting git user metadata:', error);
+        vscode.window.showErrorMessage(`${error.message}`);
+        return undefined;
+    }
+}
