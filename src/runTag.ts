@@ -1,5 +1,5 @@
 import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal } from "./utils";
-import { createDataformWorkflowInvocation } from "./runDataformWtApi";
+import { createDataformWorkflowInvocation } from "./dataformApi";
 import * as vscode from 'vscode';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
