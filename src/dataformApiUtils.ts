@@ -28,7 +28,7 @@ export async function getCompilationResult(client:DataformClient, parent:string,
     return createdCompilationResult;
 }
 
-async function sendWorkflowInvocationNotification(url:string){
+export function sendWorkflowInvocationNotification(url:string){
     vscode.window.showInformationMessage(
         `Workflow invocation created`,
         'View workflow execution'

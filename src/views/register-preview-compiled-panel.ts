@@ -305,8 +305,6 @@ export class CompiledQueryPanel {
                     return;
                 }
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
-                if(errorWorkflowInvocation){
-                }
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
