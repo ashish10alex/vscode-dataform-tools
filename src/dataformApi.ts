@@ -116,11 +116,26 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 }
 
 
-export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, compilationType:CompilationType): Promise<CreateCompilationResultResponse | undefined>{
+export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, compilationType:CompilationType, remoteGitRepoExsists:boolean): Promise<CreateCompilationResultResponse | undefined>{
+    let defaultGitBranch = undefined;
+    if(!remoteGitRepoExsists){
+        defaultGitBranch = await vscode.window.showInputBox({
+            placeHolder: "Enter default git branch",
+            prompt: 'e.g. main',
+            value: 'main' 
+        });
+    }
+
+    if(!defaultGitBranch){
+        vscode.window.showErrorMessage("Need a default git branch to compare the local changes to");
+        return;
+    }
 
     const [gitStatusLocalUnCommited, gitStatusLocalCommited] = await Promise.all([
         await getLocalGitState(),
-        await getGitStatusCommitedFiles(dataformClient.workspaceId)
+        //NOTE: if remoteGitRepoExsists is false then we should compare against the default branch 
+        remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch)
+        
     ]);
 
     // TODO: create an object with git status to use for a file based on commited and uncommited changes
@@ -129,7 +144,9 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         await dataformClient.resetWorkspaceChanges(true);
     }
 
-    //FIXME: i think this fails when the remote repo does not exsist yet **
+    // FIXME: we need to take the latest of each file in gitStatusLocalCommited and write to remote workspace
+    // gitStatusLocalCommited
+
     let gitStatusRemote =  await dataformClient.getRemoteWorkspaceGitState();
     if(!gitStatusRemote){
         return;
