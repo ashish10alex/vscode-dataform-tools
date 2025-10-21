@@ -248,6 +248,9 @@ export async function activate(context: vscode.ExtensionContext) {
         };
 
         const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation);
+        //TODO: depending on how it goes in the future we can deterive the location from here
+        // const repository = await dataformClient.getRepository();
+        // console.log(repository);
 
         try{
             // create Dataform workspace with current git repository name and branch if it does not exists in remote GCP
