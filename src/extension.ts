@@ -237,13 +237,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
 
-        const compilationType = "workspace";
-        const tagsToRun = ["nested"];
         let remoteGitRepoExsists = false;
 
         //FIXME: also will be dynamic e.g runTagsApi, runCurrentFileApi
         const invocationConfig = {
-            includedTags: tagsToRun,
+            includedTags: ["nested"],
             transitiveDependenciesIncluded: false,
             transitiveDependentsIncluded: false,
             fullyRefreshIncrementalTablesEnabled: false,
@@ -271,7 +269,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         }
 
-        runWorkflowInvocationWorkspace(dataformClient, invocationConfig, compilationType, remoteGitRepoExsists);
+        runWorkflowInvocationWorkspace(dataformClient, invocationConfig, remoteGitRepoExsists);
     }) );
 
 

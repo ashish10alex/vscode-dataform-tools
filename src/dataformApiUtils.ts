@@ -4,7 +4,7 @@ import { DataformClient  } from '@google-cloud/dataform';
 import { getLocalGitState as getLocalGitState, getGitStatusCommitedFiles, getGitBranchAndRepoName } from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 import { DataformApi } from './dataformApi';
-import {CompilationType, CreateCompilationResultResponse, InvocationConfig} from "./types";
+import { CreateCompilationResultResponse, InvocationConfig } from "./types";
 
 /**
  * Creates compilation object from the latest state of the git branch of the remote repo
@@ -115,7 +115,7 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 }
 
 
-export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, compilationType:CompilationType, remoteGitRepoExsists:boolean): Promise<CreateCompilationResultResponse | undefined>{
+export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, remoteGitRepoExsists:boolean): Promise<CreateCompilationResultResponse | undefined>{
 
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
