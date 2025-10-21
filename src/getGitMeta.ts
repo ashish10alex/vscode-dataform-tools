@@ -29,6 +29,8 @@ function gitStatusToHumanReadable(statusCode:string){
     switch (statusCode) {
         case "M":
             return "MODIFIED";
+        case "A":
+            return "ADDED";
         case "??":
             return "ADDED";
         case "D":
@@ -38,7 +40,7 @@ function gitStatusToHumanReadable(statusCode:string){
     }
 }
 
-export async function getLocalGitState(): Promise<{state: string, path: string, fullPath:string}[]> {
+export async function getLocalGitState(): Promise<{state: string, path: string, fullPath:string, commitIndex: number}[]> {
     let workspaceFolders = vscode.workspace?.workspaceFolders;
     let projectRoot = "";
     if(workspaceFolders){
@@ -55,7 +57,8 @@ export async function getLocalGitState(): Promise<{state: string, path: string, 
         ).map((file:any) => ({
             state: gitStatusToHumanReadable(file.status),
             path: file.filePath,
-            fullPath: path.join(projectRoot, file.filePath)
+            fullPath: path.join(projectRoot, file.filePath),
+            commitIndex: 0 // used to know this is the latest status of the file when comparing with already commited changes locally
         }));
     } catch (error:any) {
         console.error('Error running git status:', error);
