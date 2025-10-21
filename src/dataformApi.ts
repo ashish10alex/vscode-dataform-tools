@@ -32,7 +32,6 @@ export class DataformApi {
         return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
     }
 
-
     async getWorkspace() {
         const request = {
             name: this.workspaceName
@@ -57,7 +56,6 @@ export class DataformApi {
         const [workspace] = await this.client.createWorkspace(request);
         return workspace;
     }
-
 
     async pullGitCommits(){
         const gitUser = await getGitUserMeta() || {name: "", email: ""};
@@ -85,7 +83,6 @@ export class DataformApi {
         await this.client.writeFile(request);
     }
 
-
     async fileExistsInWorkspace(relativePath:string) {
         try {
             await this.client.readFile({
@@ -109,7 +106,6 @@ export class DataformApi {
             };
             await this.client.removeFile(request);
     }
-
 
     async createCompilationResult(compilationType:CompilationType): CreateCompilationResultResponse{
         let compilationResult = {};
