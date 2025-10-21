@@ -28,7 +28,7 @@ import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 // import { runWorkflowInvocationWorkspace, createDataformWorkspace} from "./dataformApi";
 import {runWorkflowInvocationWorkspace} from "./dataformApiUtils";
 // import {getGitBranchAndRepoName} from "./getGitMeta";
-import { DataformApi } from './DataformApi';
+import { DataformApi } from './dataformApi';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {

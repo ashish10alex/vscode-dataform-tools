@@ -3,7 +3,7 @@ import path from 'path';
 import { DataformClient  } from '@google-cloud/dataform';
 import { getLocalGitState as getLocalGitState, getGitStatusCommitedFiles, getGitBranchAndRepoName } from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
-import { DataformApi } from './DataformApi';
+import { DataformApi } from './dataformApi';
 import {CompilationType, CreateCompilationResultResponse, InvocationConfig} from "./types";
 
 /**
