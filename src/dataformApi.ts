@@ -117,13 +117,18 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 
 
 export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, compilationType:CompilationType, remoteGitRepoExsists:boolean): Promise<CreateCompilationResultResponse | undefined>{
+
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
-        defaultGitBranch = await vscode.window.showInputBox({
-            placeHolder: "Enter default git branch",
-            prompt: 'e.g. main',
-            value: 'main' 
-        });
+        const repository = await dataformClient.getRepository();
+        defaultGitBranch = repository[0].gitRemoteSettings?.defaultBranch;
+        if(!defaultGitBranch){
+            defaultGitBranch = await vscode.window.showInputBox({
+                placeHolder: "Enter default git branch",
+                prompt: 'e.g. main',
+                value: 'main' 
+            });
+        }
     }
 
     if(!defaultGitBranch){
@@ -133,9 +138,7 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
 
     const [gitStatusLocalUnCommited, gitStatusLocalCommited] = await Promise.all([
         await getLocalGitState(),
-        //NOTE: if remoteGitRepoExsists is false then we should compare against the default branch 
         remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch)
-        
     ]);
 
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;

@@ -32,6 +32,22 @@ export class DataformApi {
     }
 
 
+    async getWorkspace() {
+        const request = {
+            name: this.workspaceName
+        };
+        const workspace = await this.client.getWorkspace(request);
+        return workspace;
+    }
+
+    async getRepository() {
+        const request = {
+            name: this.parent
+        };
+        const repository = await this.client.getRepository(request);
+        return repository;
+    }
+
     async createWorkspace() {
         const request = {
             parent: this.parent,
