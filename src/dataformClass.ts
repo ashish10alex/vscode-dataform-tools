@@ -22,6 +22,7 @@ export class DataformApi {
         ({ gitRepoName: this.gitRepoName, gitBranch: this.gitBranch } = getGitBranchAndRepoName() || {});
         this.repositoryName = this.gitRepoName;
         this.workspaceId = this.gitBranch;
+        //TODO: add ability to use service account
         this.client = new DataformClient(options);
         this.parent =  `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}`;
         this.workspaceName = `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workspaces/${this.workspaceId}`;

@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, getGcpProjectLocationDataform, runCompilation} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -210,9 +210,33 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', async() => { 
-        //FIXME: this will to be dynamic 
-        const gcpProjectId = "drawingfire-b72a8";
-        const gcpProjectLocation  = "europe-west2";
+
+        if (!CACHED_COMPILED_DATAFORM_JSON) {
+
+            let workspaceFolder = await getWorkspaceFolder();
+            if (!workspaceFolder) {
+                return;
+            }
+
+            let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
+            if (dataformCompiledJson) {
+                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            }
+        }
+
+        if(!CACHED_COMPILED_DATAFORM_JSON){
+            vscode.window.showErrorMessage(`Unable to compile dataform project. Run "dataform compile" in the terminal to check`);
+            return;
+        }
+
+        const gcpProjectId = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase;
+        if(!gcpProjectId){
+            vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
+            return;
+        }
+
+        let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
+
         const compilationType = "workspace";
         const tagsToRun = ["nested"];
         let remoteGitRepoExsists = false;
@@ -236,15 +260,17 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.window.showWarningMessage(error.message);
             } 
         }
+
         try{
             await dataformClient.pullGitCommits();
             remoteGitRepoExsists = true;
-        }catch(error:any){
+        } catch(error:any){
             const BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE = 9;
             if(error.code === BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE){
                 vscode.window.showWarningMessage(error.message);
             }
         }
+
         runWorkflowInvocationWorkspace(dataformClient, invocationConfig, compilationType, remoteGitRepoExsists);
     }) );
 
