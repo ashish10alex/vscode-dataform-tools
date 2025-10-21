@@ -24,9 +24,11 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-import { DataformClient  } from '@google-cloud/dataform';
-import { runWorkflowInvocationWorkspace, createDataformWorkspace} from "./dataformApi";
-import {getGitBranchAndRepoName} from "./getGitMeta";
+// import { DataformClient  } from '@google-cloud/dataform';
+// import { runWorkflowInvocationWorkspace, createDataformWorkspace} from "./dataformApi";
+import {runWorkflowInvocationWorkspace} from "./dataformApi";
+// import {getGitBranchAndRepoName} from "./getGitMeta";
+import { DataformApi } from './dataformClass';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -207,33 +209,35 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
 
-
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', async() => { 
-        // console.time("runWorkflowInvocationWorkspace");
-
-        const projectId = "drawingfire-b72a8";
+        //FIXME: this will to be dynamic 
+        const gcpProjectId = "drawingfire-b72a8";
         const gcpProjectLocation  = "europe-west2";
-        const dataformRepositoryName = "football_dataform";
+        const compilationType = "workspace";
         const tagsToRun = ["nested"];
 
-        // 0. Get local gitRepo and branch name.
-        const {gitBranch} = getGitBranchAndRepoName() || {}; 
+        //FIXME: also will be dynamic e.g runTagsApi, runCurrentFileApi
+        const invocationConfig = {
+            includedTags: tagsToRun,
+            transitiveDependenciesIncluded: false,
+            transitiveDependentsIncluded: false,
+            fullyRefreshIncrementalTablesEnabled: false,
+        };
 
-        const client = new DataformClient();
-        // 1. Create workspace for the current branch name if it does not exsists
+        const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation);
+
         try{
-            await createDataformWorkspace(client, projectId, gcpProjectLocation, dataformRepositoryName, gitBranch);
+            // create Dataform workspace with current git repository name and branch if it does not exists in remote GCP
+            await dataformClient.createWorkspace();
         } catch (error:any){
-            if (error.code === 6) {  // workspace already exsists, skip creation and move to workflow invocation
+            const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
+            if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
                 vscode.window.showWarningMessage(error.message);
-            } else {
-                return;
-            }
+            } 
         }
-        // 2. Fetch the workspace and its metadata such as location ??
-        await runWorkflowInvocationWorkspace(client, projectId, gcpProjectLocation, dataformRepositoryName, gitBranch, tagsToRun);
-        // console.timeEnd("runWorkflowInvocationWorkspace");
+        runWorkflowInvocationWorkspace(dataformClient, invocationConfig, compilationType);
     }) );
+
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
         let transitiveDependenciesIncluded = false;

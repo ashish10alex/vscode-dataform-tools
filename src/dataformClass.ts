@@ -1,20 +1,10 @@
 
 import { DataformClient  } from '@google-cloud/dataform';
 import * as fs from 'fs/promises'; 
-import { protos } from '@google-cloud/dataform';
-import {getLocalGitState, getGitStatusCommitedFiles, getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
+import {getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
+import {CompilationType, CreateCompilationResultResponse, InvocationConfig} from "./types";
 
-type CreateCompilationResultResponse = Promise<
-[
-    protos.google.cloud.dataform.v1beta1.ICompilationResult,
-    protos.google.cloud.dataform.v1beta1.ICreateCompilationResultRequest | undefined,
-    {} | undefined
-]
->;
-
-type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
-
-class DataformApi {
+export class DataformApi {
 
     gcpProjectId:string;
     gcpProjectLocation:string;
@@ -26,12 +16,12 @@ class DataformApi {
     repositoryName:string;
     gitBranch:string;
 
-    constructor (gcpProjectId:string, gcpLocation:string, workspaceId:string, options?:any){
+    constructor (gcpProjectId:string, gcpLocation:string, options?:any){
         this.gcpProjectId = gcpProjectId;
         this.gcpProjectLocation = gcpLocation;
-        this.workspaceId = workspaceId;
         ({ gitRepoName: this.gitRepoName, gitBranch: this.gitBranch } = getGitBranchAndRepoName() || {});
         this.repositoryName = this.gitRepoName;
+        this.workspaceId = this.gitBranch;
         this.client = new DataformClient(options);
         this.parent =  `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}`;
         this.workspaceName = `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workspaces/${this.workspaceId}`;
@@ -104,10 +94,17 @@ class DataformApi {
     }
 
 
-    async getCompilationResult(): CreateCompilationResultResponse{
-        const compilationResult = {
-            gitCommitish: this.gitBranch,
-        };
+    async createCompilationResult(compilationType:CompilationType): CreateCompilationResultResponse{
+        let compilationResult = {};
+        if(compilationType === "workspace"){
+            compilationResult = {
+                workspace: this.workspaceName,
+            };
+        } else {
+            compilationResult = {
+                gitCommitish: this.gitBranch
+            };
+        }
 
         const createCompilationResultRequest = {
             parent: this.parent,
@@ -134,9 +131,9 @@ class DataformApi {
         await this.client.resetWorkspaceChanges(request);
     }
 
-    async  createDataformWorkflowInvocation(invocationConfig: any, compilationResultName:string){
+    async  createDataformWorkflowInvocation(invocationConfig: InvocationConfig, compilationResultName:string){
         /*
-        const out = await obj.getCompilationResult();
+        const out = await obj.createCompilationResult();
         // NOTE: I think we are making an assumption here that only one compilation result invocation is being made by previous function call
         const compilationResultName = out[0].name;
         */

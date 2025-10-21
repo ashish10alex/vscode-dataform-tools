@@ -1,4 +1,5 @@
 import { TextDocument } from "vscode";
+import { protos } from '@google-cloud/dataform';
 
 export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
 
@@ -349,3 +350,14 @@ export interface WebviewMessage {
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
 }
+
+export type CreateCompilationResultResponse = Promise<
+[
+    protos.google.cloud.dataform.v1beta1.ICompilationResult,
+    protos.google.cloud.dataform.v1beta1.ICreateCompilationResultRequest | undefined,
+    {} | undefined
+]
+>;
+
+export type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
+export type CompilationType  = "gitBranch" | "workspace";
