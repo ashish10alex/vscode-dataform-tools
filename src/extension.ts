@@ -235,7 +235,14 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.window.showWarningMessage(error.message);
             } 
         }
-        await dataformClient.pullGitCommits();
+        try{
+            await dataformClient.pullGitCommits();
+        }catch(error:any){
+            const BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE = 9;
+            if(error.code === BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE){
+                vscode.window.showWarningMessage(error.message);
+            }
+        }
         runWorkflowInvocationWorkspace(dataformClient, invocationConfig, compilationType);
     }) );
 
