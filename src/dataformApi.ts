@@ -1,25 +1,10 @@
 import * as vscode from 'vscode';
 import path from 'path';
-import * as fs from 'fs/promises'; 
-import {CompilationType} from "./types";
-import { getGitBranchAndRepoName } from './getGitMeta';
-
 import { DataformClient  } from '@google-cloud/dataform';
-import { protos } from '@google-cloud/dataform';
-import {getLocalGitState as getLocalGitState, getGitStatusCommitedFiles, getGitUserMeta} from "./getGitMeta";
+import { getLocalGitState as getLocalGitState, getGitStatusCommitedFiles, getGitBranchAndRepoName } from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 import { DataformApi } from './dataformClass';
-
-type CreateCompilationResultResponse = Promise<
-  [
-    protos.google.cloud.dataform.v1beta1.ICompilationResult,
-    protos.google.cloud.dataform.v1beta1.ICreateCompilationResultRequest | undefined,
-    {} | undefined
-  ]
->;
-
-type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
-
+import {CompilationType, CreateCompilationResultResponse, InvocationConfig} from "./types";
 
 /**
  * Creates compilation object from the latest state of the git branch of the remote repo
@@ -131,87 +116,6 @@ export async function createDataformWorkflowInvocation(projectId:string, gcpProj
 }
 
 
-export async function createDataformWorkspace(client: DataformClient, projectId:string, location: string, dataformRepositoryName:string, workspaceId:string){
-    const parent = `projects/${projectId}/locations/${location}/repositories/${dataformRepositoryName}`;
-    const request = {
-        parent: parent,
-        workspaceId: workspaceId,
-    };
-
-    const [workspace] = await client.createWorkspace(request);
-    vscode.window.showInformationMessage(`Workspace created: ${workspace.name}`);
-    const gitUserMeta = await getGitUserMeta();
-    if(gitUserMeta && gitUserMeta.name && gitUserMeta.email){
-        await client.pullGitCommits({
-            name: workspace.name,
-            author: {
-                name: gitUserMeta.name,
-                emailAddress: gitUserMeta.email
-            },
-            remoteBranch: workspaceId
-        });
-        vscode.window.showInformationMessage(`[done] pulled latest changes from remote: ${workspace.name}`);
-    }
-    return workspace.name;
-}
-
-
-export async function writeFileToWorkspace(workspace:string, relativePath:string, fullPath:string) {
-    const client = new DataformClient();
-
-    try {
-        const data = await fs.readFile(fullPath, 'utf8');
-
-        const request = {
-            workspace: workspace,
-            path: relativePath,
-            contents: Buffer.from(data),
-        };
-
-        await client.writeFile(request);
-        vscode.window.showInformationMessage(`File written to workspace: ${fullPath}`);
-
-    } catch (error: any) {
-        console.error('Operation Error:', error);
-        vscode.window.showErrorMessage('Error writing file to workspace:', error.message);
-    }
-}
-
-async function fileExistsInWorkspace(client: DataformClient, workspace:string, relativePath:string) {
-    try {
-        await client.readFile({
-            workspace: workspace,
-            path: relativePath
-        });
-        return true;
-    } catch (error:any) {
-        if (error.code === 5) { // NOT_FOUND
-            vscode.window.showWarningMessage(`${relativePath} does not exsist`);
-            return false;
-        }
-        throw error; // Rethrow unexpected errors
-    }
-}
-
-export async function deleteFileInWorkspace(client:DataformClient, workspace:string, relativePath:string, fullPath:string) {
-    const fileExsistInRemoteWorkspace = await fileExistsInWorkspace(client, workspace, relativePath);
-    if(fileExsistInRemoteWorkspace){
-        const client = new DataformClient();
-        try {
-            const request = {
-                workspace: workspace,
-                path: relativePath,
-            };
-            await client.removeFile(request);
-            vscode.window.showInformationMessage(`Deleted ${fullPath} in workspace`);
-
-        } catch (error: any) {
-            vscode.window.showErrorMessage(`Error deleting ${fullPath} to workspace:', error.message`);
-        }
-
-    }
-}
-
 export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, compilationType:CompilationType): Promise<CreateCompilationResultResponse | undefined>{
 
     const [gitStatusLocalUnCommited, gitStatusLocalCommited] = await Promise.all([
@@ -225,7 +129,7 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         await dataformClient.resetWorkspaceChanges(true);
     }
 
-    //FIXME: i think this fails when the remote repo does not exsist yet
+    //FIXME: i think this fails when the remote repo does not exsist yet **
     let gitStatusRemote =  await dataformClient.getRemoteWorkspaceGitState();
     if(!gitStatusRemote){
         return;
