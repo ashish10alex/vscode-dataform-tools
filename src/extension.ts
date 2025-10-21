@@ -209,7 +209,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.syncInvokeWorkflow', async() => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runInRemoteWorkspace', async() => { 
 
         if (!CACHED_COMPILED_DATAFORM_JSON) {
 
@@ -241,7 +241,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         //FIXME: also will be dynamic e.g runTagsApi, runCurrentFileApi
         const invocationConfig = {
-            includedTags: ["nested"],
+            includedTags: ["one"],
             transitiveDependenciesIncluded: false,
             transitiveDependentsIncluded: false,
             fullyRefreshIncrementalTablesEnabled: false,

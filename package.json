@@ -24,7 +24,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
-        "onCommand:extension.syncInvokeWorkflow",
+        "onCommand:extension.runInRemoteWorkspace",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.runCurrentFileWtApi",
         "onCommand:extension.runCurrentFileWtDependenciesApi",
@@ -162,9 +162,9 @@
                 "group": "navigation"
             },
             {
-                "command": "vscode-dataform-tools.syncInvokeWorkflow",
+                "command": "vscode-dataform-tools.runInRemoteWorkspace",
                 "category": "Dataform",
-                "title": "sync and invoke workflow",
+                "title": "Run in managed Dataform workspace GCP [beta]",
                 "group": "navigation"
             },
             {
