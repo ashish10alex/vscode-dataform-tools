@@ -1,6 +1,7 @@
 import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal } from "./utils";
-import { createDataformWorkflowInvocation } from "./dataformApiUtils";
 import * as vscode from 'vscode';
+import { DataformApi } from "./dataformApi";
+import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -105,5 +106,13 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
 
     let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
 
-    createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+    try{
+        const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+        if(createdWorkflowInvocation?.url){
+            sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+        }
+    }catch(error:any){
+        vscode.window.showErrorMessage(error.message);
+    }
 }

@@ -12,8 +12,8 @@ import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from '
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
-import { createDataformWorkflowInvocation } from "./dataformApiUtils";
-
+import { DataformApi } from "./dataformApi";
+import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -1638,7 +1638,15 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
             return;
         }
-        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+        try{
+            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+            if(createdWorkflowInvocation?.url){
+                sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+            }
+        } catch(error:any){
+            vscode.window.showErrorMessage(error.message);
+        }
     } else if (executionMode === "cli") {
         let actionsList: string[] = [];
         fileMetadatas.forEach(fileMetadata => {
