@@ -26,9 +26,9 @@ import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 // import { DataformClient  } from '@google-cloud/dataform';
 // import { runWorkflowInvocationWorkspace, createDataformWorkspace} from "./dataformApi";
-import {runWorkflowInvocationWorkspace} from "./dataformApi";
+import {runWorkflowInvocationWorkspace} from "./dataformApiUtils";
 // import {getGitBranchAndRepoName} from "./getGitMeta";
-import { DataformApi } from './dataformClass';
+import { DataformApi } from './DataformApi';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {

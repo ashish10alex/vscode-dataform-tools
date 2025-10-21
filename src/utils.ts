@@ -12,7 +12,7 @@ import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from '
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
-import { createDataformWorkflowInvocation } from "./dataformApi";
+import { createDataformWorkflowInvocation } from "./dataformApiUtils";
 
 
 let supportedExtensions = ['sqlx', 'js'];

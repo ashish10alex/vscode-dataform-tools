@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject } from "./utils";
-import { createDataformWorkflowInvocation } from "./dataformApi";
+import { DataformApi } from "./DataformApi";
 
 export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
@@ -85,7 +85,8 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
             fullyRefreshIncrementalTablesEnabled: fullRefresh,
         };
 
-        return createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+        const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+        await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
     }
     return;
 }
