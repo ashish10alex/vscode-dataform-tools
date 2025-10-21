@@ -93,8 +93,8 @@ export class DataformApi {
             });
             return true;
         } catch (error: any) {
-            const ERROR_CODE_FILE_NOT_FOUND = 5;
-            if (error.code === ERROR_CODE_FILE_NOT_FOUND) { 
+            const FILE_NOT_FOUND_IN_WORKSPACE_ERROR_CODE = 5;
+            if (error.code === FILE_NOT_FOUND_IN_WORKSPACE_ERROR_CODE) { 
                 return false;
             }
             throw error;
