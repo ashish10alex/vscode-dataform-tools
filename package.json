@@ -164,7 +164,7 @@
             {
                 "command": "vscode-dataform-tools.runInRemoteWorkspace",
                 "category": "Dataform",
-                "title": "Run in managed Dataform workspace GCP [beta]",
+                "title": "Run in GCP Dataform Workspace [beta]",
                 "group": "navigation"
             },
             {
