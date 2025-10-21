@@ -235,6 +235,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.window.showWarningMessage(error.message);
             } 
         }
+        await dataformClient.pullGitCommits();
         runWorkflowInvocationWorkspace(dataformClient, invocationConfig, compilationType);
     }) );
 
