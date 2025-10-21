@@ -233,15 +233,10 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     vscode.window.showInformationMessage("[done] Syncronised remote workspace with local state");
 
     try{
-        vscode.window.showInformationMessage("Creating compilation result");
-        const createdCompilationResult = await dataformClient.createCompilationResult(compilationType);
-        const fullCompilationResultName = createdCompilationResult[0].name;
-
-        if(fullCompilationResultName){
-            const createdWorkflowInvocation = await dataformClient.createDataformWorkflowInvocation(invocationConfig, fullCompilationResultName);
-            if(createdWorkflowInvocation?.url){
-                sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
-            }
+        vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
+        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace");
+        if(createdWorkflowInvocation?.url){
+            sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
         }
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
