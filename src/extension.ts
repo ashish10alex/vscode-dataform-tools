@@ -257,6 +257,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
                 vscode.window.showWarningMessage(error.message);
             } else if (error.code === DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE) {
+                error.message += `. Check if the Dataform repository ${dataformClient.gitRepoName} exsists in GCP`;
                 vscode.window.showErrorMessage(error.message);
                 throw(error.message);
             } 
