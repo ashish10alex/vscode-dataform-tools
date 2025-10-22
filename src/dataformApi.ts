@@ -19,7 +19,13 @@ export class DataformApi {
     constructor (gcpProjectId:string, gcpLocation:string, options?:any){
         this.gcpProjectId = gcpProjectId;
         this.gcpProjectLocation = gcpLocation;
-        ({ gitRepoName: this.gitRepoName, gitBranch: this.gitBranch } = getGitBranchAndRepoName() || {});
+        const gitInfo = getGitBranchAndRepoName();
+        if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+            throw new Error("Error determining git repository and or branch name");
+        } 
+        this.gitBranch = gitInfo.gitBranch;
+        this.gitRepoName = gitInfo.gitRepoName;
+
         this.repositoryName = this.gitRepoName;
         this.workspaceId = this.gitBranch;
         //TODO: add ability to use service account

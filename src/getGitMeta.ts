@@ -21,7 +21,7 @@ export function getGitBranchAndRepoName() {
 
   const repo = git.repositories[0];
   const gitBranch = repo.state.HEAD?.name ?? 'No branch';
-  const gitRepoName = repo.state.remotes[0].fetchUrl.split("/").pop().split(".")[0];
+  const gitRepoName = path.basename(repo.rootUri.fsPath);
 
   return { gitBranch, gitRepoName };
 }

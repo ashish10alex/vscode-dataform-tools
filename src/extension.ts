@@ -256,8 +256,13 @@ export async function activate(context: vscode.ExtensionContext) {
             await dataformClient.createWorkspace();
         } catch (error:any){
             const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
+            const DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE = 5;
+
             if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
                 vscode.window.showWarningMessage(error.message);
+            } else if (error.code === DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE) {
+                vscode.window.showErrorMessage(error.message);
+                throw(error.message);
             } 
         }
 
