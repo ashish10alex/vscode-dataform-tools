@@ -240,7 +240,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         //FIXME: also will be dynamic e.g runTagsApi, runCurrentFileApi
         const invocationConfig = {
-            includedTags: ["nested"],
+            includedTags: ["one"],
             transitiveDependenciesIncluded: false,
             transitiveDependentsIncluded: false,
             fullyRefreshIncrementalTablesEnabled: false,
@@ -265,9 +265,11 @@ export async function activate(context: vscode.ExtensionContext) {
             await dataformClient.pullGitCommits();
             remoteGitRepoExsists = true;
         } catch(error:any){
-            const BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE = 9;
-            if(error.code === BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE){
+            // const BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE = 9;
+            const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9
+            if(error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE){
                 vscode.window.showWarningMessage(error.message);
+                remoteGitRepoExsists = true;
             }
         }
 
