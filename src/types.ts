@@ -361,3 +361,19 @@ export type CreateCompilationResultResponse = Promise<
 
 export type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
 export type CompilationType  = "gitBranch" | "workspace";
+export type GitStatusCode = "M" | "A" | "??" | "D";
+export type GitStatusCodeHumanReadable = "MODIFIED" | "ADDED" | "DELETED";
+
+export interface GitFileChange {
+    state: GitStatusCodeHumanReadable;
+    path: string;
+    fullPath: string;
+    commitIndex: number;
+}
+
+export interface GitFileChangeRaw {
+    state: GitStatusCode;
+    path: string;
+    fullPath?: string;
+    commitIndex: number;
+}

@@ -1,5 +1,6 @@
 import path from 'path';
 import * as vscode from 'vscode';
+import { GitFileChange, GitFileChangeRaw, GitStatusCode, GitStatusCodeHumanReadable } from './types';
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
@@ -25,7 +26,7 @@ export function getGitBranchAndRepoName() {
   return { gitBranch, gitRepoName };
 }
 
-function gitStatusToHumanReadable(statusCode:string){
+function gitStatusToHumanReadable(statusCode: GitStatusCode): GitStatusCodeHumanReadable{
     switch (statusCode) {
         case "M":
             return "MODIFIED";
@@ -35,12 +36,10 @@ function gitStatusToHumanReadable(statusCode:string){
             return "ADDED";
         case "D":
             return "DELETED";
-        default:
-            return statusCode;
     }
 }
 
-export async function getLocalGitState(): Promise<{state: string, path: string, fullPath:string, commitIndex: number}[]> {
+export async function getLocalGitState(): Promise<GitFileChange[]> {
     let workspaceFolders = vscode.workspace?.workspaceFolders;
     let projectRoot = "";
     if(workspaceFolders){
@@ -68,7 +67,7 @@ export async function getLocalGitState(): Promise<{state: string, path: string, 
 }
 
 
-export async function getGitStatusCommitedFiles(gitBranchName: string): Promise<{state:string, path:string, fullPath:string, commitIndex:number}[]> {
+export async function getGitStatusCommitedFiles(gitBranchName: string): Promise<GitFileChange[]> {
     const gitCommand = `git show --name-status --pretty="format:commit_hash: %H" origin/${gitBranchName}..HEAD`;
     let workspaceFolders = vscode.workspace?.workspaceFolders;
     let projectRoot = "";
@@ -78,7 +77,7 @@ export async function getGitStatusCommitedFiles(gitBranchName: string): Promise<
     try {
         const { stdout } = await execPromise(gitCommand, { cwd: projectRoot });
         const lines = stdout.split("\n").filter((line:string) => line.trim());
-        const committedFiles = [];
+        const committedFiles: GitFileChangeRaw[] = [];
         let currentCommitIndex = 1; // Start with 1 for the most recent commit
         for (const line of lines) {
             if(line.startsWith("commit_hash:")){
@@ -86,18 +85,18 @@ export async function getGitStatusCommitedFiles(gitBranchName: string): Promise<
             }
             const [status, filePath] = line.trim().split(/\s+/);
             committedFiles.push({
-                 status,
-                 filePath: filePath.replace(/\\/g, '/') ,
+                 state: status,
+                 path: filePath.replace(/\\/g, '/') ,
                  commitIndex: currentCommitIndex
             }); 
             currentCommitIndex+=1;
         }
-        return committedFiles.filter((file:any) => 
-            (file.filePath.endsWith('.sqlx') || file.filePath.endsWith('.js'))
-        ).map((file:any) => ({
-            state: gitStatusToHumanReadable(file.status),
-            path: file.filePath,
-            fullPath: path.join(projectRoot, file.filePath),
+        return committedFiles.filter((file:GitFileChangeRaw) => 
+            (file.path.endsWith('.sqlx') || file.path.endsWith('.js'))
+        ).map((file:GitFileChangeRaw) => ({
+            state: gitStatusToHumanReadable(file.state),
+            path: file.path,
+            fullPath: path.join(projectRoot, file.path),
             commitIndex: file.commitIndex
         }));
     } catch (error:any) {

@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
-import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles } from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 import { DataformApi } from './dataformApi';
-import { CreateCompilationResultResponse, InvocationConfig } from "./types";
+import { CreateCompilationResultResponse, InvocationConfig , GitFileChange} from "./types";
 
 export function sendWorkflowInvocationNotification(url:string){
     vscode.window.showInformationMessage(
@@ -46,53 +45,43 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){
         await dataformClient.resetWorkspaceChanges(true);
+        // TODO: If there is no local changed we might want to directly go to compilation and workflow invocation
     }
 
     vscode.window.showInformationMessage("[...] Syncronising remote workspace with local state");
-    await Promise.all(gitStatusLocalUnCommited.map(async ({ state, path, fullPath } : {state: string, path:string, fullPath:string}) => {
-        if (state === "ADDED" || state === "MODIFIED") {
-            //TODO: can we only pass the full path and infer the relative path later ?
-            await dataformClient.writeFileToWorkspace(fullPath, path);
-        } else if (state === "DELETED") {
-            await dataformClient.deleteFileInWorkspace(path);
-        }
-    }));
+    const finalGitLocalChanges = new Map<string, GitFileChange>();
 
-    const gitStatusLocalUncommitedMap = Object.fromEntries(gitStatusLocalUnCommited?.map((item:{state:string, path:string, fullPath:string, commitIndex:number}) => {
-        return [item.path, { state: item.state, fullPath: item.fullPath }];
-    }));
+    gitStatusLocalUnCommited.forEach((change: GitFileChange) => {
+        finalGitLocalChanges.set(change.path, change)
+    });
 
-    let gitStatusLocalCommitedMap:Record<string, {state: string; fullPath: string; commitIndex: number}> = {};
-    for (const changesMeta of gitStatusLocalCommited){
-        const state = changesMeta.state;
-        const path = changesMeta.path;
-        const fullPath = changesMeta.fullPath;
-        const commitIndex = changesMeta.commitIndex;
-
-        let fileExsistsInUncommited = Object.hasOwn(gitStatusLocalUncommitedMap, path);
-
-        if(fileExsistsInUncommited){
-            continue;
-        }
-
-        if (Object.hasOwn(gitStatusLocalCommitedMap, path)) {
-            if(commitIndex < gitStatusLocalCommitedMap[path].commitIndex){
-                gitStatusLocalCommitedMap[path] = {"state": state, "fullPath": fullPath, "commitIndex": commitIndex};
-            }else{
-                continue;
+    gitStatusLocalCommited.forEach((change: GitFileChange) => {
+        if(!finalGitLocalChanges.has(change.path)){
+            finalGitLocalChanges.set(change.path, change)
+        }else{
+            const exsistingChange = finalGitLocalChanges.get(change.path);
+            if(exsistingChange && (change.commitIndex < exsistingChange?.commitIndex)){
+                finalGitLocalChanges.set(change.path, change);
             }
-        } else {
-            gitStatusLocalCommitedMap[path] = {"state": state, "fullPath": fullPath, "commitIndex": commitIndex};
         }
-    }
+    })
 
-    for (const path of Object.keys(gitStatusLocalCommitedMap)) {
-        const state = gitStatusLocalCommitedMap[path].state;
-        const fullPath = gitStatusLocalCommitedMap[path].fullPath;
-        if (state === "ADDED" || state === "MODIFIED") {
+
+    // NOTE: doing this as we are getting following error when doing Promise.all 
+    // 10 ABORTED: sync mutate calls cannot be queued
+    for (const {state, path, fullPath} of finalGitLocalChanges.values()){
+        if(state === "ADDED" || state === "MODIFIED"){
             await dataformClient.writeFileToWorkspace(fullPath, path);
-        } else if (state === "DELETED") {
-            await dataformClient.deleteFileInWorkspace(path);
+        } else if (state === "DELETED"){
+            try{
+                await dataformClient.deleteFileInWorkspace(path);
+            }catch(error:any){
+                if(error.code === 5){
+                    vscode.window.showWarningMessage(`${error.message}`)
+                }else{
+                    throw(error);
+                }
+            }
         }
     }
 
@@ -102,36 +91,23 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         return;
     }
     //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
-    const gitStatusRemoteUncommitedChanges = gitStatusRemote[0].uncommittedFileChanges;
+    const gitRemoteChanges = gitStatusRemote[0].uncommittedFileChanges;
 
-    //@ts-ignore
-    //FIXME: fix the typing error
-    //TODO: is there a more optimal approach that creating multiple data structures here 
-    const gitStatusRemoteMap = Object.fromEntries(gitStatusRemoteUncommitedChanges?.map((item) => [item.path, item.state]));
+    if (gitRemoteChanges && gitRemoteChanges.length > 0) {
+        const workspaceFolder = await getWorkspaceFolder();
+        if(!workspaceFolder) { return;}
 
-    if(gitStatusRemoteMap && Object.keys(gitStatusRemoteMap).length > 0){
-        //@ts-ignore
-        //FIXME: fix the typing error
-        await Promise.all(gitStatusRemoteUncommitedChanges.map(async({path: remotePath, state}: {path: string, state:string}) => {
-            const workspaceFolder = await getWorkspaceFolder();
-            if(!workspaceFolder){
-                return;
-            }
-            switch (state){
-                case("DELETED"):
-                if(gitStatusLocalUncommitedMap[remotePath].state!== state || gitStatusLocalCommitedMap[remotePath].state!== state){
-                    if(gitStatusLocalUncommitedMap[remotePath]){
-                        await dataformClient.writeFileToWorkspace(gitStatusLocalUncommitedMap[remotePath].fullPath, remotePath);
-                    } else if(gitStatusLocalCommitedMap[remotePath]){
-                        await dataformClient.writeFileToWorkspace(gitStatusLocalCommitedMap[remotePath].fullPath, remotePath);
-                    } else {
-                        const fullPath = path.join(workspaceFolder,remotePath);
-                        await dataformClient.writeFileToWorkspace(fullPath, remotePath);
+        for (const remoteChange of gitRemoteChanges){
+            if (remoteChange.state === "DELETED"){
+                const path = remoteChange?.path;
+                if(path){
+                    const finalLocalVersion  = finalGitLocalChanges.get(path);
+                    if(finalLocalVersion && finalLocalVersion?.path !== "DELETED"){
+                        await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, path)
                     }
                 }
-                break;
             }
-        }));
+        }
     }
     vscode.window.showInformationMessage("[done] Syncronised remote workspace with local state");
 

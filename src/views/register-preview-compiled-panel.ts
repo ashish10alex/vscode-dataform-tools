@@ -91,7 +91,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true
-                })
+                });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
                 CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
