@@ -50,29 +50,29 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         try{
             await dataformClient.resetWorkspaceChanges(true);
             if(remoteGitRepoExsists){
-                await dataformClient.pullGitCommits()
+                await dataformClient.pullGitCommits();
             }
         }catch(error:any){
-            vscode.window.showErrorMessage(error.message)
+            vscode.window.showErrorMessage(error.message);
         }
     } else {
         vscode.window.showInformationMessage("[...] Syncronising remote workspace with local state");
         const finalGitLocalChanges = new Map<string, GitFileChange>();
 
         gitStatusLocalUnCommited.forEach((change: GitFileChange) => {
-            finalGitLocalChanges.set(change.path, change)
+            finalGitLocalChanges.set(change.path, change);
         });
 
         gitStatusLocalCommited.forEach((change: GitFileChange) => {
             if(!finalGitLocalChanges.has(change.path)){
-                finalGitLocalChanges.set(change.path, change)
+                finalGitLocalChanges.set(change.path, change);
             }else{
                 const exsistingChange = finalGitLocalChanges.get(change.path);
                 if(exsistingChange && (change.commitIndex < exsistingChange?.commitIndex)){
                     finalGitLocalChanges.set(change.path, change);
                 }
             }
-        })
+        });
 
 
         // NOTE: doing this as we are getting following error when doing Promise.all 
@@ -85,7 +85,7 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
                     await dataformClient.deleteFileInWorkspace(path);
                 }catch(error:any){
                     if(error.code === 5){
-                        vscode.window.showWarningMessage(`${error.message}`)
+                        vscode.window.showWarningMessage(`${error.message}`);
                     }else{
                         throw(error);
                     }
@@ -110,13 +110,13 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
                     if(remotePath){
                         const finalLocalVersion  = finalGitLocalChanges.get(remotePath);
                         if(finalLocalVersion && finalLocalVersion?.path !== "DELETED"){
-                            await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, remotePath)
+                            await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, remotePath);
                         }
                     }
                 } else {
                     if(remotePath && !finalGitLocalChanges.get(remotePath)){
-                        const fullPath = path.join(workspaceFolder, remotePath)
-                        await dataformClient.writeFileToWorkspace(fullPath, remotePath)
+                        const fullPath = path.join(workspaceFolder, remotePath);
+                        await dataformClient.writeFileToWorkspace(fullPath, remotePath);
                     }
                 }
             }

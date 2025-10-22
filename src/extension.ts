@@ -265,11 +265,15 @@ export async function activate(context: vscode.ExtensionContext) {
             await dataformClient.pullGitCommits();
             remoteGitRepoExsists = true;
         } catch(error:any){
-            // const BRANCH_DOES_NOT_EXSIST_IN_GIT_REMOTE_ERROR_CODE = 9;
-            const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9
-            if(error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE){
+            const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
+            const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
+            if(error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG){
+                vscode.window.showWarningMessage(error.message);
+            } else if(error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE){
                 vscode.window.showWarningMessage(error.message);
                 remoteGitRepoExsists = true;
+            } else {
+                throw(error);
             }
         }
 
