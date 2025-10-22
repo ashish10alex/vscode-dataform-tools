@@ -93,13 +93,12 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
             }
         }
 
-        let gitStatusRemote =  await dataformClient.getRemoteWorkspaceGitState();
-        //FIXME: check this logic
-        if(!gitStatusRemote){
+        let remoteDataformWorkspaceStatus =  await dataformClient.getRemoteWorkspaceGitState();
+        if(!remoteDataformWorkspaceStatus){
             return;
         }
         //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
-        const gitRemoteChanges = gitStatusRemote[0].uncommittedFileChanges;
+        const gitRemoteChanges = remoteDataformWorkspaceStatus[0].uncommittedFileChanges;
 
         if (gitRemoteChanges && gitRemoteChanges.length > 0) {
             const workspaceFolder = await getWorkspaceFolder();
