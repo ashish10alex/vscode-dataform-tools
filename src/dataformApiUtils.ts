@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles } from "./getGitMeta";
 import { getWorkspaceFolder } from './utils';
 import { DataformApi } from './dataformApi';
@@ -105,16 +106,21 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
             if(!workspaceFolder) { return;}
 
             for (const remoteChange of gitRemoteChanges){
+                const remotePath = remoteChange?.path;
                 if (remoteChange.state === "DELETED"){
-                    const path = remoteChange?.path;
-                    if(path){
-                        const finalLocalVersion  = finalGitLocalChanges.get(path);
+                    if(remotePath){
+                        const finalLocalVersion  = finalGitLocalChanges.get(remotePath);
                         if(finalLocalVersion && finalLocalVersion?.path !== "DELETED"){
-                            await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, path)
+                            await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, remotePath)
                         }
                     }
                 } else {
                     //FIXME: add logic to write the local versions of where remote file paths exsists
+                    if(remotePath && !finalGitLocalChanges.get(remotePath)){
+                        const fullPath = path.join(workspaceFolder, remotePath)
+                        await dataformClient.writeFileToWorkspace(fullPath, remotePath)
+                    }
+                    // await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, path)
                 }
             }
         }
