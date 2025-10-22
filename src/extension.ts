@@ -24,10 +24,8 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-// import { DataformClient  } from '@google-cloud/dataform';
-// import { runWorkflowInvocationWorkspace, createDataformWorkspace} from "./dataformApi";
 import {runWorkflowInvocationWorkspace} from "./dataformApiUtils";
-// import {getGitBranchAndRepoName} from "./getGitMeta";
+import {gitRemoteBranchExsists} from "./getGitMeta";
 import { DataformApi } from './dataformApi';
 
 // This method is called when your extension is activated
@@ -236,8 +234,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
         let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
 
-        let remoteGitRepoExsists = false;
-
         //FIXME: also will be dynamic e.g runTagsApi, runCurrentFileApi
         const invocationConfig = {
             includedTags: ["one"],
@@ -268,7 +264,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
         try{
             await dataformClient.pullGitCommits();
-            remoteGitRepoExsists = true;
         } catch(error:any){
             const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
             const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
@@ -276,12 +271,12 @@ export async function activate(context: vscode.ExtensionContext) {
                 vscode.window.showWarningMessage(error.message);
             } else if(error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE){
                 vscode.window.showWarningMessage(error.message);
-                remoteGitRepoExsists = true;
             } else {
                 throw(error);
             }
         }
 
+        let remoteGitRepoExsists = await gitRemoteBranchExsists(dataformClient.gitBranch);
         await runWorkflowInvocationWorkspace(dataformClient, invocationConfig, remoteGitRepoExsists);
     }) );
 

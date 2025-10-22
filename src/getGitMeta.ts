@@ -135,3 +135,21 @@ export async function getGitUserMeta(): Promise<{name: string | undefined, email
         return undefined;
     }
 }
+
+export async function gitRemoteBranchExsists(gitBranchName:string): Promise<boolean> {
+    const gitCommand = "git branch -r";
+    let workspaceFolders = vscode.workspace?.workspaceFolders;
+    let projectRoot = "";
+    if(workspaceFolders){
+        projectRoot = workspaceFolders[0].uri?.fsPath;
+    }
+
+    const { stdout } = await execPromise(gitCommand, { cwd: projectRoot });
+    const lines = stdout.trim("").split("\n");
+    for (const line of lines) {
+        if(line.trim("") === `origin/${gitBranchName}`){
+            return true;
+        }
+    }
+    return false;
+}
