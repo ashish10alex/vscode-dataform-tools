@@ -115,12 +115,10 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
                         }
                     }
                 } else {
-                    //FIXME: add logic to write the local versions of where remote file paths exsists
                     if(remotePath && !finalGitLocalChanges.get(remotePath)){
                         const fullPath = path.join(workspaceFolder, remotePath)
                         await dataformClient.writeFileToWorkspace(fullPath, remotePath)
                     }
-                    // await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, path)
                 }
             }
         }
