@@ -298,33 +298,35 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             // 4
-            progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 14.28 });
-            try {
-                await dataformClient.pullGitCommits();
-            } catch (error: any) {
-                const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
-                const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
-
-                if (token.isCancellationRequested) {
-                    vscode.window.showInformationMessage('Operation cancelled during Git pull.');
-                    return;
-                }
-
-                if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG) {
-                    vscode.window.showWarningMessage(error.message);
-                } else if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
-                    vscode.window.showWarningMessage(error.message);
-                } else {
-                    throw error;
-                }
-            }
-
-            // 5
             progress.report({ message: `Verifying if git remote origin/${dataformClient.workspaceId} exsists...`, increment: 14.28 });
             let remoteGitRepoExsists = await gitRemoteBranchExsists(dataformClient.gitBranch);
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during workflow execution.');
                 return;
+            }
+
+            if(remoteGitRepoExsists){
+                // 5
+                progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 14.28 });
+                try {
+                    await dataformClient.pullGitCommits();
+                } catch (error: any) {
+                    const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
+                    const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
+
+                    if (token.isCancellationRequested) {
+                        vscode.window.showInformationMessage('Operation cancelled during Git pull.');
+                        return;
+                    }
+
+                    if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG) {
+                        vscode.window.showWarningMessage(error.message);
+                    } else if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
+                        vscode.window.showWarningMessage(error.message);
+                    } else {
+                        throw error;
+                    }
+                }
             }
 
             // 6
