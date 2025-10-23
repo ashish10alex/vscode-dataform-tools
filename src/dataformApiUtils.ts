@@ -70,10 +70,13 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     const gitCommitsBehind = gitCommitsAheadBehind[0].commitsBehind || 0;
 
     if(gitCommitsAhead > 0){
-        let errorMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitRepoName} workspace in GCP. Push it first.`;
-        //FIXME: I think we can prompt user to push it ?
-        vscode.window.showErrorMessage(errorMessage);
-        throw new Error(errorMessage);
+        let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitRepoName} workspace in GCP. Push it first ?`;
+        const response = await vscode.window.showWarningMessage(warningMessage, {modal: true}, "Yes", "No");
+        if(response === "Yes"){
+            await dataformClient.pushWorkspaceCommits();
+        } else{
+            return;
+        }
     }
     if(gitCommitsBehind > 0){
         try{

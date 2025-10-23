@@ -159,6 +159,14 @@ export class DataformApi {
         await this.client.resetWorkspaceChanges(request);
     }
 
+    async pushWorkspaceCommits(){
+        const request = {
+            name: this.workspaceName,
+            remoteBranch: this.gitBranch
+        };
+        await this.client.pushGitCommits(request);
+    }
+
     async createDataformWorkflowInvocation(invocationConfig: InvocationConfig, compilationResultName:string){
         /*
         const out = await obj.createCompilationResult();
