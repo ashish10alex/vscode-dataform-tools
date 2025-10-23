@@ -24,7 +24,7 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-import { runWorkflowInvocationWorkspace,  syncRemoteWorkspaceToLocalBranch} from "./dataformApiUtils";
+import { compileAndCreateWorkflowInvocation,  syncRemoteWorkspaceToLocalBranch} from "./dataformApiUtils";
 import { gitRemoteBranchExsists } from "./getGitMeta";
 import { DataformApi } from './dataformApi';
 
@@ -335,7 +335,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
             //7
             progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-            await runWorkflowInvocationWorkspace(dataformClient, invocationConfig);
+            await compileAndCreateWorkflowInvocation(dataformClient, invocationConfig);
         };
 
         await showLoadingProgress(

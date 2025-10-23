@@ -171,7 +171,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     }
 }
 
-export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
+export async function compileAndCreateWorkflowInvocation(dataformClient: DataformApi, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
         const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace");
