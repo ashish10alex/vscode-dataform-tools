@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, getGcpProjectLocationDataform, runCompilation, showLoadingProgress} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, showLoadingProgress} from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -24,9 +24,7 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-import { compileAndCreateWorkflowInvocation,  syncRemoteWorkspaceToLocalBranch} from "./dataformApiUtils";
-import { gitRemoteBranchExsists } from "./getGitMeta";
-import { DataformApi } from './dataformApi';
+import { syncAndrunDataformRemotely } from "./dataformApiUtils";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -208,140 +206,17 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runInRemoteWorkspace', async() => {
-        const operation = async (
-            progress: vscode.Progress<{ message?: string; increment?: number }>,
-            token: vscode.CancellationToken
-        ) => {
-            // 1
-            progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
-            if (!CACHED_COMPILED_DATAFORM_JSON) {
-                if (token.isCancellationRequested) {
-                    vscode.window.showInformationMessage('Operation cancelled during compilation check.');
-                    return;
-                }
-
-                let workspaceFolder = await getWorkspaceFolder();
-                if (!workspaceFolder) {
-                    vscode.window.showErrorMessage('No workspace folder selected.');
-                    return;
-                }
-
-                // 1
-                progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 14.28 });
-                let { dataformCompiledJson } = await runCompilation(workspaceFolder); // ~1100ms
-                if (token.isCancellationRequested) {
-                    vscode.window.showInformationMessage('Operation cancelled during compilation.');
-                    return;
-                }
-
-                if (dataformCompiledJson) {
-                    CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-                } else {
-                    vscode.window.showErrorMessage(`Unable to compile Dataform project. Run "dataform compile" in the terminal to check`);
-                    return;
-                }
-            } 
-
-            if (token.isCancellationRequested) {
-                vscode.window.showInformationMessage('Operation cancelled during GCP validation.');
-                return;
-            }
-
-            const gcpProjectId = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase;
-            if (!gcpProjectId) {
-                vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
-                return;
-            }
-
-            let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
-            if (token.isCancellationRequested) {
-                vscode.window.showInformationMessage('Operation cancelled during GCP location fetch.');
-                return;
-            }
-
-            // 2
-            progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
-            const invocationConfig = {
-                includedTags: ["one"],
-                transitiveDependenciesIncluded: false,
-                transitiveDependentsIncluded: false,
-                fullyRefreshIncrementalTablesEnabled: false,
-            };
-            const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation);
-            if (token.isCancellationRequested) {
-                vscode.window.showInformationMessage('Operation cancelled during client initialization.');
-                return;
-            }
-
-            // 3
-            progress.report({ message: `Creating Dataform workspace ${dataformClient.workspaceId} if it does not exsist...`, increment: 14.28 });
-            try {
-                await dataformClient.createWorkspace();
-            } catch (error: any) {
-                const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
-                const DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE = 5;
-
-                if (token.isCancellationRequested) {
-                    vscode.window.showInformationMessage('Operation cancelled during workspace creation.');
-                    return;
-                }
-
-                if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
-                    // vscode.window.showWarningMessage(error.message);
-                } else if (error.code === DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE) {
-                    error.message += `. Check if the Dataform repository ${dataformClient.gitRepoName} exists in GCP`;
-                    vscode.window.showErrorMessage(error.message);
-                    throw error;
-                } else {
-                    throw error;
-                }
-            }
-
-            // 4
-            progress.report({ message: `Verifying if git remote origin/${dataformClient.workspaceId} exsists...`, increment: 14.28 });
-            let remoteGitRepoExsists = await gitRemoteBranchExsists(dataformClient.gitBranch);
-            if (token.isCancellationRequested) {
-                vscode.window.showInformationMessage('Operation cancelled during workflow execution.');
-                return;
-            }
-
-            if(remoteGitRepoExsists){
-                // 5
-                progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 14.28 });
-                try {
-                    await dataformClient.pullGitCommits();
-                } catch (error: any) {
-                    const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
-                    const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
-
-                    if (token.isCancellationRequested) {
-                        vscode.window.showInformationMessage('Operation cancelled during Git pull.');
-                        return;
-                    }
-
-                    if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG) {
-                        vscode.window.showWarningMessage(error.message);
-                    } else if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
-                        vscode.window.showWarningMessage(error.message);
-                    } else {
-                        throw error;
-                    }
-                }
-            }
-
-            // 6
-            progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-            await syncRemoteWorkspaceToLocalBranch(dataformClient, remoteGitRepoExsists);
-
-            //7
-            progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-            await compileAndCreateWorkflowInvocation(dataformClient, invocationConfig);
+        const invocationConfig = {
+            includedTags: ["one"],
+            transitiveDependenciesIncluded: false,
+            transitiveDependentsIncluded: false,
+            fullyRefreshIncrementalTablesEnabled: false,
         };
-
         await showLoadingProgress(
             '[.] ',
-            operation,
-            'Dataform remote workspace execution cancelled'
+            syncAndrunDataformRemotely,
+            'Dataform remote workspace execution cancelled',
+            invocationConfig
         );
     }) );
 

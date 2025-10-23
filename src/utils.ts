@@ -19,13 +19,15 @@ let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
-export function showLoadingProgress(
+export function showLoadingProgress<T extends any[]>(
     title: string,
     operation: (
         progress: vscode.Progress<{ message?: string; increment?: number }>,
-        token: vscode.CancellationToken
+        token: vscode.CancellationToken,
+        ...args: T
     ) => Thenable<void>,
-    cancellationMessage: string = "Dataform tools: operation cancelled"
+    cancellationMessage: string = "Dataform tools: operation cancelled",
+    ...args:any
 ): Thenable<void> {
     return vscode.window.withProgress(
         {
@@ -38,7 +40,7 @@ export function showLoadingProgress(
                 console.log(cancellationMessage);
             });
 
-            await operation(progress, token);
+            await operation(progress, token, ...args);
         }
     );
 }
