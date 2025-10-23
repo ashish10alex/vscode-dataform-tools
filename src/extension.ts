@@ -213,9 +213,9 @@ export async function activate(context: vscode.ExtensionContext) {
             fullyRefreshIncrementalTablesEnabled: false,
         };
         await showLoadingProgress(
-            '[.] ',
+            "",
             syncAndrunDataformRemotely,
-            'Dataform remote workspace execution cancelled',
+            "Dataform remote workspace execution cancelled",
             invocationConfig
         );
     }) );

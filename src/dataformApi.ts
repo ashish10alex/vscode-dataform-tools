@@ -2,7 +2,7 @@
 import { DataformClient  } from '@google-cloud/dataform';
 import * as fs from 'fs/promises'; 
 import {getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
-import {CompilationType, CreateCompilationResultResponse, InvocationConfig} from "./types";
+import {CompilationType, CreateCompilationResultResponse, InvocationConfig, ICompilationResult, ICodeCompilationConfig} from "./types";
 
 export class DataformApi {
 
@@ -113,15 +113,17 @@ export class DataformApi {
             await this.client.removeFile(request);
     }
 
-    async createCompilationResult(compilationType:CompilationType): CreateCompilationResultResponse{
-        let compilationResult = {};
+    async createCompilationResult(compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig): CreateCompilationResultResponse{
+        let compilationResult: ICompilationResult;
         if(compilationType === "workspace"){
             compilationResult = {
                 workspace: this.workspaceName,
+                codeCompilationConfig: codeCompilationConfig
             };
         } else {
             compilationResult = {
-                gitCommitish: this.gitBranch
+                gitCommitish: this.gitBranch,
+                codeCompilationConfig: codeCompilationConfig
             };
         }
 
@@ -200,7 +202,8 @@ export class DataformApi {
     }
 
     async runDataformRemotely(invocationConfig: InvocationConfig,compilationType:CompilationType){
-        const compilationResult = await this.createCompilationResult(compilationType);
+        //FIXME: pass the codeCompilationConfig dynamically
+        const compilationResult = await this.createCompilationResult(compilationType, {tablePrefix: "AA"});
         const fullCompilationResultName = compilationResult[0].name;
         if(fullCompilationResultName){
             return await this.createDataformWorkflowInvocation(invocationConfig, fullCompilationResultName);
