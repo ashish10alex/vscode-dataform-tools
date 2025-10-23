@@ -18,6 +18,31 @@ export function sendWorkflowInvocationNotification(url:string){
     });
 }
 
+async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformApi, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
+    let userResponse: string | undefined = "No";
+    if(gitCommitsBehind>0){
+        userResponse = await vscode.window.showWarningMessage(
+            `Dataform workspace ${dataformClient.workspaceId} is behind origin/${dataformClient.workspaceId} by ${gitCommitsBehind} commit(s).  Running "git restore ." followed by "git pull" to allign with the latest state. Do you want to proceed ?`,
+                {modal: true},
+                "Yes",
+                "No"
+        );
+    }else{
+        userResponse = "Yes";
+    }
+
+    if(userResponse === "Yes"){
+        await dataformClient.resetWorkspaceChanges(true);
+        if(remoteGitRepoExsists){
+            await dataformClient.pullGitCommits();
+        }
+        return true;
+    } else {
+        vscode.window.showInformationMessage("Git restore opetion in remote workspace cancelled, exiting");
+        return false;
+    }
+}
+
 export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, remoteGitRepoExsists:boolean): Promise<CreateCompilationResultResponse | undefined>{
 
     let defaultGitBranch = undefined;
@@ -41,19 +66,23 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     }
 
     const gitCommitsAheadBehind = await dataformClient.getGitCommitsAheadAndBehind();
+    const gitCommitsAhead = gitCommitsAheadBehind[0].commitsAhead || 0;
+    const gitCommitsBehind = gitCommitsAheadBehind[0].commitsBehind || 0;
 
-    if(gitCommitsAheadBehind[0].commitsAhead){
-        let errorMessage = `Push commited changes in the ${dataformClient.gitRepoName} workspace in GCP first`;
+    if(gitCommitsAhead > 0){
+        let errorMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitRepoName} workspace in GCP. Push it first.`;
+        //FIXME: I think we can prompt user to push it ?
         vscode.window.showErrorMessage(errorMessage);
         throw new Error(errorMessage);
     }
-
-    if(gitCommitsAheadBehind[0].commitsBehind){
-            //  FIXME: I think we should ask the user before re-setting the changes they have made remotely
-            await dataformClient.resetWorkspaceChanges(true);
-            if(remoteGitRepoExsists){
-                await dataformClient.pullGitCommits();
-            }
+    if(gitCommitsBehind > 0){
+        try{
+           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, remoteGitRepoExsists, gitCommitsBehind)){
+            return;
+           };
+        }catch(error:any){
+            vscode.window.showErrorMessage(error.message);
+        }
     }
 
     const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
@@ -74,11 +103,9 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){
         try{
-            //  FIXME: I think we should ask the user before re-setting the changes they have made remotely
-            await dataformClient.resetWorkspaceChanges(true);
-            if(remoteGitRepoExsists){
-                await dataformClient.pullGitCommits();
-            }
+           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, remoteGitRepoExsists, 0)){
+            return;
+           };
         }catch(error:any){
             vscode.window.showErrorMessage(error.message);
         }
@@ -144,7 +171,6 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         vscode.window.showInformationMessage("[done] Syncronised remote workspace with local state");
 
     }
-
 
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
