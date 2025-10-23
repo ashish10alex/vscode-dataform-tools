@@ -43,8 +43,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformAp
     }
 }
 
-export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig, remoteGitRepoExsists:boolean): Promise<CreateCompilationResultResponse | undefined>{
-
+export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformApi, remoteGitRepoExsists:boolean){
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
         const repository = await dataformClient.getRepository();
@@ -169,9 +168,10 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
             }
         }
         vscode.window.showInformationMessage("[done] Syncronised remote workspace with local state");
-
     }
+}
 
+export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
         const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace");

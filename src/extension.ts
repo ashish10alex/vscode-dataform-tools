@@ -24,8 +24,8 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-import {runWorkflowInvocationWorkspace} from "./dataformApiUtils";
-import {gitRemoteBranchExsists} from "./getGitMeta";
+import { runWorkflowInvocationWorkspace,  syncRemoteWorkspaceToLocalBranch} from "./dataformApiUtils";
+import { gitRemoteBranchExsists } from "./getGitMeta";
 import { DataformApi } from './dataformApi';
 
 // This method is called when your extension is activated
@@ -227,7 +227,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
 
                 // 1
-                progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 16.67 });
+                progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 14.28 });
                 let { dataformCompiledJson } = await runCompilation(workspaceFolder); // ~1100ms
                 if (token.isCancellationRequested) {
                     vscode.window.showInformationMessage('Operation cancelled during compilation.');
@@ -260,7 +260,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             // 2
-            progress.report({ message: 'Initializing Dataform client...', increment: 16.67 });
+            progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
             const invocationConfig = {
                 includedTags: ["one"],
                 transitiveDependenciesIncluded: false,
@@ -274,7 +274,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             // 3
-            progress.report({ message: `Creating Dataform workspace ${dataformClient.workspaceId} if it does not exsist...`, increment: 16.67 });
+            progress.report({ message: `Creating Dataform workspace ${dataformClient.workspaceId} if it does not exsist...`, increment: 14.28 });
             try {
                 await dataformClient.createWorkspace();
             } catch (error: any) {
@@ -298,7 +298,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             // 4
-            progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 16.67 });
+            progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 14.28 });
             try {
                 await dataformClient.pullGitCommits();
             } catch (error: any) {
@@ -320,7 +320,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             // 5
-            progress.report({ message: `Verifying if git remote origin/${dataformClient.workspaceId} exsists...`, increment: 16.67 });
+            progress.report({ message: `Verifying if git remote origin/${dataformClient.workspaceId} exsists...`, increment: 14.28 });
             let remoteGitRepoExsists = await gitRemoteBranchExsists(dataformClient.gitBranch);
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during workflow execution.');
@@ -328,8 +328,12 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             // 6
-            progress.report({ message: 'Running Dataform workflow...', increment: 16.67 });
-            await runWorkflowInvocationWorkspace(dataformClient, invocationConfig, remoteGitRepoExsists);
+            progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
+            await syncRemoteWorkspaceToLocalBranch(dataformClient, remoteGitRepoExsists);
+
+            //7
+            progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
+            await runWorkflowInvocationWorkspace(dataformClient, invocationConfig);
         };
 
         await showLoadingProgress(
