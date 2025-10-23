@@ -91,8 +91,6 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
         await getLocalGitState(),
         remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch),
-        //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
-        //FIXME: explore the error that we might get in that case
         await dataformClient.getRemoteWorkspaceGitState()
     ]);
 
@@ -100,7 +98,6 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         //FIXME: verify if this is the right thing to do
         return;
     }
-    //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
     const gitRemoteChanges = remoteDataformWorkspaceStatus[0].uncommittedFileChanges;
 
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
