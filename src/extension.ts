@@ -335,7 +335,7 @@ export async function activate(context: vscode.ExtensionContext) {
         await showLoadingProgress(
             '[.] ',
             operation,
-            'Dataform remote workspace operation cancelled'
+            'Dataform remote workspace execution cancelled'
         );
     }) );
 
