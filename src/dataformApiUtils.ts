@@ -40,10 +40,20 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         return;
     }
 
-    const [gitStatusLocalUnCommited, gitStatusLocalCommited] = await Promise.all([
+    const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
         await getLocalGitState(),
-        remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch)
+        remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch),
+        //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
+        //FIXME: explore the error that we might get in that case
+        await dataformClient.getRemoteWorkspaceGitState()
     ]);
+
+    if(!remoteDataformWorkspaceStatus){
+        //FIXME: verify if this is the right thing to do
+        return;
+    }
+    //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
+    const gitRemoteChanges = remoteDataformWorkspaceStatus[0].uncommittedFileChanges;
 
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){
@@ -92,13 +102,6 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
                 }
             }
         }
-
-        let remoteDataformWorkspaceStatus =  await dataformClient.getRemoteWorkspaceGitState();
-        if(!remoteDataformWorkspaceStatus){
-            return;
-        }
-        //NOTE: we are assuming that there will not be any commited changes as we are doing local first development
-        const gitRemoteChanges = remoteDataformWorkspaceStatus[0].uncommittedFileChanges;
 
         if (gitRemoteChanges && gitRemoteChanges.length > 0) {
             const workspaceFolder = await getWorkspaceFolder();
