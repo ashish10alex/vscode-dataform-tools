@@ -141,6 +141,15 @@ export class DataformApi {
         return await this.client.fetchFileGitStatuses(request);
     }
 
+    async getGitCommitsAheadAndBehind() {
+        const request = {
+            name: this.workspaceName,
+            remoteBranch: this.gitBranch
+        };
+        return await this.client.fetchGitAheadBehind(request);
+    }
+
+
     async resetWorkspaceChanges(clean:boolean){
         // NOTE: similar to `git restore . `
         const request = {

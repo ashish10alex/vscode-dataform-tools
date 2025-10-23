@@ -40,6 +40,22 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
         return;
     }
 
+    const gitCommitsAheadBehind = await dataformClient.getGitCommitsAheadAndBehind();
+
+    if(gitCommitsAheadBehind[0].commitsAhead){
+        let errorMessage = `Push commited changes in the ${dataformClient.gitRepoName} workspace in GCP first`;
+        vscode.window.showErrorMessage(errorMessage);
+        throw new Error(errorMessage);
+    }
+
+    if(gitCommitsAheadBehind[0].commitsBehind){
+            //  FIXME: I think we should ask the user before re-setting the changes they have made remotely
+            await dataformClient.resetWorkspaceChanges(true);
+            if(remoteGitRepoExsists){
+                await dataformClient.pullGitCommits();
+            }
+    }
+
     const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
         await getLocalGitState(),
         remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch),
@@ -58,6 +74,7 @@ export async function runWorkflowInvocationWorkspace(dataformClient: DataformApi
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){
         try{
+            //  FIXME: I think we should ask the user before re-setting the changes they have made remotely
             await dataformClient.resetWorkspaceChanges(true);
             if(remoteGitRepoExsists){
                 await dataformClient.pullGitCommits();
