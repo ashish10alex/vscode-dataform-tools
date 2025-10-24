@@ -201,9 +201,9 @@ export class DataformApi {
         return {name: createdWorkflowInvocationName, url: workflowInvocationUrlGCP, id: workflowInvocationId};
     }
 
-    async runDataformRemotely(invocationConfig: InvocationConfig,compilationType:CompilationType){
+    async runDataformRemotely(invocationConfig: InvocationConfig, compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
         //FIXME: pass the codeCompilationConfig dynamically
-        const compilationResult = await this.createCompilationResult(compilationType, {tablePrefix: "AA"});
+        const compilationResult = await this.createCompilationResult(compilationType, codeCompilationConfig);
         const fullCompilationResultName = compilationResult[0].name;
         if(fullCompilationResultName){
             return await this.createDataformWorkflowInvocation(invocationConfig, fullCompilationResultName);

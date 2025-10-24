@@ -67,6 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;
     globalThis.errorInPreOpsDenyList = false;
+    globalThis.compilerOptionsMap = undefined;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
@@ -216,7 +217,8 @@ export async function activate(context: vscode.ExtensionContext) {
             "",
             syncAndrunDataformRemotely,
             "Dataform remote workspace execution cancelled",
-            invocationConfig
+            invocationConfig,
+            compilerOptionsMap,
         );
     }) );
 

@@ -19,6 +19,34 @@ let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
+function stripQuotes(str:string) {
+  return str.replace(/^['"]|['"]$/g, '');
+}
+
+function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
+    let compilerOptionsObject: { [key: string]: string } = {};
+    let compilerOptionsToApi = compilerOptions[0].split(" ");
+
+    compilerOptionsToApi.forEach((opt: string) => {
+        let value = opt.split("=")[1];
+        value = stripQuotes(value);
+
+        if (opt.startsWith("--table-prefix")) {
+            compilerOptionsObject["tablePrefix"] = value;
+        }
+
+        if (opt.startsWith("--schema-suffix")) {
+            compilerOptionsObject["schemaSuffix"] = value;
+        }
+
+        if (opt.startsWith("--database-suffix")) {
+            compilerOptionsObject["databaseSuffix"] = value;
+        }
+    });
+
+    return compilerOptionsObject;
+}
+
 export function showLoadingProgress<T extends any[]>(
     title: string,
     operation: (
@@ -1391,6 +1419,13 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
 
         spawnedProcess.on('close', async (code: number) => {
             if (code === 0) {
+                if(compilerOptions.length>0){
+                    compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
+                }else{
+                    compilerOptionsMap = undefined;
+                }
+
+                logger.debug(`compilerOptionsMap: ${compilerOptionsMap}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {

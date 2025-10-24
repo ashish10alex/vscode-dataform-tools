@@ -3,7 +3,7 @@ import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
 import { DataformApi } from './dataformApi';
-import { CreateCompilationResultResponse, InvocationConfig , GitFileChange} from "./types";
+import { CreateCompilationResultResponse, InvocationConfig , GitFileChange, ICodeCompilationConfig} from "./types";
 
 export function sendWorkflowInvocationNotification(url:string){
     vscode.window.showInformationMessage(
@@ -171,10 +171,10 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     }
 }
 
-export async function compileAndCreateWorkflowInvocation(dataformClient: DataformApi, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
+export async function compileAndCreateWorkflowInvocation(dataformClient: DataformApi, invocationConfig: InvocationConfig, codeCompilationConfig?:ICodeCompilationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
-        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace");
+        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace", codeCompilationConfig);
         if(createdWorkflowInvocation?.url){
             sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
         }
@@ -184,7 +184,7 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
     return;
 }
 
-export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, invocationConfig:any){
+export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, invocationConfig:any, codeCompilationConfig?:ICodeCompilationConfig){
         // 1
         progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
         if (!CACHED_COMPILED_DATAFORM_JSON) {
@@ -302,5 +302,5 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         //7
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-        await compileAndCreateWorkflowInvocation(dataformClient, invocationConfig);
+        await compileAndCreateWorkflowInvocation(dataformClient, invocationConfig, codeCompilationConfig);
 };
