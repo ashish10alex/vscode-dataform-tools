@@ -19,6 +19,7 @@ let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
 
+//NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
 }
