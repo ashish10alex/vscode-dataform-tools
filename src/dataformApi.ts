@@ -206,7 +206,6 @@ export class DataformApi {
     }
 
     async runDataformRemotely(invocationConfig: InvocationConfig, compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
-        //FIXME: pass the codeCompilationConfig dynamically
         const compilationResult = await this.createCompilationResult(compilationType, codeCompilationConfig);
         const fullCompilationResultName = compilationResult[0].name;
         if(fullCompilationResultName){
