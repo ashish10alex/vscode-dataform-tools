@@ -239,8 +239,6 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 2
         progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
-
-        //FIXME: check if we are checking for this overide before
         const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
         let clientOptions = { projectId: gcpProjectId };
         if(serviceAccountJsonPath){
