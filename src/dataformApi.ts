@@ -2,7 +2,7 @@
 import { DataformClient  } from '@google-cloud/dataform';
 import * as fs from 'fs/promises'; 
 import {getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
-import {CompilationType, CreateCompilationResultResponse, InvocationConfig, ICompilationResult, ICodeCompilationConfig} from "./types";
+import {CompilationType, CreateCompilationResultResponse, InvocationConfig, ICompilationResult, ICodeCompilationConfig, DataformApiOptions} from "./types";
 
 export class DataformApi {
 
@@ -16,12 +16,12 @@ export class DataformApi {
     repositoryName:string;
     gitBranch:string;
 
-    constructor (gcpProjectId:string, gcpLocation:string, gitMeta?:{gitRepoName: string, gitBranch:string}, options?:any){
+    constructor (gcpProjectId:string, gcpLocation:string, options?:DataformApiOptions){
         this.gcpProjectId = gcpProjectId;
         this.gcpProjectLocation = gcpLocation;
-        if(gitMeta && gitMeta.gitRepoName && gitMeta.gitBranch){
-            this.gitBranch = gitMeta.gitBranch;
-            this.gitRepoName = gitMeta.gitRepoName;
+        if(options?.gitMeta && options.gitMeta.gitRepoName && options.gitMeta.gitBranch){
+            this.gitBranch = options.gitMeta.gitBranch;
+            this.gitRepoName = options.gitMeta.gitRepoName;
         }else{
             const gitInfo = getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
@@ -33,8 +33,7 @@ export class DataformApi {
 
         this.repositoryName = this.gitRepoName;
         this.workspaceId = this.gitBranch;
-        //TODO: add ability to use service account
-        this.client = new DataformClient(options);
+        this.client = new DataformClient(options?.clientOptions);
         this.parent =  `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}`;
         this.workspaceName = `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workspaces/${this.workspaceId}`;
     }

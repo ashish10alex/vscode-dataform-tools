@@ -380,3 +380,5 @@ export interface GitFileChangeRaw {
     fullPath?: string;
     commitIndex: number;
 }
+
+export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:string}, clientOptions:any};

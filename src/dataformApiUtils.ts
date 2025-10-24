@@ -224,7 +224,8 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             return;
         }
 
-        const gcpProjectId = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase;
+        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpProjectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase) as string;
         if (!gcpProjectId) {
             vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
             return;
@@ -238,7 +239,21 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 2
         progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
-        const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation);
+
+        //FIXME: check if we are checking for this overide before
+        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+        let clientOptions = { projectId: gcpProjectId };
+        if(serviceAccountJsonPath){
+            vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
+            // @ts-ignore 
+            clientOptions = {... clientOptions , keyFilename: serviceAccountJsonPath};
+        }
+
+        let options = {
+            clientOptions
+        }
+
+        const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation, options);
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during client initialization.');
             return;
