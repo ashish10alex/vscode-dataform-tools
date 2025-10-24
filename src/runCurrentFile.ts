@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject, showLoadingProgress } from "./utils";
 import { DataformApi } from "./dataformApi";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
+import { ExecutionMode } from './types';
 
-export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {

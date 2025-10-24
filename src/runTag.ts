@@ -2,6 +2,7 @@ import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig,
 import * as vscode from 'vscode';
 import { DataformApi } from "./dataformApi";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
+import { ExecutionMode } from './types';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -43,7 +44,7 @@ export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] 
     return cmd;
 }
 
-export async function runTag(includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:string) {
+export async function runTag(includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:ExecutionMode) {
     if (dataformTags.length === 0) {
         vscode.window.showInformationMessage('No tags found in project');
         return;

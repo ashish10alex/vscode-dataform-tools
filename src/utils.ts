@@ -8,7 +8,7 @@ import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
+import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo, ExecutionMode} from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
@@ -1653,7 +1653,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:string) {
+export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);

@@ -382,3 +382,5 @@ export interface GitFileChangeRaw {
 }
 
 export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:string}, clientOptions:any};
+
+export type ExecutionMode = "cli" | "api" | "api_workspace";
