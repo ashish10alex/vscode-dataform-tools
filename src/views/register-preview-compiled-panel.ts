@@ -902,7 +902,7 @@ export class CompiledQueryPanel {
 
             </div>
 
-            <a id="dataformLink" href="" style="display: none;" >Dataform API workflow execution link</a>
+            <a id="dataformLink" href="" style="display: none;" >Link to workflow execution using <span style="color: yellow;">current git branch</span></a>
 
             <div id="dataformApiError" class="error-message-container" style="display: none;">
                 <p></p>
