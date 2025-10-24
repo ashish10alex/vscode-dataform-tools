@@ -24,7 +24,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
-        "onCommand:extension.runFilesTagsWtOptionsInRemoteworkspace",
+        "onCommand:extension.runFilesTagsWtOptionsInRemoteWorkspace",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.runCurrentFileWtApi",
         "onCommand:extension.runCurrentFileWtDependenciesApi",
@@ -162,7 +162,7 @@
                 "group": "navigation"
             },
             {
-                "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteworkspace",
+                "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace",
                 "category": "Dataform",
                 "title": "Run file(s) / tag(s) with options using API in remote workspace",
                 "group": "navigation"

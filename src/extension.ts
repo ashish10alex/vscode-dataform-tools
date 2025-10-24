@@ -256,7 +256,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInworkspace', () => {runFilesTagsWtOptions("api_workspace");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => {runFilesTagsWtOptions("api_workspace");})
     );
 
     context.subscriptions.push(

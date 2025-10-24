@@ -1,7 +1,7 @@
-import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal } from "./utils";
+import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
 import * as vscode from 'vscode';
 import { DataformApi } from "./dataformApi";
-import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
+import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -75,16 +75,14 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
                 runCommandInTerminal(cmd);
             }
         } else if (executionMode === "api"){
-            runTagWtApi([selection],includeDependencies, includeDependents, fullRefresh);
+            runTagWtApi([selection],includeDependencies, includeDependents, fullRefresh, executionMode);
 
         }
 
     });
 }
 
-export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean ){
-    let workspaceFolder = await getWorkspaceFolder();
-    if (!workspaceFolder) { return; }
+export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
 
     const invocationConfig = {
         includedTags: tagsToRun,
@@ -92,6 +90,20 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
         transitiveDependentsIncluded: transitiveDependentsIncluded,
         fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,
     };
+
+    if(executionMode === "api_workspace"){
+        await showLoadingProgress(
+            "",
+            syncAndrunDataformRemotely,
+            "Dataform remote workspace execution cancelled",
+            invocationConfig,
+            compilerOptionsMap,
+        );
+        return;
+    }
+
+    let workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) { return; }
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
