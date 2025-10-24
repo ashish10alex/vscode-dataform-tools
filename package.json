@@ -164,7 +164,7 @@
             {
                 "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace",
                 "category": "Dataform",
-                "title": "Run file(s) / tag(s) with options using API in remote workspace",
+                "title": "Run file(s) / tag(s) with options using API in remote workspace [beta]",
                 "group": "navigation"
             },
             {

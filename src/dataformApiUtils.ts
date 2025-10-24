@@ -68,8 +68,11 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     const gitCommitsAhead = gitCommitsAheadBehind[0].commitsAhead || 0;
     const gitCommitsBehind = gitCommitsAheadBehind[0].commitsBehind || 0;
 
-    if(gitCommitsAhead > 0){
-        let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitRepoName} workspace in GCP. Push it first ?`;
+    if(gitCommitsAhead > 0 && !remoteGitRepoExsists){
+        // NOTE: this will create the branch in remote if it does not exsists
+        await dataformClient.pushWorkspaceCommits();
+    } else if(gitCommitsAhead > 0){
+        let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitBranch} workspace in GCP. Push it first ?`;
         const response = await vscode.window.showWarningMessage(warningMessage, {modal: true}, "Yes", "No");
         if(response === "Yes"){
             await dataformClient.pushWorkspaceCommits();
@@ -77,6 +80,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
             return;
         }
     }
+
     if(gitCommitsBehind > 0){
         try{
            if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, remoteGitRepoExsists, gitCommitsBehind)){
@@ -260,6 +264,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                 vscode.window.showErrorMessage(error.message);
                 throw error;
             } else {
+                vscode.window.showErrorMessage(error.message);
                 throw error;
             }
         }
