@@ -16,15 +16,20 @@ export class DataformApi {
     repositoryName:string;
     gitBranch:string;
 
-    constructor (gcpProjectId:string, gcpLocation:string, options?:any){
+    constructor (gcpProjectId:string, gcpLocation:string, gitMeta?:{gitRepoName: string, gitBranch:string}, options?:any){
         this.gcpProjectId = gcpProjectId;
         this.gcpProjectLocation = gcpLocation;
-        const gitInfo = getGitBranchAndRepoName();
-        if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
-            throw new Error("Error determining git repository and or branch name");
-        } 
-        this.gitBranch = gitInfo.gitBranch;
-        this.gitRepoName = gitInfo.gitRepoName;
+        if(gitMeta && gitMeta.gitRepoName && gitMeta.gitBranch){
+            this.gitBranch = gitMeta.gitBranch;
+            this.gitRepoName = gitMeta.gitRepoName;
+        }else{
+            const gitInfo = getGitBranchAndRepoName();
+            if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+                throw new Error("Error determining git repository and or branch name");
+            } 
+            this.gitBranch = gitInfo.gitBranch;
+            this.gitRepoName = gitInfo.gitRepoName;
+        }
 
         this.repositoryName = this.gitRepoName;
         this.workspaceId = this.gitBranch;
