@@ -92,17 +92,20 @@ export async function runFilesTagsWtOptions(executionMode: string) {
             if(!multipleTagsSelection){return;};
             runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
         }
-    } else if (executionMode === "api"){
+    } else if (executionMode === "api" || executionMode === "api_workspace"){
         if (firstStageSelection === "run current file") {
-            runCurrentFile(includeDependencies, includeDependents, fullRefresh, "api");
+            runCurrentFile(includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
+            //FIXME: api_workspace execution mode not implemented for this function
             runTagWtApi([tagSelection], includeDependencies, includeDependents, fullRefresh);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
-            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "api");
+            //FIXME: api_workspace execution mode not implemented for this function
+            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
+            //FIXME: api_workspace execution mode not implemented for this function
             runTagWtApi(multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
         }
     }

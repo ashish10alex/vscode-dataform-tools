@@ -24,7 +24,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
-        "onCommand:extension.runInRemoteWorkspace",
+        "onCommand:extension.runFilesTagsWtOptionsInRemoteworkspace",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.runCurrentFileWtApi",
         "onCommand:extension.runCurrentFileWtDependenciesApi",
@@ -162,9 +162,9 @@
                 "group": "navigation"
             },
             {
-                "command": "vscode-dataform-tools.runInRemoteWorkspace",
+                "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteworkspace",
                 "category": "Dataform",
-                "title": "Run in GCP Dataform Workspace [beta]",
+                "title": "Run file(s) / tag(s) with options using API in remote workspace",
                 "group": "navigation"
             },
             {
