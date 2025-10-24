@@ -1,6 +1,8 @@
-import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal } from "./utils";
-import { createDataformWorkflowInvocation } from "./dataformApi";
+import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
 import * as vscode from 'vscode';
+import { DataformApi } from "./dataformApi";
+import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
+import { ExecutionMode } from './types';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -42,7 +44,7 @@ export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] 
     return cmd;
 }
 
-export async function runTag(includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:string) {
+export async function runTag(includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:ExecutionMode) {
     if (dataformTags.length === 0) {
         vscode.window.showInformationMessage('No tags found in project');
         return;
@@ -74,16 +76,14 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
                 runCommandInTerminal(cmd);
             }
         } else if (executionMode === "api"){
-            runTagWtApi([selection],includeDependencies, includeDependents, fullRefresh);
+            runTagWtApi([selection],includeDependencies, includeDependents, fullRefresh, executionMode);
 
         }
 
     });
 }
 
-export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean ){
-    let workspaceFolder = await getWorkspaceFolder();
-    if (!workspaceFolder) { return; }
+export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
 
     const invocationConfig = {
         includedTags: tagsToRun,
@@ -91,6 +91,20 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
         transitiveDependentsIncluded: transitiveDependentsIncluded,
         fullyRefreshIncrementalTablesEnabled: fullyRefreshIncrementalTablesEnabled,
     };
+
+    if(executionMode === "api_workspace"){
+        await showLoadingProgress(
+            "",
+            syncAndrunDataformRemotely,
+            "Dataform remote workspace execution cancelled",
+            invocationConfig,
+            compilerOptionsMap,
+        );
+        return;
+    }
+
+    let workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) { return; }
 
     const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
     if(!projectId){
@@ -105,5 +119,13 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
 
     let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
 
-    createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+    try{
+        const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+        if(createdWorkflowInvocation?.url){
+            sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+        }
+    }catch(error:any){
+        vscode.window.showErrorMessage(error.message);
+    }
 }

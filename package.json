@@ -24,6 +24,7 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
+        "onCommand:extension.runFilesTagsWtOptionsInRemoteWorkspace",
         "onCommand:extension.runCurrentFile",
         "onCommand:extension.runCurrentFileWtApi",
         "onCommand:extension.runCurrentFileWtDependenciesApi",
@@ -158,6 +159,12 @@
                 "command": "vscode-dataform-tools.runCurrentFileWtDependentsApi",
                 "category": "Dataform",
                 "title": "Run current file with Dependents using API",
+                "group": "navigation"
+            },
+            {
+                "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace",
+                "category": "Dataform",
+                "title": "Run file(s) / tag(s) with options using API in remote workspace [beta]",
                 "group": "navigation"
             },
             {

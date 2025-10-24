@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject } from "./utils";
-import { createDataformWorkflowInvocation } from "./dataformApi";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject, showLoadingProgress } from "./utils";
+import { DataformApi } from "./dataformApi";
+import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
+import { ExecutionMode } from './types';
 
-export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {
@@ -53,7 +55,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
         runCommandInTerminal(dataformActionCmd);
         return;
-    } else if (executionMode === "api"){
+    } else if (executionMode === "api" || executionMode === "api_workspace"){
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
@@ -85,7 +87,27 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
             fullyRefreshIncrementalTablesEnabled: fullRefresh,
         };
 
-        return createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+        try{
+            if(executionMode === "api_workspace"){
+                await showLoadingProgress(
+                    "",
+                    syncAndrunDataformRemotely,
+                    "Dataform remote workspace execution cancelled",
+                    invocationConfig,
+                    compilerOptionsMap,
+                );
+                return;
+            }
+            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+            const url = createdWorkflowInvocation?.url;
+            if(url){
+                sendWorkflowInvocationNotification(url);
+                return {workflowInvocationUrlGCP: url, errorWorkflowInvocation: undefined};
+            }
+        } catch(error:any){
+            return {workflowInvocationUrlGCP: undefined, errorWorkflowInvocation: error.message};
+        }
     }
     return;
 }

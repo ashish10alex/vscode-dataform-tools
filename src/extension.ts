@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
+import path from 'path';
 import { DataformCompiledJson } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { CustomViewProvider } from './views/register-query-results-panel';
@@ -23,7 +24,6 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-import path from 'path';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -66,6 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;
     globalThis.errorInPreOpsDenyList = false;
+    globalThis.compilerOptionsMap = undefined;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
@@ -252,6 +253,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi', () => {runFilesTagsWtOptions("api");})
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => {runFilesTagsWtOptions("api_workspace");})
     );
 
     context.subscriptions.push(
