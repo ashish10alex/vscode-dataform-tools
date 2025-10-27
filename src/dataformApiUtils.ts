@@ -38,7 +38,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformAp
         }
         return true;
     } else {
-        vscode.window.showInformationMessage("Git restore opetion in remote workspace cancelled, exiting");
+        vscode.window.showInformationMessage("Git restore operation in remote workspace cancelled, exiting...");
         return false;
     }
 }
