@@ -1,115 +1,263 @@
-import * as vscode from 'vscode';
-import { getGitBranchAndRepoName } from './getGitMeta';
 
-import { DataformClient  } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
+import { DataformClient  } from '@google-cloud/dataform';
+import * as fs from 'fs/promises'; 
+import {getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
+import {CompilationType, InvocationConfig, ICompilationResult, ICodeCompilationConfig, DataformApiOptions} from "./types";
 
-type CreateCompilationResultResponse = Promise<
-  [
-    protos.google.cloud.dataform.v1beta1.ICompilationResult,
-    protos.google.cloud.dataform.v1beta1.ICreateCompilationResultRequest | undefined,
-    {} | undefined
-  ]
->;
+export class DataformApi {
 
-type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
+    gcpProjectId:string;
+    gcpProjectLocation:string;
+    workspaceId:string;
+    workspaceName:string;
+    parent:string;
+    client: DataformClient;
+    gitRepoName:string;
+    repositoryName:string;
+    gitBranch:string;
 
-
-/**
- * Creates compilation object from the latest state of the git branch of the remote repo
- *
- * @param  client - Dataform client
- * @param  parent - string of the format `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`
- * @param  gitBranch - name of the git branch from which compilation object is being generated
- * @returns createdCompilationResult
- */
-export async function getCompilationResult(client:DataformClient, parent:string, gitBranch:string): CreateCompilationResultResponse{
-    // vscode.window.showInformationMessage("Creating compilation result...");
-
-    const compilationResult = {
-        gitCommitish: gitBranch,
-    };
-
-    const createCompilationResultRequest = {
-        parent: parent,
-        compilationResult: compilationResult,
-    };
-
-    const createdCompilationResult = await client.createCompilationResult(createCompilationResultRequest);
-    return createdCompilationResult;
-}
-
-/**
- * Creates workflow invocation from the latest state of the git branch of the remote repository
- *
- * @param  projectId - GCP porject Id
- * @param  gcpPojectLocation - Compute location to use in the GCP project
- * @param  invocationConfig -  Targets / tags to execute with or without dependecies. https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1alpha2.workflowinvocation.iinvocationconfig
- */
-export async function createDataformWorkflowInvocation(projectId:string, gcpProjectLocation:string, invocationConfig:InvocationConfig): Promise<{workflowInvocationUrlGCP: string|undefined, errorWorkflowInvocation: string|undefined} | undefined>{
-    let workflowInvocationUrlGCP: string | undefined = undefined;
-    let errorWorkflowInvocation: string | undefined = undefined;
-    let dataformClient: DataformClient|undefined = undefined;
-    try {
-
-        // TODO: user might not have git extension, we need a fallback ?
-        // TODO: show the information in logger only ?
-        // vscode.window.showInformationMessage("Retriving git repository and branch for compilation...");
-        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
-        let options = {projectId};
-        if(serviceAccountJsonPath){
-            // vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
-            // @ts-ignore 
-            options = {... options , keyFilename: serviceAccountJsonPath};
+    constructor (gcpProjectId:string, gcpLocation:string, options?:DataformApiOptions){
+        this.gcpProjectId = gcpProjectId;
+        this.gcpProjectLocation = gcpLocation;
+        if(options?.gitMeta && options.gitMeta.gitRepoName && options.gitMeta.gitBranch){
+            this.gitBranch = options.gitMeta.gitBranch;
+            this.gitRepoName = options.gitMeta.gitRepoName;
+        }else{
+            const gitInfo = getGitBranchAndRepoName();
+            if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+                throw new Error("Error determining git repository and or branch name");
+            } 
+            this.gitBranch = gitInfo.gitBranch;
+            this.gitRepoName = gitInfo.gitRepoName;
         }
 
+        this.repositoryName = this.gitRepoName;
+        this.workspaceId = this.gitBranch;
+        this.client = new DataformClient(options?.clientOptions);
+        this.parent =  `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}`;
+        this.workspaceName = `projects/${this.gcpProjectId}/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workspaces/${this.workspaceId}`;
+    }
 
-        dataformClient = new DataformClient(options);
-        const {gitRepoName, gitBranch} = await getGitBranchAndRepoName() || {}; 
-        const parent = `projects/${projectId}/locations/${gcpProjectLocation}/repositories/${gitRepoName}`;
-        const createdCompilationResult = await getCompilationResult(dataformClient, parent, gitBranch);
-        const fullCompilationResultName = createdCompilationResult[0].name;
+    getWorkflowInvocationUrl(workflowInvocationId:string) {
+        return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
+    }
 
-        // vscode.window.showInformationMessage("Creating workflow invocation...");
+    /**
+     * Gets the workspace object
+     *
+     * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.Workspace|Workspace}.
+    */
+    async getWorkspace() {
+        const request = {
+            name: this.workspaceName
+        };
+        const [workspace] = await this.client.getWorkspace(request);
+        return workspace;
+    }
 
+    /**
+     * Gets the repository object
+     *
+     * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.Repository|Repository}.
+    */
+    async getRepository() {
+        const request = {
+            name: this.parent
+        };
+        const [repository] = await this.client.getRepository(request);
+        return repository;
+    }
+
+    /**
+     * Gets the repository
+     *
+     * @returns {Promise} - Create workspace and returns promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.Workspace|Workspace}.
+    */
+    async createWorkspace() {
+        const request = {
+            parent: this.parent,
+            workspaceId: this.workspaceId,
+        };
+        const [workspace] = await this.client.createWorkspace(request);
+        return workspace;
+    }
+
+    /**
+     * Pull commits from the remote git branch of the workspace. Git username and email are determined by git cli to set The author of any merge commit which may be created as a result of merging fetched Git commits into this workspace..
+     *
+     * @returns {Promise} - Create workspace and reuturn promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.PullGitCommitsResponse|PullGitCommitsResponse}.
+    */
+    async pullGitCommits(){
+        const gitUser = await getGitUserMeta() || {name: "", email: ""};
+
+        if(gitUser && gitUser.name && gitUser.email){
+            await this.client.pullGitCommits({ 
+                name: this.workspaceName,
+                author: {
+                    name: gitUser.name,
+                    emailAddress: gitUser.email
+                },
+                remoteBranch: this.workspaceId
+            });
+        }
+    }
+
+    //TODO: can we somehow avoid passing both full and relative paths ?
+    async writeFileToWorkspace(fullPath:string, relativePath:string) {
+        const data = await fs.readFile(fullPath, 'utf8');
+        const request = {
+            workspace: this.workspaceName,
+            path: relativePath,
+            contents: Buffer.from(data),
+        };
+        await this.client.writeFile(request);
+    }
+
+    async fileExistsInWorkspace(relativePath:string) {
+        try {
+            await this.client.readFile({
+                workspace: this.workspaceName,
+                path: relativePath
+            });
+            return true;
+        } catch (error: any) {
+            const FILE_NOT_FOUND_IN_WORKSPACE_ERROR_CODE = 5;
+            if (error.code === FILE_NOT_FOUND_IN_WORKSPACE_ERROR_CODE) { 
+                return false;
+            }
+            throw error;
+        }
+    }
+
+    async deleteFileInWorkspace(relativePath:string) {
+            const request = {
+                workspace: this.workspaceName,
+                path: relativePath,
+            };
+            const [removedFileResponse] = await this.client.removeFile(request);
+            return removedFileResponse;
+    }
+
+    /**
+     * create compilation result
+     * 
+     * @returns {Promise} - The promise which resolves an object representing {{@link protos.google.cloud.dataform.v1beta1.CompilationResult|CompilationResult}}
+    */
+    async createCompilationResult(compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
+        let compilationResult: ICompilationResult;
+        if(compilationType === "workspace"){
+            compilationResult = {
+                workspace: this.workspaceName,
+                codeCompilationConfig: codeCompilationConfig
+            };
+        } else {
+            compilationResult = {
+                gitCommitish: this.gitBranch,
+                codeCompilationConfig: codeCompilationConfig
+            };
+        }
+
+        const createCompilationResultRequest = {
+            parent: this.parent,
+            compilationResult: compilationResult,
+        };
+
+        const [createdCompilationResult] = await this.client.createCompilationResult(createCompilationResultRequest);
+        return createdCompilationResult;
+    }
+
+    /**
+     * Get `git status` of remote Dataform workspace
+     * 
+     * @returns {Promise} - The promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.FetchFileGitStatusesResponse|FetchFileGitStatusesResponse}
+    */
+    async getRemoteWorkspaceGitState() {
+        const request = {
+            name: this.workspaceName
+        };
+        const [remoteWorkspaceGitState] = await this.client.fetchFileGitStatuses(request);
+        return remoteWorkspaceGitState;
+    }
+
+    /**
+     * Gets number of commits the Dataform workspace is ahead and behind its remote
+     *
+     * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.FetchGitAheadBehindResponse|FetchGitAheadBehindResponse}.
+    */
+    async getGitCommitsAheadAndBehind() {
+        const request = {
+            name: this.workspaceName,
+            remoteBranch: this.gitBranch
+        };
+        const [gitCommitsAheadBehind] = await this.client.fetchGitAheadBehind(request);
+        return gitCommitsAheadBehind;
+    }
+
+    /**
+     * Performs equivalent of `git restore .` on Dataform workspace
+     * 
+     * @param {boolean} [request.clean]
+     *  If set to true, untracked files will be deleted.
+     *
+     * @returns {Promise} - The promise which resolves to an array. The first element of the array is an object representing {@link protos.google.cloud.dataform.v1beta1.ResetWorkspaceChangesResponse|ResetWorkspaceChangesResponse}
+    */
+    async resetWorkspaceChanges(clean:boolean){
+        // NOTE: similar to `git restore . `
+        const request = {
+            name: this.workspaceName,
+            clean: clean
+        };
+        await this.client.resetWorkspaceChanges(request);
+    }
+
+
+    /**
+     * Pushes commits in Dataform worksapce to remote git repository. Creates remote repository if it does not exsists
+     *
+     * @returns {Promise} - The promise which resolves to an array. The first element of the array is an object representing {@link protos.google.cloud.dataform.v1beta1.PushGitCommitsResponse|PushGitCommitsResponse}
+    */
+    async pushWorkspaceCommits(){
+        const request = {
+            name: this.workspaceName,
+            remoteBranch: this.gitBranch
+        };
+        await this.client.pushGitCommits(request);
+    }
+
+    async createDataformWorkflowInvocation(invocationConfig: InvocationConfig, compilationResultName:string){
         const workflowInvocation = {
-            compilationResult: fullCompilationResultName,
-            invocationConfig: invocationConfig,
+            compilationResult: compilationResultName,
+            invocationConfig: invocationConfig
         };
 
         const createWorkflowInvocationRequest = {
-            parent: parent,
+            parent: this.parent,
             workflowInvocation: workflowInvocation,
         };
 
-        const createdWorkflowInvocation = await dataformClient.createWorkflowInvocation(createWorkflowInvocationRequest);
-        if(createdWorkflowInvocation[0]?.name){
-            const workflowInvocationId = createdWorkflowInvocation[0].name.split("/").pop();
-            workflowInvocationUrlGCP = `https://console.cloud.google.com/bigquery/dataform/locations/${gcpProjectLocation}/repositories/${gitRepoName}/workflows/${workflowInvocationId}?project=${projectId}`;
+        // NOTE: I think we are making an assumption here that only one workflow invocation is being made by this call
+        const createdWorkflowInvocation = await this.client.createWorkflowInvocation(createWorkflowInvocationRequest);
+        const createdWorkflowInvocationName = createdWorkflowInvocation[0]?.name;
 
-            vscode.window.showInformationMessage(
-                `Workflow invocation created`,
-                'View workflow execution'
-            ).then(selection => {
-                if (selection === 'View workflow execution') {
-                    if(workflowInvocationUrlGCP){
-                        vscode.env.openExternal(vscode.Uri.parse(workflowInvocationUrlGCP));
-                    }
-                }
-            });
-            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
-        }else{
-            vscode.window.showErrorMessage(`Workflow invocation could not be determined`);
-        }
-    }
-        catch (error:any) {
-            vscode.window.showErrorMessage(JSON.stringify(error));
-            errorWorkflowInvocation = error.toString();
-            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
-        } finally {
-            if(dataformClient){
-                dataformClient.close();
+        let workflowInvocationUrlGCP = undefined;
+        let workflowInvocationId = undefined;
+
+        if(createdWorkflowInvocationName){
+            const workflowInvocationId = createdWorkflowInvocationName.split("/").pop();
+            if(workflowInvocationId){
+            workflowInvocationUrlGCP = this.getWorkflowInvocationUrl(workflowInvocationId);
             }
-            return {"workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation};
         }
+        return {name: createdWorkflowInvocationName, url: workflowInvocationUrlGCP, id: workflowInvocationId};
+    }
+
+    async runDataformRemotely(invocationConfig: InvocationConfig, compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
+        const compilationResult = await this.createCompilationResult(compilationType, codeCompilationConfig);
+        const fullCompilationResultName = compilationResult.name;
+        if(fullCompilationResultName){
+            return await this.createDataformWorkflowInvocation(invocationConfig, fullCompilationResultName);
+        }
+        return undefined;
+    }
 }

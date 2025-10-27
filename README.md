@@ -64,6 +64,8 @@
 
 4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
 
+5. Git cli
+
 > [!NOTE]
 Trouble installing or looking for a specific customization ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 
@@ -138,6 +140,7 @@ further streamline your workflow.
 | `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
 | `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
 | `vscode-dataform-tools.runFilesTagsWtOptionsApi` | Run file(s) / tag(s) with options using API |
+| `vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace` | Run file(s) / tag(s) with options using API in remote workspace [beta] |
 | `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
 | `vscode-dataform-tools.runTagWtApi` | Run a tag using API |
 | `vscode-dataform-tools.runTagWtDependenciesApi` | Run tag with dependencies using API |

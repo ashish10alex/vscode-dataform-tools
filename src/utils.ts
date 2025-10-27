@@ -8,16 +8,72 @@ import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
-import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo } from './types';
+import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo, ExecutionMode} from './types';
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
-import { createDataformWorkflowInvocation } from "./dataformApi";
-
+import { DataformApi } from "./dataformApi";
+import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
 
 let supportedExtensions = ['sqlx', 'js'];
 
 export let declarationsAndTargets: string[] = [];
+
+//NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
+function stripQuotes(str:string) {
+  return str.replace(/^['"]|['"]$/g, '');
+}
+
+function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
+    // NOTE: we might need to add support for more code compilation config items from https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.icodecompilationconfig
+    let compilerOptionsObject: { [key: string]: string } = {};
+    let compilerOptionsToApi = compilerOptions[0].split(" ");
+
+    compilerOptionsToApi.forEach((opt: string) => {
+        let value = opt.split("=")[1];
+        value = stripQuotes(value);
+
+        if (opt.startsWith("--table-prefix")) {
+            compilerOptionsObject["tablePrefix"] = value;
+        }
+
+        if (opt.startsWith("--schema-suffix")) {
+            compilerOptionsObject["schemaSuffix"] = value;
+        }
+
+        if (opt.startsWith("--database-suffix")) {
+            compilerOptionsObject["databaseSuffix"] = value;
+        }
+    });
+
+    return compilerOptionsObject;
+}
+
+export function showLoadingProgress<T extends any[]>(
+    title: string,
+    operation: (
+        progress: vscode.Progress<{ message?: string; increment?: number }>,
+        token: vscode.CancellationToken,
+        ...args: T
+    ) => Thenable<void>,
+    cancellationMessage: string = "Dataform tools: operation cancelled",
+    ...args:any
+): Thenable<void> {
+    return vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: title,
+            cancellable: true
+        },
+        async (progress, token) => {
+            token.onCancellationRequested(() => {
+                console.log(cancellationMessage);
+            });
+
+            await operation(progress, token, ...args);
+        }
+    );
+}
 
 export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -1365,6 +1421,13 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
 
         spawnedProcess.on('close', async (code: number) => {
             if (code === 0) {
+                if(compilerOptions.length>0){
+                    compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
+                }else{
+                    compilerOptionsMap = undefined;
+                }
+
+                logger.debug(`compilerOptionsMap: ${compilerOptionsMap}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {
@@ -1590,7 +1653,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:string) {
+export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -1638,7 +1701,15 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
             return;
         }
-        createDataformWorkflowInvocation(projectId, gcpProjectLocation, invocationConfig);
+        try{
+            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+            if(createdWorkflowInvocation?.url){
+                sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+            }
+        } catch(error:any){
+            vscode.window.showErrorMessage(error.message);
+        }
     } else if (executionMode === "cli") {
         let actionsList: string[] = [];
         fileMetadatas.forEach(fileMetadata => {

@@ -94,4 +94,8 @@ declare global {
   };
 }
 
+declare global {
+  var compilerOptionsMap: {[key: string]: stringMap<string, string>} | undefined;
+}
+
 export {};

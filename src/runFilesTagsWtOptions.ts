@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
+import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 
-export async function runFilesTagsWtOptions(executionMode: string) {
+export async function runFilesTagsWtOptions(executionMode: ExecutionMode) {
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
@@ -92,18 +93,21 @@ export async function runFilesTagsWtOptions(executionMode: string) {
             if(!multipleTagsSelection){return;};
             runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
         }
-    } else if (executionMode === "api"){
+    } else if (executionMode === "api" || executionMode === "api_workspace"){
         if (firstStageSelection === "run current file") {
-            runCurrentFile(includeDependencies, includeDependents, fullRefresh, "api");
+            runCurrentFile(includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            runTagWtApi([tagSelection], includeDependencies, includeDependents, fullRefresh);
+            //FIXME: api_workspace execution mode not implemented for this function
+            runTagWtApi([tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
-            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "api");
+            //FIXME: api_workspace execution mode not implemented for this function
+            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
-            runTagWtApi(multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
+            //FIXME: api_workspace execution mode not implemented for this function
+            runTagWtApi(multipleTagsSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         }
     }
 }

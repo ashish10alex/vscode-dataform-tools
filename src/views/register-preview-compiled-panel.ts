@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -11,30 +11,6 @@ import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
-
-function showLoadingProgress(
-    title: string,
-    operation: (
-        progress: vscode.Progress<{ message?: string; increment?: number }>,
-        token: vscode.CancellationToken
-    ) => Thenable<void>,
-    cancellationMessage: string = "Dataform tools: operation cancelled"
-): Thenable<void> {
-    return vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: title,
-            cancellable: true
-        },
-        async (progress, token) => {
-            token.onCancellationRequested(() => {
-                console.log(cancellationMessage);
-            });
-
-            await operation(progress, token);
-        }
-    );
-}
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions:{name:string, metadata: any}[] = [];
@@ -91,7 +67,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true
-                })
+                });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
                 CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
@@ -305,8 +281,6 @@ export class CompiledQueryPanel {
                     return;
                 }
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
-                if(errorWorkflowInvocation){
-                }
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
@@ -928,7 +902,7 @@ export class CompiledQueryPanel {
 
             </div>
 
-            <a id="dataformLink" href="" style="display: none;" >Dataform API workflow execution link</a>
+            <a id="dataformLink" href="" style="display: none;" >Link to workflow execution using <span style="color: yellow;">current git branch</span></a>
 
             <div id="dataformApiError" class="error-message-container" style="display: none;">
                 <p></p>

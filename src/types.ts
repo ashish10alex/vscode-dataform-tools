@@ -1,4 +1,5 @@
 import { TextDocument } from "vscode";
+import { protos } from '@google-cloud/dataform';
 
 export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
 
@@ -349,3 +350,37 @@ export interface WebviewMessage {
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
 }
+
+export type CreateCompilationResultResponse = Promise<
+[
+    protos.google.cloud.dataform.v1beta1.ICompilationResult,
+    protos.google.cloud.dataform.v1beta1.ICreateCompilationResultRequest | undefined,
+    {} | undefined
+]
+>;
+
+export type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
+export type ICompilationResult  = protos.google.cloud.dataform.v1beta1.ICompilationResult;
+export type ICodeCompilationConfig = protos.google.cloud.dataform.v1beta1.ICodeCompilationConfig;
+
+export type CompilationType  = "gitBranch" | "workspace";
+export type GitStatusCode = "M" | "A" | "??" | "D";
+export type GitStatusCodeHumanReadable = "MODIFIED" | "ADDED" | "DELETED";
+
+export interface GitFileChange {
+    state: GitStatusCodeHumanReadable;
+    path: string;
+    fullPath: string;
+    commitIndex: number;
+}
+
+export interface GitFileChangeRaw {
+    state: GitStatusCode;
+    path: string;
+    fullPath?: string;
+    commitIndex: number;
+}
+
+export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:string}, clientOptions:any};
+
+export type ExecutionMode = "cli" | "api" | "api_workspace";
