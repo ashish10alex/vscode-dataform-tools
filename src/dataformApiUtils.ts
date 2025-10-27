@@ -102,7 +102,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
         //FIXME: verify if this is the right thing to do
         return;
     }
-    const gitRemoteChanges = remoteDataformWorkspaceStatus[0].uncommittedFileChanges;
+    const gitRemoteChanges = remoteDataformWorkspaceStatus.uncommittedFileChanges;
 
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){

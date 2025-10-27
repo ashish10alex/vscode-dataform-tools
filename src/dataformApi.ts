@@ -159,13 +159,14 @@ export class DataformApi {
     /**
      * Get `git status` of remote Dataform workspace
      * 
-     * @returns {Promise} - The promise which resolves to an array. The first element of the array is an object representing {@link protos.google.cloud.dataform.v1beta1.FetchFileGitStatusesResponse|FetchFileGitStatusesResponse}
+     * @returns {Promise} - The promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.FetchFileGitStatusesResponse|FetchFileGitStatusesResponse}
     */
     async getRemoteWorkspaceGitState() {
         const request = {
             name: this.workspaceName
         };
-        return await this.client.fetchFileGitStatuses(request);
+        const [remoteWorkspaceGitState] = await this.client.fetchFileGitStatuses(request);
+        return remoteWorkspaceGitState
     }
 
     /**
