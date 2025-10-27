@@ -1,4 +1,5 @@
 
+import { protos } from '@google-cloud/dataform';
 import { DataformClient  } from '@google-cloud/dataform';
 import * as fs from 'fs/promises'; 
 import {getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
@@ -50,6 +51,11 @@ export class DataformApi {
         return workspace;
     }
 
+    /**
+     * Gets the repository
+     *
+     * @returns {Promise} - The promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.Repository|Repository}.
+    */
     async getRepository() {
         const request = {
             name: this.parent
@@ -58,6 +64,11 @@ export class DataformApi {
         return repository;
     }
 
+    /**
+     * Gets the repository
+     *
+     * @returns {Promise} - Create workspace and reuturn promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.Workspace|Workspace}.
+    */
     async createWorkspace() {
         const request = {
             parent: this.parent,
