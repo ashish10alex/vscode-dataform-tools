@@ -176,6 +176,12 @@ export class DataformApi {
         await this.client.resetWorkspaceChanges(request);
     }
 
+
+    /**
+     * Pushes commits in Dataform worksapce to remote git repository. Creates remote repository if it does not exsists
+     *
+     * @returns {Promise} - object representing {@link protos.google.cloud.dataform.v1beta1.PushGitCommitsResponse|PushGitCommitsResponse}
+    */
     async pushWorkspaceCommits(){
         const request = {
             name: this.workspaceName,
