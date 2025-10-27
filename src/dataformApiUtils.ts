@@ -94,12 +94,12 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
         await getLocalGitState(),
         //NOTE: defaultGitBranch gets assigned to workspaceId when remote git repository exsists
-        getGitStatusCommitedFiles(defaultGitBranch),
+        await getGitStatusCommitedFiles(defaultGitBranch),
         await dataformClient.getRemoteWorkspaceGitState()
     ]);
 
     if(!remoteDataformWorkspaceStatus){
-        //FIXME: verify if this is the right thing to do
+        vscode.window.showErrorMessage(`Could not get determine git status for workspace ${dataformClient.workspaceId}`)
         return;
     }
     const gitRemoteChanges = remoteDataformWorkspaceStatus.uncommittedFileChanges;
