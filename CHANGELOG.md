@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.17.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.9...v0.17.0) (2025-10-27)
+
+
+### Features
+
+* invoke Dataform run in managed Dataform workspace in GCP using api [beta] ([#198](https://github.com/ashish10alex/vscode-dataform-tools/issues/198)) ([1f3cd2d](https://github.com/ashish10alex/vscode-dataform-tools/commit/1f3cd2d06520ba868bd046278db8737ba50b7627))
+* make compiled query web view more responsive when re-compilation is triggered ([#197](https://github.com/ashish10alex/vscode-dataform-tools/issues/197)) ([b9a9eaa](https://github.com/ashish10alex/vscode-dataform-tools/commit/b9a9eaaabe2ebd2dacf83c20b967746ec6ebc3e7))
+* use api to run files & tags in managed Dataform instance ([#194](https://github.com/ashish10alex/vscode-dataform-tools/issues/194)) ([07ed05c](https://github.com/ashish10alex/vscode-dataform-tools/commit/07ed05c3efe9d038f3743802dab74e8bb9ade7d9))
+* **website:** update landing page image to be reflective of the latest features ([9fd9d81](https://github.com/ashish10alex/vscode-dataform-tools/commit/9fd9d81635096c360bd3767adf4ac07a03b83336))
+
 ### [0.16.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.8...v0.16.9) (2025-10-10)
 
 
