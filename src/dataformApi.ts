@@ -78,6 +78,11 @@ export class DataformApi {
         return workspace;
     }
 
+    /**
+     * Pull commits from the remote git branch of the workspace. Git username and email are determined by git cli to set The author of any merge commit which may be created as a result of merging fetched Git commits into this workspace..
+     *
+     * @returns {Promise} - Create workspace and reuturn promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.PullGitCommitsResponse|PullGitCommitsResponse}.
+    */
     async pullGitCommits(){
         const gitUser = await getGitUserMeta() || {name: "", email: ""};
 
