@@ -47,7 +47,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
         const repository = await dataformClient.getRepository();
-        defaultGitBranch = repository[0].gitRemoteSettings?.defaultBranch;
+        defaultGitBranch = repository.gitRemoteSettings?.defaultBranch;
         if(!defaultGitBranch){
             defaultGitBranch = await vscode.window.showInputBox({
                 placeHolder: "Enter default git branch",

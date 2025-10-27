@@ -54,20 +54,20 @@ export class DataformApi {
     /**
      * Gets the repository
      *
-     * @returns {Promise} - The promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.Repository|Repository}.
+     * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.Repository|Repository}.
     */
     async getRepository() {
         const request = {
             name: this.parent
         };
-        const repository = await this.client.getRepository(request);
+        const [repository] = await this.client.getRepository(request);
         return repository;
     }
 
     /**
      * Gets the repository
      *
-     * @returns {Promise} - Create workspace and reuturn promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.Workspace|Workspace}.
+     * @returns {Promise} - Create workspace and returns promise which resolves an object representing {@link protos.google.cloud.dataform.v1beta1.Workspace|Workspace}.
     */
     async createWorkspace() {
         const request = {
@@ -182,7 +182,7 @@ export class DataformApi {
      * @param {boolean} [request.clean]
      *  If set to true, untracked files will be deleted.
      *
-     * @returns {Promise} - object representing {@link protos.google.cloud.dataform.v1beta1.ResetWorkspaceChangesResponse|ResetWorkspaceChangesResponse}
+     * @returns {Promise} - The promise which resolves to an array. The first element of the array is an object representing {@link protos.google.cloud.dataform.v1beta1.ResetWorkspaceChangesResponse|ResetWorkspaceChangesResponse}
     */
     async resetWorkspaceChanges(clean:boolean){
         // NOTE: similar to `git restore . `
@@ -197,7 +197,7 @@ export class DataformApi {
     /**
      * Pushes commits in Dataform worksapce to remote git repository. Creates remote repository if it does not exsists
      *
-     * @returns {Promise} - object representing {@link protos.google.cloud.dataform.v1beta1.PushGitCommitsResponse|PushGitCommitsResponse}
+     * @returns {Promise} - The promise which resolves to an array. The first element of the array is an object representing {@link protos.google.cloud.dataform.v1beta1.PushGitCommitsResponse|PushGitCommitsResponse}
     */
     async pushWorkspaceCommits(){
         const request = {
