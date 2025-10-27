@@ -296,15 +296,16 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             try {
                 await dataformClient.pullGitCommits();
             } catch (error: any) {
+                //TODO: should we show user warning, and do a git resotore and pull changes ? 
                 const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
-                const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
+                //NOTE: this should not happen anymore as we are checking for git remote first
+                // const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
 
                 if (token.isCancellationRequested) {
                     vscode.window.showInformationMessage('Operation cancelled during Git pull.');
                     return;
                 }
-
-                if ((error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG) || error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
+                if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
                     vscode.window.showWarningMessage(error.message);
                 } else {
                     throw error;
