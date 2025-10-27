@@ -166,7 +166,14 @@ export class DataformApi {
         return await this.client.fetchGitAheadBehind(request);
     }
 
-
+    /**
+     * Performs equivalent of `git restore .` on Dataform workspace
+     * 
+     * @param {boolean} [request.clean]
+     *  If set to true, untracked files will be deleted.
+     *
+     * @returns {Promise} - object representing {@link protos.google.cloud.dataform.v1beta1.ResetWorkspaceChangesResponse|ResetWorkspaceChangesResponse}
+    */
     async resetWorkspaceChanges(clean:boolean){
         // NOTE: similar to `git restore . `
         const request = {
