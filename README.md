@@ -140,6 +140,7 @@ further streamline your workflow.
 | `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
 | `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
 | `vscode-dataform-tools.runFilesTagsWtOptionsApi` | Run file(s) / tag(s) with options using API |
+| `vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace` | Run file(s) / tag(s) with options using API in remote workspace [beta] |
 | `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
 | `vscode-dataform-tools.runTagWtApi` | Run a tag using API |
 | `vscode-dataform-tools.runTagWtDependenciesApi` | Run tag with dependencies using API |
