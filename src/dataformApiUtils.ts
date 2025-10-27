@@ -93,7 +93,8 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
 
     const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
         await getLocalGitState(),
-        remoteGitRepoExsists ?  await getGitStatusCommitedFiles(dataformClient.workspaceId) : await getGitStatusCommitedFiles(defaultGitBranch),
+        //NOTE: defaultGitBranch gets assigned to workspaceId when remote git repository exsists
+        getGitStatusCommitedFiles(defaultGitBranch),
         await dataformClient.getRemoteWorkspaceGitState()
     ]);
 
