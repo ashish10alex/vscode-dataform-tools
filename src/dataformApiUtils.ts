@@ -304,9 +304,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                     return;
                 }
 
-                if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG) {
-                    vscode.window.showWarningMessage(error.message);
-                } else if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
+                if ((error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE && error.message === NO_REMOTE_ERROR_MSG) || error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
                     vscode.window.showWarningMessage(error.message);
                 } else {
                     throw error;
