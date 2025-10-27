@@ -3,7 +3,7 @@ import { protos } from '@google-cloud/dataform';
 import { DataformClient  } from '@google-cloud/dataform';
 import * as fs from 'fs/promises'; 
 import {getGitUserMeta, getGitBranchAndRepoName} from "./getGitMeta";
-import {CompilationType, CreateCompilationResultResponse, InvocationConfig, ICompilationResult, ICodeCompilationConfig, DataformApiOptions} from "./types";
+import {CompilationType, InvocationConfig, ICompilationResult, ICodeCompilationConfig, DataformApiOptions} from "./types";
 
 export class DataformApi {
 
@@ -43,16 +43,21 @@ export class DataformApi {
         return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpProjectLocation}/repositories/${this.repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
     }
 
+    /**
+     * Gets the workspace object
+     *
+     * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.Workspace|Workspace}.
+    */
     async getWorkspace() {
         const request = {
             name: this.workspaceName
         };
-        const workspace = await this.client.getWorkspace(request);
+        const [workspace] = await this.client.getWorkspace(request);
         return workspace;
     }
 
     /**
-     * Gets the repository
+     * Gets the repository object
      *
      * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.Repository|Repository}.
     */
@@ -130,10 +135,16 @@ export class DataformApi {
                 workspace: this.workspaceName,
                 path: relativePath,
             };
-            await this.client.removeFile(request);
+            const [removedFileResponse] = await this.client.removeFile(request);
+            return removedFileResponse;
     }
 
-    async createCompilationResult(compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig): CreateCompilationResultResponse{
+    /**
+     * create compilation result
+     * 
+     * @returns {Promise} - The promise which resolves an object representing {{@link protos.google.cloud.dataform.v1beta1.CompilationResult|CompilationResult}}
+    */
+    async createCompilationResult(compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
         let compilationResult: ICompilationResult;
         if(compilationType === "workspace"){
             compilationResult = {
@@ -152,7 +163,7 @@ export class DataformApi {
             compilationResult: compilationResult,
         };
 
-        const createdCompilationResult = await this.client.createCompilationResult(createCompilationResultRequest);
+        const [createdCompilationResult] = await this.client.createCompilationResult(createCompilationResultRequest);
         return createdCompilationResult;
     }
 
@@ -215,11 +226,6 @@ export class DataformApi {
     }
 
     async createDataformWorkflowInvocation(invocationConfig: InvocationConfig, compilationResultName:string){
-        /*
-        const out = await obj.createCompilationResult();
-        // NOTE: I think we are making an assumption here that only one compilation result invocation is being made by previous function call
-        const compilationResultName = out[0].name;
-        */
         const workflowInvocation = {
             compilationResult: compilationResultName,
             invocationConfig: invocationConfig
@@ -248,7 +254,7 @@ export class DataformApi {
 
     async runDataformRemotely(invocationConfig: InvocationConfig, compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
         const compilationResult = await this.createCompilationResult(compilationType, codeCompilationConfig);
-        const fullCompilationResultName = compilationResult[0].name;
+        const fullCompilationResultName = compilationResult.name;
         if(fullCompilationResultName){
             return await this.createDataformWorkflowInvocation(invocationConfig, fullCompilationResultName);
         }
