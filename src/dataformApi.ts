@@ -177,7 +177,7 @@ export class DataformApi {
             name: this.workspaceName
         };
         const [remoteWorkspaceGitState] = await this.client.fetchFileGitStatuses(request);
-        return remoteWorkspaceGitState
+        return remoteWorkspaceGitState;
     }
 
     /**

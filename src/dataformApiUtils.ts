@@ -114,7 +114,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     ]);
 
     if(!remoteDataformWorkspaceStatus){
-        vscode.window.showErrorMessage(`Could not get determine git status for workspace ${dataformClient.workspaceId}`)
+        vscode.window.showErrorMessage(`Could not get determine git status for workspace ${dataformClient.workspaceId}`);
         return;
     }
     const gitRemoteChanges = remoteDataformWorkspaceStatus.uncommittedFileChanges;
@@ -265,7 +265,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         let options = {
             clientOptions
-        }
+        };
 
         const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation, options);
         if (token.isCancellationRequested) {
