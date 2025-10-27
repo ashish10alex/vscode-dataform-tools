@@ -65,8 +65,8 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
     }
 
     const gitCommitsAheadBehind = await dataformClient.getGitCommitsAheadAndBehind();
-    const gitCommitsAhead = gitCommitsAheadBehind[0].commitsAhead || 0;
-    const gitCommitsBehind = gitCommitsAheadBehind[0].commitsBehind || 0;
+    const gitCommitsAhead = gitCommitsAheadBehind.commitsAhead || 0;
+    const gitCommitsBehind = gitCommitsAheadBehind.commitsBehind || 0;
 
     if(gitCommitsAhead > 0 && !remoteGitRepoExsists){
         // NOTE: this will create the branch in remote if it does not exsists

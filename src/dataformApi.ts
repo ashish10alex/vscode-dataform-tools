@@ -168,12 +168,18 @@ export class DataformApi {
         return await this.client.fetchFileGitStatuses(request);
     }
 
+    /**
+     * Gets number of commits the Dataform workspace is ahead and behind its remote
+     *
+     * @returns {Promise} - The promise which resolves to an object representing {@link protos.google.cloud.dataform.v1beta1.FetchGitAheadBehindResponse|FetchGitAheadBehindResponse}.
+    */
     async getGitCommitsAheadAndBehind() {
         const request = {
             name: this.workspaceName,
             remoteBranch: this.gitBranch
         };
-        return await this.client.fetchGitAheadBehind(request);
+        const [gitCommitsAheadBehind] = await this.client.fetchGitAheadBehind(request);
+        return gitCommitsAheadBehind;
     }
 
     /**
