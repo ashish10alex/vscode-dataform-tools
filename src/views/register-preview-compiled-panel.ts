@@ -484,6 +484,7 @@ export class CompiledQueryPanel {
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
+            "models": curFileMeta.fileMetadata.tables,
     });
 
         if(diagnosticCollection){
