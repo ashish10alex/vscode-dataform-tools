@@ -107,6 +107,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
                 return {workflowInvocationUrlGCP: url, errorWorkflowInvocation: undefined};
             }
         } catch(error:any){
+            vscode.window.showErrorMessage(error.message);
             return {workflowInvocationUrlGCP: undefined, errorWorkflowInvocation: error.message};
         }
     }
