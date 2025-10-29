@@ -71,6 +71,7 @@ Trouble installing or looking for a specific customization ? Please see [FAQ sec
 
 * 🎥 [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
 * 🎥 [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+* 🎥 [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
 
 ## Features
 
