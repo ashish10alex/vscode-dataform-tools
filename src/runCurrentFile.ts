@@ -99,7 +99,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
                 return;
             }
             const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
             const url = createdWorkflowInvocation?.url;
             if(url){
                 sendWorkflowInvocationNotification(url);

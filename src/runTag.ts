@@ -121,7 +121,7 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
 
     try{
         const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch");
+        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
         if(createdWorkflowInvocation?.url){
             sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
         }
