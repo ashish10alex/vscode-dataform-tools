@@ -302,25 +302,16 @@ export async function activate(context: vscode.ExtensionContext) {
         runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
-    if (vscode.workspace.getConfiguration("vscode-dataform-tools").get("recommendErrorLensExtension") && !isWsl) {
-    const errorLensExtension = vscode.extensions.getExtension("usernamehw.errorlens");
-    if (!errorLensExtension) {
-        await vscode.window
-        .showInformationMessage(
-            "The Dataform tools extension recommends installing the Error Lens extension to show error messages inline instead of just showing swigly lines under the error",
-            "Install",
-            "Don't show again"
-        )
-        .then(selection => {
-            if (selection === "Install") {
-            vscode.env.openExternal(vscode.Uri.parse("vscode:extension/usernamehw.errorlens"));
-            } else if (selection === "Don't show again") {
-            vscode.workspace
-                .getConfiguration("vscode-dataform-tools")
-                .update("recommendYamlExtension", false, vscode.ConfigurationTarget.Global);
+    const errorLensExtensionInstalled = vscode.extensions.getExtension("usernamehw.errorlens");
+    //NOTE: in wsl the extension is not visible in wsl remote by the api as it can be installed in client side (windows) if vscode thinks its is a UI based extension instead of workspace based
+    if (!errorLensExtensionInstalled && !isWsl) {
+        const message = "The Dataform tools extension recommends installing the Error Lens extension to show error messages inline.";
+        const installButton = "Install Error Lens";
+        vscode.window.showInformationMessage(message, installButton).then(selection => {
+            if (selection === installButton) {
+                vscode.env.openExternal(vscode.Uri.parse("vscode:extension/usernamehw.errorlens"));
             }
         });
-    }
     }
 
     // Add logging to key operations
