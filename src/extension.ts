@@ -43,6 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
+    globalThis.isWsl = vscode.env.remoteName === "wsl";
     globalThis.bigQueryJob = undefined;
     globalThis._bigQueryJobId = undefined;
     globalThis.cancelBigQueryJobSignal = false;
@@ -301,7 +302,7 @@ export async function activate(context: vscode.ExtensionContext) {
         runTag(includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
-    if (vscode.workspace.getConfiguration("vscode-dataform-tools").get("recommendErrorLensExtension")) {
+    if (vscode.workspace.getConfiguration("vscode-dataform-tools").get("recommendErrorLensExtension") && !isWsl) {
     const errorLensExtension = vscode.extensions.getExtension("usernamehw.errorlens");
     if (!errorLensExtension) {
         await vscode.window

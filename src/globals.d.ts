@@ -98,4 +98,8 @@ declare global {
   var compilerOptionsMap: {[key: string]: stringMap<string, string>} | undefined;
 }
 
+declare global {
+  var isWsl: boolean
+}
+
 export {};
