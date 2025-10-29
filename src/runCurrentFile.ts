@@ -99,6 +99,7 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
                 return;
             }
             const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+            vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
             const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
             const url = createdWorkflowInvocation?.url;
             if(url){

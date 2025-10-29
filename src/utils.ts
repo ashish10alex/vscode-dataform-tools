@@ -1703,6 +1703,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         }
         try{
             const dataformClient = new DataformApi(projectId, gcpProjectLocation);
+            vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
             const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
             if(createdWorkflowInvocation?.url){
                 sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
