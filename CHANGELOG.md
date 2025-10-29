@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.17.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.0...v0.17.1) (2025-10-29)
+
+
+### Bug Fixes
+
+* compiler options not getting passed for execution via api ([08f9189](https://github.com/ashish10alex/vscode-dataform-tools/commit/08f9189dfd75209de4c0a920e6a0c7a87a529a9d))
+* **webview:** link of model should be shown as soon as the compilation is done ([acec93c](https://github.com/ashish10alex/vscode-dataform-tools/commit/acec93c33f7976afc0b643706733c951002aa3dd))
+
 ## [0.17.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.16.9...v0.17.0) (2025-10-27)
 
 
