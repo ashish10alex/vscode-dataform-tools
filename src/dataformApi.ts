@@ -141,8 +141,9 @@ export class DataformApi {
 
     /**
      * create compilation result
-     * 
-     * @returns {Promise} - The promise which resolves an object representing {{@link protos.google.cloud.dataform.v1beta1.CompilationResult|CompilationResult}}
+     * @param {CompilationType} compilationType - type of compilation result to create, either "gitBranch" or "workspace"
+     * @param {ICodeCompilationConfig} object representing {@link protos.google.cloud.dataform.v1beta1.CodeCompilationConfig|CodeCompilationConfig}
+     * @returns {Promise} The promise which resolves an object representing {{@link protos.google.cloud.dataform.v1beta1.CompilationResult|CompilationResult}}
     */
     async createCompilationResult(compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
         let compilationResult: ICompilationResult;
@@ -225,6 +226,12 @@ export class DataformApi {
         await this.client.pushGitCommits(request);
     }
 
+    /**
+     * create Dataform workflow invocation
+     * @param {InvocationConfig} object representing {@link protos.google.cloud.dataform.v1beta1.InvocationConfig|InvocationConfig}
+     * @param {string} compilationResultName - full name of the compilation result
+     * @returns {Promise} The promise which resolves an object containing name, url and id of the created workflow invocation
+    */
     async createDataformWorkflowInvocation(invocationConfig: InvocationConfig, compilationResultName:string){
         const workflowInvocation = {
             compilationResult: compilationResultName,
@@ -252,6 +259,13 @@ export class DataformApi {
         return {name: createdWorkflowInvocationName, url: workflowInvocationUrlGCP, id: workflowInvocationId};
     }
 
+    /**
+     * Runs Dataform remotely by creating compilation result and workflow invocation
+     * @param {InvocationConfig} object representing {@link protos.google.cloud.dataform.v1beta1.InvocationConfig|InvocationConfig}
+     * @param {CompilationType} compilationType - type of compilation result to create, either "gitBranch" or "workspace"
+     * @param {ICodeCompilationConfig} object representing {@link protos.google.cloud.dataform.v1beta1.CodeCompilationConfig|CodeCompilationConfig}
+     * @returns {Promise} The promise which resolves an object containing name, url and id of the created workflow invocation
+    */
     async runDataformRemotely(invocationConfig: InvocationConfig, compilationType:CompilationType, codeCompilationConfig?:ICodeCompilationConfig){
         const compilationResult = await this.createCompilationResult(compilationType, codeCompilationConfig);
         const fullCompilationResultName = compilationResult.name;
