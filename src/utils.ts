@@ -1800,14 +1800,17 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     } else if (type === "operations") {
         queryToDryRun = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (type === "incremental") {
-        //TODO: defaulting to using incremental query to dry run for now
-        // let nonIncrementalQuery = currFileMetadata.queryMeta.preOpsQuery + currFileMetadata.queryMeta.nonIncrementalQuery;
-        let preOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
-        if (preOpsQuery && preOpsQuery !== "") {
-            preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(fileMetadata.queryMeta.preOpsQuery);
+        let incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
+        let nonIncrementalPreOpsQuery = fileMetadata.queryMeta.preOpsQuery.trimStart();
+
+        if (incrementalPreOpsQuery && incrementalPreOpsQuery !== "") {
+            incrementalPreOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(incrementalPreOpsQuery);
         }
-        incrementalQuery = preOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
-        nonIncrementalQuery = preOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery.trimStart();
+        if (nonIncrementalPreOpsQuery && nonIncrementalPreOpsQuery !== "") {
+            nonIncrementalPreOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(nonIncrementalPreOpsQuery);
+        }
+        incrementalQuery = incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
+        nonIncrementalQuery = nonIncrementalPreOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery.trimStart();
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
