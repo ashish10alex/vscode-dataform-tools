@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.17.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.2...v0.17.3) (2025-11-01)
+
+
+### Bug Fixes
+
+* pre operations not getting correctly assigned to model type `incremental` ([#200](https://github.com/ashish10alex/vscode-dataform-tools/issues/200)) ([ea96f4f](https://github.com/ashish10alex/vscode-dataform-tools/commit/ea96f4f0475d2fdc9431fc63c1dd160a05aa022f))
+
 ### [0.17.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.1...v0.17.2) (2025-10-29)
 
 
