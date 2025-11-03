@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from 'path';
 import * as vscode from 'vscode';
 import { GitFileChange, GitFileChangeRaw, GitStatusCode, GitStatusCodeHumanReadable } from './types';
@@ -21,7 +22,7 @@ export function getGitBranchAndRepoName() {
 
   const repo = git.repositories[0];
   const gitBranch = repo.state.HEAD?.name ?? 'No branch';
-  const gitRepoName = path.basename(repo.rootUri.fsPath);
+  const gitRepoName = getActualRepoName(repo.rootUri.fsPath);
 
   return { gitBranch, gitRepoName };
 }
@@ -152,4 +153,37 @@ export async function gitRemoteBranchExsists(gitBranchName:string): Promise<bool
         }
     }
     return false;
+}
+
+function getActualRepoName(repoPath: string): string {
+  try {
+    const gitDirPath = path.join(repoPath, '.git');
+    
+    // Check if .git is a file (worktree) or directory (main repo)
+    if (fs.existsSync(gitDirPath)) {
+      const stats = fs.statSync(gitDirPath);
+      
+      if (stats.isFile()) {
+        const gitFileContent = fs.readFileSync(gitDirPath, 'utf8');
+        const match = gitFileContent.match(/gitdir:\s*(.+)/);
+        
+        if (match) {
+          const worktreeGitDir = match[1].trim();
+          
+          const mainRepoGitDir = worktreeGitDir.split(path.sep)
+            .slice(0, -2) // Remove 'worktrees' and branch name
+            .join(path.sep);
+          
+          const mainRepoPath = path.dirname(mainRepoGitDir);
+          return path.basename(mainRepoPath);
+        }
+      }
+    }
+    
+    // If not a worktree or couldn't parse, fall back to current directory name
+    return path.basename(repoPath);
+  } catch (error) {
+    console.error('Error getting repository name:', error);
+    return path.basename(repoPath);
+  }
 }
