@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.17.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.3...v0.17.4) (2025-11-03)
+
+
+### Features
+
+* use ci to publish extension in Microsoft marketplace and open vsx ([#201](https://github.com/ashish10alex/vscode-dataform-tools/issues/201)) ([b2a8b5a](https://github.com/ashish10alex/vscode-dataform-tools/commit/b2a8b5aa30b3b552c0bfe9afa2cffc9e9ecb4b00))
+
+
+### Bug Fixes
+
+* git repo name not correctly picked up when using git worktrees ([dd4ade6](https://github.com/ashish10alex/vscode-dataform-tools/commit/dd4ade6e2f236a124a9ea25f433898a7c488f810))
+
 ### [0.17.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.2...v0.17.3) (2025-11-01)
 
 
