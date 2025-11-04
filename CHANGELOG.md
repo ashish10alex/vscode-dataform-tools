@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.17.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.4...v0.17.5) (2025-11-04)
+
+
+### Features
+
+* improve sqlx parser, faster by approx 2x ([#203](https://github.com/ashish10alex/vscode-dataform-tools/issues/203)) ([dd400e3](https://github.com/ashish10alex/vscode-dataform-tools/commit/dd400e30d5c4e1b82d81fedc95f660f44d62d003))
+
+
+### Bug Fixes
+
+* yaml and json files not being synced to remote workspace ([#202](https://github.com/ashish10alex/vscode-dataform-tools/issues/202)) ([e91178e](https://github.com/ashish10alex/vscode-dataform-tools/commit/e91178e30078cf6a47d89e276be3d890d02ab5d9))
+
 ### [0.17.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.3...v0.17.4) (2025-11-03)
 
 
