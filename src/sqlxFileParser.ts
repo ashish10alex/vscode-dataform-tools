@@ -1,186 +1,162 @@
 import * as vscode from "vscode";
-import { SqlxBlockMetadata, PreOpsBlockMeta, PostOpsBlockMeta } from "./types";
+import { SqlxBlockMetadata } from "./types";
 
-function countCurlyBraces(str: string): {
-      openBraces: number;
-      closedBraces: number;
-  } {
-      let openBraces = 0;
-      let closedBraces = 0;
 
-      for (let i = 0; i < str.length; i++) {
-          if (str[i] === '{') {
-              openBraces++;
-          } else if (str[i] === '}') {
-              closedBraces++;
-          }
-      }
-      return {
-          openBraces: openBraces,
-          closedBraces: closedBraces
-      };
-  }
-
-function isEmptyOrWhitespace(str:string) {
-  return str.trim().length === 0;
-}
-
-/**
-    * This function is used to get start / end points for different blocks in an sqlx file
-    * An sqlx file can have a config block followed by pre_operations / post_operations and an sql block
-*/
-export const getMetadataForSqlxFileBlocks = (document:vscode.TextDocument): SqlxBlockMetadata => {
-
+export const getMetadataForSqlxFileBlocks = (document: vscode.TextDocument): SqlxBlockMetadata => {
     let inMajorBlock = false;
+    let braceDepth = 0;
+    let currentBlock = "";
 
-    /**vars for tracking js block */
-    let startOfJsBlock = 0;
-    let endOfJsBlock = 0;
-    let jsBlockExsists = false;
-
-    /**vars for config block tracking */
+    // Config block
     let startOfConfigBlock = 0;
     let endOfConfigBlock = 0;
     let configBlockExsists = false;
 
-    /**vars for pre_operations block tracking */
-    let preOpsBlockMeta: PreOpsBlockMeta = {preOpsList: []};
+    // JS block
+    let startOfJsBlock = 0;
+    let endOfJsBlock = 0;
+    let jsBlockExsists = false;
+
+    // Pre-operations
+    const preOpsList: Array<{startLine: number, endLine: number, exists: boolean}> = [];
     let startOfPreOperationsBlock = 0;
-    let endOfPreOperationsBlock = 0;
 
-    /**vars for post_operations block tracking */
-    let postOpsBlockMeta: PostOpsBlockMeta = {postOpsList: []};
+    // Post-operations
+    const postOpsList: Array<{startLine: number, endLine: number, exists: boolean}> = [];
     let startOfPostOperationsBlock = 0;
-    let endOfPostOperationsBlock = 0;
 
-    /**vars for sql code block tracking */
+    // SQL block
     let startOfSqlBlock = 0;
     let endOfSqlBlock = 0;
     let sqlBlockExsists = false;
 
-    /**vars for inner blocks (defined by curley braces {} ) tracking */
-    let openBracesCount = 0;
-    let closedBracesCount = 0;
-
-    let currentBlock = "";
-
     const totalLines = document.lineCount;
 
     for (let i = 0; i < totalLines; i++) {
-        const lineContents = document.lineAt(i).text;
-        //TODO: Maybe we do not need to call this function if we are in a sql block ?
-        const curleyBraceMeta = countCurlyBraces(lineContents);
-        const openBraces = curleyBraceMeta.openBraces;
-        const closedBraces = curleyBraceMeta.closedBraces;
+        const line = document.lineAt(i).text;
+        const trimmed = line.trim();
+        
+        // Skip empty lines early
+        if (trimmed.length === 0) {continue;}
 
-        openBracesCount += openBraces;
-        closedBracesCount += closedBraces;
-
-        if (lineContents.match("config {") && !inMajorBlock) {
-            currentBlock = "config";
-            startOfConfigBlock = i + 1;
-            inMajorBlock = true;
-
-            if(openBracesCount === closedBracesCount && inMajorBlock){
-                currentBlock = "";
-                inMajorBlock = false;
-                endOfConfigBlock = i + 1;
-                configBlockExsists = true;
-            }
-
-        } else if (lineContents.match("js {") && !inMajorBlock){
-            currentBlock = "js";
-            startOfJsBlock = i + 1;
-            inMajorBlock = true;
-
-            if(openBracesCount === closedBracesCount && inMajorBlock){
-                currentBlock = "";
-                inMajorBlock = false;
-                endOfJsBlock = i + 1;
-                jsBlockExsists = true;
-            }
+        // Count braces efficiently (only when needed)
+        let openBraces = 0;
+        let closedBraces = 0;
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '{') {openBraces++;}
+            else if (char === '}') {closedBraces++;}
         }
-         else if (lineContents.match("post_operations {") && !inMajorBlock){
-            currentBlock = "post_operations";
-            startOfPostOperationsBlock = i+1;
-            inMajorBlock = true;
+        
+        braceDepth += openBraces - closedBraces;
 
-            if((openBraces === closedBraces) && inMajorBlock){
-                currentBlock = "";
-                inMajorBlock = false;
-                endOfPostOperationsBlock = i + 1;
-                postOpsBlockMeta.postOpsList.push(
-                    {
+        // Check for block starts (avoid regex, use indexOf for speed)
+        if (!inMajorBlock) {
+            if (trimmed.startsWith('config {')) {
+                currentBlock = "config";
+                startOfConfigBlock = i + 1;
+                inMajorBlock = true;
+                
+                // Single-line block check
+                if (braceDepth === 0) {
+                    endOfConfigBlock = i + 1;
+                    configBlockExsists = true;
+                    currentBlock = "";
+                    inMajorBlock = false;
+                }
+            } else if (trimmed.startsWith('js {')) {
+                currentBlock = "js";
+                startOfJsBlock = i + 1;
+                inMajorBlock = true;
+                
+                if (braceDepth === 0) {
+                    endOfJsBlock = i + 1;
+                    jsBlockExsists = true;
+                    currentBlock = "";
+                    inMajorBlock = false;
+                }
+            } else if (trimmed.startsWith('post_operations {')) {
+                currentBlock = "post_operations";
+                startOfPostOperationsBlock = i + 1;
+                inMajorBlock = true;
+                
+                if (braceDepth === 0) {
+                    postOpsList.push({
                         startLine: startOfPostOperationsBlock,
-                        endLine: endOfPostOperationsBlock,
+                        endLine: i + 1,
                         exists: true
-                    },
-                );
-            }
-
-        } else if (lineContents.match("pre_operations {") && !inMajorBlock){
-            currentBlock = "pre_operations";
-            startOfPreOperationsBlock = i+1;
-            inMajorBlock = true;
-
-            if((openBraces === closedBraces) && inMajorBlock){
-                currentBlock = "";
-                inMajorBlock = false;
-                endOfPreOperationsBlock = i + 1;
-                preOpsBlockMeta.preOpsList.push(
-                    {
+                    });
+                    currentBlock = "";
+                    inMajorBlock = false;
+                }
+            } else if (trimmed.startsWith('pre_operations {')) {
+                currentBlock = "pre_operations";
+                startOfPreOperationsBlock = i + 1;
+                inMajorBlock = true;
+                
+                if (braceDepth === 0) {
+                    preOpsList.push({
                         startLine: startOfPreOperationsBlock,
-                        endLine: endOfPreOperationsBlock,
+                        endLine: i + 1,
                         exists: true
-                    },
-                );
+                    });
+                    currentBlock = "";
+                    inMajorBlock = false;
+                }
+            } else {
+                // SQL block (anything not in a major block)
+                if (startOfSqlBlock === 0) {
+                    startOfSqlBlock = i + 1;
+                    sqlBlockExsists = true;
+                }
+                endOfSqlBlock = i + 1;
             }
-        } else if (inMajorBlock && (openBracesCount === closedBracesCount)) {
-            if (currentBlock === "config"){
-                endOfConfigBlock = i + 1;
+        } else if (braceDepth === 0) {
+            // Block closing
+            const endLine = i + 1;
+            
+            if (currentBlock === "config") {
+                endOfConfigBlock = endLine;
                 configBlockExsists = true;
-                currentBlock = "";
             } else if (currentBlock === "js") {
-                currentBlock = "";
-                endOfJsBlock = i + 1;
+                endOfJsBlock = endLine;
                 jsBlockExsists = true;
             } else if (currentBlock === "pre_operations") {
-                endOfPreOperationsBlock = i + 1;
-                preOpsBlockMeta.preOpsList.push(
-                    {
-                        startLine: startOfPreOperationsBlock,
-                        endLine: endOfPreOperationsBlock,
-                        exists: true
-                    },
-                );
-                currentBlock = "";
+                preOpsList.push({
+                    startLine: startOfPreOperationsBlock,
+                    endLine: endLine,
+                    exists: true
+                });
             } else if (currentBlock === "post_operations") {
-                endOfPostOperationsBlock = i + 1;
-                postOpsBlockMeta.postOpsList.push(
-                    {
-                        startLine: startOfPostOperationsBlock,
-                        endLine: endOfPostOperationsBlock,
-                        exists: true
-                    },
-                );
-                currentBlock = "";
+                postOpsList.push({
+                    startLine: startOfPostOperationsBlock,
+                    endLine: endLine,
+                    exists: true
+                });
             }
+            
+            currentBlock = "";
             inMajorBlock = false;
-        } else if (!isEmptyOrWhitespace(lineContents) && !inMajorBlock){
-            if (startOfSqlBlock === 0){
-                startOfSqlBlock = i + 1;
-                sqlBlockExsists = true;
-                endOfSqlBlock = i + 1;
-            }else{
-                endOfSqlBlock = i + 1;
-            }
         }
     }
+
     return {
-        configBlock: {startLine: startOfConfigBlock, endLine: endOfConfigBlock, exists: configBlockExsists}
-        , preOpsBlock: preOpsBlockMeta
-        , postOpsBlock: postOpsBlockMeta
-        , sqlBlock: {startLine: startOfSqlBlock, endLine: endOfSqlBlock, exists: sqlBlockExsists}
-        , jsBlock: {startLine: startOfJsBlock, endLine: endOfJsBlock, exists: jsBlockExsists}
+        configBlock: {
+            startLine: startOfConfigBlock,
+            endLine: endOfConfigBlock,
+            exists: configBlockExsists
+        },
+        preOpsBlock: { preOpsList },
+        postOpsBlock: { postOpsList },
+        sqlBlock: {
+            startLine: startOfSqlBlock,
+            endLine: endOfSqlBlock,
+            exists: sqlBlockExsists
+        },
+        jsBlock: {
+            startLine: startOfJsBlock,
+            endLine: endOfJsBlock,
+            exists: jsBlockExsists
+        }
     };
 };
