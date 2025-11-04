@@ -83,6 +83,13 @@ export class DataformApi {
         return workspace;
     }
 
+    async installPackages() {
+        const request = {
+            workspace: this.workspaceName,
+        };
+        await this.client.installNpmPackages(request);
+    }
+
     /**
      * Pull commits from the remote git branch of the workspace. Git username and email are determined by git cli to set The author of any merge commit which may be created as a result of merging fetched Git commits into this workspace..
      *

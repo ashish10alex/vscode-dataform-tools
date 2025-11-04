@@ -53,7 +53,7 @@ export async function getLocalGitState(): Promise<GitFileChange[]> {
             return { status, filePath: filePath.replace(/\\/g, '/') };
         });
         return files.filter((file:any) => 
-            (file.filePath.endsWith('.sqlx') || file.filePath.endsWith('.js'))
+        ['.sqlx', '.js', '.json', '.yaml'].some(ext => file.filePath.endsWith(ext))
         ).map((file:any) => ({
             state: gitStatusToHumanReadable(file.status),
             path: file.filePath,
