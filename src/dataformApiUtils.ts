@@ -148,14 +148,16 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
         });
 
 
+        let configFileChanged = false;
+        let configFilesChanged = [];
+
         // NOTE: doing this as we are getting following error when doing Promise.all 
         // 10 ABORTED: sync mutate calls cannot be queued
         for (const {state, path, fullPath} of finalGitLocalChanges.values()){
             const baseFileName = path.split("/").pop();
             if(baseFileName === "workflow_settings.yaml" || baseFileName === "dataform.json" || baseFileName === "package.json"){
-                vscode.window.showInformationMessage(`${baseFileName} was modified. Installing packages`);
-                // FIXME: we should have a flag and do this at the end not each time we encounter a changed file
-                await dataformClient.installPackages();
+                configFileChanged = true;
+                configFilesChanged.push(baseFileName);
             }
             if(state === "ADDED" || state === "MODIFIED"){
                 await dataformClient.writeFileToWorkspace(fullPath, path);
@@ -170,6 +172,11 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
                     }
                 }
             }
+        }
+
+        if(configFileChanged){
+            vscode.window.showInformationMessage(`${configFilesChanged.join("")} were modified. Installing packages`);
+            await dataformClient.installPackages();
         }
 
         if (gitRemoteChanges && gitRemoteChanges.length > 0) {
