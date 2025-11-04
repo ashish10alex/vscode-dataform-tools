@@ -151,6 +151,10 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
         // NOTE: doing this as we are getting following error when doing Promise.all 
         // 10 ABORTED: sync mutate calls cannot be queued
         for (const {state, path, fullPath} of finalGitLocalChanges.values()){
+            if(path.split("/").pop() === "workflow_settings.yaml"){
+                vscode.window.showInformationMessage("workflow_settings.yaml file was modified. Installing packages");
+                await dataformClient.installPackages();
+            }
             if(state === "ADDED" || state === "MODIFIED"){
                 await dataformClient.writeFileToWorkspace(fullPath, path);
             } else if (state === "DELETED"){
