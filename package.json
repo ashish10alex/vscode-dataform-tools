@@ -214,7 +214,11 @@
                 "extensions": [
                     ".sqlx"
                 ],
-                "configuration": "language-configuration.json"
+                "configuration": "language-configuration.json",
+                 "icon": {
+                    "light": "media/images/sqlx_file_icon.png",
+                    "dark": "media/images/sqlx_file_icon.png"
+                }
             }
         ],
         "grammars": [
