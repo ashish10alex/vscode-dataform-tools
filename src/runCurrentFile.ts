@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject, showLoadingProgress } from "./utils";
-import { DataformApi } from "./dataformApi";
-import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress } from "./utils";
+import { _syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
 
 export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
@@ -11,7 +10,12 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
         return;
     }
 
-    var result = getFileNameFromDocument(document, false);
+    let normalizeForWindows = true;
+    if (executionMode === "api" || executionMode === "api_workspace") {
+        normalizeForWindows = false;
+    }
+
+    var result = getFileNameFromDocument(document, false, normalizeForWindows);
     if (result.success === false) {
         vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`);
         return;
@@ -55,57 +59,21 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
         runCommandInTerminal(dataformActionCmd);
         return;
-    } else if (executionMode === "api" || executionMode === "api_workspace"){
-        const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
-        if(!projectId){
-            vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
-            return;
-        }
-
-        let gcpProjectLocation = undefined;
-        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-        }else{
-            gcpProjectLocation = await getLocationOfGcpProject(projectId);
-        }
-
-        if(!gcpProjectLocation){
-            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
-            return;
-        }
-
-        let actionsList: {database:string, schema: string, name:string}[] = [];
-        currFileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-            const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
-            actionsList.push(action);
-        });
-
-        const invocationConfig = {
-            includedTargets: actionsList,
-            transitiveDependenciesIncluded: includDependencies,
-            transitiveDependentsIncluded: includeDependents,
-            fullyRefreshIncrementalTablesEnabled: fullRefresh,
-        };
-
+    } else if (executionMode === "api" || executionMode === "api_workspace") {
+        const compilationType = executionMode  === "api" ? "gitBranch" : "workspace";
         try{
-            if(executionMode === "api_workspace"){
-                await showLoadingProgress(
-                    "",
-                    syncAndrunDataformRemotely,
-                    "Dataform remote workspace execution cancelled",
-                    invocationConfig,
-                    compilerOptionsMap,
-                );
-                return;
-            }
-            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-            vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
-            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
-            const url = createdWorkflowInvocation?.url;
-            if(url){
-                sendWorkflowInvocationNotification(url);
-                return {workflowInvocationUrlGCP: url, errorWorkflowInvocation: undefined};
-            }
+            await showLoadingProgress(
+                "",
+                _syncAndrunDataformRemotely,
+                "Dataform remote workspace execution cancelled",
+                compilationType,
+                relativeFilePath,
+                includDependencies,
+                includeDependents,
+                fullRefresh,
+                compilerOptionsMap,
+            );
+            return;
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
             return {workflowInvocationUrlGCP: undefined, errorWorkflowInvocation: error.message};

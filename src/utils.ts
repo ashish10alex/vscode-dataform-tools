@@ -919,10 +919,10 @@ export function debugExecutablePaths(): void {
     });
 }
 
-export function getRelativePath(filePath: string) {
+export function getRelativePath(filePath: string, normalizeForWindow: boolean = true) {
     const fileUri = vscode.Uri.file(filePath);
     let relativePath = vscode.workspace.asRelativePath(fileUri);
-    if (isRunningOnWindows) {
+    if (isRunningOnWindows && normalizeForWindow) {
         relativePath = path.win32.normalize(relativePath);
     }
     const firstDefinitionIndex = relativePath.indexOf("definitions");
@@ -968,13 +968,14 @@ export async function selectWorkspaceFolder() {
 
 export function getFileNameFromDocument(
     document: vscode.TextDocument,
-    showErrorMessage: boolean
+    showErrorMessage: boolean,
+    normalizeForWindow: boolean = true
 ): FileNameMetadataResult<FileNameMetadata, string> {
     const filePath = document.uri.fsPath;
     const extWithDot = path.extname(filePath);
     const extension = extWithDot.startsWith('.') ? extWithDot.slice(1) : extWithDot;
     const rawFileName = path.basename(filePath, extWithDot);
-    const relativeFilePath = getRelativePath(filePath);
+    const relativeFilePath = getRelativePath(filePath, normalizeForWindow);
     const validFileType = supportedExtensions.includes(extension);
 
     if (!validFileType) {

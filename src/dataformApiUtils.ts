@@ -3,7 +3,7 @@ import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
 import { DataformApi } from './dataformApi';
-import { CreateCompilationResultResponse, InvocationConfig , GitFileChange, ICodeCompilationConfig} from "./types";
+import { CreateCompilationResultResponse, InvocationConfig , GitFileChange, ICodeCompilationConfig, CompilationType, ITarget} from "./types";
 
 export function sendWorkflowInvocationNotification(url:string){
     vscode.window.showInformationMessage(
@@ -349,4 +349,172 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         //7
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
         await compileAndCreateWorkflowInvocation(dataformClient, invocationConfig, codeCompilationConfig);
+};
+
+export async function _syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, compilationType:CompilationType, relativeFilePath:string, includDependencies:boolean, includeDependents:boolean, fullRefresh:boolean, codeCompilationConfig?:ICodeCompilationConfig){
+        // 1
+        progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
+        if (!CACHED_COMPILED_DATAFORM_JSON) {
+            if (token.isCancellationRequested) {
+                vscode.window.showInformationMessage('Operation cancelled during compilation check.');
+                return;
+            }
+
+            let workspaceFolder = await getWorkspaceFolder();
+            if (!workspaceFolder) {
+                vscode.window.showErrorMessage('No workspace folder selected.');
+                return;
+            }
+
+            // 1
+            progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 14.28 });
+            let { dataformCompiledJson } = await runCompilation(workspaceFolder); // ~1100ms
+            if (token.isCancellationRequested) {
+                vscode.window.showInformationMessage('Operation cancelled during compilation.');
+                return;
+            }
+
+            if (dataformCompiledJson) {
+                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            } else {
+                vscode.window.showErrorMessage(`Unable to compile Dataform project. Run "dataform compile" in the terminal to check`);
+                return;
+            }
+        } 
+
+        if (token.isCancellationRequested) {
+            vscode.window.showInformationMessage('Operation cancelled during GCP validation.');
+            return;
+        }
+
+        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpProjectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase) as string;
+        if (!gcpProjectId) {
+            vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
+            return;
+        }
+
+        let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
+        if (token.isCancellationRequested) {
+            vscode.window.showInformationMessage('Operation cancelled during GCP location fetch.');
+            return;
+        }
+
+        // 2
+        progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
+        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+        let clientOptions = { projectId: gcpProjectId };
+        if(serviceAccountJsonPath){
+            vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
+            // @ts-ignore 
+            clientOptions = {... clientOptions , keyFilename: serviceAccountJsonPath};
+        }
+
+        let options = {
+            clientOptions
+        };
+
+        const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation, options);
+        if (token.isCancellationRequested) {
+            vscode.window.showInformationMessage('Operation cancelled during client initialization.');
+            return;
+        }
+
+        if(compilationType === "workspace"){
+            // 3
+            progress.report({ message: `Creating Dataform workspace ${dataformClient.workspaceId} if it does not exsist...`, increment: 14.28 });
+            try {
+                await dataformClient.createWorkspace();
+            } catch (error: any) {
+                const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
+                const DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE = 5;
+
+                if (token.isCancellationRequested) {
+                    vscode.window.showInformationMessage('Operation cancelled during workspace creation.');
+                    return;
+                }
+
+                if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
+                    // vscode.window.showWarningMessage(error.message);
+                } else if (error.code === DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE) {
+                    error.message += `. Check if the Dataform repository ${dataformClient.gitRepoName} exists in GCP`;
+                    vscode.window.showErrorMessage(error.message);
+                    throw error;
+                } else {
+                    vscode.window.showErrorMessage(error.message);
+                    throw error;
+                }
+            }
+
+            // 4
+            progress.report({ message: `Verifying if git remote origin/${dataformClient.workspaceId} exsists...`, increment: 14.28 });
+            let remoteGitRepoExsists = await gitRemoteBranchExsists(dataformClient.gitBranch);
+            if (token.isCancellationRequested) {
+                vscode.window.showInformationMessage('Operation cancelled during workflow execution.');
+                return;
+            }
+
+            if(remoteGitRepoExsists){
+                // 5
+                progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 14.28 });
+                try {
+                    await dataformClient.pullGitCommits();
+                } catch (error: any) {
+                    //TODO: should we show user warning, and do a git resotore and pull changes ? 
+                    const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
+                    //NOTE: this should not happen anymore as we are checking for git remote first
+                    // const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
+
+                    if (token.isCancellationRequested) {
+                        vscode.window.showInformationMessage('Operation cancelled during Git pull.');
+                        return;
+                    }
+                    if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
+                        vscode.window.showWarningMessage(error.message);
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+
+            // 6
+            progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
+            await syncRemoteWorkspaceToLocalBranch(dataformClient, remoteGitRepoExsists);
+
+            //7
+            progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
+        }
+
+
+        const compilationResult = await dataformClient.createCompilationResult(compilationType, codeCompilationConfig);
+        const fullCompilationResultName = compilationResult.name;
+        let actionsList: ITarget[] = [];
+        if(fullCompilationResultName){
+            const actions = await dataformClient.queryCompilationResultActions(fullCompilationResultName);
+            actions.forEach((action) => {
+                if(action.filePath === relativeFilePath){
+                    if(action.target){
+                    actionsList.push(action.target);
+                    }
+                }
+            });
+
+            if(actionsList.length < 1){
+                //TODO: make error message better
+                vscode.window.showErrorMessage(`No actions found for ${relativeFilePath}`);
+                return;
+            }
+
+            const invocationConfig = {
+                includedTargets: actionsList,
+                transitiveDependenciesIncluded: includDependencies,
+                transitiveDependentsIncluded: includeDependents,
+                fullyRefreshIncrementalTablesEnabled: fullRefresh,
+            };
+            const createdWorkflowInvocation = await dataformClient.createDataformWorkflowInvocation(invocationConfig, fullCompilationResultName);
+            if(createdWorkflowInvocation?.url){
+                sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+            }
+            return;
+        }
 };
