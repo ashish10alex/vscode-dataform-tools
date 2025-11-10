@@ -26,31 +26,31 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
     if (!workspaceFolder) {
         return;
     }
+    if (executionMode === "cli") {
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
+        let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
-    let currFileMetadata;
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+        let currFileMetadata;
+        if (!CACHED_COMPILED_DATAFORM_JSON) {
 
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if(errors && errors.length > 0){
-            vscode.window.showErrorMessage("Error compiling Dataform. Run `dataform compile` to see more details");
+            let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+            if(errors && errors.length > 0){
+                vscode.window.showErrorMessage("Error compiling Dataform. Run `dataform compile` to see more details");
+                return;
+            }
+            if (dataformCompiledJson) {
+                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            }
+        }
+
+        if (CACHED_COMPILED_DATAFORM_JSON) {
+            currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+        }
+        if(!currFileMetadata){
+            vscode.window.showErrorMessage(`Unable to get metadata for the current file`);
             return;
         }
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
-    }
 
-    if (CACHED_COMPILED_DATAFORM_JSON) {
-        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
-    }
-    if(!currFileMetadata){
-        vscode.window.showErrorMessage(`Unable to get metadata for the current file`);
-        return;
-    }
-
-    if (executionMode === "cli") {
         let actionsList: string[] = currFileMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
 
         let dataformActionCmd = "";

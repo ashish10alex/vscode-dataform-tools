@@ -352,55 +352,9 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 };
 
 export async function _syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, compilationType:CompilationType, relativeFilePath:string, includDependencies:boolean, includeDependents:boolean, fullRefresh:boolean, codeCompilationConfig?:ICodeCompilationConfig){
-        // 1
-        progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
-        if (!CACHED_COMPILED_DATAFORM_JSON) {
-            if (token.isCancellationRequested) {
-                vscode.window.showInformationMessage('Operation cancelled during compilation check.');
-                return;
-            }
+        const gcpProjectId = "drawingfire-b72a8";
+        const gcpProjectLocation = "europe-west2";
 
-            let workspaceFolder = await getWorkspaceFolder();
-            if (!workspaceFolder) {
-                vscode.window.showErrorMessage('No workspace folder selected.');
-                return;
-            }
-
-            // 1
-            progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 14.28 });
-            let { dataformCompiledJson } = await runCompilation(workspaceFolder); // ~1100ms
-            if (token.isCancellationRequested) {
-                vscode.window.showInformationMessage('Operation cancelled during compilation.');
-                return;
-            }
-
-            if (dataformCompiledJson) {
-                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            } else {
-                vscode.window.showErrorMessage(`Unable to compile Dataform project. Run "dataform compile" in the terminal to check`);
-                return;
-            }
-        } 
-
-        if (token.isCancellationRequested) {
-            vscode.window.showInformationMessage('Operation cancelled during GCP validation.');
-            return;
-        }
-
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const gcpProjectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase) as string;
-        if (!gcpProjectId) {
-            vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
-            return;
-        }
-
-        let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
-        if (token.isCancellationRequested) {
-            vscode.window.showInformationMessage('Operation cancelled during GCP location fetch.');
-            return;
-        }
-
-        // 2
         progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
         const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
         let clientOptions = { projectId: gcpProjectId };
@@ -487,6 +441,11 @@ export async function _syncAndrunDataformRemotely(progress: vscode.Progress<{ me
 
 
         const compilationResult = await dataformClient.createCompilationResult(compilationType, codeCompilationConfig);
+        if(compilationResult?.compilationErrors && compilationResult.compilationErrors.length >0){
+            const errorMessages = compilationResult.compilationErrors.map((err) => {return err.message;}).join("; ");
+            vscode.window.showErrorMessage(errorMessages);
+            return;
+        }
         const fullCompilationResultName = compilationResult.name;
         let actionsList: ITarget[] = [];
         if(fullCompilationResultName){
