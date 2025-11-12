@@ -1,4 +1,3 @@
-# This section defines the build system.
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -9,7 +8,6 @@ project-includes = [
     "**/*.ipynb",
 ]
 
-# This section contains all your package's metadata.
 [project]
 name = "dataform-tools"  # Required: Must be unique on PyPI
 version = "1.0.0"        # Required: Use semantic versioning (e.g., 1.0.0)
@@ -30,18 +28,13 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    # List your project's dependencies here
-    # "requests>=2.20.0",
-    # "numpy",
     "google-cloud-dataform>=0.7.0",
 ]
 
-# This section provides links for your project.
 [project.urls]
 Homepage = "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/pypi"
 "Bug Tracker" = "https://github.com/ashish10alex/vscode-dataform-tools/issues"
 Repository = "https://github.com/ashish10alex/vscode-dataform-tools"
 
-# This tells setuptools to find your package in the 'src' directory.
 [tool.setuptools.packages.find]
 where = ["src"]
