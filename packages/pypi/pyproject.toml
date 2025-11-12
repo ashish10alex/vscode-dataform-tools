@@ -1,0 +1,47 @@
+# This section defines the build system.
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
+# This section contains all your package's metadata.
+[project]
+name = "dataform-tools"  # Required: Must be unique on PyPI
+version = "1.0.0"        # Required: Use semantic versioning (e.g., 1.0.0)
+authors = [
+  { name="Ashish Alex", email="ashish.alex10@gmail.com" },
+]
+description = "wrapper of the Google Cloud Dataform API (google-cloud-dataform) that simplifies common operations such as listing repositories, managing workspaces, creating compilation results, and triggering workflow invocations." # Required
+readme = "README.md" # Tells PyPI to use your README for the description
+requires-python = ">=3.10" # Specify the Python versions you support
+license = { file="LICENSE" }
+keywords = ["dataform", "gcp", "google-cloud", "etl"]
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    # List your project's dependencies here
+    # "requests>=2.20.0",
+    # "numpy",
+    "google-cloud-dataform>=0.7.0",
+]
+
+# This section provides links for your project.
+[project.urls]
+Homepage = "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/pypi"
+"Bug Tracker" = "https://github.com/ashish10alex/vscode-dataform-tools/issues"
+Repository = "https://github.com/ashish10alex/vscode-dataform-tools"
+
+# This tells setuptools to find your package in the 'src' directory.
+[tool.setuptools.packages.find]
+where = ["src"]
