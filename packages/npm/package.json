@@ -1,15 +1,15 @@
 {
   "name": "@ashishalex/dataform-tools",
   "description": "Wrapper for google-cloud/dataform npm package",
-  "homepage": "https://github.com/ashish10alex/vscode-dataform-tools/packages",
+  "homepage": "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/npm",
   "bugs": {
     "url": "https://github.com/ashish10alex/vscode-dataform-tools"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ashish10alex/vscode-dataform-tools/packages"
+    "url": "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/npm"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
