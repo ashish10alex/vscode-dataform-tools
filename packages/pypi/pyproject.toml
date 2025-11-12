@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.pyrefly]
@@ -17,7 +17,7 @@ authors = [
 description = "wrapper of the Google Cloud Dataform API (google-cloud-dataform) that simplifies common operations such as listing repositories, managing workspaces, creating compilation results, and triggering workflow invocations." # Required
 readme = "README.md" # Tells PyPI to use your README for the description
 requires-python = ">=3.10" # Specify the Python versions you support
-license = { file="LICENSE" }
+license = "MIT"
 keywords = ["dataform", "gcp", "google-cloud", "etl"]
 classifiers = [
   "Programming Language :: Python",
