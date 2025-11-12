@@ -12,6 +12,7 @@ class Target(TypedDict, total=False):
     schema: Optional[str]
     name: Optional[str]
 
+
 class CodeCompilationConfigType(TypedDict, total=False):
     # The default database (Google Cloud project ID).
     default_database: Optional[str]
@@ -34,6 +35,12 @@ class CodeCompilationConfigType(TypedDict, total=False):
     # NOTE: not supporting this yet
     # The default notebook runtime options. 
     # default_notebook_runtime_options	Optional[google.cloud.dataform_v1.types.NotebookRuntimeOptions]
+
+
+class CompilationResultType(TypedDict, total=False):
+    workspace: Optional[str]
+    git_commitish: Optional[str]
+    code_compilation_config: CodeCompilationConfig
 
 class DataformTools():
     def __init__(self, gcp_project_id:str, gcp_location:str):
@@ -109,9 +116,7 @@ class DataformTools():
 
         parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}"
 
-        compilation_result_dict: dict[str, Any] = {
-            # "workspace" : None,
-            # "git_commitish" : None,
+        compilation_result_dict: CompilationResultType = {
             "code_compilation_config": dataform_v1beta1.CodeCompilationConfig(**code_compilation_config)
         }
 
