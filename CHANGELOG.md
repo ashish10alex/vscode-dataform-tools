@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.17.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.5...v0.17.6) (2025-11-12)
+
+
+### Features
+
+* add an icon for .sqlx file ([382d8a9](https://github.com/ashish10alex/vscode-dataform-tools/commit/382d8a9c701154c128db261cd60841aa42c7a9c8))
+* **npm:** npm package for @google-cloud/dataform ([#206](https://github.com/ashish10alex/vscode-dataform-tools/issues/206)) ([a760907](https://github.com/ashish10alex/vscode-dataform-tools/commit/a760907fe230f7cf03ed517534749d3cce9ae4b7))
+
+
+### Bug Fixes
+
+* **webview:** dist folder not getting created by prepublish in ci ([#209](https://github.com/ashish10alex/vscode-dataform-tools/issues/209)) ([68eda8f](https://github.com/ashish10alex/vscode-dataform-tools/commit/68eda8faaba8772a377b56ee18b4c42a4b4e9c33))
+
 ### [0.17.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.4...v0.17.5) (2025-11-04)
 
 
