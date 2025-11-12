@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "0.17.5",
+    "version": "0.17.6",
     "sponsor": {
         "url": "https://buymeacoffee.com/ashishalexj"
     },
@@ -215,7 +215,7 @@
                     ".sqlx"
                 ],
                 "configuration": "language-configuration.json",
-                 "icon": {
+                "icon": {
                     "light": "media/images/sqlx_file_icon.png",
                     "dark": "media/images/sqlx_file_icon.png"
                 }
