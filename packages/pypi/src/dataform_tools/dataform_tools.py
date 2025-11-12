@@ -154,39 +154,3 @@ class DataformTools():
         )
         created_workflow_invocation = self.client.create_workflow_invocation(request)
         return created_workflow_invocation
-
-
-# gcp_project_id =  "drawingfire-b72a8"
-# gcp_location = "europe-west2"
-# repository_name = "football_dataform"
-# client = DataformTools(gcp_project_id, gcp_location)
-
-# workspace = client.create_workspace(repository_name, "another_workspace")
-
-# compilation_result =  client.create_compilation_request(repository_name, None, "another_workspace" , {"table_prefix": "AA"})
-
-# invocation_config: InvocationConfigType = {
-#     "included_tags" : ["nested"],
-#     "transitive_dependencies_included" : False,
-#     "transitive_dependents_included" : False,
-#     "fully_refresh_incremental_tables_enabled" : False,
-# }
-
-# if(compilation_result and compilation_result.name):
-#     created_workflow_invocation =client.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
-#     print(created_workflow_invocation)
-
-# workspace = client.create_workspace(repository_name, "another_workspace")
-# workspace = client.delete_workspace(repository_name, "another_workspace")
-
-# repositories = client.list_repositories()
-# print(repositories)
-
-# workspaces = client.list_workspaces(repository_name)
-# print(workspaces)
-
-# workspace = client.list_workspaces(repository_name)
-# print(workspace)
-
-# workspace = client.get_workspace("agi")
-# print(workspace)
