@@ -381,8 +381,9 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
+        "compile": "tsc -p ./ && npm run build:webviews",
         "watch": "tsc -watch -p ./",
+        "build:webviews": "vite build",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test": "rm -rf .vscode-test/user-data; vscode-test",
