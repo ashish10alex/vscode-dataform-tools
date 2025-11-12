@@ -3,6 +3,8 @@ from typing import TypedDict, List, Optional, Dict, Any, Union
 from google.cloud import dataform_v1beta1
 from google.cloud.dataform_v1beta1.types import CompilationResult
 from google.cloud.dataform_v1beta1.types import CodeCompilationConfig
+from google.cloud.dataform_v1beta1.types import WorkflowInvocation
+from google.cloud.dataform_v1beta1.types import InvocationConfig
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, NotFound
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,6 @@ class Target(TypedDict, total=False):
     database: Optional[str]
     schema: Optional[str]
     name: Optional[str]
-
 
 class CodeCompilationConfigType(TypedDict, total=False):
     # The default database (Google Cloud project ID).
@@ -36,6 +37,13 @@ class CodeCompilationConfigType(TypedDict, total=False):
     # The default notebook runtime options. 
     # default_notebook_runtime_options	Optional[google.cloud.dataform_v1.types.NotebookRuntimeOptions]
 
+class InvocationConfigType(TypedDict, total=False):
+    included_targets: Optional[List[Target]]
+    included_tags: Optional[List[str]]
+    transitive_dependencies_included: bool
+    transitive_dependents_included: bool
+    fully_refresh_incremental_tables_enabled: bool
+    service_account: str
 
 class CompilationResultType(TypedDict, total=False):
     workspace: Optional[str]
@@ -134,6 +142,20 @@ class DataformTools():
         )
         return self.client.create_compilation_result(request)
 
+    def create_workflow_invocation(self, repository_name:str, compilation_result_name:str, invocation_config:InvocationConfigType):
+        parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}"
+        workflow_invocation = dataform_v1beta1.WorkflowInvocation(
+            compilation_result = compilation_result_name,
+            invocation_config = dataform_v1beta1.InvocationConfig(**invocation_config)
+        )
+        request = dataform_v1beta1.CreateWorkflowInvocationRequest(
+            parent = parent,
+            workflow_invocation = workflow_invocation
+        )
+        created_workflow_invocation = self.client.create_workflow_invocation(request)
+        return created_workflow_invocation
+
+
 
 gcp_project_id =  "drawingfire-b72a8"
 gcp_location = "europe-west2"
@@ -142,8 +164,18 @@ client = DataformTools(gcp_project_id, gcp_location)
 
 # workspace = client.create_workspace(repository_name, "another_workspace")
 
-out =  client.create_compilation_request(repository_name, None, "another_workspace" , {"table_prefix": "AA"})
-print(out)
+compilation_result =  client.create_compilation_request(repository_name, None, "another_workspace" , {"table_prefix": "AA"})
+
+invocation_config: InvocationConfigType = {
+    "included_tags" : ["nested"],
+    "transitive_dependencies_included" : False,
+    "transitive_dependents_included" : False,
+    "fully_refresh_incremental_tables_enabled" : False,
+}
+
+if(compilation_result and compilation_result.name):
+    created_workflow_invocation =client.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
+    print(created_workflow_invocation)
 
 # workspace = client.create_workspace(repository_name, "another_workspace")
 # workspace = client.delete_workspace(repository_name, "another_workspace")
