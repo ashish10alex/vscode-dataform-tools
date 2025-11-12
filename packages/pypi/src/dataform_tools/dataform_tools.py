@@ -1,5 +1,5 @@
 import logging
-from typing import TypedDict, List, Optional, Dict, Any, Union
+from typing import TypedDict, List, Optional, Dict, Any, Union, NotRequired
 from google.cloud import dataform_v1beta1
 from google.cloud.dataform_v1beta1.types import CompilationResult
 from google.cloud.dataform_v1beta1.types import CodeCompilationConfig
@@ -37,13 +37,13 @@ class CodeCompilationConfigType(TypedDict, total=False):
     # The default notebook runtime options. 
     # default_notebook_runtime_options	Optional[google.cloud.dataform_v1.types.NotebookRuntimeOptions]
 
-class InvocationConfigType(TypedDict, total=False):
-    included_targets: Optional[List[Target]]
-    included_tags: Optional[List[str]]
+class InvocationConfigType(TypedDict, total=True):
+    included_targets: NotRequired[Optional[List[Target]]]
+    included_tags: NotRequired[Optional[List[str]]]
     transitive_dependencies_included: bool
     transitive_dependents_included: bool
     fully_refresh_incremental_tables_enabled: bool
-    service_account: str
+    service_account: NotRequired[str]
 
 class CompilationResultType(TypedDict, total=False):
     workspace: Optional[str]
