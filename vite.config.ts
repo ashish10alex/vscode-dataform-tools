@@ -14,7 +14,7 @@ export default defineConfig({
       },
     },
     sourcemap: true,
-    watch: {}
+    // watch: {}
   },
   css: {
     postcss: './postcss.config.js'
@@ -24,4 +24,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, './webviews/dependancy_graph')
     }
   }
-}); 
+});
