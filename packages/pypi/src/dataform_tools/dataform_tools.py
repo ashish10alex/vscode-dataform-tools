@@ -79,7 +79,7 @@ class DataformTools():
         workspaces = self.client.list_workspaces(request)
         return workspaces
 
-    def get_workspace(self, workspace_name:str):
+    def get_workspace(self, repository_name:str, workspace_name:str):
         workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
         request = dataform_v1beta1.GetWorkspaceRequest(
             name  = workspace_path,
@@ -97,7 +97,7 @@ class DataformTools():
             return self.client.create_workspace(request)
         except AlreadyExists:
             logger.info(f"workspace: {parent}/workspaces/{workspace_name} already exsists. Fetching ...")
-            return self.get_workspace(workspace_name)
+            return self.get_workspace(repository_name, workspace_name)
         except Exception as e:
             logger.error(f"Failed to create workspace: {e}")
             raise
@@ -156,26 +156,25 @@ class DataformTools():
         return created_workflow_invocation
 
 
-
-gcp_project_id =  "drawingfire-b72a8"
-gcp_location = "europe-west2"
-repository_name = "football_dataform"
-client = DataformTools(gcp_project_id, gcp_location)
+# gcp_project_id =  "drawingfire-b72a8"
+# gcp_location = "europe-west2"
+# repository_name = "football_dataform"
+# client = DataformTools(gcp_project_id, gcp_location)
 
 # workspace = client.create_workspace(repository_name, "another_workspace")
 
-compilation_result =  client.create_compilation_request(repository_name, None, "another_workspace" , {"table_prefix": "AA"})
+# compilation_result =  client.create_compilation_request(repository_name, None, "another_workspace" , {"table_prefix": "AA"})
 
-invocation_config: InvocationConfigType = {
-    "included_tags" : ["nested"],
-    "transitive_dependencies_included" : False,
-    "transitive_dependents_included" : False,
-    "fully_refresh_incremental_tables_enabled" : False,
-}
+# invocation_config: InvocationConfigType = {
+#     "included_tags" : ["nested"],
+#     "transitive_dependencies_included" : False,
+#     "transitive_dependents_included" : False,
+#     "fully_refresh_incremental_tables_enabled" : False,
+# }
 
-if(compilation_result and compilation_result.name):
-    created_workflow_invocation =client.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
-    print(created_workflow_invocation)
+# if(compilation_result and compilation_result.name):
+#     created_workflow_invocation =client.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
+#     print(created_workflow_invocation)
 
 # workspace = client.create_workspace(repository_name, "another_workspace")
 # workspace = client.delete_workspace(repository_name, "another_workspace")
