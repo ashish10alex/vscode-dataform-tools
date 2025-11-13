@@ -232,11 +232,12 @@ class DataformTools():
             None
         """
         workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
-        request = dataform_v1beta1.WriteFileRequest(workspace=workspace_path,  path=relative_path, contents=contents)
 
         if isinstance(contents, str):
             buffer_contents = contents.encode(encoding="utf-8")
         else: buffer_contents = contents
+
+        request = dataform_v1beta1.WriteFileRequest(workspace=workspace_path,  path=relative_path, contents=buffer_contents)
 
         self.client.write_file(request)
 
