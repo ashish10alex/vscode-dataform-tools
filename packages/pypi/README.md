@@ -75,21 +75,23 @@ Creates a execution of Dataform Pipeline using either the code from a specific g
 
 ```py
 from dataform_tools import DataformTools
+from dataform_tools import InvocationConfigType
 client = DataformTools("your-gcp-project-id", "europe-west2")
+
 repository_name = "repository_name"
-compilation_result = client.create_compilation_result(repository_name, "git_branch_name", None, code_compilation_config={"table_prefix": "aa"})
+compilation_result = client.create_compilation_request(repository_name, "git_branch_name", None, code_compilation_config={"table_prefix": "aa"})
 if(compilation_result and compilation_result.name):
-    invocation_config = {
-        "included_tags" : ["your-tag"]
-        "transitive_dependencies_included" : False
-        "transitive_dependents_included" : False
-        "fully_refresh_incremental_tables_enabled" : False
+    invocation_config: InvocationConfigType = {
+        "included_tags" : ["your-tag"],
+        "transitive_dependencies_included" : False,
+        "transitive_dependents_included" : False,
+        "fully_refresh_incremental_tables_enabled" : False,
     }
     workflow_invocation = client.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
-    const workflow_invocation_id = workflow_invocation.name?.split("/").pop()
-    if(workflow_invocation_id){
-    const workflow_invocation_url = client.get_workflow_invocation_url(repository_name, workflow_invocation_id)
-    console.log(workflowInvocationUrl)
+    workflow_invocation_id = workflow_invocation.name.split("/").pop()
+    if(workflow_invocation_id):
+        workflow_invocation_url = client.get_workflow_invocation_url(repository_name, workflow_invocation_id)
+        print(workflow_invocation_url)
 ```
 
 
