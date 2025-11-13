@@ -215,4 +215,35 @@ export class DataformTools {
         });
         return workflowInvocation;
     }
+
+
+    /**
+     * Create workflow invocation using compilation result
+     * @param repositoryName - Name of the Dataform repository
+     * @param workspaceName - Name of the Dataform workspace
+     * @param relativePath - relative file path inside the Dataform workspace
+     * @param contents - file contents as string or Buffer
+     * @returns A promise that resolves when the file is written.
+     * @example
+     * import { DataformClient } from '@google-cloud/dataform';
+     * const dataformTools = new DataformTools("my-gcp-project", "europe-west2");
+     * await dataformTools.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/workspace.sql", "select 1 as a");
+     */
+    async writeFile(repositoryName: string, workspaceName: string, relativePath: string, contents: string | Buffer) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        
+        const bufferContents = typeof contents === 'string' 
+            ? Buffer.from(contents, 'utf8') 
+            : contents;
+
+        await this.client.writeFile({
+            workspace: workspacePath,
+            path: relativePath,
+            contents: bufferContents
+        });
+    }
+
+    getWorkflowInvocationUrl(repositoryName:string, workflowInvocationId:string): string {
+        return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpLocation}/repositories/${repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
+    }
 }

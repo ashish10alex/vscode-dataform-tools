@@ -94,5 +94,9 @@ if(compilationResult.name){
         transitiveDependenciesIncluded:false
     })
     console.log(workflowInvocation)
+    const workflowInvocationId = workflowInvocation.name?.split("/").pop()
+    if(workflowInvocationId){
+    const workflowInvocationUrl = client.getWorkflowInvocationUrl(repositoryName, workflowInvocationId)
+    console.log(workflowInvocationUrl)
 }
 ```
