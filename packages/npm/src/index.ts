@@ -246,4 +246,18 @@ export class DataformTools {
     getWorkflowInvocationUrl(repositoryName:string, workflowInvocationId:string): string {
         return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpLocation}/repositories/${repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
     }
+
+    /**
+     * Installs NPM packages in a Dataform workspace.
+     * @param repositoryName - Name of the Dataform repository
+     * @param workspaceName - Name of the Dataform workspace
+     * @returns A promise that resolves when the packages are installed.
+     */
+    async installNpmPackages(repositoryName:string, workspaceName:string) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        const request = {
+            workspace: workspacePath,
+        };
+        await this.client.installNpmPackages(request);
+    }
 }

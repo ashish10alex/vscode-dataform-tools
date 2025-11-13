@@ -107,5 +107,14 @@ if(compilationResult.name){
 import {DataformTools} from "@ashishalex/dataform-tools"
 
 const client = new DataformTools("your-gcp-project-id", "europe-west2")
-client.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/workspace.sql", "select 1 as a");("repository-name")
+client.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/workspace.sql", "select 1 as a");
+```
+
+### Installs NPM packages in a Dataform workspace.
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+client.installNpmPackages("repository-name", "my-workspace");
 ```
