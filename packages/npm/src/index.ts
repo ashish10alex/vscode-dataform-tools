@@ -1,6 +1,5 @@
 import { DataformClient } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
-import * as fs from 'fs/promises'; 
 import logger from "./logger.js";
 
 type Target = {
@@ -220,25 +219,25 @@ export class DataformTools {
 
     /**
      * Create workflow invocation using compilation result
+     * @param repositoryName - Name of the Dataform repository
      * @param workspaceName - Name of the Dataform workspace
      * @param relativePath - relative file path inside the Dataform workspace
      * @param contents - file contents as string or Buffer
      * @returns A promise that resolves when the file is written.
      * @example
-     * // Example usage:
      * const dataformTools = new DataformTools("my-gcp-project", "europe-west2");
      * const fileContents = await fs.readFile("local/path/to/file.sql", "utf8");
      * await dataformTools.writeFile("my-workspace", "relative/path/to/file/in/workspace.sql", fileContents);
      */
-    async writeFile(workspaceName: string, relativePath: string, contents: string | Buffer) {
-        const worspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/repo1/workspaces/${workspaceName}`;
+    async writeFile(repositoryName: string, workspaceName: string, relativePath: string, contents: string | Buffer) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
         
         const bufferContents = typeof contents === 'string' 
             ? Buffer.from(contents, 'utf8') 
             : contents;
 
         await this.client.writeFile({
-            workspace: worspacePath,
+            workspace: workspacePath,
             path: relativePath,
             contents: bufferContents
         });
