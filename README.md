@@ -1,18 +1,84 @@
 # Dataform tools - a vscode extension
 
-🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+> 🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
-[![Version](https://img.shields.io/github/v/release/ashish10alex/vscode-dataform-tools)](https://github.com/ashish10alex/vscode-dataform-tools/releases)
-![Installs](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)
-![Linux](https://img.shields.io/badge/Linux-supported-success)
-![macOS](https://img.shields.io/badge/macOS-supported-success)
-![Windows](https://img.shields.io/badge/windows-supported-success)
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor.
+✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product. 
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://buymeacoffee.com/ashishalexj)
 
-🎉 **Officially recommended by Google[^1]**. Though not an officially supported Google product.
 
-[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x
+<table>
+  <thead>
+    <tr>
+      <th>Support the project</th>
+      <th>
+      <a href="https://buymeacoffee.com/ashishalexj">
+         <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" height="25">
+      </a>
+       </th>
+    </tr>
+    <tr>
+      <th>Supported Operating Systems</th>
+      <th>
+         <img src="https://img.shields.io/badge/macOS-supported-success" alt="macOS">
+         <img src="https://img.shields.io/badge/windows-supported-success" alt="Windows">
+         <img src="https://img.shields.io/badge/Linux-supported-success" alt="Linux">
+      </th>
+    </tr>
+  </thead>
+</table>
+
+----
+
+## Products
+
+<table>
+  <thead>
+    <tr>
+      <th>Registry</th>
+      <th>Badge </th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">VS Code marketplace</a></td>
+      <td>
+      <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace"> 
+      <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads"></td>
+      </td>
+      <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode"></a>
+      </td>
+      <td>Marketplace for VS Code editor</td>
+    </tr>
+    <tr>
+      <td><a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">Open VSX marketplace</a></td>
+      <td>
+      <img src="https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+      <img src="https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+      </td>
+      <a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode"></a>
+      <td>Marketplace for VS Code forks such as <a href="https://cursor.com">Cursor</a></td>
+    </tr>
+    <tr>
+      <td> <a href="https://pypi.org/project/dataform-tools/">PyPi</a></td>
+      <td><img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version"></td>
+      <a href="https://pypi.org/project/dataform-tools/"></a>
+      <td>wrapper for google-cloud-dataform python pacakge</td>
+    </tr>
+    <tr>
+      <td> <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
+      <td><img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools" alt="NPM Version"></td>
+      <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools"></a>
+      <td>wrapper for google-cloud/dataform npm package </td>
+    </tr>
+  </tbody>
+</table>
+
+
+----
+
+## Features
 
 | Feature | Description |
 |---------|-------------|
@@ -73,7 +139,7 @@ Trouble installing or looking for a specific customization ? Please see [FAQ sec
 * 🎥 [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 * 🎥 [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
 
-## Features
+## Feature preview
 
 ### <a id="compilation">Compiled query & Dry run stats</a>
 
