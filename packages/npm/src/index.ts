@@ -242,4 +242,8 @@ export class DataformTools {
             contents: bufferContents
         });
     }
+
+    getWorkflowInvocationUrl(repositoryName:string, workflowInvocationId:string): string {
+        return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpLocation}/repositories/${repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
+    }
 }
