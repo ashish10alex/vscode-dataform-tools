@@ -226,8 +226,8 @@ export class DataformTools {
      * @returns A promise that resolves when the file is written.
      * @example
      * import { DataformClient } from '@google-cloud/dataform';
-     * const dataformTools = new DataformTools("my-gcp-project", "europe-west2");
-     * await dataformTools.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/workspace.sql", "select 1 as a");
+     * const client = new DataformTools("my-gcp-project", "europe-west2");
+     * await client.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/workspace.sql", "select 1 as a");
      */
     async writeFile(repositoryName: string, workspaceName: string, relativePath: string, contents: string | Buffer) {
         const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;

@@ -86,5 +86,18 @@ if(compilation_result and compilation_result.name):
         "fully_refresh_incremental_tables_enabled" : False
     }
     workflow_invocation = client.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
-    print(workflow_invocation)
+    const workflow_invocation_id = workflow_invocation.name?.split("/").pop()
+    if(workflow_invocation_id){
+    const workflow_invocation_url = client.get_workflow_invocation_url(repository_name, workflow_invocation_id)
+    console.log(workflowInvocationUrl)
+```
+
+
+
+### Write content to a file in workspace
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+client.write_file("repository_name", "workspace_name", "relative/path/to/file/in/workspace.sql", "select 1 as a")
 ```
