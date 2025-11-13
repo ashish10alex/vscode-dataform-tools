@@ -103,3 +103,11 @@ from dataform_tools import DataformTools
 client = DataformTools("your-gcp-project-id", "europe-west2")
 client.write_file("repository_name", "workspace_name", "relative/path/to/file/in/workspace.sql", "select 1 as a")
 ```
+
+### Installs NPM packages in a Dataform workspace.
+
+```js
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+client.install_npm_packages("repository-name", "my-workspace");
+```

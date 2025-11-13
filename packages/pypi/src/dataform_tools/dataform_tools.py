@@ -243,3 +243,8 @@ class DataformTools():
 
     def get_workflow_invocation_url(self, repository_name: str, workflow_invocation_id: str) -> str:
         return f"https://console.cloud.google.com/bigquery/dataform/locations/{self.gcp_location}/repositories/{repository_name}/workflows/{workflow_invocation_id}?project={self.gcp_project_id}"
+
+    def install_npm_pacakages(self, repository_name: str, workspace_name: str):
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        request = dataform_v1beta1.InstallNpmPackagesRequest(workspace=workspace_path)
+        self.client.install_npm_packages(request)
