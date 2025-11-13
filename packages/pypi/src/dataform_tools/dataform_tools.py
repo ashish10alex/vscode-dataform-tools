@@ -219,3 +219,27 @@ class DataformTools():
         )
         created_workflow_invocation = self.client.create_workflow_invocation(request)
         return created_workflow_invocation
+
+
+    def write_file(self, repository_name:str, workspace_name:str, relative_path:str, contents:str|bytes)-> None:
+        """Writes a file to a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+            relative_path (str): The relative path of the file to write.
+            contents (str|bytes): The contents of the file to write.
+        Returns:
+            None
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+
+        if isinstance(contents, str):
+            buffer_contents = contents.encode(encoding="utf-8")
+        else: buffer_contents = contents
+
+        request = dataform_v1beta1.WriteFileRequest(workspace=workspace_path,  path=relative_path, contents=buffer_contents)
+
+        self.client.write_file(request)
+
+    def get_workflow_invocation_url(self, repository_name: str, workflow_invocation_id: str) -> str:
+        return f"https://console.cloud.google.com/bigquery/dataform/locations/{self.gcp_location}/repositories/{repository_name}/workflows/{workflow_invocation_id}?project={self.gcp_project_id}"
