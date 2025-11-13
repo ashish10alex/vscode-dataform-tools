@@ -1,5 +1,5 @@
 import logging
-from typing import TypedDict, List, Optional, Dict, Any, Union, NotRequired
+from typing_extensions import TypedDict, List, Optional, Dict, Any, Union, NotRequired
 from google.cloud import dataform_v1beta1
 from google.cloud.dataform_v1beta1.types import CompilationResult
 from google.cloud.dataform_v1beta1.types import CodeCompilationConfig
@@ -185,6 +185,19 @@ class DataformTools():
             compilation_result = compilation_result
         )
         return self.client.create_compilation_result(request)
+    
+    def query_compilation_result_actions(self, compilation_result_name:str):
+        """Queries compilation result actions in Dataform.
+        Args:
+            compilation_result_name (str): The name of the compilation result.
+        Returns:
+            The compilation result actions.
+        """
+        request = dataform_v1beta1.QueryCompilationResultActionsRequest(
+            name = compilation_result_name
+        )
+        compilation_result_actions = self.client.query_compilation_result_actions(request)
+        return compilation_result_actions       
 
     def create_workflow_invocation(self, repository_name:str, compilation_result_name:str, invocation_config:InvocationConfigType) -> WorkflowInvocation:
         """Creates a workflow invocation in Dataform.
