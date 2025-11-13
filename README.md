@@ -1,18 +1,77 @@
 # Dataform tools - a vscode extension
 
-🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor
 
-[![Version](https://img.shields.io/github/v/release/ashish10alex/vscode-dataform-tools)](https://github.com/ashish10alex/vscode-dataform-tools/releases)
-![Installs](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)
-![Linux](https://img.shields.io/badge/Linux-supported-success)
-![macOS](https://img.shields.io/badge/macOS-supported-success)
-![Windows](https://img.shields.io/badge/windows-supported-success)
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://buymeacoffee.com/ashishalexj)
+> 🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
 🎉 **Officially recommended by Google[^1]**. Though not an officially supported Google product.
 
-[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x
+<table>
+  <thead>
+    <tr>
+      <th>Supported Operating systems</th>
+      <th><img src="https://img.shields.io/badge/macOS-supported-success" alt="macOS"></th>
+      <th><img src="https://img.shields.io/badge/windows-supported-success" alt="Windows"></th>
+      <th><img src="https://img.shields.io/badge/Linux-supported-success" alt="Linxu"></th>
+    </tr>
+    <tr>
+      <th>Support the project</th>
+      <th>
+      <a href="https://buymeacoffee.com/ashishalexj">
+        <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffe">
+    </a>
+</th>
+    </tr>
+  </thead>
+</table>
+
+----
+
+<table>
+  <thead>
+    <tr>
+      <th>Registry</th>
+      <th>Badge </th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">VS Code marketplace</a></td>
+      <td>
+      <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace"> 
+      <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads"></td>
+      <td>
+      <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode"></a>
+      </td>
+      <td>Marketplace for VS Code editor</td>
+    </tr>
+    <tr>
+      <td><a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">Open VSX marketplace</a></td>
+      <td>
+      <img src="https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+      <img src="https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+      </td>
+      <td><a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode"></a></td>
+      <td>Marketplace for VS Code forks such as <a href="https://cursor.com">Cursor</a></td>
+    </tr>
+    <tr>
+      <td> <a href="https://pypi.org/project/dataform-tools/">PyPi</a></td>
+      <td><img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version"></td>
+      <td><a href="https://pypi.org/project/dataform-tools/"></a></td>
+      <td>wrapper for google-cloud-dataform python pacakge</td>
+    </tr>
+    <tr>
+      <td> <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
+      <td><img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools" alt="NPM Version"></td>
+      <td><a href="https://www.npmjs.com/package/@ashishalex/dataform-tools"></a></td>
+      <td>wrapper for google-cloud/dataform npm package </td>
+    </tr>
+  </tbody>
+</table>
+
+
 
 | Feature | Description |
 |---------|-------------|
