@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
+[project]
+name = "dataform-tools"  
+version = "1.0.1"       
+authors = [
+  { name="Ashish Alex", email="ashish.alex10@gmail.com" },
+]
+description = "wrapper of the Google Cloud Dataform API (google-cloud-dataform) that simplifies common operations such as listing repositories, managing workspaces, creating compilation results, and triggering workflow invocations." # Required
+readme = "README.md" 
+requires-python = ">=3.10" 
+license = "MIT"
+keywords = ["dataform", "gcp", "google-cloud", "etl"]
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "google-cloud-dataform>=0.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/pypi"
+"Bug Tracker" = "https://github.com/ashish10alex/vscode-dataform-tools/issues"
+Repository = "https://github.com/ashish10alex/vscode-dataform-tools"
+
+[tool.setuptools.packages.find]
+where = ["src"]
