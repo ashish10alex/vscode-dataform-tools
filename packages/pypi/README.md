@@ -1,6 +1,6 @@
 # Dataform Tools for Google Cloud Platform
 
->wrapper of the Google Cloud Dataform Python Package (google-cloud-dataform) that simplifies common operations such as listing repositories, managing workspaces, creating compilation results, and triggering workflow invocations.
+>Wrapper for the Google Cloud Dataform Python Package (google-cloud-dataform) that simplifies common operations such as listing repositories, managing workspaces, creating compilation results, and triggering workflow invocations.
 
 ## Installation
 

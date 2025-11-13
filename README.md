@@ -5,28 +5,34 @@
 
 > 🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
-🎉 **Officially recommended by Google[^1]**. Though not an officially supported Google product.
+🎉 **Officially recommended by Google[^1]**. Though not an officially supported Google product. 
+
+
 
 <table>
   <thead>
     <tr>
-      <th>Supported Operating systems</th>
-      <th><img src="https://img.shields.io/badge/macOS-supported-success" alt="macOS"></th>
-      <th><img src="https://img.shields.io/badge/windows-supported-success" alt="Windows"></th>
-      <th><img src="https://img.shields.io/badge/Linux-supported-success" alt="Linxu"></th>
-    </tr>
-    <tr>
       <th>Support the project</th>
       <th>
       <a href="https://buymeacoffee.com/ashishalexj">
-        <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffe">
-    </a>
-</th>
+         <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" height="25">
+      </a>
+       </th>
+    </tr>
+    <tr>
+      <th>Supported Operating Systems</th>
+      <th>
+         <img src="https://img.shields.io/badge/macOS-supported-success" alt="macOS">
+         <img src="https://img.shields.io/badge/windows-supported-success" alt="Windows">
+         <img src="https://img.shields.io/badge/Linux-supported-success" alt="Linux">
+      </th>
     </tr>
   </thead>
 </table>
 
 ----
+
+## Products
 
 <table>
   <thead>
@@ -74,6 +80,7 @@
 
 ----
 
+## Features
 
 | Feature | Description |
 |---------|-------------|
