@@ -139,7 +139,7 @@ Trouble installing or looking for a specific customization ? Please see [FAQ sec
 * 🎥 [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 * 🎥 [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
 
-## Features
+## Feature preview
 
 ### <a id="compilation">Compiled query & Dry run stats</a>
 
