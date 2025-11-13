@@ -72,6 +72,8 @@
 </table>
 
 
+----
+
 
 | Feature | Description |
 |---------|-------------|
