@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import path from 'path';
-import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists} from "./getGitMeta";
+import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
 import {DataformTools} from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse, InvocationConfig , GitFileChange, ICodeCompilationConfig} from "./types";
@@ -280,6 +280,13 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             clientOptions
         };
 
+        const gitInfo = getGitBranchAndRepoName();
+        if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+            throw new Error("Error determining git repository and or branch name");
+        } 
+        const workspaceName = gitInfo.gitBranch;
+        const repositoryName = gitInfo.gitRepoName;
+
         const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation);
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during client initialization.');
@@ -287,7 +294,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         }
 
         // 3
-        progress.report({ message: `Creating Dataform workspace ${dataformClient.workspaceId} if it does not exsist...`, increment: 14.28 });
+        progress.report({ message: `Creating Dataform workspace ${workspaceName} if it does not exsist...`, increment: 14.28 });
         try {
             await dataformClient.createWorkspace(repositoryName, workspaceName);
         } catch (error: any) {
@@ -302,7 +309,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
                 // vscode.window.showWarningMessage(error.message);
             } else if (error.code === DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE) {
-                error.message += `. Check if the Dataform repository ${dataformClient.repositoryName} exists in GCP`;
+                error.message += `. Check if the Dataform repository ${repositoryName} exists in GCP`;
                 vscode.window.showErrorMessage(error.message);
                 throw error;
             } else {
@@ -312,8 +319,8 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         }
 
         // 4
-        progress.report({ message: `Verifying if git remote origin/${dataformClient.workspaceId} exsists...`, increment: 14.28 });
-        let remoteGitRepoExsists = await gitRemoteBranchExsists(dataformClient.gitBranch);
+        progress.report({ message: `Verifying if git remote origin/${workspaceName} exsists...`, increment: 14.28 });
+        let remoteGitRepoExsists = await gitRemoteBranchExsists(workspaceName);
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during workflow execution.');
             return;
@@ -321,9 +328,15 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         if(remoteGitRepoExsists){
             // 5
-            progress.report({ message: `Pulling Git commits into workspace ${dataformClient.workspaceId}...`, increment: 14.28 });
+            progress.report({ message: `Pulling Git commits into workspace ${workspaceName}...`, increment: 14.28 });
             try {
-                await dataformClient.pullGitCommits();
+                const gitUser = await getGitUserMeta() || {name: "", email: ""};
+                if(gitUser && gitUser.name && gitUser.email){
+                    await dataformClient.pullGitCommits(repositoryName, workspaceName, {remoteBranch: workspaceName ,emailAddress: gitUser.email, userName: gitUser.name});
+                }else {
+                    vscode.window.showWarningMessage(`Could not determine git username and email`);
+                    return;
+                }
             } catch (error: any) {
                 //TODO: should we show user warning, and do a git resotore and pull changes ? 
                 const CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE = 9;
