@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
-import { DataformApi } from './dataformApi';
+import {DataformTools} from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse, InvocationConfig , GitFileChange, ICodeCompilationConfig} from "./types";
 
 export function sendWorkflowInvocationNotification(url:string){
@@ -18,7 +18,7 @@ export function sendWorkflowInvocationNotification(url:string){
     });
 }
 
-async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformApi, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
+async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
     let userResponse: string | undefined = "No";
     if(gitCommitsBehind>0){
         userResponse = await vscode.window.showWarningMessage(
@@ -43,7 +43,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformAp
     }
 }
 
-export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformApi, remoteGitRepoExsists:boolean){
+export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformTools, remoteGitRepoExsists:boolean){
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
         const repository = await dataformClient.getRepository();
@@ -160,10 +160,10 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformA
                 configFilesChanged.push(baseFileName);
             }
             if(state === "ADDED" || state === "MODIFIED"){
-                await dataformClient.writeFileToWorkspace(fullPath, path);
+                await dataformClient.writeFile(fullPath, path);
             } else if (state === "DELETED"){
                 try{
-                    await dataformClient.deleteFileInWorkspace(path);
+                    await dataformClient.writeFile(path);
                 }catch(error:any){
                     if(error.code === 5){
                         vscode.window.showWarningMessage(`${error.message}`);
@@ -280,7 +280,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             clientOptions
         };
 
-        const dataformClient = new DataformApi(gcpProjectId, gcpProjectLocation, options);
+        const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation);
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during client initialization.');
             return;
@@ -289,7 +289,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         // 3
         progress.report({ message: `Creating Dataform workspace ${dataformClient.workspaceId} if it does not exsist...`, increment: 14.28 });
         try {
-            await dataformClient.createWorkspace();
+            await dataformClient.createWorkspace(repositoryName, workspaceName);
         } catch (error: any) {
             const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
             const DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE = 5;
@@ -302,7 +302,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
                 // vscode.window.showWarningMessage(error.message);
             } else if (error.code === DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE) {
-                error.message += `. Check if the Dataform repository ${dataformClient.gitRepoName} exists in GCP`;
+                error.message += `. Check if the Dataform repository ${dataformClient.repositoryName} exists in GCP`;
                 vscode.window.showErrorMessage(error.message);
                 throw error;
             } else {
