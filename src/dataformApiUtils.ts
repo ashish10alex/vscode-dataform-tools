@@ -32,7 +32,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTo
     }
 
     if(userResponse === "Yes"){
-        await dataformClient.resetWorkspaceChanges(true);
+        await dataformClient.resetWorkspaceChanges(repositoryName, workspaceName, [], true);
         if(remoteGitRepoExsists){
             await dataformClient.pullGitCommits();
         }
@@ -43,10 +43,10 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTo
     }
 }
 
-export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformTools, remoteGitRepoExsists:boolean){
+export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformTools, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean){
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
-        const repository = await dataformClient.getRepository();
+        const repository = await dataformClient.getRepository(repositoryName);
         defaultGitBranch = repository.gitRemoteSettings?.defaultBranch;
         if(!defaultGitBranch){
             defaultGitBranch = await vscode.window.showInputBox({
@@ -56,7 +56,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
             });
         }
     }else{
-        defaultGitBranch = dataformClient.workspaceId;
+        defaultGitBranch = workspaceName;
     }
 
     if(!defaultGitBranch){
@@ -64,18 +64,18 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
         return;
     }
 
-    const gitCommitsAheadBehind = await dataformClient.getGitCommitsAheadAndBehind();
+    const gitCommitsAheadBehind = await dataformClient.fetchGitAheadBehind(repositoryName, workspaceName, workspaceName);
     const gitCommitsAhead = gitCommitsAheadBehind.commitsAhead || 0;
     const gitCommitsBehind = gitCommitsAheadBehind.commitsBehind || 0;
 
     if(gitCommitsAhead > 0 && !remoteGitRepoExsists){
         // NOTE: this will create the branch in remote if it does not exsists
-        await dataformClient.pushWorkspaceCommits();
+        await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
     } else if(gitCommitsAhead > 0){
-        let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitBranch} workspace in GCP. Push it first ?`;
+        let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${workspaceName} workspace in GCP. Push it first ?`;
         const response = await vscode.window.showWarningMessage(warningMessage, {modal: true}, "Yes", "No");
         if(response === "Yes"){
-            await dataformClient.pushWorkspaceCommits();
+            await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
         } else{
             return;
         }
@@ -84,12 +84,12 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     if(gitCommitsAhead > 0){
         if(!remoteGitRepoExsists){
             // NOTE: this will create the branch in remote if it does not exsists
-            await dataformClient.pushWorkspaceCommits();
+            await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
         } else {
-            let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${dataformClient.gitBranch} workspace in GCP. Push it first ?`;
+            let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${workspaceName} workspace in GCP. Push it first ?`;
             const response = await vscode.window.showWarningMessage(warningMessage, {modal: true}, "Yes", "No");
             if(response === "Yes"){
-                await dataformClient.pushWorkspaceCommits();
+                await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
             } else{
                 return;
             }
@@ -110,11 +110,11 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
         await getLocalGitState(),
         //NOTE: defaultGitBranch gets assigned to workspaceId when remote git repository exsists
         await getGitStatusCommitedFiles(defaultGitBranch),
-        await dataformClient.getRemoteWorkspaceGitState()
+        await dataformClient.getWorkspaceGitState(repositoryName, workspaceName)
     ]);
 
     if(!remoteDataformWorkspaceStatus){
-        vscode.window.showErrorMessage(`Could not get determine git status for workspace ${dataformClient.workspaceId}`);
+        vscode.window.showErrorMessage(`Could not get determine git status for workspace ${workspaceName}`);
         return;
     }
     const gitRemoteChanges = remoteDataformWorkspaceStatus.uncommittedFileChanges;
@@ -276,6 +276,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             clientOptions = {... clientOptions , keyFilename: serviceAccountJsonPath};
         }
 
+        //FIXME: this we need add add service account support to the npm package
         let options = {
             clientOptions
         };
@@ -357,7 +358,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 6
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-        await syncRemoteWorkspaceToLocalBranch(dataformClient, remoteGitRepoExsists);
+        await syncRemoteWorkspaceToLocalBranch(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists);
 
         //7
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
