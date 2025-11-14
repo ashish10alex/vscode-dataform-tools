@@ -9,7 +9,7 @@
     "type": "git",
     "url": "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/npm"
   },
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

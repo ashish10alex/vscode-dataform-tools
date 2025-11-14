@@ -107,7 +107,7 @@ if(compilationResult.name){
 import {DataformTools} from "@ashishalex/dataform-tools"
 
 const client = new DataformTools("your-gcp-project-id", "europe-west2")
-client.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/workspace.sql", "select 1 as a");
+client.writeFile("repository-name", "workspace-name", "relative/path/to/file/in/workspace.sql", "select 1 as a");
 ```
 
 ### Installs NPM packages in a Dataform workspace.
@@ -116,5 +116,46 @@ client.writeFile("repository-name", "my-workspace", "relative/path/to/file/in/wo
 import {DataformTools} from "@ashishalex/dataform-tools"
 
 const client = new DataformTools("your-gcp-project-id", "europe-west2")
-client.installNpmPackages("repository-name", "my-workspace");
+client.installNpmPackages("repository-name", "workspace-name");
 ```
+
+### Pull git commits from remote repository to workspace
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+client.pullGitCommits("repository-name", "workspace-name", gitOptions:{"remote-git-branch", "git-user-name", "git-user-email"});
+```
+
+### Get git status of the remote workspace
+
+```js
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+client.getWorkspaceGitState("repository-name", "workspace-name")
+```
+
+### Reset changes in workspace
+
+```js
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+const paths = [];  // array of file paths to reset. If empty, all changes will be reset.
+const clean = true; // If true, untracked files will be removed. Defaults to true.
+client.resetWorkspaceChanges("repository-name", "workspace-name", paths, clean)
+```
+
+### Fetch Git ahead/behind against a remote branch for a workspace
+
+```js
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+client.fetchGitAheadBehind("repository-name", "workspace-name")
+```
+
+### Push workspace commits to git remote repository
+
+```js
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+client.pushWorkspaceCommits("repository-name", "my-worksapce", "workspace-name") 
+```
+
+     
