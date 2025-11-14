@@ -18,11 +18,11 @@ export function sendWorkflowInvocationNotification(url:string){
     });
 }
 
-async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
+async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
     let userResponse: string | undefined = "No";
     if(gitCommitsBehind>0){
         userResponse = await vscode.window.showWarningMessage(
-            `Dataform workspace ${dataformClient.workspaceId} is behind origin/${dataformClient.workspaceId} by ${gitCommitsBehind} commit(s).  Running "git restore ." followed by "git pull" to allign with the latest state. Do you want to proceed ?`,
+            `Dataform workspace ${workspaceName} is behind origin/${workspaceName} by ${gitCommitsBehind} commit(s).  Running "git restore ." followed by "git pull" to allign with the latest state. Do you want to proceed ?`,
                 {modal: true},
                 "Yes",
                 "No"
@@ -34,7 +34,10 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTo
     if(userResponse === "Yes"){
         await dataformClient.resetWorkspaceChanges(repositoryName, workspaceName, [], true);
         if(remoteGitRepoExsists){
-            await dataformClient.pullGitCommits();
+            const gitUser = await getGitUserMeta() || {name: "", email: ""};
+            if(gitUser && gitUser.name && gitUser.email){
+                await dataformClient.pullGitCommits(repositoryName, workspaceName, {remoteBranch: workspaceName ,emailAddress: gitUser.email, userName: gitUser.name});
+            }
         }
         return true;
     } else {
@@ -98,7 +101,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
 
     if(gitCommitsBehind > 0){
         try{
-           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, remoteGitRepoExsists, gitCommitsBehind)){
+           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists, gitCommitsBehind)){
             return;
            };
         }catch(error:any){
@@ -122,7 +125,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){
         try{
-           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, remoteGitRepoExsists, 0)){
+           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists, 0)){
             return;
            };
         }catch(error:any){
@@ -176,7 +179,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
 
         if(configFileChanged){
             vscode.window.showInformationMessage(`${configFilesChanged.join("")} were modified. Installing packages`);
-            await dataformClient.installPackages();
+            await dataformClient.installNpmPackages(repositoryName, workspaceName);
         }
 
         if (gitRemoteChanges && gitRemoteChanges.length > 0) {
@@ -204,7 +207,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     }
 }
 
-export async function compileAndCreateWorkflowInvocation(dataformClient: DataformApi, invocationConfig: InvocationConfig, codeCompilationConfig?:ICodeCompilationConfig): Promise<CreateCompilationResultResponse | undefined>{
+export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, invocationConfig: InvocationConfig, codeCompilationConfig?:ICodeCompilationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
         const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace", codeCompilationConfig);
