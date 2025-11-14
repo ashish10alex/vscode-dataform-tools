@@ -260,4 +260,97 @@ export class DataformTools {
         };
         await this.client.installNpmPackages(request);
     }
+
+    /**
+     * Pulls git commits into a Dataform workspace from its configured remote repository.
+     * @param repositoryName - Name of the Dataform Repository
+     * @param workspaceName  - Name of the Dataform Workspace
+     * @param gitOptions - Object containing git options
+     * @param gitOptions.remoteBranch - Optional remote branch to pull from. Defaults to the workspace name if not provided.
+     * @param gitOptions.userName - Name of the user performing the pull operation.
+     * @param gitOptions.emailAddress - Email address of the user performing the pull operation.
+     * @returns A promise that resolves when the git commits are pulled.
+     */ 
+    async pullGitCommits(repositoryName:string, workspaceName:string, gitOptions:{remoteBranch?:string, userName:string, emailAddress:string}) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        await this.client.pullGitCommits({
+            name: workspacePath,
+            remoteBranch: gitOptions.remoteBranch ? gitOptions.remoteBranch : workspaceName,
+            author: {
+                name: gitOptions.userName,
+                emailAddress: gitOptions.emailAddress
+            }
+        });
+    }
+
+    /**
+     * 
+     * @param repositoryName - Name of the Dataform Repository
+     * @param workspaceName  - Name of the Dataform Workspace
+     * @returns A promise that resolves to the git state of the workspace.
+     */ 
+    async getWorkspaceGitState(repositoryName:string, workspaceName:string){
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        const [workspaceGitState] = await this.client.fetchFileGitStatuses({
+            name: workspacePath
+        });
+        return workspaceGitState;
+    }
+
+    /**
+     * 
+     * @param repositoryName - Name of the Dataform Repository
+     * @param workspaceName  - Name of the Dataform Workspace
+     * @param paths - Optional array of file paths to reset. If empty, all changes will be reset.
+     * @param clean - If true, untracked files will be removed. Defaults to true.
+     * @returns A promise that resolves when the workspace changes are reset.
+     */
+    async resetWorkspaceChanges(repositoryName:string, workspaceName:string, paths:string[] = [], clean: boolean = true) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        await this.client.resetWorkspaceChanges({
+            name: workspacePath,
+            paths: paths,
+            clean: clean
+        });
+    }
+
+    /**
+     * 
+     * @param repositoryName - Name of the Dataform Repository
+     * @param workspaceName  - Name of the Dataform Workspace
+     * @param remoteBranch - Optional remote branch to compare against. If not provided, the default remote branch set in the workspace will be used.
+     * @returns A promise that resolves to the ahead/behind commit counts between the workspace and the remote branch.
+     */
+    async fetchGitAheadBehind(repositoryName:string, workspaceName:string, remoteBranch?:string){
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        if(remoteBranch){
+            const [gitCommitsAheadBehind] = await this.client.fetchGitAheadBehind({
+                name: workspacePath,
+                remoteBranch: remoteBranch
+            });
+            return gitCommitsAheadBehind;
+        } else {
+            const [gitCommitsAheadBehind] = await this.client.fetchGitAheadBehind({
+                name: workspacePath,
+            });
+            return gitCommitsAheadBehind;
+        }
+    }
+
+    /**
+     * 
+     * @param repositoryName - Name of the Dataform Repository
+     * @param workspaceName  - Name of the Dataform Workspace
+     * @param gitBranch - The remote branch to push commits to usually same as workspaceName
+     * @returns A promise that resolves when the git commits are pushed.
+     */
+    async pushWorkspaceCommits(repositoryName:string, workspaceName:string, gitBranch:string) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        const request = {
+            name: workspacePath,
+            remoteBranch: gitBranch
+        };
+        await this.client.pushGitCommits(request);
+    }
+
 }
