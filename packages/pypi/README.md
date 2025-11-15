@@ -12,6 +12,28 @@ pip install dataform-tools
 
 ## Usage
 
+### Run Dataform workflow in GCP
+
+```py
+from dataform_tools import DataformTools, CodeCompilationConfigType, InvocationConfigType
+ 
+tags_to_run = ["your-tag"]
+code_compilation_config: CodeCompilationConfigType = {} # overrides such as table prefix
+invocation_config: InvocationConfigType = {
+    "included_tags": tags_to_run,
+    "fully_refresh_incremental_tables_enabled": False,
+    "transitive_dependents_included": False,
+    "transitive_dependencies_included":False,
+}
+ 
+repository_name = "repository-name"
+workspace_name = None  # use workspace name if you want to compile a workspace.
+git_commitish = "develop" # branch name, tag, commit sha
+ 
+client = DataformTools("your-gcp-project", "europe-west2")
+output = client.run_dataform_remotely(repository_name, code_compilation_config, invocation_config, workspace_name, git_commitish)
+print(output)
+```
 
 ### List Repositories
 ```py
@@ -154,27 +176,4 @@ client.fetch_git_ahead_behind("repository-name", "workspace-name", "remote-git-b
 from dataform_tools import DataformTools
 client = DataformTools("your-gcp-project-id", "europe-west2")
 client.push_workspace_commits("repository-name", "my-worksapce", "remote_git_branch") 
-```
-
-
-### Run Dataform workflow in GCP
-
-```py
-from dataform_tools import DataformTools
-
-code_compilation_config = {} # overrides such as table prefix
-invocation_config = {
-    included_tags: [tagToRun],
-    fully_refresh_incremental_tables_enabled: false,
-    transitive_dependents_included: false,
-    transitive_dependencies_included:false
-}
-
-repository_name = "repository_name"
-workspace_name = undefined  # use workspace name if you want to compile a workspace.
-git_commitish = "branch_name" # branch name, tag, commit sha
-
-client = DataformTools("your-gcp-project-id", "europe-west2")
-output = client.run_dataform_remotely(repository_name, code_compilation_config, invocation_config, workspace_name, git_commitish)
-print(output)
 ```
