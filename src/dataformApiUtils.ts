@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs/promises'; 
 import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
@@ -156,17 +157,19 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
 
         // NOTE: doing this as we are getting following error when doing Promise.all 
         // 10 ABORTED: sync mutate calls cannot be queued
-        for (const {state, path, fullPath} of finalGitLocalChanges.values()){
-            const baseFileName = path.split("/").pop();
+        for (const {state, path: relativePath, fullPath} of finalGitLocalChanges.values()){
+            const baseFileName = relativePath.split("/").pop();
             if(baseFileName === "workflow_settings.yaml" || baseFileName === "dataform.json" || baseFileName === "package.json"){
                 configFileChanged = true;
                 configFilesChanged.push(baseFileName);
             }
             if(state === "ADDED" || state === "MODIFIED"){
-                await dataformClient.writeFile(fullPath, path);
+                const fileContents = await fs.readFile(fullPath, 'utf8');
+                await dataformClient.writeFile(repositoryName, workspaceName, relativePath, fileContents);
             } else if (state === "DELETED"){
                 try{
-                    await dataformClient.writeFile(path);
+                    const fileContents = await fs.readFile(fullPath, 'utf8');
+                    await dataformClient.writeFile(repositoryName, workspaceName, relativePath, fileContents);
                 }catch(error:any){
                     if(error.code === 5){
                         vscode.window.showWarningMessage(`${error.message}`);
@@ -192,13 +195,15 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
                     if(remotePath){
                         const finalLocalVersion  = finalGitLocalChanges.get(remotePath);
                         if(finalLocalVersion && finalLocalVersion?.path !== "DELETED"){
-                            await dataformClient.writeFileToWorkspace(finalLocalVersion?.fullPath, remotePath);
+                            const fileContents = await fs.readFile(finalLocalVersion?.fullPath, 'utf8');
+                            await dataformClient.writeFile(repositoryName, workspaceName, remotePath, fileContents);
                         }
                     }
                 } else {
                     if(remotePath && !finalGitLocalChanges.get(remotePath)){
                         const fullPath = path.join(workspaceFolder, remotePath);
-                        await dataformClient.writeFileToWorkspace(fullPath, remotePath);
+                        const fileContents = await fs.readFile(fullPath, 'utf8');
+                        await dataformClient.writeFile(repositoryName, workspaceName, remotePath, fileContents);
                     }
                 }
             }
@@ -210,6 +215,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
 export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, invocationConfig: InvocationConfig, codeCompilationConfig?:ICodeCompilationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
+        //FIXME: npm package needs to implement runDataformRemotely
         const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace", codeCompilationConfig);
         if(createdWorkflowInvocation?.url){
             sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
