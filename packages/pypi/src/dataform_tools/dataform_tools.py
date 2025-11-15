@@ -10,6 +10,12 @@ from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, NotFou
 
 logger = logging.getLogger(__name__)
 
+class GitOptions(TypedDict):
+    remote_branch: Optional[str]
+    user_name: str
+    email_address: str
+
+
 class Target(TypedDict, total=False):
     database: Optional[str]
     schema: Optional[str]
@@ -65,7 +71,7 @@ class DataformTools():
     def list_repositories(self):
         """Lists repositories in Dataform.
         Returns:
-            ListRepositoriesResponse: list of repository objects
+            ListRepositoriesPager: list of repository objects
         """
         parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}"
         request = dataform_v1beta1.ListRepositoriesRequest(
@@ -88,6 +94,12 @@ class DataformTools():
         return repositories
 
     def list_workspaces(self, repository_name:str):
+        """Lists workspaces in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+        Returns:
+            ListWorkspacesPager: list of workspace objects
+        """
         parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}"
         request = dataform_v1beta1.ListWorkspacesRequest(
             parent  = parent,
@@ -160,10 +172,13 @@ class DataformTools():
             code_compilation_config (CodeCompilationConfigType): The code compilation configuration.
         Returns:
             CompilationResult: The created compilation result.
+
+        Raises:
+            ValueError: If both workspace_name and git_commitish are provided.
         """
 
         if(workspace_name  is not None and git_commitish is not None):
-            logger.error("Compilation request can only be created of one of workspace or git_commitish")
+            raise ValueError("Compilation request can only be created of one of workspace or git_commitish")
             return
 
         parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}"
@@ -242,9 +257,121 @@ class DataformTools():
         self.client.write_file(request)
 
     def get_workflow_invocation_url(self, repository_name: str, workflow_invocation_id: str) -> str:
+        """Generates the URL for a workflow invocation in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workflow_invocation_id (str): The ID of the workflow invocation can be found in the name attribute of return value of create_workflow_invocation method.
+        Returns:
+            str: The URL of the workflow invocation.
+        """
         return f"https://console.cloud.google.com/bigquery/dataform/locations/{self.gcp_location}/repositories/{repository_name}/workflows/{workflow_invocation_id}?project={self.gcp_project_id}"
 
     def install_npm_pacakages(self, repository_name: str, workspace_name: str):
+        """Installs npm packages in a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+        Returns:
+            None
+        """
         workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
         request = dataform_v1beta1.InstallNpmPackagesRequest(workspace=workspace_path)
         self.client.install_npm_packages(request)
+    
+    def pull_git_commits(self, repository_name: str, workspace_name: str, git_options: GitOptions):
+        """Pulls git commits in a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+            git_options (GitOptions): The git options in the format {"remote_branch": str, "user_name": str, "email_address": str}
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        author = dataform_v1beta1.CommitAuthor(name=git_options["user_name"], email_address=git_options["email_address"])
+        request = dataform_v1beta1.PullGitCommitsRequest(name=workspace_path, remote_branch=git_options["remote_branch"], author=author)
+        self.client.pull_git_commits(request)
+    
+    def get_workspace_git_state(self, repository_name:str, workspace_name:str):
+        """Gets the git state of a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+        Returns:
+            The git state of the workspace.
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        request = dataform_v1beta1.FetchFileGitStatusesRequest(name=workspace_path)
+        workspace_git_state = self.client.fetch_file_git_statuses(request)
+        return workspace_git_state
+    
+    def reset_workspace_changes(self, repository_name:str, workspace_name:str, paths:List[str] = [], clean=True):
+        """Resets changes in a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+            paths (List[str]): The list of file paths to reset. If empty, all changes will be reset.
+            clean (bool): Whether to delete untracked files.
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        request = dataform_v1beta1.ResetWorkspaceChangesRequest(
+            name=workspace_path,
+            paths=paths,
+            clean=clean
+        )
+        self.client.reset_workspace_changes(request)
+
+    def fetch_git_ahead_behind(self, repository_name:str, workspace_name:str, remote_branch:str):
+        """Fetches git ahead/behind in a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+            remote_branch (str): The remote branch to compare the workspace against.
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        request = dataform_v1beta1.FetchGitAheadBehindRequest(
+            name=workspace_path,
+            remote_branch=remote_branch
+        )
+        self.client.fetch_git_ahead_behind()
+
+    def push_workspace_commits(self, repository_name:str, workspace_name:str, remote_branch:str):
+        """Pushes workspace commits in a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+            remote_branch (str): The remote branch to push the commits to.
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        request = dataform_v1beta1.PushGitCommitsRequest(
+            name=workspace_path,
+            remote_branch=remote_branch
+        )
+        self.client.push_git_commits()
+    
+    def run_dataform_remotely(self, repository_name:str, code_compilation_config:CodeCompilationConfigType, invocation_config: InvocationConfigType, workspace_name:str|None, git_commitish:str|None):
+        """Runs Dataform remotely by creating a compilation request and workflow invocation.
+        Args:
+            repository_name (str): The name of the repository.
+            code_compilation_config (CodeCompilationConfigType): The code compilation configuration.
+            invocation_config (InvocationConfigType): The invocation configuration.
+            workspace_name (str|None): The workspace name to compile from.
+            git_commitish (str|None): The git commitish to compile from. E.g., a branch, tag, or commit SHA.
+        
+        Returns:
+            Dict[str, Any]: A dictionary containing the workflow invocation object, ID, and URL.
+        
+        Raises:
+            ValueError: If both workspace_name and git_commitish are provided.
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
+        compilation_result = self.create_compilation_request(repository_name, git_commitish, workspace_name, code_compilation_config)
+        if(compilation_result and compilation_result.name):
+            workflow_invocation =  self.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
+            workflow_invocation_id = workflow_invocation.name.split("/").pop()
+            if(workflow_invocation_id):
+                workflow_invocation_url = self.get_workflow_invocation_url(repository_name, workflow_invocation_id)
+                return {
+                    "workflow_invocation": workflow_invocation,
+                    "workflow_invocation_id": workflow_invocation_id,
+                    "workflow_invocation_url": workflow_invocation_url,
+                }
+
