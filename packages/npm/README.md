@@ -181,5 +181,5 @@ const invocationConfig = {
 }
 const workspaceName = undefined  // use workspace name if you want to compile a workspace.
 const gitCommitish = "branch_name" // branch name, tag, commit sha
-client.runDataformRemotely("repository-name", codeCompilationConfig, invocationConfig, workspaceName, gitCommitish){
+client.runDataformRemotely("repository-name", codeCompilationConfig, invocationConfig, workspaceName, gitCommitish)
 ```
