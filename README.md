@@ -1,6 +1,6 @@
 # Dataform tools - a vscode extension
 
-> 🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+> ▶️ [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor.
 ✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product. 
