@@ -1,6 +1,6 @@
 # Dataform tools - a vscode extension
 
-> 🎥 [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+> ▶️ [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor.
 ✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product. 
@@ -135,9 +135,9 @@
 > [!NOTE]
 Trouble installing or looking for a specific customization ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 
-* 🎥 [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
-* 🎥 [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
-* 🎥 [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
+* ️▶️ [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
+* ️▶️ [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+* ️▶️ [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
 
 ## Feature preview
 
