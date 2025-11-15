@@ -71,7 +71,7 @@ class DataformTools():
     def list_repositories(self):
         """Lists repositories in Dataform.
         Returns:
-            ListRepositoriesResponse: list of repository objects
+            ListRepositoriesPager: list of repository objects
         """
         parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}"
         request = dataform_v1beta1.ListRepositoriesRequest(
