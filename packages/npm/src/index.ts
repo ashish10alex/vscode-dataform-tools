@@ -243,6 +243,12 @@ export class DataformTools {
         });
     }
 
+    /**
+     * 
+     * @param repositoryName - Name of the Dataform repository
+     * @param workflowInvocationId - ID of the workflow invocation. It is intersposed in the `name` attribute of the `createWorkflowInvocation` method
+     * @returns URL string to access the workflow invocation in the Google Cloud Console 
+     */
     getWorkflowInvocationUrl(repositoryName:string, workflowInvocationId:string): string {
         return `https://console.cloud.google.com/bigquery/dataform/locations/${this.gcpLocation}/repositories/${repositoryName}/workflows/${workflowInvocationId}?project=${this.gcpProjectId}`;
     }
@@ -356,14 +362,14 @@ export class DataformTools {
     /**
      * Creates a compilation result and invokes a workflow remotely.
      * @param repositoryName - Name of the Dataform repository
-     * @param invocationConfig {@link InvocationConfig} object representing invocation config
      * @param codeCompilationConfig {@link CodeCompilationConfig} compilation overides
+     * @param invocationConfig {@link InvocationConfig} object representing invocation config
      * @param workspaceName - name of the Dataform workspace in GCP the compilation should be triggered for 
      * @param gitCommitish - git branch, tag or commit sha that should be used for compilation
      * @returns workflow invocation  {@link protos.google.cloud.dataform.v1beta1.IWorkflowInvocation|IWorkflowInvocation}
      * @throws {Error} If both or neither workspaceName and gitCommitish are provided
      */
-    async runDataformRemotely(repositoryName:string, invocationConfig: InvocationConfig, codeCompilationConfig: CodeCompilationConfig, workspaceName?:string, gitCommitish?: string,){
+    async runDataformRemotely(repositoryName:string, codeCompilationConfig: CodeCompilationConfig, invocationConfig: InvocationConfig, workspaceName?:string, gitCommitish?: string,){
         const compilationResult = await this.createCompilationResult(repositoryName, codeCompilationConfig, workspaceName, gitCommitish);
         const compilationResultName = compilationResult.name;
         if(compilationResultName){
