@@ -111,3 +111,26 @@ from dataform_tools import DataformTools
 client = DataformTools("your-gcp-project-id", "europe-west2")
 client.install_npm_packages("repository-name", "my-workspace");
 ```
+
+
+### Run Dataform workflow in GCP
+
+```py
+from dataform_tools import DataformTools
+
+code_compilation_config = {} # overrides such as table prefix
+invocation_config = {
+    included_tags: [tagToRun],
+    fully_refresh_incremental_tables_enabled: false,
+    transitive_dependents_included: false,
+    transitive_dependencies_included:false
+}
+
+repository_name = "repository_name"
+workspace_name = undefined  # use workspace name if you want to compile a workspace.
+git_commitish = "branch_name" # branch name, tag, commit sha
+
+client = DataformTools("your-gcp-project-id", "europe-west2")
+output = client.run_dataform_remotely(repository_name, code_compilation_config, invocation_config, workspace_name, git_commitish)
+print(output)
+```
