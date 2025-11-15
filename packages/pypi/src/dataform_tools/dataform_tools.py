@@ -94,6 +94,12 @@ class DataformTools():
         return repositories
 
     def list_workspaces(self, repository_name:str):
+        """Lists workspaces in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+        Returns:
+            ListWorkspacesPager: list of workspace objects
+        """
         parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}"
         request = dataform_v1beta1.ListWorkspacesRequest(
             parent  = parent,
