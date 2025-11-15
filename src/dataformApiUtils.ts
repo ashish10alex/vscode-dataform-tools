@@ -4,7 +4,7 @@ import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
 import {DataformTools} from "@ashishalex/dataform-tools";
-import { CreateCompilationResultResponse, InvocationConfig , GitFileChange, ICodeCompilationConfig} from "./types";
+import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
 
 export function sendWorkflowInvocationNotification(url:string){
     vscode.window.showInformationMessage(
@@ -212,13 +212,14 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     }
 }
 
-export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, invocationConfig: InvocationConfig, codeCompilationConfig?:ICodeCompilationConfig): Promise<CreateCompilationResultResponse | undefined>{
+export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, repositoryName:string, workspaceName:string,  codeCompilationConfig:CodeCompilationConfig, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
-        //FIXME: npm package needs to implement runDataformRemotely
-        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "workspace", codeCompilationConfig);
-        if(createdWorkflowInvocation?.url){
-            sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+        const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, codeCompilationConfig, invocationConfig, workspaceName, undefined);
+        const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
+        if(workflowInvocationId){
+            const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
+            sendWorkflowInvocationNotification(workflowInvocationUrl);
         }
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
@@ -226,7 +227,7 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
     return;
 }
 
-export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, invocationConfig:any, codeCompilationConfig?:ICodeCompilationConfig){
+export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, invocationConfig:any, codeCompilationConfig?:CodeCompilationConfig){
         // 1
         progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
         if (!CACHED_COMPILED_DATAFORM_JSON) {
@@ -371,5 +372,9 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         //7
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-        await compileAndCreateWorkflowInvocation(dataformClient, invocationConfig, codeCompilationConfig);
+        if(codeCompilationConfig){
+            await compileAndCreateWorkflowInvocation(dataformClient, repositoryName, workspaceName, codeCompilationConfig, invocationConfig);
+        }else{
+            vscode.window.showErrorMessage("Code compilation config could not be determined");
+        }
 };
