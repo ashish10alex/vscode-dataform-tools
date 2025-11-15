@@ -357,7 +357,7 @@ class DataformTools():
             git_commitish (str|None): The git commitish to compile from. E.g., a branch, tag, or commit SHA.
         
         Returns:
-            WorkflowInvocation: The created workflow invocation.
+            Dict[str, Any]: A dictionary containing the workflow invocation object, ID, and URL.
         
         Raises:
             ValueError: If both workspace_name and git_commitish are provided.
@@ -365,4 +365,13 @@ class DataformTools():
         workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{workspace_name}"
         compilation_result = self.create_compilation_request(repository_name, git_commitish, workspace_name, code_compilation_config)
         if(compilation_result and compilation_result.name):
-            return self.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
+            workflow_invocation =  self.create_workflow_invocation(repository_name, compilation_result.name, invocation_config)
+            workflow_invocation_id = workflow_invocation.name.split("/").pop()
+            if(workflow_invocation_id):
+                workflow_invocation_url = self.get_workflow_invocation_url(repository_name, workflow_invocation_id)
+                return {
+                    "workflow_invocation": workflow_invocation,
+                    "workflow_invocation_id": workflow_invocation_id,
+                    "workflow_invocation_url": workflow_invocation_url,
+                }
+
