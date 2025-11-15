@@ -10,7 +10,7 @@ project-includes = [
 
 [project]
 name = "dataform-tools"  
-version = "1.0.3"
+version = "1.0.5"
 authors = [
   { name="Ashish Alex", email="ashish.alex10@gmail.com" },
 ]
