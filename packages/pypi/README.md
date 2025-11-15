@@ -106,10 +106,54 @@ client.write_file("repository_name", "workspace_name", "relative/path/to/file/in
 
 ### Installs NPM packages in a Dataform workspace.
 
-```js
+```py
 from dataform_tools import DataformTools
 client = DataformTools("your-gcp-project-id", "europe-west2")
 client.install_npm_packages("repository-name", "my-workspace");
+```
+
+### Pull git commits from remote repository to workspace
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+client.pull_git_commits("repository-name", "workspace-name", {"remote-git-branch", "git-user-name", "git-user-email"});
+```
+
+### Get git status of the remote workspace
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+
+client.get_workspace_git_state("repository-name", "workspace-name")
+```
+
+
+### Reset changes in workspace
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+const paths = [];  # array of file paths to reset. If empty, all changes will be reset.
+const clean = true; # If true, untracked files will be removed. Defaults to true.
+client.reset_workspace_changes("repository-name", "workspace-name", paths, clean)
+```
+
+### Fetch Git ahead/behind against a remote branch for a workspace
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+client.fetch_git_ahead_behind("repository-name", "workspace-name", "remote-git-branch")
+```
+
+### Push workspace commits to git remote repository
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+client.push_workspace_commits("repository-name", "my-worksapce", "remote_git_branch") 
 ```
 
 
