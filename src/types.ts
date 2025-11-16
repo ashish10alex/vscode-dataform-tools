@@ -362,6 +362,7 @@ export type CreateCompilationResultResponse = Promise<
 export type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
 export type ICompilationResult  = protos.google.cloud.dataform.v1beta1.ICompilationResult;
 export type ICodeCompilationConfig = protos.google.cloud.dataform.v1beta1.ICodeCompilationConfig;
+export type ITarget = protos.google.cloud.dataform.v1beta1.ITarget;
 
 export type CompilationType  = "gitBranch" | "workspace";
 export type GitStatusCode = "M" | "A" | "??" | "D";

@@ -80,7 +80,7 @@ export async function runFilesTagsWtOptions(executionMode: ExecutionMode) {
 
     if (executionMode === "cli"){
         if (firstStageSelection === "run current file") {
-            runCurrentFile(includeDependencies, includeDependents, fullRefresh, "cli");
+            runCurrentFile(includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -88,7 +88,7 @@ export async function runFilesTagsWtOptions(executionMode: ExecutionMode) {
             runCommandInTerminal(runTagsWtDepsCommand);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
-            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
+            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
             runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);

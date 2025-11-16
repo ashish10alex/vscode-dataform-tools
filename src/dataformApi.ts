@@ -90,6 +90,15 @@ export class DataformApi {
         await this.client.installNpmPackages(request);
     }
 
+    async queryCompilationResultActions(compilationResultName:string) {
+        const request = {
+            name: compilationResultName
+        };
+        const [actions] = await this.client.queryCompilationResultActions(request);
+        return actions;
+    }
+
+
     /**
      * Pull commits from the remote git branch of the workspace. Git username and email are determined by git cli to set The author of any merge commit which may be created as a result of merging fetched Git commits into this workspace..
      *
