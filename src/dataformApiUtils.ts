@@ -168,9 +168,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
                 await dataformClient.writeFile(repositoryName, workspaceName, relativePath, fileContents);
             } else if (state === "DELETED"){
                 try{
-                    //FIXME: npm package needs to implement delete file method this is wrong atm
-                    const fileContents = await fs.readFile(fullPath, 'utf8');
-                    await dataformClient.writeFile(repositoryName, workspaceName, relativePath, fileContents);
+                    await dataformClient.removeFile(repositoryName, workspaceName, relativePath);
                 }catch(error:any){
                     if(error.code === 5){
                         vscode.window.showWarningMessage(`${error.message}`);
