@@ -244,6 +244,22 @@ export class DataformTools {
     }
 
     /**
+     * Removes a file from a Dataform workspace.
+     * @param repositoryName - Name of the Dataform repository
+     * @param workspaceName - Name of the Dataform workspace
+     * @param relativePath - The file's full path including filename, relative to the workspace root.
+     * @returns A promise that resolves when the file is removed.
+    */
+    async removeFile(repositoryName: string, workspaceName: string, relativePath: string) {
+        const workspacePath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workspaces/${workspaceName}`;
+        
+        await this.client.removeFile({
+            workspace: workspacePath,
+            path: relativePath
+        });
+    }
+
+    /**
      * 
      * @param repositoryName - Name of the Dataform repository
      * @param workflowInvocationId - ID of the workflow invocation. It is intersposed in the `name` attribute of the `createWorkflowInvocation` method
