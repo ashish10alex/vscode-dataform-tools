@@ -359,9 +359,31 @@ export type CreateCompilationResultResponse = Promise<
 ]
 >;
 
-export type InvocationConfig = protos.google.cloud.dataform.v1beta1.IInvocationConfig;
+
+export type InvocationConfig = {
+    includedTargets?: Target[];
+    includedTags?: string[];
+    transitiveDependenciesIncluded: boolean;
+    transitiveDependentsIncluded: boolean;
+    fullyRefreshIncrementalTablesEnabled: boolean;
+    serviceAccount?: string;
+};
+
+
+export type CodeCompilationConfig = {
+    assertionSchema: string,  
+    databaseSuffix: string,            
+    builtinAssertionNamePrefix: string,
+    defaultLocation: string,           
+    tablePrefix: string,               
+    vars: { [k: string]: string; },                      
+    schemaSuffix: string,              
+    defaultSchema: string,             
+    defaultDatabase: string,           
+    defaultNotebookRuntimeOption:string
+} | {};
+
 export type ICompilationResult  = protos.google.cloud.dataform.v1beta1.ICompilationResult;
-export type ICodeCompilationConfig = protos.google.cloud.dataform.v1beta1.ICodeCompilationConfig;
 
 export type CompilationType  = "gitBranch" | "workspace";
 export type GitStatusCode = "M" | "A" | "??" | "D";
