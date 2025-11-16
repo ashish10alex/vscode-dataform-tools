@@ -111,6 +111,15 @@ const client = new DataformTools("your-gcp-project-id", "europe-west2")
 client.writeFile("repository-name", "workspace-name", "relative/path/to/file/in/workspace.sql", "select 1 as a");
 ```
 
+### Remove file from a workspace
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+client.removeFile("repository-name", "workspace-name", "relative/path/to/file/in/workspace.sql");
+```
+
 ### Installs NPM packages in a Dataform workspace.
 
 ```js
