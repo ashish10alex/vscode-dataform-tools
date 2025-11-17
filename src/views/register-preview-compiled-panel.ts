@@ -249,7 +249,7 @@ export class CompiledQueryPanel {
                 const includeDependencies = message.value.includeDependencies;
                 const includeDependents = message.value.includeDependents;
                 const fullRefresh = message.value.fullRefresh;
-                await runCurrentFile(includeDependencies, includeDependents, fullRefresh, "cli");
+                await runCurrentFile(extensionContext, includeDependencies, includeDependents, fullRefresh, "cli");
                 return;
               case 'runModelApi':
                 const _includeDependencies = message.value.includeDependencies;
@@ -276,7 +276,7 @@ export class CompiledQueryPanel {
                     "apiUrlLoading": true,
                 };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
-                const result = await runCurrentFile(_includeDependencies, _includeDependents, _fullRefresh, "api");
+                const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, "api");
                 if(!result){
                     return;
                 }

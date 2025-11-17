@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { logger } from './logger';
 import fs from 'fs';
 import path from 'path';
+import { gcloudComputeRegions } from './constants';
 import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
@@ -23,6 +24,15 @@ export let declarationsAndTargets: string[] = [];
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
+}
+
+export async function getOrUpdateRepositoryLocation(context: vscode.ExtensionContext, repositoryName: string): Promise<any> {
+        let cachedGcpLocation = context.globalState.get<string>(`vscode_dataform_tools_${repositoryName}`);
+        if (!cachedGcpLocation) {
+            cachedGcpLocation = await createSelector(gcloudComputeRegions, "Select Dataform repository location");
+        } 
+        context.globalState.update(`vscode_dataform_tools_${repositoryName}`, cachedGcpLocation);
+        return cachedGcpLocation;
 }
 
 function createCompilerOptionsObjectForApi(compilerOptions: string[]) {

@@ -4,7 +4,7 @@ import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromS
 import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 
-export async function runFilesTagsWtOptions(executionMode: ExecutionMode) {
+export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, executionMode: ExecutionMode) {
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
@@ -80,7 +80,7 @@ export async function runFilesTagsWtOptions(executionMode: ExecutionMode) {
 
     if (executionMode === "cli"){
         if (firstStageSelection === "run current file") {
-            runCurrentFile(includeDependencies, includeDependents, fullRefresh, "cli");
+            runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, "cli");
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -95,7 +95,7 @@ export async function runFilesTagsWtOptions(executionMode: ExecutionMode) {
         }
     } else if (executionMode === "api" || executionMode === "api_workspace"){
         if (firstStageSelection === "run current file") {
-            runCurrentFile(includeDependencies, includeDependents, fullRefresh, executionMode);
+            runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             //FIXME: api_workspace execution mode not implemented for this function

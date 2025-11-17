@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises'; 
 import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
-import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
+import { getWorkspaceFolder, runCompilation, getOrUpdateRepositoryLocation} from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
 
@@ -226,7 +226,7 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
     return;
 }
 
-export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, invocationConfig:any, codeCompilationConfig?:CodeCompilationConfig){
+export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, context:vscode.ExtensionContext, invocationConfig:any, codeCompilationConfig?:CodeCompilationConfig){
         // 1
         progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
         if (!CACHED_COMPILED_DATAFORM_JSON) {
@@ -269,7 +269,20 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             return;
         }
 
-        let gcpProjectLocation = await getGcpProjectLocationDataform(gcpProjectId, CACHED_COMPILED_DATAFORM_JSON);
+        const gitInfo = getGitBranchAndRepoName();
+        if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+            throw new Error("Error determining git repository and or branch name");
+        } 
+        const workspaceName = gitInfo.gitBranch;
+        const repositoryName = gitInfo.gitRepoName;
+
+        const gcpProjectLocation = await getOrUpdateRepositoryLocation(context, repositoryName);
+        if (!gcpProjectLocation) {
+            vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
+            return;
+        }
+        context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
+
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during GCP location fetch.');
             return;
@@ -285,12 +298,6 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             clientOptions = {... clientOptions , keyFilename: serviceAccountJsonPath};
         }
 
-        const gitInfo = getGitBranchAndRepoName();
-        if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
-            throw new Error("Error determining git repository and or branch name");
-        } 
-        const workspaceName = gitInfo.gitBranch;
-        const repositoryName = gitInfo.gitRepoName;
 
         const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation, clientOptions);
         if (token.isCancellationRequested) {
