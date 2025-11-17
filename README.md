@@ -214,6 +214,7 @@ further streamline your workflow.
 | `vscode-dataform-tools.runCurrentFileWtApi` | Run current file using API |
 | `vscode-dataform-tools.runCurrentFileWtDependenciesApi` | Run current file with dependencies using API |
 | `vscode-dataform-tools.runCurrentFileWtDependentsApi` | Run current file with dependents using API |
+| `vscode-dataform-tools.clearExtensionCache` |  Clear extension cache|
 
 ## Known Issues
 

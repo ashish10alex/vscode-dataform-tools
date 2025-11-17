@@ -202,6 +202,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(tagsAutoCompletionDisposable());
 
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.clearExtensionCache', () => {
+        const cachedKeys = context.globalState.keys().filter(key => key.startsWith('vscode_dataform_tools_'));
+        cachedKeys.forEach(key => {
+            context.globalState.update(key, undefined);
+            logger.info(`Cleared cached data for key: ${key}`);
+        });
+        vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
+    }));
+
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(context, false, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(context, true, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(context, false, true, false, "cli"); }));

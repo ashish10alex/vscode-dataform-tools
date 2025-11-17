@@ -44,7 +44,8 @@
         "onCommand:extension.createNewDataformProject",
         "onCommand:extension.showCompiledQueryInWebView",
         "onCommand:extension.dependencyGraphPanel",
-        "onCommand:extension.selectWorkspaceFolder"
+        "onCommand:extension.selectWorkspaceFolder",
+        "onCommand:extension.clearExtensionCache"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
@@ -206,6 +207,11 @@
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
                 "category": "Dataform",
                 "title": "Select workspace folder"
+            },
+            {
+                "command": "vscode-dataform-tools.clearExtensionCache",
+                "category": "Dataform",
+                "title": "Clear extension cache"
             }
         ],
         "languages": [
