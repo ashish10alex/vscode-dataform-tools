@@ -26,7 +26,7 @@ function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
 }
 
-export async function getCachedDataformRepositoryLocation(context: vscode.ExtensionContext, repositoryName: string): Promise<any> {
+export async function getCachedDataformRepositoryLocation(context: vscode.ExtensionContext, repositoryName: string): Promise<string | undefined> {
         let cachedGcpLocation = context.globalState.get<string>(`vscode_dataform_tools_${repositoryName}`);
         if (!cachedGcpLocation) {
             cachedGcpLocation = await createSelector(gcloudComputeRegions, "Select Dataform repository location");
