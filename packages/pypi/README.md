@@ -126,6 +126,14 @@ client = DataformTools("your-gcp-project-id", "europe-west2")
 client.write_file("repository_name", "workspace_name", "relative/path/to/file/in/workspace.sql", "select 1 as a")
 ```
 
+###  Remove a file in workspace
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+client.remove_file("repository_name", "workspace_name", "relative/path/to/file/in/workspace.sql")
+```
+
 ### Installs NPM packages in a Dataform workspace.
 
 ```py
