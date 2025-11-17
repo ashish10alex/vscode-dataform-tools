@@ -1,4 +1,4 @@
-import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
+import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
 import * as vscode from 'vscode';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
@@ -45,7 +45,7 @@ export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] 
     return cmd;
 }
 
-export async function runTag(includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:ExecutionMode) {
+export async function runTag(context:vscode.ExtensionContext, includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:ExecutionMode) {
     if (dataformTags.length === 0) {
         vscode.window.showInformationMessage('No tags found in project');
         return;
@@ -77,14 +77,14 @@ export async function runTag(includeDependencies: boolean, includeDependents: bo
                 runCommandInTerminal(cmd);
             }
         } else if (executionMode === "api"){
-            runTagWtApi([selection],includeDependencies, includeDependents, fullRefresh, executionMode);
+            runTagWtApi(context, [selection],includeDependencies, includeDependents, fullRefresh, executionMode);
 
         }
 
     });
 }
 
-export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
+export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
 
     const invocationConfig = {
         includedTags: tagsToRun,
@@ -118,11 +118,8 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
         return;
     }
 
-    let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
-
     try{
-        //FIXME: we need to change how location is obtained here as well
-        const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+
         const gitInfo = getGitBranchAndRepoName();
         if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
             throw new Error("Error determining git repository and or branch name");
@@ -130,12 +127,23 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
         const repositoryName = gitInfo.gitRepoName;
         vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
 
+
+        const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
+        if (!gcpProjectLocation) {
+            vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
+            return;
+        }
+
+        const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+
         const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, gitInfo.gitBranch, undefined);
         const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
         if(workflowInvocationId){
             const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
             sendWorkflowInvocationNotification(workflowInvocationUrl);
         }
+        //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
+        context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
 
     }catch(error:any){
         vscode.window.showErrorMessage(error.message);

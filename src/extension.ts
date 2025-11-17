@@ -241,21 +241,21 @@ export async function activate(context: vscode.ExtensionContext) {
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => { 
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => { 
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(
@@ -295,21 +295,21 @@ export async function activate(context: vscode.ExtensionContext) {
         let includeDependencies = false;
         let includeDependents = false;
         let fullRefresh = false;
-        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
+        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
         let includeDependencies = true;
         let includeDependents = false;
         let fullRefresh = false;
-        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
+        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
         let includeDependencies = false;
         let includeDependents = true;
         let fullRefresh = false;
-        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
+        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     const errorLensExtensionInstalled = vscode.extensions.getExtension("usernamehw.errorlens");
