@@ -193,8 +193,11 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
                 if (remoteChange.state === "DELETED"){
                     if(remotePath){
                         const finalLocalVersion  = finalGitLocalChanges.get(remotePath);
-                        if(finalLocalVersion && finalLocalVersion?.path !== "DELETED"){
-                            const fileContents = await fs.readFile(finalLocalVersion?.fullPath, 'utf8');
+                        const fileLocallyNotDeleted = finalLocalVersion && finalLocalVersion?.path !== "DELETED";
+                        const fileLocallyNotChanged = !finalLocalVersion;
+                        if(fileLocallyNotDeleted || fileLocallyNotChanged){
+                            const fullPath = path.join(workspaceFolder, remotePath);
+                            const fileContents = await fs.readFile(fullPath, 'utf8');
                             await dataformClient.writeFile(repositoryName, workspaceName, remotePath, fileContents);
                         }
                     }
