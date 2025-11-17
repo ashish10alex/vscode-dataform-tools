@@ -285,11 +285,6 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             clientOptions = {... clientOptions , keyFilename: serviceAccountJsonPath};
         }
 
-        //FIXME: this we need add add service account support to the npm package
-        let options = {
-            clientOptions
-        };
-
         const gitInfo = getGitBranchAndRepoName();
         if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
             throw new Error("Error determining git repository and or branch name");
@@ -297,7 +292,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         const workspaceName = gitInfo.gitBranch;
         const repositoryName = gitInfo.gitRepoName;
 
-        const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation);
+        const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation, clientOptions);
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during client initialization.');
             return;
