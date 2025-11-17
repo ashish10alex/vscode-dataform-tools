@@ -1,3 +1,5 @@
+from ast import Tuple
+from typing import Callable
 import logging
 from typing_extensions import TypedDict, List, Optional, Dict, Any, Union, NotRequired
 from google.cloud import dataform_v1beta1
@@ -7,6 +9,8 @@ from google.cloud.dataform_v1beta1.types import WorkflowInvocation
 from google.cloud.dataform_v1beta1.types import InvocationConfig
 from google.cloud.dataform_v1beta1.types import Workspace, Repository
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, NotFound
+from google.api_core import client_options as client_options_generator
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +61,19 @@ class CompilationResultType(TypedDict, total=False):
     git_commitish: Optional[str]
     code_compilation_config: CodeCompilationConfig
 
+class ClientOptions(TypedDict, total=False):
+    # NOTE: we have not included all options from google.api_core.client_options.ClientOptions yet
+    credentials_file: Optional[str]
+    api_endpoint: Optional[str]
+    quota_project_id: Optional[str]
+    scopes: Optional[List[str]]
+    api_key: Optional[str]
+    api_audience: Optional[str]
+    universe_domain: Optional[str]
+
+
 class DataformTools():
-    def __init__(self, gcp_project_id:str, gcp_location:str):
+    def __init__(self, gcp_project_id:str, gcp_location:str, client_options:Optional[ClientOptions] = None):
         """Initializes the DataformTools class.
         Args:
             gcp_project_id (str): The GCP project ID.
@@ -66,7 +81,11 @@ class DataformTools():
         """
         self.gcp_project_id = gcp_project_id
         self.gcp_location = gcp_location
-        self.client = dataform_v1beta1.DataformClient()
+        if client_options is None:
+            self.client = dataform_v1beta1.DataformClient()
+        else:
+            options = client_options_generator.ClientOptions(**client_options)
+            self.client = dataform_v1beta1.DataformClient(client_options=options)
     
     def list_repositories(self):
         """Lists repositories in Dataform.
