@@ -105,15 +105,14 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
             const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
-            const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            if(!output){
+                throw new Error("Error creating workflow invocation");
+            }
+            sendWorkflowInvocationNotification(output.workflowInvocationUrl);
             //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
             context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
-            const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
-            if(workflowInvocationId){
-                const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
-                sendWorkflowInvocationNotification(workflowInvocationUrl);
-                return {workflowInvocationUrlGCP: workflowInvocationUrl, errorWorkflowInvocation: undefined};
-            }
+            return {workflowInvocationUrlGCP: output.workflowInvocationUrl, errorWorkflowInvocation: undefined};
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
             return {workflowInvocationUrlGCP: undefined, errorWorkflowInvocation: error.message};

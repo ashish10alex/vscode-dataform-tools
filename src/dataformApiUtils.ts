@@ -214,12 +214,12 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
 export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, repositoryName:string, workspaceName:string,  codeCompilationConfig:CodeCompilationConfig, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
-        const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, codeCompilationConfig, invocationConfig, workspaceName, undefined);
-        const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
-        if(workflowInvocationId){
-            const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
-            sendWorkflowInvocationNotification(workflowInvocationUrl);
+        const output = await dataformClient.runDataformRemotely(repositoryName, codeCompilationConfig, invocationConfig, workspaceName, undefined);
+        if(!output){
+            vscode.window.showErrorMessage("Error creating workflow invocation");
+            return;
         }
+        sendWorkflowInvocationNotification(output.workflowInvocationUrl);
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
     }

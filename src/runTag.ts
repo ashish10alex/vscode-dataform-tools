@@ -136,12 +136,11 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
 
         const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
-        const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, gitInfo.gitBranch, undefined);
-        const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
-        if(workflowInvocationId){
-            const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
-            sendWorkflowInvocationNotification(workflowInvocationUrl);
+        const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, gitInfo.gitBranch, undefined);
+        if(!output){
+            throw new Error("Error creating workflow invocation");
         }
+        sendWorkflowInvocationNotification(output.workflowInvocationUrl);
         //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
         context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
 
