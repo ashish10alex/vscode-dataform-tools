@@ -126,7 +126,7 @@ client = DataformTools("your-gcp-project-id", "europe-west2")
 client.write_file("repository_name", "workspace_name", "relative/path/to/file/in/workspace.sql", "select 1 as a")
 ```
 
-###  Remove a file in workspace
+###  Remove a file from workspace
 
 ```py
 from dataform_tools import DataformTools
