@@ -121,6 +121,7 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
     let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
 
     try{
+        //FIXME: we need to change how location is obtained here as well
         const dataformClient = new DataformTools(projectId, gcpProjectLocation);
         const gitInfo = getGitBranchAndRepoName();
         if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getOrUpdateRepositoryLocation } from "./utils";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation } from "./utils";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
@@ -97,7 +97,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             const repositoryName = gitInfo.gitRepoName;
             vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
 
-            const gcpProjectLocation = await getOrUpdateRepositoryLocation(context, repositoryName);
+            const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
             if (!gcpProjectLocation) {
                 vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
                 return;
@@ -106,6 +106,8 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
             const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
+            context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
             const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
             if(workflowInvocationId){
                 const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);

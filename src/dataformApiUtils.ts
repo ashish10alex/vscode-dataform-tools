@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises'; 
 import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
-import { getWorkspaceFolder, runCompilation, getOrUpdateRepositoryLocation} from './utils';
+import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation} from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
 
@@ -276,12 +276,11 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         const workspaceName = gitInfo.gitBranch;
         const repositoryName = gitInfo.gitRepoName;
 
-        const gcpProjectLocation = await getOrUpdateRepositoryLocation(context, repositoryName);
+        const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
         if (!gcpProjectLocation) {
             vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
             return;
         }
-        context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
 
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during GCP location fetch.');
@@ -375,6 +374,8 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
         if(codeCompilationConfig){
             await compileAndCreateWorkflowInvocation(dataformClient, repositoryName, workspaceName, codeCompilationConfig, invocationConfig);
+            //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
+            context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
         }else{
             vscode.window.showErrorMessage("Code compilation config could not be determined");
         }
