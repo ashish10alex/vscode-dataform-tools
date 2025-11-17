@@ -13,6 +13,29 @@ npm install @ashishalex/dataform-tools
 
 ## Usage
 
+### Run Dataform workflow in GCP
+
+Creates a remote Dataform run using code from a git commitish or worksapce
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+
+const workspaceName = undefined  // use workspace name if you want to compile a workspace.
+const gitCommitish = "branch_name" // branch name, tag, commit sha
+
+const codeCompilationConfig = {} // overrides such as table prefix
+const invocationConfig = {
+    includedTags: [tagToRun],
+    fullyRefreshIncrementalTablesEnabled: false,
+    transitiveDependentsIncluded: false,
+    transitiveDependenciesIncluded:false
+}
+
+output = client.runDatformRemotely("repository-name", codeCompilationConfig, invocationConfig, workspaceName, gitCommitish)
+console.log(output)
+```
+
 
 ### List Repositories
 ```js
@@ -170,25 +193,4 @@ client.fetchGitAheadBehind("repository-name", "workspace-name")
 import {DataformTools} from "@ashishalex/dataform-tools"
 const client = new DataformTools("your-gcp-project-id", "europe-west2")
 client.pushWorkspaceCommits("repository-name", "my-worksapce", "workspace-name") 
-```
-
-     
-### Run Dataform workflow in GCP
-
-Compilation followed by workflow invocation
-
-```js
-import {DataformTools} from "@ashishalex/dataform-tools"
-const client = new DataformTools("your-gcp-project-id", "europe-west2")
-
-const codeCompilationConfig = {} // overrides such as table prefix
-const invocationConfig = {
-    includedTags: [tagToRun],
-    fullyRefreshIncrementalTablesEnabled: false,
-    transitiveDependentsIncluded: false,
-    transitiveDependenciesIncluded:false
-}
-const workspaceName = undefined  // use workspace name if you want to compile a workspace.
-const gitCommitish = "branch_name" // branch name, tag, commit sha
-client.runDataformRemotely("repository-name", codeCompilationConfig, invocationConfig, workspaceName, gitCommitish)
 ```
