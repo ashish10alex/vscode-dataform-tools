@@ -255,6 +255,19 @@ class DataformTools():
         request = dataform_v1beta1.WriteFileRequest(workspace=workspace_path,  path=relative_path, contents=buffer_contents)
 
         self.client.write_file(request)
+    
+    def remove_file(self, repository_name:str, worksapce_name:str, relative_path:str) -> None:
+        """Removes a file from a workspace in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workspace_name (str): The name of the workspace.
+            relative_path (str): The relative path of the file to remove.
+        Returns:
+            None
+        """
+        workspace_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workspaces/{worksapce_name}"
+        request = dataform_v1beta1.RemoveFileRequest(workspace=workspace_path, path=relative_path)
+        self.client.remove_file(request)
 
     def get_workflow_invocation_url(self, repository_name: str, workflow_invocation_id: str) -> str:
         """Generates the URL for a workflow invocation in Dataform.
