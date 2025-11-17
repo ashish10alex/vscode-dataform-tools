@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import path from 'path';
 import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getGcpProjectLocationDataform} from './utils';
-import {DataformTools} from "@ashishalex/dataform-tools";
+import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
 
 export function sendWorkflowInvocationNotification(url:string){

@@ -1,8 +1,9 @@
 import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getGcpProjectLocationDataform, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
 import * as vscode from 'vscode';
-import { DataformApi } from "./dataformApi";
+import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
 import { ExecutionMode } from './types';
+import { getGitBranchAndRepoName } from "./getGitMeta";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -120,12 +121,21 @@ export async function runTagWtApi(tagsToRun: string[], transitiveDependenciesInc
     let gcpProjectLocation = await getGcpProjectLocationDataform(projectId, CACHED_COMPILED_DATAFORM_JSON);
 
     try{
-        const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-        vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
-        const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
-        if(createdWorkflowInvocation?.url){
-            sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+        const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+        const gitInfo = getGitBranchAndRepoName();
+        if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+            throw new Error("Error determining git repository and or branch name");
+        } 
+        const repositoryName = gitInfo.gitRepoName;
+        vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+        const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, gitInfo.gitBranch, undefined);
+        const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
+        if(workflowInvocationId){
+            const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
+            sendWorkflowInvocationNotification(workflowInvocationUrl);
         }
+
     }catch(error:any){
         vscode.window.showErrorMessage(error.message);
     }

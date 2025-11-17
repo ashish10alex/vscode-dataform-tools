@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject, showLoadingProgress } from "./utils";
-import { DataformApi } from "./dataformApi";
+import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
+import { getGitBranchAndRepoName } from './getGitMeta';
 
 export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
@@ -98,13 +99,20 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
                 );
                 return;
             }
-            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-            vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
-            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
-            const url = createdWorkflowInvocation?.url;
-            if(url){
-                sendWorkflowInvocationNotification(url);
-                return {workflowInvocationUrlGCP: url, errorWorkflowInvocation: undefined};
+            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+            const gitInfo = getGitBranchAndRepoName();
+            if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+                throw new Error("Error determining git repository and or branch name");
+            } 
+            const repositoryName = gitInfo.gitRepoName;
+            vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+            const workflowInvocation = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
+            if(workflowInvocationId){
+                const workflowInvocationUrl = dataformClient.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
+                sendWorkflowInvocationNotification(workflowInvocationUrl);
+                return {workflowInvocationUrlGCP: workflowInvocationUrl, errorWorkflowInvocation: undefined};
             }
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
