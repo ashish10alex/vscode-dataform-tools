@@ -300,22 +300,23 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation, clientOptions);
         if (token.isCancellationRequested) {
-            vscode.window.showInformationMessage('Operation cancelled during client initialization.');
+            vscode.window.showInformationMessage('Operation cancelled during Dataform client initialization.');
             return;
         }
 
         // 3
         progress.report({ message: `Creating Dataform workspace ${workspaceName} if it does not exsist...`, increment: 14.28 });
         try {
-            await dataformClient.createWorkspace(repositoryName, workspaceName);
-        } catch (error: any) {
-            const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
-            const DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE = 5;
 
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during workspace creation.');
                 return;
             }
+
+            await dataformClient.createWorkspace(repositoryName, workspaceName);
+        } catch (error: any) {
+            const DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE = 6;
+            const DATAFORM_WORKSPACE_PARENT_NOT_FOUND_ERROR_CODE = 5;
 
             if (error.code === DATAFORM_WORKSPACE_EXSIST_IN_GCP_ERROR_CODE) {
                 // vscode.window.showWarningMessage(error.message);
@@ -331,11 +332,11 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 4
         progress.report({ message: `Verifying if git remote origin/${workspaceName} exsists...`, increment: 14.28 });
-        let remoteGitRepoExsists = await gitRemoteBranchExsists(workspaceName);
         if (token.isCancellationRequested) {
-            vscode.window.showInformationMessage('Operation cancelled during workflow execution.');
+            vscode.window.showInformationMessage('Operation cancelled during git remote check.');
             return;
         }
+        let remoteGitRepoExsists = await gitRemoteBranchExsists(workspaceName);
 
         if(remoteGitRepoExsists){
             // 5
@@ -354,10 +355,6 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                 //NOTE: this should not happen anymore as we are checking for git remote first
                 // const NO_REMOTE_ERROR_MSG = `9 FAILED_PRECONDITION: Could not pull branch '${dataformClient.workspaceId}' as it was not found remotely.`;
 
-                if (token.isCancellationRequested) {
-                    vscode.window.showInformationMessage('Operation cancelled during Git pull.');
-                    return;
-                }
                 if (error.code === CANNOT_PULL_UNCOMMITED_CHANGES_ERROR_CODE) {
                     vscode.window.showWarningMessage(error.message);
                 } else {
@@ -368,11 +365,26 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 6
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
-        await syncRemoteWorkspaceToLocalBranch(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists);
+        if (token.isCancellationRequested) {
+            vscode.window.showInformationMessage('Operation cancelled during workspace sync.');
+            return;
+        }
 
         //7
         progress.report({ message: 'Syncing remote workspace to local code...', increment: 14.28 });
+        if (token.isCancellationRequested) {
+            vscode.window.showInformationMessage('Operation cancelled before workflow invocation.');
+            return;
+        }
+        await syncRemoteWorkspaceToLocalBranch(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists);
+
         if(codeCompilationConfig){
+            // 8
+            progress.report({ message: 'Creating compilation result & invoking workflow...', increment: 14.28 });
+            if (token.isCancellationRequested) {
+                vscode.window.showInformationMessage('Operation cancelled before workflow invocation.');
+                return;
+            }
             await compileAndCreateWorkflowInvocation(dataformClient, repositoryName, workspaceName, codeCompilationConfig, invocationConfig);
             //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
             context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
