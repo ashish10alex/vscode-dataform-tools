@@ -2,13 +2,13 @@ import { DataformClient } from '@google-cloud/dataform';
 import { protos } from '@google-cloud/dataform';
 import logger from "./logger.js";
 
-type Target = {
+export type Target = {
     database?: (string|null);
     schema?: (string|null);
     name?: (string|null);
 };
 
-type CodeCompilationConfig = {
+export type CodeCompilationConfig = {
     assertionSchema: string,  
     databaseSuffix: string,            
     builtinAssertionNamePrefix: string,
@@ -21,13 +21,25 @@ type CodeCompilationConfig = {
     defaultNotebookRuntimeOption:string
 } | {};
 
-type InvocationConfig = {
+export type InvocationConfig = {
     includedTargets?: Target[];
     includedTags?: string[];
     transitiveDependenciesIncluded: boolean;
     transitiveDependentsIncluded: boolean;
     fullyRefreshIncrementalTablesEnabled: boolean;
     serviceAccount?: string;
+};
+
+export type ClientOptions = {
+    credentials?: {
+        client_email?: string;
+        private_key?: string;
+    };
+    email?: string;
+    port?: number;
+    projectId?: string;
+    keyFilename?: string;
+    apiEndpoint?: string;
 };
 
 
@@ -41,15 +53,38 @@ export class DataformTools {
      * Creates an instance of the DataformTools.
      * @param gcpProjectId The Google Cloud Project ID.
      * @param gcpLocation The location of the Dataform repository (e.g., "europe-west2").
+     * @param {object} [options] - The configuration object.
+     * The options accepted by the constructor are described in detail
+     * in [this document](https://github.com/googleapis/gax-nodejs/blob/main/client-libraries.md#creating-the-client-instance).
+     * The common options are:
+     * @param {object} [options.credentials] - Credentials object.
+     * @param {string} [options.credentials.client_email]
+     * @param {string} [options.credentials.private_key]
+     * @param {string} [options.email] - Account email address. Required when
+     *     using a .pem or .p12 keyFilename.
+     * @param {string} [options.keyFilename] - Full path to the a .json, .pem, or
+     *     .p12 key downloaded from the Google Developers Console. If you provide
+     *     a path to a JSON file, the projectId option below is not necessary.
+     *     NOTE: .pem and .p12 require you to specify options.email as well.
+     * @param {number} [options.port] - The port on which to connect to
+     *     the remote host.
+     * @param {string} [options.projectId] - The project ID from the Google
+     *     Developer's Console, e.g. 'grape-spaceship-123'. We will also check
+     *     the environment variable GCLOUD_PROJECT for your project ID. If your
+     *     app is running in an environment which supports
+     *     {@link https://cloud.google.com/docs/authentication/application-default-credentials Application Default Credentials},
+     *     your project ID will be detected automatically.
+     * @param {string} [options.apiEndpoint] - The domain name of the
+     *     API remote host.
      */
-    constructor(gcpProjectId: string, gcpLocation: string) {
+    constructor(gcpProjectId: string, gcpLocation: string, options?:ClientOptions) {
         if (!gcpProjectId || !gcpLocation) {
             throw new Error("gcpProjectId and gcpLocation must be provided.");
         }
         this.gcpProjectId = gcpProjectId;
         this.gcpLocation = gcpLocation;
         //TODO: ability to use service account
-        this.client = new DataformClient();
+        this.client = new DataformClient(options);
     }
 
     /**
@@ -382,14 +417,23 @@ export class DataformTools {
      * @param invocationConfig {@link InvocationConfig} object representing invocation config
      * @param workspaceName - name of the Dataform workspace in GCP the compilation should be triggered for 
      * @param gitCommitish - git branch, tag or commit sha that should be used for compilation
-     * @returns workflow invocation  {@link protos.google.cloud.dataform.v1beta1.IWorkflowInvocation|IWorkflowInvocation}
+     * @returns {workflowInvocation: protos.google.cloud.dataform.v1beta1.IWorkflowInvocation, workflowInvocationId: string, workflowInvocationUrl: string}
      * @throws {Error} If both or neither workspaceName and gitCommitish are provided
      */
     async runDataformRemotely(repositoryName:string, codeCompilationConfig: CodeCompilationConfig, invocationConfig: InvocationConfig, workspaceName?:string, gitCommitish?: string,){
         const compilationResult = await this.createCompilationResult(repositoryName, codeCompilationConfig, workspaceName, gitCommitish);
         const compilationResultName = compilationResult.name;
         if(compilationResultName){
-            return await this.createWorkflowInvocation(repositoryName, compilationResultName, invocationConfig);
+            const workflowInvocation = await this.createWorkflowInvocation(repositoryName, compilationResultName, invocationConfig);
+            const workflowInvocationId = workflowInvocation?.name?.split("/").pop();
+        if(workflowInvocationId){
+            const workflowInvocationUrl = this.getWorkflowInvocationUrl(repositoryName, workflowInvocationId);
+            return {
+                workflowInvocation,
+                workflowInvocationId,
+                workflowInvocationUrl, 
+            };
+        }
         }
     }
 
