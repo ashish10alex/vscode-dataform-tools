@@ -72,31 +72,21 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     const gitCommitsAhead = gitCommitsAheadBehind.commitsAhead || 0;
     const gitCommitsBehind = gitCommitsAheadBehind.commitsBehind || 0;
 
-    if(gitCommitsAhead > 0 && !remoteGitRepoExsists){
-        // NOTE: this will create the branch in remote if it does not exsists
-        await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
-    } else if(gitCommitsAhead > 0){
-        let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${workspaceName} workspace in GCP. Push it first ?`;
-        const response = await vscode.window.showWarningMessage(warningMessage, {modal: true}, "Yes", "No");
-        if(response === "Yes"){
-            await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
-        } else{
-            return;
-        }
-    }
 
-    if(gitCommitsAhead > 0){
-        if(!remoteGitRepoExsists){
-            // NOTE: this will create the branch in remote if it does not exsists
+    if (gitCommitsAhead > 0) {
+        if (!remoteGitRepoExsists) {
+            // Remote doesn't exist → create it by pushing (creates branch automatically)
             await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
         } else {
-            let warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${workspaceName} workspace in GCP. Push it first ?`;
-            const response = await vscode.window.showWarningMessage(warningMessage, {modal: true}, "Yes", "No");
-            if(response === "Yes"){
-                await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
-            } else{
-                return;
+            // Remote exists → warn the user
+            const warningMessage = `There are ${gitCommitsAhead} un-pushed commits in ${workspaceName} workspace in GCP. Push them first?`;
+            const response = await vscode.window.showWarningMessage(warningMessage, { modal: true }, "Yes", "No");
+
+            if (response !== "Yes") {
+                throw new Error(`Un-pushed commits in remote workspace ${workspaceName}, aborting sync`);
             }
+
+            await dataformClient.pushWorkspaceCommits(repositoryName, workspaceName, workspaceName);
         }
     }
 
