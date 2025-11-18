@@ -3,9 +3,7 @@
 > ▶️ [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor.
-✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product. 
-
-
+✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product.
 
 <table>
   <thead>
@@ -44,7 +42,7 @@
     <tr>
       <td><a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">VS Code marketplace</a></td>
       <td>
-      <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace"> 
+      <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace">
       <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads"></td>
       </td>
       <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode"></a>
@@ -74,7 +72,6 @@
     </tr>
   </tbody>
 </table>
-
 
 ----
 
@@ -226,4 +223,4 @@ further streamline your workflow.
 * [ ] Add hover docs for config block elements. e.g. Assertions, type etc
 * [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 
-[^1]: Link to confirmation of official recommendation by Google:  [link](https://github.com/dataform-co/dataform/blob/main/vscode/README.md)
+[^1]: [Link to confirmation of official recommendation by Google:](https://github.com/dataform-co/dataform/blob/main/vscode/README.md)
