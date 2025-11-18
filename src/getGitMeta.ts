@@ -27,6 +27,22 @@ export function getGitBranchAndRepoName() {
   return { gitBranch, gitRepoName };
 }
 
+export async function triggerGitPull(gitBranchName: string): Promise<void> {
+    //TODO: What hapens when there is a merge conflict?
+    let workspaceFolders = vscode.workspace?.workspaceFolders;
+    let projectRoot = "";
+    if(workspaceFolders){
+        projectRoot = workspaceFolders[0].uri?.fsPath;
+    }
+    try {
+        await execPromise(`git branch --set-upstream-to=origin/${gitBranchName}`, { cwd: projectRoot });
+        await execPromise(' git pull', { cwd: projectRoot });
+    } catch (error:any) {
+        vscode.window.showErrorMessage(`Error running git pull: ${error.message}`);
+        throw error;
+    }
+}
+
 function gitStatusToHumanReadable(statusCode: GitStatusCode): GitStatusCodeHumanReadable{
     switch (statusCode) {
         case "M":
@@ -154,6 +170,26 @@ export async function gitRemoteBranchExsists(gitBranchName:string): Promise<bool
     }
     return false;
 }
+
+
+export async function localBranchBehindRemote(gitBranchName:string): Promise<boolean> {
+    // FIXME: Assumes remote name is 'origin'
+    const gitCommand = `git diff --name-only ${gitBranchName} origin/${gitBranchName}`;
+    let workspaceFolders = vscode.workspace?.workspaceFolders;
+    let projectRoot = "";
+    if(workspaceFolders){
+        projectRoot = workspaceFolders[0].uri?.fsPath;
+    }
+
+    const { stdout } = await execPromise(gitCommand, { cwd: projectRoot });
+    const lines = stdout.trim("").split("\n");
+    // if there are any files listed, local branch is behind remote and return true
+    if(lines.length > 0 && lines[0] !== ""){
+        return true;
+    }
+    return false;
+}
+
 
 function getActualRepoName(repoPath: string): string {
   try {

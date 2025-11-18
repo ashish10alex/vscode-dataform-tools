@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs/promises'; 
 import path from 'path';
-import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta} from "./getGitMeta";
+import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta, localBranchBehindRemote, triggerGitPull} from "./getGitMeta";
 import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation} from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
@@ -268,6 +268,19 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         } 
         const workspaceName = gitInfo.gitBranch;
         const repositoryName = gitInfo.gitRepoName;
+
+        const isBehindRemote = await localBranchBehindRemote(workspaceName);
+        if(isBehindRemote){
+            const isBehindError = `Local git branch ${workspaceName} is behind remote origin/${workspaceName}, pull latest changes ?`;
+            const response = await vscode.window.showWarningMessage(isBehindError, { modal: true }, "Yes", "No");
+
+            if (response !== "Yes") {
+                vscode.window.showInformationMessage("Please pull latest changes and try again, aborting...");
+                return;
+            }else {
+                await triggerGitPull(workspaceName);
+            }
+        }
 
         const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
         if (!gcpProjectLocation) {
