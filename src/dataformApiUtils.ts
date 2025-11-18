@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs/promises'; 
 import path from 'path';
-import { getLocalGitState, getGitStatusCommitedFiles, gitRemoteBranchExsists, getGitBranchAndRepoName, getGitUserMeta, localBranchBehindRemote, triggerGitPull} from "./getGitMeta";
+import {GitService} from "./gitClient";
 import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation} from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
@@ -19,7 +19,7 @@ export function sendWorkflowInvocationNotification(url:string){
     });
 }
 
-async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
+async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, gitClient: GitService, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
     let userResponse: string | undefined = "No";
     if(gitCommitsBehind>0){
         userResponse = await vscode.window.showWarningMessage(
@@ -35,7 +35,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTo
     if(userResponse === "Yes"){
         await dataformClient.resetWorkspaceChanges(repositoryName, workspaceName, [], true);
         if(remoteGitRepoExsists){
-            const gitUser = await getGitUserMeta() || {name: "", email: ""};
+            const gitUser = await gitClient.getGitUserMeta() || {name: "", email: ""};
             if(gitUser && gitUser.name && gitUser.email){
                 await dataformClient.pullGitCommits(repositoryName, workspaceName, {remoteBranch: workspaceName ,emailAddress: gitUser.email, userName: gitUser.name});
             }
@@ -47,7 +47,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTo
     }
 }
 
-export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformTools, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean){
+export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformTools, gitClient: GitService, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean){
     let defaultGitBranch = undefined;
     if(!remoteGitRepoExsists){
         const repository = await dataformClient.getRepository(repositoryName);
@@ -92,7 +92,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
 
     if(gitCommitsBehind > 0){
         try{
-           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists, gitCommitsBehind)){
+           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, gitClient, repositoryName, workspaceName, remoteGitRepoExsists, gitCommitsBehind)){
             return;
            };
         }catch(error:any){
@@ -101,9 +101,9 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     }
 
     const [gitStatusLocalUnCommited, gitStatusLocalCommited, remoteDataformWorkspaceStatus] = await Promise.all([
-        await getLocalGitState(),
+        await gitClient.getLocalGitState(),
         //NOTE: defaultGitBranch gets assigned to workspaceId when remote git repository exsists
-        await getGitStatusCommitedFiles(defaultGitBranch),
+        await gitClient.getGitStatusCommitedFiles(defaultGitBranch),
         await dataformClient.getWorkspaceGitState(repositoryName, workspaceName)
     ]);
 
@@ -116,7 +116,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     const noLocalGitChanges = gitStatusLocalUnCommited.length === 0 && gitStatusLocalCommited.length === 0;
     if(noLocalGitChanges){
         try{
-           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists, 0)){
+           if(!await resetWorkspaceChangesFollowedByGitPull(dataformClient, gitClient, repositoryName, workspaceName, remoteGitRepoExsists, 0)){
             return;
            };
         }catch(error:any){
@@ -262,14 +262,16 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             return;
         }
 
-        const gitInfo = getGitBranchAndRepoName();
+
+        const gitClient = new GitService();
+        const gitInfo = gitClient.getGitBranchAndRepoName();
         if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
             throw new Error("Error determining git repository and or branch name");
         } 
         const workspaceName = gitInfo.gitBranch;
         const repositoryName = gitInfo.gitRepoName;
 
-        const isBehindRemote = await localBranchBehindRemote(workspaceName);
+        const isBehindRemote = await gitClient.localBranchBehindRemote(workspaceName);
         if(isBehindRemote){
             const isBehindError = `Local git branch ${workspaceName} is behind remote origin/${workspaceName}, pull latest changes ?`;
             const response = await vscode.window.showWarningMessage(isBehindError, { modal: true }, "Yes", "No");
@@ -278,7 +280,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                 vscode.window.showInformationMessage("Please pull latest changes and try again, aborting...");
                 return;
             }else {
-                await triggerGitPull(workspaceName);
+                await gitClient.triggerGitPull(workspaceName);
             }
         }
 
@@ -342,13 +344,13 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             vscode.window.showInformationMessage('Operation cancelled during git remote check.');
             return;
         }
-        let remoteGitRepoExsists = await gitRemoteBranchExsists(workspaceName);
+        let remoteGitRepoExsists = await gitClient.gitRemoteBranchExsists(workspaceName);
 
         if(remoteGitRepoExsists){
             // 5
             progress.report({ message: `Pulling Git commits into workspace ${workspaceName}...`, increment: 14.28 });
             try {
-                const gitUser = await getGitUserMeta() || {name: "", email: ""};
+                const gitUser = await gitClient.getGitUserMeta() || {name: "", email: ""};
                 if(gitUser && gitUser.name && gitUser.email){
                     await dataformClient.pullGitCommits(repositoryName, workspaceName, {remoteBranch: workspaceName ,emailAddress: gitUser.email, userName: gitUser.name});
                 }else {
@@ -382,7 +384,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             vscode.window.showInformationMessage('Operation cancelled before workflow invocation.');
             return;
         }
-        await syncRemoteWorkspaceToLocalBranch(dataformClient, repositoryName, workspaceName, remoteGitRepoExsists);
+        await syncRemoteWorkspaceToLocalBranch(dataformClient, gitClient, repositoryName, workspaceName, remoteGitRepoExsists);
 
         if(codeCompilationConfig){
             // 8

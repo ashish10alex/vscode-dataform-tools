@@ -15,7 +15,7 @@ import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
-import { getGitBranchAndRepoName } from './getGitMeta';
+import { GitService } from './gitClient';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -1713,7 +1713,8 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         }
         try{
             const dataformClient = new DataformTools(projectId, gcpProjectLocation);
-            const gitInfo = getGitBranchAndRepoName();
+            const gitClient = new GitService();
+            const gitInfo = gitClient.getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
                 throw new Error("Error determining git repository and or branch name");
             } 

@@ -3,7 +3,7 @@ import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromCo
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
-import { getGitBranchAndRepoName } from './getGitMeta';
+import { GitService } from './gitClient';
 
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
@@ -90,7 +90,8 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             }
 
 
-            const gitInfo = getGitBranchAndRepoName();
+            const gitClient = new GitService();
+            const gitInfo = gitClient.getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
                 throw new Error("Error determining git repository and or branch name");
             } 

@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
 import { ExecutionMode } from './types';
-import { getGitBranchAndRepoName } from "./getGitMeta";
+import { GitService } from "./gitClient";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -120,7 +120,8 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
 
     try{
 
-        const gitInfo = getGitBranchAndRepoName();
+        const gitClient = new GitService();
+        const gitInfo = gitClient.getGitBranchAndRepoName();
         if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
             throw new Error("Error determining git repository and or branch name");
         } 
