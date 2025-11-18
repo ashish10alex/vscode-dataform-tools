@@ -98,6 +98,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
             "",
             syncAndrunDataformRemotely,
             "Dataform remote workspace execution cancelled",
+            context,
             invocationConfig,
             compilerOptionsMap,
         );
