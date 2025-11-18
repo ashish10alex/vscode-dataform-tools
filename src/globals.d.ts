@@ -93,10 +93,23 @@ declare global {
     };
   };
 }
-
 declare global {
-  var compilerOptionsMap: {[key: string]: stringMap<string, string>} | undefined;
+  var compilerOptionsMap: {
+      assertionSchema?: string,
+      databaseSuffix?: string,
+      builtinAssertionNamePrefix?: string,
+      defaultLocation?: string,
+      tablePrefix?: string,
+      vars?: {
+          [key: string]: string;
+      },
+      schemaSuffix?: string,
+      defaultSchema?: string,
+      defaultDatabase?: string,
+      defaultNotebookRuntimeOption?: string,
+  };
 }
+
 
 declare global {
   var isWsl: boolean

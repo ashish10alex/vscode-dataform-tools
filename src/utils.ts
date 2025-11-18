@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { logger } from './logger';
 import fs from 'fs';
 import path from 'path';
+import { gcloudComputeRegions } from './constants';
 import { execSync, spawn } from 'child_process';
 import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
 import { queryDryRun } from './bigqueryDryRun';
@@ -12,8 +13,9 @@ import { GitHubContentResponse, ExecutablePathCache, ExecutablePathInfo, Executi
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
-import { DataformApi } from "./dataformApi";
+import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
+import { GitService } from './gitClient';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -22,6 +24,14 @@ export let declarationsAndTargets: string[] = [];
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
+}
+
+export async function getCachedDataformRepositoryLocation(context: vscode.ExtensionContext, repositoryName: string): Promise<string | undefined> {
+        let cachedGcpLocation = context.globalState.get<string>(`vscode_dataform_tools_${repositoryName}`);
+        if (!cachedGcpLocation) {
+            cachedGcpLocation = await createSelector(gcloudComputeRegions, "Select Dataform repository location");
+        } 
+        return cachedGcpLocation;
 }
 
 function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
@@ -1424,7 +1434,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                 if(compilerOptions.length>0){
                     compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
                 }else{
-                    compilerOptionsMap = undefined;
+                    compilerOptionsMap = {};
                 }
 
                 logger.debug(`compilerOptionsMap: ${compilerOptionsMap}`);
@@ -1702,12 +1712,20 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             return;
         }
         try{
-            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-            vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
-            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
-            if(createdWorkflowInvocation?.url){
-                sendWorkflowInvocationNotification(createdWorkflowInvocation.url);
+            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+            const gitClient = new GitService();
+            const gitInfo = gitClient.getGitBranchAndRepoName();
+            if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+                throw new Error("Error determining git repository and or branch name");
+            } 
+            const repositoryName = gitInfo.gitRepoName;
+            vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+            const ouput = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            if(!ouput){
+                throw new Error("No response received from Dataform API for workflow invocation creation");
             }
+            sendWorkflowInvocationNotification(ouput.workflowInvocationUrl);
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
         }

@@ -67,7 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;
     globalThis.errorInPreOpsDenyList = false;
-    globalThis.compilerOptionsMap = undefined;
+    globalThis.compilerOptionsMap = {};
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
@@ -202,62 +202,72 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(tagsAutoCompletionDisposable());
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(false, false, false, "cli"); }));
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(true, false, false, "cli"); }));
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(false, true, false, "cli"); }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.clearExtensionCache', () => {
+        const cachedKeys = context.globalState.keys().filter(key => key.startsWith('vscode_dataform_tools_'));
+        cachedKeys.forEach(key => {
+            context.globalState.update(key, undefined);
+            logger.info(`Cleared cached data for key: ${key}`);
+        });
+        vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(context, false, false, false, "cli"); }));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(context, true, false, false, "cli"); }));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(context, false, true, false, "cli"); }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runCurrentFile(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependenciesApi', () => { 
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runCurrentFile(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependentsApi', () => { 
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runCurrentFile(transitiveDependenciesIncluded, transitiveDependentsIncluded ,fullyRefreshIncrementalTablesEnabled, "api");
+        runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded ,fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtApi', () => { 
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => { 
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => { 
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runTag(transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+        runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }) );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => {runFilesTagsWtOptions("cli");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => {runFilesTagsWtOptions(context,"cli");})
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi', () => {runFilesTagsWtOptions("api");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi', () => {runFilesTagsWtOptions(context, "api");})
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => {runFilesTagsWtOptions("api_workspace");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => {runFilesTagsWtOptions(context, "api_workspace");})
     );
 
     context.subscriptions.push(
@@ -285,21 +295,21 @@ export async function activate(context: vscode.ExtensionContext) {
         let includeDependencies = false;
         let includeDependents = false;
         let fullRefresh = false;
-        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
+        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
         let includeDependencies = true;
         let includeDependents = false;
         let fullRefresh = false;
-        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
+        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
         let includeDependencies = false;
         let includeDependents = true;
         let fullRefresh = false;
-        runTag(includeDependencies, includeDependents, fullRefresh, "cli");
+        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
     }));
 
     const errorLensExtensionInstalled = vscode.extensions.getExtension("usernamehw.errorlens");

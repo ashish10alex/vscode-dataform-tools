@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, getLocationOfGcpProject, showLoadingProgress } from "./utils";
-import { DataformApi } from "./dataformApi";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation } from "./utils";
+import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
+import { GitService } from './gitClient';
 
-export async function runCurrentFile(includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {
@@ -62,18 +63,6 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
             return;
         }
 
-        let gcpProjectLocation = undefined;
-        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-        }else{
-            gcpProjectLocation = await getLocationOfGcpProject(projectId);
-        }
-
-        if(!gcpProjectLocation){
-            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
-            return;
-        }
-
         let actionsList: {database:string, schema: string, name:string}[] = [];
         currFileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
             const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
@@ -93,19 +82,38 @@ export async function runCurrentFile(includDependencies: boolean, includeDepende
                     "",
                     syncAndrunDataformRemotely,
                     "Dataform remote workspace execution cancelled",
+                    context,
                     invocationConfig,
                     compilerOptionsMap,
                 );
                 return;
             }
-            const dataformClient = new DataformApi(projectId, gcpProjectLocation);
-            vscode.window.showInformationMessage(`Creating workflow invocation with ${dataformClient.gitBranch} remote git branch ...`);
-            const createdWorkflowInvocation = await dataformClient.runDataformRemotely(invocationConfig, "gitBranch", compilerOptionsMap);
-            const url = createdWorkflowInvocation?.url;
-            if(url){
-                sendWorkflowInvocationNotification(url);
-                return {workflowInvocationUrlGCP: url, errorWorkflowInvocation: undefined};
+
+
+            const gitClient = new GitService();
+            const gitInfo = gitClient.getGitBranchAndRepoName();
+            if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
+                throw new Error("Error determining git repository and or branch name");
+            } 
+            const repositoryName = gitInfo.gitRepoName;
+            vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+            const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
+            if (!gcpProjectLocation) {
+                vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
+                return;
             }
+
+            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+
+            const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            if(!output){
+                throw new Error("Error creating workflow invocation");
+            }
+            sendWorkflowInvocationNotification(output.workflowInvocationUrl);
+            //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
+            context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
+            return {workflowInvocationUrlGCP: output.workflowInvocationUrl, errorWorkflowInvocation: undefined};
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
             return {workflowInvocationUrlGCP: undefined, errorWorkflowInvocation: error.message};
