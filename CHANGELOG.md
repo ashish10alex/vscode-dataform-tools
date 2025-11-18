@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.18.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.6...v0.18.0) (2025-11-18)
+
+
+### Features
+
+* **npm:** add ability to use service account key for authentication ([#222](https://github.com/ashish10alex/vscode-dataform-tools/issues/222)) ([e50e72d](https://github.com/ashish10alex/vscode-dataform-tools/commit/e50e72db0cbb3f78e2542ea3796b6d6dfc12725d))
+* **npm:** add function to install npm packages in Dataform workspace ([1c1988d](https://github.com/ashish10alex/vscode-dataform-tools/commit/1c1988dd9d08c820abad07fd28b0513f58c2ad7f))
+* **npm:** add function to remove file from workspace ([#220](https://github.com/ashish10alex/vscode-dataform-tools/issues/220)) ([8b8fa6b](https://github.com/ashish10alex/vscode-dataform-tools/commit/8b8fa6b9817ee80c2b855f80631951c3dc452c1b))
+* **npm:** add functions needed to migrate vscode extension to use npm package ([#214](https://github.com/ashish10alex/vscode-dataform-tools/issues/214)) ([871da24](https://github.com/ashish10alex/vscode-dataform-tools/commit/871da24038d5affa5c81f71a974345b73387b01b))
+* **npm:** add runDataformRemotely function ([#216](https://github.com/ashish10alex/vscode-dataform-tools/issues/216)) ([91bb8ae](https://github.com/ashish10alex/vscode-dataform-tools/commit/91bb8ae7ed21a2131ec21f90b6b53fa05da64f95))
+* **npm:** add url to the return object of  `runDataformRemotely` ([#223](https://github.com/ashish10alex/vscode-dataform-tools/issues/223)) ([dcd27cf](https://github.com/ashish10alex/vscode-dataform-tools/commit/dcd27cf129da2ebca929e9d2aed0ac327d800a3b))
+* **npm:** function to write contents to a file ([#211](https://github.com/ashish10alex/vscode-dataform-tools/issues/211)) ([89eb43f](https://github.com/ashish10alex/vscode-dataform-tools/commit/89eb43fae8563447ce71aec53d125dbd08b14c56))
+* **pypi:** add function to install npm packages in Dataform workspace ([a957660](https://github.com/ashish10alex/vscode-dataform-tools/commit/a957660d021c565664bd1187d203d7cb12bab04d))
+* **pypi:** add function to remove file from workspace ([#221](https://github.com/ashish10alex/vscode-dataform-tools/issues/221)) ([852870f](https://github.com/ashish10alex/vscode-dataform-tools/commit/852870fbc41815644cfff5d9db2c9c08b69ad710))
+* **pypi:** add function to write to a file in workspace ([#212](https://github.com/ashish10alex/vscode-dataform-tools/issues/212)) ([d258da3](https://github.com/ashish10alex/vscode-dataform-tools/commit/d258da37825b9d3762c6a360d69c556da7945579))
+* **pypi:** add support to pass in client options ([#224](https://github.com/ashish10alex/vscode-dataform-tools/issues/224)) ([e30a69b](https://github.com/ashish10alex/vscode-dataform-tools/commit/e30a69bf6b1b740089f5fbb88e8584d4bfa5f1d0))
+* **pypi:** bring pypi package inline with npm package  ([#218](https://github.com/ashish10alex/vscode-dataform-tools/issues/218)) ([91cf030](https://github.com/ashish10alex/vscode-dataform-tools/commit/91cf030a210238352cb024db11d59010bccb4e13))
+* **pypi:** python package wrapping google-cloud-dataform ([#207](https://github.com/ashish10alex/vscode-dataform-tools/issues/207)) ([f6cdb71](https://github.com/ashish10alex/vscode-dataform-tools/commit/f6cdb718005ea920b5dc0763ace974c96ebb3145))
+
+
+### Bug Fixes
+
+* **npm:** update module settings for compatibility with commonjs ([1ac5247](https://github.com/ashish10alex/vscode-dataform-tools/commit/1ac5247b4855d62a7197888f5ecee66743a9d5a9))
+
+
+### Documentation
+
+* revamp README to showcase new products ([#210](https://github.com/ashish10alex/vscode-dataform-tools/issues/210)) ([de71737](https://github.com/ashish10alex/vscode-dataform-tools/commit/de71737b9e5c24122910aef6e8f4b1d0024ad358))
+
+
+### Refactors
+
+* **extension:** use `@ashishalex/dataform-tools` npm package for api based execution ([#215](https://github.com/ashish10alex/vscode-dataform-tools/issues/215)) ([8abcc21](https://github.com/ashish10alex/vscode-dataform-tools/commit/8abcc21a3e5c330af64c68c1c80524a77220a506))
+
 ### [0.17.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.5...v0.17.6) (2025-11-12)
 
 
