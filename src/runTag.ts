@@ -137,7 +137,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
 
         const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
-        const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, gitInfo.gitBranch, undefined);
+        const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
         if(!output){
             throw new Error("Error creating workflow invocation");
         }
