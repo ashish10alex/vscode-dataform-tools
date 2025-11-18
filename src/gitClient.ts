@@ -45,7 +45,7 @@ export class GitService {
         }
 
         const repo = git.repositories[0];
-        const gitBranch = repo.state.HEAD?.name ?? 'No branch';
+        const gitBranch = repo.state.HEAD?.name ?? undefined;
         const gitRepoName = this.getActualRepoName(repo.rootUri.fsPath);
 
         return { gitBranch, gitRepoName };
