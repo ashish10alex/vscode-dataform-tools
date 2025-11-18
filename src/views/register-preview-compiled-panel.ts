@@ -869,6 +869,7 @@ export class CompiledQueryPanel {
                         title="Additional compiler options to pass to dataform cli commands e.g. --table-prefix=&quot;AA&quot; --vars=someKey=someValue,a=b"
                         style="width: 40%;"
                         value="${escapedCompilerOptions}"
+                        placeholder='E.g. --table-prefix="AA"'
                     />
                 </div>
                 <div class="checkbox-group">
