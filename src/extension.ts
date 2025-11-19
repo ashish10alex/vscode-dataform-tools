@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder} from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -24,6 +24,7 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
+import { SqlxDocumentSymbolProvider } from './documentSymbols';
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -62,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.compiledQuerySchema = undefined;
     globalThis.incrementalCheckBox = false;
     globalThis.schemaAutoCompletions = [];
-    globalThis.columnHoverDescription = {fields: []};
+    globalThis.columnHoverDescription = { fields: [] };
     globalThis.activeEditorFileName = undefined;
     globalThis.activeDocumentObj = undefined;
     globalThis.workspaceFolder = undefined;
@@ -167,6 +168,11 @@ export async function activate(context: vscode.ExtensionContext) {
         new DataformHoverProvider()
     ));
 
+    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(
+        { language: 'sqlx', scheme: 'file' },
+        new SqlxDocumentSymbolProvider()
+    ));
+
     context.subscriptions.push(vscode.languages.registerHoverProvider(
         { language: 'sqlx' },
         new DataformBigQueryHoverProvider()
@@ -216,58 +222,58 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(context, true, false, false, "cli"); }));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(context, false, true, false, "cli"); }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => {
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
         runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
-    }) );
+    }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependenciesApi', () => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependenciesApi', () => {
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
         runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
-    }) );
+    }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependentsApi', () => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependentsApi', () => {
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
-        runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded ,fullyRefreshIncrementalTablesEnabled, "api");
-    }) );
+        runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
+    }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtApi', () => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtApi', () => {
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
         runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
-    }) );
+    }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependenciesApi', () => {
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
         runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
-    }) );
+    }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => { 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDependentsApi', () => {
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
         runTag(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
-    }) );
+    }));
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => {runFilesTagsWtOptions(context,"cli");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => { runFilesTagsWtOptions(context, "cli"); })
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi', () => {runFilesTagsWtOptions(context, "api");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi', () => { runFilesTagsWtOptions(context, "api"); })
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => {runFilesTagsWtOptions(context, "api_workspace");})
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => { runFilesTagsWtOptions(context, "api_workspace"); })
     );
 
     context.subscriptions.push(
