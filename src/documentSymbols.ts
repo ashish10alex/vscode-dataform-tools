@@ -16,6 +16,12 @@ export class SqlxDocumentSymbolProvider implements vscode.DocumentSymbolProvider
         const myFoundSymbols = [];
         for (const match of matches) {
             const line = document.positionAt(match.index || 0).line;
+            const matchIndex = match.index || 0;
+            const lineStart = text.lastIndexOf('\n', matchIndex - 1) + 1;
+            const textBeforeMatch = text.substring(lineStart, matchIndex);
+            if (textBeforeMatch.includes('--')) {
+                continue;
+            }
             myFoundSymbols.push({ name: match[0], line: line, type: "ref" });
         }
 
