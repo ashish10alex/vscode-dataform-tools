@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.0...v0.18.1) (2025-11-19)
+
+
+### Features
+
+* **extension:** show an example compiler option user can pass ([ed50b5e](https://github.com/ashish10alex/vscode-dataform-tools/commit/ed50b5e1fa3a2e703a682c105e65b8cee75f0575))
+
+
+### Bug Fixes
+
+* **webview:** columns for incremental table not showing in schema tab ([#226](https://github.com/ashish10alex/vscode-dataform-tools/issues/226)) ([3ecc7d6](https://github.com/ashish10alex/vscode-dataform-tools/commit/3ecc7d67b660fa04e37db540be0ef0d2311bb6eb))
+
 ## [0.18.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.17.6...v0.18.0) (2025-11-18)
 
 
