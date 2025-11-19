@@ -1843,8 +1843,8 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
     ]);
 
-    if (dryRunResult.schema) {
-        compiledQuerySchema = dryRunResult.schema;
+    if (dryRunResult.schema || nonIncrementalDryRunResult.schema) {
+        compiledQuerySchema = type === "incremental" ? nonIncrementalDryRunResult.schema : dryRunResult.schema;
     } else if (dryRunResult.schema === undefined && dryRunResult.error.hasError === false) {
         // happens when Dataform config type is operation and dry run api response has no schema
         compiledQuerySchema = {
