@@ -291,7 +291,7 @@ suite("getDocumentSymbols", () => {
             symbols.forEach((symbol, index) => {
                 assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
             });
-            assert.strictEqual(symbols.length, expectedSymbolCount, `Expected 4 symbols, got: ${symbols.length}`);
+            assert.strictEqual(symbols.length, expectedSymbolCount, `Expected ${expectedSymbolCount} symbols, got: ${symbols.length}`);
         } catch (error: any) {
             throw error;
         }
