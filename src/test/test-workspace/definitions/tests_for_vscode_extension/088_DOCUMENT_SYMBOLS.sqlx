@@ -1,0 +1,38 @@
+config {
+    type: 'table',
+}
+
+
+WITH PLAYERS AS (
+    select *
+    FROM 
+    ${ref("PLAYERS")}
+)
+
+
+, PLAYER_VALUATIONS AS (
+    select *
+    FROM 
+    ${ref("PLAYER_VALUATIONS")}
+    -- ${ref("PLAYER_VALUATIONS")}
+)
+
+
+/*
+, PLAYER_VALUATIONS AS (
+    select *
+    FROM 
+    ${ref("PLAYER_VALUATIONS")}
+)
+*/
+
+
+, GAMES AS (
+  SELECT * FROM
+    ${ref("GAMES")}
+)
+
+, GAME_EVENTS AS (
+  SELECT * FROM
+    ${ref("GAME_EVENTS")}
+)
