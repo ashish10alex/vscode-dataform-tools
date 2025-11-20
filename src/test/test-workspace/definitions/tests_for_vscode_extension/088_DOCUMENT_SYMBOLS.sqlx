@@ -29,10 +29,11 @@ WITH PLAYERS AS (
 
 , GAMES AS (
   SELECT * FROM
-    ${ref("GAMES")}
+    ${ref("football_data", "GAMES")}
 )
 
 , GAME_EVENTS AS (
   SELECT * FROM
-    ${ref("GAME_EVENTS")}
+    ${ref("football_data",
+     "GAME_EVENTS")}
 )

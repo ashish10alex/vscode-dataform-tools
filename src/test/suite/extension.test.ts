@@ -279,7 +279,7 @@ suite("setDiagnostics", () => {
 suite("getDocumentSymbols", () => {
     test("able to get document symbols", async function () {
         this.timeout(9000);
-        const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`,  `\${ref("GAMES")}`,  `\${ref("GAME_EVENTS")}`];
+        const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`,  `\${ref("football_data", "GAMES")}`,  `\${ref("football_data",\n     "GAME_EVENTS")}`];
         try {
             const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
             const document = await vscode.workspace.openTextDocument(uri);

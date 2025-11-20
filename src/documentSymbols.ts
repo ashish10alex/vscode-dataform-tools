@@ -30,8 +30,8 @@ export function getDocumentSymbols(document: vscode.TextDocument): vscode.Docume
 
     const blockComments = getAllBlockComments(text);
 
-    const regex = /\${ref\(\s*(['"])([^'"]+)\1\s*(?:,\s*\1([^'"]+)\1\s*)?(?:,\s*\1([^'"]+)\1\s*)?\)}/gs;
-    const matches = text.matchAll(regex);
+    const regexToIdentifyRefsInSqlxFile = /\${ref\(\s*(['"])([^'"]+)\1\s*(?:,\s*\1([^'"]+)\1\s*)?(?:,\s*\1([^'"]+)\1\s*)?\)}/gs;
+    const matches = text.matchAll(regexToIdentifyRefsInSqlxFile);
     const myFoundSymbols = [];
     for (const match of matches) {
         const line = document.positionAt(match.index || 0).line;
