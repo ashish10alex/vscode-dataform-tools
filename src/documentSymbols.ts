@@ -51,12 +51,17 @@ export function getDocumentSymbols(document: vscode.TextDocument): vscode.Docume
         if (textBeforeMatch.includes('--')) {
             continue;
         }
-        myFoundSymbols.push({ name: match[0], line: line, type: "ref" });
+        myFoundSymbols.push({ name: match[0], line: line, type: "ref", index: matchIndex });
     }
+
     for (const item of myFoundSymbols) {
+
+        const matchStart = document.positionAt(item.index);
+        const matchEnd = document.positionAt(item.index + item.name.length);
+
         const range = new vscode.Range(
-            new vscode.Position(item.line, 0),
-            new vscode.Position(item.line, 100)
+            matchStart,
+            matchEnd
         );
         const selectionRange = range;
         let kind = vscode.SymbolKind.Variable;
