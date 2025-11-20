@@ -37,3 +37,14 @@ WITH PLAYERS AS (
     ${ref("football_data",
      "GAME_EVENTS")}
 )
+
+, MORE_GAME_EVENTS AS (
+  SELECT * FROM
+    ${ref(
+        "drawingfire-b72a8",
+        "football_data",
+        "GAME_EVENTS"
+   )}
+)
+
+SELECT * FROM PLAYERS

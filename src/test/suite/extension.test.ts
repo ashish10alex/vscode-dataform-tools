@@ -279,7 +279,11 @@ suite("setDiagnostics", () => {
 suite("getDocumentSymbols", () => {
     test("able to get document symbols", async function () {
         this.timeout(9000);
-        const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`,  `\${ref("football_data", "GAMES")}`,  `\${ref("football_data",\n     "GAME_EVENTS")}`];
+        const hasDatasetTableSingleLine = `\${ref("football_data", "GAMES")}`;
+        const hasDataasetTableMultiline = `\${ref("football_data",\n     "GAME_EVENTS")}`;
+        const hasProjectDatasetTable =         '${ref(\n' + '        "drawingfire-b72a8",\n' + '        "football_data",\n' + '        "GAME_EVENTS"\n' + '   )}';
+        const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`, hasDatasetTableSingleLine  , hasDataasetTableMultiline  , hasProjectDatasetTable];
+        const expectedSymbolCount = 5;
         try {
             const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
             const document = await vscode.workspace.openTextDocument(uri);
@@ -287,7 +291,7 @@ suite("getDocumentSymbols", () => {
             symbols.forEach((symbol, index) => {
                 assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
             });
-            assert.strictEqual(symbols.length, 4, `Expected 4 symbols, got: ${symbols.length}`);
+            assert.strictEqual(symbols.length, expectedSymbolCount, `Expected 4 symbols, got: ${symbols.length}`);
         } catch (error: any) {
             throw error;
         }
