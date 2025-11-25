@@ -6,6 +6,7 @@ import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
+import { getDocumentSymbols } from '../../documentSymbols';
 
 /*
 WARN: The test would not be able to run if your project path is very long this is a known issue reported in https://github.com/microsoft/vscode-test/issues/232
@@ -43,7 +44,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
         assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 32);
     });
 
-    test("Config block with assertion and has pre_operations, post_operations", async function() {
+    test("Config block with assertion and has pre_operations, post_operations", async function () {
         this.timeout(9000);
         try {
             const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
@@ -143,7 +144,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 });
 
 suite("setDiagnostics", () => {
-    test("Able to set multiple diagnostics at correct line numbers", function(done) {
+    test("Able to set multiple diagnostics at correct line numbers", function (done) {
         this.timeout(9000);
 
         const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
@@ -275,9 +276,31 @@ suite("setDiagnostics", () => {
     });
 });
 
+suite("getDocumentSymbols", () => {
+    test("able to get document symbols", async function () {
+        this.timeout(9000);
+        const hasDatasetTableSingleLine = `\${ref("football_data", "GAMES")}`;
+        const hasDataasetTableMultiline = `\${ref("football_data",\n     "GAME_EVENTS")}`;
+        const hasProjectDatasetTable =         '${ref(\n' + '        "drawingfire-b72a8",\n' + '        "football_data",\n' + '        "GAME_EVENTS"\n' + '   )}';
+        const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`, hasDatasetTableSingleLine  , hasDataasetTableMultiline  , hasProjectDatasetTable];
+        const expectedSymbolCount = 5;
+        try {
+            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
+            const document = await vscode.workspace.openTextDocument(uri);
+            const symbols = getDocumentSymbols(document);
+            symbols.forEach((symbol, index) => {
+                assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
+            });
+            assert.strictEqual(symbols.length, expectedSymbolCount, `Expected ${expectedSymbolCount} symbols, got: ${symbols.length}`);
+        } catch (error: any) {
+            throw error;
+        }
+    });
+});
+
 suite('getQueryMetaForCurrentFile', () => {
 
-    test("able to get model of type: table [ has assertion ]", async function() {
+    test("able to get model of type: table [ has assertion ]", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
@@ -319,7 +342,7 @@ suite('getQueryMetaForCurrentFile', () => {
     });
 
 
-    test("able to get model of type: view", async function() {
+    test("able to get model of type: view", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0100_CLUBS.sqlx";
@@ -356,7 +379,7 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
-    test("able to get model of type: incremental", async function() {
+    test("able to get model of type: incremental", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0300_INCREMENTAL.sqlx";
@@ -394,7 +417,7 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
-    test("able to get model of type: assertion", async function() {
+    test("able to get model of type: assertion", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/assertions/0100_CLUBS_ASSER.sqlx";
@@ -432,7 +455,7 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
-    test("able to get model of type: operations", async function() {
+    test("able to get model of type: operations", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";
@@ -471,7 +494,7 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
-    test("able to get model of type: js", async function() {
+    test("able to get model of type: js", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/010_JS_MULTIPLE.js";
@@ -502,7 +525,7 @@ suite('getQueryMetaForCurrentFile', () => {
                             database: "drawingfire-b72a8"
                         },
                         {
-                            schema: "dataform_assertions", 
+                            schema: "dataform_assertions",
                             name: "test_js_assert",
                             database: "drawingfire-b72a8"
                         },
@@ -547,7 +570,7 @@ suite('format bytes from dry run in human readable format', () => {
         assert.strictEqual(formatBytes(0), '0 B');
         assert.strictEqual(formatBytes(1), '1.00 B');
         assert.strictEqual(formatBytes(1024), '1.00 KiB');
-        assert.strictEqual(formatBytes(1048576) ,'1.00 MiB');
+        assert.strictEqual(formatBytes(1048576), '1.00 MiB');
         assert.strictEqual(formatBytes(1073741824), '1.00 GiB');
         assert.strictEqual(formatBytes(1099511627776), '1.00 TiB');
         assert.strictEqual(formatBytes(1125899906842624), '1.00 PiB');
@@ -566,8 +589,8 @@ suite('handleSemicolonPrePostOps', () => {
         const fileMetadata = {
             tables: [],
             queryMeta: {
-                    // simulating scenario when there is a comment before incrementalPreOpsQuery and there is no non-incrementalPreOpsQuery
-                    preOpsQuery: `
+                // simulating scenario when there is a comment before incrementalPreOpsQuery and there is no non-incrementalPreOpsQuery
+                preOpsQuery: `
                 DECLARE MY_VAR INT64;
                 SET MY_VAR = 1;
                 -- delete the previous day's data

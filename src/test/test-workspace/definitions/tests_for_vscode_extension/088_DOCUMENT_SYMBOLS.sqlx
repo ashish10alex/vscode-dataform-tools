@@ -1,0 +1,50 @@
+config {
+    type: 'table',
+}
+
+
+WITH PLAYERS AS (
+    select *
+    FROM 
+    ${ref("PLAYERS")}
+)
+
+
+, PLAYER_VALUATIONS AS (
+    select *
+    FROM 
+    ${ref("PLAYER_VALUATIONS")}
+    -- ${ref("PLAYER_VALUATIONS")}
+)
+
+
+/*
+, PLAYER_VALUATIONS AS (
+    select *
+    FROM 
+    ${ref("PLAYER_VALUATIONS")}
+)
+*/
+
+
+, GAMES AS (
+  SELECT * FROM
+    ${ref("football_data", "GAMES")}
+)
+
+, GAME_EVENTS AS (
+  SELECT * FROM
+    ${ref("football_data",
+     "GAME_EVENTS")}
+)
+
+, MORE_GAME_EVENTS AS (
+  SELECT * FROM
+    ${ref(
+        "drawingfire-b72a8",
+        "football_data",
+        "GAME_EVENTS"
+   )}
+)
+
+SELECT * FROM PLAYERS
