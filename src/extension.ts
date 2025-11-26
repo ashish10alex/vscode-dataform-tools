@@ -85,15 +85,6 @@ export async function activate(context: vscode.ExtensionContext) {
         dispose: () => clearAuthenticationCheckInterval()
     });
 
-    //TODO: check if user has multiple workspace folders open
-    //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
-    workspaceFolder = await getWorkspaceFolder();
-
-    if (workspaceFolder) {
-        await createBigQueryClient();
-        setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
-    }
-
     diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
@@ -347,6 +338,15 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(renameProvider);
+
+
+    //TODO: check if user has multiple workspace folders open
+    //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
+    workspaceFolder = await getWorkspaceFolder();
+    if (workspaceFolder) {
+        createBigQueryClient();
+        setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
+    }
 
     logger.info('Dataform Tools extension activated successfully');
 }
