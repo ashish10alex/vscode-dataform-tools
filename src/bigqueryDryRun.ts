@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import { bigQueryDryRunCostOneGiBByCurrency } from './constants';
+import { formatTimestamp } from './utils';
 import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency, Target } from './types';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
@@ -98,20 +99,6 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
             };
         }
     }
-}
-
-
-function formatTimestamp(lastModifiedTime:Date) {
-    return lastModifiedTime.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-        timeZone: 'UTC'
-    }) + ' UTC';
 }
 
 function isModelWasUpdatedToday(lastModifiedTime:Date) {

@@ -4,6 +4,7 @@ import {
   getWorkspaceFolder,
   getTextByLineRange,
   getOrCompileDataformJson,
+  formatTimestamp,
 } from "./utils";
 
 // the comment-parser library does not have types in it so we have ignore the typescript error
@@ -16,6 +17,44 @@ import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
 import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
+
+async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string): Promise<vscode.MarkdownString> {
+          const hoverMarkdownString = new vscode.MarkdownString();
+
+          const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
+
+          hoverMarkdownString.appendMarkdown("---- \n");
+
+          if(type){
+            const tableType = `**Type:** ${type}`;
+            hoverMarkdownString.appendMarkdown(`${tableType}\n\n`);
+          }
+
+          const tableLocation = tableMetadata?.location;
+          if(tableLocation){
+            hoverMarkdownString.appendMarkdown(`**Location:** ${tableLocation}\n\n`);
+          }
+
+
+          if(partitionBy){
+            hoverMarkdownString.appendMarkdown(`**Partition:** \`${partitionBy}\`\n\n`);
+          }
+
+          let lastModifiedTime = tableMetadata?.lastModifiedTime;
+          if(lastModifiedTime){
+            lastModifiedTime = new Date(parseInt(lastModifiedTime));
+            lastModifiedTime = formatTimestamp(lastModifiedTime);
+            hoverMarkdownString.appendMarkdown(`**Last Modified Time:** ${lastModifiedTime}\n\n`);
+          }
+          hoverMarkdownString.appendMarkdown("---- \n");
+
+          const tableSchema = await getTableSchemaAsMarkdown(tableMetadata);
+          hoverMarkdownString.appendMarkdown(tableSchema);
+          hoverMarkdownString.isTrusted = true;
+          hoverMarkdownString.supportThemeIcons = true;
+          return hoverMarkdownString;
+}
 
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
@@ -116,9 +155,8 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
    return visit(sourceFile);
 }
 
-async function getTableSchemaAsMarkdown(projectId: string, datasetId:string, tableId:string) {
+async function getTableMetadata(projectId: string, datasetId:string, tableId:string) {
   try {
-
     const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
     let options = {projectId};
     if(serviceAccountJsonPath){
@@ -132,31 +170,41 @@ async function getTableSchemaAsMarkdown(projectId: string, datasetId:string, tab
     const table = bigqueryClient.dataset(datasetId).table(tableId);
 
     const [metadata] = await table.getMetadata();
-    const schema = metadata.schema;
-
-     if (schema && schema.fields) {
-      schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
-      schema.fields.forEach((field:any) => {
-        field.name = field.name || "";
-        field.type = field.type || "";
-        field.description = field.description || "";
-        Object.keys(field).forEach(key => {
-          if (!["name", "type", "description"].includes(key)) {
-            delete field[key];
-          }
-        });
-      });
-}
-
-    return import('tablemark').then(({ default: tablemark }) => {
-      const output = tablemark(schema.fields);
-      return output;
-    });
+    return metadata;
     }
   } catch (err) {
     console.error('Error:', err);
   }
-  return ``;
+}
+
+async function getTableSchemaAsMarkdown(metadata:any) {
+  try {
+    if(!metadata){
+      return "";
+    }
+    const schema = metadata.schema;
+    if (schema && schema.fields) {
+    schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
+    schema.fields.forEach((field:any) => {
+      field.name = field.name || "";
+      field.type = field.type || "";
+      field.description = field.description || "";
+      Object.keys(field).forEach(key => {
+        if (!["name", "type", "description"].includes(key)) {
+          delete field[key];
+        }
+      });
+    });
+  }
+
+  return import('tablemark').then(({ default: tablemark }) => {
+    const output = tablemark(schema.fields);
+    return output;
+  });
+  } catch (err) {
+    console.error('Error:', err);
+  }
+  return "";
 }
 
 async function getTableInformationFromRef(
@@ -167,27 +215,9 @@ async function getTableInformationFromRef(
   for (let i = 0; i < struct.length; i++) {
     let targetName = struct[i].target.name;
     if (searchTerm === targetName) {
-
-      const markdownTableIdWtLink = getMarkdownTableIdWtLink(struct[i].target);
-      const tableType = `**Type:** ${struct[i].type}`;
-      const partition = struct[i].bigquery?.partitionBy 
-        ? `**Partition:** \`${struct[i].bigquery.partitionBy}\`` 
-        : '';
-      const tableSchema = await getTableSchemaAsMarkdown(struct[i].target.database, struct[i].target.schema, struct[i].target.name);
-
-      const hoverMarkdownString = new vscode.MarkdownString();
-      hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
-      hoverMarkdownString.appendMarkdown(`${tableType}\n\n`);
-      if (partition) {
-        hoverMarkdownString.appendMarkdown(`${partition}\n\n`);
-      }
-      if (tableSchema) {
-        hoverMarkdownString.appendMarkdown(`${tableSchema}\n`);
-      }
-
-      hoverMarkdownString.isTrusted = true; // Allows command links
-      hoverMarkdownString.supportThemeIcons = true; // Allows ThemeIcons
-
+      const tableMetadata = await getTableMetadata( struct[i].target.database, struct[i].target.schema, struct[i].target.name);
+      const partitionBy = struct[i].bigquery?.partitionBy || "";
+      const hoverMarkdownString = await createHoverContentForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
      hoverMeta = new vscode.Hover(hoverMarkdownString);
     }
   }
@@ -202,11 +232,10 @@ async function getFullTableNameFromRef(
   for (let i = 0; i < struct.length; i++) {
     let targetName = struct[i].target.name;
     if (searchTerm === targetName) {
-
-      const markdownTableIdWtLink = getMarkdownTableIdWtLink(struct[i].target);
-      const tableSchema = await getTableSchemaAsMarkdown(struct[i].target.database, struct[i].target.schema, struct[i].target.name);
-      const hoverData = new vscode.MarkdownString(markdownTableIdWtLink + "\n" + tableSchema);
-      return new vscode.Hover(hoverData);
+      const tableMetadata = await getTableMetadata( struct[i].target.database, struct[i].target.schema, struct[i].target.name);
+      const partitionBy = (struct[i] as Operation).bigquery?.partitionBy || (struct[i] as Assertion).bigquery?.partitionBy || "";
+      const hoverMarkdownString = await createHoverContentForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
+      return new vscode.Hover(hoverMarkdownString);
     }
   }
   return hoverMeta;
@@ -358,13 +387,8 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       for (let i = 0; i < declarations.length; i++) {
         let declarationName = declarations[i].target.name;
         if (searchTerm === declarationName) {
-          const markdownTableIdWtLink = getMarkdownTableIdWtLink(declarations[i].target);
-          const hoverMarkdownString = new vscode.MarkdownString();
-          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink} \n`);
-
-          const tableSchema = await getTableSchemaAsMarkdown(declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
-          hoverMarkdownString.appendMarkdown(tableSchema);
-          hoverMarkdownString.isTrusted = true; // Allows command links
+          const tableMetadata = await getTableMetadata( declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
+          const hoverMarkdownString = await createHoverContentForTable(tableMetadata, declarations[i].target, "", "declaration");
           return new vscode.Hover(hoverMarkdownString);
         }
       }
