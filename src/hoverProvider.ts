@@ -179,6 +179,9 @@ async function getTableMetadata(projectId: string, datasetId:string, tableId:str
 
 async function getTableSchemaAsMarkdown(metadata:any) {
   try {
+    if(!metadata){
+      return "";
+    }
     const schema = metadata.schema;
     if (schema && schema.fields) {
     schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
