@@ -18,7 +18,7 @@ import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
 import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 
-async function createHoverContetForTable(tableMetadata:any, target: Target, partitionBy: string, type:string): Promise<vscode.MarkdownString> {
+async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
 
           const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
@@ -214,7 +214,7 @@ async function getTableInformationFromRef(
     if (searchTerm === targetName) {
       const tableMetadata = await getTableMetadata( struct[i].target.database, struct[i].target.schema, struct[i].target.name);
       const partitionBy = struct[i].bigquery?.partitionBy || "";
-      const hoverMarkdownString = await createHoverContetForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
+      const hoverMarkdownString = await createHoverContentForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
      hoverMeta = new vscode.Hover(hoverMarkdownString);
     }
   }
@@ -231,7 +231,7 @@ async function getFullTableNameFromRef(
     if (searchTerm === targetName) {
       const tableMetadata = await getTableMetadata( struct[i].target.database, struct[i].target.schema, struct[i].target.name);
       const partitionBy = (struct[i] as Operation).bigquery?.partitionBy || (struct[i] as Assertion).bigquery?.partitionBy || "";
-      const hoverMarkdownString = await createHoverContetForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
+      const hoverMarkdownString = await createHoverContentForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
       return new vscode.Hover(hoverMarkdownString);
     }
   }
@@ -385,7 +385,7 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         let declarationName = declarations[i].target.name;
         if (searchTerm === declarationName) {
           const tableMetadata = await getTableMetadata( declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
-          const hoverMarkdownString = await createHoverContetForTable(tableMetadata, declarations[i].target, "", "declaration");
+          const hoverMarkdownString = await createHoverContentForTable(tableMetadata, declarations[i].target, "", "declaration");
           return new vscode.Hover(hoverMarkdownString);
         }
       }

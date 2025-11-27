@@ -20,7 +20,7 @@ import { GitService } from './gitClient';
 let supportedExtensions = ['sqlx', 'js'];
 
 
-export function formatTimestamp(lastModifiedTime:Date) {
+export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
