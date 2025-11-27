@@ -19,6 +19,20 @@ import { GitService } from './gitClient';
 
 let supportedExtensions = ['sqlx', 'js'];
 
+
+export function formatTimestamp(lastModifiedTime:Date) {
+    return lastModifiedTime.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'UTC'
+    }) + ' UTC';
+}
+
 export let declarationsAndTargets: string[] = [];
 
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
