@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.2...v0.18.3) (2025-11-28)
+
+
+### Bug Fixes
+
+* project and location configuration infered as empty string when reset manually ([#235](https://github.com/ashish10alex/vscode-dataform-tools/issues/235)) ([c02ed53](https://github.com/ashish10alex/vscode-dataform-tools/commit/c02ed53bb10ecf399a37676a82b94423c5d88800))
+
 ### [0.18.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.1...v0.18.2) (2025-11-28)
 
 
