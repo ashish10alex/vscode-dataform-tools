@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.1...v0.18.2) (2025-11-28)
+
+
+### Features
+
+* allow user to override location parameter used in BigQuery client initialization  ([#234](https://github.com/ashish10alex/vscode-dataform-tools/issues/234)) ([2c2baf4](https://github.com/ashish10alex/vscode-dataform-tools/commit/2c2baf44d87c3f625a117c57da2f3c15099f7f89))
+* do not await bigquery client creation and verification during extension activation ([#230](https://github.com/ashish10alex/vscode-dataform-tools/issues/230)) ([d50b09b](https://github.com/ashish10alex/vscode-dataform-tools/commit/d50b09bc8ff249ae65b4f57c6c072773fe293d73))
+* **extension:** enhance model hover information with location & last update time ([#232](https://github.com/ashish10alex/vscode-dataform-tools/issues/232)) ([bd23f5c](https://github.com/ashish10alex/vscode-dataform-tools/commit/bd23f5cbfc50024dc863038f292051c0636e2206))
+* **extension:** show references in a model as document symbols ([#227](https://github.com/ashish10alex/vscode-dataform-tools/issues/227)) ([a82967d](https://github.com/ashish10alex/vscode-dataform-tools/commit/a82967d55f7dd8494ef3a200c3f0f0a81534f449))
+
 ### [0.18.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.0...v0.18.1) (2025-11-19)
 
 
