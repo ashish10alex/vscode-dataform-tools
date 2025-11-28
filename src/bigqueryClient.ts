@@ -12,8 +12,16 @@ export async function createBigQueryClient(): Promise<string | undefined> {
         const gcpLocation : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpLocation');
         const serviceAccountJsonPath : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
 
-        let options: BigQueryOptions = {projectId: projectId, location: gcpLocation};
-        if(serviceAccountJsonPath){
+        let options: BigQueryOptions = {};
+        if(projectId && projectId.trim() !== ''){
+            options = {... options , projectId: projectId};
+        }
+
+        if(gcpLocation && gcpLocation.trim() !== ''){
+            options = {... options , location: gcpLocation};
+        }
+
+        if(serviceAccountJsonPath && serviceAccountJsonPath.trim() !== ''){
             vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
             options = {... options , keyFilename: serviceAccountJsonPath};
         }
