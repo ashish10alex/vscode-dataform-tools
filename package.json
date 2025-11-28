@@ -372,6 +372,11 @@
                     "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
                     "pattern": "^[a-z0-9-]+$"
                 },
+                "vscode-dataform-tools.gcpLocation": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "GCP location to use for BigQuery queries. E.g. US"
+                },
                 "vscode-dataform-tools.serviceAccountJsonPath": {
                     "type": "string",
                     "default": null,
