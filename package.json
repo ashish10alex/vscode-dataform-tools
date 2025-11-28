@@ -375,7 +375,7 @@
                 "vscode-dataform-tools.gcpLocation": {
                     "type": "string",
                     "default": null,
-                    "markdownDescription": "GCP location to use for BigQuery queries. E.g. US"
+                    "markdownDescription": "GCP location to use for BigQuery queries. E.g. US, EU, us-central1, europe-west1. Usually you will not need to set this explicity as the location is picked up dynamically by BigQuery client."
                 },
                 "vscode-dataform-tools.serviceAccountJsonPath": {
                     "type": "string",
