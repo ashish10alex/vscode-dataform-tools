@@ -119,6 +119,11 @@
                 "title": "Run tag with dependents using API"
             },
             {
+                "command": "vscode-dataform-tools.runAssertions",
+                "category": "Dataform",
+                "title": "Run assertions in the current model"
+            },
+            {
                 "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
                 "category": "Dataform",
                 "title": "Run current file with dependents"
