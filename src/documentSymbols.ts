@@ -56,7 +56,8 @@ export function getDocumentSymbols(document: vscode.TextDocument): vscode.Docume
 
     for (const item of myFoundSymbols) {
 
-        const matchStart = document.positionAt(item.index);
+        const REF_OFFSET = 7; // num character to reach to reference afer ${ref("
+        const matchStart = document.positionAt(item.index + REF_OFFSET);
         const matchEnd = document.positionAt(item.index + item.name.length);
 
         const range = new vscode.Range(

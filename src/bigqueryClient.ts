@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BigQuery } from '@google-cloud/bigquery';
+import { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
 
 let bigquery: BigQuery | undefined;
 let authenticationCheckInterval: NodeJS.Timeout | undefined;
@@ -8,21 +8,30 @@ let isAuthenticated: boolean = false;
 
 export async function createBigQueryClient(): Promise<string | undefined> {
     try {
-        const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+        const projectId : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpLocation : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpLocation');
+        const serviceAccountJsonPath : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
 
-        // default state will be projectId as null and the projectId will be inferred from what the user has set using gcloud cli
-        let options = {projectId};
-        if(serviceAccountJsonPath){
+        let options: BigQueryOptions = {};
+        if(projectId && projectId.trim() !== ''){
+            options = {... options , projectId: projectId};
+        }
+
+        if(gcpLocation && gcpLocation.trim() !== ''){
+            options = {... options , location: gcpLocation};
+        }
+
+        if(serviceAccountJsonPath && serviceAccountJsonPath.trim() !== ''){
             vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
-            // @ts-ignore 
             options = {... options , keyFilename: serviceAccountJsonPath};
         }
 
-        // @ts-ignore 
         bigquery = new BigQuery(options);
         await verifyAuthentication();
-        vscode.window.showInformationMessage('BigQuery client created successfully.');
+        const projectIdMessage = projectId ? `Project ID: ${projectId}` : '';
+        const gcpLocationMessage = gcpLocation ? `Location: ${gcpLocation}` : '';
+        const message = `BigQuery client created successfully. ${projectIdMessage} ${gcpLocationMessage}`;
+        vscode.window.showInformationMessage(message);
         return undefined;
     } catch (error: any) {
         bigquery = undefined;
