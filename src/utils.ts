@@ -14,7 +14,7 @@ import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
 import { DataformTools } from "@ashishalex/dataform-tools";
-import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
+import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { GitService } from './gitClient';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -1677,7 +1677,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
+export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -1691,22 +1691,35 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         }
     }
 
-    if(executionMode === "api"){
-        let includedTargets: {database:string, schema: string, name:string}[] = [];
-        fileMetadatas.forEach(fileMetadata => {
-            if (fileMetadata) {
-                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                    includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
-                });
-            }
-        });
+    let includedTargets: {database:string, schema: string, name:string}[] = [];
+    fileMetadatas.forEach(fileMetadata => {
+        if (fileMetadata) {
+            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
+            });
+        }
+    });
 
-        const invocationConfig = {
-            includedTargets: includedTargets,
-            transitiveDependenciesIncluded: includeDependencies,
-            transitiveDependentsIncluded: includeDownstreamDependents,
-            fullyRefreshIncrementalTablesEnabled: fullRefresh,
-        };
+    const invocationConfig = {
+        includedTargets: includedTargets,
+        transitiveDependenciesIncluded: includeDependencies,
+        transitiveDependentsIncluded: includeDownstreamDependents,
+        fullyRefreshIncrementalTablesEnabled: fullRefresh,
+    };
+
+    if(executionMode === "api_workspace"){
+        await showLoadingProgress(
+            "",
+            syncAndrunDataformRemotely,
+            "Dataform remote workspace execution cancelled",
+            context,
+            invocationConfig,
+            compilerOptionsMap,
+        );
+        return;
+    }
+
+    if(executionMode === "api"){
 
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
         if(!projectId){
@@ -1714,19 +1727,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             return;
         }
 
-        let gcpProjectLocation = undefined;
-        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-        }else{
-            gcpProjectLocation = await getLocationOfGcpProject(projectId);
-        }
-
-        if(!gcpProjectLocation){
-            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
-            return;
-        }
         try{
-            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
             const gitClient = new GitService();
             const gitInfo = gitClient.getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
@@ -1734,6 +1735,14 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             } 
             const repositoryName = gitInfo.gitRepoName;
             vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+            const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
+            if (!gcpProjectLocation) {
+                vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
+                return;
+            }
+
+            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
             const ouput = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
             if(!ouput){
