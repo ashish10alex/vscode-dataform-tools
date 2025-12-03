@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.3...v0.18.4) (2025-12-03)
+
+
+### Features
+
+* **symbols:** land on reference to enable instant go to definition ([ced11fb](https://github.com/ashish10alex/vscode-dataform-tools/commit/ced11fb0b37ab3f5cc88ccad3b37c213126bd8d1))
+
+
+### Bug Fixes
+
+* **extension:** multi file execution using api  ([#236](https://github.com/ashish10alex/vscode-dataform-tools/issues/236)) ([b0eea90](https://github.com/ashish10alex/vscode-dataform-tools/commit/b0eea90f3c08d50beef5ff3639d8d57ac63fe48e))
+
 ### [0.18.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.2...v0.18.3) (2025-11-28)
 
 
