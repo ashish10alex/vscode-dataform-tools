@@ -1677,7 +1677,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
+export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -1714,25 +1714,22 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             return;
         }
 
-        let gcpProjectLocation = undefined;
-        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-        }else{
-            gcpProjectLocation = await getLocationOfGcpProject(projectId);
-        }
-
-        if(!gcpProjectLocation){
-            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
-            return;
-        }
         try{
-            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
             const gitClient = new GitService();
             const gitInfo = gitClient.getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
                 throw new Error("Error determining git repository and or branch name");
             } 
             const repositoryName = gitInfo.gitRepoName;
+            vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+            const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
+            if (!gcpProjectLocation) {
+                vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
+                return;
+            }
+
+            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
             vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
 
             const ouput = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
