@@ -14,7 +14,7 @@ import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
 import { DataformTools } from "@ashishalex/dataform-tools";
-import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
+import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { GitService } from './gitClient';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -1691,22 +1691,35 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         }
     }
 
-    if(executionMode === "api"){
-        let includedTargets: {database:string, schema: string, name:string}[] = [];
-        fileMetadatas.forEach(fileMetadata => {
-            if (fileMetadata) {
-                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                    includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
-                });
-            }
-        });
+    let includedTargets: {database:string, schema: string, name:string}[] = [];
+    fileMetadatas.forEach(fileMetadata => {
+        if (fileMetadata) {
+            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
+            });
+        }
+    });
 
-        const invocationConfig = {
-            includedTargets: includedTargets,
-            transitiveDependenciesIncluded: includeDependencies,
-            transitiveDependentsIncluded: includeDownstreamDependents,
-            fullyRefreshIncrementalTablesEnabled: fullRefresh,
-        };
+    const invocationConfig = {
+        includedTargets: includedTargets,
+        transitiveDependenciesIncluded: includeDependencies,
+        transitiveDependentsIncluded: includeDownstreamDependents,
+        fullyRefreshIncrementalTablesEnabled: fullRefresh,
+    };
+
+    if(executionMode === "api_workspace"){
+        await showLoadingProgress(
+            "",
+            syncAndrunDataformRemotely,
+            "Dataform remote workspace execution cancelled",
+            context,
+            invocationConfig,
+            compilerOptionsMap,
+        );
+        return;
+    }
+
+    if(executionMode === "api"){
 
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
         if(!projectId){
