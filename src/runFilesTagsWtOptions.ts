@@ -98,15 +98,12 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            //FIXME: api_workspace execution mode not implemented for this function
             runTagWtApi(context, [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
-            //FIXME: api_workspace execution mode not implemented for this function
             runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
-            //FIXME: api_workspace execution mode not implemented for this function
             runTagWtApi(context, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         }
     }
