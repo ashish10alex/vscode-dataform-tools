@@ -89,7 +89,7 @@ export class GitService {
                         if(['.sqlx', '.js', '.ipynb'].some(ext => dirFile.endsWith(ext))){
                             output.push({
                                 state: this.gitStatusToHumanReadable(file.status),
-                                path: path.join(file.filePath, dirFile),
+                                path: path.posix.join(file.filePath, dirFile),
                                 fullPath: path.join(this.projectRoot, file.filePath, dirFile),
                                 commitIndex: 0
                             });
