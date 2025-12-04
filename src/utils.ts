@@ -1107,11 +1107,24 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
 }
 
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
+    let trimInitial = false;
     const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
+    const workspaces = vscode.workspace.workspaceFolders;
+    if(workspaces && workspaces?.length > 1){
+        trimInitial = true;
+    }
     let files = await vscode.workspace.findFiles(globPattern);
     const fileList = files.map((file) => {
         if (isRunningOnWindows) {
+            if(trimInitial){
+                const pathParts = vscode.workspace.asRelativePath(file).split(path.win32.sep);
+                return path.win32.normalize(pathParts.slice(1).join(path.win32.sep));
+            }
             return path.win32.normalize(vscode.workspace.asRelativePath(file));
+        }
+        if(trimInitial){
+            const pathParts = vscode.workspace.asRelativePath(file).split(path.posix.sep);
+            return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
         }
         return vscode.workspace.asRelativePath(file);
     });
