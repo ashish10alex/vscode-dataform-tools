@@ -73,10 +73,13 @@ export class GitService {
                 });
 
             let output : GitFileChange[] = [];
+            const rootFiles = ["dataform.json", "workflow_settings.yaml"]
+            const fileExtensionsToSync = ['.sqlx', '.js', '.ipynb'];
             files.forEach((file) =>{
-                if(['.sqlx', '.js', '.json', '.yaml', '.ipynb'].some(ext => file.filePath.endsWith(ext))){
+                const isRootFile = rootFiles.includes(file.filePath);
+                if(fileExtensionsToSync.some(ext => file.filePath.endsWith(ext)) || isRootFile){
                     output.push({
-                        state: this.gitStatusToHumanReadable(file.status),  
+                        state: this.gitStatusToHumanReadable(file.status), 
                         path: file.filePath,
                         fullPath: path.join(this.projectRoot, file.filePath),
                         commitIndex: 0
@@ -86,7 +89,7 @@ export class GitService {
                 if(fs.existsSync(path.join(this.projectRoot, file.filePath)) && fs.lstatSync(path.join(this.projectRoot, file.filePath)).isDirectory()){
                     const dirFiles = fs.readdirSync(path.join(this.projectRoot, file.filePath));
                     dirFiles.forEach((dirFile) =>{
-                        if(['.sqlx', '.js', '.ipynb'].some(ext => dirFile.endsWith(ext))){
+                        if(fileExtensionsToSync.some(ext => dirFile.endsWith(ext))){
                             output.push({
                                 state: this.gitStatusToHumanReadable(file.status),
                                 path: path.posix.join(file.filePath, dirFile),
