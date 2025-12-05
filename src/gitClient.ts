@@ -73,7 +73,7 @@ export class GitService {
                 });
 
             let output : GitFileChange[] = [];
-            const rootFiles = ["dataform.json", "workflow_settings.yaml"]
+            const rootFiles = ["dataform.json", "workflow_settings.yaml"];
             const fileExtensionsToSync = ['.sqlx', '.js', '.ipynb'];
             files.forEach((file) =>{
                 const isRootFile = rootFiles.includes(file.filePath);
