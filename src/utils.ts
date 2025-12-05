@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata, Notebook } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
@@ -1170,7 +1170,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
 
-    const { tables, assertions, operations } = compiledJson;
+    const { tables, assertions, operations, notebooks } = compiledJson;
 
     //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
@@ -1345,6 +1345,44 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                 });
             }
         }
+    }
+    let notebookContent = [];
+    const relativeFilePathIsJs = relativeFilePath.endsWith('.js');
+    if(workspaceFolder && (relativeFilePathIsJs)){ {
+        const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
+        const content = Buffer.from(fileContents).toString('utf8');
+        const fileNames = parseNotebookFilenames(content);
+
+
+        notebooks.forEach((notebook: Notebook) => {
+            const notebookFileName = notebook.fileName;
+            for (const fileName of fileNames){
+                if(notebookFileName.includes(fileName)){
+                    notebookContent.push(notebook.notebookContents);
+
+
+                    const tableFound = {
+                        type: "notebook",
+                        query: `Open: ${notebook.fileName} \n`,
+                        tags: notebook.tags,
+                        fileName: notebook.fileName,
+                        target: notebook.target,
+                        preOps: undefined,
+                        postOps: undefined,
+                        dependencyTargets: notebook.dependencyTargets,
+                        incrementalQuery: undefined,
+                        incrementalPreOps: undefined,
+                        actionDescriptor: undefined,
+                    };
+                    finalTables.push(tableFound);
+
+                    queryMeta.type = "notebook";
+                    queryMeta.tableOrViewQuery += `Open: ${notebook.fileName} \n`;
+
+                }
+            }
+        });
+    }
     }
 
     return { tables: finalTables, queryMeta: queryMeta };
@@ -1945,4 +1983,28 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
+}
+
+function parseNotebookFilenames(content:string): string[] {
+  const filenames = [];
+  
+  const matches = content.match(/notebook\(\s*\{[\s\S]*?\}\s*\)/g);
+
+  if (matches) {
+    for (const match of matches) {
+      // Extract the content inside the notebook(...) block
+      const innerContentMatch = match.match(/\{\s*([\s\S]*?)\s*\}/);
+      if (innerContentMatch) {
+        const innerContent = innerContentMatch[1];
+
+        // Match the filename property
+        const filenameMatch = innerContent.match(/filename\s*:\s*['"]([^'"]+)['"]/);
+        if (filenameMatch) {
+          filenames.push(filenameMatch[1]);
+        }
+      }
+    }
+    }
+  
+  return filenames;
 }
