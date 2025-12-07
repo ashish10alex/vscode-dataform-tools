@@ -1118,11 +1118,15 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
         if(trimInitial){
             const pathParts = vscode.workspace.asRelativePath(file).split(path.posix.sep);
             if(isRunningOnWindows){
-            return path.posix.normalize(pathParts.slice(1).join(path.win32.sep));
+            return path.win32.normalize(pathParts.slice(1).join(path.win32.sep));
             }
             return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
         }
-        return vscode.workspace.asRelativePath(file);
+         const relativePath = vscode.workspace.asRelativePath(file);
+         if(isRunningOnWindows){
+             return path.win32.normalize(relativePath);
+         }
+         return relativePath;
     });
     return fileList;
 }
