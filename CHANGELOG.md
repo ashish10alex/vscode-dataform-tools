@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.4...v0.18.5) (2025-12-07)
+
+
+### Bug Fixes
+
+* **extension:** new directory not synced in workspace api execution ([#238](https://github.com/ashish10alex/vscode-dataform-tools/issues/238)) ([40df9ab](https://github.com/ashish10alex/vscode-dataform-tools/commit/40df9ab06de6432d14bc4bec6ca9a9bc6f5be96e))
+* incorrect core version if core version is changed during git restore ([#240](https://github.com/ashish10alex/vscode-dataform-tools/issues/240)) ([be81bfc](https://github.com/ashish10alex/vscode-dataform-tools/commit/be81bfca36d0781430a48bb68e66d40396b1d8ac))
+* workspace name prefix in file paths in multi-workspace env ([#239](https://github.com/ashish10alex/vscode-dataform-tools/issues/239)) ([40fd0c0](https://github.com/ashish10alex/vscode-dataform-tools/commit/40fd0c0ca3ffc97154adc3b5c8ccf8845de71f9e))
+
 ### [0.18.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.3...v0.18.4) (2025-12-03)
 
 
