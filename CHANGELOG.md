@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.5...v0.18.6) (2025-12-07)
+
+
+### Bug Fixes
+
+* windows path not being correctly infered in single workspace env ([#241](https://github.com/ashish10alex/vscode-dataform-tools/issues/241)) ([d1085e5](https://github.com/ashish10alex/vscode-dataform-tools/commit/d1085e53e65ef33a4330bef854d95ddb4bba5113))
+
 ### [0.18.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.4...v0.18.5) (2025-12-07)
 
 
