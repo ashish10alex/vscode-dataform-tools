@@ -1122,7 +1122,11 @@ export async function getAllFilesWtAnExtension(workspaceFolder: string, extensio
             }
             return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
         }
-        return vscode.workspace.asRelativePath(file);
+         const relativePath = vscode.workspace.asRelativePath(file);
+         if(isRunningOnWindows){
+             return path.win32.normalize(relativePath);
+         }
+         return relativePath;
     });
     return fileList;
 }
