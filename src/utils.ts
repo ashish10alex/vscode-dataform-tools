@@ -1345,8 +1345,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         }
     }
     let notebookContent = [];
-    const relativeFilePathIsJs = relativeFilePath.endsWith('.js');
-    if(notebooks.length > 0 && workspaceFolder && (relativeFilePathIsJs)){ {
+    if(notebooks.length > 0 && workspaceFolder && isJsFile){ {
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
         const content = Buffer.from(fileContents).toString('utf8');
         // TODO: check if the parsing does not happen for every single .js file
