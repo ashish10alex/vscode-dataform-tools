@@ -1355,7 +1355,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         notebooks.forEach((notebook: Notebook) => {
             const notebookFileName = notebook.fileName;
             for (const fileName of fileNames){
-                if(notebookFileName.includes(fileName)){
+                if(notebookFileName.endsWith(fileName) || notebookFileName === fileName){
                     notebookContent.push(notebook.notebookContents);
 
 
