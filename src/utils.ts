@@ -1983,9 +1983,9 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }
 
-function parseNotebookFilenames(content:string): string[] {
-  const filenames = [];
-  
+function parseNotebookFilenames(content: string): string[] {
+  const filenames: string[] = [];
+
   const matches = content.match(/notebook\(\s*\{[\s\S]*?\}\s*\)/g);
 
   if (matches) {
@@ -2002,7 +2002,7 @@ function parseNotebookFilenames(content:string): string[] {
         }
       }
     }
-    }
-  
+  }
+
   return filenames;
 }
