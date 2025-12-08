@@ -1172,7 +1172,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
     const { tables, assertions, operations, notebooks } = compiledJson;
 
-    //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
         type: "",
         tableOrViewQuery: "",
@@ -1186,7 +1185,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         error: "",
     };
     let finalTables: any[] = [];
-
 
     const isJsFile = relativeFilePath.endsWith('.js');
     const isSqlxFile = relativeFilePath.endsWith('.sqlx');
@@ -1348,9 +1346,10 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
     let notebookContent = [];
     const relativeFilePathIsJs = relativeFilePath.endsWith('.js');
-    if(workspaceFolder && (relativeFilePathIsJs)){ {
+    if(notebooks.length > 0 && workspaceFolder && (relativeFilePathIsJs)){ {
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
         const content = Buffer.from(fileContents).toString('utf8');
+        // TODO: check if the parsing does not happen for every single .js file
         const fileNames = parseNotebookFilenames(content);
 
 
