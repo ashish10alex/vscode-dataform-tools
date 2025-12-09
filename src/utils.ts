@@ -1872,7 +1872,10 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
-        queryDryRun(fileMetadata.queryMeta.postOpsQuery),
+        // To enable to use of variables declared in preOps.
+        // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm 
+        // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
+        queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery),
         queryDryRun(nonIncrementalQuery),
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
