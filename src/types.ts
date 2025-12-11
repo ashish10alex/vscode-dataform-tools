@@ -126,6 +126,15 @@ type GraphErrors = {
     }[]
 };
 
+export type Notebook = {
+    target: Target;
+    fileName: string;
+    canonicalTarget: Target;
+    tags: string[];
+    notebookContents: string;
+    dependencyTargets: Target[]
+};
+
 export interface DataformCompiledJson {
     tables: Table[];
     assertions: Assertion[];
@@ -134,6 +143,7 @@ export interface DataformCompiledJson {
     declarations: Declarations[];
     projectConfig: ProjectConfig;
     graphErrors: GraphErrors;
+    notebooks: Notebook[];
 }
 
 export interface DryRunError {
