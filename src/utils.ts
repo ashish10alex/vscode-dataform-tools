@@ -487,6 +487,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
             logger.debug('Clearing compilation cache due to errors');
+            logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
                 isDataformWorkspace: true,
                 errors: { dataformCompilationErrors: errors },
@@ -1464,7 +1465,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     compilerOptionsMap = {};
                 }
 
-                logger.debug(`compilerOptionsMap: ${compilerOptionsMap}`);
+                logger.debug(`compilerOptionsMap: ${JSON.stringify(compilerOptionsMap)}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {
