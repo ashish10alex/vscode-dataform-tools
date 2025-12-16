@@ -438,7 +438,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         let { dataformCompiledJson, errors, possibleResolutions } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
-            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
             if (fileMetadata?.tables?.length === 0) {
                 return {
@@ -505,7 +505,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -1182,7 +1182,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
+export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson, workspaceFolder:string): Promise<TablesWtFullQuery> {
 
     const { tables, assertions, operations, notebooks } = compiledJson;
 
@@ -1359,8 +1359,9 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         }
     }
     let notebookContent = [];
-    if(notebooks.length > 0 && workspaceFolder && isJsFile){ {
+    if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ {
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
+        console.log("[DEBUG] Reading notebook file contents for:", relativeFilePath);
         const content = Buffer.from(fileContents).toString('utf8');
         // TODO: check if the parsing does not happen for every single .js file
         const fileNames = parseNotebookFilenames(content);
@@ -1736,7 +1737,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         for (let i = 0; i < selectedFiles.length; i++) {
             let relativeFilepath = selectedFiles[i];
             if (dataformCompiledJson && relativeFilepath) {
-                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson.dataformCompiledJson));
+                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson.dataformCompiledJson, workspaceFolder));
             }
         }
     }

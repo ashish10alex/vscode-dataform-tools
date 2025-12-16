@@ -40,7 +40,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
     }
 
     if (CACHED_COMPILED_DATAFORM_JSON) {
-        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
     }
     if(!currFileMetadata){
         vscode.window.showErrorMessage(`Unable to get metadata for the current file`);
