@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.18.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.7...v0.18.8) (2025-12-12)
+
+
+### Features
+
+* **security:** version bump for CVE-2025-55183 and CVE-2025-55184 ([b9480ab](https://github.com/ashish10alex/vscode-dataform-tools/commit/b9480ab8594d3ae7fa451040bb30b76766abff97))
+
+
+### Reverts
+
+* Revert "chore(release): 0.18.8" ([327a8c3](https://github.com/ashish10alex/vscode-dataform-tools/commit/327a8c37ec5374049dc8eece68811a486d964a8c))
+
+### [0.18.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.6...v0.18.7) (2025-12-09)
+
+
+### Bug Fixes
+
+* dry run of postOps resulting in error due to not having preOps variable in scope ([#243](https://github.com/ashish10alex/vscode-dataform-tools/issues/243)) ([2511f5d](https://github.com/ashish10alex/vscode-dataform-tools/commit/2511f5d7b3c275267749acff5d61325fcac1b251))
+
+### [0.18.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.5...v0.18.6) (2025-12-07)
+
+
+### Bug Fixes
+
+* windows path not being correctly infered in single workspace env ([#241](https://github.com/ashish10alex/vscode-dataform-tools/issues/241)) ([d1085e5](https://github.com/ashish10alex/vscode-dataform-tools/commit/d1085e53e65ef33a4330bef854d95ddb4bba5113))
+
+### [0.18.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.4...v0.18.5) (2025-12-07)
+
+
+### Bug Fixes
+
+* **extension:** new directory not synced in workspace api execution ([#238](https://github.com/ashish10alex/vscode-dataform-tools/issues/238)) ([40df9ab](https://github.com/ashish10alex/vscode-dataform-tools/commit/40df9ab06de6432d14bc4bec6ca9a9bc6f5be96e))
+* incorrect core version if core version is changed during git restore ([#240](https://github.com/ashish10alex/vscode-dataform-tools/issues/240)) ([be81bfc](https://github.com/ashish10alex/vscode-dataform-tools/commit/be81bfca36d0781430a48bb68e66d40396b1d8ac))
+* workspace name prefix in file paths in multi-workspace env ([#239](https://github.com/ashish10alex/vscode-dataform-tools/issues/239)) ([40fd0c0](https://github.com/ashish10alex/vscode-dataform-tools/commit/40fd0c0ca3ffc97154adc3b5c8ccf8845de71f9e))
+
 ### [0.18.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.3...v0.18.4) (2025-12-03)
 
 

@@ -487,6 +487,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
             logger.debug('Clearing compilation cache due to errors');
+            logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
                 isDataformWorkspace: true,
                 errors: { dataformCompilationErrors: errors },
@@ -1107,13 +1108,26 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
 }
 
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
+    let trimInitial = false;
     const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
+    const workspaces = vscode.workspace.workspaceFolders;
+    if(workspaces && workspaces?.length > 1){
+        trimInitial = true;
+    }
     let files = await vscode.workspace.findFiles(globPattern);
     const fileList = files.map((file) => {
-        if (isRunningOnWindows) {
-            return path.win32.normalize(vscode.workspace.asRelativePath(file));
+        if(trimInitial){
+            const pathParts = vscode.workspace.asRelativePath(file).split(path.posix.sep);
+            if(isRunningOnWindows){
+            return path.win32.normalize(pathParts.slice(1).join(path.win32.sep));
+            }
+            return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
         }
-        return vscode.workspace.asRelativePath(file);
+         const relativePath = vscode.workspace.asRelativePath(file);
+         if(isRunningOnWindows){
+             return path.win32.normalize(relativePath);
+         }
+         return relativePath;
     });
     return fileList;
 }
@@ -1487,7 +1501,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     compilerOptionsMap = {};
                 }
 
-                logger.debug(`compilerOptionsMap: ${compilerOptionsMap}`);
+                logger.debug(`compilerOptionsMap: ${JSON.stringify(compilerOptionsMap)}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {
@@ -1895,7 +1909,10 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
-        queryDryRun(fileMetadata.queryMeta.postOpsQuery),
+        // To enable to use of variables declared in preOps.
+        // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm 
+        // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
+        queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery),
         queryDryRun(nonIncrementalQuery),
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
