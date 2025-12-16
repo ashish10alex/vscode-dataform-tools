@@ -1358,7 +1358,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             }
         }
     }
-    let notebookContent = [];
     if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ {
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
         console.log("[DEBUG] Reading notebook file contents for:", relativeFilePath);
@@ -1371,8 +1370,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             const notebookFileName = notebook.fileName;
             for (const fileName of fileNames){
                 if(notebookFileName.endsWith(fileName) || notebookFileName === fileName){
-                    notebookContent.push(notebook.notebookContents);
-
 
                     const tableFound = {
                         type: "notebook",
@@ -1391,7 +1388,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
                     queryMeta.type = "notebook";
                     queryMeta.tableOrViewQuery += `Open: ${notebook.fileName} \n`;
-
                 }
             }
         });
