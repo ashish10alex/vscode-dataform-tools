@@ -1358,13 +1358,11 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             }
         }
     }
-    if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ {
+    if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ 
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
         console.log("[DEBUG] Reading notebook file contents for:", relativeFilePath);
         const content = Buffer.from(fileContents).toString('utf8');
-        // TODO: check if the parsing does not happen for every single .js file
         const fileNames = parseNotebookFilenames(content);
-
 
         notebooks.forEach((notebook: Notebook) => {
             const notebookFileName = notebook.fileName;
@@ -1390,10 +1388,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     queryMeta.tableOrViewQuery += `Open: ${notebook.fileName} \n`;
                 }
             }
-        });
+      });
     }
-    }
-
     return { tables: finalTables, queryMeta: queryMeta };
 };
 
