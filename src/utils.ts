@@ -1360,7 +1360,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
     if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ 
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
-        console.log("[DEBUG] Reading notebook file contents for:", relativeFilePath);
         const content = Buffer.from(fileContents).toString('utf8');
         const fileNames = parseNotebookFilenames(content);
 
