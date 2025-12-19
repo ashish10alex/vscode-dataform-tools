@@ -18,11 +18,11 @@ import { findProjectRoot } from './helper';
 
 // Get the project root once
 const projectRoot = findProjectRoot(__dirname);
-const testWorkspacePath = path.join(projectRoot, 'src', 'test', 'test-workspace');
+const workspaceFolder = path.join(projectRoot, 'src', 'test', 'test-workspace');
 
 suite('GetMetadataForSqlxFileBlocks', () => {
     test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async () => {
-        const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
         //console.log('[TEST] URI:', uri.toString());
 
         await vscode.workspace.openTextDocument(uri);
@@ -47,7 +47,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
     test("Config block with assertion and has pre_operations, post_operations", async function () {
         this.timeout(9000);
         try {
-            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
             //console.log('[TEST] URI:', uri.toString());
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
@@ -77,7 +77,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 
     test('Single line config with pre_operations post_operations blocks', async () => {
         try {
-            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/0100_SINGLE_LINE_CONFIG.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/0100_SINGLE_LINE_CONFIG.sqlx"));
             //console.log('[TEST] URI:', uri.toString());
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
@@ -106,7 +106,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 
     test('Multiple pre/post operation blocks are present', async () => {
         try {
-            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx"));
             let doc = await vscode.workspace.openTextDocument(uri);
             assert.ok(doc);
             let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
@@ -147,7 +147,7 @@ suite("setDiagnostics", () => {
     test("Able to set multiple diagnostics at correct line numbers", function (done) {
         this.timeout(9000);
 
-        const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
 
         (async () => {
             try {
@@ -285,7 +285,7 @@ suite("getDocumentSymbols", () => {
         const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`, hasDatasetTableSingleLine  , hasDataasetTableMultiline  , hasProjectDatasetTable];
         const expectedSymbolCount = 5;
         try {
-            const uri = vscode.Uri.file(path.join(testWorkspacePath, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
+            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
             const document = await vscode.workspace.openTextDocument(uri);
             const symbols = getDocumentSymbols(document);
             symbols.forEach((symbol, index) => {
@@ -304,11 +304,11 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
-            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
 
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
@@ -341,16 +341,46 @@ suite('getQueryMetaForCurrentFile', () => {
         }
     });
 
+    test("able to parse .js file with notebook blocks", async function () {
+        this.timeout(9000);
+        try {
+            const relativeFilePath = "definitions/notebooks/notebook.js";
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
+            if (compiledString) {
+                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+                if (dataformCompiledJson) {
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+                    // console.log('[DEBUG] sqlxBlockMetadata:', JSON.stringify(sqlxBlockMetadata, null, 2));
+                    assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
+                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "notebook");
+                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, "definitions/notebooks/test_one.ipynb");
+                    assert.strictEqual(sqlxBlockMetadata.tables[1].type, "notebook");
+                    assert.strictEqual(sqlxBlockMetadata.tables[1].fileName, "definitions/notebooks/test_two.ipynb");
+                } else {
+                    throw new Error('Compilation failed');
+                }
+            }
+            if (errors) {
+                throw new Error(errors.join('\n'));
+            }
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+
+
 
     test("able to get model of type: view", async function () {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0100_CLUBS.sqlx";
-            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
                     assert.strictEqual(sqlxBlockMetadata.tables[0].type, "view");
@@ -383,11 +413,11 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0300_INCREMENTAL.sqlx";
-            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
                     assert.strictEqual(sqlxBlockMetadata.tables[0].type, 'incremental');
@@ -421,11 +451,11 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/assertions/0100_CLUBS_ASSER.sqlx";
-            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
                     assert.strictEqual(sqlxBlockMetadata.tables[0].type, "assertion");
@@ -459,11 +489,11 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";
-            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
                     assert.strictEqual(sqlxBlockMetadata.tables[0].type, "operations");
@@ -498,11 +528,11 @@ suite('getQueryMetaForCurrentFile', () => {
         this.timeout(9000);
         try {
             const relativeFilePath = "definitions/010_JS_MULTIPLE.js";
-            let { compiledString, errors } = await compileDataform(testWorkspacePath);
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 4);
 
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "js");
