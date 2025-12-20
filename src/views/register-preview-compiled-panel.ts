@@ -459,6 +459,25 @@ export class CompiledQueryPanel {
             });
             return;
         }
+        const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
+        if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) &&  isJs){
+            if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
+                if(CACHED_COMPILED_DATAFORM_JSON){
+                    const output = CACHED_COMPILED_DATAFORM_JSON.declarations
+                    .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath)
+                    .map((declaration) => {
+                        const { name, schema, database } = declaration.target;
+                            return `<a href="https://console.cloud.google.com/bigquery?project=${database}&ws=!1m5!1m4!4m3!1s${database}!2s${schema}!3s${name}" target="_blank"> ${database}.${schema}.${name} </a><br/>`; 
+                        })
+                    .join("");
+                    console.log(output);
+                    await webview.postMessage({
+                        "declarationsHtml": output
+                    });
+                    return;
+                }
+            }
+        }
 
         if(!curFileMeta.fileMetadata || !curFileMeta.pathMeta){
             //TODO: show some error message in this case
@@ -710,7 +729,13 @@ export class CompiledQueryPanel {
         </head>
 
         <body>
+        <div id="separateDiv">
+            <h2>Declarations</h2><br>
+            <div id="declarationsDiv" style="display: flex; align-items: center; display: none;">
+            </div>
+        </div>
 
+    <div id="mainDiv">
         <div class="report-widget">
         <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" class="report-link">
             Report an issue
@@ -964,6 +989,7 @@ export class CompiledQueryPanel {
                 <script nonce="${nonce}" type="text/javascript" src="${showCompiledQueryUri}"></script>
             </div>
         </div>
+    </div>
 
         </body>
         </html>
