@@ -494,7 +494,11 @@ export class CompiledQueryPanel {
                         diagnosticCollection.clear();
                     }
                     await webview.postMessage({
-                        "declarationsHtml": output
+                        "declarationsHtml": output === "" 
+                            ? `<div style="margin: 8px 0; padding: 4px 8px;">
+                                ${curFileMeta.pathMeta?.relativeFilePath}
+                            </div>` 
+                            : `<h2>Declarations</h2> ${output}`
                     });
                     return;
                 }
@@ -752,7 +756,6 @@ export class CompiledQueryPanel {
 
         <body>
         <div id="separateDiv">
-            <h2>Declarations</h2><br>
             <div id="declarationsDiv" style="align-items: center; display: none;">
             </div>
         </div>
