@@ -753,7 +753,7 @@ export class CompiledQueryPanel {
         <body>
         <div id="separateDiv">
             <h2>Declarations</h2><br>
-            <div id="declarationsDiv" style="display: flex; align-items: center; display: none;">
+            <div id="declarationsDiv" style="align-items: center; display: none;">
             </div>
         </div>
 
