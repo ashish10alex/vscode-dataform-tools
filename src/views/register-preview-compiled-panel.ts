@@ -463,6 +463,7 @@ export class CompiledQueryPanel {
         if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) &&  isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
                 if(CACHED_COMPILED_DATAFORM_JSON){
+                    if (!CACHED_COMPILED_DATAFORM_JSON?.declarations) { return; }
                     const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
                         .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
 
