@@ -401,7 +401,7 @@ export class CompiledQueryPanel {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             const currentDirectory = workspaceFolder?.uri.fsPath;
             await webview.postMessage({
-                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflowsetting.yaml or dataform.json`
+                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_setting.yaml or dataform.json`
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
