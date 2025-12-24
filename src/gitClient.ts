@@ -72,15 +72,36 @@ export class GitService {
                     return { status: status as GitStatusCode, filePath: filePath.replace(/\\/g, '/') };
                 });
 
-            return files.filter(file =>
-                ['.sqlx', '.js', '.json', '.yaml'].some(ext => file.filePath.endsWith(ext))
-            ).map(file => ({
-                state: this.gitStatusToHumanReadable(file.status),
-                path: file.filePath,
-                fullPath: path.join(this.projectRoot, file.filePath),
-                commitIndex: 0
-            }));
+            let output : GitFileChange[] = [];
+            const rootFiles = ["dataform.json", "workflow_settings.yaml"];
+            const fileExtensionsToSync = ['.sqlx', '.js', '.ipynb'];
+            files.forEach((file) =>{
+                const isRootFile = rootFiles.includes(file.filePath);
+                if(fileExtensionsToSync.some(ext => file.filePath.endsWith(ext)) || isRootFile){
+                    output.push({
+                        state: this.gitStatusToHumanReadable(file.status), 
+                        path: file.filePath,
+                        fullPath: path.join(this.projectRoot, file.filePath),
+                        commitIndex: 0
+                    });
+                }
 
+                if(fs.existsSync(path.join(this.projectRoot, file.filePath)) && fs.lstatSync(path.join(this.projectRoot, file.filePath)).isDirectory()){
+                    const dirFiles = fs.readdirSync(path.join(this.projectRoot, file.filePath));
+                    dirFiles.forEach((dirFile) =>{
+                        if(fileExtensionsToSync.some(ext => dirFile.endsWith(ext))){
+                            output.push({
+                                state: this.gitStatusToHumanReadable(file.status),
+                                path: path.posix.join(file.filePath, dirFile),
+                                fullPath: path.join(this.projectRoot, file.filePath, dirFile),
+                                commitIndex: 0
+                            });
+                        }
+                    });
+                }
+            });
+
+            return output;
         } catch (error: any) {
             vscode.window.showErrorMessage(`Error running git status: ${error.message}`);
             throw error;

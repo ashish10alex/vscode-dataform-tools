@@ -53,6 +53,7 @@ const includeDependentsCheckBox = document.getElementById('includeDependents');
 const fullRefreshCheckBox = document.getElementById('fullRefresh');
 const noSchemaBlockDiv = document.getElementById("noSchemaBlock");
 const targetTableOrViewLink = document.getElementById('targetTableOrViewLink');
+const declarationsDiv = document.getElementById('declarationsDiv');
 const dryRunStatDiv = document.getElementById("dryRunStatDiv");
 const errorMessageDiv = document.getElementById("errorMessageDiv");
 const dataLineageDiv = document.getElementById("dataLineageDiv");
@@ -299,6 +300,8 @@ function removeExistingCopyElements() {
 
 
 window.addEventListener('message', event => {
+    document.getElementById('separateDiv').style.display = "none";
+    document.getElementById('mainDiv').style.display = "";
     dryRunloadingIcon.style.display = "";
     let data = {
         "preOperations": event?.data?.preOperations,
@@ -366,6 +369,14 @@ window.addEventListener('message', event => {
     const models = event?.data?.models;
     const lineageMetadata = event?.data?.lineageMetadata;
     let modelsLastUpdateTimesMeta = event?.data?.modelsLastUpdateTimesMeta;
+
+    if(event?.data?.declarationsHtml){
+        document.getElementById('mainDiv').style.display = "none";
+        document.getElementById('separateDiv').style.display = "";
+        declarationsDiv.style.display = "";
+        declarationsDiv.innerHTML = event?.data?.declarationsHtml;
+    }
+
     if (models){
 
         let targetTablesOrViews = event?.data?.targetTablesOrViews;

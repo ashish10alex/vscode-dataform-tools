@@ -88,7 +88,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             runCommandInTerminal(runTagsWtDepsCommand);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
-            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
+            runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
             runMultipleTagsFromSelection(workspaceFolder, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh);
@@ -98,15 +98,12 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            //FIXME: api_workspace execution mode not implemented for this function
             runTagWtApi(context, [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple files"){
             if(!multipleFileSelection){return;};
-            //FIXME: api_workspace execution mode not implemented for this function
-            runMultipleFilesFromSelection(workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
+            runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple tags"){
             if(!multipleTagsSelection){return;};
-            //FIXME: api_workspace execution mode not implemented for this function
             runTagWtApi(context, multipleTagsSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         }
     }

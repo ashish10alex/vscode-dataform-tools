@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, Declarations } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -459,6 +459,52 @@ export class CompiledQueryPanel {
             });
             return;
         }
+        const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
+        if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) &&  isJs){
+            if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
+                if(CACHED_COMPILED_DATAFORM_JSON){
+                    if (!CACHED_COMPILED_DATAFORM_JSON?.declarations) { return; }
+                    const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
+                        .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
+
+                        const groupedBySchema = filteredDeclarations.reduce((acc: Record<string, Declarations[]>, declaration: Declarations) => {
+                        const schema: string = declaration.target.schema;
+                        const database: string = declaration.target.database;
+                        const key = `${database}.${schema}`;
+                        if (!acc[key]) {
+                            acc[key] = [];
+                        }
+                        acc[key].push(declaration);
+                        return acc;
+                    }, {});
+
+                    const output = Object.entries(groupedBySchema).map(([key, declarations]: [string, Declarations[]]) => {
+                    const links = declarations.map((declaration: any) => {
+                        const { name, schema, database } = declaration.target;
+                        return `<a href="https://console.cloud.google.com/bigquery?project=${database}&ws=!1m5!1m4!4m3!1s${database}!2s${schema}!3s${name}" target="_blank">${database}.${schema}.${name}</a>`;
+                    }).join("<br/>");
+
+                    return `
+                        <div style="margin-bottom: 20px;">
+                            <strong style="color: #D4D4D4;">${key}</strong><br/>
+                            ${links}
+                        </div>
+                    `;
+                    }).join("<hr/>");
+                    if(diagnosticCollection){
+                        diagnosticCollection.clear();
+                    }
+                    await webview.postMessage({
+                        "declarationsHtml": output === "" 
+                            ? `<div style="margin: 8px 0; padding: 4px 8px;">
+                                ${curFileMeta.pathMeta?.relativeFilePath}
+                            </div>` 
+                            : `<h2>Declarations</h2> ${output}`
+                    });
+                    return;
+                }
+            }
+        }
 
         if(!curFileMeta.fileMetadata || !curFileMeta.pathMeta){
             //TODO: show some error message in this case
@@ -710,7 +756,12 @@ export class CompiledQueryPanel {
         </head>
 
         <body>
+        <div id="separateDiv">
+            <div id="declarationsDiv" style="align-items: center; display: none;">
+            </div>
+        </div>
 
+    <div id="mainDiv">
         <div class="report-widget">
         <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" class="report-link">
             Report an issue
@@ -964,6 +1015,7 @@ export class CompiledQueryPanel {
                 <script nonce="${nonce}" type="text/javascript" src="${showCompiledQueryUri}"></script>
             </div>
         </div>
+    </div>
 
         </body>
         </html>

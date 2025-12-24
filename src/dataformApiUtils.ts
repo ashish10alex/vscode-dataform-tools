@@ -40,6 +40,7 @@ async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTo
                 await dataformClient.pullGitCommits(repositoryName, workspaceName, {remoteBranch: workspaceName ,emailAddress: gitUser.email, userName: gitUser.name});
             }
         }
+        await dataformClient.installNpmPackages(repositoryName, workspaceName);
         return true;
     } else {
         vscode.window.showInformationMessage("Git restore operation in remote workspace cancelled, exiting...");

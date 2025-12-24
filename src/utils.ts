@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata, Notebook } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
@@ -14,7 +14,7 @@ import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { GoogleAuth } from 'google-auth-library';
 import { DataformTools } from "@ashishalex/dataform-tools";
-import { sendWorkflowInvocationNotification } from "./dataformApiUtils";
+import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { GitService } from './gitClient';
 
 let supportedExtensions = ['sqlx', 'js'];
@@ -438,7 +438,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         let { dataformCompiledJson, errors, possibleResolutions } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
-            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson);
+            let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
             if (fileMetadata?.tables?.length === 0) {
                 return {
@@ -487,6 +487,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
             logger.debug('Clearing compilation cache due to errors');
+            logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
                 isDataformWorkspace: true,
                 errors: { dataformCompilationErrors: errors },
@@ -504,7 +505,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON);
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -1107,13 +1108,26 @@ export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> 
 }
 
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
+    let trimInitial = false;
     const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
+    const workspaces = vscode.workspace.workspaceFolders;
+    if(workspaces && workspaces?.length > 1){
+        trimInitial = true;
+    }
     let files = await vscode.workspace.findFiles(globPattern);
     const fileList = files.map((file) => {
-        if (isRunningOnWindows) {
-            return path.win32.normalize(vscode.workspace.asRelativePath(file));
+        if(trimInitial){
+            const pathParts = vscode.workspace.asRelativePath(file).split(path.posix.sep);
+            if(isRunningOnWindows){
+            return path.win32.normalize(pathParts.slice(1).join(path.win32.sep));
+            }
+            return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
         }
-        return vscode.workspace.asRelativePath(file);
+         const relativePath = vscode.workspace.asRelativePath(file);
+         if(isRunningOnWindows){
+             return path.win32.normalize(relativePath);
+         }
+         return relativePath;
     });
     return fileList;
 }
@@ -1168,11 +1182,10 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
-export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson): Promise<TablesWtFullQuery> {
+export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson, workspaceFolder:string): Promise<TablesWtFullQuery> {
 
-    const { tables, assertions, operations } = compiledJson;
+    const { tables, assertions, operations, notebooks } = compiledJson;
 
-    //TODO: This can be deprecated in favour of queryMetadata in future ?
     let queryMeta = {
         type: "",
         tableOrViewQuery: "",
@@ -1186,7 +1199,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         error: "",
     };
     let finalTables: any[] = [];
-
 
     const isJsFile = relativeFilePath.endsWith('.js');
     const isSqlxFile = relativeFilePath.endsWith('.sqlx');
@@ -1346,7 +1358,37 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             }
         }
     }
+    if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ 
+        const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
+        const content = Buffer.from(fileContents).toString('utf8');
+        const fileNames = parseNotebookFilenames(content);
 
+        notebooks.forEach((notebook: Notebook) => {
+            const notebookFileName = notebook.fileName;
+            for (const fileName of fileNames){
+                if(notebookFileName.endsWith(fileName) || notebookFileName === fileName){
+
+                    const tableFound = {
+                        type: "notebook",
+                        query: `Open: ${notebook.fileName} \n`,
+                        tags: notebook.tags,
+                        fileName: notebook.fileName,
+                        target: notebook.target,
+                        preOps: undefined,
+                        postOps: undefined,
+                        dependencyTargets: notebook.dependencyTargets,
+                        incrementalQuery: undefined,
+                        incrementalPreOps: undefined,
+                        actionDescriptor: undefined,
+                    };
+                    finalTables.push(tableFound);
+
+                    queryMeta.type = "notebook";
+                    queryMeta.tableOrViewQuery += `Open: ${notebook.fileName} \n`;
+                }
+            }
+      });
+    }
     return { tables: finalTables, queryMeta: queryMeta };
 };
 
@@ -1451,7 +1493,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     compilerOptionsMap = {};
                 }
 
-                logger.debug(`compilerOptionsMap: ${compilerOptionsMap}`);
+                logger.debug(`compilerOptionsMap: ${JSON.stringify(compilerOptionsMap)}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {
@@ -1677,7 +1719,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return selectedFiles;
 }
 
-export async function runMultipleFilesFromSelection(workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
+export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
@@ -1686,27 +1728,40 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
         for (let i = 0; i < selectedFiles.length; i++) {
             let relativeFilepath = selectedFiles[i];
             if (dataformCompiledJson && relativeFilepath) {
-                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson.dataformCompiledJson));
+                fileMetadatas.push(await getQueryMetaForCurrentFile(relativeFilepath, dataformCompiledJson.dataformCompiledJson, workspaceFolder));
             }
         }
     }
 
-    if(executionMode === "api"){
-        let includedTargets: {database:string, schema: string, name:string}[] = [];
-        fileMetadatas.forEach(fileMetadata => {
-            if (fileMetadata) {
-                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
-                    includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
-                });
-            }
-        });
+    let includedTargets: {database:string, schema: string, name:string}[] = [];
+    fileMetadatas.forEach(fileMetadata => {
+        if (fileMetadata) {
+            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
+            });
+        }
+    });
 
-        const invocationConfig = {
-            includedTargets: includedTargets,
-            transitiveDependenciesIncluded: includeDependencies,
-            transitiveDependentsIncluded: includeDownstreamDependents,
-            fullyRefreshIncrementalTablesEnabled: fullRefresh,
-        };
+    const invocationConfig = {
+        includedTargets: includedTargets,
+        transitiveDependenciesIncluded: includeDependencies,
+        transitiveDependentsIncluded: includeDownstreamDependents,
+        fullyRefreshIncrementalTablesEnabled: fullRefresh,
+    };
+
+    if(executionMode === "api_workspace"){
+        await showLoadingProgress(
+            "",
+            syncAndrunDataformRemotely,
+            "Dataform remote workspace execution cancelled",
+            context,
+            invocationConfig,
+            compilerOptionsMap,
+        );
+        return;
+    }
+
+    if(executionMode === "api"){
 
         const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
         if(!projectId){
@@ -1714,19 +1769,7 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             return;
         }
 
-        let gcpProjectLocation = undefined;
-        if(CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultLocation){
-            gcpProjectLocation = CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultLocation;
-        }else{
-            gcpProjectLocation = await getLocationOfGcpProject(projectId);
-        }
-
-        if(!gcpProjectLocation){
-            vscode.window.showErrorMessage("Unable to determine GCP project location to use for Dataform API run");
-            return;
-        }
         try{
-            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
             const gitClient = new GitService();
             const gitInfo = gitClient.getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
@@ -1734,6 +1777,14 @@ export async function runMultipleFilesFromSelection(workspaceFolder: string, sel
             } 
             const repositoryName = gitInfo.gitRepoName;
             vscode.window.showInformationMessage(`Creating workflow invocation with ${gitInfo.gitBranch} remote git branch ...`);
+
+            const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
+            if (!gcpProjectLocation) {
+                vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
+                return;
+            }
+
+            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
             const ouput = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
             if(!ouput){
@@ -1850,7 +1901,10 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
-        queryDryRun(fileMetadata.queryMeta.postOpsQuery),
+        // To enable to use of variables declared in preOps.
+        // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm 
+        // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
+        queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery),
         queryDryRun(nonIncrementalQuery),
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
@@ -1936,4 +1990,28 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
+}
+
+function parseNotebookFilenames(content: string): string[] {
+  const filenames: string[] = [];
+
+  const matches = content.match(/notebook\(\s*\{[\s\S]*?\}\s*\)/g);
+
+  if (matches) {
+    for (const match of matches) {
+      // Extract the content inside the notebook(...) block
+      const innerContentMatch = match.match(/\{\s*([\s\S]*?)\s*\}/);
+      if (innerContentMatch) {
+        const innerContent = innerContentMatch[1];
+
+        // Match the filename property
+        const filenameMatch = innerContent.match(/filename\s*:\s*['"]([^'"]+)['"]/);
+        if (filenameMatch) {
+          filenames.push(filenameMatch[1]);
+        }
+      }
+    }
+  }
+
+  return filenames;
 }
