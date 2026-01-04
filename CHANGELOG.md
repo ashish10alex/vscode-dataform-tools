@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.19.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.7...v0.19.0) (2026-01-04)
+
+
+### Features
+
+* **security:** version bump for CVE-2025-55183 and CVE-2025-55184 ([b9480ab](https://github.com/ashish10alex/vscode-dataform-tools/commit/b9480ab8594d3ae7fa451040bb30b76766abff97))
+* show the declarations in js file in webview when compiled  ([#245](https://github.com/ashish10alex/vscode-dataform-tools/issues/245)) ([f275ff8](https://github.com/ashish10alex/vscode-dataform-tools/commit/f275ff8508499b3323b2346d5b5350680b030635))
+* support for ipython notebooks ([#237](https://github.com/ashish10alex/vscode-dataform-tools/issues/237)) ([2cbd2b8](https://github.com/ashish10alex/vscode-dataform-tools/commit/2cbd2b80c326bcb53ffba4bd39a0ac20c104df20))
+
+
+### Refactors
+
+* improve code maintainability, version updates  ([#233](https://github.com/ashish10alex/vscode-dataform-tools/issues/233)) ([088d592](https://github.com/ashish10alex/vscode-dataform-tools/commit/088d592da7c82144ac94c50b08c926fcc683f20f))
+
 ### [0.18.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.7...v0.18.8) (2025-12-12)
 
 
