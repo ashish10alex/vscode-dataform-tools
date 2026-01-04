@@ -24,28 +24,8 @@
     ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
-        "onCommand:extension.runFilesTagsWtOptionsInRemoteWorkspace",
-        "onCommand:extension.runCurrentFile",
-        "onCommand:extension.runCurrentFileWtApi",
-        "onCommand:extension.runCurrentFileWtDependenciesApi",
-        "onCommand:extension.runCurrentFileWtDependentsApi",
-        "onCommand:extension.showDependentsInGraph",
-        "onCommand:extension.runCurrentFileWtDeps",
-        "onCommand:extension.runCurrentFileWtDownstreamDeps",
-        "onCommand:extension.showCompiledQueryWtDryRun",
-        "onCommand:extension.runTag",
-        "onCommand:extension.runTagWtDeps",
-        "onCommand:extension.runTagWtDownstreamDeps",
-        "onCommand:extension.runTagWtApi",
-        "onCommand:extension.runTagWtDependenciesApi",
-        "onCommand:extension.runTagWtDependentsApi",
-        "onCommand:extension.runFilesTagsWtOptions",
-        "onCommand:extension.runFilesTagsWtOptionsApi",
-        "onCommand:extension.createNewDataformProject",
-        "onCommand:extension.showCompiledQueryInWebView",
-        "onCommand:extension.dependencyGraphPanel",
-        "onCommand:extension.selectWorkspaceFolder",
-        "onCommand:extension.clearExtensionCache"
+        "workspaceContains:**/workflow_settings.yaml",
+        "workspaceContains:**/dataform.json"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
@@ -137,6 +117,11 @@
                 "command": "vscode-dataform-tools.runTagWtDependentsApi",
                 "category": "Dataform",
                 "title": "Run tag with dependents using API"
+            },
+            {
+                "command": "vscode-dataform-tools.runAssertions",
+                "category": "Dataform",
+                "title": "Run assertions in the current model"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
