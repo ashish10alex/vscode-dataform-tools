@@ -17,7 +17,7 @@ import { createNewDataformProject } from './createNewDataformProject';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
-import { formatDataformSqlxFile } from './formatCurrentFile';
+import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
 import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runCurrentFile';
@@ -325,6 +325,14 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.formatDocument', () => {
             vscode.commands.executeCommand('editor.action.formatDocument');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.lintCurrentFile', async () => {
+            if (diagnosticCollection) {
+                await lintCurrentFile(diagnosticCollection);
+            }
         })
     );
 

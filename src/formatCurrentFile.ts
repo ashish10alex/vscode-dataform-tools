@@ -182,3 +182,119 @@ export async function formatCurrentFileWithDataform() {
     }
     runCommandInTerminal(`dataform format ${workspaceFolder}`);
 }
+
+interface SqlfluffViolation {
+    start_line_no: number;
+    start_line_pos: number;
+    code: string;
+    description: string;
+    name: string;
+    warning: boolean;
+    start_file_pos: number;
+    end_line_no: number;
+    end_line_pos: number;
+    end_file_pos: number;
+}
+
+interface SqlfluffOutput {
+    filepath: string;
+    violations: SqlfluffViolation[];
+}
+
+export async function lintCurrentFile(diagnosticCollection: vscode.DiagnosticCollection) {
+    let document = vscode.window.activeTextEditor?.document;
+    if (!document) {
+        document = activeDocumentObj;
+        if (!document) {
+            vscode.window.showErrorMessage("[Error linting]: VS Code document object was undefined");
+            return;
+        }
+    }
+
+    var result = getFileNameFromDocument(document, false);
+    if (result.success === false) {
+        return;
+    }
+    const [filename, _, extension] = result.value;
+
+    let currentActiveEditorFilePath = document.uri.fsPath;
+    if (!currentActiveEditorFilePath) {
+        return;
+    }
+
+    if (filename === "" || extension !== "sqlx") {
+        vscode.window.showErrorMessage("Linting is only supported for .sqlx files");
+        return;
+    }
+
+    let workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) {
+        return;
+    }
+
+    let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
+    let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
+
+    if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
+        vscode.window.showWarningMessage(`No .sqlfluff config found at ${sqlfluffConfigFilePath}. Linting might use default settings.`);
+    }
+
+    const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
+    let lintCmd = `${sqlfluffExecutablePath} lint "${currentActiveEditorFilePath}" --config "${sqlfluffConfigFilePath}" --format json`;
+
+    try {
+        const stdout = await new Promise<string>((resolve, reject) => {
+            exec(lintCmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                 if (stderr) {
+                     // Just log stderr, as some tools output warnings to stderr
+                     logger.error(`Linting stderr: ${stderr}`);
+                 }
+                 
+                 // If we have stdout, we assume it might be valid JSON output even if exit code is non-zero
+                 if (stdout) {
+                     resolve(stdout);
+                     return;
+                 }
+
+                if (error) { 
+                     reject(error);
+                     return;
+                }
+                resolve(stdout);
+            });
+        });
+
+        const lintResults: SqlfluffOutput[] | SqlfluffOutput = JSON.parse(stdout);
+        const fileResults = Array.isArray(lintResults) ? lintResults : [lintResults];
+
+        const diagnostics: vscode.Diagnostic[] = [];
+
+        for (const fileResult of fileResults) {
+            for (const violation of fileResult.violations) {
+                const startLine = violation.start_line_no - 1;
+                const startChar = violation.start_line_pos - 1; 
+                const endLine = violation.end_line_no - 1;
+                const endChar = violation.end_line_pos - 1;
+
+                const range = new vscode.Range(startLine, startChar, endLine, endChar);
+                const message = `${violation.code}: ${violation.description}`;
+                const severity = vscode.DiagnosticSeverity.Warning;
+
+                const diagnostic = new vscode.Diagnostic(range, message, severity);
+                diagnostic.source = 'sqlfluff';
+                diagnostic.code = violation.code;
+                
+                diagnostics.push(diagnostic);
+            }
+        }
+
+        diagnosticCollection.set(document.uri, diagnostics);
+        
+        if (diagnostics.length === 0) {
+             vscode.window.showInformationMessage(`Linting completed. No errors found.`);
+        }
+    } catch (err) {
+        logger.error(`Linting failed: ${err}`);
+        vscode.window.showErrorMessage(`Linting failed: ${err}`);
+    }
+}
