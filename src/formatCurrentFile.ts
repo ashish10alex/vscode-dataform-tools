@@ -246,7 +246,10 @@ export async function lintSqlxFile(document: vscode.TextDocument, metadataForSql
 
                 const diagnostic = new vscode.Diagnostic(range, message, severity);
                 diagnostic.source = 'sqlfluff';
-                diagnostic.code = violation.code;
+                diagnostic.code = {
+                    value: violation.code,
+                    target: vscode.Uri.parse(`https://docs.sqlfluff.com/en/stable/reference/rules.html#rule-${violation.code}`)
+                };
                 
                 diagnostics.push(diagnostic);
             }
