@@ -201,6 +201,74 @@ interface SqlfluffOutput {
     violations: SqlfluffViolation[];
 }
 
+export async function lintSqlxFile(document: vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath: string, diagnosticCollection: vscode.DiagnosticCollection) {
+    let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
+
+    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath);
+
+    const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
+    // lint the temp file
+    let lintCmd = `${sqlfluffExecutablePath} lint "${sqlFileToFormatPath}" --config "${sqlfluffConfigFilePath}" --format json`;
+
+    try {
+        const stdout = await new Promise<string>((resolve, reject) => {
+            exec(lintCmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                if (stderr) {
+                    // Just log stderr, as some tools output warnings to stderr
+                    logger.error(`Linting stderr: ${stderr}`);
+                }
+                
+                // If we have stdout, we assume it might be valid JSON output even if exit code is non-zero
+                if (stdout) {
+                    resolve(stdout);
+                    return;
+                }
+
+                if (error) { 
+                    reject(error);
+                    return;
+                }
+                resolve(stdout);
+            });
+        });
+
+        const lintResults: SqlfluffOutput[] | SqlfluffOutput = JSON.parse(stdout);
+        const fileResults = Array.isArray(lintResults) ? lintResults : [lintResults];
+
+        const diagnostics: vscode.Diagnostic[] = [];
+
+        for (const fileResult of fileResults) {
+            for (const violation of fileResult.violations) {
+                const startLine = (sqlBlockMeta.startLine - 1) + (violation.start_line_no - 1);
+                const startChar = violation.start_line_pos - 1; 
+                const endLine = (sqlBlockMeta.startLine - 1) + (violation.end_line_no - 1);
+                const endChar = violation.end_line_pos - 1;
+
+                const range = new vscode.Range(startLine, startChar, endLine, endChar);
+                const message = `${violation.code}: ${violation.description}`;
+                const severity = vscode.DiagnosticSeverity.Warning;
+
+                const diagnostic = new vscode.Diagnostic(range, message, severity);
+                diagnostic.source = 'sqlfluff';
+                diagnostic.code = violation.code;
+                
+                diagnostics.push(diagnostic);
+            }
+        }
+
+        diagnosticCollection.set(document.uri, diagnostics);
+        
+        if (diagnostics.length === 0) {
+             vscode.window.showInformationMessage(`Linting completed. No errors found.`);
+        }
+
+    } catch (err) {
+        logger.error(`Linting failed: ${err}`);
+        vscode.window.showErrorMessage(`Linting failed: ${err}`);
+    }
+}
+
 export async function lintCurrentFile(diagnosticCollection: vscode.DiagnosticCollection) {
     let document = vscode.window.activeTextEditor?.document;
     if (!document) {
@@ -239,62 +307,7 @@ export async function lintCurrentFile(diagnosticCollection: vscode.DiagnosticCol
         vscode.window.showWarningMessage(`No .sqlfluff config found at ${sqlfluffConfigFilePath}. Linting might use default settings.`);
     }
 
-    const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
-    let lintCmd = `${sqlfluffExecutablePath} lint "${currentActiveEditorFilePath}" --config "${sqlfluffConfigFilePath}" --format json`;
-
-    try {
-        const stdout = await new Promise<string>((resolve, reject) => {
-            exec(lintCmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-                 if (stderr) {
-                     // Just log stderr, as some tools output warnings to stderr
-                     logger.error(`Linting stderr: ${stderr}`);
-                 }
-                 
-                 // If we have stdout, we assume it might be valid JSON output even if exit code is non-zero
-                 if (stdout) {
-                     resolve(stdout);
-                     return;
-                 }
-
-                if (error) { 
-                     reject(error);
-                     return;
-                }
-                resolve(stdout);
-            });
-        });
-
-        const lintResults: SqlfluffOutput[] | SqlfluffOutput = JSON.parse(stdout);
-        const fileResults = Array.isArray(lintResults) ? lintResults : [lintResults];
-
-        const diagnostics: vscode.Diagnostic[] = [];
-
-        for (const fileResult of fileResults) {
-            for (const violation of fileResult.violations) {
-                const startLine = violation.start_line_no - 1;
-                const startChar = violation.start_line_pos - 1; 
-                const endLine = violation.end_line_no - 1;
-                const endChar = violation.end_line_pos - 1;
-
-                const range = new vscode.Range(startLine, startChar, endLine, endChar);
-                const message = `${violation.code}: ${violation.description}`;
-                const severity = vscode.DiagnosticSeverity.Warning;
-
-                const diagnostic = new vscode.Diagnostic(range, message, severity);
-                diagnostic.source = 'sqlfluff';
-                diagnostic.code = violation.code;
-                
-                diagnostics.push(diagnostic);
-            }
-        }
-
-        diagnosticCollection.set(document.uri, diagnostics);
-        
-        if (diagnostics.length === 0) {
-             vscode.window.showInformationMessage(`Linting completed. No errors found.`);
-        }
-    } catch (err) {
-        logger.error(`Linting failed: ${err}`);
-        vscode.window.showErrorMessage(`Linting failed: ${err}`);
-    }
+    // New logic used for sqlx files to only lint the sql block
+    let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document);
+    await lintSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath, diagnosticCollection);
 }
