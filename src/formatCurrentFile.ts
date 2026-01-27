@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import beautify from 'js-beautify';
 import { exec as exec } from 'child_process';
-import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
+import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
@@ -162,12 +162,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
     let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
 
     let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
-    if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
-        vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
-        let sqlfluffConfigFileContents = await fetchGitHubFileContent();
-        writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
-        vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
-    }
+    await ensureSqlfluffConfigExists(sqlfluffConfigFilePath);
     return await formatSqlxFile(document, currentActiveEditorFilePath, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 }
 
@@ -303,9 +298,7 @@ export async function lintCurrentFile(diagnosticCollection: vscode.DiagnosticCol
     let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
     let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
 
-    if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
-        vscode.window.showWarningMessage(`No .sqlfluff config found at ${sqlfluffConfigFilePath}. Linting might use default settings.`);
-    }
+    await ensureSqlfluffConfigExists(sqlfluffConfigFilePath);
 
     // New logic used for sqlx files to only lint the sql block
     let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document);
