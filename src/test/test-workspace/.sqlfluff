@@ -12,7 +12,8 @@ output_line_length = 120
 # ST04 - Dont mess up nested CASE statement
 # LT05 - Line is too long
 # AL05 - Tables should not be aliased if that alias is not used.
-exclude_rules = AL07, ST06, ST07, AM03, ST04, LT05, AL05
+# LT12 - Files must end with a single trailing newline
+exclude_rules = AL07, ST06, ST07, AM03, ST04, LT05, AL05, LT12
 
 [sqlfluff:rules]
 allow_scalar = False
