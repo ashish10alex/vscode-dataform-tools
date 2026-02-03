@@ -22,9 +22,6 @@ export async function formatDataformSqlxFile(document:vscode.TextDocument){
                     return undefined;
                 }
             }
-            // get fsPath from document
-            const fsPath = document.uri.fsPath;
-            console.log(`fsPath: ${fsPath}`);
             const entireRange = new vscode.Range(
                 document.lineAt(0).range.start,
                 document.lineAt(document.lineCount - 1).range.end
