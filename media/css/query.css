@@ -755,17 +755,18 @@ form {
 .button-wrapper {
   position: relative;
   display: inline-block;
+  margin-right: 10px;
 }
 
 .new-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -4px;
+  right: -4px;
   background-color: #f39c12;
   color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 12px;
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 8px;
   z-index: 1;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
 }
@@ -818,7 +819,9 @@ form {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 8px 0;
+    margin: 12px 0 8px 0;
+    padding-top: 10px; /* Added padding to prevent badge clipping */
+    overflow: visible;
 }
 
 .format-button {
