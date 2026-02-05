@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.20.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.19.0...v0.20.0) (2026-02-05)
+
+
+### Features
+
+* change to support sqlfluff  4.0.0 ([59bedda](https://github.com/ashish10alex/vscode-dataform-tools/commit/59beddacf390c2a891bfb737900ef842777db2ec))
+* show sqfluff linting errors on the file ([#246](https://github.com/ashish10alex/vscode-dataform-tools/issues/246)) ([0628b03](https://github.com/ashish10alex/vscode-dataform-tools/commit/0628b03fbfd1ad9d2c92e0083efe9f5f2026719c))
+
 ## [0.19.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.18.7...v0.19.0) (2026-01-04)
 
 
