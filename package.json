@@ -189,6 +189,11 @@
                 "group": "navigation@0"
             },
             {
+                "command": "vscode-dataform-tools.lintCurrentFile",
+                "category": "Dataform",
+                "title": "Lint current file"
+            },
+            {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
                 "category": "Dataform",
                 "title": "Select workspace folder"

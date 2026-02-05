@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import beautify from 'js-beautify';
 import { exec as exec } from 'child_process';
-import { checkIfFileExsists, compiledQueryWtDryRun, fetchGitHubFileContent, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, writeContentsToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
+import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
@@ -22,9 +22,6 @@ export async function formatDataformSqlxFile(document:vscode.TextDocument){
                     return undefined;
                 }
             }
-            // get fsPath from document
-            const fsPath = document.uri.fsPath;
-            console.log(`fsPath: ${fsPath}`);
             const entireRange = new vscode.Range(
                 document.lineAt(0).range.start,
                 document.lineAt(document.lineCount - 1).range.end
@@ -162,12 +159,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
     let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
 
     let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document); // take ~1.3ms to parse 200 lines
-    if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
-        vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
-        let sqlfluffConfigFileContents = await fetchGitHubFileContent();
-        writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
-        vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
-    }
+    await ensureSqlfluffConfigExists(sqlfluffConfigFilePath);
     return await formatSqlxFile(document, currentActiveEditorFilePath, metadataForSqlxFileBlocks, sqlfluffConfigFilePath); // takes ~ 700ms to format 200 lines
 }
 
@@ -181,4 +173,134 @@ export async function formatCurrentFileWithDataform() {
         workspaceFolder = path.win32.normalize(workspaceFolder);
     }
     runCommandInTerminal(`dataform format ${workspaceFolder}`);
+}
+
+interface SqlfluffViolation {
+    start_line_no: number;
+    start_line_pos: number;
+    code: string;
+    description: string;
+    name: string;
+    warning: boolean;
+    start_file_pos: number;
+    end_line_no: number;
+    end_line_pos: number;
+    end_file_pos: number;
+}
+
+interface SqlfluffOutput {
+    filepath: string;
+    violations: SqlfluffViolation[];
+}
+
+export async function lintSqlxFile(document: vscode.TextDocument, metadataForSqlxFileBlocks: SqlxBlockMetadata, sqlfluffConfigFilePath: string, diagnosticCollection: vscode.DiagnosticCollection) {
+    let sqlBlockMeta = metadataForSqlxFileBlocks.sqlBlock;
+    let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
+
+    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath);
+
+    const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
+    // lint the temp file
+    let lintCmd = `${sqlfluffExecutablePath} lint "${sqlFileToFormatPath}" --config "${sqlfluffConfigFilePath}" --format json`;
+
+    try {
+        const stdout = await new Promise<string>((resolve, reject) => {
+            exec(lintCmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                if (stderr) {
+                    // Just log stderr, as some tools output warnings to stderr
+                    logger.error(`Linting stderr: ${stderr}`);
+                }
+                
+                // If we have stdout, we assume it might be valid JSON output even if exit code is non-zero
+                if (stdout) {
+                    resolve(stdout);
+                    return;
+                }
+
+                if (error) { 
+                    reject(error);
+                    return;
+                }
+                resolve(stdout);
+            });
+        });
+
+        const lintResults: SqlfluffOutput[] | SqlfluffOutput = JSON.parse(stdout);
+        const fileResults = Array.isArray(lintResults) ? lintResults : [lintResults];
+
+        const diagnostics: vscode.Diagnostic[] = [];
+
+        for (const fileResult of fileResults) {
+            for (const violation of fileResult.violations) {
+                const startLine = (sqlBlockMeta.startLine - 1) + (violation.start_line_no - 1);
+                const startChar = violation.start_line_pos - 1; 
+                const endLine = (sqlBlockMeta.startLine - 1) + (violation.end_line_no - 1);
+                const endChar = violation.end_line_pos - 1;
+
+                const range = new vscode.Range(startLine, startChar, endLine, endChar);
+                const message = `${violation.code}: ${violation.description}`;
+                const severity = vscode.DiagnosticSeverity.Warning;
+
+                const diagnostic = new vscode.Diagnostic(range, message, severity);
+                diagnostic.source = 'sqlfluff';
+                diagnostic.code = {
+                    value: violation.code,
+                    target: vscode.Uri.parse(`https://docs.sqlfluff.com/en/stable/reference/rules.html#rule-${violation.code}`)
+                };
+                
+                diagnostics.push(diagnostic);
+            }
+        }
+
+        diagnosticCollection.set(document.uri, diagnostics);
+        
+        if (diagnostics.length === 0) {
+             vscode.window.showInformationMessage(`Linting completed. No errors found.`);
+        }
+
+    } catch (err) {
+        logger.error(`Linting failed: ${err}`);
+        vscode.window.showErrorMessage(`Linting failed: ${err}`);
+    }
+}
+
+export async function lintCurrentFile(diagnosticCollection: vscode.DiagnosticCollection) {
+    let document = vscode.window.activeTextEditor?.document;
+    if (!document) {
+        document = activeDocumentObj;
+        if (!document) {
+            vscode.window.showErrorMessage("[Error linting]: VS Code document object was undefined");
+            return;
+        }
+    }
+
+    var result = getFileNameFromDocument(document, false);
+    if (result.success === false) {
+        return;
+    }
+    const [filename, _, extension] = result.value;
+
+    let currentActiveEditorFilePath = document.uri.fsPath;
+    if (!currentActiveEditorFilePath) {
+        return;
+    }
+
+    if (filename === "" || extension !== "sqlx") {
+        vscode.window.showErrorMessage("Linting is only supported for .sqlx files");
+        return;
+    }
+
+    let workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) {
+        return;
+    }
+
+    let sqlfluffConfigPath = getSqlfluffConfigPathFromSettings();
+    let sqlfluffConfigFilePath = path.join(workspaceFolder, sqlfluffConfigPath);
+
+    await ensureSqlfluffConfigExists(sqlfluffConfigFilePath);
+
+    // New logic used for sqlx files to only lint the sql block
+    let metadataForSqlxFileBlocks = getMetadataForSqlxFileBlocks(document);
+    await lintSqlxFile(document, metadataForSqlxFileBlocks, sqlfluffConfigFilePath, diagnosticCollection);
 }

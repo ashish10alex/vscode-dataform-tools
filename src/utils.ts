@@ -1709,6 +1709,15 @@ export function writeContentsToFile(filePath: string, content: string) {
     });
 }
 
+export async function ensureSqlfluffConfigExists(sqlfluffConfigFilePath: string) {
+    if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
+        vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
+        let sqlfluffConfigFileContents = await fetchGitHubFileContent();
+        writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
+        vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
+    }
+}
+
 export async function getMultipleFileSelection(workspaceFolder: string) {
     const fileList = await getAllFilesWtAnExtension(workspaceFolder, "sqlx");
     let options = {

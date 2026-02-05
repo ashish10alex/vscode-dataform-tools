@@ -139,6 +139,17 @@ function formatCurrentFileClickHandler() {
     }, 100);
 }
 
+function lintCurrentFileClickHandler() {
+    lintButton.disabled = true;
+    vscode.postMessage({
+        command: 'lintCurrentFile',
+        value: true
+    });
+    setTimeout(() => {
+        lintButton.disabled = false;
+    }, 1000);
+}
+
 function runModelClickHandler() {
     runModelButton.disabled = true;
     vscode.postMessage({
@@ -223,6 +234,11 @@ if(costEstimatorButton){
 
 if(formatButton){
     formatButton.addEventListener('click', formatCurrentFileClickHandler);
+}
+
+const lintButton = document.getElementById('lintButton');
+if(lintButton){
+    lintButton.addEventListener('click', lintCurrentFileClickHandler);
 }
 
 const previewResultsButton = document.getElementById('previewResults');
@@ -357,6 +373,10 @@ window.addEventListener('message', event => {
     const formatButton = document.getElementById('formatButton');
     if (formatButton) {
         formatButton.disabled = hasError;
+    }
+    const lintButton = document.getElementById('lintButton');
+    if (lintButton) {
+        lintButton.disabled = hasError;
     }
 
     let dataformTags = event?.data?.dataformTags;
