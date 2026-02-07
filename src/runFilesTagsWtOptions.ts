@@ -5,7 +5,7 @@ import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 
 export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, executionMode: ExecutionMode) {
-    const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags"];
+    const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags", "run open sqlx files"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'
     });
@@ -22,11 +22,21 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
         });
     }
 
-    let multipleFileSelection: string | undefined;
+    let multipleFileSelection: string[] | undefined;
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder){ return; }
     if (firstStageSelection === "run multiple files"){
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
+    }
+
+    if (firstStageSelection === "run open sqlx files") {
+        const openDocuments = vscode.workspace.textDocuments;
+        const openSqlxFiles = openDocuments.filter(doc => doc.fileName.endsWith('.sqlx'));
+        if (openSqlxFiles.length === 0) {
+            vscode.window.showInformationMessage("No .sqlx files are currently open.");
+            return;
+        }
+        multipleFileSelection = openSqlxFiles.map(doc => vscode.workspace.asRelativePath(doc.fileName));
     }
 
     let multipleTagsSelection: string[] | undefined;
@@ -86,7 +96,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
             let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, [tagSelection], defaultDataformCompileTime, includeDependents, includeDependents, fullRefresh);
             runCommandInTerminal(runTagsWtDepsCommand);
-        } else if (firstStageSelection === "run multiple files"){
+        } else if (firstStageSelection === "run multiple files" || firstStageSelection === "run open sqlx files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
         } else if (firstStageSelection === "run multiple tags"){
@@ -99,7 +109,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             runTagWtApi(context, [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode);
-        } else if (firstStageSelection === "run multiple files"){
+        } else if (firstStageSelection === "run multiple files" || firstStageSelection === "run open sqlx files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, executionMode);
         } else if (firstStageSelection === "run multiple tags"){
