@@ -1725,10 +1725,13 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
         ignoreFocusOut: true,
     };
     let selectedFiles = await vscode.window.showQuickPick(fileList, options);
-    return selectedFiles;
+    if (!selectedFiles) {
+        return undefined;
+    }
+    return Array.isArray(selectedFiles) ? selectedFiles : [selectedFiles];
 }
 
-export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string, includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
+export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder);
