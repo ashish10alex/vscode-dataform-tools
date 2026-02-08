@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
+import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
@@ -36,7 +36,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             vscode.window.showInformationMessage("No .sqlx files are currently open.");
             return;
         }
-        multipleFileSelection = openSqlxFiles.map(doc => vscode.workspace.asRelativePath(doc.fileName));
+        multipleFileSelection = openSqlxFiles.map(doc => getRelativePath(doc.fileName));
     }
 
     let multipleTagsSelection: string[] | undefined;
