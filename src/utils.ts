@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
 import { execSync, spawn } from 'child_process';
-import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata, Notebook } from './types';
+import { DataformCompiledJson, TablesWtFullQuery, SqlxBlockMetadata, GraphError, Target, Table, Assertion, Operation, Declarations, CurrentFileMetadata, FileNameMetadataResult, FileNameMetadata, Notebook, BigQueryDryRunResponse } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { setDiagnostics } from './setDiagnostics';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset, linuxDataformCliNotAvailableErrorMessage, windowsDataformCliNotAvailableErrorMessage, cacheDurationMs } from './constants';
@@ -1916,7 +1916,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         // To enable to use of variables declared in preOps.
         // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm 
         // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
-        (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "") ? queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery) : Promise.resolve({ error: { hasError: false, message: "" } }),
+        (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "") ? queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
         queryDryRun(nonIncrementalQuery),
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
@@ -1977,7 +1977,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
             combinedTableIds += targetTableId;
         });
-        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics.totalBytesProcessed} - ${combinedTableIds}`);
+        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
     }
     return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
 }

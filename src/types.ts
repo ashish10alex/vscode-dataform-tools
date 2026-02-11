@@ -231,9 +231,9 @@ interface DryRunErorr {
 }
 
 export interface BigQueryDryRunResponse {
-    schema: CompiledQuerySchema | undefined;
-    location: string | undefined;
-    statistics: {
+    schema?: CompiledQuerySchema | undefined;
+    location?: string | undefined;
+    statistics?: {
         totalBytesProcessed: number;
         cost?: {
             currency: string

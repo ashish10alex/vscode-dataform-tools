@@ -48,7 +48,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     const dryRunOutput = await queryDryRun(fullQuery);
     const costOfRunningModel = dryRunOutput?.statistics?.cost?.value || 0;
     // 1024 bytes ** 3 = 1GiB
-    const totalGBProcessed = ((dryRunOutput?.statistics?.totalBytesProcessed) / (1024 ** 3)).toFixed(3);
+    const totalGBProcessed = ((dryRunOutput?.statistics?.totalBytesProcessed || 0) / (1024 ** 3)).toFixed(3);
     const statementType = dryRunOutput?.statistics?.statementType;
     const totalBytesProcessedAccuracy = dryRunOutput?.statistics?.totalBytesProcessedAccuracy;
     const error = dryRunOutput?.error;
