@@ -274,6 +274,90 @@ suite("setDiagnostics", () => {
             }
         })();
     });
+
+    test("Should filter out denylisted errors in post-ops", function (done) {
+        this.timeout(9000);
+
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
+
+        (async () => {
+            try {
+                const document = await vscode.workspace.openTextDocument(uri);
+                assert.ok(document, 'Document should be opened');
+
+                let mockPostOpsDenylistedError = {
+                    hasError: true,
+                    message: "(postOps): Already Exists: Constraint primary key",
+                    location: {
+                        line: 3,
+                        column: 6
+                    }
+                };
+
+                let configBlockMeta = {
+                    startLine: 1,
+                    endLine: 6,
+                    exists: true,
+                };
+
+                let sqlBlockMeta = {
+                    startLine: 19,
+                    endLine: 22,
+                    exists: true,
+                };
+
+                let jsBlockMeta = {
+                    startLine: 0,
+                    endLine: 0,
+                    exists: false,
+                };
+
+                let preOpsList = [
+                    {
+                        startLine: 8,
+                        endLine: 11,
+                        exists: true,
+                    }
+                ];
+
+                let postOpsList = [
+                    {
+                        startLine: 13,
+                        endLine: 16,
+                        exists: true,
+                    }
+                ];
+
+                let mockSqlxBlockMetadata = {
+                    configBlock: configBlockMeta,
+                    preOpsBlock: { preOpsList: preOpsList },
+                    postOpsBlock: { postOpsList: postOpsList },
+                    sqlBlock: sqlBlockMeta,
+                    jsBlock: jsBlockMeta,
+                };
+
+                let diagnosticCollection = vscode.languages.createDiagnosticCollection('testDiagnostics');
+                let errorMeta = {
+                    mainQueryError: { hasError: false, message: "", location: undefined },
+                    preOpsError: { hasError: false, message: "", location: undefined },
+                    postOpsError: mockPostOpsDenylistedError,
+                    nonIncrementalError: { hasError: false, message: "", location: undefined },
+                    incrementalError: { hasError: false, message: "", location: undefined },
+                    assertionError: { hasError: false, message: "", location: undefined },
+                };
+
+                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset);
+                let allDiagnostics = diagnosticCollection.get(document.uri);
+                
+                assert.strictEqual(allDiagnostics?.length, 0, `Expected 0 diagnostics for denylisted error, got ${allDiagnostics?.length}`);
+
+                done();
+            } catch (error) {
+                console.error('Test failed:', error);
+                done(error);
+            }
+        })();
+    });
 });
 
 suite("getDocumentSymbols", () => {

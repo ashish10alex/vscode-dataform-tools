@@ -5,7 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, Declarations } from "../types";
-import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
+import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView, errorDenylist } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -585,9 +585,16 @@ export class CompiledQueryPanel {
         }
 
 
+        let errorInPostOpsDenyList = false;
+        if(postOpsDryRunResult?.error?.message){
+            errorDenylist.some((errorMessage: string) => {
+                errorInPostOpsDenyList = (postOpsDryRunResult?.error?.message.includes(errorMessage) || false);
+            });
+        }
+
         let errorMessage = (preOpsDryRunResult?.error.message && !errorInPreOpsDenyList ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
                             + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
-                            + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
+                            + (postOpsDryRunResult?.error.message && !errorInPostOpsDenyList ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
                             + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")
                             + (assertionDryRunResult?.error.message ? "(Assertion): " + assertionDryRunResult?.error.message + "<br>" : "")
                             + (incrementalDryRunResult?.error.message ? "(Incremental): " + incrementalDryRunResult?.error.message + "<br>" : "")

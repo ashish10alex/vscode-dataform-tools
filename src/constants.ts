@@ -14,7 +14,10 @@ export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not f
 export const costInPoundsForOneGb = 0.005;
 export const bigQuerytimeoutMs = 20000;
 
-export const errorDenylist = ["CREATE TEMPORARY FUNCTION statements must be followed by an actual query."];
+export const errorDenylist = [
+  "CREATE TEMPORARY FUNCTION statements must be followed by an actual query.",
+  "Already Exists: Constraint"
+];
 
 export const bigQueryDryRunCostOneGiBByCurrency: Record<SupportedCurrencies, number> = {
   "USD": 0.005,
