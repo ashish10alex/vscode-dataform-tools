@@ -1916,7 +1916,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         // To enable to use of variables declared in preOps.
         // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm 
         // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
-        queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery),
+        (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "") ? queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery) : Promise.resolve({ error: { hasError: false, message: "" } }),
         queryDryRun(nonIncrementalQuery),
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),

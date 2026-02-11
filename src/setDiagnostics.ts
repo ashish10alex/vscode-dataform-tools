@@ -53,7 +53,10 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             }
         }
         if(errorMeta?.postOpsError?.hasError){
-            errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
+            let errLineNumber = 0;
+            if(sqlxBlockMetadata.postOpsBlock.postOpsList.length > 0){
+                errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
+            }
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
             const postOpsDiagnostic = new vscode.Diagnostic(range, `(Post-Ops): ${errorMeta.postOpsError.message}`, severity);
             diagnostics.push(postOpsDiagnostic);
