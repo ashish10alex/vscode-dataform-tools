@@ -141,6 +141,34 @@ suite('GetMetadataForSqlxFileBlocks', () => {
             throw error;
         }
     });
+
+    test('Able to parse PARSING.sqlx correctly', async () => {
+        try {
+            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/PARSING.sqlx"));
+            let doc = await vscode.workspace.openTextDocument(uri);
+            assert.ok(doc);
+            let sqlxBlockMetadata = getMetadataForSqlxFileBlocks(doc);
+
+            //config block
+            assert.strictEqual(sqlxBlockMetadata.configBlock.startLine, 5, "Config block start line mismatch");
+            assert.strictEqual(sqlxBlockMetadata.configBlock.endLine, 10, "Config block end line mismatch");
+
+            // Pre ops block
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList.length, 1);
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine, 21, "Pre ops block start line mismatch");
+            assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 24, "Pre ops block end line mismatch");
+
+            // sql block
+            // The parser includes leading comments in the SQL block if they appear before config, so startLine is 1 (the first comment)
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 1, "SQL block start line mismatch");
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 19, "SQL block end line mismatch");
+
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
 });
 
 suite("setDiagnostics", () => {
