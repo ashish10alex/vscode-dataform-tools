@@ -159,8 +159,7 @@ suite('GetMetadataForSqlxFileBlocks', () => {
             assert.strictEqual(sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine, 24, "Pre ops block end line mismatch");
 
             // sql block
-            // The parser includes leading comments in the SQL block if they appear before config, so startLine is 1 (the first comment)
-            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 1, "SQL block start line mismatch");
+            assert.strictEqual(sqlxBlockMetadata.sqlBlock.startLine, 13, "SQL block start line mismatch");
             assert.strictEqual(sqlxBlockMetadata.sqlBlock.endLine, 19, "SQL block end line mismatch");
 
         } catch (error: any) {
