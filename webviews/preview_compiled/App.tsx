@@ -7,18 +7,15 @@ import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
 import { CostEstimatorTab } from './components/CostEstimatorTab';
 
+import { DeclarationsView } from './components/DeclarationsView';
+
 function App() {
   const state = useVSCodeMessage();
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost'>('compilation');
 
   // Handle declarations view (full page override)
-  if (state.declarationsHtml) {
-    return (
-      <div className="p-4 text-zinc-300">
-        <h2 className="text-xl font-bold mb-4">Declarations</h2>
-        <div dangerouslySetInnerHTML={{ __html: state.declarationsHtml }} />
-      </div>
-    );
+  if (state.declarations) {
+    return <DeclarationsView declarations={state.declarations} />;
   }
 
   return (

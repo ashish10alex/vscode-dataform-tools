@@ -29,7 +29,7 @@ export interface WebviewState {
   models?: any[]; // Replace with specific type
   lineageMetadata?: any;
   modelsLastUpdateTimesMeta?: LastModifiedTimeMetaItem[];
-  declarationsHtml?: string;
+  declarations?: Declarations[];
   targetTablesOrViews?: any[];
   compiledQuerySchema?: {
     fields: {
@@ -43,6 +43,20 @@ export interface WebviewState {
       tagDryRunStatsList?: any[];
       error?: { message: string };
   };
+}
+
+export interface Target {
+    database: string;
+    schema: string;
+    name: string;
+}
+
+export interface Declarations {
+    target: Target;
+    tags: string[];
+    canonicalTarget: Target;
+    dependencyTargets: Target[];
+    fileName: string;
 }
 
 export interface VSCodeMessage {

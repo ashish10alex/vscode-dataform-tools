@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, Declarations } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage  } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -482,39 +482,11 @@ export class CompiledQueryPanel {
                     const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
                         .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
 
-                        const groupedBySchema = filteredDeclarations.reduce((acc: Record<string, Declarations[]>, declaration: Declarations) => {
-                        const schema: string = declaration.target.schema;
-                        const database: string = declaration.target.database;
-                        const key = `${database}.${schema}`;
-                        if (!acc[key]) {
-                            acc[key] = [];
-                        }
-                        acc[key].push(declaration);
-                        return acc;
-                    }, {});
-
-                    const output = Object.entries(groupedBySchema).map(([key, declarations]: [string, Declarations[]]) => {
-                    const links = declarations.map((declaration: any) => {
-                        const { name, schema, database } = declaration.target;
-                        return `<a href="https://console.cloud.google.com/bigquery?project=${database}&ws=!1m5!1m4!4m3!1s${database}!2s${schema}!3s${name}" target="_blank">${database}.${schema}.${name}</a>`;
-                    }).join("<br/>");
-
-                    return `
-                        <div style="margin-bottom: 20px;">
-                            <strong style="color: #D4D4D4;">${key}</strong><br/>
-                            ${links}
-                        </div>
-                    `;
-                    }).join("<hr/>");
                     if(diagnosticCollection){
                         diagnosticCollection.clear();
                     }
                     await webview.postMessage({
-                        "declarationsHtml": output === "" 
-                            ? `<div style="margin: 8px 0; padding: 4px 8px;">
-                                ${curFileMeta.pathMeta?.relativeFilePath}
-                            </div>` 
-                            : `<h2>Declarations</h2> ${output}`,
+                        "declarations": filteredDeclarations,
                         "recompiling": false
                     });
                     return;
