@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -151,7 +151,8 @@ export class CompiledQueryPanel {
                     retainContextWhenHidden: true,
                     enableScripts: true,
                     localResourceRoots: [
-                        Uri.joinPath(extensionUri, "media")
+                        Uri.joinPath(extensionUri, "media"),
+                        Uri.joinPath(extensionUri, "dist")
                     ],
                 }
             );
@@ -720,23 +721,10 @@ export class CompiledQueryPanel {
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {
-        const showCompiledQueryUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showCompiledQuery.js"));
-        const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-        let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
-        const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
-        const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
+        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
+        const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
+        const codiconsUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "node_modules", "@vscode/codicons", "dist", "codicon.css"));
         const nonce = getNonce();
-        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
-        const escapedCompilerOptions = compilerOptions && typeof compilerOptions === 'string'
-            ? compilerOptions.replace(/"/g, "&quot;")
-            : "";
-
-        let highlighJstThemeUri = getHighlightJsThemeUri();
-
-        let {tabulatorCssUri, type} = getTabulatorThemeUri();
-        if(type === "light"){
-            customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_light.css"));
-        }
 
         return /*html*/ `
         <!DOCTYPE html>
@@ -744,295 +732,19 @@ export class CompiledQueryPanel {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
-            <script src="${cdnLinks.highlightJsUri}"></script>
-            <script src="${highlightJsCopyExtUri}"></script>
-            <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
-            <link rel="stylesheet" href="${highlighJstThemeUri}">
-            <script src="${cdnLinks.highlightJsLineNoExtUri}"></script>
-
-            <link href="${tabulatorCssUri}" rel="stylesheet">
-            <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
-
-            <link href="${styleResetUri}" rel="stylesheet">
-            <link href="${customTabulatorCss}" rel="stylesheet">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
+            <link href="${styleUri}" rel="stylesheet">
+            <link href="${codiconsUri}" rel="stylesheet">
+            <title>Compiled Query Preview</title>
         </head>
-
         <body>
-        <div id="separateDiv">
-            <div id="declarationsDiv" style="align-items: center; display: none;">
-            </div>
-        </div>
-
-    <div id="mainDiv">
-        <div class="report-widget">
-        <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" class="report-link">
-            Report an issue
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 5H19V14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </a>
-        </div>
-
-        <div style="padding-bottom: 20px; padding-top: 10px;">
-            <div class="topnav">
-                <a class="active" href="#compilation">Compiled Query</a>
-                <a href="#schema">Schema</a>
-                <a href="#cost">Cost Estimator</a>
-            </div>
-        </div>
-
-        <div id="compiledQueryloadingIcon" style="display: flex; align-items: center; gap: 10px;">
-            <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="25" cy="25" r="10" fill="none" stroke="#3498db" stroke-width="4">
-                    <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                            values="0 126;126 126;126 0"/>
-                    <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                            values="0;-126;-252"/>
-                </circle>
-            </svg>
-            <span>Compiling Dataform...</span>
-        </div>
-
-        <div id="modelLinkDiv" style="display: flex; align-items: center; display: none;">
-            <a id="targetTableOrViewLink"></a>
-        </div>
-
-        <div class="dependency-container" id="dataLineageDiv" style="padding-bottom: 10px;">
-            <div class="dependency-header">
-                <div class="arrow-toggle">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
-                    </svg>
-                </div>
-                <span class="dependency-title" style="font-weight: bold;">Data Lineage</span>
-            </div>
-            <div id="depsDiv" class="dependency-list">
-            </div>
-        </div>
-
-        <div class="error-message-container" id="errorMessageDiv" style="display: none;">
-            <p><span id="errorMessage" class="language-bash"></span></p>
-        </div>
-
-        <div class="no-errors-container" id="dryRunStatDiv" style="display: none;">
-            <p><span id="dryRunStat" class="language-bash"></span></p>
-        </div>
-
-
-        <div id="schemaCodeBlockDiv" style="display: none;">
-            <pre><code  id="schemaCodeBlock" class="language-javascript"></code></pre>
-        </div>
-
-        <div id="schemaBlock" style="display: none; margin-top: 20px;">
-            <div id="noSchemaBlock"> </div>
-            <p>
-            <i>Edit description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code.</i><br>
-            </p>
-            <table id="schemaTable" class="display" width="100%"></table>
-        </div>
-
-        <div id="costBlock" style="display: none; margin-top: 20px;">
-            <div class="cost-estimator-header">
-                <h2>Cost Estimator</h2>
-                <div class="cost-estimator-info">
-                    <p>For each model in the tag, we construct a full query and perform dry run:</p>
-                    <div class="query-types">
-                        <div class="query-type">
-                            <span class="query-type-title">Table/View</span>
-                            <span class="query-type-desc">Pre operation + Create or replaces a table/view statement + main query</span>
-                        </div>
-                        <div class="query-type">
-                            <span class="query-type-title">Partitioned/Clustered Tables</span>
-                            <span class="query-type-desc">Pre operations + main query</span>
-                        </div>
-                        <div class="query-type">
-                            <span class="query-type-title">Incremental</span>
-                            <span class="query-type-desc">Incremental pre operation query + Create or replaces a table/view statement + main query</span>
-                        </div>
-                        <div class="query-type">
-                            <span class="query-type-title">Partitioned/Clustered Incremental</span>
-                            <span class="query-type-desc">Incremental pre operation query + main query</span>
-                        </div>
-                        <div class="query-type">
-                            <span class="query-type-title">Assertion & Operation</span>
-                            <span class="query-type-desc">Main query</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="costEstimatorloadingIcon" style="display: none;">
-                    <div class="loading-spinner"></div>
-                </div>
-
-                <div class="tag-selection-container">
-                    <div class="select-wrapper">
-                        <select id="tags" class="tag-select">
-                            <option value="" disabled selected>Select a tag to estimate cost</option>
-                        </select>
-                    </div>
-                    <button class="cost-estimate-button" id="costEstimator">
-                        Estimate Cost
-                    </button>
-                </div>
-
-                <div class="cost-table-container">
-                    <table id="costTable" class="cost-table"></table>
-                </div>
-            </div>
-        </div>
-
-        <div id="compilationBlock" style="display: block;">
-
-            <div id="dryRunloadingIcon" style="display: flex; align-items: center; gap: 10px;">
-                <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="25" cy="25" r="10" fill="none" stroke="#32cd32" stroke-width="4">
-                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                                values="0 126;126 126;126 0"/>
-                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                                values="0;-126;-252"/>
-                    </circle>
-                </svg>
-                <span>Loading dry run stats...</span>
-            </div>
-
-            <span class="bigquery-job-cancelled"></span>
-
-            <div class="file-path-container" id="filePathContainer">
-                <span id="relativeFilePath"></span>
-                <button id="formatButton" class="format-button" title="Format Model">
-                    <svg class="format-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 3.34V2m0 16.36v-1.34M3.34 8H2m16.36 0h-1.34M4.93 4.93l-.95-.95m11.31 11.31l-.95-.95M14.5 5.5l-9 9 2 2 9-9-2-2z"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M17 3l1 1m1 2l1 1M19 2l1 1m-2 2l1 1"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Format
-                </button>
-                <div class="button-wrapper">
-                    <button id="lintButton" class="format-button" title="Show Lint Errors">
-                        <svg class="format-icon" width="1" height="1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Lint
-                    </button>
-                    <span class="new-badge">New</span>
-                </div>
-            </div>
-
-            <div>
-                <div class="compiler-options-input-container">
-                    <label for="compilerOptionsInput" class="compiler-options-label">
-                        <a href="https://dataformtools.com/blog/compiler-options" target="_blank" class="compiler-options-link">Compiler options: </a>
-                    </label>
-                    <input
-                        type="text"
-                        id="compilerOptionsInput"
-                        class="compiler-options-input"
-                        title="Additional compiler options to pass to dataform cli commands e.g. --table-prefix=&quot;AA&quot; --vars=someKey=someValue,a=b"
-                        style="width: 40%;"
-                        value="${escapedCompilerOptions}"
-                        placeholder='E.g. --table-prefix="AA"'
-                    />
-                </div>
-                <div class="checkbox-group">
-                    <label class="model-checkbox-container">
-                        <input type="checkbox" id="includeDependencies" class="checkbox">
-                        <span class="custom-checkbox"></span>
-                        Include Dependencies (upstream)
-                    </label>
-                    <label class="model-checkbox-container">
-                        <input type="checkbox" id="includeDependents" class="checkbox">
-                        <span class="custom-checkbox"></span>
-                        Include Dependents (downstream)
-                    </label>
-                    <label class="model-checkbox-container">
-                        <input type="checkbox" id="fullRefresh" class="checkbox">
-                        <span class="custom-checkbox"></span>
-                        full Refresh (Forces incremental tables to be rebuilt from scratch)
-                    </label>
-                </div>
-
-                <div class="button-container">
-                    <button class="run-model" id="dependencyGraph" title="Dependency Graph">Dependency Graph</button>
-                    <button class="run-model" id="previewResults" title="Preview the data in BigQuery like console before running the model">Data Preview</button>
-                    <button class="run-model" id="runModel" title="Execute the model in BigQuery using Dataform cli">Run (CLI) </button>
-                    <div class="button-wrapper run-model">
-                        <button class="run-model" id="runModelApi" title="Execute the model using Dataform API in its remote git state">
-                        Run (API)
-                        </button>
-                        <span class="new-badge">New</span>
-                    </div>
-                </div>
-
-            </div>
-
-            <a id="dataformLink" href="" style="display: none;" >Link to workflow execution using <span style="color: yellow;">current git branch</span></a>
-
-            <div id="dataformApiError" class="error-message-container" style="display: none;">
-                <p></p>
-            </div>
-
-            <div id="dataformLinkLoading" style="display: none; align-items: center; gap: 10px;">
-                <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="25" cy="25" r="10" fill="none" stroke="green" stroke-width="4">
-                        <animate attributeName="stroke-dasharray" dur="2s" repeatCount="indefinite"
-                                values="0 126;126 126;126 0"/>
-                        <animate attributeName="stroke-dashoffset" dur="2s" repeatCount="indefinite"
-                                values="0;-126;-252"/>
-                    </circle>
-                </svg>
-                <span>Creating compilation object & workflow invocation...</span>
-            </div>
-
-            <div id="codeBlock">
-                <div id="preOperationsDiv" style="display: none;">
-                    <h4 id="preOperationsTitle">Pre Operations</h4>
-                    <pre><code  id="preOperations" class="language-sql"></code></pre>
-                </div>
-
-                <div id="postOperationsDiv" style="display: none;">
-                    <h4>Post Operations</h4>
-                    <pre><code  id="postOperations" class="language-sql"></code></pre>
-                </div>
-
-                <div id="tableOrViewQueryDiv" style="display: none;">
-                    <h4>Query</h4>
-                    <pre><code  id="tableOrViewQuery" class="language-sql"></code></pre>
-                </div>
-                <div id="assertionQueryDiv" style="display: none;">
-                    <h4>Assertion</h4>
-                    <pre><code  id="assertionQuery" class="language-sql"></code></pre>
-                </div>
-
-                <div id="incrementalPreOpsQueryDiv" style="display: none;" >
-                    <h4>Incremental Pre Operations</h4>
-                    <pre><code  id="incrementalPreOpsQuery" class="language-sql"></code></pre>
-                </div>
-
-                <div id="incrementalQueryDiv" style="display: none;">
-                    <h4>Incremental Query</h4>
-                    <pre><code  id="incrementalQuery" class="language-sql"></code></pre>
-                </div>
-
-                <div id="nonIncrementalQueryDiv" style="display: none;">
-                    <h4>Non Incremental Query</h4>
-                    <pre><code  id="nonIncrementalQuery" class="language-sql"></code></pre>
-                </div>
-
-                <div id="operationsQueryDiv" style="display: none;">
-                    <h4>Operations</h4>
-                    <pre><code  id="operationsQuery" class="language-sql"></code></pre>
-                </div>
-                <script nonce="${nonce}" type="text/javascript" src="${showCompiledQueryUri}"></script>
-            </div>
-        </div>
-    </div>
-
+            <div id="root"></div>
+            <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
         </body>
         </html>
         `;
     }
+
+
 
 }

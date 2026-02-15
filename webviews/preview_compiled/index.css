@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Tabulator Styles (if needed to override or supplement) */
+.tabulator {
+    @apply bg-zinc-900 text-zinc-300 border-none;
+}
+
+.tabulator .tabulator-header {
+    @apply bg-zinc-800 text-zinc-300 border-b border-zinc-700;
+}
+
+.tabulator .tabulator-row {
+    @apply bg-zinc-900 hover:bg-zinc-800;
+}
+
+.tabulator .tabulator-cell {
+    @apply border-r border-zinc-700;
+}
+
+.tabulator .tabulator-row:nth-child(even) {
+    @apply bg-zinc-900/50;
+}
