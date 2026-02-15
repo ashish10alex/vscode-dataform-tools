@@ -1,60 +1,61 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { WebviewState } from '../types';
-import { TabulatorFull as Tabulator } from 'tabulator-tables';
-import 'tabulator-tables/dist/css/tabulator.min.css'; // Import default styles, overridden by index.css
+import { DataTable } from './ui/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 interface SchemaTabProps {
   state: WebviewState;
 }
 
+type SchemaField = {
+    name: string;
+    type: string;
+    description?: string;
+    mode?: string;
+};
+
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
-  const tableRef = useRef<HTMLDivElement>(null);
-  const tabulatorRef = useRef<any | null>(null);
 
-  useEffect(() => {
-    if (state.compiledQuerySchema && tableRef.current) {
-        
-      // If table already exists, just update data? 
-      // Tabulator is a bit heavy, safe to destroy and recreate or update data.
-      // Recreating ensures columns are correct if schema changes.
-      if(tabulatorRef.current){
-          tabulatorRef.current.destroy();
-      }
+  const data = useMemo(() => state.compiledQuerySchema?.fields || [], [state.compiledQuerySchema]);
 
-      tabulatorRef.current = new Tabulator(tableRef.current, {
-        data: state.compiledQuerySchema.fields,
-        layout: "fitColumns",
-        columns: [
-          { title: "Name", field: "name", headerFilter: "input" },
-          { title: "Type", field: "type", headerFilter: "input" },
-          { 
-              title: "Description", 
-              field: "description", 
-              editor: "input",
-              widthGrow: 2, 
-          },
-        ],
-        height: "100%", // Fit container
-        pagination: "local",
-        paginationSize: 50,
-        paginationCounter: "rows",
-        movableRows: false,
-      });
-
-      // Event listener for cell edit
-      tabulatorRef.current.on("cellEdited", (cell: any) => {
-          const row = cell.getRow();
-          const fieldName = row.getData().name;
-          const newDescription = cell.getValue();
-          // Logic to update description JSON would go here
-          // For now, we just log it or we could expose a callback prop to parent
-          console.log(`Updated description for ${fieldName}: ${newDescription}`);
+  const columns = useMemo<ColumnDef<SchemaField>[]>(() => [
+    {
+      accessorKey: "name",
+      header: "Name",
+    },
+    {
+      accessorKey: "type",
+      header: "Type",
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ getValue, row, column, table }) => {
+          const initialValue = getValue() as string || "";
+          const [value, setValue] = React.useState(initialValue);
           
-          // In the original, it updated a code block with JSON. 
-          // We might want to add that visualization back if needed.
-      });
-    }
-  }, [state.compiledQuerySchema]);
+          const onBlur = () => {
+              console.log(`Updated description for ${row.original.name}: ${value}`);
+          };
+
+          // If the initialValue changes (e.g. data refresh), update local state
+          React.useEffect(() => {
+              setValue(initialValue);
+          }, [initialValue]);
+
+          return (
+              <input
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  onBlur={onBlur}
+                  className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1"
+                  placeholder="Add description..."
+              />
+          );
+      },
+      size: 300, // wider column
+    },
+  ], []);
 
   if (!state.compiledQuerySchema || state.compiledQuerySchema.fields.length === 0) {
     return (
@@ -69,7 +70,9 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
        <div className="mb-4 text-sm text-zinc-400">
           <i>Edit description to update documentation.</i>
        </div>
-      <div ref={tableRef} className="flex-1 overflow-hidden" />
+      <div className="flex-1 overflow-hidden">
+        <DataTable columns={columns} data={data} searchPlaceholder="Filter schema..." />
+      </div>
     </div>
   );
 };

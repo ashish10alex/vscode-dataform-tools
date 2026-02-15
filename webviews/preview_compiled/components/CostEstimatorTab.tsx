@@ -1,19 +1,32 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { WebviewState } from '../types';
 import { vscode } from '../utils/vscode';
-import { TabulatorFull as Tabulator } from 'tabulator-tables';
-import 'tabulator-tables/dist/css/tabulator.min.css';
 import { Loader2 } from 'lucide-react';
+import { DataTable } from './ui/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 interface CostEstimatorTabProps {
   state: WebviewState;
 }
 
+type CostEstimateRow = {
+    targetName: string;
+    type: string;
+    statementType: string;
+    totalBytesProcessedAccuracy: string;
+    totalGBProcessed: string; // or number? Tabulator had parseFloat
+    costOfRunningModel: string;
+};
+
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
-  const tableRef = useRef<HTMLDivElement>(null);
-  const tabulatorRef = useRef<any | null>(null);
   const [selectedTag, setSelectedTag] = useState<string>(state.selectedTag || "");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+     if (state.selectedTag) {
+         setSelectedTag(state.selectedTag);
+     }
+  }, [state.selectedTag]);
 
   const handleEstimate = () => {
     if (!selectedTag) return;
@@ -22,8 +35,6 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
         command: 'costEstimator',
         value: { selectedTag }
     });
-    // Loading state is ideally controlled by props, but we set it here for immediate feedback
-    // It should be cleared when `state` updates with new data
   };
 
   useEffect(() => {
@@ -33,50 +44,57 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
        }
   }, [state.tagDryRunStatsMeta, state.errorMessage]);
 
+  const data = useMemo(() => state.tagDryRunStatsMeta?.tagDryRunStatsList || [], [state.tagDryRunStatsMeta]);
+  const currencySymbol = state.currencySymbol || "$";
 
-  useEffect(() => {
-    if (state.tagDryRunStatsMeta?.tagDryRunStatsList && tableRef.current) {
-        if(tabulatorRef.current){
-            tabulatorRef.current.destroy();
-        }
-
-        const currencySymbol = state.currencySymbol || "$";
-
-        tabulatorRef.current = new Tabulator(tableRef.current, {
-            data: state.tagDryRunStatsMeta.tagDryRunStatsList,
-            layout: "fitColumns",
-            columns: [
-                {title: "Target", field: "targetName", headerFilter: "input" },
-                {title: "Type", field: "type", headerFilter: "input" },
-                {title: "Statement type", field: "statementType", headerFilter: "input" },
-                {title: "Accuracy", field: "totalBytesProcessedAccuracy", headerFilter: "input" },
-                {
-                    title: "GiB proc.",
-                    field: "totalGBProcessed",
-                    formatter: (cell: any) => {
-                        const val = parseFloat(cell.getValue());
-                        return isNaN(val) ? "" : val.toFixed(2);
-                    },
-                    bottomCalc: "sum",
-                    bottomCalcFormatter: (cell: any) => {
-                        const val = parseFloat(cell.getValue());
-                        return isNaN(val) ? "" : val.toFixed(2);
-                    }
-                },
-                {
-                    title: "Cost",
-                    field: "costOfRunningModel",
-                    formatter: "money",
-                    formatterParams: { symbol: currencySymbol, precision: 2 },
-                    bottomCalc: "sum",
-                    bottomCalcFormatter: "money",
-                    bottomCalcFormatterParams: { symbol: currencySymbol, precision: 2 }
-                }
-            ],
-            height: "100%",
-        });
-    }
-  }, [state.tagDryRunStatsMeta, state.currencySymbol]);
+  const columns = useMemo<ColumnDef<CostEstimateRow>[]>(() => [
+      {
+          accessorKey: "targetName",
+          header: "Target",
+      },
+      {
+          accessorKey: "type",
+          header: "Type",
+      },
+      {
+          accessorKey: "statementType",
+          header: "Statement type",
+      },
+      {
+          accessorKey: "totalBytesProcessedAccuracy",
+          header: "Accuracy",
+      },
+      {
+          accessorKey: "totalGBProcessed",
+          header: "GiB proc.",
+          cell: ({ getValue }) => {
+              const val = parseFloat(getValue() as string);
+              return isNaN(val) ? "" : val.toFixed(2);
+          },
+          footer: (info) => {
+              const total = info.table.getFilteredRowModel().rows.reduce((sum, row) => {
+                  const val = parseFloat(row.getValue("totalGBProcessed"));
+                  return sum + (isNaN(val) ? 0 : val);
+              }, 0);
+              return total.toFixed(2);
+          }
+      },
+      {
+          accessorKey: "costOfRunningModel",
+          header: "Cost",
+          cell: ({ getValue }) => {
+              const val = parseFloat(getValue() as string);
+              return isNaN(val) ? "" : `${currencySymbol}${val.toFixed(2)}`;
+          },
+          footer: (info) => {
+               const total = info.table.getFilteredRowModel().rows.reduce((sum, row) => {
+                  const val = parseFloat(row.getValue("costOfRunningModel"));
+                  return sum + (isNaN(val) ? 0 : val);
+              }, 0);
+              return `${currencySymbol}${total.toFixed(2)}`;
+          }
+      }
+  ], [currencySymbol]);
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -109,7 +127,19 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
             </div>
         </div>
         
-        <div ref={tableRef} className="flex-1 overflow-hidden" />
+        <div className="flex-1 overflow-hidden">
+             {data && data.length > 0 ? (
+                <DataTable columns={columns} data={data} searchPlaceholder="Filter costs..." />
+             ) : (
+                 <div className="text-center text-zinc-500 mt-8">
+                     {state.errorMessage ? (
+                         <span className="text-red-400">{state.errorMessage}</span>
+                     ) : (
+                         "Select a tag and click Estimate Cost to see results."
+                     )}
+                 </div>
+             )}
+        </div>
     </div>
   );
 };
