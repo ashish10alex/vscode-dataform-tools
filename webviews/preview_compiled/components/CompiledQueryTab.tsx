@@ -41,7 +41,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [runningModel, setRunningModel] = useState(false);
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Debounced compiler options update
   useEffect(() => {
@@ -111,60 +111,83 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Model Link */}
-      {state.models && state.models.length > 0 && state.models[0].target && (
-        <div className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700 flex items-center justify-between group">
-          <a
-            href={getUrlToNavigateToTableInBigQuery(
-              state.models[0].target.database,
-              state.models[0].target.schema,
-              state.models[0].target.name
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center text-sm font-mono text-zinc-300 hover:text-blue-400 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            {state.models[0].target.database}.{state.models[0].target.schema}.{
-              state.models[0].target.name
-            }
-          </a>
-          <button
-            onClick={() => {
-              const target = state.models?.[0]?.target;
-              if (target) {
-                const text = `\`${target.database}.${target.schema}.${target.name}\``;
-                navigator.clipboard.writeText(text);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }
-            }}
-            className="p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-            title="Copy table ID with backticks"
-          >
-            {copied ? (
-              <Check className="w-4 h-4 text-green-500" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-          </button>
-        </div>
-      )}
-      
-      {/* Last Update Time */}
-      {state.models && state.models.length > 0 && state.modelsLastUpdateTimesMeta && state.modelsLastUpdateTimesMeta[0] && (
-        <div className="flex items-center space-x-2 text-xs text-zinc-500 mt-[-1rem] px-1">
-             <Clock className="w-3 h-3" />
-             <span>Last updated:</span>
-             {state.modelsLastUpdateTimesMeta[0].error?.message ? (
-                 <span className="font-mono text-zinc-400" title={state.modelsLastUpdateTimesMeta[0].error.message}>N/A</span>
-             ) : (
-                <span className={clsx(
-                    "font-mono",
-                    !state.modelsLastUpdateTimesMeta[0].modelWasUpdatedToday ? "text-red-400" : "text-zinc-300"
-                )}>
-                    {state.modelsLastUpdateTimesMeta[0].lastModifiedTime}
-                </span>
-             )}
+      {/* Model Links */}
+      {state.models && state.models.length > 0 && (
+        <div className="space-y-3">
+          {state.models.map((model: any, index: number) => {
+            const target = model.target;
+            const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
+
+            if (!target) return null;
+
+            return (
+              <div
+                key={index}
+                className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700 flex flex-col space-y-2 group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <a
+                      href={getUrlToNavigateToTableInBigQuery(
+                        target.database,
+                        target.schema,
+                        target.name
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center text-sm font-mono text-zinc-300 hover:text-blue-400 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      {target.database}.{target.schema}.{target.name}
+                    </a>
+                    <button
+                      onClick={() => {
+                        const text = `\`${target.database}.${target.schema}.${target.name}\``;
+                        navigator.clipboard.writeText(text);
+                        setCopiedIndex(index);
+                        setTimeout(() => setCopiedIndex(null), 2000);
+                      }}
+                      className="ml-2 p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      title="Copy table ID with backticks"
+                    >
+                      {copiedIndex === index ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Last Update Time */}
+                {lastUpdateMeta && (
+                  <div className="flex items-center space-x-2 text-xs text-zinc-500 pl-6">
+                    <Clock className="w-3 h-3" />
+                    <span>Last updated:</span>
+                    {lastUpdateMeta.error?.message ? (
+                      <span
+                        className="font-mono text-zinc-400 cursor-help border-b border-dotted border-zinc-600"
+                        title={lastUpdateMeta.error.message}
+                      >
+                        N/A
+                      </span>
+                    ) : (
+                      <span
+                        className={clsx(
+                          "font-mono",
+                          !lastUpdateMeta.modelWasUpdatedToday
+                            ? "text-red-400"
+                            : "text-zinc-300"
+                        )}
+                      >
+                        {lastUpdateMeta.lastModifiedTime}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
