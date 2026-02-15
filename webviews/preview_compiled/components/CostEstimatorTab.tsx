@@ -45,7 +45,17 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
        }
   }, [state.tagDryRunStatsMeta, state.errorMessage]);
 
-  const data = useMemo(() => state.tagDryRunStatsMeta?.tagDryRunStatsList || [], [state.tagDryRunStatsMeta]);
+  const data = useMemo(() => {
+      const list = state.tagDryRunStatsMeta?.tagDryRunStatsList || [];
+      return [...list].sort((a, b) => {
+          // Sort errors to the top
+          const aHasError = !!a.error;
+          const bHasError = !!b.error;
+          if (aHasError && !bHasError) return -1;
+          if (!aHasError && bHasError) return 1;
+          return 0;
+      });
+  }, [state.tagDryRunStatsMeta]);
   const currencySymbol = state.currencySymbol || "$";
 
   const columns = useMemo<ColumnDef<CostEstimateRow>[]>(() => [
