@@ -16,6 +16,7 @@ type CostEstimateRow = {
     totalBytesProcessedAccuracy: string;
     totalGBProcessed: string; // or number? Tabulator had parseFloat
     costOfRunningModel: string;
+    error?: string;
 };
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
@@ -93,6 +94,14 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
               }, 0);
               return `${currencySymbol}${total.toFixed(2)}`;
           }
+      },
+      {
+        accessorKey: "error",
+        header: "Error",
+        cell: ({ getValue }) => {
+            const error = getValue() as string;
+            return error ? <span className="text-red-500 font-medium">{error}</span> : null; 
+        }
       }
   ], [currencySymbol]);
 
