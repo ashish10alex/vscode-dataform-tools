@@ -402,12 +402,17 @@ function updateDependentsGivenObj(dependents: Target[], targetObjList: Table[] |
 
 async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJson: DataformCompiledJson) {
     const { tables, assertions, operations } = dataformCompiledJson;
+    logger.debug(`Searching for dependents of ${targetToSearch.database}.${targetToSearch.schema}.${targetToSearch.name}`);
 
     return Promise.all([
         updateDependentsGivenObj([], tables, targetToSearch),
         updateDependentsGivenObj([], assertions, targetToSearch),
         updateDependentsGivenObj([], operations, targetToSearch)
-    ]).then(results => results.flat());
+    ]).then(results => {
+        const flattened = results.flat();
+        logger.debug(`Found ${flattened.length} dependents: ${JSON.stringify(flattened)}`);
+        return flattened;
+    });
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean): Promise<CurrentFileMetadata | undefined> {
@@ -472,10 +477,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 possibleResolutions: possibleResolutions,
                 fileMetadata: fileMetadata,
                 dependents: dependents,
-                lineageMetadata: {
-                    dependencies: undefined,
-                    error: undefined,
-                },
+                lineageMetadata: null,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
@@ -494,7 +496,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 possibleResolutions: possibleResolutions,
                 fileMetadata: undefined,
                 dependents: undefined,
-                lineageMetadata: undefined,
+                lineageMetadata: null,
                 pathMeta: {
                     filename: filename,
                     extension: extension,
@@ -528,10 +530,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             isDataformWorkspace: true,
             fileMetadata: fileMetadata,
             dependents: dependents,
-            lineageMetadata: {
-                dependencies: undefined,
-                error: undefined,
-            },
+            lineageMetadata: null,
             pathMeta: {
                 filename: filename,
                 extension: extension,

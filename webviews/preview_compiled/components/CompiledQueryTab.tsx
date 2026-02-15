@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Loader2,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -27,9 +28,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [fullRefresh, setFullRefresh] = useState(false);
-  const [isLineageOpen, setIsLineageOpen] = useState(true);
+  const [isLineageOpen, setIsLineageOpen] = useState(false);
   const [runningModel, setRunningModel] = useState(false);
   const [formatting, setFormatting] = useState(false);
+  const [loadingLineage, setLoadingLineage] = useState(false);
 
   // Debounced compiler options update
   useEffect(() => {
@@ -78,6 +80,24 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "lineageNavigation", value: id });
   };
 
+  const handleLineageMetadata = () => {
+    setLoadingLineage(true);
+    vscode.postMessage({ command: "lineageMetadata", value: true });
+    // Reset loading state after a timeout or when data triggers a re-render (handled via effect if strictly needed, but simple timeout/state update from parent is okay for now)
+    // Actually, better to let the App's state update trigger a re-render. 
+    // Since we don't have a direct "lineage loaded" event here easily without complex effect, 
+    // we can rely on the fact that the state update will cause a re-render. 
+    // However, if we want to turn off loading specifically when lineageMetadata arrives, we might need an effect.
+    // For now, let's just set a timeout fallback or rely on state.lineageMetadata check.
+    // But since `state` comes from prop, we can check if `state.lineageMetadata` changes.
+  };
+
+  useEffect(() => {
+      if (state.lineageMetadata || state.errorMessage) {
+          setLoadingLineage(false);
+      }
+  }, [state.lineageMetadata, state.errorMessage]);
+
   return (
     <div className="space-y-6">
       {/* Data Lineage Section */}
@@ -100,6 +120,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             {state.models && state.models.length > 0 && (
                 <div>
                    <h4 className="text-sm font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Dependencies</h4>
+                   {!state.models[0]?.dependencyTargets?.length && <span className="text-sm text-zinc-500 italic">No dependencies</span>}
                    <ul className="space-y-1 pl-2">
                        {state.models.map((model, idx) => (
                            model.dependencyTargets?.map((target: any, tIdx: number) => {
@@ -124,8 +145,52 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                    </ul>
                 </div>
             )}
-             {/* Dependents - Only if explicit dependents data is passed, otherwise we rely on Lineage API button */}
-             {/* TODO: Implement dependents rendering similar to above if data is available in state.dependents */}
+            
+            {/* Dependents */}
+             <div>
+                <h4 className="text-sm font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Dependents</h4>
+                {(
+                     <div className="flex flex-col items-start gap-2 mt-2">
+                         {(!state.dependents || state.dependents.length === 0) && !state.lineageMetadata && (
+                            <span className="text-sm text-zinc-500 italic">No dependents found in local project.</span>
+                         )}
+                         
+                         {!state.lineageMetadata && (
+                             <button 
+                                onClick={handleLineageMetadata}
+                                disabled={loadingLineage}
+                                className="bg-zinc-700 hover:bg-zinc-600 text-xs px-2 py-1 rounded text-zinc-300 flex items-center transition-colors disabled:opacity-50"
+                             >
+                                {loadingLineage ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Network className="w-3 h-3 mr-1" />}
+                                Load Dataplex Downstream Dependencies
+                             </button>
+                         )}
+                     </div>
+                )}
+
+                 {/* Dataplex Lineage Results */}
+                 {state.lineageMetadata && (
+                    <div className="mt-2 pl-2 border-l-2 border-zinc-700">
+                        {state.lineageMetadata.error && (
+                            <div className="text-red-400 text-sm mb-1">
+                                Error loading Dataplex lineage: {state.lineageMetadata.error.message}
+                            </div>
+                        )}
+                        {state.lineageMetadata.dependencies && state.lineageMetadata.dependencies.length > 0 ? (
+                            <ul className="space-y-1">
+                                {state.lineageMetadata.dependencies.map((item: string, idx: number) => (
+                                     <li key={idx} className="flex items-center text-sm">
+                                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
+                                         <span className="text-zinc-300 font-mono">{item}</span>
+                                     </li>
+                                ))}
+                            </ul>
+                        ) : (
+                             !state.lineageMetadata.error && <span className="text-sm text-zinc-500 italic">No Dataplex downstream dependencies found.</span>
+                        )}
+                    </div>
+                )}
+             </div>
           </div>
         )}
       </div>

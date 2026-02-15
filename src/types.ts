@@ -266,9 +266,9 @@ export type CurrentFileMetadata = {
     possibleResolutions?: any[];
     dependents?: any;
     lineageMetadata?: {
-        dependencies: undefined;
-        error: undefined;
-    };
+        dependencies: string[] | undefined;
+        error: any;
+    } | undefined | null;
     pathMeta?: {
         filename: string;
         extension: string;
