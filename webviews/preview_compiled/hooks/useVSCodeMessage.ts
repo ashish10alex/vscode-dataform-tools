@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { WebviewState } from "../types";
 
+declare global {
+  interface Window {
+    initialState?: WebviewState;
+  }
+}
+
 export const useVSCodeMessage = () => {
-  const [state, setState] = useState<WebviewState>({});
+  const [state, setState] = useState<WebviewState>(window.initialState || {});
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {

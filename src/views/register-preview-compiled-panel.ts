@@ -387,7 +387,7 @@ export class CompiledQueryPanel {
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined) {
         const webview = this.webviewPanel.webview;
         if(this.webviewPanel.webview.html === ""){
-            this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: true });
         }
 
         // Notify webview that we are starting compilation
@@ -736,7 +736,7 @@ export class CompiledQueryPanel {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
+    private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const codiconsUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "node_modules", "@vscode/codicons", "dist", "codicon.css"));
@@ -755,6 +755,9 @@ export class CompiledQueryPanel {
         </head>
         <body>
             <div id="root"></div>
+            <script nonce="${nonce}">
+                window.initialState = ${JSON.stringify(initialState)};
+            </script>
             <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
         </body>
         </html>
