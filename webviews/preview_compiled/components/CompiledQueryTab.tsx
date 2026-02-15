@@ -14,6 +14,7 @@ import {
   Copy,
   Check,
   Loader2,
+  Clock,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -146,6 +147,24 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               <Copy className="w-4 h-4" />
             )}
           </button>
+        </div>
+      )}
+      
+      {/* Last Update Time */}
+      {state.models && state.models.length > 0 && state.modelsLastUpdateTimesMeta && state.modelsLastUpdateTimesMeta[0] && (
+        <div className="flex items-center space-x-2 text-xs text-zinc-500 mt-[-1rem] px-1">
+             <Clock className="w-3 h-3" />
+             <span>Last updated:</span>
+             {state.modelsLastUpdateTimesMeta[0].error?.message ? (
+                 <span className="font-mono text-zinc-400" title={state.modelsLastUpdateTimesMeta[0].error.message}>N/A</span>
+             ) : (
+                <span className={clsx(
+                    "font-mono",
+                    !state.modelsLastUpdateTimesMeta[0].modelWasUpdatedToday ? "text-red-400" : "text-zinc-300"
+                )}>
+                    {state.modelsLastUpdateTimesMeta[0].lastModifiedTime}
+                </span>
+             )}
         </div>
       )}
 

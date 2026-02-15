@@ -306,13 +306,12 @@ export const supportedCurrencies = {
 export type SupportedCurrency = keyof typeof supportedCurrencies;
 
 export type LastModifiedTimeMeta = {
-    lastModifiedTime: any,
-    modelWasUpdatedToday: boolean | undefined,
+    lastModifiedTime: string | undefined;
+    modelWasUpdatedToday: boolean | undefined;
     error: {
-        message: string | undefined,
+        message: string | undefined;
     }
 }[];
-
 
 export type DependancyModelMetadata = {
     id: string;
@@ -336,9 +335,6 @@ export type ExecutablePathInfo = {
 
 export type ExecutablePathCache = Map<string, ExecutablePathInfo>;
 
-
-export interface WebviewMessage {
-}
 export interface WebviewMessage {
   tableOrViewQuery?: string;
   assertionQuery?: string;
@@ -361,6 +357,7 @@ export interface WebviewMessage {
   errorWorkflowInvocation?: string;
   recompiling?: boolean;
   dryRunning?: boolean;
+  modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
 }
 
 export type CreateCompilationResultResponse = Promise<

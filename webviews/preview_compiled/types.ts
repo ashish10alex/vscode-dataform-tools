@@ -1,3 +1,9 @@
+export interface LastModifiedTimeMetaItem {
+  lastModifiedTime?: string;
+  modelWasUpdatedToday?: boolean;
+  error?: { message?: string };
+}
+
 export interface WebviewState {
   preOperations?: string;
   postOperations?: string;
@@ -22,7 +28,7 @@ export interface WebviewState {
   dependents?: any[]; // Replace with specific type if available
   models?: any[]; // Replace with specific type
   lineageMetadata?: any;
-  modelsLastUpdateTimesMeta?: any[];
+  modelsLastUpdateTimesMeta?: LastModifiedTimeMetaItem[];
   declarationsHtml?: string;
   targetTablesOrViews?: any[];
   compiledQuerySchema?: {
