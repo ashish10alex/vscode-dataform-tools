@@ -359,6 +359,8 @@ export interface WebviewMessage {
   apiUrlLoading?: boolean;
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
+  recompiling?: boolean;
+  dryRunning?: boolean;
 }
 
 export type CreateCompilationResultResponse = Promise<

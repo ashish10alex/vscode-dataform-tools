@@ -223,14 +223,23 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       </div>
 
       {/* Dry Run Stats */}
-      {state.dryRunStat && (
-        <div className="bg-green-900/20 border-l-4 border-green-600 p-4 rounded-r shadow-sm flex items-start">
-             <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+      {state.dryRunning && !state.recompiling ? (
+        <div className="bg-yellow-900/20 border-l-4 border-yellow-600 p-4 rounded-r shadow-sm flex items-center">
+             <Loader2 className="w-5 h-5 text-yellow-500 animate-spin mr-3 flex-shrink-0" />
              <div className="text-zinc-300 text-sm">
-                 <span className="font-semibold text-green-400">Query will process:</span>
-                 <div className="font-mono mt-1 text-green-300" dangerouslySetInnerHTML={{__html: state.dryRunStat}} />
+                 <span className="font-semibold text-yellow-400">Performing dry run...</span>
              </div>
         </div>
+      ) : (
+        state.dryRunStat && (
+            <div className="bg-green-900/20 border-l-4 border-green-600 p-4 rounded-r shadow-sm flex items-start">
+                 <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                 <div className="text-zinc-300 text-sm">
+                     <span className="font-semibold text-green-400">Query will process:</span>
+                     <div className="font-mono mt-1 text-green-300" dangerouslySetInnerHTML={{__html: state.dryRunStat}} />
+                 </div>
+            </div>
+        )
       )}
 
       {/* Toolbar */}

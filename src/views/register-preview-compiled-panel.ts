@@ -386,9 +386,14 @@ export class CompiledQueryPanel {
     //@ts-ignore
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined) {
         const webview = this.webviewPanel.webview;
-        if (this.webviewPanel.webview.html === ""){
+        if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         }
+
+        // Notify webview that we are starting compilation
+        await webview.postMessage({
+            "recompiling": true
+        });
 
         if(!curFileMeta){
             curFileMeta = await getCurrentFileMetadata(true);
@@ -396,7 +401,8 @@ export class CompiledQueryPanel {
 
         if(!curFileMeta){
             await webview.postMessage({
-                "errorMessage": `File type not supported. Supported file types are sqlx, js`
+                "errorMessage": `File type not supported. Supported file types are sqlx, js`,
+                "recompiling": false
             });
             return;
         }
@@ -541,7 +547,8 @@ export class CompiledQueryPanel {
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
             "models": curFileMeta.fileMetadata.tables,
-            "recompiling": false
+            "recompiling": false,
+            "dryRunning": true,
     });
 
         if(diagnosticCollection){
@@ -703,7 +710,8 @@ export class CompiledQueryPanel {
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
-                "recompiling": false
+                "recompiling": false,
+                "dryRunning": false
             });
             this._cachedResults = { 
                 fileMetadata, 

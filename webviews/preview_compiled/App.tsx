@@ -75,6 +75,8 @@ function App() {
             </div>
         )}
 
+
+
         {state.errorMessage && !state.recompiling && (
             <div className="bg-red-900/20 border-l-4 border-red-600 p-4 mb-4 rounded-r shadow-sm">
                 <div className="flex items-start">

@@ -15,6 +15,7 @@ export interface WebviewState {
   errorWorkflowInvocation?: string;
   apiUrlLoading?: boolean;
   recompiling?: boolean;
+  dryRunning?: boolean;
   dataformTags?: string[];
   selectedTag?: string;
   currencySymbol?: string;
