@@ -40,6 +40,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [runningModel, setRunningModel] = useState(false);
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Debounced compiler options update
   useEffect(() => {
@@ -110,7 +111,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     <div className="space-y-6">
       {/* Model Link */}
       {state.models && state.models.length > 0 && state.models[0].target && (
-        <div className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700">
+        <div className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700 flex items-center justify-between group">
           <a
             href={getUrlToNavigateToTableInBigQuery(
               state.models[0].target.database,
@@ -126,6 +127,25 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               state.models[0].target.name
             }
           </a>
+          <button
+            onClick={() => {
+              const target = state.models?.[0]?.target;
+              if (target) {
+                const text = `\`${target.database}.${target.schema}.${target.name}\``;
+                navigator.clipboard.writeText(text);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }
+            }}
+            className="p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+            title="Copy table ID with backticks"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+          </button>
         </div>
       )}
 
