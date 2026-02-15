@@ -149,47 +149,74 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             {/* Dependents */}
              <div>
                 <h4 className="text-sm font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Dependents</h4>
-                {(
-                     <div className="flex flex-col items-start gap-2 mt-2">
-                         {(!state.dependents || state.dependents.length === 0) && !state.lineageMetadata && (
-                            <span className="text-sm text-zinc-500 italic">No dependents found in local project.</span>
-                         )}
-                         
-                         {!state.lineageMetadata && (
-                             <button 
-                                onClick={handleLineageMetadata}
-                                disabled={loadingLineage}
-                                className="bg-zinc-700 hover:bg-zinc-600 text-xs px-2 py-1 rounded text-zinc-300 flex items-center transition-colors disabled:opacity-50"
-                             >
-                                {loadingLineage ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Network className="w-3 h-3 mr-1" />}
-                                Load Dataplex Downstream Dependencies
-                             </button>
-                         )}
-                     </div>
-                )}
+                
+                {/* Local Dependents Sub-section */}
+                <div className="mb-4 ml-2">
+                    <h5 className="text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wider">Local Project</h5>
+                    {(!state.dependents || state.dependents.length === 0) ? (
+                        <span className="text-sm text-zinc-500 italic">No local dependents found.</span>
+                    ) : (
+                        <ul className="space-y-1 pl-2">
+                            {state.dependents.map((dependent: any, idx: number) => {
+                                 const id = typeof dependent === 'string' ? dependent : `${dependent.database}.${dependent.schema}.${dependent.name}`;
+                                 return (
+                                    <li key={idx} className="flex items-center text-sm group">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>
+                                        <span className="text-zinc-300 font-mono select-all hover:text-white transition-colors">
+                                             {id}
+                                        </span>
+                                           <button 
+                                                onClick={() => handleLineageNavigation(id)}
+                                                className="ml-2 p-1 text-zinc-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="Go to definition"
+                                           >
+                                               <ExternalLink className="w-3 h-3" />
+                                           </button>
+                                    </li>
+                                 )
+                            })}
+                        </ul>
+                    )}
+                </div>
 
-                 {/* Dataplex Lineage Results */}
-                 {state.lineageMetadata && (
-                    <div className="mt-2 pl-2 border-l-2 border-zinc-700">
-                        {state.lineageMetadata.error && (
-                            <div className="text-red-400 text-sm mb-1">
-                                Error loading Dataplex lineage: {state.lineageMetadata.error.message}
-                            </div>
-                        )}
-                        {state.lineageMetadata.dependencies && state.lineageMetadata.dependencies.length > 0 ? (
-                            <ul className="space-y-1">
-                                {state.lineageMetadata.dependencies.map((item: string, idx: number) => (
-                                     <li key={idx} className="flex items-center text-sm">
-                                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
-                                         <span className="text-zinc-300 font-mono">{item}</span>
-                                     </li>
-                                ))}
-                            </ul>
-                        ) : (
-                             !state.lineageMetadata.error && <span className="text-sm text-zinc-500 italic">No Dataplex downstream dependencies found.</span>
-                        )}
-                    </div>
-                )}
+                {/* Dataplex Dependents Sub-section */}
+                <div className="ml-2">
+                    <h5 className="text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wider">Dataplex (Downstream)</h5>
+                    
+                    {!state.lineageMetadata ? (
+                         <button 
+                            onClick={handleLineageMetadata}
+                            disabled={loadingLineage}
+                            className="mt-1 bg-zinc-700 hover:bg-zinc-600 text-xs px-2 py-1 rounded text-zinc-300 flex items-center transition-colors disabled:opacity-50"
+                         >
+                            {loadingLineage ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Network className="w-3 h-3 mr-1" />}
+                            Load Dataplex Dependencies
+                         </button>
+                    ) : (
+                        <div className="mt-1">
+                            {state.lineageMetadata.error ? (
+                                <div className="text-red-400 text-sm mb-1">
+                                    Error: {state.lineageMetadata.error.message || "Unknown error"}
+                                </div>
+                            ) : (
+                                <>
+                                    {(!state.lineageMetadata.dependencies || state.lineageMetadata.dependencies.length === 0) ? (
+                                         <span className="text-sm text-zinc-500 italic">No Dataplex dependents found.</span>
+                                    ) : (
+                                        <ul className="space-y-1 pl-2">
+                                            {state.lineageMetadata.dependencies.map((item: string, idx: number) => (
+                                                 <li key={idx} className="flex items-center text-sm">
+                                                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
+                                                     <span className="text-zinc-300 font-mono select-all">{item}</span>
+                                                 </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
              </div>
           </div>
         )}
