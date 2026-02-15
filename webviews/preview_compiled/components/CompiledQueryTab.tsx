@@ -17,6 +17,14 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
+const getUrlToNavigateToTableInBigQuery = (
+  gcpProjectId: string,
+  datasetId: string,
+  tableName: string
+) => {
+  return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
+};
+
 interface CompiledQueryTabProps {
   state: WebviewState;
 }
@@ -100,6 +108,27 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Model Link */}
+      {state.models && state.models.length > 0 && state.models[0].target && (
+        <div className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700">
+          <a
+            href={getUrlToNavigateToTableInBigQuery(
+              state.models[0].target.database,
+              state.models[0].target.schema,
+              state.models[0].target.name
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center text-sm font-mono text-zinc-300 hover:text-blue-400 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            {state.models[0].target.database}.{state.models[0].target.schema}.{
+              state.models[0].target.name
+            }
+          </a>
+        </div>
+      )}
+
       {/* Data Lineage Section */}
       <div className="bg-zinc-800/50 rounded-lg border border-zinc-700 overflow-hidden">
         <div
