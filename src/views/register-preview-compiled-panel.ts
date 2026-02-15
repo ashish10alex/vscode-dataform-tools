@@ -521,6 +521,7 @@ export class CompiledQueryPanel {
             "models": curFileMeta.fileMetadata.tables,
             "recompiling": false,
             "dryRunning": true,
+            "declarations": null
     });
 
         if(diagnosticCollection){
@@ -683,7 +684,8 @@ export class CompiledQueryPanel {
                 "modelType": fileMetadata.queryMeta.type,
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "recompiling": false,
-                "dryRunning": false
+                "dryRunning": false,
+                "declarations": null
             });
             this._cachedResults = { 
                 fileMetadata, 

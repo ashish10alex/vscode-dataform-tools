@@ -29,7 +29,7 @@ export interface WebviewState {
   models?: any[]; // Replace with specific type
   lineageMetadata?: any;
   modelsLastUpdateTimesMeta?: LastModifiedTimeMetaItem[];
-  declarations?: Declarations[];
+  declarations?: Declarations[] | null;
   targetTablesOrViews?: any[];
   compiledQuerySchema?: {
     fields: {
