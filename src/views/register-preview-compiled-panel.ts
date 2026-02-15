@@ -405,22 +405,26 @@ export class CompiledQueryPanel {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             const currentDirectory = workspaceFolder?.uri.fsPath;
             await webview.postMessage({
-                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`
+                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
+                "recompiling": false
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await webview.postMessage({
-                "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument
+                "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
+                "recompiling": false
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const errorMessage = await getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
             await webview.postMessage({
-                "errorMessage": errorMessage
+                "errorMessage": errorMessage,
+                "recompiling": false
             });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             await webview.postMessage({
-                "errorMessage": curFileMeta.errors.queryMetaError
+                "errorMessage": curFileMeta.errors.queryMetaError,
+                "recompiling": false
             });
             return;
         }
@@ -459,7 +463,8 @@ export class CompiledQueryPanel {
             }
 
             await webview.postMessage({
-                "errorMessage": errorString
+                "errorMessage": errorString,
+                "recompiling": false
             });
             return;
         }
@@ -503,7 +508,8 @@ export class CompiledQueryPanel {
                             ? `<div style="margin: 8px 0; padding: 4px 8px;">
                                 ${curFileMeta.pathMeta?.relativeFilePath}
                             </div>` 
-                            : `<h2>Declarations</h2> ${output}`
+                            : `<h2>Declarations</h2> ${output}`,
+                        "recompiling": false
                     });
                     return;
                 }
@@ -535,6 +541,7 @@ export class CompiledQueryPanel {
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
             "models": curFileMeta.fileMetadata.tables,
+            "recompiling": false
     });
 
         if(diagnosticCollection){
@@ -596,7 +603,7 @@ export class CompiledQueryPanel {
         errorMessage = errorMessage.replace(/<br><br>/g, "<br>");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
-            errorMessage = " ";
+            errorMessage = "";
         } else if (dryRunResult?.error.message.includes("Error creating BigQuery client")){
             errorMessage = dryRunResult?.error.message + "<br>";
             errorMessage += `<h4>Possible fix: </h4>
@@ -695,7 +702,8 @@ export class CompiledQueryPanel {
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
-                "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta
+                "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
+                "recompiling": false
             });
             this._cachedResults = { 
                 fileMetadata, 
