@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 export function debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
@@ -10,7 +12,10 @@ export function debounce<T extends (...args: any[]) => any>(
             clearTimeout(timeout);
         }
         timeout = setTimeout(() => {
-            func.apply(context, args);
+            Promise.resolve(func.apply(context, args)).catch((error) => {
+                logger.error('Debounced function error:', error);
+            });
         }, wait);
+
     };
 }
