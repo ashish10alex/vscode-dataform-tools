@@ -348,7 +348,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-              <label className="text-sm text-zinc-500 dark:text-zinc-400 whitespace-nowrap">Compiler options:</label>
+              <a 
+                href="https://dataformtools.com/blog/compiler-options"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap flex items-center group/link"
+              >
+                Compiler options:
+                <ExternalLink className="w-3 h-3 ml-1 opacity-50 group-hover/link:opacity-100 transition-opacity" />
+              </a>
               <input 
                 type="text" 
                 value={compilerOptions}
