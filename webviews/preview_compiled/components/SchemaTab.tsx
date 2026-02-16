@@ -22,10 +22,12 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
     {
       accessorKey: "name",
       header: "Name",
+      size: 150,
     },
     {
       accessorKey: "type",
       header: "Type",
+      size: 100,
     },
     {
       accessorKey: "description",
@@ -33,10 +35,24 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
       cell: ({ getValue, row }) => {
           const initialValue = getValue() as string || "";
           const [value, setValue] = React.useState(initialValue);
+          const textareaRef = React.useRef<HTMLTextAreaElement>(null);
           
           const onBlur = () => {
               console.log(`Updated description for ${row.original.name}: ${value}`);
           };
+
+          // Auto-resize logic
+          const adjustHeight = () => {
+              const textarea = textareaRef.current;
+              if (textarea) {
+                  textarea.style.height = 'auto';
+                  textarea.style.height = `${textarea.scrollHeight}px`;
+              }
+          };
+
+          React.useEffect(() => {
+              adjustHeight();
+          }, [value]);
 
           // If the initialValue changes (e.g. data refresh), update local state
           React.useEffect(() => {
@@ -44,16 +60,20 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
           }, [initialValue]);
 
           return (
-              <input
+              <textarea
+                  ref={textareaRef}
                   value={value}
-                  onChange={e => setValue(e.target.value)}
+                  onChange={e => {
+                      setValue(e.target.value);
+                  }}
                   onBlur={onBlur}
-                  className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1"
+                  rows={1}
+                  className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1 resize-none overflow-hidden min-h-[1.5rem] leading-normal py-1"
                   placeholder="Add description..."
               />
           );
       },
-      size: 300, // wider column
+      size: 400,
     },
   ], []);
 
