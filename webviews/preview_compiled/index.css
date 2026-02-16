@@ -4,21 +4,117 @@
 
 /* Custom Tabulator Styles (if needed to override or supplement) */
 .tabulator {
-    @apply bg-zinc-900 text-zinc-300 border-none;
+    @apply bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-300 border-none;
 }
 
 .tabulator .tabulator-header {
-    @apply bg-zinc-800 text-zinc-300 border-b border-zinc-700;
+    @apply bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-700;
 }
 
 .tabulator .tabulator-row {
-    @apply bg-zinc-900 hover:bg-zinc-800;
+    @apply bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800;
 }
 
 .tabulator .tabulator-cell {
-    @apply border-r border-zinc-700;
+    @apply border-r border-zinc-200 dark:border-zinc-700;
 }
 
 .tabulator .tabulator-row:nth-child(even) {
-    @apply bg-zinc-900/50;
+    @apply bg-zinc-50 dark:bg-zinc-900/50;
+}
+
+/* Theme-aware Syntax Highlighting (Highlight.js) */
+:root {
+    --hljs-bg: #f6f8fa;
+    --hljs-color: #24292e;
+    --hljs-comment: #6a737d;
+    --hljs-keyword: #d73a49;
+    --hljs-string: #032f62;
+    --hljs-attr: #005cc5;
+    --hljs-literal: #005cc5;
+    --hljs-number: #005cc5;
+    --hljs-type: #d73a49;
+    --hljs-built_in: #e36209;
+}
+
+.dark {
+    --hljs-bg: #0d1117;
+    --hljs-color: #c9d1d9;
+    --hljs-comment: #8b949e;
+    --hljs-keyword: #ff7b72;
+    --hljs-string: #a5d6ff;
+    --hljs-attr: #79c0ff;
+    --hljs-literal: #79c0ff;
+    --hljs-number: #79c0ff;
+    --hljs-type: #ff7b72;
+    --hljs-built_in: #ffa657;
+}
+
+.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+    background: var(--hljs-bg);
+    color: var(--hljs-color);
+}
+
+.hljs-comment,
+.hljs-quote {
+    color: var(--hljs-comment);
+    font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+    color: var(--hljs-keyword);
+    font-weight: bold;
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-type,
+.hljs-regexp,
+.hljs-addition {
+    color: var(--hljs-string);
+}
+
+.hljs-number,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params {
+    color: var(--hljs-number);
+}
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-attr,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-attribute {
+    color: var(--hljs-attr);
+}
+
+.hljs-section,
+.hljs-title {
+    color: var(--hljs-attr);
+    font-weight: bold;
+}
+
+.hljs-built_in,
+.hljs-bullet,
+.hljs-symbol,
+.hljs-link {
+    color: var(--hljs-built_in);
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
 }

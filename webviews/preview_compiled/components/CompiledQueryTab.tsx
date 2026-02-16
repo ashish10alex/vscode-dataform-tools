@@ -122,7 +122,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             return (
               <div
                 key={index}
-                className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700 flex flex-col space-y-2 group"
+                className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 flex flex-col space-y-2 group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -134,7 +134,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center text-sm font-mono text-zinc-300 hover:text-blue-400 transition-colors"
+                      className="flex items-center text-sm font-mono text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
                       {target.database}.{target.schema}.{target.name}
@@ -146,7 +146,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         setCopiedIndex(index);
                         setTimeout(() => setCopiedIndex(null), 2000);
                       }}
-                      className="ml-2 p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      className="ml-2 p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                       title="Copy table ID with backticks"
                     >
                       {copiedIndex === index ? (
@@ -165,7 +165,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     <span>Last updated:</span>
                     {lastUpdateMeta.error?.message ? (
                       <span
-                        className="font-mono text-zinc-400 cursor-help border-b border-dotted border-zinc-600"
+                        className="font-mono text-zinc-400 cursor-help border-b border-dotted border-zinc-300 dark:border-zinc-600"
                         title={lastUpdateMeta.error.message}
                       >
                         N/A
@@ -175,8 +175,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         className={clsx(
                           "font-mono",
                           !lastUpdateMeta.modelWasUpdatedToday
-                            ? "text-red-400"
-                            : "text-zinc-300"
+                            ? "text-red-500 dark:text-red-400"
+                            : "text-zinc-600 dark:text-zinc-300"
                         )}
                       >
                         {lastUpdateMeta.lastModifiedTime}
@@ -191,9 +191,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       )}
 
       {/* Data Lineage Section */}
-      <div className="bg-zinc-800/50 rounded-lg border border-zinc-700 overflow-hidden">
+      <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
         <div
-          className="flex items-center px-4 py-3 cursor-pointer hover:bg-zinc-800 transition-colors"
+          className="flex items-center px-4 py-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           onClick={() => setIsLineageOpen(!isLineageOpen)}
         >
           {isLineageOpen ? (
@@ -201,15 +201,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           ) : (
             <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
           )}
-          <span className="font-semibold text-zinc-200">Data Lineage</span>
+          <span className="font-semibold text-zinc-700 dark:text-zinc-200">Data Lineage</span>
         </div>
 
         {isLineageOpen && (
-          <div className="p-4 border-t border-zinc-700 space-y-4">
+          <div className="p-4 border-t border-zinc-200 dark:border-zinc-700 space-y-4">
             {/* Dependencies */}
             {state.models && state.models.length > 0 && (
                 <div>
-                   <h4 className="text-sm font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Dependencies</h4>
+                   <h4 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wider">Dependencies</h4>
                    {!state.models[0]?.dependencyTargets?.length && <span className="text-sm text-zinc-500 italic">No dependencies</span>}
                    <ul className="space-y-1 pl-2">
                        {state.models.map((model, idx) => (
@@ -218,12 +218,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                return (
                                    <li key={`${idx}-${tIdx}`} className="flex items-center text-sm group">
                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>
-                                       <span className="text-zinc-300 font-mono select-all hover:text-white transition-colors">
+                                       <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-zinc-900 dark:hover:text-white transition-colors">
                                             {id}
                                        </span>
                                        <button 
                                             onClick={() => handleLineageNavigation(id)}
-                                            className="ml-2 p-1 text-zinc-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                             title="Go to definition"
                                        >
                                            <ExternalLink className="w-3 h-3" />
@@ -238,11 +238,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             
             {/* Dependents */}
              <div>
-                <h4 className="text-sm font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Dependents</h4>
+                <h4 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wider">Dependents</h4>
                 
                 {/* Local Dependents Sub-section */}
                 <div className="mb-4 ml-2">
-                    <h5 className="text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wider">Local Project</h5>
+                    <h5 className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-wider">Local Project</h5>
                     {(!state.dependents || state.dependents.length === 0) ? (
                         <span className="text-sm text-zinc-500 italic">No local dependents found.</span>
                     ) : (
@@ -252,12 +252,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                  return (
                                     <li key={idx} className="flex items-center text-sm group">
                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>
-                                        <span className="text-zinc-300 font-mono select-all hover:text-white transition-colors">
+                                        <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-zinc-900 dark:hover:text-white transition-colors">
                                              {id}
                                         </span>
                                            <button 
                                                 onClick={() => handleLineageNavigation(id)}
-                                                className="ml-2 p-1 text-zinc-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 title="Go to definition"
                                            >
                                                <ExternalLink className="w-3 h-3" />
@@ -271,13 +271,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
                 {/* Dataplex Dependents Sub-section */}
                 <div className="ml-2">
-                    <h5 className="text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wider">Dataplex (Downstream)</h5>
+                    <h5 className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-wider">Dataplex (Downstream)</h5>
                     
                     {!state.lineageMetadata ? (
                          <button 
                             onClick={handleLineageMetadata}
                             disabled={loadingLineage}
-                            className="mt-1 bg-zinc-700 hover:bg-zinc-600 text-xs px-2 py-1 rounded text-zinc-300 flex items-center transition-colors disabled:opacity-50"
+                            className="mt-1 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xs px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 flex items-center transition-colors disabled:opacity-50"
                          >
                             {loadingLineage ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Network className="w-3 h-3 mr-1" />}
                             Load Dataplex Dependencies
@@ -285,7 +285,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     ) : (
                         <div className="mt-1">
                             {state.lineageMetadata.error ? (
-                                <div className="text-red-400 text-sm mb-1">
+                                <div className="text-red-500 dark:text-red-400 text-sm mb-1">
                                     Error: {state.lineageMetadata.error.message || "Unknown error"}
                                 </div>
                             ) : (
@@ -297,7 +297,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                             {state.lineageMetadata.dependencies.map((item: string, idx: number) => (
                                                  <li key={idx} className="flex items-center text-sm">
                                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
-                                                     <span className="text-zinc-300 font-mono select-all">{item}</span>
+                                                     <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all">{item}</span>
                                                  </li>
                                             ))}
                                         </ul>
@@ -314,67 +314,67 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
       {/* Dry Run Stats */}
       {state.dryRunning && !state.recompiling ? (
-        <div className="bg-yellow-900/20 border-l-4 border-yellow-600 p-4 rounded-r shadow-sm flex items-center">
-             <Loader2 className="w-5 h-5 text-yellow-500 animate-spin mr-3 flex-shrink-0" />
-             <div className="text-zinc-300 text-sm">
-                 <span className="font-semibold text-yellow-400">Performing dry run...</span>
+        <div className="bg-yellow-100 dark:bg-yellow-900/20 border-l-4 border-yellow-500 dark:border-yellow-600 p-4 rounded-r shadow-sm flex items-center">
+             <Loader2 className="w-5 h-5 text-yellow-600 dark:text-yellow-500 animate-spin mr-3 flex-shrink-0" />
+             <div className="text-zinc-700 dark:text-zinc-300 text-sm">
+                 <span className="font-semibold text-yellow-700 dark:text-yellow-400">Performing dry run...</span>
              </div>
         </div>
       ) : (
         state.dryRunStat && (
-            <div className="bg-green-900/20 border-l-4 border-green-600 p-4 rounded-r shadow-sm flex items-start">
-                 <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
-                 <div className="text-zinc-300 text-sm">
-                     <span className="font-semibold text-green-400">Query will process:</span>
-                     <div className="font-mono mt-1 text-green-300" dangerouslySetInnerHTML={{__html: state.dryRunStat}} />
+            <div className="bg-green-100 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-600 p-4 rounded-r shadow-sm flex items-start">
+                 <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                 <div className="text-zinc-700 dark:text-zinc-300 text-sm">
+                     <span className="font-semibold text-green-700 dark:text-green-400">Query will process:</span>
+                     <div className="font-mono mt-1 text-green-800 dark:text-green-300" dangerouslySetInnerHTML={{__html: state.dryRunStat}} />
                  </div>
             </div>
         )
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-4 bg-zinc-800/30 p-4 rounded-lg border border-zinc-700">
+      <div className="flex flex-col gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
           <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-mono text-zinc-400 bg-zinc-900 px-2 py-1 rounded">
+              <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded">
                   {state.relativeFilePath || "No file selected"}
               </span>
               <div className="flex-grow"></div>
-              <button onClick={handleFormat} disabled={formatting} className="flex items-center px-3 py-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-200 disabled:opacity-50">
+              <button onClick={handleFormat} disabled={formatting} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
                   <AlignLeft className="w-3 h-3 mr-1.5" /> Format
               </button>
-               <button onClick={handleLint} className="flex items-center px-3 py-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-200">
+               <button onClick={handleLint} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200">
                   <Eye className="w-3 h-3 mr-1.5" /> Lint
               </button>
           </div>
 
           <div className="flex items-center gap-2">
-              <label className="text-sm text-zinc-400 whitespace-nowrap">Compiler options:</label>
+              <label className="text-sm text-zinc-500 dark:text-zinc-400 whitespace-nowrap">Compiler options:</label>
               <input 
                 type="text" 
                 value={compilerOptions}
                 onChange={(e) => setCompilerOptions(e.target.value)}
                 placeholder='E.g. --table-prefix="AA"'
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
+                className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               />
           </div>
 
-           <div className="flex flex-wrap gap-4 text-sm text-zinc-300">
+           <div className="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-300">
                 <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-600 bg-zinc-800" />
+                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
                     <span>Include Dependencies</span>
                 </label>
                 <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-600 bg-zinc-800" />
+                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
                     <span>Include Dependents</span>
                 </label>
                 <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={fullRefresh} onChange={e => setFullRefresh(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-600 bg-zinc-800" />
+                    <input type="checkbox" checked={fullRefresh} onChange={e => setFullRefresh(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
                     <span>Full Refresh</span>
                 </label>
            </div>
 
-           <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-700/50">
-               <button onClick={handleDependencyGraph} className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm flex items-center">
+           <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-700/50">
+               <button onClick={handleDependencyGraph} className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-white rounded text-sm flex items-center">
                    <Network className="w-4 h-4 mr-1.5" /> Graph
                </button>
                <button onClick={handlePreviewResults} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center">
@@ -394,49 +394,49 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       <div className="space-y-6 pb-20">
           {state.preOperations && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Pre Operations</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Pre Operations</h3>
                 <CodeBlock code={state.preOperations} language="sql" />
              </div>
           )}
           {state.postOperations && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Post Operations</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Post Operations</h3>
                 <CodeBlock code={state.postOperations} language="sql" />
              </div>
           )}
            {state.tableOrViewQuery && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Query</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Query</h3>
                 <CodeBlock code={state.tableOrViewQuery} language="sql" />
              </div>
           )}
           {state.assertionQuery && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Assertion</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Assertion</h3>
                 <CodeBlock code={state.assertionQuery} language="sql" />
              </div>
           )}
           {state.incrementalPreOpsQuery && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Incremental Pre Operations</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Incremental Pre Operations</h3>
                 <CodeBlock code={state.incrementalPreOpsQuery} language="sql" />
              </div>
           )}
           {state.incrementalQuery && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Incremental Query</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Incremental Query</h3>
                  <CodeBlock code={state.incrementalQuery} language="sql" />
              </div>
           )}
           {state.nonIncrementalQuery && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Non Incremental Query</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Non Incremental Query</h3>
                  <CodeBlock code={state.nonIncrementalQuery} language="sql" />
              </div>
           )}
           {state.operationsQuery && (
              <div>
-                <h3 className="text-zinc-400 font-semibold mb-2">Operations</h3>
+                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Operations</h3>
                  <CodeBlock code={state.operationsQuery} language="sql" />
              </div>
           )}

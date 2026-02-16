@@ -117,9 +117,9 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
 
   return (
     <div className="h-full flex flex-col space-y-4">
-        <div className="bg-zinc-800/50 p-4 rounded border border-zinc-700">
-            <h2 className="text-lg font-semibold text-zinc-200 mb-2">Cost Estimator</h2>
-            <p className="text-sm text-zinc-400 mb-4">
+        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded border border-zinc-200 dark:border-zinc-700">
+            <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-2">Cost Estimator</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                 Estimate the cost of running models associated with a specific tag.
             </p>
 
@@ -127,7 +127,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 <select 
                     value={selectedTag} 
                     onChange={(e) => setSelectedTag(e.target.value)}
-                    className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none min-w-[200px]"
+                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none min-w-[200px]"
                 >
                     <option value="" disabled>Select a tag</option>
                     {state.dataformTags?.map(tag => (
@@ -150,9 +150,9 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
              {data && data.length > 0 ? (
                 <DataTable columns={columns} data={data} searchPlaceholder="Filter costs..." />
              ) : (
-                 <div className="text-center text-zinc-500 mt-8">
+                 <div className="text-center text-zinc-400 dark:text-zinc-500 mt-8">
                      {state.errorMessage ? (
-                         <span className="text-red-400">{state.errorMessage}</span>
+                         <span className="text-red-500 dark:text-red-400">{state.errorMessage}</span>
                      ) : (
                          "Select a tag and click Estimate Cost to see results."
                      )}

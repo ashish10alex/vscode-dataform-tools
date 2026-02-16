@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import hljs from 'highlight.js/lib/core';
 import sql from 'highlight.js/lib/languages/sql';
 import javascript from 'highlight.js/lib/languages/javascript';
-import 'highlight.js/styles/github-dark.css'; // or any other style
 import { Copy, Check } from 'lucide-react';
 
 hljs.registerLanguage('sql', sql as any);
@@ -40,7 +39,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
       >
         {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
       </button>
-      <pre className="overflow-x-auto p-4 bg-zinc-950 rounded-md border border-zinc-800">
+      <pre className="overflow-x-auto p-4 bg-[var(--hljs-bg)] rounded-md border border-zinc-200 dark:border-zinc-800">
         <code ref={codeRef} className={`language-${language}`}>
           {code}
         </code>

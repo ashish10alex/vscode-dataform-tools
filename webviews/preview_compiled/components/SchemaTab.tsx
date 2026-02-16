@@ -59,7 +59,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
   if (!state.compiledQuerySchema || state.compiledQuerySchema.fields.length === 0) {
     return (
-        <div className="p-8 text-center text-zinc-500">
+        <div className="p-8 text-center text-zinc-400 dark:text-zinc-500">
             <p>No schema available.</p>
         </div>
     )
@@ -67,7 +67,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
   return (
     <div className="h-full flex flex-col">
-       <div className="mb-4 text-sm text-zinc-400">
+       <div className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
           <i>Edit description to update documentation.</i>
        </div>
       <div className="flex-1 overflow-hidden">

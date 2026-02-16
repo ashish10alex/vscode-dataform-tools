@@ -86,7 +86,7 @@ export function DataTable<TData, TValue>({
                                         value={(header.column.getFilterValue() ?? '') as string}
                                         onChange={(e) => header.column.setFilterValue(e.target.value)}
                                         placeholder={`Filter...`}
-                                        className="w-full px-2 py-1 text-xs border rounded bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
+                                        className="w-full px-2 py-1 text-xs border rounded bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
                                         onClick={(e) => e.stopPropagation()} // Prevent sorting when clicking input
                                     />
                                 </div>
@@ -164,7 +164,7 @@ export function DataTable<TData, TValue>({
                             const page = e.target.value ? Number(e.target.value) - 1 : 0
                             table.setPageIndex(page)
                         }}
-                        className="border p-1 rounded w-16 bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none m-0"
+                        className="border p-1 rounded w-16 bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none m-0"
                     />
                 </span>
                 <select
@@ -172,7 +172,7 @@ export function DataTable<TData, TValue>({
                     onChange={e => {
                         table.setPageSize(Number(e.target.value))
                     }}
-                    className="border p-1 rounded bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="border p-1 rounded bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                     {[10, 20, 30, 40, 50, 100].map(pageSize => (
                         <option key={pageSize} value={pageSize}>
