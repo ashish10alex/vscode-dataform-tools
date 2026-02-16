@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { vscode } from './utils/vscode';
-import { Loader2, AlertCircle, CheckCircle2, MessageSquareWarning } from 'lucide-react';
+import { Loader2, AlertCircle, MessageSquareWarning } from 'lucide-react';
 import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';

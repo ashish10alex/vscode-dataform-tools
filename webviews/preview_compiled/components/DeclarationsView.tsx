@@ -1,5 +1,5 @@
 import React from 'react';
-import { Declarations, Target } from '../types';
+import { Declarations } from '../types';
 
 interface DeclarationsViewProps {
   declarations: Declarations[];

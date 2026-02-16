@@ -1,3 +1,4 @@
+//@ts-ignore
 import { WebviewApi } from "vscode-webview";
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;

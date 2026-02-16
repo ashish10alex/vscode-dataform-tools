@@ -4,7 +4,6 @@ import { CodeBlock } from "./CodeBlock";
 import { vscode } from "../utils/vscode";
 import {
   Play,
-  RotateCcw,
   Network,
   Eye,
   AlignLeft,

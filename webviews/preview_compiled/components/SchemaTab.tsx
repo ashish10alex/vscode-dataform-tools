@@ -30,7 +30,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ getValue, row, column, table }) => {
+      cell: ({ getValue, row }) => {
           const initialValue = getValue() as string || "";
           const [value, setValue] = React.useState(initialValue);
           
