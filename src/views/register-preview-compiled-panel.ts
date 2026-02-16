@@ -11,6 +11,8 @@ import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
+import { debounce } from "../debounce";
+
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions:{name:string, metadata: any}[] = [];
@@ -41,37 +43,40 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         })
     );
 
-    vscode.window.onDidChangeActiveTextEditor(async(editor) => {
+    const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
         const changedActiveEditorFileName = editor?.document?.fileName;
         const webviewPanelVisisble = CompiledQueryPanel?.centerPanel?.webviewPanel?.visible;
-        if(!activeEditorFileName){
+        if (!activeEditorFileName) {
             activeEditorFileName = changedActiveEditorFileName;
-        } else if (editor && changedActiveEditorFileName && activeEditorFileName!== changedActiveEditorFileName && webviewPanelVisisble ){
+        } else if (editor && changedActiveEditorFileName && activeEditorFileName !== changedActiveEditorFileName && webviewPanelVisisble) {
             activeEditorFileName = changedActiveEditorFileName;
             activeDocumentObj = editor.document;
             let currentFileMetadata = await getCurrentFileMetadata(false);
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
         }
-    }, null, context.subscriptions);
+    }, 500);
 
-    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
+    vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
+
+
+    const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
         const fileExtension = document.fileName.split('.').pop();
-        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js')){
+        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js')) {
             return;
         }
         activeEditorFileName = document?.fileName;
         activeDocumentObj = document;
-        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
-        if (showCompiledQueryInVerticalSplitOnSave || ( CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)){
-            if(CompiledQueryPanel?.centerPanel?.webviewPanel?.visible){
+        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        if (showCompiledQueryInVerticalSplitOnSave || (CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)) {
+            if (CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
                 CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
-            } else{
+            } else {
                 showLoadingProgress(
                     "Dataform tools\n",
                     async (progress) => {
@@ -81,11 +86,14 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 );
             }
         } else {
-            if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false){
+            if (diagnosticCollection && showCompiledQueryInVerticalSplitOnSave === false) {
                 compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
             }
         }
-    }));
+    }, 500);
+
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(debouncedSaveHandler));
+
 
 }
 

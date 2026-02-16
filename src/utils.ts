@@ -1612,46 +1612,35 @@ export async function getDependenciesAutoCompletionItems(compiledJson: DataformC
 
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;
-    let dependencies: string[] = [];
+    let dependencySet = new Set<string>();
 
     if (sourceAutoCompletionPreference === "${ref('table_name')}") {
         if (targets?.length) {
             for (let i = 0; i < targets.length; i++) {
-                let targetName = targets[i].name;
-                if (dependencies.includes(targetName) === false) {
-                    dependencies.push(targetName);
-                }
+                dependencySet.add(targets[i].name);
             }
         }
 
         if (declarations?.length) {
             for (let i = 0; i < declarations.length; i++) {
-                let targetName = declarations[i].target.name;
-                if (dependencies.includes(targetName) === false) {
-                    dependencies.push(targetName);
-                }
+                dependencySet.add(declarations[i].target.name);
             }
         }
     } else {
         if (targets?.length) {
             for (let i = 0; i < targets.length; i++) {
-                let targetName = `${targets[i].schema}.${targets[i].name}`;
-                if (dependencies.includes(targetName) === false) {
-                    dependencies.push(targetName);
-                }
+                dependencySet.add(`${targets[i].schema}.${targets[i].name}`);
             }
         }
         if (declarations?.length) {
             for (let i = 0; i < declarations.length; i++) {
-                let targetName = `${declarations[i].target.schema}.${declarations[i].target.name}`;
-                if (dependencies.includes(targetName) === false) {
-                    dependencies.push(targetName);
-                }
+                dependencySet.add(`${declarations[i].target.schema}.${declarations[i].target.name}`);
             }
         }
     }
-    return dependencies;
+    return Array.from(dependencySet);
 }
+
 
 export function readFile(filePath: string) {
     return new Promise((resolve, reject) => {
