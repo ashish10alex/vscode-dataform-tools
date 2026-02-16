@@ -6,41 +6,54 @@ let authenticationCheckInterval: NodeJS.Timeout | undefined;
 let lastAuthCheck: number = 0;
 let isAuthenticated: boolean = false;
 
+let clientCreationPromise: Promise<string | undefined> | undefined;
+
 export async function createBigQueryClient(): Promise<string | undefined> {
-    try {
-        const projectId : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const gcpLocation : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpLocation');
-        const serviceAccountJsonPath : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
-
-        let options: BigQueryOptions = {};
-        if(projectId && projectId.trim() !== ''){
-            options = {... options , projectId: projectId};
-        }
-
-        if(gcpLocation && gcpLocation.trim() !== ''){
-            options = {... options , location: gcpLocation};
-        }
-
-        if(serviceAccountJsonPath && serviceAccountJsonPath.trim() !== ''){
-            vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
-            options = {... options , keyFilename: serviceAccountJsonPath};
-        }
-
-        bigquery = new BigQuery(options);
-        await verifyAuthentication();
-        const projectIdMessage = projectId ? `Project ID: ${projectId}` : '';
-        const gcpLocationMessage = gcpLocation ? `Location: ${gcpLocation}` : '';
-        const message = `BigQuery client created successfully. ${projectIdMessage} ${gcpLocationMessage}`;
-        vscode.window.showInformationMessage(message);
-        return undefined;
-    } catch (error: any) {
-        bigquery = undefined;
-        isAuthenticated = false;
-        const errorMessage = `Error creating BigQuery client: ${error?.message}`;
-        vscode.window.showErrorMessage(errorMessage);
-        return errorMessage;
+    if (clientCreationPromise) {
+        return clientCreationPromise;
     }
+
+    clientCreationPromise = (async () => {
+        try {
+            const projectId : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+            const gcpLocation : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpLocation');
+            const serviceAccountJsonPath : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+
+            let options: BigQueryOptions = {};
+            if(projectId && projectId.trim() !== ''){
+                options = {... options , projectId: projectId};
+            }
+
+            if(gcpLocation && gcpLocation.trim() !== ''){
+                options = {... options , location: gcpLocation};
+            }
+
+            if(serviceAccountJsonPath && serviceAccountJsonPath.trim() !== ''){
+                vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
+                options = {... options , keyFilename: serviceAccountJsonPath};
+            }
+
+            bigquery = new BigQuery(options);
+            await verifyAuthentication();
+            const projectIdMessage = projectId ? `Project ID: ${projectId}` : '';
+            const gcpLocationMessage = gcpLocation ? `Location: ${gcpLocation}` : '';
+            const message = `BigQuery client created successfully. ${projectIdMessage} ${gcpLocationMessage}`;
+            vscode.window.showInformationMessage(message);
+            return undefined;
+        } catch (error: any) {
+            bigquery = undefined;
+            isAuthenticated = false;
+            const errorMessage = `Error creating BigQuery client: ${error?.message}`;
+            vscode.window.showErrorMessage(errorMessage);
+            return errorMessage;
+        } finally {
+            clientCreationPromise = undefined;
+        }
+    })();
+
+    return clientCreationPromise;
 }
+
 
 async function verifyAuthentication() {
     try {

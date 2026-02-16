@@ -25,6 +25,8 @@ import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
+import { debounce } from './debounce';
+
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -96,13 +98,17 @@ export async function activate(context: vscode.ExtensionContext) {
         createDependencyGraphPanel(context, vscode.ViewColumn.One);
     }));
 
-    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+    const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
         if (editor && queryResultsViewProvider._view?.visible) {
             let curFileMeta = await getCurrentFileMetadata(false);
             let type = curFileMeta?.fileMetadata?.queryMeta.type;
             queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
         }
-    }, null, context.subscriptions);
+    }, 500);
+
+    vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
+
+
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
 
