@@ -1887,7 +1887,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     } else if (type === "assertion") {
         queryToDryRun = fileMetadata.queryMeta.assertionQuery;
     } else if (type === "operations") {
-        queryToDryRun = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
+        let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
+        if (skipPreOpsInDryRun) {
+            preOpsQuery = "";
+        }
+        queryToDryRun = preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (type === "incremental") {
         let incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
         let nonIncrementalPreOpsQuery = fileMetadata.queryMeta.preOpsQuery.trimStart();
