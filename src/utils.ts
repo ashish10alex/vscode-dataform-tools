@@ -1872,19 +1872,33 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         return table.type === "table" || table.type === "view";
     }).length >= 1;
 
+    const skipPreOpsInDryRun = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
+    logger.debug(`skipPreOpsInDryRun: ${skipPreOpsInDryRun}`);
+
     if (type === "table" || type === "view" || isMultiModalJsType) {
         let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
-        if (preOpsQuery && preOpsQuery !== "") {
+        if (skipPreOpsInDryRun) {
+            preOpsQuery = "";
+        } else if (preOpsQuery && preOpsQuery !== "") {
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
         }
         queryToDryRun = preOpsQuery + fileMetadata.queryMeta.tableOrViewQuery;
     } else if (type === "assertion") {
         queryToDryRun = fileMetadata.queryMeta.assertionQuery;
     } else if (type === "operations") {
-        queryToDryRun = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
+        let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
+        if (skipPreOpsInDryRun) {
+            preOpsQuery = "";
+        }
+        queryToDryRun = preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (type === "incremental") {
         let incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
         let nonIncrementalPreOpsQuery = fileMetadata.queryMeta.preOpsQuery.trimStart();
+
+        if (skipPreOpsInDryRun) {
+            incrementalPreOpsQuery = "";
+            nonIncrementalPreOpsQuery = "";
+        }
 
         if (incrementalPreOpsQuery && incrementalPreOpsQuery !== "") {
             incrementalPreOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(incrementalPreOpsQuery);
