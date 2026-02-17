@@ -43,6 +43,7 @@ export interface WebviewState {
       tagDryRunStatsList?: any[];
       error?: { message: string };
   };
+  compilerOptions?: string;
 }
 
 export interface Target {

@@ -415,6 +415,8 @@ export class CompiledQueryPanel {
             return;
         }
 
+        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
+
         if (curFileMeta.isDataformWorkspace===false){
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             const currentDirectory = workspaceFolder?.uri.fsPath;
@@ -529,7 +531,8 @@ export class CompiledQueryPanel {
             "models": curFileMeta.fileMetadata.tables,
             "recompiling": false,
             "dryRunning": true,
-            "declarations": null
+            "declarations": null,
+            "compilerOptions": compilerOptions
     });
 
         if(diagnosticCollection){
@@ -693,7 +696,8 @@ export class CompiledQueryPanel {
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "recompiling": false,
                 "dryRunning": false,
-                "declarations": null
+                "declarations": null,
+                "compilerOptions": compilerOptions
             });
             this._cachedResults = { 
                 fileMetadata, 

@@ -33,7 +33,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
 }) => {
   const [compilerOptions, setCompilerOptions] = useState("");
-  const [isCompilerOptionsOpen, setIsCompilerOptionsOpen] = useState(true);
+  const [isCompilerOptionsOpen, setIsCompilerOptionsOpen] = useState(false);
   const [tablePrefix, setTablePrefix] = useState("");
   const [schemaSuffix, setSchemaSuffix] = useState("");
   const [databaseSuffix, setDatabaseSuffix] = useState("");
@@ -41,10 +41,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   // Parse initial compiler options
   useEffect(() => {
-    // Only parse if we have a string but haven't set individual fields yet
-    // This is a simple one-way sync on mount or if external change happens
-    if (compilerOptions && !tablePrefix && !schemaSuffix && !databaseSuffix && !otherOptions) {
-        const parts = compilerOptions.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+    // Initialize from prop if available and local state is empty (initial load)
+    if (state.compilerOptions && !tablePrefix && !schemaSuffix && !databaseSuffix && !otherOptions) {
+        setCompilerOptions(state.compilerOptions);
+        setIsCompilerOptionsOpen(true);
+        
+        const parts = state.compilerOptions.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
         let tp = "", ss = "", ds = "", other = [];
         
         for (const part of parts) {
@@ -63,7 +65,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         setDatabaseSuffix(ds);
         setOtherOptions(other.join(" "));
     }
-  }, []); // Run once on mount to handle any pre-existing value
+  }, [state.compilerOptions]); // Run when state.compilerOptions is received
 
   // Reconstruct compiler options string when individual fields change
   useEffect(() => {
@@ -455,7 +457,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                   type="text" 
                                   value={schemaSuffix}
                                   onChange={(e) => setSchemaSuffix(e.target.value)}
-                                  placeholder='e.g. _dev'
+                                  placeholder='e.g. dev'
                                   className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                               />
                               <p className="mt-1 text-[10px] text-zinc-400">Suffixes dataset names (e.g. <code>dataset_dev</code>)</p>
@@ -468,10 +470,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                   type="text" 
                                   value={databaseSuffix}
                                   onChange={(e) => setDatabaseSuffix(e.target.value)}
-                                  placeholder='e.g. _suffix'
+                                  placeholder='e.g. dev'
                                   className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                               />
-                              <p className="mt-1 text-[10px] text-zinc-400">Suffixes project ID (e.g. <code>project_suffix</code>)</p>
+                              <p className="mt-1 text-[10px] text-zinc-400">Suffixes project ID (e.g. <code>project_dev</code>)</p>
                           </div>
                            <div>
                               <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">

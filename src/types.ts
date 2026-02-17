@@ -359,6 +359,7 @@ export interface WebviewMessage {
   dryRunning?: boolean;
   modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
   declarations?: Declarations[] | null;
+  compilerOptions?: string;
 }
 
 export type CreateCompilationResultResponse = Promise<
