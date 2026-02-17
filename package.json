@@ -379,6 +379,26 @@
                     "type": "boolean",
                     "default": false,
                     "markdownDescription": "If enabled, pre-operations query will be excluded from the query used for dry run. By default, pre-operations are included. `::WARNING::` any variable used in pre-operations query will not be resolved and will result in an error"
+                },
+                "vscode-dataform-tools.formatOrdering": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "js",
+                            "preOperations",
+                            "postOperations",
+                            "sql"
+                        ]
+                    },
+                    "default": [
+                        "js",
+                        "preOperations",
+                        "postOperations",
+                        "sql"
+                    ],
+                    "markdownDescription": "Order of blocks when formatting .sqlx files. The config block will always be first. Default order is `js` -> `preOperations` -> `postOperations` -> `sql`."
                 }
             }
         },
