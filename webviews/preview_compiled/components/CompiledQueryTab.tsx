@@ -42,6 +42,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [loadingLineage, setLoadingLineage] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
+  const localDependentIds = new Set(
+    state.dependents?.map((d: any) =>
+      typeof d === "string" ? d : `${d.database}.${d.schema}.${d.name}`
+    ) || []
+  );
+
   // Debounced compiler options update
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -294,12 +300,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                          <span className="text-sm text-zinc-500 italic">No Dataplex dependents found.</span>
                                     ) : (
                                         <ul className="space-y-1 pl-2">
-                                            {state.lineageMetadata.dependencies.map((item: string, idx: number) => (
-                                                 <li key={idx} className="flex items-center text-sm">
-                                                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
-                                                     <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all">{item}</span>
-                                                 </li>
-                                            ))}
+                                            {state.lineageMetadata.dependencies.map((item: string, idx: number) => {
+                                                const isExternal = !localDependentIds.has(item);
+                                                return (
+                                                  <li key={idx} className="flex items-center text-sm">
+                                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
+                                                      <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all">{item}</span>
+                                                      {isExternal && (
+                                                          <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                                              External
+                                                          </span>
+                                                      )}
+                                                  </li>
+                                                );
+                                            })}
                                         </ul>
                                     )}
                                 </>
