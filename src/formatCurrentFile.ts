@@ -95,7 +95,27 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
         (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
 
         if (typeof formattedSql === 'string'){
-            let finalFormattedSqlx = configBlockText + jsBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
+            //let finalFormattedSqlx = configBlockText + jsBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
+
+            let formatOrdering = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formatOrdering");
+            // if formatOrdering is not defined, use default
+            if (!formatOrdering) {
+                formatOrdering = ["js", "preOperations", "postOperations", "sql"];
+            }
+
+            let finalFormattedSqlx = configBlockText;
+            (formatOrdering as string[]).forEach((block: string) => {
+                if (block === "js") {
+                    finalFormattedSqlx += jsBlockText;
+                } else if (block === "preOperations") {
+                    finalFormattedSqlx += preOpsBlockText;
+                } else if (block === "postOperations") {
+                    finalFormattedSqlx += postOpsBlockText;
+                } else if (block === "sql") {
+                    finalFormattedSqlx += formattedSql;
+                }
+            });
+
             if (!currentActiveEditorFilePath){
                 vscode.window.showErrorMessage("Could not determine current active editor to write formatted text to");
                 return undefined;
