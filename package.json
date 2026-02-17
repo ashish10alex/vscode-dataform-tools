@@ -383,6 +383,8 @@
                 "vscode-dataform-tools.formatOrdering": {
                     "type": "array",
                     "uniqueItems": true,
+                    "minItems": 4,
+                    "maxItems": 4,
                     "items": {
                         "type": "string",
                         "enum": [
