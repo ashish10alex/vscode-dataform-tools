@@ -33,6 +33,51 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
 }) => {
   const [compilerOptions, setCompilerOptions] = useState("");
+  const [isCompilerOptionsOpen, setIsCompilerOptionsOpen] = useState(true);
+  const [tablePrefix, setTablePrefix] = useState("");
+  const [schemaSuffix, setSchemaSuffix] = useState("");
+  const [databaseSuffix, setDatabaseSuffix] = useState("");
+  const [otherOptions, setOtherOptions] = useState("");
+
+  // Parse initial compiler options
+  useEffect(() => {
+    // Only parse if we have a string but haven't set individual fields yet
+    // This is a simple one-way sync on mount or if external change happens
+    if (compilerOptions && !tablePrefix && !schemaSuffix && !databaseSuffix && !otherOptions) {
+        const parts = compilerOptions.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+        let tp = "", ss = "", ds = "", other = [];
+        
+        for (const part of parts) {
+            if (part.startsWith("--table-prefix=")) {
+                tp = part.split('=')[1].replace(/"/g, '');
+            } else if (part.startsWith("--schema-suffix=")) {
+                ss = part.split('=')[1].replace(/"/g, '');
+            } else if (part.startsWith("--database-suffix=")) {
+                ds = part.split('=')[1].replace(/"/g, '');
+            } else {
+                other.push(part);
+            }
+        }
+        setTablePrefix(tp);
+        setSchemaSuffix(ss);
+        setDatabaseSuffix(ds);
+        setOtherOptions(other.join(" "));
+    }
+  }, []); // Run once on mount to handle any pre-existing value
+
+  // Reconstruct compiler options string when individual fields change
+  useEffect(() => {
+      const parts = [];
+      if (tablePrefix) parts.push(`--table-prefix="${tablePrefix}"`);
+      if (schemaSuffix) parts.push(`--schema-suffix="${schemaSuffix}"`);
+      if (databaseSuffix) parts.push(`--database-suffix="${databaseSuffix}"`);
+      if (otherOptions) parts.push(otherOptions);
+      
+      const newOptions = parts.join(" ");
+      if (newOptions !== compilerOptions) {
+          setCompilerOptions(newOptions);
+      }
+  }, [tablePrefix, schemaSuffix, databaseSuffix, otherOptions]);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [fullRefresh, setFullRefresh] = useState(false);
@@ -361,23 +406,97 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               </button>
           </div>
 
-          <div className="flex items-center gap-2">
-              <a 
-                href="https://dataformtools.com/blog/compiler-options"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap flex items-center group/link"
+          {/* Compiler Options Section */}
+          <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+              <div 
+                  className="flex items-center px-4 py-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors justify-between"
+                  onClick={() => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
               >
-                Compiler options:
-                <ExternalLink className="w-3 h-3 ml-1 opacity-50 group-hover/link:opacity-100 transition-opacity" />
-              </a>
-              <input 
-                type="text" 
-                value={compilerOptions}
-                onChange={(e) => setCompilerOptions(e.target.value)}
-                placeholder='E.g. --table-prefix="AA"'
-                className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-              />
+                  <div className="flex items-center">
+                      {isCompilerOptionsOpen ? (
+                          <ChevronDown className="w-4 h-4 mr-2 text-zinc-400" />
+                      ) : (
+                          <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
+                      )}
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-200">Compiler Overrides</span>
+                  </div>
+                  <a 
+                    href="https://dataformtools.com/blog/compiler-options"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                  >
+                    Docs <ExternalLink className="w-3 h-3 ml-1" />
+                  </a>
+              </div>
+
+              {isCompilerOptionsOpen && (
+                  <div className="p-4 border-t border-zinc-200 dark:border-zinc-700 space-y-3 bg-white dark:bg-zinc-900/30">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                                  Table Prefix
+                              </label>
+                              <input 
+                                  type="text" 
+                                  value={tablePrefix}
+                                  onChange={(e) => setTablePrefix(e.target.value)}
+                                  placeholder='e.g. AA'
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                              />
+                              <p className="mt-1 text-[10px] text-zinc-400">Prefixes all table names (e.g. <code>AA_table</code>)</p>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                                  Schema Suffix
+                              </label>
+                              <input 
+                                  type="text" 
+                                  value={schemaSuffix}
+                                  onChange={(e) => setSchemaSuffix(e.target.value)}
+                                  placeholder='e.g. _dev'
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                              />
+                              <p className="mt-1 text-[10px] text-zinc-400">Suffixes dataset names (e.g. <code>dataset_dev</code>)</p>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                                  Database Suffix
+                              </label>
+                              <input 
+                                  type="text" 
+                                  value={databaseSuffix}
+                                  onChange={(e) => setDatabaseSuffix(e.target.value)}
+                                  placeholder='e.g. _suffix'
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                              />
+                              <p className="mt-1 text-[10px] text-zinc-400">Suffixes project ID (e.g. <code>project_suffix</code>)</p>
+                          </div>
+                           <div>
+                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                                  Other Options
+                              </label>
+                              <input 
+                                  type="text" 
+                                  value={otherOptions}
+                                  onChange={(e) => setOtherOptions(e.target.value)}
+                                  placeholder='e.g. --vars=key=value'
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                              />
+                              <p className="mt-1 text-[10px] text-zinc-400">Additional CLI flags</p>
+                          </div>
+                      </div>
+                      
+                      {compilerOptions && (
+                          <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
+                              <span className="text-[10px] font-mono text-zinc-400 select-all">
+                                  Generated: {compilerOptions}
+                              </span>
+                          </div>
+                      )}
+                  </div>
+              )}
           </div>
 
            <div className="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-300">
