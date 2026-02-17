@@ -4,6 +4,8 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import util from 'util';
 import { GitFileChange, GitFileChangeRaw, GitStatusCode, GitStatusCodeHumanReadable } from './types';
+import { GitExtension } from './api/git';
+import { logger } from "./logger";
 
 const execPromise = util.promisify(exec);
 
@@ -32,7 +34,7 @@ export class GitService {
     }
 
     public getGitBranchAndRepoName() {
-        const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
+        const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
         if (!gitExtension) {
             vscode.window.showErrorMessage('Git extension not found.');
             return;
@@ -47,6 +49,8 @@ export class GitService {
         const repo = git.repositories[0];
         const gitBranch = repo.state.HEAD?.name ?? undefined;
         const gitRepoName = this.getActualRepoName(repo.rootUri.fsPath);
+        logger.info(`Git branch: ${gitBranch}`);
+        logger.info(`Git repo name: ${gitRepoName}`);
 
         return { gitBranch, gitRepoName };
     }

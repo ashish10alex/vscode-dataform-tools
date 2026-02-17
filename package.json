@@ -22,6 +22,9 @@
         "Data Science",
         "Testing"
     ],
+    "extensionDependencies": [
+        "vscode.git"
+    ],
     "activationEvents": [
         "workspaceContains:**/*.sqlx",
         "workspaceContains:**/workflow_settings.yaml",
