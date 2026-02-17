@@ -378,7 +378,7 @@
                 "vscode-dataform-tools.skipPreOpsInDryRun": {
                     "type": "boolean",
                     "default": false,
-                    "markdownDescription": "If enabled, pre-operations query will be excluded from the query used for dry run. By default, pre-operations are included."
+                    "markdownDescription": "If enabled, pre-operations query will be excluded from the query used for dry run. By default, pre-operations are included. `::WARNING::` any variable used in pre-operations query will not be resolved and will result in an error"
                 }
             }
         },
