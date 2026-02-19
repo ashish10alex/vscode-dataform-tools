@@ -36,6 +36,30 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      // Ignore if modifier keys are pressed
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
+        return;
+      }
+
+      if (e.key === 's') {
+        e.preventDefault();
+        setActiveTab('schema');
+      } else if (e.key === 'c') {
+        e.preventDefault();
+        setActiveTab('compilation');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Handle declarations view (full page override)
   if (state.declarations) {
     return <DeclarationsView declarations={state.declarations} />;

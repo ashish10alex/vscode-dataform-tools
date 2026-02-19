@@ -16,11 +16,13 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   searchPlaceholder?: string
+  autoFocusColumnId?: string
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  autoFocusColumnId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -87,6 +89,7 @@ export function DataTable<TData, TValue>({
                                 <div>
                                     <input
                                         type="text"
+                                        autoFocus={header.column.id === autoFocusColumnId}
                                         value={(header.column.getFilterValue() ?? '') as string}
                                         onChange={(e) => header.column.setFilterValue(e.target.value)}
                                         placeholder={`Filter...`}

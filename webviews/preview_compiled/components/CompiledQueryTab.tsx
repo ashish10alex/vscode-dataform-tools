@@ -14,6 +14,7 @@ import {
   Check,
   Loader2,
   Clock,
+  CheckCircle2,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -588,6 +589,4 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   );
 };
 
-// Start of Selection
-import { CheckCircle2 } from "lucide-react"; // Ensure this import exists
-// End of Selection
+

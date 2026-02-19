@@ -91,7 +91,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
           <i>Edit description to update documentation.</i>
        </div>
       <div className="flex-1 overflow-hidden">
-        <DataTable columns={columns} data={data} searchPlaceholder="Filter schema..." />
+        <DataTable columns={columns} data={data} searchPlaceholder="Filter schema..." autoFocusColumnId="name" />
       </div>
     </div>
   );
