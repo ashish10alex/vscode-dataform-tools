@@ -92,6 +92,11 @@ export function DataTable<TData, TValue>({
                                         autoFocus={header.column.id === autoFocusColumnId}
                                         value={(header.column.getFilterValue() ?? '') as string}
                                         onChange={(e) => header.column.setFilterValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Escape') {
+                                                e.currentTarget.blur();
+                                            }
+                                        }}
                                         placeholder={`Filter...`}
                                         className="w-full px-2 py-1 text-xs border rounded bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
                                         onClick={(e) => e.stopPropagation()} // Prevent sorting when clicking input
