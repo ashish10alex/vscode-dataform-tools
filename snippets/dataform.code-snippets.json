@@ -219,14 +219,6 @@
 		],
 		"description": "Generate a model of type operation in js file"
 	},
-	"assertion": {
-		"scope": "javascript",
-		"prefix": "assertion [Dataform](js)",
-		"body": [
-			"assert('${1:assertion_name}', '${2:query}')"
-		],
-		"description": "Generate a model of type assertion in js file"
-	},
 	"columns": {
 		"prefix": "columns [Dataform]",
 		"body": [
