@@ -210,9 +210,7 @@ async function getTableSchemaAsMarkdown(metadata:any) {
 async function getTableInformationFromRef(
   searchTerm: string,
 ): Promise<vscode.Hover | undefined> {
-  console.time("getTableInformationFromRef");
   const nodes = global.TARGET_NAME_MAP?.get(searchTerm) || [];
-  console.timeEnd("getTableInformationFromRef");
   if (nodes.length > 0) {
     // Return hover for the first matching node
     const node = nodes[0];
