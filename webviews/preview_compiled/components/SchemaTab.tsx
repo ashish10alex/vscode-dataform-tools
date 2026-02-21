@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { WebviewState } from '../types';
 import { DataTable } from './ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { Download, Edit2, Copy } from 'lucide-react';
+import { Download, Edit2, Copy, Check } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 
 interface SchemaTabProps {
@@ -18,6 +18,7 @@ type SchemaField = {
 
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   const [editedDescriptions, setEditedDescriptions] = useState<Record<string, string>>({});
+  const [isCopied, setIsCopied] = useState(false);
 
   const data = useMemo(() => {
     return (state.compiledQuerySchema?.fields || []).map(field => ({
@@ -83,6 +84,9 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
       command: 'copyToClipboard',
       value: formatAsUnquotedJson(exportData)
     });
+    
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 400);
   };
 
   const handleExportJson = () => {
@@ -117,14 +121,23 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
       <div className="flex justify-end gap-2 p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
         <button
           onClick={handleCopyJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm w-28 justify-center"
         >
-          <Copy className="w-3.5 h-3.5" />
-          Copy JSON
+          {isCopied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-green-500" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              Copy JSON
+            </>
+          )}
         </button>
         <button
           onClick={handleExportJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm w-28 justify-center"
         >
           <Download className="w-3.5 h-3.5" />
           Export JSON
