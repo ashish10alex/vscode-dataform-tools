@@ -30,13 +30,17 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
     }
 
     if (firstStageSelection === "run open sqlx files") {
-        const openDocuments = vscode.workspace.textDocuments;
-        const openSqlxFiles = openDocuments.filter(doc => doc.fileName.endsWith('.sqlx'));
-        if (openSqlxFiles.length === 0) {
+        const openTabs = vscode.window.tabGroups.all.flatMap(group => group.tabs);
+        const openSqlxFilePaths = Array.from(new Set(openTabs
+            .filter(tab => tab.input instanceof vscode.TabInputText)
+            .map(tab => (tab.input as vscode.TabInputText).uri.fsPath)
+            .filter(fileName => fileName.endsWith('.sqlx'))));
+
+        if (openSqlxFilePaths.length === 0) {
             vscode.window.showInformationMessage("No .sqlx files are currently open.");
             return;
         }
-        multipleFileSelection = openSqlxFiles.map(doc => getRelativePath(doc.fileName));
+        multipleFileSelection = openSqlxFilePaths.map(fileName => getRelativePath(fileName));
     }
 
     let multipleTagsSelection: string[] | undefined;
