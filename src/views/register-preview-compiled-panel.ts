@@ -430,6 +430,12 @@ export class CompiledQueryPanel {
                     workflowUrls: []
                 });
                 return;
+              case 'runFilesTagsWtOptionsApi':
+                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
+                return;
+              case 'runFilesTagsWtOptionsInRemoteWorkspace':
+                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace');
+                return;
             }
             return;
           },
