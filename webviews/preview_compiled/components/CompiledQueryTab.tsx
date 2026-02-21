@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { WebviewState } from "../types";
 import { CodeBlock } from "./CodeBlock";
 import { vscode } from "../utils/vscode";
@@ -96,8 +96,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     ) || []
   );
 
+  const isInitialMount = useRef(true);
+
   // Debounced compiler options update
   useEffect(() => {
+    if (isInitialMount.current && !compilerOptions) {
+      isInitialMount.current = false;
+      return;
+    }
+    isInitialMount.current = false;
+
     const timer = setTimeout(() => {
       vscode.postMessage({
         command: "updateCompilerOptions",
