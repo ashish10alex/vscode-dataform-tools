@@ -6,7 +6,7 @@ import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
 
-export function sendWorkflowInvocationNotification(
+export async function sendWorkflowInvocationNotification(
     url: string,
     context?: vscode.ExtensionContext,
     invocationConfig?: InvocationConfig,
@@ -52,7 +52,7 @@ export function sendWorkflowInvocationNotification(
             storedUrls.splice(0, storedUrls.length - 20);
         }
 
-        context.workspaceState.update('dataform_workflow_urls', storedUrls);
+        await context.workspaceState.update('dataform_workflow_urls', storedUrls);
         vscode.commands.executeCommand('vscode-dataform-tools.refreshWorkflowUrls');
     }
     vscode.window.showInformationMessage(

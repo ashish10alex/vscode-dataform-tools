@@ -1854,7 +1854,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
             if(!ouput){
                 throw new Error("No response received from Dataform API for workflow invocation creation");
             }
-            sendWorkflowInvocationNotification(ouput.workflowInvocationUrl);
+            await sendWorkflowInvocationNotification(ouput.workflowInvocationUrl);
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
         }
