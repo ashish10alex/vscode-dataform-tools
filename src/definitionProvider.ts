@@ -1,24 +1,11 @@
 import * as vscode from 'vscode';
 import { getPostionOfSourceDeclaration, getPostionOfVariableInJsFileOrBlock, getWorkspaceFolder, runCompilation } from './utils';
-import { Assertion, DataformCompiledJson, Operation, Table } from './types';
+import { DataformCompiledJson } from './types';
 import path from 'path';
 import * as fs from 'fs';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
-function getSearchTermLocationFromStruct(searchTerm: string, struct: Operation[] | Assertion[] | Table[], workspaceFolder: string): vscode.Location | undefined {
-    let location: vscode.Location | undefined;
-    for (let i = 0; i < struct.length; i++) {
-        let targetName = struct[i].target.name;
-        if (searchTerm === targetName) {
-            let fullSourcePath = path.join(workspaceFolder, struct[i].fileName);
-            let sourcesJsUri = vscode.Uri.file(fullSourcePath);
-            const definitionPosition = new vscode.Position(0, 0);
-            location = new vscode.Location(sourcesJsUri, definitionPosition);
-            return location;
-        }
-    }
-    return location;
-}
+
 
 function getSearchTermLocationFromPath(searchTerm: string, workspaceFolder: string): vscode.Location | undefined {
     let location: vscode.Location | undefined;
@@ -53,12 +40,7 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
     }
 
     let declarations = dataformCompiledJson?.declarations;
-    let tables = dataformCompiledJson?.tables;
-    let operations = dataformCompiledJson?.operations;
-    let assertions = dataformCompiledJson?.assertions;
     let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
-
-    let location: vscode.Location | undefined;
 
     if (declarations) {
         for (let i = 0; i < declarations.length; i++) {
@@ -80,19 +62,14 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
         searchTerm = tablePrefix + "_" + searchTerm;
     }
 
-    if (tables) {
-        location = getSearchTermLocationFromStruct(searchTerm, tables, workspaceFolder);
+    const mapNodes = global.TARGET_NAME_MAP?.get(searchTerm);
+    if (mapNodes && mapNodes.length > 0) {
+        let fullSourcePath = path.join(workspaceFolder, mapNodes[0].fileName);
+        let sourcesJsUri = vscode.Uri.file(fullSourcePath);
+        const definitionPosition = new vscode.Position(0, 0);
+        return new vscode.Location(sourcesJsUri, definitionPosition);
     }
-    if (location){return location;}
 
-    if (operations) {
-        location =  getSearchTermLocationFromStruct(searchTerm, operations, workspaceFolder);
-    }
-    if (location){return location;}
-
-    if (assertions) {
-        return getSearchTermLocationFromStruct(searchTerm, assertions, workspaceFolder);
-    }
     return undefined;
 }
 
