@@ -54,26 +54,46 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                     <tbody>
                         {urls.slice().reverse().map((item, index) => {
                             console.log(item);
-                            const optionsDisplay = [
-                                `Full Refresh: ${item.fullRefresh ? 'Yes' : 'No'}`,
-                                `Dependencies: ${item.includeDependencies ? 'Yes' : 'No'}`,
-                                `Dependents: ${item.includeDependents ? 'Yes' : 'No'}`
-                            ].join(", ");
-
                             return (
                             <tr key={index} className="border-b border-zinc-200 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap text-xs">
                                     {new Date(item.timestamp).toLocaleString()}
                                 </td>
                                 <td className="px-4 py-2 text-zinc-900 dark:text-zinc-100 truncate max-w-sm">
-                                    <div className="flex items-center space-x-2">
-                                        <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-mono">
-                                            {item.workspace || 'unknown'}
+                                    <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-mono">
+                                        {item.workspace || 'unknown'}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-2">
+                                    <div className="flex flex-wrap gap-1.5">
+                                        <span
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                                item.fullRefresh
+                                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400'
+                                                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 dark:bg-zinc-800/50 dark:border-zinc-700/50 dark:text-zinc-500'
+                                            }`}
+                                        >
+                                            Full Refresh
+                                        </span>
+                                        <span
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                                item.includeDependencies
+                                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400'
+                                                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 dark:bg-zinc-800/50 dark:border-zinc-700/50 dark:text-zinc-500'
+                                            }`}
+                                        >
+                                            +Deps
+                                        </span>
+                                        <span
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                                item.includeDependents
+                                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400'
+                                                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 dark:bg-zinc-800/50 dark:border-zinc-700/50 dark:text-zinc-500'
+                                            }`}
+                                        >
+                                            +Dependents
                                         </span>
                                     </div>
-                                </td>
-                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400 text-xs">
-                                    {optionsDisplay}
                                 </td>
                                 <td className="px-4 py-2">
                                     <a
