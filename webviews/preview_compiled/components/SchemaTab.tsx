@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { WebviewState } from '../types';
 import { DataTable } from './ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { Download, Edit2 } from 'lucide-react';
+import { Download, Edit2, Copy } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 
 interface SchemaTabProps {
@@ -66,6 +66,18 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
     },
   ], []);
 
+  const handleCopyJson = () => {
+    const exportData = data.reduce((acc, field) => {
+      acc[field.name] = field.description || '';
+      return acc;
+    }, {} as Record<string, string>);
+
+    vscode.postMessage({
+      command: 'copyToClipboard',
+      value: JSON.stringify(exportData, null, 2)
+    });
+  };
+
   const handleExportJson = () => {
     const exportData = data.reduce((acc, field) => {
       acc[field.name] = field.description || '';
@@ -95,7 +107,14 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-end p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+      <div className="flex justify-end gap-2 p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+        <button
+          onClick={handleCopyJson}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+        >
+          <Copy className="w-3.5 h-3.5" />
+          Copy JSON
+        </button>
         <button
           onClick={handleExportJson}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm"

@@ -238,6 +238,11 @@ export class CompiledQueryPanel {
                 }
 
                 return;
+              case 'copyToClipboard':
+                const textToCopy = message.value;
+                await vscode.env.clipboard.writeText(textToCopy);
+                vscode.window.showInformationMessage('Schema copied to clipboard!');
+                return;
               case 'exportSchema':
                 const schemaData = message.value;
                 const defaultFilename = message.filename || 'schema.json';
