@@ -253,7 +253,7 @@ export class CompiledQueryPanel {
                     }
                 });
                 if (uri) {
-                    const content = JSON.stringify(schemaData, null, 2);
+                    const content = typeof schemaData === 'string' ? schemaData : JSON.stringify(schemaData, null, 2);
                     await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
                     vscode.window.showInformationMessage('Schema exported successfully!');
                 }

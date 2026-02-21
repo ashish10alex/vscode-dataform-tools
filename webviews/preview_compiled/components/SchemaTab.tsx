@@ -66,6 +66,13 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
     },
   ], []);
 
+  const formatAsUnquotedJson = (dataObj: Record<string, string>) => {
+    const lines = Object.entries(dataObj).map(([key, value]) => {
+      return `  ${key}: ${JSON.stringify(value)}`;
+    });
+    return `{\n${lines.join(',\n')}\n}`;
+  };
+
   const handleCopyJson = () => {
     const exportData = data.reduce((acc, field) => {
       acc[field.name] = field.description || '';
@@ -74,7 +81,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
     vscode.postMessage({
       command: 'copyToClipboard',
-      value: JSON.stringify(exportData, null, 2)
+      value: formatAsUnquotedJson(exportData)
     });
   };
 
@@ -92,7 +99,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
     vscode.postMessage({
       command: 'exportSchema',
-      value: exportData,
+      value: formatAsUnquotedJson(exportData),
       filename: filename
     });
   };
