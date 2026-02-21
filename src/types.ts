@@ -367,6 +367,12 @@ export interface WebviewMessage {
       includeDependencies: boolean;
       includeDependents: boolean;
       fullRefresh: boolean;
+      executionMode?: 'api' | 'api_workspace';
+      workflowInvocationId?: string;
+      projectId?: string;
+      location?: string;
+      repositoryName?: string;
+      state?: string;
   }[];
 }
 

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { WebviewState } from '../types';
-import { ExternalLink, Trash2, Play } from 'lucide-react';
+import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 
 interface WorkflowURLsTabProps {
@@ -24,6 +24,30 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
 
     const handleRunWorkspace = () => {
         vscode.postMessage({ command: 'runFilesTagsWtOptionsInRemoteWorkspace' });
+    };
+
+    const handleRefreshStatuses = () => {
+        vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+    };
+
+    const getStatusIcon = (status?: string | null) => {
+        if (!status) return <CircleDashed className="w-3.5 h-3.5 text-zinc-400" />;
+        switch (status) {
+            case 'SUCCEEDED':
+                return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
+            case 'FAILED':
+            case 'CANCELLED':
+                return <XCircle className="w-3.5 h-3.5 text-red-500" />;
+            case 'RUNNING':
+                return <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin" />;
+            default:
+                return <Clock className="w-3.5 h-3.5 text-amber-500" />;
+        }
+    };
+
+    const getStatusLabel = (status?: string | null) => {
+        if (!status) return 'UNKNOWN';
+        return status;
     };
 
     return (
@@ -68,16 +92,28 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
             </div>
 
             {urls.length > 0 ? (
-                <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800 p-3 rounded-md border border-zinc-200 dark:border-zinc-700">
-                    <span className="font-medium text-sm">Recent Executions ({urls.length})</span>
-                    <button
-                        onClick={handleClearUrls}
-                        className="flex items-center space-x-1 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                        title="Clear execution history"
-                    >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Clear History</span>
-                    </button>
+                <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800 p-3 rounded-md border border-zinc-200 dark:border-zinc-700">
+                        <span className="font-medium text-sm">Recent Executions ({urls.length})</span>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={handleRefreshStatuses}
+                                className="flex items-center space-x-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                title="Refresh execution statuses"
+                            >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>Refresh Status</span>
+                            </button>
+                            <button
+                                onClick={handleClearUrls}
+                                className="flex items-center space-x-1 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors border-l border-zinc-200 dark:border-zinc-700 pl-3"
+                                title="Clear execution history"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Clear History</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             ) : null}
 
@@ -94,6 +130,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 w-1/4">Time</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Target Workspace</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Mode</th>
+                                <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Status</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Options</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 w-16">Link</th>
                             </tr>
@@ -113,6 +150,14 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                     </td>
                                     <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap text-xs">
                                         {item.executionMode === 'api_workspace' ? 'GCP Workspace' : 'gitCommitish'}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <div className="flex items-center space-x-1.5" title={`Status: ${item.state || 'UNKNOWN'}`}>
+                                            {getStatusIcon(item.state)}
+                                              <span className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                                                {getStatusLabel(item.state)}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-4 py-2">
                                         <div className="flex flex-wrap gap-1.5">

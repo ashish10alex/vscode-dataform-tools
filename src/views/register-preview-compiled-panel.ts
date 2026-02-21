@@ -12,6 +12,7 @@ import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
+import { DataformTools } from "@ashishalex/dataform-tools";
 
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
@@ -435,6 +436,44 @@ export class CompiledQueryPanel {
                 return;
               case 'runFilesTagsWtOptionsInRemoteWorkspace':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace');
+                return;
+              case 'refreshWorkflowStatuses':
+                const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<{
+                    url: string;
+                    timestamp: number;
+                    workspace: string;
+                    includeDependencies: boolean;
+                    includeDependents: boolean;
+                    fullRefresh: boolean;
+                    executionMode?: 'api' | 'api_workspace';
+                    workflowInvocationId?: string;
+                    projectId?: string;
+                    location?: string;
+                    repositoryName?: string;
+                    state?: string;
+                }[]>('dataform_workflow_urls') || [];
+
+                if (urlsToRefresh.length > 0) {
+                    const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
+                        if (item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
+                            try {
+                                const dataformClient = new DataformTools(item.projectId, item.location);
+                                const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
+                                if (invocation && invocation.state) {
+                                  item.state = invocation.state as string;
+                                }
+                            } catch (e: any) {
+                                logger.error(`Error fetching workflow invocation status: ${e.message}`);
+                            }
+                        }
+                        return item;
+                    }));
+
+                    this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
+                    this.centerPanel?.webviewPanel.webview.postMessage({
+                        workflowUrls: updatedUrls
+                    });
+                }
                 return;
             }
             return;

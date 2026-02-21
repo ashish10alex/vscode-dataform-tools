@@ -11,7 +11,11 @@ export function sendWorkflowInvocationNotification(
     context?: vscode.ExtensionContext,
     invocationConfig?: InvocationConfig,
     workspaceName?: string,
-    executionMode?: 'api' | 'api_workspace'
+    executionMode?: 'api' | 'api_workspace',
+    workflowInvocationId?: string,
+    projectId?: string,
+    location?: string,
+    repositoryName?: string
 ) {
     if (context && url) {
         const storedUrls = context.workspaceState.get<{
@@ -22,6 +26,11 @@ export function sendWorkflowInvocationNotification(
             includeDependents: boolean;
             fullRefresh: boolean;
             executionMode?: 'api' | 'api_workspace';
+            workflowInvocationId?: string;
+            projectId?: string;
+            location?: string;
+            repositoryName?: string;
+            state?: string;
         }[]>('dataform_workflow_urls') || [];
 
         storedUrls.push({
@@ -32,6 +41,11 @@ export function sendWorkflowInvocationNotification(
             includeDependents: invocationConfig?.transitiveDependentsIncluded || false,
             fullRefresh: invocationConfig?.fullyRefreshIncrementalTablesEnabled || false,
             executionMode: executionMode || 'api',
+            workflowInvocationId: workflowInvocationId,
+            projectId: projectId,
+            location: location,
+            repositoryName: repositoryName,
+            state: 'RUNNING',
         });
         context.workspaceState.update('dataform_workflow_urls', storedUrls);
     }
@@ -241,7 +255,7 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
             vscode.window.showErrorMessage("Error creating workflow invocation");
             return;
         }
-        sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, workspaceName, "api_workspace");
+        sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, workspaceName, "api_workspace", output.workflowInvocationId, dataformClient.gcpProjectId, dataformClient.gcpLocation, repositoryName);
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
     }
