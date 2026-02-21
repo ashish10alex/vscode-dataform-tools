@@ -67,9 +67,14 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   ], []);
 
   const handleExportJson = () => {
+    const exportData = data.reduce((acc, field) => {
+      acc[field.name] = field.description || '';
+      return acc;
+    }, {} as Record<string, string>);
+
     vscode.postMessage({
       command: 'exportSchema',
-      value: data
+      value: exportData
     });
   };
 
