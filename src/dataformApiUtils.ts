@@ -47,6 +47,11 @@ export function sendWorkflowInvocationNotification(
             repositoryName: repositoryName,
             state: 'RUNNING',
         });
+
+        if (storedUrls.length > 20) {
+            storedUrls.splice(0, storedUrls.length - 20);
+        }
+
         context.workspaceState.update('dataform_workflow_urls', storedUrls);
         vscode.commands.executeCommand('vscode-dataform-tools.refreshWorkflowUrls');
     }
