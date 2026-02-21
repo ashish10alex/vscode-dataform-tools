@@ -240,8 +240,9 @@ export class CompiledQueryPanel {
                 return;
               case 'exportSchema':
                 const schemaData = message.value;
+                const defaultFilename = message.filename || 'schema.json';
                 const uri = await vscode.window.showSaveDialog({
-                    defaultUri: vscode.Uri.file('schema.json'),
+                    defaultUri: vscode.Uri.file(defaultFilename),
                     filters: {
                         'JSON': ['json']
                     }

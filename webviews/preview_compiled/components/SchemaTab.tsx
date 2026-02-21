@@ -72,9 +72,16 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
       return acc;
     }, {} as Record<string, string>);
 
+    let filename = 'schema.json';
+    const target = state.targetTablesOrViews?.[0]?.target || state.models?.[0]?.target;
+    if (target) {
+      filename = `${target.database}_${target.schema}_${target.name}.json`;
+    }
+
     vscode.postMessage({
       command: 'exportSchema',
-      value: exportData
+      value: exportData,
+      filename: filename
     });
   };
 
