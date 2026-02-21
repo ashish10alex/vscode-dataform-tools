@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
 import { CostEstimatorTab } from './components/CostEstimatorTab';
+import DOMPurify from 'dompurify';
 
 import { DeclarationsView } from './components/DeclarationsView';
 
@@ -63,6 +64,15 @@ function App() {
   // Handle declarations view (full page override)
   if (state.declarations) {
     return <DeclarationsView declarations={state.declarations} />;
+  }
+
+  let sanitizedError = '';
+  if (state.errorMessage) {
+    try {
+      sanitizedError = DOMPurify.sanitize(state.errorMessage);
+    } catch (e) {
+      sanitizedError = '';
+    }
   }
 
   return (
@@ -125,7 +135,7 @@ function App() {
             <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 p-4 mb-4 rounded-r shadow-sm">
                 <div className="flex items-start">
                     <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                    <div className="text-red-800 dark:text-red-200 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: state.errorMessage}} />
+                    <div className="text-red-800 dark:text-red-200 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
                 </div>
             </div>
         )}
