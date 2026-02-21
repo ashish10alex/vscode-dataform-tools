@@ -317,6 +317,7 @@ export class CompiledQueryPanel {
                     includeDependencies: boolean;
                     includeDependents: boolean;
                     fullRefresh: boolean;
+                    executionMode?: 'api' | 'api_workspace';
                 }[]>('dataform_workflow_urls') || [];
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
@@ -417,6 +418,7 @@ export class CompiledQueryPanel {
                     includeDependencies: boolean;
                     includeDependents: boolean;
                     fullRefresh: boolean;
+                    executionMode?: 'api' | 'api_workspace';
                 }[]>('dataform_workflow_urls') || [];
                 this.centerPanel?.webviewPanel.webview.postMessage({
                     workflowUrls: currentWorkflowUrls
@@ -449,6 +451,7 @@ export class CompiledQueryPanel {
             includeDependencies: boolean;
             includeDependents: boolean;
             fullRefresh: boolean;
+            executionMode?: 'api' | 'api_workspace';
         }[]>('dataform_workflow_urls') || [];
 
         if(this.webviewPanel.webview.html === ""){

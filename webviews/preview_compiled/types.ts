@@ -51,6 +51,7 @@ export interface WebviewState {
       includeDependencies: boolean;
       includeDependents: boolean;
       fullRefresh: boolean;
+      executionMode?: 'api' | 'api_workspace';
   }[];
 }
 

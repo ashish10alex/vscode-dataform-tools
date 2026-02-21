@@ -10,7 +10,8 @@ export function sendWorkflowInvocationNotification(
     url: string,
     context?: vscode.ExtensionContext,
     invocationConfig?: InvocationConfig,
-    workspaceName?: string
+    workspaceName?: string,
+    executionMode?: 'api' | 'api_workspace'
 ) {
     if (context && url) {
         const storedUrls = context.workspaceState.get<{
@@ -20,6 +21,7 @@ export function sendWorkflowInvocationNotification(
             includeDependencies: boolean;
             includeDependents: boolean;
             fullRefresh: boolean;
+            executionMode?: 'api' | 'api_workspace';
         }[]>('dataform_workflow_urls') || [];
 
         storedUrls.push({
@@ -29,6 +31,7 @@ export function sendWorkflowInvocationNotification(
             includeDependencies: invocationConfig?.transitiveDependenciesIncluded || false,
             includeDependents: invocationConfig?.transitiveDependentsIncluded || false,
             fullRefresh: invocationConfig?.fullyRefreshIncrementalTablesEnabled || false,
+            executionMode: executionMode || 'api',
         });
         context.workspaceState.update('dataform_workflow_urls', storedUrls);
     }
@@ -238,7 +241,7 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
             vscode.window.showErrorMessage("Error creating workflow invocation");
             return;
         }
-        sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, workspaceName);
+        sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, workspaceName, "api_workspace");
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
     }

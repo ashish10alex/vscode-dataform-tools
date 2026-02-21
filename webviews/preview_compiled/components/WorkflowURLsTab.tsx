@@ -47,6 +47,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                         <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
                             <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 w-1/4">Time</th>
                             <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Target Workspace</th>
+                            <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Mode</th>
                             <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Options</th>
                             <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 w-16">Link</th>
                         </tr>
@@ -63,6 +64,9 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                     <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-mono">
                                         {item.workspace || 'unknown'}
                                     </span>
+                                </td>
+                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap text-xs">
+                                    {item.executionMode === 'api_workspace' ? 'GCP Workspace' : 'gitCommitish'}
                                 </td>
                                 <td className="px-4 py-2">
                                     <div className="flex flex-wrap gap-1.5">
