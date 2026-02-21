@@ -44,6 +44,25 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         })
     );
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
+            if (CompiledQueryPanel.centerPanel?.webviewPanel) {
+                const workflowUrls = context.workspaceState.get<{
+                    url: string;
+                    timestamp: number;
+                    workspace: string;
+                    includeDependencies: boolean;
+                    includeDependents: boolean;
+                    fullRefresh: boolean;
+                    executionMode?: 'api' | 'api_workspace';
+                }[]>('dataform_workflow_urls') || [];
+                CompiledQueryPanel.centerPanel.webviewPanel.webview.postMessage({
+                    workflowUrls: workflowUrls
+                });
+            }
+        })
+    );
+
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
         const changedActiveEditorFileName = editor?.document?.fileName;
         const webviewPanelVisisble = CompiledQueryPanel?.centerPanel?.webviewPanel?.visible;

@@ -48,6 +48,7 @@ export function sendWorkflowInvocationNotification(
             state: 'RUNNING',
         });
         context.workspaceState.update('dataform_workflow_urls', storedUrls);
+        vscode.commands.executeCommand('vscode-dataform-tools.refreshWorkflowUrls');
     }
     vscode.window.showInformationMessage(
         `Workflow invocation created`,
