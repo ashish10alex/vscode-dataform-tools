@@ -238,6 +238,20 @@ export class CompiledQueryPanel {
                 }
 
                 return;
+              case 'exportSchema':
+                const schemaData = message.value;
+                const uri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file('schema.json'),
+                    filters: {
+                        'JSON': ['json']
+                    }
+                });
+                if (uri) {
+                    const content = JSON.stringify(schemaData, null, 2);
+                    await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+                    vscode.window.showInformationMessage('Schema exported successfully!');
+                }
+                return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");

@@ -90,7 +90,9 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
     };
 
     tables?.forEach(table => {
-        if (!table.type) table.type = 'table';
+        if (!table.type) {
+            table.type = 'table';
+        }
         addNodeToFileMap(table);
         addDependenciesToMap(table);
         addNodeToTargetNameMap(table);
