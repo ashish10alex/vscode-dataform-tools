@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps } from '../../utils';
+import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset } from '../../constants';
@@ -308,6 +308,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
 
@@ -349,6 +350,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     // console.log('[DEBUG] sqlxBlockMetadata:', JSON.stringify(sqlxBlockMetadata, null, 2));
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
@@ -380,6 +382,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
@@ -417,6 +420,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
@@ -455,6 +459,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
@@ -493,6 +498,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
@@ -532,6 +538,7 @@ suite('getQueryMetaForCurrentFile', () => {
             if (compiledString) {
                 const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
                 if (dataformCompiledJson) {
+                    buildIndices(dataformCompiledJson);
                     let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
                     assert.strictEqual(sqlxBlockMetadata.tables.length, 4);
 

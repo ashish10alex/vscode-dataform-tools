@@ -209,37 +209,19 @@ async function getTableSchemaAsMarkdown(metadata:any) {
 
 async function getTableInformationFromRef(
   searchTerm: string,
-  struct: Table[]
 ): Promise<vscode.Hover | undefined> {
-  let hoverMeta: vscode.Hover | undefined;
-  for (let i = 0; i < struct.length; i++) {
-    let targetName = struct[i].target.name;
-    if (searchTerm === targetName) {
-      const tableMetadata = await getTableMetadata( struct[i].target.database, struct[i].target.schema, struct[i].target.name);
-      const partitionBy = struct[i].bigquery?.partitionBy || "";
-      const hoverMarkdownString = await createHoverContentForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
-     hoverMeta = new vscode.Hover(hoverMarkdownString);
-    }
+  const nodes = global.TARGET_NAME_MAP?.get(searchTerm) || [];
+  if (nodes.length > 0) {
+    // Return hover for the first matching node
+    const node = nodes[0];
+    const tableMetadata = await getTableMetadata(node.target.database, node.target.schema, node.target.name);
+    const partitionBy = (node as any).bigquery?.partitionBy || "";
+    const hoverMarkdownString = await createHoverContentForTable(tableMetadata, node.target, partitionBy, (node as any).type || "table");
+    return new vscode.Hover(hoverMarkdownString);
   }
-  return hoverMeta;
+  return undefined;
 }
 
-async function getFullTableNameFromRef(
-  searchTerm: string,
-  struct: Operation[] | Assertion[]
-): Promise<vscode.Hover | undefined> {
-  let hoverMeta: vscode.Hover | undefined;
-  for (let i = 0; i < struct.length; i++) {
-    let targetName = struct[i].target.name;
-    if (searchTerm === targetName) {
-      const tableMetadata = await getTableMetadata( struct[i].target.database, struct[i].target.schema, struct[i].target.name);
-      const partitionBy = (struct[i] as Operation).bigquery?.partitionBy || (struct[i] as Assertion).bigquery?.partitionBy || "";
-      const hoverMarkdownString = await createHoverContentForTable(tableMetadata, struct[i].target, partitionBy, struct[i].type);
-      return new vscode.Hover(hoverMarkdownString);
-    }
-  }
-  return hoverMeta;
-}
 interface ImportedModule {
   module: string;
   path: string;
@@ -378,9 +360,6 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     }
 
     let declarations = dataformCompiledJson?.declarations;
-    let tables = dataformCompiledJson?.tables;
-    let operations = dataformCompiledJson?.operations;
-    let assertions = dataformCompiledJson?.assertions;
     let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
 
     if (declarations) {
@@ -398,22 +377,11 @@ export class DataformHoverProvider implements vscode.HoverProvider {
       searchTerm = tablePrefix + "_" + searchTerm;
     }
 
-    if (tables) {
-      hoverMeta = await getTableInformationFromRef(searchTerm, tables);
-    }
+    // Since declarations are not in TARGET_NAME_MAP yet, we use the old loop for them.
+    // However, everything else can instantly use the map!
+    hoverMeta = await getTableInformationFromRef(searchTerm);
     if (hoverMeta) {
       return hoverMeta;
-    }
-
-    if (operations) {
-      hoverMeta = await getFullTableNameFromRef(searchTerm, operations);
-    }
-    if (hoverMeta) {
-      return hoverMeta;
-    }
-
-    if (assertions) {
-      return await getFullTableNameFromRef(searchTerm, assertions);
     }
   } else {
     const regex = /\$\{([^}]+)\}/g;

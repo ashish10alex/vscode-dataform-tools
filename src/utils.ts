@@ -35,6 +35,92 @@ export function formatTimestamp(lastModifiedTime:Date):string {
 
 export let declarationsAndTargets: string[] = [];
 
+// Cache maps for O(1) lookups
+global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+global.TARGET_DEPENDENTS_MAP = new Map<string, Target[]>();
+global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+
+export function clearIndices() {
+    FILE_NODE_MAP.clear();
+    TARGET_DEPENDENTS_MAP.clear();
+    TARGET_NAME_MAP.clear();
+}
+
+export function buildIndices(compiledJson: DataformCompiledJson) {
+    clearIndices();
+
+    const { tables, assertions, operations, notebooks } = compiledJson;
+
+    // Helper to add node to FILE_NODE_MAP
+    const addNodeToFileMap = (node: Table | Assertion | Operation | Notebook) => {
+        const fileName = node.fileName;
+        if (!FILE_NODE_MAP.has(fileName)) {
+            FILE_NODE_MAP.set(fileName, []);
+        }
+        FILE_NODE_MAP.get(fileName)?.push(node);
+    };
+
+    // Helper to add dependencies to TARGET_DEPENDENTS_MAP
+    // We map: DependencyTarget -> [DependentNodes]
+    // The 'node' depends on 'dependencyTarget'.
+    // So 'node.target' is a dependent of 'dependencyTarget'.
+    const addDependenciesToMap = (node: Table | Assertion | Operation | Notebook) => {
+        if (node.dependencyTargets) {
+            node.dependencyTargets.forEach(depTarget => {
+                const depKey = `${depTarget.database}.${depTarget.schema}.${depTarget.name}`;
+                if (!TARGET_DEPENDENTS_MAP.has(depKey)) {
+                    TARGET_DEPENDENTS_MAP.set(depKey, []);
+                }
+                // Avoid duplicates if possible, though strict set check might be overkill for now
+                // We push the *node's target* as the dependent
+                 TARGET_DEPENDENTS_MAP.get(depKey)?.push(node.target);
+            });
+        }
+    };
+
+    // Helper to add nodes to TARGET_NAME_MAP for text-based ref/hover resolution
+    const addNodeToTargetNameMap = (node: Table | Assertion | Operation | Notebook) => {
+        if (node.target && node.target.name) {
+            const tName = node.target.name;
+            if (!TARGET_NAME_MAP.has(tName)) {
+                TARGET_NAME_MAP.set(tName, []);
+            }
+            TARGET_NAME_MAP.get(tName)?.push(node);
+        }
+    };
+
+    tables?.forEach(table => {
+        if (!table.type) table.type = 'table';
+        addNodeToFileMap(table);
+        addDependenciesToMap(table);
+        addNodeToTargetNameMap(table);
+    });
+
+    assertions?.forEach(assertion => {
+        assertion.type = 'assertion';
+        addNodeToFileMap(assertion);
+        addDependenciesToMap(assertion);
+        addNodeToTargetNameMap(assertion);
+    });
+
+    operations?.forEach(operation => {
+        operation.type = 'operations';
+        addNodeToFileMap(operation);
+        addDependenciesToMap(operation);
+        addNodeToTargetNameMap(operation);
+    });
+
+    notebooks?.forEach(notebook => {
+        (notebook as any).type = 'notebook';
+        addNodeToFileMap(notebook);
+        addDependenciesToMap(notebook);
+        addNodeToTargetNameMap(notebook);
+    });
+    
+    logger.debug(`Built indices: ${FILE_NODE_MAP.size} files, ${TARGET_DEPENDENTS_MAP.size} targets with dependents`);
+}
+
+
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
@@ -381,33 +467,11 @@ function getTreeRootFromWordInStruct(struct: Table[] | Operation[] | Assertion[]
     }
 }
 
-function updateDependentsGivenObj(dependents: Target[], targetObjList: Table[] | Assertion[] | Operation[], targetToSearch: Target) {
-    if (!targetObjList?.length) {
-        return dependents;
-    }
-    for (let i = 0; i < targetObjList.length; i++) {
-        const tableTargets = targetObjList[i].dependencyTargets;
-        if (!tableTargets || tableTargets.length === 0) {
-            continue;
-        } else {
-            tableTargets.forEach((tableTarget: Target) => {
-                if (tableTarget.name === targetToSearch.name && tableTarget.schema === targetToSearch.schema && tableTarget.database === targetToSearch.database) {
-                    dependents.push(targetObjList[i].target);
-                }
-            });
-        }
-    }
+export async function getDependentsOfTarget(targetToSearch: Target) {
+    const targetKey = `${targetToSearch.database}.${targetToSearch.schema}.${targetToSearch.name}`;
+    const dependents = TARGET_DEPENDENTS_MAP.get(targetKey) || [];
+    logger.debug(`Found ${dependents.length} dependents for ${targetKey} from cache`);
     return dependents;
-}
-
-async function getDependentsOfTarget(targetToSearch: Target, dataformCompiledJson: DataformCompiledJson) {
-    const { tables, assertions, operations } = dataformCompiledJson;
-
-    return Promise.all([
-        updateDependentsGivenObj([], tables, targetToSearch),
-        updateDependentsGivenObj([], assertions, targetToSearch),
-        updateDependentsGivenObj([], operations, targetToSearch)
-    ]).then(results => results.flat());
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean): Promise<CurrentFileMetadata | undefined> {
@@ -463,7 +527,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             const targetToSearch = fileMetadata?.tables[0]?.target;
             let dependents = undefined;
             if (targetToSearch) {
-                dependents = await getDependentsOfTarget(targetToSearch, dataformCompiledJson);
+                dependents = await getDependentsOfTarget(targetToSearch);
             }
 
             return {
@@ -486,6 +550,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
+            clearIndices();
             logger.debug('Clearing compilation cache due to errors');
             logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
@@ -521,7 +586,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         const targetToSearch = fileMetadata?.tables[0]?.target;
         let dependents = undefined;
         if (targetToSearch) {
-            dependents = await getDependentsOfTarget(targetToSearch, CACHED_COMPILED_DATAFORM_JSON);
+            dependents = await getDependentsOfTarget(targetToSearch);
         }
 
         return {
@@ -1182,9 +1247,10 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 }
 
 
+// Optimized getQueryMetaForCurrentFile using FILE_NODE_MAP cache
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson, workspaceFolder:string): Promise<TablesWtFullQuery> {
 
-    const { tables, assertions, operations, notebooks } = compiledJson;
+    const { notebooks } = compiledJson;
 
     let queryMeta = {
         type: "",
@@ -1207,31 +1273,28 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         queryMeta.type = "js";
     }
 
-    if (tables?.length > 0) {
-        let matchingTables;
-        if (isJsFile) {
-            matchingTables = tables.filter(table => table.fileName === relativeFilePath);
-        } else {
-            matchingTables = tables.find(table => table.fileName === relativeFilePath);
-        }
+    // O(1) Lookup from cache
+    const fileNodes = FILE_NODE_MAP.get(relativeFilePath) || [];
 
-        // make matchingTables an array if it is not already
-        if (matchingTables && !Array.isArray(matchingTables)) {
-            matchingTables = [matchingTables];
-        }
+    if (fileNodes.length > 0) {
+        // 1. Tables/Views/Incremental
+        // Cast to 'any' to safely check 'type' as Notebook doesn't have it in type definition
+        const tableNodes = fileNodes.filter((n: any) => !n.type || n.type === 'table' || n.type === 'view' || n.type === 'incremental') as Table[];
+        if (tableNodes.length > 0) {
+            logger.debug(`Found ${tableNodes.length} table(s) with filename: ${relativeFilePath}`);
+            if(queryMeta.type !== "js"){
+                // Default to table if type is entirely missing, otherwise use the found type
+                queryMeta.type = tableNodes[0].type || "table";
+            }
 
-        if (matchingTables && matchingTables.length > 0) {
-            logger.debug(`Found ${matchingTables.length} table(s) with filename: ${relativeFilePath}`);
-            queryMeta.type = queryMeta.type === "js" ? "js" : matchingTables[0].type;
-
-            matchingTables.forEach(table => {
-
-                switch (table.type) {
+            tableNodes.forEach(table => {
+                const tableTypeToUse = table.type || "table";
+                switch (tableTypeToUse) {
                     case "table":
                     case "view":
                         if (!table?.query) {
-                            queryMeta.tableOrViewQuery = "";
-                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, table.type, isJsFile);
+                            // queryMeta.tableOrViewQuery = "";
+                            queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, tableTypeToUse, isJsFile);
                         } else {
                             const curTableQuery  = (table.query.trimStart() !== "" ? table.query.trimStart() + "\n;" : "");
                             queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + curTableQuery;
@@ -1245,7 +1308,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         }
                         break;
                     default:
-                        logger.debug(`Unexpected table type: ${table.type}`);
+                        logger.debug(`Unexpected table type: ${tableTypeToUse}`);
                 }
 
                 if (table.preOps) {
@@ -1255,8 +1318,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     queryMeta.postOpsQuery += (queryMeta.postOpsQuery ? "\n" : "") + table.postOps.join("\n") + "\n";
                 }
 
-                const tableFound = {
-                    type: table.type,
+                finalTables.push({
+                    type: tableTypeToUse,
                     tags: table.tags,
                     fileName: relativeFilePath,
                     target: table.target,
@@ -1266,62 +1329,63 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     incrementalQuery: table.incrementalQuery ?? "",
                     incrementalPreOps: table.incrementalPreOps ?? [],
                     actionDescriptor: table.actionDescriptor
-                };
-                finalTables.push(tableFound);
+                });
             });
         }
-    }
 
-    if (assertions?.length > 0) {
-        const assertionsForFile = assertions.filter(assertion => assertion.fileName === relativeFilePath);
-        const assertionCountForFile = assertionsForFile.length;
-        if (assertionCountForFile > 0 && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
-            queryMeta.type = queryMeta.type === "js" ? "js" : "assertion";
-        }
-        const assertionQueries = assertionsForFile.map((assertion, index) => {
-            if (assertion?.query) {
-                finalTables.push({
-                    type: "assertion",
-                    tags: assertion.tags,
-                    fileName: relativeFilePath,
-                    query: assertion.query,
-                    target: assertion.target,
-                    dependencyTargets: assertion.dependencyTargets,
-                    incrementalQuery: "",
-                    incrementalPreOps: []
-                });
-                logger.debug(`Assertion found: ${assertion.fileName}`);
-                return `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
-            } else {
-                let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions", isJsFile);
-                queryMeta.error += errorString;
-                finalTables.push({
-                    type: "assertion",
-                    tags: assertion.tags,
-                    fileName: relativeFilePath,
-                    query: assertion.query,
-                    target: assertion.target,
-                    dependencyTargets: assertion.dependencyTargets,
-                    incrementalQuery: "",
-                    incrementalPreOps: [],
-                    error: errorString
-                });
-                logger.debug(`Assertion found: ${assertion.fileName}`);
-                logger.debug(`Error in assertion: ${errorString}`);
-                return `\n -- Assertions: [${index + 1}] \n ${errorString}; \n`;
+        // 2. Assertions
+        const assertionNodes = fileNodes.filter((n: any) => n.type === 'assertion') as Assertion[];
+        if (assertionNodes.length > 0) {
+            // Logic regarding type setting
+            if(queryMeta.type !== "js" && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
+                queryMeta.type = "assertion";
             }
-        });
-        queryMeta.assertionQuery = assertionQueries.join('');
-    }
+            
+            assertionNodes.forEach((assertion, index) => {
+                if (assertion?.query) {
+                    finalTables.push({
+                        type: "assertion",
+                        tags: assertion.tags,
+                        fileName: relativeFilePath,
+                        query: assertion.query,
+                        target: assertion.target,
+                        dependencyTargets: assertion.dependencyTargets,
+                        incrementalQuery: "",
+                        incrementalPreOps: []
+                    });
+                    logger.debug(`Assertion found: ${assertion.fileName}`);
+                    queryMeta.assertionQuery += `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+                } else {
+                    let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions", isJsFile);
+                    queryMeta.error += errorString;
+                    finalTables.push({
+                        type: "assertion",
+                        tags: assertion.tags,
+                        fileName: relativeFilePath,
+                        query: assertion.query,
+                        target: assertion.target,
+                        dependencyTargets: assertion.dependencyTargets,
+                        incrementalQuery: "",
+                        incrementalPreOps: [],
+                        error: errorString
+                    });
+                    logger.debug(`Assertion found: ${assertion.fileName}`);
+                    logger.debug(`Error in assertion: ${errorString}`);
+                    queryMeta.assertionQuery += `\n -- Assertions: [${index + 1}] \n ${errorString}; \n`;
+                }
+            });
+        }
 
-    if (operations?.length > 0) {
-        if ((isSqlxFile && finalTables.length === 0) || isJsFile) {
-            const operationsForFile = operations.filter(op => op.fileName === relativeFilePath);
-            if (operationsForFile.length > 0) {
-                logger.debug(`Found ${operationsForFile.length} operation(s) with filename: ${relativeFilePath}`);
-                queryMeta.type = queryMeta.type === "js" ? "js" : "operations";
+        // 3. Operations
+        const operationNodes = fileNodes.filter((n: any) => n.type === 'operations') as Operation[];
+        if (operationNodes.length > 0) {
+             if ((isSqlxFile && finalTables.length === 0) || isJsFile) {
+                logger.debug(`Found ${operationNodes.length} operation(s) with filename: ${relativeFilePath}`);
+                if(queryMeta.type !== "js"){
+                    queryMeta.type = "operations";
+                }
 
-                operationsForFile.forEach(operation => {
+                operationNodes.forEach(operation => {
                     if (operation?.queries) {
                         const finalOperationQuery = operation.queries.reduce((acc, query, index) => {
                             return acc + `\n -- Operations: [${index + 1}] \n${query}\n`;
@@ -1355,9 +1419,11 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         });
                     }
                 });
-            }
+             }
         }
     }
+
+    // 4. Notebooks (Special JS parsing logic retained)
     if(notebooks && notebooks.length > 0 && workspaceFolder && isJsFile){ 
         const fileContents = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(workspaceFolder, relativeFilePath)));
         const content = Buffer.from(fileContents).toString('utf8');
@@ -1597,6 +1663,7 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
                 dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
             }
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            buildIndices(dataformCompiledJson);
             logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
             return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions };
         }
