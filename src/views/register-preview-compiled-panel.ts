@@ -445,7 +445,7 @@ export class CompiledQueryPanel {
                 });
                 return;
               case 'clearWorkflowUrls':
-                this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
+                await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
                 this.centerPanel?.webviewPanel.webview.postMessage({
                     workflowUrls: []
                 });
