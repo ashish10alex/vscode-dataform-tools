@@ -24,10 +24,14 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
     }
   }, [code, language]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 400);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
   };
 
   return (
