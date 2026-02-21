@@ -266,9 +266,9 @@ export type CurrentFileMetadata = {
     possibleResolutions?: any[];
     dependents?: any;
     lineageMetadata?: {
-        dependencies: undefined;
-        error: undefined;
-    };
+        dependencies: string[] | undefined;
+        error: any;
+    } | undefined | null;
     pathMeta?: {
         filename: string;
         extension: string;
@@ -306,13 +306,12 @@ export const supportedCurrencies = {
 export type SupportedCurrency = keyof typeof supportedCurrencies;
 
 export type LastModifiedTimeMeta = {
-    lastModifiedTime: any,
-    modelWasUpdatedToday: boolean | undefined,
+    lastModifiedTime: string | undefined;
+    modelWasUpdatedToday: boolean | undefined;
     error: {
-        message: string | undefined,
+        message: string | undefined;
     }
 }[];
-
 
 export type DependancyModelMetadata = {
     id: string;
@@ -336,9 +335,6 @@ export type ExecutablePathInfo = {
 
 export type ExecutablePathCache = Map<string, ExecutablePathInfo>;
 
-
-export interface WebviewMessage {
-}
 export interface WebviewMessage {
   tableOrViewQuery?: string;
   assertionQuery?: string;
@@ -359,6 +355,11 @@ export interface WebviewMessage {
   apiUrlLoading?: boolean;
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
+  recompiling?: boolean;
+  dryRunning?: boolean;
+  modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
+  declarations?: Declarations[] | null;
+  compilerOptions?: string;
 }
 
 export type CreateCompilationResultResponse = Promise<

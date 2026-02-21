@@ -7,10 +7,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: './webviews/dependancy_graph/index.tsx',
+      input: {
+        dependancy_graph: './webviews/dependancy_graph/index.tsx',
+        preview_compiled: './webviews/preview_compiled/index.tsx'
+      },
       output: {
-        entryFileNames: 'dependancy_graph.js',
-        format: 'iife',
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]',
+        format: 'es', 
       },
     },
     sourcemap: true,
@@ -21,7 +26,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './webviews/dependancy_graph')
+      '@': path.resolve(__dirname, './webviews')
     }
   }
 });
