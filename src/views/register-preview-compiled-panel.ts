@@ -767,7 +767,7 @@ export class CompiledQueryPanel {
         <body>
             <div id="root"></div>
             <script nonce="${nonce}">
-                window.initialState = ${JSON.stringify(initialState)};
+                window.initialState = ${JSON.stringify(initialState).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
             </script>
             <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
         </body>
