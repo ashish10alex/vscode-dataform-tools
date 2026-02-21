@@ -488,7 +488,7 @@ export class CompiledQueryPanel {
                         return item;
                     }));
 
-                    this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
+                    await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
                     this.centerPanel?.webviewPanel.webview.postMessage({
                         workflowUrls: updatedUrls
                     });
