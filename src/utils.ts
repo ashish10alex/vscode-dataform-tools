@@ -40,10 +40,14 @@ global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook
 global.TARGET_DEPENDENTS_MAP = new Map<string, Target[]>();
 global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 
-export function buildIndices(compiledJson: DataformCompiledJson) {
+export function clearIndices() {
     FILE_NODE_MAP.clear();
     TARGET_DEPENDENTS_MAP.clear();
     TARGET_NAME_MAP.clear();
+}
+
+export function buildIndices(compiledJson: DataformCompiledJson) {
+    clearIndices();
 
     const { tables, assertions, operations, notebooks } = compiledJson;
 
@@ -546,6 +550,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
+            clearIndices();
             logger.debug('Clearing compilation cache due to errors');
             logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
