@@ -36,12 +36,14 @@ export function formatTimestamp(lastModifiedTime:Date):string {
 export let declarationsAndTargets: string[] = [];
 
 // Cache maps for O(1) lookups
-let FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
-let TARGET_DEPENDENTS_MAP = new Map<string, Target[]>();
+global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+global.TARGET_DEPENDENTS_MAP = new Map<string, Target[]>();
+global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 
 export function buildIndices(compiledJson: DataformCompiledJson) {
     FILE_NODE_MAP.clear();
     TARGET_DEPENDENTS_MAP.clear();
+    TARGET_NAME_MAP.clear();
 
     const { tables, assertions, operations, notebooks } = compiledJson;
 
@@ -72,28 +74,43 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
         }
     };
 
+    // Helper to add nodes to TARGET_NAME_MAP for text-based ref/hover resolution
+    const addNodeToTargetNameMap = (node: Table | Assertion | Operation | Notebook) => {
+        if (node.target && node.target.name) {
+            const tName = node.target.name;
+            if (!TARGET_NAME_MAP.has(tName)) {
+                TARGET_NAME_MAP.set(tName, []);
+            }
+            TARGET_NAME_MAP.get(tName)?.push(node);
+        }
+    };
+
     tables?.forEach(table => {
         if (!table.type) table.type = 'table';
         addNodeToFileMap(table);
         addDependenciesToMap(table);
+        addNodeToTargetNameMap(table);
     });
 
     assertions?.forEach(assertion => {
         assertion.type = 'assertion';
         addNodeToFileMap(assertion);
         addDependenciesToMap(assertion);
+        addNodeToTargetNameMap(assertion);
     });
 
     operations?.forEach(operation => {
         operation.type = 'operations';
         addNodeToFileMap(operation);
         addDependenciesToMap(operation);
+        addNodeToTargetNameMap(operation);
     });
 
     notebooks?.forEach(notebook => {
         (notebook as any).type = 'notebook';
         addNodeToFileMap(notebook);
         addDependenciesToMap(notebook);
+        addNodeToTargetNameMap(notebook);
     });
     
     logger.debug(`Built indices: ${FILE_NODE_MAP.size} files, ${TARGET_DEPENDENTS_MAP.size} targets with dependents`);
