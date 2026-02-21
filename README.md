@@ -83,7 +83,6 @@
 | [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) 🚨 | Native LSP like experience with diagnostics being directly put on sqlx file |
 | [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
-| [Schema code generation](#schema_code_gen) | Edit the schema of the model to genrate code that can be used for documentation |
 | [Cost estimator](#cost_estimator) 💸 | Estimate the cost of running a Tag|
 | [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
 | [Auto-completion](#autocomplete) | - Column names of current model <br> - Dependencies and declarations in `${ref("..")}` trigger when `$` character is typed <br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
@@ -153,12 +152,6 @@ Trouble installing or looking for a specific customization ? Please see [FAQ sec
 ### <a id="preview_query_results">Preview query results</a>
 
 ![preview_query_results](/media/images/preview_query_results.png)
-
-### <a id="schema_code_gen">Schema code generation</a>
-
-Generate code for schema of the model by editing description to generate documentation code for the columns. See <a href="https://cloud.google.com/dataform/docs/create-tables#reuse-column-documentation-includes">documentation</a> for how to use the generated code
-
-![schema_code_gen](media/images/schema_code_gen.gif)
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 

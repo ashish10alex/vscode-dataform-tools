@@ -6,6 +6,7 @@ import path from 'path';
 
 export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview: vscode.Webview) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'dependancy_graph.js'));
+    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'dependancy_graph.css'));
     const nonce = getNonce();
   
     return `
@@ -14,12 +15,13 @@ export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-eval'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https:;">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource} https:; script-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-eval'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https:;">
+        <link href="${styleUri}" rel="stylesheet">
         <title>My Extension</title>
       </head>
       <body>
         <div id="root"></div>
-        <script nonce="${nonce}" src="${scriptUri}"></script>
+        <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
       </body>
       </html>
     `;
