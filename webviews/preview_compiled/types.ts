@@ -44,6 +44,14 @@ export interface WebviewState {
       error?: { message: string };
   };
   compilerOptions?: string;
+  workflowUrls?: {
+      url: string;
+      timestamp: number;
+      workspace: string;
+      includeDependencies: boolean;
+      includeDependents: boolean;
+      fullRefresh: boolean;
+  }[];
 }
 
 export interface Target {

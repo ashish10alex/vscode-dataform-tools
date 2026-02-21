@@ -6,7 +6,32 @@ import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
 
-export function sendWorkflowInvocationNotification(url:string){
+export function sendWorkflowInvocationNotification(
+    url: string,
+    context?: vscode.ExtensionContext,
+    invocationConfig?: InvocationConfig,
+    workspaceName?: string
+) {
+    if (context && url) {
+        const storedUrls = context.workspaceState.get<{
+            url: string;
+            timestamp: number;
+            workspace: string;
+            includeDependencies: boolean;
+            includeDependents: boolean;
+            fullRefresh: boolean;
+        }[]>('dataform_workflow_urls') || [];
+
+        storedUrls.push({
+            url,
+            timestamp: Date.now(),
+            workspace: workspaceName || 'unknown',
+            includeDependencies: invocationConfig?.transitiveDependenciesIncluded || false,
+            includeDependents: invocationConfig?.transitiveDependentsIncluded || false,
+            fullRefresh: invocationConfig?.fullyRefreshIncrementalTablesEnabled || false,
+        });
+        context.workspaceState.update('dataform_workflow_urls', storedUrls);
+    }
     vscode.window.showInformationMessage(
         `Workflow invocation created`,
         'View workflow execution'
@@ -205,7 +230,7 @@ export async function syncRemoteWorkspaceToLocalBranch(dataformClient: DataformT
     }
 }
 
-export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, repositoryName:string, workspaceName:string,  codeCompilationConfig:CodeCompilationConfig, invocationConfig: InvocationConfig): Promise<CreateCompilationResultResponse | undefined>{
+export async function compileAndCreateWorkflowInvocation(dataformClient: DataformTools, repositoryName:string, workspaceName:string,  codeCompilationConfig:CodeCompilationConfig, invocationConfig: InvocationConfig, context?: vscode.ExtensionContext): Promise<CreateCompilationResultResponse | undefined>{
     try{
         vscode.window.showInformationMessage("[...] Creating compilation result & invoking workflow");
         const output = await dataformClient.runDataformRemotely(repositoryName, codeCompilationConfig, invocationConfig, workspaceName, undefined);
@@ -213,7 +238,7 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
             vscode.window.showErrorMessage("Error creating workflow invocation");
             return;
         }
-        sendWorkflowInvocationNotification(output.workflowInvocationUrl);
+        sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, workspaceName);
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
     }
@@ -394,7 +419,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                 vscode.window.showInformationMessage('Operation cancelled before workflow invocation.');
                 return;
             }
-            await compileAndCreateWorkflowInvocation(dataformClient, repositoryName, workspaceName, codeCompilationConfig, invocationConfig);
+            await compileAndCreateWorkflowInvocation(dataformClient, repositoryName, workspaceName, codeCompilationConfig, invocationConfig, context);
             //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
             context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
         }else{

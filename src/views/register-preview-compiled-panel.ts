@@ -310,7 +310,15 @@ export class CompiledQueryPanel {
                     return;
                 }
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
-                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
+                const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<{
+                    url: string;
+                    timestamp: number;
+                    workspace: string;
+                    includeDependencies: boolean;
+                    includeDependents: boolean;
+                    fullRefresh: boolean;
+                }[]>('dataform_workflow_urls') || [];
+                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
               case 'costEstimator':
@@ -401,6 +409,25 @@ export class CompiledQueryPanel {
                     "modelType": fileMetadata.queryMeta.type,
                 });
                 return;
+              case 'getWorkflowUrls':
+                const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<{
+                    url: string;
+                    timestamp: number;
+                    workspace: string;
+                    includeDependencies: boolean;
+                    includeDependents: boolean;
+                    fullRefresh: boolean;
+                }[]>('dataform_workflow_urls') || [];
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    workflowUrls: currentWorkflowUrls
+                });
+                return;
+              case 'clearWorkflowUrls':
+                this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    workflowUrls: []
+                });
+                return;
             }
             return;
           },
@@ -415,6 +442,14 @@ export class CompiledQueryPanel {
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined, freshCompilation: boolean = true) {
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
+        const workflowUrls = this.extensionContext.workspaceState.get<{
+            url: string;
+            timestamp: number;
+            workspace: string;
+            includeDependencies: boolean;
+            includeDependents: boolean;
+            fullRefresh: boolean;
+        }[]>('dataform_workflow_urls') || [];
 
         if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions });
@@ -556,7 +591,8 @@ export class CompiledQueryPanel {
             "recompiling": false,
             "dryRunning": true,
             "declarations": null,
-            "compilerOptions": compilerOptions
+            "compilerOptions": compilerOptions,
+            "workflowUrls": workflowUrls
     });
 
         if(diagnosticCollection){
@@ -721,7 +757,8 @@ export class CompiledQueryPanel {
                 "recompiling": false,
                 "dryRunning": false,
                 "declarations": null,
-                "compilerOptions": compilerOptions
+                "compilerOptions": compilerOptions,
+                "workflowUrls": workflowUrls
             });
             this._cachedResults = { 
                 fileMetadata, 

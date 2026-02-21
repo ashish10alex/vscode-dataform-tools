@@ -360,6 +360,14 @@ export interface WebviewMessage {
   modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
   declarations?: Declarations[] | null;
   compilerOptions?: string;
+  workflowUrls?: { 
+      url: string;
+      timestamp: number;
+      workspace: string;
+      includeDependencies: boolean;
+      includeDependents: boolean;
+      fullRefresh: boolean;
+  }[];
 }
 
 export type CreateCompilationResultResponse = Promise<
