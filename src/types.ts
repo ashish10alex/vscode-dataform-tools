@@ -335,6 +335,23 @@ export type ExecutablePathInfo = {
 
 export type ExecutablePathCache = Map<string, ExecutablePathInfo>;
 
+export interface WorkflowUrlEntry {
+    url: string;
+    timestamp: number;
+    workspace: string;
+    includeDependencies: boolean;
+    includeDependents: boolean;
+    fullRefresh: boolean;
+    executionMode?: 'api' | 'api_workspace';
+    workflowInvocationId?: string;
+    projectId?: string;
+    location?: string;
+    repositoryName?: string;
+    state?: string;
+    includedTags?: string[];
+    includedTargets?: Target[];
+}
+
 export interface WebviewMessage {
   tableOrViewQuery?: string;
   assertionQuery?: string;
@@ -360,6 +377,7 @@ export interface WebviewMessage {
   modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
   declarations?: Declarations[] | null;
   compilerOptions?: string;
+  workflowUrls?: WorkflowUrlEntry[];
 }
 
 export type CreateCompilationResultResponse = Promise<

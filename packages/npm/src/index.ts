@@ -251,6 +251,25 @@ export class DataformTools {
         return workflowInvocation;
     }
 
+    /**
+     * Get a workflow invocation
+     * @param repositoryName - Name of the Dataform repository
+     * @param workflowInvocationId - ID of the workflow invocation
+     * @returns A promise that resolves to a workflow invocation object {@link protos.google.cloud.dataform.v1beta1.WorkflowInvocation|WorkflowInvocation}
+     */
+    async getWorkflowInvocation(repositoryName:string, workflowInvocationId:string) {
+        if (!repositoryName) {
+            throw new Error("repositoryName must be provided.");
+        }else if (!workflowInvocationId){
+            throw new Error("workflowInvocationId must be provided.");
+        }
+
+        const workflowInvocationPath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workflowInvocations/${workflowInvocationId}`;
+        const [workflowInvocation] = await this.client.getWorkflowInvocation({
+            name: workflowInvocationPath
+        });
+        return workflowInvocation;
+    }
 
     /**
      * Create workflow invocation using compilation result

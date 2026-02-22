@@ -1850,11 +1850,21 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
 
             const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
-            const ouput = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
-            if(!ouput){
+            const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            if(!output){
                 throw new Error("No response received from Dataform API for workflow invocation creation");
             }
-            sendWorkflowInvocationNotification(ouput.workflowInvocationUrl);
+            await sendWorkflowInvocationNotification(
+                output.workflowInvocationUrl,
+                context,
+                invocationConfig,
+                gitInfo.gitBranch,
+                "api",
+                output.workflowInvocationId,
+                projectId,
+                gcpProjectLocation,
+                repositoryName
+            );
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
         }

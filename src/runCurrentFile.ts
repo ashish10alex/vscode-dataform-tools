@@ -110,9 +110,9 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             if(!output){
                 throw new Error("Error creating workflow invocation");
             }
-            sendWorkflowInvocationNotification(output.workflowInvocationUrl);
+            await sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, gitInfo.gitBranch, "api", output.workflowInvocationId, projectId, gcpProjectLocation, repositoryName);
             //NOTE: I am assuming that if the user has got this far the location set was correct, so caching it
-            context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
+            await context.globalState.update(`vscode_dataform_tools_${repositoryName}`, gcpProjectLocation);
             return {workflowInvocationUrlGCP: output.workflowInvocationUrl, errorWorkflowInvocation: undefined};
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);

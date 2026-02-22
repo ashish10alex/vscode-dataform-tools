@@ -5,13 +5,14 @@ import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
 import { CostEstimatorTab } from './components/CostEstimatorTab';
+import { WorkflowURLsTab } from './components/WorkflowURLsTab';
 import DOMPurify from 'dompurify';
 
 import { DeclarationsView } from './components/DeclarationsView';
 
 function App() {
   const state = useVSCodeMessage();
-  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost'>('compilation');
+  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls'>('compilation');
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
@@ -54,6 +55,9 @@ function App() {
       } else if (e.key === 'c') {
         e.preventDefault();
         setActiveTab('compilation');
+      } else if (e.key === 'w') {
+        e.preventDefault();
+        setActiveTab('workflow_urls');
       }
     };
 
@@ -106,6 +110,15 @@ function App() {
         >
           Cost Estimator
         </button>
+        <button
+          onClick={() => setActiveTab('workflow_urls')}
+          className={clsx(
+            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+            activeTab === 'workflow_urls' ? "bg-blue-600 text-white" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+          )}
+        >
+          Workflow Executions
+        </button>
         
         <div className="flex-grow"></div>
         
@@ -143,6 +156,7 @@ function App() {
         {activeTab === 'compilation' && <CompiledQueryTab state={state} />}
         {activeTab === 'schema' && <SchemaTab state={state} />}
         {activeTab === 'cost' && <CostEstimatorTab state={state} />}
+        {activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
 
       </div>
     </div>

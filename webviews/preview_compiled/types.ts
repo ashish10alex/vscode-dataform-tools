@@ -1,3 +1,5 @@
+import type { WorkflowUrlEntry } from "../../src/types";
+
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime?: string;
   modelWasUpdatedToday?: boolean;
@@ -44,6 +46,7 @@ export interface WebviewState {
       error?: { message: string };
   };
   compilerOptions?: string;
+  workflowUrls?: WorkflowUrlEntry[];
 }
 
 export interface Target {

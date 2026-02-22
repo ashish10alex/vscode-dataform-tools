@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage  } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -12,6 +12,7 @@ import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
+import { DataformTools } from "@ashishalex/dataform-tools";
 
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
@@ -40,6 +41,17 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryInWebView', async() => {
             const currentFileMetadata = CompiledQueryPanel?.centerPanel?.currentFileMetadata;
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, false, currentFileMetadata);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
+            if (CompiledQueryPanel.centerPanel?.webviewPanel) {
+                const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                CompiledQueryPanel.centerPanel.webviewPanel.webview.postMessage({
+                    workflowUrls: workflowUrls
+                });
+            }
         })
     );
 
@@ -310,7 +322,8 @@ export class CompiledQueryPanel {
                     return;
                 }
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
-                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
+                const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
               case 'costEstimator':
@@ -401,6 +414,54 @@ export class CompiledQueryPanel {
                     "modelType": fileMetadata.queryMeta.type,
                 });
                 return;
+              case 'getWorkflowUrls':
+                const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    workflowUrls: currentWorkflowUrls
+                });
+                return;
+              case 'clearWorkflowUrls':
+                await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
+                this.centerPanel?.webviewPanel.webview.postMessage({
+                    workflowUrls: []
+                });
+                return;
+              case 'runFilesTagsWtOptionsApi':
+                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
+                return;
+              case 'runFilesTagsWtOptionsInRemoteWorkspace':
+                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace');
+                return;
+              case 'refreshWorkflowStatuses':
+                const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+
+                if (urlsToRefresh.length > 0) {
+                    const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
+                        if (item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
+                            try {
+                                const dataformClient = new DataformTools(item.projectId, item.location);
+                                const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
+                                if (invocation && invocation.state) {
+                                  item.state = invocation.state as string;
+                                }
+                            } catch (e: any) {
+                                logger.error(`Error fetching workflow invocation status: ${e.message}`);
+                            }
+                        }
+                        return item;
+                    }));
+
+                    await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
+                    this.centerPanel?.webviewPanel.webview.postMessage({
+                        workflowUrls: updatedUrls
+                    });
+                }
+                return;
+              case 'openExternal':
+                if(message.url){
+                    vscode.env.openExternal(vscode.Uri.parse(message.url));
+                }
+                return;
             }
             return;
           },
@@ -415,6 +476,7 @@ export class CompiledQueryPanel {
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined, freshCompilation: boolean = true) {
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
+        const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
         if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions });
@@ -556,7 +618,8 @@ export class CompiledQueryPanel {
             "recompiling": false,
             "dryRunning": true,
             "declarations": null,
-            "compilerOptions": compilerOptions
+            "compilerOptions": compilerOptions,
+            "workflowUrls": workflowUrls
     });
 
         if(diagnosticCollection){
@@ -721,7 +784,8 @@ export class CompiledQueryPanel {
                 "recompiling": false,
                 "dryRunning": false,
                 "declarations": null,
-                "compilerOptions": compilerOptions
+                "compilerOptions": compilerOptions,
+                "workflowUrls": workflowUrls
             });
             this._cachedResults = { 
                 fileMetadata, 
