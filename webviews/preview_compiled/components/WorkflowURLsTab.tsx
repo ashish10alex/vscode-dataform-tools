@@ -64,7 +64,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                     <div className="flex-1 flex flex-col gap-2">
                         <button
                             onClick={handleRunApi}
-                            className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded transition-colors text-xs font-medium"
+                            className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 rounded transition-colors text-xs font-medium"
                             title="Run execution using git branch"
                         >
                             <Play className="w-3.5 h-3.5" />
@@ -78,7 +78,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                     <div className="flex-1 flex flex-col gap-2">
                         <button
                             onClick={handleRunWorkspace}
-                            className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded transition-colors text-xs font-medium"
+                            className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 rounded transition-colors text-xs font-medium"
                             title="Run execution using workspace code"
                         >
                             <Play className="w-3.5 h-3.5" />
