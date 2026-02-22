@@ -250,7 +250,8 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
             vscode.window.showErrorMessage("Error creating workflow invocation");
             return;
         }
-        await sendWorkflowInvocationNotification(output.workflowInvocationUrl, context, invocationConfig, workspaceName, "api_workspace", output.workflowInvocationId, dataformClient.gcpProjectId, dataformClient.gcpLocation, repositoryName);
+        const invocationUrl = output.workflowInvocationUrl ?? '';
+        await sendWorkflowInvocationNotification(invocationUrl, context, invocationConfig, workspaceName, "api_workspace", output.workflowInvocationId, dataformClient.gcpProjectId, dataformClient.gcpLocation, repositoryName);
     } catch(error:any){
         vscode.window.showErrorMessage(error.message);
     }
