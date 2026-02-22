@@ -195,9 +195,12 @@ const client = new DataformTools("your-gcp-project-id", "europe-west2")
 client.pushWorkspaceCommits("repository-name", "my-worksapce", "workspace-name") 
 ```
 
-### Get workflow invocation 
+### Get workflow invocation
+
 ```js
 import {DataformTools} from "@ashishalex/dataform-tools"
+
 const client = new DataformTools("your-gcp-project-id", "europe-west2")
-client.getWorkflowInvocation("repository-name", "workflow-invocation-id")
+const workflowInvocation = await client.getWorkflowInvocation("repository-name", "workflow-invocation-id")
+console.log(workflowInvocation)
 ```
