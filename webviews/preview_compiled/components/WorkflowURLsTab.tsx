@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { WebviewState } from '../types';
 import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { vscode } from '../utils/vscode';
@@ -26,8 +26,12 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
         vscode.postMessage({ command: 'runFilesTagsWtOptionsInRemoteWorkspace' });
     };
 
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     const handleRefreshStatuses = () => {
+        setIsRefreshing(true);
         vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+        setTimeout(() => setIsRefreshing(false), 1000);
     };
 
     const getStatusIcon = (status?: string | null) => {
@@ -101,7 +105,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                 className="flex items-center space-x-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                 title="Refresh execution statuses"
                             >
-                                <RefreshCw className="w-3.5 h-3.5" />
+                                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                                 <span>Refresh Status</span>
                             </button>
                             <button
