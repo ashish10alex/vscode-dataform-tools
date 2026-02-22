@@ -457,6 +457,9 @@ export class CompiledQueryPanel {
                     });
                 }
                 return;
+              case 'openExternal':
+                vscode.env.openExternal(vscode.Uri.parse(message.url));
+                return;
             }
             return;
           },

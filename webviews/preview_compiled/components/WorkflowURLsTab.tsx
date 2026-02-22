@@ -238,15 +238,14 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                         </div>
                                     </td>
                                     <td className="px-4 py-2">
-                                        <a
-                                            href={item.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                        <button
+                                            onClick={() => vscode.postMessage({ command: 'openExternal', url: item.url })}
                                             className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 inline-flex items-center justify-center transition-colors"
                                             title="Open execution in GCP"
+                                            aria-label="Open execution in GCP"
                                         >
                                             <ExternalLink className="w-4 h-4" />
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                                 );
