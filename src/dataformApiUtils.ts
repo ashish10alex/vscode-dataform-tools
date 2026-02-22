@@ -4,7 +4,7 @@ import path from 'path';
 import {GitService} from "./gitClient";
 import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation} from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
-import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig} from "./types";
+import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
 
 export async function sendWorkflowInvocationNotification(
     url: string,
@@ -18,20 +18,7 @@ export async function sendWorkflowInvocationNotification(
     repositoryName?: string
 ) {
     if (context && url) {
-        const storedUrls = context.workspaceState.get<{
-            url: string;
-            timestamp: number;
-            workspace: string;
-            includeDependencies: boolean;
-            includeDependents: boolean;
-            fullRefresh: boolean;
-            executionMode?: 'api' | 'api_workspace';
-            workflowInvocationId?: string;
-            projectId?: string;
-            location?: string;
-            repositoryName?: string;
-            state?: string;
-        }[]>('dataform_workflow_urls') || [];
+        const storedUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
         storedUrls.push({
             url,

@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage  } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
 import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -47,15 +47,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
-                const workflowUrls = context.workspaceState.get<{
-                    url: string;
-                    timestamp: number;
-                    workspace: string;
-                    includeDependencies: boolean;
-                    includeDependents: boolean;
-                    fullRefresh: boolean;
-                    executionMode?: 'api' | 'api_workspace';
-                }[]>('dataform_workflow_urls') || [];
+                const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                 CompiledQueryPanel.centerPanel.webviewPanel.webview.postMessage({
                     workflowUrls: workflowUrls
                 });
@@ -330,15 +322,7 @@ export class CompiledQueryPanel {
                     return;
                 }
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
-                const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<{
-                    url: string;
-                    timestamp: number;
-                    workspace: string;
-                    includeDependencies: boolean;
-                    includeDependents: boolean;
-                    fullRefresh: boolean;
-                    executionMode?: 'api' | 'api_workspace';
-                }[]>('dataform_workflow_urls') || [];
+                const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
@@ -431,15 +415,7 @@ export class CompiledQueryPanel {
                 });
                 return;
               case 'getWorkflowUrls':
-                const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<{
-                    url: string;
-                    timestamp: number;
-                    workspace: string;
-                    includeDependencies: boolean;
-                    includeDependents: boolean;
-                    fullRefresh: boolean;
-                    executionMode?: 'api' | 'api_workspace';
-                }[]>('dataform_workflow_urls') || [];
+                const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                 this.centerPanel?.webviewPanel.webview.postMessage({
                     workflowUrls: currentWorkflowUrls
                 });
@@ -457,20 +433,7 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace');
                 return;
               case 'refreshWorkflowStatuses':
-                const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<{
-                    url: string;
-                    timestamp: number;
-                    workspace: string;
-                    includeDependencies: boolean;
-                    includeDependents: boolean;
-                    fullRefresh: boolean;
-                    executionMode?: 'api' | 'api_workspace';
-                    workflowInvocationId?: string;
-                    projectId?: string;
-                    location?: string;
-                    repositoryName?: string;
-                    state?: string;
-                }[]>('dataform_workflow_urls') || [];
+                const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
                 if (urlsToRefresh.length > 0) {
                     const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
@@ -508,15 +471,7 @@ export class CompiledQueryPanel {
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined, freshCompilation: boolean = true) {
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
-        const workflowUrls = this.extensionContext.workspaceState.get<{
-            url: string;
-            timestamp: number;
-            workspace: string;
-            includeDependencies: boolean;
-            includeDependents: boolean;
-            fullRefresh: boolean;
-            executionMode?: 'api' | 'api_workspace';
-        }[]>('dataform_workflow_urls') || [];
+        const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
         if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions });
