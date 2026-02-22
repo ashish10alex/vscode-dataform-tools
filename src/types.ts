@@ -348,6 +348,8 @@ export interface WorkflowUrlEntry {
     location?: string;
     repositoryName?: string;
     state?: string;
+    includedTags?: string[];
+    includedTargets?: Target[];
 }
 
 export interface WebviewMessage {

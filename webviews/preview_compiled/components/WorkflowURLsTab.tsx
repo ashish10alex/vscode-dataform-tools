@@ -129,6 +129,8 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                             <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 w-1/4">Time</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Target Workspace</th>
+                                <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Tags</th>
+                                <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Files</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Mode</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Status</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Options</th>
@@ -147,6 +149,51 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                         <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-mono">
                                             {item.workspace || 'unknown'}
                                         </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                                        {item.includedTags && item.includedTags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {item.includedTags.map((tag: string, i: number) => (
+                                                    <span key={i} className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-zinc-400 dark:text-zinc-500 text-[10px] italic">No tags</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                                        {item.includedTargets && item.includedTargets.length > 0 ? (
+                                            item.includedTargets.length > 2 ? (
+                                                <div className="relative group">
+                                                    <span className="text-xs cursor-help underline decoration-dotted text-blue-600 dark:text-blue-400">
+                                                        {item.includedTargets.length} files
+                                                    </span>
+                                                    <div className="absolute z-10 hidden group-hover:block bottom-full mb-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-lg rounded-md p-2 w-max max-w-xs overflow-hidden">
+                                                        <div className="max-h-48 overflow-y-auto pr-2">
+                                                            <ul className="text-xs space-y-1">
+                                                                {item.includedTargets.map((t: any, i: number) => (
+                                                                    <li key={i} className="truncate" title={`${t.database}.${t.schema}.${t.name}`}>
+                                                                        {t.schema}.{t.name}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-1 text-xs">
+                                                    {item.includedTargets.map((t: any, i: number) => (
+                                                        <span key={i} className="truncate max-w-[150px]" title={`${t.database}.${t.schema}.${t.name}`}>
+                                                            {t.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )
+                                        ) : (
+                                            <span className="text-zinc-400 dark:text-zinc-500 text-[10px] italic">No files</span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap text-xs">
                                         {item.executionMode === 'api_workspace' ? 'GCP Workspace' : 'gitCommitish'}

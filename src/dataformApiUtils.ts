@@ -33,6 +33,8 @@ export async function sendWorkflowInvocationNotification(
             location: location,
             repositoryName: repositoryName,
             state: 'RUNNING',
+            includedTags: invocationConfig?.includedTags,
+            includedTargets: invocationConfig?.includedTargets,
         });
 
         if (storedUrls.length > 20) {
