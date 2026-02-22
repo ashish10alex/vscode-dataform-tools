@@ -138,10 +138,9 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {urls.slice().reverse().map((item, index) => {
-                                console.log(item);
+                            {urls.slice().reverse().map((item) => {
                                 return (
-                                <tr key={index} className="border-b border-zinc-200 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                <tr key={item.timestamp} className="border-b border-zinc-200 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                     <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap text-xs">
                                         {new Date(item.timestamp).toLocaleString()}
                                     </td>
