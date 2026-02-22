@@ -129,8 +129,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                             <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 w-1/4">Time</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Target Workspace</th>
-                                <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Tags</th>
-                                <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Files</th>
+                                <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Action</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Mode</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Status</th>
                                 <th className="px-4 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400">Execution Options</th>
@@ -158,12 +157,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                                     </span>
                                                 ))}
                                             </div>
-                                        ) : (
-                                            <span className="text-zinc-400 dark:text-zinc-500 text-[10px] italic">No tags</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
-                                        {item.includedTargets && item.includedTargets.length > 0 ? (
+                                        ) : item.includedTargets && item.includedTargets.length > 0 ? (
                                             item.includedTargets.length > 2 ? (
                                                 <div className="relative group">
                                                     <span className="text-xs cursor-help underline decoration-dotted text-blue-600 dark:text-blue-400">
@@ -191,7 +185,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                                 </div>
                                             )
                                         ) : (
-                                            <span className="text-zinc-400 dark:text-zinc-500 text-[10px] italic">No files</span>
+                                            <span className="text-zinc-400 dark:text-zinc-500 text-[10px] italic">Full workspace</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap text-xs">
