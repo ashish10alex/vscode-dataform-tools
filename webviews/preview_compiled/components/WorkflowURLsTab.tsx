@@ -178,7 +178,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                             ) : (
                                                 <div className="flex flex-col gap-1 text-xs">
                                                     {item.includedTargets.map((t: any, i: number) => (
-                                                        <span key={i} className="truncate max-w-[150px]" title={`${t.database}.${t.schema}.${t.name}`}>
+                                                        <span key={i} className="break-all" title={`${t.database}.${t.schema}.${t.name}`}>
                                                             {t.name}
                                                         </span>
                                                     ))}
