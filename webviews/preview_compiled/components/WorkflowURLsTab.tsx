@@ -56,7 +56,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                 <div className="text-sm">
                     <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Trigger Execution via API</h3>
                     <p className="text-zinc-600 dark:text-zinc-400 text-xs text-balance">
-                        Run multiple models or tags by triggering an execution in GCP using your Dataform API workflow settings.
+                        Run file(s) or tag(s) by triggering an execution in GCP using your Dataform API.
                     </p>
                 </div>
                 
@@ -71,7 +71,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                             <span>Run from Git Commit</span>
                         </button>
                         <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            Executes the committed code directly from your configured Git branch in Dataform. Changes must be committed and pushed to the remote repository.
+                            Executes the committed code of your active git branch. Changes must be committed and pushed to the remote repository.
                         </p>
                     </div>
 
@@ -85,7 +85,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                             <span>Run from GCP Workspace</span>
                         </button>
                         <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            Executes the uncommitted code currently saved in your remote GCP Dataform workspace. Useful for testing without needing to commit.
+                            Executes local changes by syncing them to the remote GCP Dataform workspace. Useful for testing without needing to commit.
                         </p>
                     </div>
                 </div>
