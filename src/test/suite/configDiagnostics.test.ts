@@ -35,6 +35,7 @@ suite('Config Block Diagnostics', () => {
         assert.ok(diagnosticMessages.some(m => m.includes('Must be a boolean') && m.includes('materialized')), 'Missing warning for materialized property');
         assert.ok(diagnosticMessages.some(m => m.includes('Must be one of: IGNORE, FAIL, EXTEND, SYNCHRONIZE') && m.includes('onSchemaChange')), 'Missing warning for onSchemaChange property');
         assert.ok(diagnosticMessages.some(m => m.includes('Invalid property "invalidProp"')), 'Missing warning for invalid property invalidProp');
+        assert.ok(diagnosticMessages.some(m => m.includes('Cannot be a string') && m.includes('assertions')), 'Missing warning for assertions property');
 
         // BigQuery block checks
         assert.ok(diagnosticMessages.some(m => m.includes('Cannot be a number') && m.includes('partitionBy')), 'Missing warning for partitionBy property');

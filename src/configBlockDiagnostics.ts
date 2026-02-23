@@ -201,10 +201,10 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
                     checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
                     checkArrayProps(['tags', 'dependencies'], line, i);
                     checkStringProps(['description', 'database', 'schema', 'name'], line, i);
-                    checkObjectOrRefProps(['columns'], line, i);
+                    checkObjectOrRefProps(['columns', 'assertions'], line, i);
                     
                     checkSpecificStringProps([
-                        { prop: 'type', validValues: ["table", "view", "incremental", "inline", "declaration", "operations"] },
+                        { prop: 'type', validValues: ["table", "view", "incremental", "inline", "declaration", "operations", "assertion"] },
                         { prop: 'onSchemaChange', validValues: ["IGNORE", "FAIL", "EXTEND", "SYNCHRONIZE"] }
                     ], line, i);
                 }

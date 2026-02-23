@@ -9,6 +9,7 @@ config {
     materialized: 123,
     onSchemaChange: "INVALID_MODE",
     invalidProp: "some_value",
+    assertions: "invalid_string",
     bigquery: {
         partitionBy: 123,
         clusterBy: "string",
