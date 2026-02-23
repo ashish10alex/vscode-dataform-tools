@@ -248,7 +248,23 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
                 };
 
+                const checkAllowedProperties = (allowedProps: string[], currentLine: string, lineIndex: number, blockName: string) => {
+                    const propMatch = currentLine.match(/^\s*([a-zA-Z0-9_]+)\s*:/);
+                    if (propMatch) {
+                        const propName = propMatch[1];
+                        if (!allowedProps.includes(propName)) {
+                            addDiagnostic(lineIndex, propName, `Invalid property "${propName}" for ${blockName} block. Allowed properties: ${allowedProps.join(", ")}.`);
+                        }
+                    }
+                };
+
                 if (inBigQueryBlock) {
+                    const allowedBigQueryProps = [
+                        'partitionBy', 'clusterBy', 'requirePartitionFilter',
+                        'partitionExpirationDays', 'labels', 'updatePartitionFilter', 'iceberg'
+                    ];
+                    checkAllowedProperties(allowedBigQueryProps, line, i, 'bigquery');
+
                     checkBooleanProps(['requirePartitionFilter'], line, i);
                     checkNumberProps(['partitionExpirationDays'], line, i);
                     checkArrayProps(['clusterBy'], line, i);
@@ -257,6 +273,13 @@ export async function activate(context: vscode.ExtensionContext) {
                     
                     // Specific checking for bigquery string options (if any needed in the future)
                 } else {
+                    const allowedConfigProps = [
+                        'type', 'database', 'schema', 'name', 'description', 'columns',
+                        'tags', 'dependencies', 'hasOutput', 'assertions', 'bigquery',
+                        'materialized', 'uniqueKey', 'onSchemaChange', 'protected'
+                    ];
+                    checkAllowedProperties(allowedConfigProps, line, i, 'config');
+
                     checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
                     checkArrayProps(['tags', 'dependencies', 'uniqueKey'], line, i);
                     checkStringProps(['description', 'database', 'schema', 'name'], line, i);
