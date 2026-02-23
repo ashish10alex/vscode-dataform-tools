@@ -11,7 +11,7 @@ import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverPro
 import { defaultCdnLinks, executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
 import { executableIsAvailable } from './utils';
-import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
+import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable, configBlockAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { createNewDataformProject } from './createNewDataformProject';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
@@ -108,12 +108,167 @@ export async function activate(context: vscode.ExtensionContext) {
             queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
         }
     }, 500);
-
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 
-
-
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
+
+    const checkConfigBlockDiagnostics = (document: vscode.TextDocument) => {
+        if (document.languageId !== 'sqlx') {
+            return;
+        }
+
+        const diagnostics: vscode.Diagnostic[] = [];
+        const lines = document.getText().split(/\r?\n/);
+
+        let inConfigBlock = false;
+        let inBigQueryBlock = false;
+        let configBraceDepth = 0;
+        let bigQueryBraceDepth = 0;
+        
+        // Scan up to 50 lines looking for the config block
+        const maxLinesToScan = Math.min(lines.length, 50);
+
+        for (let i = 0; i < maxLinesToScan; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            if (trimmed.length === 0) { continue; }
+
+            if (!inConfigBlock && trimmed.startsWith('config {')) {
+                inConfigBlock = true;
+                configBraceDepth = 1;
+                if (trimmed.endsWith('}')) {
+                    inConfigBlock = false;
+                    configBraceDepth = 0;
+                }
+            } else if (inConfigBlock) {
+                // Check for nested bigquery block
+                if (!inBigQueryBlock && trimmed.match(/bigquery\s*:\s*\{/)) {
+                    inBigQueryBlock = true;
+                    bigQueryBraceDepth = 1;
+                    if (trimmed.endsWith('}')) {
+                        inBigQueryBlock = false;
+                        bigQueryBraceDepth = 0;
+                    }
+                    continue; // Skip counting the first '{' of bigquery again
+                }
+
+                const addDiagnostic = (lineIndex: number, matchVal: string, message: string) => {
+                    const startIndex = line.indexOf(matchVal);
+                    const endIndex = startIndex + matchVal.length;
+                    diagnostics.push(new vscode.Diagnostic(
+                        new vscode.Range(lineIndex, startIndex, lineIndex, endIndex),
+                        message,
+                        vscode.DiagnosticSeverity.Warning
+                    ));
+                };
+
+                const checkBooleanProps = (props: string[], currentLine: string, lineIndex: number) => {
+                    for (const prop of props) {
+                        const stringValMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*(["'][^"']*["'])`));
+                        if (stringValMatch) {
+                            addDiagnostic(lineIndex, stringValMatch[1], `Invalid ${prop} value: ${stringValMatch[1]}. Must be a boolean (true or false) without quotes.`);
+                        }
+                        const invalidWordMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*([^"'\\s,{}]+)`));
+                        if (invalidWordMatch && invalidWordMatch[1] !== 'true' && invalidWordMatch[1] !== 'false') {
+                            addDiagnostic(lineIndex, invalidWordMatch[1], `Invalid ${prop} value: ${invalidWordMatch[1]}. Must be a boolean (true or false).`);
+                        }
+                    }
+                };
+
+                const checkNumberProps = (props: string[], currentLine: string, lineIndex: number) => {
+                    for (const prop of props) {
+                        const stringValMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*(["'][^"']*["'])`));
+                        if (stringValMatch) {
+                            addDiagnostic(lineIndex, stringValMatch[1], `Invalid ${prop} value: ${stringValMatch[1]}. Must be a number without quotes.`);
+                        }
+                        const nonNumberMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*([^\\s,"'{}\\[\\]]+)`));
+                        if (nonNumberMatch && isNaN(Number(nonNumberMatch[1]))) {
+                            addDiagnostic(lineIndex, nonNumberMatch[1], `Invalid ${prop} value: ${nonNumberMatch[1]}. Must be a number.`);
+                        }
+                    }
+                };
+
+                const checkArrayProps = (props: string[], currentLine: string, lineIndex: number) => {
+                    for (const prop of props) {
+                        const nonArrayMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*([^\\s\\[]+)`));
+                        if (nonArrayMatch) {
+                            // If it starts with [ it is skipped by [^\s\[], which is correct array format
+                            addDiagnostic(lineIndex, nonArrayMatch[1], `Invalid ${prop} value. Must be an array, e.g. ["example"].`);
+                        }
+                    }
+                };
+
+                const checkSpecificStringProps = (props: { prop: string, validValues: string[] }[], currentLine: string, lineIndex: number) => {
+                    for (const { prop, validValues } of props) {
+                        const match = currentLine.match(new RegExp(`${prop}\\s*:\\s*["']([^"']+)["']`));
+                        if (match) {
+                            const value = match[1];
+                            if (!validValues.includes(value)) {
+                                addDiagnostic(lineIndex, value, `Invalid ${prop} value: "${value}". Must be one of: ${validValues.join(", ")}.`);
+                            }
+                        }
+                    }
+                };
+
+                if (inBigQueryBlock) {
+                    checkBooleanProps(['requirePartitionFilter'], line, i);
+                    checkNumberProps(['partitionExpirationDays'], line, i);
+                    checkArrayProps(['clusterBy'], line, i);
+                    
+                    // Specific checking for bigquery string options (if any needed in the future)
+                } else {
+                    checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
+                    checkArrayProps(['tags', 'dependencies', 'uniqueKey'], line, i);
+                    
+                    checkSpecificStringProps([
+                        { prop: 'type', validValues: ["table", "view", "incremental", "inline", "declaration", "operations"] },
+                        { prop: 'onSchemaChange', validValues: ["IGNORE", "FAIL", "EXTEND", "SYNCHRONIZE"] }
+                    ], line, i);
+                }
+
+                // Brace counting
+                let openBraces = 0;
+                let closedBraces = 0;
+                for (let j = 0; j < line.length; j++) {
+                    if (line[j] === '{') { openBraces++; }
+                    else if (line[j] === '}') { closedBraces++; }
+                }
+                
+                if (inBigQueryBlock) {
+                    bigQueryBraceDepth += openBraces - closedBraces;
+                    if (bigQueryBraceDepth <= 0) {
+                        inBigQueryBlock = false;
+                    }
+                } else {
+                    configBraceDepth += openBraces - closedBraces;
+                    if (configBraceDepth <= 0) {
+                        inConfigBlock = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // We use our existing global diagnostic collection but append these specific warnings
+        // making sure not to overwrite existing ones from the compile step, or we can just 
+        // merge them. To keep it simple, we'll create a dedicated collection for these config lintings
+        configDiagnosticCollection.set(document.uri, diagnostics);
+    };
+
+    const configDiagnosticCollection = vscode.languages.createDiagnosticCollection('dataformConfigDiagnostics');
+    context.subscriptions.push(configDiagnosticCollection);
+
+    // Initial check
+    if (vscode.window.activeTextEditor) {
+        checkConfigBlockDiagnostics(vscode.window.activeTextEditor.document);
+    }
+
+    // Check on open and change
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(e => checkConfigBlockDiagnostics(e.document)),
+        vscode.workspace.onDidOpenTextDocument(doc => checkConfigBlockDiagnostics(doc))
+    );
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.selectWorkspaceFolder', async () => { await selectWorkspaceFolder(); }));
 
@@ -194,6 +349,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(sourcesAutoCompletionDisposable());
     context.subscriptions.push(schemaAutoCompletionDisposable());
+    context.subscriptions.push(configBlockAutoCompletionDisposable());
 
     context.subscriptions.push(dependenciesAutoCompletionDisposable());
 
