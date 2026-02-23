@@ -12,8 +12,10 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
             // 4. Exit early if the block was closed before reaching the cursor
             let inConfigBlock = false;
             let inBigQueryBlock = false;
+            let inAssertionBlock = false;
             let configBraceDepth = 0;
             let bigQueryBraceDepth = 0;
+            let assertionBraceDepth = 0;
 
             // Hard limit: only scan up to 50 lines to prevent O(N) performance on massive files.
             // Config blocks are almost exclusively at the very top of .sqlx files.
@@ -49,6 +51,17 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
                         continue;
                     }
 
+                    // Check for nested assertions block
+                    if (!inAssertionBlock && trimmed.match(/assertions\s*:\s*\{/)) {
+                        inAssertionBlock = true;
+                        assertionBraceDepth = 1;
+                        if (trimmed.endsWith('}')) {
+                            inAssertionBlock = false;
+                            assertionBraceDepth = 0;
+                        }
+                        continue;
+                    }
+
                     let openBraces = 0;
                     let closedBraces = 0;
                     // Count braces efficiently
@@ -61,6 +74,11 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
                         bigQueryBraceDepth += openBraces - closedBraces;
                         if (bigQueryBraceDepth <= 0) {
                             inBigQueryBlock = false;
+                        }
+                    } else if (inAssertionBlock) {
+                        assertionBraceDepth += openBraces - closedBraces;
+                        if (assertionBraceDepth <= 0) {
+                            inAssertionBlock = false;
                         }
                     } else {
                         configBraceDepth += openBraces - closedBraces;
@@ -110,7 +128,12 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
                 });
             }
 
-            const configOptions = inBigQueryBlock ? [
+            const configOptions = inAssertionBlock ? [
+                { name: 'nonNull', description: 'This condition asserts that the specified columns are not null across all table rows.' },
+                { name: 'rowConditions', description: 'This condition asserts that all table rows follow the custom logic you define.' },
+                { name: 'uniqueKey', description: 'This condition asserts that, in a specified column, no table rows have the same value.' },
+                { name: 'uniqueKeys', description: 'This condition asserts that, in the specified columns, no table rows have the same value.' }
+            ] : inBigQueryBlock ? [
                 { name: 'partitionBy', description: 'Expression for partitioning the table (e.g. "DATE(timestamp)").' },
                 { name: 'clusterBy', description: 'A list of columns by which to cluster the table.' },
                 { name: 'requirePartitionFilter', description: 'Whether queries must include a partition filter (true/false).' },
@@ -131,7 +154,6 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
                 { name: 'assertions', description: 'Assertions to run after this dataset is created.' },
                 { name: 'bigquery', description: 'BigQuery-specific configurations.' },
                 { name: 'materialized', description: 'Whether a view is materialized.' },
-                { name: 'uniqueKey', description: 'A list of columns that form a unique key for the dataset.' },
                 { name: 'onSchemaChange', description: 'Action to take when schema changes for incremental tables: "IGNORE", "FAIL", "EXTEND", "SYNCHRONIZE".' },
                 { name: 'protected', description: 'Prevents the table from being rebuilt from scratch (e.g. true/false)' }
             ];

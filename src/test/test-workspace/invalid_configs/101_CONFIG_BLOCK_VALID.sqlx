@@ -11,7 +11,6 @@ config {
     dependencies: ["dep1"],
     hasOutput: true,
     materialized: false,
-    uniqueKey: ["col1"],
     onSchemaChange: "EXTEND",
     protected: true,
     bigquery: {

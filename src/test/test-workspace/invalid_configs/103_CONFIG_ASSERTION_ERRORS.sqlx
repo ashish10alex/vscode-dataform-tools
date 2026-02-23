@@ -1,0 +1,12 @@
+config {
+  type: "table",
+  uniqueKey: ["col1"],
+  assertions: {
+    uniqueKey: "not_an_array",
+    nonNull: true,
+    rowConditions: 123,
+    uniqueKeys: "string",
+    invalidProp: ["something"]
+  }
+}
+SELECT 1 as test

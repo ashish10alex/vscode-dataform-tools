@@ -122,8 +122,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
         let inConfigBlock = false;
         let inBigQueryBlock = false;
+        let inAssertionBlock = false;
         let configBraceDepth = 0;
         let bigQueryBraceDepth = 0;
+        let assertionBraceDepth = 0;
         
         // Scan up to 50 lines looking for the config block
         const maxLinesToScan = Math.min(lines.length, 50);
@@ -151,6 +153,17 @@ export async function activate(context: vscode.ExtensionContext) {
                         bigQueryBraceDepth = 0;
                     }
                     continue; // Skip counting the first '{' of bigquery again
+                }
+
+                // Check for nested assertions block
+                if (!inAssertionBlock && trimmed.match(/assertions\s*:\s*\{/)) {
+                    inAssertionBlock = true;
+                    assertionBraceDepth = 1;
+                    if (trimmed.endsWith('}')) {
+                        inAssertionBlock = false;
+                        assertionBraceDepth = 0;
+                    }
+                    continue; // Skip counting the first '{' of assertions again
                 }
 
                 const addDiagnostic = (lineIndex: number, matchVal: string, message: string) => {
@@ -274,18 +287,27 @@ export async function activate(context: vscode.ExtensionContext) {
                     checkObjectOrRefProps(['labels'], line, i);
                     
                     // Specific checking for bigquery string options (if any needed in the future)
+                } else if (inAssertionBlock) {
+                    const allowedAssertionProps = [
+                        'nonNull', 'rowConditions', 'uniqueKey', 'uniqueKeys'
+                    ];
+                    if (assertionBraceDepth === 1) {
+                        checkAllowedProperties(allowedAssertionProps, line, i, 'assertions');
+                    }
+
+                    checkArrayProps(['nonNull', 'rowConditions', 'uniqueKey', 'uniqueKeys'], line, i);
                 } else {
                     const allowedConfigProps = [
                         'type', 'database', 'schema', 'name', 'description', 'columns',
                         'tags', 'dependencies', 'hasOutput', 'assertions', 'bigquery',
-                        'materialized', 'uniqueKey', 'onSchemaChange', 'protected'
+                        'materialized', 'onSchemaChange', 'protected'
                     ];
                     if (configBraceDepth === 1) {
                         checkAllowedProperties(allowedConfigProps, line, i, 'config');
                     }
 
                     checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
-                    checkArrayProps(['tags', 'dependencies', 'uniqueKey'], line, i);
+                    checkArrayProps(['tags', 'dependencies'], line, i);
                     checkStringProps(['description', 'database', 'schema', 'name'], line, i);
                     checkObjectOrRefProps(['columns'], line, i);
                     
@@ -307,6 +329,11 @@ export async function activate(context: vscode.ExtensionContext) {
                     bigQueryBraceDepth += openBraces - closedBraces;
                     if (bigQueryBraceDepth <= 0) {
                         inBigQueryBlock = false;
+                    }
+                } else if (inAssertionBlock) {
+                    assertionBraceDepth += openBraces - closedBraces;
+                    if (assertionBraceDepth <= 0) {
+                        inAssertionBlock = false;
                     }
                 } else {
                     configBraceDepth += openBraces - closedBraces;
