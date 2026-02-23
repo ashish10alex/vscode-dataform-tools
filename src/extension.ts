@@ -199,6 +199,21 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
                 };
 
+                const checkStringProps = (props: string[], currentLine: string, lineIndex: number) => {
+                    for (const prop of props) {
+                        // Match raw value assigned to property (ignoring anything wrapped in quotes/backticks which are safe)
+                        const unquotedMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*(?!['"\`])([^\\s,{}]+)`));
+                        if (unquotedMatch) {
+                            const val = unquotedMatch[1];
+                            if (!isNaN(Number(val))) {
+                                addDiagnostic(lineIndex, val, `Invalid ${prop} value: ${val}. Cannot be a number.`);
+                            } else if (val === 'true' || val === 'false') {
+                                addDiagnostic(lineIndex, val, `Invalid ${prop} value: ${val}. Cannot be a boolean.`);
+                            }
+                        }
+                    }
+                };
+
                 const checkSpecificStringProps = (props: { prop: string, validValues: string[] }[], currentLine: string, lineIndex: number) => {
                     for (const { prop, validValues } of props) {
                         const match = currentLine.match(new RegExp(`${prop}\\s*:\\s*["']([^"']+)["']`));
@@ -215,11 +230,13 @@ export async function activate(context: vscode.ExtensionContext) {
                     checkBooleanProps(['requirePartitionFilter'], line, i);
                     checkNumberProps(['partitionExpirationDays'], line, i);
                     checkArrayProps(['clusterBy'], line, i);
+                    checkStringProps(['partitionBy'], line, i);
                     
                     // Specific checking for bigquery string options (if any needed in the future)
                 } else {
                     checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
                     checkArrayProps(['tags', 'dependencies', 'uniqueKey'], line, i);
+                    checkStringProps(['description', 'database', 'schema', 'name'], line, i);
                     
                     checkSpecificStringProps([
                         { prop: 'type', validValues: ["table", "view", "incremental", "inline", "declaration", "operations"] },
