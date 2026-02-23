@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { debounce } from './debounce';
 
 export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext) {
     const configDiagnosticCollection = vscode.languages.createDiagnosticCollection('dataformConfigDiagnostics');
@@ -10,8 +11,6 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
         }
 
         const diagnostics: vscode.Diagnostic[] = [];
-        const lines = document.getText().split(/\r?\n/);
-
         let inConfigBlock = false;
         let inBigQueryBlock = false;
         let inAssertionBlock = false;
@@ -20,10 +19,10 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
         let assertionBraceDepth = 0;
         
         // Scan up to 50 lines looking for the config block
-        const maxLinesToScan = Math.min(lines.length, 50);
+        const maxLinesToScan = Math.min(document.lineCount, 50);
 
         for (let i = 0; i < maxLinesToScan; i++) {
-            const line = lines[i];
+            const line = document.lineAt(i).text;
             const trimmed = line.trim();
 
             if (trimmed.length === 0) { continue; }
@@ -269,9 +268,13 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
         checkConfigBlockDiagnostics(vscode.window.activeTextEditor.document);
     }
 
+    const triggerConfigDiagnostics = debounce((document: vscode.TextDocument) => {
+        checkConfigBlockDiagnostics(document);
+    }, 500);
+
     // Check on open and change
     context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument(e => checkConfigBlockDiagnostics(e.document)),
+        vscode.workspace.onDidChangeTextDocument(e => triggerConfigDiagnostics(e.document)),
         vscode.workspace.onDidOpenTextDocument(doc => checkConfigBlockDiagnostics(doc))
     );
 }
