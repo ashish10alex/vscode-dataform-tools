@@ -214,6 +214,28 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
                 };
 
+                const checkObjectOrRefProps = (props: string[], currentLine: string, lineIndex: number) => {
+                    for (const prop of props) {
+                        const stringMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*(["'][^"']*["'])`));
+                        if (stringMatch) {
+                            addDiagnostic(lineIndex, stringMatch[1], `Invalid ${prop} value. Cannot be a string.`);
+                        }
+                        const arrayMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*(\\[)`));
+                        if (arrayMatch) {
+                            addDiagnostic(lineIndex, arrayMatch[1], `Invalid ${prop} value. Cannot be an array.`);
+                        }
+                        const primitiveMatch = currentLine.match(new RegExp(`${prop}\\s*:\\s*(?!['"\`\\{\\[])([^\\s,{}]+)`));
+                        if (primitiveMatch) {
+                            const val = primitiveMatch[1];
+                            if (!isNaN(Number(val))) {
+                                addDiagnostic(lineIndex, val, `Invalid ${prop} value: ${val}. Cannot be a number.`);
+                            } else if (val === 'true' || val === 'false') {
+                                addDiagnostic(lineIndex, val, `Invalid ${prop} value: ${val}. Cannot be a boolean.`);
+                            }
+                        }
+                    }
+                };
+
                 const checkSpecificStringProps = (props: { prop: string, validValues: string[] }[], currentLine: string, lineIndex: number) => {
                     for (const { prop, validValues } of props) {
                         const match = currentLine.match(new RegExp(`${prop}\\s*:\\s*["']([^"']+)["']`));
@@ -231,12 +253,14 @@ export async function activate(context: vscode.ExtensionContext) {
                     checkNumberProps(['partitionExpirationDays'], line, i);
                     checkArrayProps(['clusterBy'], line, i);
                     checkStringProps(['partitionBy'], line, i);
+                    checkObjectOrRefProps(['labels'], line, i);
                     
                     // Specific checking for bigquery string options (if any needed in the future)
                 } else {
                     checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
                     checkArrayProps(['tags', 'dependencies', 'uniqueKey'], line, i);
                     checkStringProps(['description', 'database', 'schema', 'name'], line, i);
+                    checkObjectOrRefProps(['columns'], line, i);
                     
                     checkSpecificStringProps([
                         { prop: 'type', validValues: ["table", "view", "incremental", "inline", "declaration", "operations"] },
