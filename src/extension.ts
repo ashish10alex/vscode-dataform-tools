@@ -263,7 +263,9 @@ export async function activate(context: vscode.ExtensionContext) {
                         'partitionBy', 'clusterBy', 'requirePartitionFilter',
                         'partitionExpirationDays', 'labels', 'updatePartitionFilter', 'iceberg'
                     ];
-                    checkAllowedProperties(allowedBigQueryProps, line, i, 'bigquery');
+                    if (bigQueryBraceDepth === 1) {
+                        checkAllowedProperties(allowedBigQueryProps, line, i, 'bigquery');
+                    }
 
                     checkBooleanProps(['requirePartitionFilter'], line, i);
                     checkNumberProps(['partitionExpirationDays'], line, i);
@@ -278,7 +280,9 @@ export async function activate(context: vscode.ExtensionContext) {
                         'tags', 'dependencies', 'hasOutput', 'assertions', 'bigquery',
                         'materialized', 'uniqueKey', 'onSchemaChange', 'protected'
                     ];
-                    checkAllowedProperties(allowedConfigProps, line, i, 'config');
+                    if (configBraceDepth === 1) {
+                        checkAllowedProperties(allowedConfigProps, line, i, 'config');
+                    }
 
                     checkBooleanProps(['hasOutput', 'materialized', 'protected'], line, i);
                     checkArrayProps(['tags', 'dependencies', 'uniqueKey'], line, i);
