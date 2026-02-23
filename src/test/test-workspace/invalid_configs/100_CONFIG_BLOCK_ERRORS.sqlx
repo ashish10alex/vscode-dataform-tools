@@ -2,7 +2,7 @@ config {
     type: "unknown_type",
     database: 123,
     schema: true,
-    name: "valid_name",
+    name: "invalid.name",
     columns: "invalid_string",
     tags: "string_should_be_array",
     hasOutput: "true",

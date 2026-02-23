@@ -27,6 +27,7 @@ suite('Config Block Diagnostics', () => {
         const diagnosticMessages = warnings.map(d => d.message);
         
         assert.ok(diagnosticMessages.some(m => m.includes('Invalid type value')), 'Missing warning for unknown_type');
+        assert.ok(diagnosticMessages.some(m => m.includes('BigQuery table names can only contain') && m.includes('name')), 'Missing warning for name property');
         assert.ok(diagnosticMessages.some(m => m.includes('Cannot be a number') && m.includes('database')), 'Missing warning for database property');
         assert.ok(diagnosticMessages.some(m => m.includes('Cannot be a boolean') && m.includes('schema')), 'Missing warning for schema property');
         assert.ok(diagnosticMessages.some(m => m.includes('Cannot be a string') && m.includes('columns')), 'Missing warning for columns property');

@@ -2,7 +2,7 @@ config {
     type: "table",
     database: "my_db",
     schema: "my_schema",
-    name: "test_table",
+    name: constants.TEST_TABLE,
     description: "A proper table",
     columns: {
         col1: "First column"

@@ -153,6 +153,26 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
                     }
                 };
 
+                const checkTableNameConstraints = (props: string[], currentLine: string, lineIndex: number) => {
+                    for (const prop of props) {
+                        const matchQuoted = currentLine.match(new RegExp(`${prop}\\s*:\\s*["']([^"']+)["']`));
+                        
+                        // We only validate explicit strings; unquoted values are likely JS variables (e.g., constants.TABLE_NAME)
+                        if (matchQuoted) {
+                            const value = matchQuoted[1];
+                            // Valid characters per BigQuery: letters, numbers, underscores, dashes, spaces
+                            const validPattern = /^[\p{L}\p{M}\p{N}\p{Pc}\p{Pd}\p{Zs}]+$/u;
+                            
+                            if (!validPattern.test(value)) {
+                                addDiagnostic(lineIndex, value, `Invalid ${prop} value: "${value}". BigQuery table names can only contain letters, numbers, underscores, dashes, and spaces.`);
+                            }
+                            if (value.length > 1024) {
+                                addDiagnostic(lineIndex, value, `Invalid ${prop} value. Maximum length is 1024 characters.`);
+                            }
+                        }
+                    }
+                };
+
                 const checkAllowedProperties = (allowedProps: string[], currentLine: string, lineIndex: number, blockName: string) => {
                     const propMatch = currentLine.match(/^\s*([a-zA-Z0-9_]+)\s*:/);
                     if (propMatch) {
@@ -202,6 +222,7 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
                     checkArrayProps(['tags', 'dependencies'], line, i);
                     checkStringProps(['description', 'database', 'schema', 'name'], line, i);
                     checkObjectOrRefProps(['columns', 'assertions'], line, i);
+                    checkTableNameConstraints(['name'], line, i);
                     
                     checkSpecificStringProps([
                         { prop: 'type', validValues: ["table", "view", "incremental", "inline", "declaration", "operations", "assertion"] },
