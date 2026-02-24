@@ -76,8 +76,8 @@
 | Feature | Description |
 |---------|-------------|
 | [Compiled Query & Dry run stats](#compilation) | Compiled query with dry run stats in a vertical split |
-| [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Inline diagnostics on `.sqlx` file](#diagnostics) 🚨 | Native LSP like experience with diagnostics being directly put on sqlx file |
+| [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
 | [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
 | [Cost estimator](#cost_estimator) 💸 | Estimate the cost of running a Tag|
 | [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
@@ -88,13 +88,19 @@
 | [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
 | [BigQuery hover definition provider](#hover) | Hover definition for column descriptions, type and commonly used BigQuery functions |
 
-### <a id="depgraph">Dependency graph</a>
-
-![depgraph](/media/images/dependancy_tree.png)
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
 
-![diagnostics](media/images/diagnostics.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/images/diagnostics_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="media/images/diagnostics_light.png">
+  <!-- Fallback image if picture is not supported -->
+  <img alt="diagnostics" src="media/images/diagnostics.png">
+</picture>
+
+### <a id="depgraph">Dependency graph</a>
+
+![depgraph](/media/images/dependancy_tree.png)
 
 ### <a id="preview_query_results">Preview query results</a>
 
