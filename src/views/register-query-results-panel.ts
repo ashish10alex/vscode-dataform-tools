@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import {  Uri } from "vscode";
 import path from 'path';
 import os from 'os';
-import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, saveCsvFile } from '../utils';
+import { getCurrentFileMetadata, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
 import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
@@ -44,7 +44,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       this._view = webviewView;
       webviewView.webview.options = {
         enableScripts: true,
-        localResourceRoots: [Uri.joinPath(this._extensionUri, "media")]
+        localResourceRoots: [
+          Uri.joinPath(this._extensionUri, "media"),
+          Uri.joinPath(this._extensionUri, "dist")
+        ]
       };
 
       if (this._invokedByCommand){
@@ -257,19 +260,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
-    const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
-    const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
-    const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
+    const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "query_results.js"));
+    const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "query_results.css"));
     const nonce = getNonce();
-    // TODO: light theme does not seem to get picked up
-    let highlighJstThemeUri = getHighlightJsThemeUri();
-
-      let {tabulatorCssUri, type} = getTabulatorThemeUri();
-      if(type === "light"){
-          customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_light.css"));
-      }
 
     return /*html*/ `
       <!DOCTYPE html>
@@ -277,81 +270,13 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
-          <script src="${cdnLinks.highlightJsUri}"></script>
-          <script src="${highlightJsCopyExtUri}"></script>
-          <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
-          <link rel="stylesheet" href="${highlighJstThemeUri}">
-
-          <link href="${tabulatorCssUri}" rel="stylesheet">
-          <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
-
-          <link href="${styleResetUri}" rel="stylesheet">
-          <link href="${customTabulatorCss}" rel="stylesheet">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource} https:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
+          <link href="${styleUri}" rel="stylesheet">
+          <title>Query Results</title>
       </head>
-
-      <body id="query-results-body">
-
-      <div class="topnav">
-        <a class="active" href="#results">Results</a>
-        <a href="#query">Query</a>
-      </div>
-
-      <span class="bigquery-job-cancelled"></span>
-
-      <div id="incrementalCheckBoxDiv" style="display: none;" >
-        <label class="checkbox-container">
-                <input type="checkbox" id="incrementalCheckbox" class="checkbox"> 
-                <span class="custom-checkbox"></span>
-                Incremental
-        </label>
-      </div>
-
-      <select id="queryLimit">
-        <option value="1000">Limit: 1000</option>
-        <option value="50000">Limit: 50000</option>
-        <option value="100000">Limit: 100000</option>
-        <option value="500000">Limit: 500000</option>
-      </select>
-
-      <button id="runQueryButton" class="runQueryButton">RUN</button>
-      <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
-      <button id="downloadCsvButton" class="downloadCsvButton">Download CSV</button>
-
-
-      <p>
-      <span id="datetime"></span>
-      <span id="bigQueryJobLinkDivider"></span>
-      <a id="bigQueryJobLink" href="" target="_blank"></a>
-      </p>
-
-      <div class="error-message-container" id="errorsDiv" style="display: none;" >
-          <p><span id="errorMessage"></span></p>
-      </div>
-
-      <div class="no-errors-container" id="noResultsDiv" style="display: none;" >
-          <p><span id="noResults"></span></p>
-      </div>
-
-      <div id="multiResultsBlock" style="display: none;">
-        <h3>Assertion Checks</h3>
-        <table id="multiQueryResults" class="display" width="100%"></table>
-      </div>
-
-      <div id="backToSummaryDiv" style="display: none; margin-bottom: 10px; margin-top: 10px;">
-        <button id="backToSummaryButton" style="padding: 5px 10px; background-color: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">← Back to results summary</button>
-      </div>
-
-      <div id="codeBlock" style="display: none;">
-        <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
-        <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
-      </div>
-
-      <div id="resultBlock">
-        <p  style="color: red"><span id="bigqueryError"></span></p>
-        <table id="bigqueryResults" width="100%"></table>
-      </div>
-
+      <body>
+          <div id="root"></div>
+          <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
       </body>
       </html>
     `;
