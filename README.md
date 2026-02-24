@@ -5,7 +5,13 @@
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor & Antigravity.
 ✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product.
 
-![compilation](media/images/compiled_query_preview.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/images/compiled_query_preview_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="media/images/compiled_query_preview_light.png">
+  <!-- Fallback image if picture is not supported -->
+  <img alt="compilation" src="media/images/compiled_query_preview.png">
+</picture>
+
 
 <table>
   <thead>
