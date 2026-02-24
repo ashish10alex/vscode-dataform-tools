@@ -4,10 +4,11 @@ import path from 'path';
 import os from 'os';
 import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
+import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
 import { Job } from '@google-cloud/bigquery';
 
-function waitForBigQueryJob(timeout = 20000): Promise<Job> { // default timeout 20 seconds
+function waitForBigQueryJob(timeout = getBigQueryTimeoutMs()): Promise<Job> { // default timeout from config
   return new Promise((resolve, reject) => {
     const start = Date.now();
 
