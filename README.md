@@ -2,8 +2,10 @@
 
 > ▶️ [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
-[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor.
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor & Antigravity.
 ✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product.
+
+![compilation](media/images/compiled_query_preview.png)
 
 <table>
   <thead>
@@ -25,6 +27,129 @@
     </tr>
   </thead>
 </table>
+
+----
+
+## Installation
+
+1. Install the extension from the marketplace.
+2. [Install Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
+
+   ```bash
+   # requires nodejs & npm - https://nodejs.org/en/download
+   npm i -g @dataform/cli
+   ```
+   Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli.
+
+3. [Install gcloud cli](https://cloud.google.com/sdk/docs/install) and run
+
+   ```bash
+   gcloud init
+   gcloud auth application-default login
+   gcloud config set project <project_id> #replace with your gcp project id
+   ```
+
+4. [Install sqlfluff](https://github.com/sqlfluff/sqlfluff) (optional, for formatting)
+
+   ```bash
+   # install python and run
+   pip install sqlfluff
+   ```
+
+> [!NOTE]
+> Trouble installing or looking for a specific customization ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
+
+* ️▶️ [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
+* ️▶️ [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+* ️▶️ [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
+
+----
+
+## ✨ Features / Previews
+
+| Feature | Description |
+|---------|-------------|
+| [Compiled Query & Dry run stats](#compilation) | Compiled query with dry run stats in a vertical split |
+| [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
+| [Inline diagnostics on `.sqlx` file](#diagnostics) 🚨 | Native LSP like experience with diagnostics being directly put on sqlx file |
+| [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
+| [Cost estimator](#cost_estimator) 💸 | Estimate the cost of running a Tag|
+| [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
+| [Auto-completion](#autocomplete) | - Column names of current model <br> - Dependencies and declarations in `${ref("..")}` trigger when `$` character is typed <br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
+| [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
+| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or [Dataform API](https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient) |
+| [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
+| [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
+| [BigQuery hover definition provider](#hover) | Hover definition for column descriptions, type and commonly used BigQuery functions |
+
+### <a id="depgraph">Dependency graph</a>
+
+![depgraph](/media/images/dependancy_tree.png)
+
+### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
+
+![diagnostics](media/images/diagnostics.png)
+
+### <a id="preview_query_results">Preview query results</a>
+
+![preview_query_results](/media/images/preview_query_results.png)
+
+### <a id="cost_estimator">Estimate cost of running a Tag</a>
+
+![cost_estimator](/media/images/tag_cost_estimator.png)
+
+### <a id="definition">Go to definition</a>
+
+Go to definition for source in `$ref{("my_source")}`. Takes you to `my_source.sqlx` or `sources.js` at the line where `my_source` is defined. There is also support for go to definiton
+from a javascript variable/module from a `.sqlx` file to `js` block or `.js` file where the virable or module declaration exsists
+
+![go-to-definition](media/images/go_to_definition.gif)
+
+### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
+
+Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed and `dependencies` and `tags` in config block when `"` or `'` is typed.
+
+![auto-completion](media/images/sources_autocompletion.gif)
+
+### <a id="formatting">Formatting using sqlfluff</a>
+
+![formatting](media/images/formatting.gif)
+
+### <a id="hover">BigQuery hover definition provider</a>
+
+Hover over BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
+
+![go-to-definition](media/images/func_def_on_hover.png)
+
+----
+
+
+
+## Commands
+
+Most features can be invoked via command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and searching for the following. These key bindings can also be attached to a keybinding to
+further streamline your workflow.
+
+| Command | Description |
+|---------|-------------|
+| `vscode-dataform-tools.showCompiledQueryInWebView` | Show compiled Query in web view |
+| `vscode-dataform-tools.runCurrentFile` | Run current file |
+| `vscode-dataform-tools.runCurrentFileWtDeps` | Run current file with dependencies |
+| `vscode-dataform-tools.runCurrentFileWtDownstreamDeps` | Run current file with dependents |
+| `vscode-dataform-tools.runQuery` | Preview query results |
+| `vscode-dataform-tools.runTag` | Run a tag |
+| `vscode-dataform-tools.runTagWtDeps` | Run a tag with dependencies |
+| `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
+| `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
+| `vscode-dataform-tools.runFilesTagsWtOptionsApi` | Run file(s) / tag(s) with options using API |
+| `vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace` | Run file(s) / tag(s) with options using API in remote workspace [beta] |
+| `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
+| `vscode-dataform-tools.runTagWtApi` | Run a tag using API |
+| `vscode-dataform-tools.runTagWtDependenciesApi` | Run tag with dependencies using API |
+| `vscode-dataform-tools.runCurrentFileWtApi` | Run current file using API |
+| `vscode-dataform-tools.runCurrentFileWtDependenciesApi` | Run current file with dependencies using API |
+| `vscode-dataform-tools.runCurrentFileWtDependentsApi` | Run current file with dependents using API |
+| `vscode-dataform-tools.clearExtensionCache` |  Clear extension cache|
 
 ----
 
@@ -74,137 +199,6 @@
 </table>
 
 ----
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| [Compiled Query & Dry run stats](#compilation) | Compiled query with dry run stats in a vertical split |
-| [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
-| [Inline diagnostics on `.sqlx` file](#diagnostics) 🚨 | Native LSP like experience with diagnostics being directly put on sqlx file |
-| [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
-| [Cost estimator](#cost_estimator) 💸 | Estimate the cost of running a Tag|
-| [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
-| [Auto-completion](#autocomplete) | - Column names of current model <br> - Dependencies and declarations in `${ref("..")}` trigger when `$` character is typed <br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
-| [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
-| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or [Dataform API](https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient) |
-| [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
-| [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
-| [BigQuery hover definition provider](#hover) | Hover definition for column descriptions, type and commonly used BigQuery functions |
-
-## Requirements
-
-1. [Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
-
-   ```bash
-   # requires nodejs
-   npm i -g @dataform/cli
-   ```
-
-   Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli
-
-2. [Install gcloud cli](https://cloud.google.com/sdk/docs/install) and run
-
-   ```bash
-   gcloud init
-   ```
-
-   ```bash
-   gcloud auth application-default login
-   ```
-
-   ```bash
-    gcloud config set project <project_id> #replace with your gcp project id
-   ```
-
-3. To enable formatting using [sqlfluff](https://github.com/sqlfluff/sqlfluff) install [sqlfluff](https://github.com/sqlfluff/sqlfluff)
-
-   ```bash
-   # install python and run
-   pip install sqlfluff
-   ```
-
-4. To enable prettier diagnostics install [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) extension [ **optional** ]
-
-5. Git cli
-
-> [!NOTE]
-Trouble installing or looking for a specific customization ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
-
-* ️▶️ [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
-* ️▶️ [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
-* ️▶️ [Dataform workpace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
-
-## Feature preview
-
-### <a id="compilation">Compiled query & Dry run stats</a>
-
-![compilation](media/images/compiled_query_preview.png)
-
-### <a id="depgraph">Dependency graph</a>
-
-![depgraph](/media/images/dependancy_tree.png)
-
-### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
-
-![diagnostics](media/images/diagnostics.png)
-
-### <a id="preview_query_results">Preview query results</a>
-
-![preview_query_results](/media/images/preview_query_results.png)
-
-### <a id="cost_estimator">Estimate cost of running a Tag</a>
-
-![cost_estimator](/media/images/tag_cost_estimator.png)
-
-### <a id="definition">Go to definition</a>
-
-Go to definition for source in `$ref{("my_source")}`. Takes you to `my_source.sqlx` or `sources.js` at the line where `my_source` is defined. There is also support for go to definiton
-from a javascript variable/module from a `.sqlx` file to `js` block or `.js` file where the virable or module declaration exsists
-
-![go-to-definition](media/images/go_to_definition.gif)
-
-### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
-
-Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed and `dependencies` and `tags` in config block when `"` or `'` is typed.
-
-![auto-completion](media/images/sources_autocompletion.gif)
-
-### <a id="formatting">Formatting using sqlfluff</a>
-
-![formatting](media/images/formatting.gif)
-
-### <a id="hover">BigQuery hover definition provider</a>
-
-Hover over BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
-
-![go-to-definition](media/images/func_def_on_hover.png)
-
-## Commands
-
-Most features can be invoked via command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and searching for the following. These key bindings can also be attached to a keybinding to
-further streamline your workflow.
-
-| Command | Description |
-|---------|-------------|
-| `vscode-dataform-tools.showCompiledQueryInWebView` | Show compiled Query in web view |
-| `vscode-dataform-tools.runCurrentFile` | Run current file |
-| `vscode-dataform-tools.runCurrentFileWtDeps` | Run current file with dependencies |
-| `vscode-dataform-tools.runCurrentFileWtDownstreamDeps` | Run current file with dependents |
-| `vscode-dataform-tools.runQuery` | Preview query results |
-| `vscode-dataform-tools.runTag` | Run a tag |
-| `vscode-dataform-tools.runTagWtDeps` | Run a tag with dependencies |
-| `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
-| `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
-| `vscode-dataform-tools.runFilesTagsWtOptionsApi` | Run file(s) / tag(s) with options using API |
-| `vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace` | Run file(s) / tag(s) with options using API in remote workspace [beta] |
-| `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
-| `vscode-dataform-tools.runTagWtApi` | Run a tag using API |
-| `vscode-dataform-tools.runTagWtDependenciesApi` | Run tag with dependencies using API |
-| `vscode-dataform-tools.runCurrentFileWtApi` | Run current file using API |
-| `vscode-dataform-tools.runCurrentFileWtDependenciesApi` | Run current file with dependencies using API |
-| `vscode-dataform-tools.runCurrentFileWtDependentsApi` | Run current file with dependents using API |
-| `vscode-dataform-tools.clearExtensionCache` |  Clear extension cache|
 
 ## Known Issues
 
