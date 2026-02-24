@@ -650,6 +650,9 @@ export class CompiledQueryPanel {
         let dryRunStat = "";
         const formatCost = (result: any, type: string) => {
             if(result?.statistics?.cost && result?.error?.hasError === false){
+                if (result.statistics.statementType === 'SCRIPT' && result.statistics.totalBytesProcessedAccuracy !== 'PRECISE') {
+                    return (type ? type + ": " : "") + "NOTE: Could not compute bytes processed estimate for script.";
+                }
                 return (type ? type + ": " : "") + "(" + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
             }
             return "";
