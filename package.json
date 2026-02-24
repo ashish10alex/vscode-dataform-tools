@@ -357,7 +357,9 @@
                 "vscode-dataform-tools.bigQueryTimeoutMs": {
                     "type": "number",
                     "default": 20000,
-                    "markdownDescription": "Timeout in milliseconds for BigQuery queries"
+                    "minimum": 1000,
+                    "maximum": 3600000,
+                    "markdownDescription": "Timeout in milliseconds for BigQuery queries (max 1 hour)"
                 },
                 "vscode-dataform-tools.enableLogging": {
                     "type": "boolean",
