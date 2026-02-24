@@ -100,7 +100,13 @@
 
 ### <a id="depgraph">Dependency graph</a>
 
-![depgraph](/media/images/dependancy_tree.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/images/dependancy_tree_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="media/images/dependancy_tree_light.png">
+  <!-- Fallback image if picture is not supported -->
+  <img alt="depgraph" src="media/images/dependancy_tree.png">
+</picture>
+
 
 ### <a id="preview_query_results">Preview query results</a>
 
