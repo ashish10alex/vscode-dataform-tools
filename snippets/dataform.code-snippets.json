@@ -99,30 +99,6 @@
 		"description": "BigQuery options for config block"
 	},
 
-	"partitionBy": {
-		"prefix": "partitionBy bigquery [Dataform]",
-		"body": [
-			"partitionBy: '${1:partition_column}',"
-		],
-		"description": "Generate a partitionBy option for BigQuery in Dataform"
-	},
-
-	"requirePartitionFilter": {
-		"prefix": "requirePartitionFilter bigquery [Dataform]",
-		"body": [
-			"requirePartitionFilter: ${1|true,false|},"
-		],
-		"description": "Generate a requirePartitionFilter option for BigQuery in Dataform"
-	},
-
-	"clusterBy": {
-		"prefix": "clusterBy bigquery [Dataform]",
-		"body": [
-			"clusterBy: ['${1:column1}'],"
-		],
-		"description": "Generate a clusterBy option for BigQuery in Dataform"
-	},
-
 	"source declarations": {
 		"scope": "javascript",
         "prefix": "declare sources [Dataform]",
@@ -165,42 +141,6 @@
 			  "}"
 		],
 		"description": "Generate post_operation block"
-	},
-
-	"assertions": {
-		"prefix": "assertions [Dataform]",
-		"body": [
-			"assertions: {",
-			"\tnonNull: ['${1}'],",
-			"\trowConditions: ['${2}'],",
-			"\tuniqueKey: ['${3}'],",
-			"},"
-		],
-		"description": "Generate Dataform assertions object with nonNull, rowConditions, and uniqueKey arrays"
-	},
-
-	"nonNull assertion": {
-	"prefix": "nonNull assertions [Dataform]",
-	"body": [
-		"nonNull: ['${1:column1}'],"
-	],
-	"description": "Generate a nonNull assertion for Dataform"
-	},
-
-	"rowConditions assertion": {
-	"prefix": "rowConditions assertions [Dataform]",
-	"body": [
-		"rowConditions: ['${1:condition1}'],"
-	],
-	"description": "Generate a rowConditions assertion for Dataform"
-	},
-
-	"uniqueKey assertion": {
-	"prefix": "uniqueKey assertions [Dataform]",
-	"body": [
-		"uniqueKey: ['${1:key1}'],"
-	],
-	"description": "Generate a uniqueKey assertion for Dataform"
 	},
 
 	"publish": {

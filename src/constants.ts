@@ -14,6 +14,39 @@ export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not f
 export const costInPoundsForOneGb = 0.005;
 export const bigQuerytimeoutMs = 20000;
 
+export const configBlockHoverOptions: Record<string, string> = {
+  // Assertions
+  'nonNull': 'This condition asserts that the specified columns are not null across all table rows.',
+  'rowConditions': 'This condition asserts that all table rows follow the custom logic you define.',
+  'uniqueKey': 'This condition asserts that, in a specified column, no table rows have the same value.',
+  'uniqueKeys': 'This condition asserts that, in the specified columns, no table rows have the same value.',
+
+  // BigQuery
+  'partitionBy': 'Expression for partitioning the table (e.g. "DATE(timestamp)").',
+  'clusterBy': 'A list of columns by which to cluster the table.',
+  'requirePartitionFilter': 'Whether queries must include a partition filter (true/false).',
+  'partitionExpirationDays': 'Number of days to retain partitions.',
+  'labels': 'A map of BigQuery labels to apply to the table.',
+  'updatePartitionFilter': 'Limits the partitions scanned in the target table during a MERGE operation for incremental tables.',
+  'iceberg': 'Iceberg table configuration.',
+
+  // General Config
+  'type': 'The type of the dataset. "table", "view", "incremental", "inline", "declaration", "operations"',
+  'database': 'The database (Google Cloud project ID) to output the dataset to.',
+  'schema': 'The schema (BigQuery dataset) to output the dataset to.',
+  'name': 'The name of the model.',
+  'description': 'The description of the model.',
+  'columns': 'A map of column names to descriptions or configurations.',
+  'tags': 'A list of tags for the model.',
+  'dependencies': 'A list of dependencies for the model.',
+  'hasOutput': 'Whether an operations model generates an output.',
+  'assertions': 'Assertions to run after this model is created.',
+  'bigquery': 'BigQuery-specific configurations.',
+  'materialized': 'Whether a view is materialized.',
+  'onSchemaChange': 'Action to take when schema changes for incremental models: "IGNORE", "FAIL", "EXTEND", "SYNCHRONIZE".',
+  'protected': 'Prevents the model from being rebuilt from scratch (e.g. true/false)'
+};
+
 export const errorDenylist = ["CREATE TEMPORARY FUNCTION statements must be followed by an actual query."];
 
 export const bigQueryDryRunCostOneGiBByCurrency: Record<SupportedCurrencies, number> = {

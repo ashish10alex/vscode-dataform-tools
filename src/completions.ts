@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
+import { configBlockHoverOptions } from './constants';
 
 export const configBlockAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     { language: 'sqlx', scheme: 'file' },
@@ -129,33 +130,33 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
             }
 
             const configOptions = inAssertionBlock ? [
-                { name: 'nonNull', description: 'This condition asserts that the specified columns are not null across all table rows.' },
-                { name: 'rowConditions', description: 'This condition asserts that all table rows follow the custom logic you define.' },
-                { name: 'uniqueKey', description: 'This condition asserts that, in a specified column, no table rows have the same value.' },
-                { name: 'uniqueKeys', description: 'This condition asserts that, in the specified columns, no table rows have the same value.' }
+                { name: 'nonNull', description: configBlockHoverOptions['nonNull'] },
+                { name: 'rowConditions', description: configBlockHoverOptions['rowConditions'] },
+                { name: 'uniqueKey', description: configBlockHoverOptions['uniqueKey'] },
+                { name: 'uniqueKeys', description: configBlockHoverOptions['uniqueKeys'] }
             ] : inBigQueryBlock ? [
-                { name: 'partitionBy', description: 'Expression for partitioning the table (e.g. "DATE(timestamp)").' },
-                { name: 'clusterBy', description: 'A list of columns by which to cluster the table.' },
-                { name: 'requirePartitionFilter', description: 'Whether queries must include a partition filter (true/false).' },
-                { name: 'partitionExpirationDays', description: 'Number of days to retain partitions.' },
-                { name: 'labels', description: 'A map of BigQuery labels to apply to the table.' },
-                { name: 'updatePartitionFilter', description: 'Limits the partitions scanned in the target table during a MERGE operation for incremental tables.' },
-                { name: 'iceberg', description: 'Iceberg table configuration.' }
+                { name: 'partitionBy', description: configBlockHoverOptions['partitionBy'] },
+                { name: 'clusterBy', description: configBlockHoverOptions['clusterBy'] },
+                { name: 'requirePartitionFilter', description: configBlockHoverOptions['requirePartitionFilter'] },
+                { name: 'partitionExpirationDays', description: configBlockHoverOptions['partitionExpirationDays'] },
+                { name: 'labels', description: configBlockHoverOptions['labels'] },
+                { name: 'updatePartitionFilter', description: configBlockHoverOptions['updatePartitionFilter'] },
+                { name: 'iceberg', description: configBlockHoverOptions['iceberg'] }
             ] : [
-                { name: 'type', description: 'The type of the dataset. "table", "view", "incremental", "inline", "declaration", "operations"' },
-                { name: 'database', description: 'The database (Google Cloud project ID) to output the dataset to.' },
-                { name: 'schema', description: 'The schema (BigQuery dataset) to output the dataset to.' },
-                { name: 'name', description: 'The name of the dataset.' },
-                { name: 'description', description: 'The description of the dataset.' },
-                { name: 'columns', description: 'A map of column names to descriptions or configurations.' },
-                { name: 'tags', description: 'A list of tags for the dataset.' },
-                { name: 'dependencies', description: 'A list of dependencies for the dataset.' },
-                { name: 'hasOutput', description: 'Whether an operations dataset generates an output.' },
-                { name: 'assertions', description: 'Assertions to run after this dataset is created.' },
-                { name: 'bigquery', description: 'BigQuery-specific configurations.' },
-                { name: 'materialized', description: 'Whether a view is materialized.' },
-                { name: 'onSchemaChange', description: 'Action to take when schema changes for incremental tables: "IGNORE", "FAIL", "EXTEND", "SYNCHRONIZE".' },
-                { name: 'protected', description: 'Prevents the table from being rebuilt from scratch (e.g. true/false)' }
+                { name: 'type', description: configBlockHoverOptions['type'] },
+                { name: 'database', description: configBlockHoverOptions['database'] },
+                { name: 'schema', description: configBlockHoverOptions['schema'] },
+                { name: 'name', description: configBlockHoverOptions['name'] },
+                { name: 'description', description: configBlockHoverOptions['description'] },
+                { name: 'columns', description: configBlockHoverOptions['columns'] },
+                { name: 'tags', description: configBlockHoverOptions['tags'] },
+                { name: 'dependencies', description: configBlockHoverOptions['dependencies'] },
+                { name: 'hasOutput', description: configBlockHoverOptions['hasOutput'] },
+                { name: 'assertions', description: configBlockHoverOptions['assertions'] },
+                { name: 'bigquery', description: configBlockHoverOptions['bigquery'] },
+                { name: 'materialized', description: configBlockHoverOptions['materialized'] },
+                { name: 'onSchemaChange', description: configBlockHoverOptions['onSchemaChange'] },
+                { name: 'protected', description: configBlockHoverOptions['protected'] }
             ];
 
             const completionItems = configOptions.map(option => {
