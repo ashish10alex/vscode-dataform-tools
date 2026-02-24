@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import { QueryResultsOptions } from '@google-cloud/bigquery';
-import { bigQuerytimeoutMs } from './constants';
+import { getBigQueryTimeoutMs } from './constants';
 import { formatBytes } from './utils';
 
 let cancelBigQueryJobSignal = false;
@@ -143,7 +143,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
     }
 
     try {
-        [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: bigQuerytimeoutMs });
+        [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs() });
         _bigQueryJobId = bigQueryJob?.id;
     } catch (error: any) {
         try {
@@ -163,7 +163,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
         return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
     }
 
-    const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs:bigQuerytimeoutMs };
+    const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs: getBigQueryTimeoutMs() };
 
     //TODO: even when the job has been cancelled it might return results, handle this
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?

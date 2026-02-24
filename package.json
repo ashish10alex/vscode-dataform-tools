@@ -354,6 +354,11 @@
                     "default": true,
                     "markdownDescription": "Whether to recommend Error Lens extension to show erorrs inline rather than showing them as swigly lines"
                 },
+                "vscode-dataform-tools.bigQueryTimeoutMs": {
+                    "type": "number",
+                    "default": 20000,
+                    "markdownDescription": "Timeout in milliseconds for BigQuery queries"
+                },
                 "vscode-dataform-tools.enableLogging": {
                     "type": "boolean",
                     "default": false,
