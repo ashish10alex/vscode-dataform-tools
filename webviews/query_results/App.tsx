@@ -160,14 +160,24 @@ export default function App() {
 
   const convertedColumns = useMemo<ColumnDef<any, any>[]>(() => {
     if (!columns) return [];
-    return columns.map(col => ({
+    const baseColumns = columns.map(col => ({
       accessorKey: col.field,
       header: col.title,
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const val = row.getValue(col.field);
         return typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '');
       }
     }));
+
+    return [
+      {
+        id: 'rowIndex',
+        header: '',
+        size: 80,
+        cell: ({ row }: any) => <span className="text-zinc-400 font-mono text-xs">{Number(row.id) + 1}</span>,
+      },
+      ...baseColumns
+    ];
   }, [columns]);
 
   const summaryColumns = useMemo<ColumnDef<any, any>[]>(() => {

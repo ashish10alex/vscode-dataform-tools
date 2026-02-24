@@ -43,6 +43,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
       globalFilter,
     },
+    columnResizeMode: 'onChange',
     initialState: {
         pagination: {
             pageSize: 50,
@@ -61,8 +62,8 @@ export function DataTable<TData, TValue>({
                   return (
                     <th 
                       key={header.id} 
-                      className="px-4 py-3 font-medium border-b border-zinc-200 dark:border-zinc-700"
-                      style={{ width: header.column.columnDef.size }}
+                      className="px-4 py-3 font-medium border-b border-zinc-200 dark:border-zinc-700 relative group"
+                      style={{ width: header.getSize() }}
                     >
                       {header.isPlaceholder ? null : (
                         <div className="space-y-2">
@@ -105,6 +106,15 @@ export function DataTable<TData, TValue>({
                             ) : null}
                         </div>
                       )}
+                      {header.column.getCanResize() && (
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none bg-zinc-300 dark:bg-zinc-600 opacity-0 group-hover:opacity-100 ${
+                            header.column.getIsResizing() ? 'opacity-100 bg-blue-500' : ''
+                          }`}
+                        />
+                      )}
                     </th>
                   )
                 })}
@@ -121,8 +131,8 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <td 
                       key={cell.id} 
-                      className="px-4 py-2 break-words align-top"
-                      style={{ width: cell.column.columnDef.size }}
+                      className="px-4 py-2 break-words align-top border-r border-zinc-200 dark:border-zinc-800"
+                      style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
