@@ -34,6 +34,30 @@ export default function App() {
   const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const isDark = document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast');
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+      });
+    });
+
+    observer.observe(document.body, { attributes: true });
+    
+    // Initial check
+    if (document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')) {
+      document.documentElement.classList.add('dark');
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const msg = event.data;
       
@@ -212,9 +236,12 @@ export default function App() {
     return (
       <>
         <span className="mx-2 text-zinc-400">|</span>
-        <a href={bqLink} target="_blank" rel="noreferrer" className="text-sm text-blue-500 hover:underline">
+        <button 
+          onClick={() => vscode.postMessage({ command: 'openExternal', value: bqLink })}
+          className="text-sm text-blue-500 hover:underline cursor-pointer bg-transparent border-none p-0"
+        >
           View job in BigQuery
-        </a>
+        </button>
       </>
     );
   };

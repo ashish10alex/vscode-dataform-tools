@@ -152,8 +152,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 if (message.value){
                   queryLimit = message.value;
                 }
+                return;
               case 'incrementalCheckBox':
                 incrementalCheckBox = message.value;
+                return;
+              case 'openExternal':
+                if (message.value) {
+                  vscode.env.openExternal(vscode.Uri.parse(message.value));
+                }
                 return;
             }
           },
@@ -176,7 +182,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         return;
     }
       try {
-          this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
           this._view.show(true);
           let allQueries = [];
@@ -238,13 +243,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             } else if (!errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._view.webview.html = this._getHtmlForWebview(this._view.webview);
               this._view.show(true);
               this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit});
             } else if(errorMessage){
               this._cachedResults = undefined;
               this._cachedMultiResults = undefined;
-              this._view.webview.html = this._getHtmlForWebview(this._view.webview);
               this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit});
               this._view.show(true);
             }
@@ -252,7 +255,6 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       } catch (error:any) {
         let errorMessage = error?.message;
         if(errorMessage){
-          this._view.webview.html = this._getHtmlForWebview(this._view.webview);
           this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
           this._view.show(true);
         }
