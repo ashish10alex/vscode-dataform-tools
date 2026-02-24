@@ -219,15 +219,17 @@ export default function App() {
   };
 
   const renderDateTimeText = () => {
-    if (!jobStats && !bigQueryJobId) return null;
+    const jobIdToUse = jobStats?.bigQueryJobId || bigQueryJobId;
+    if (!jobStats && !jobIdToUse) return null;
     const { bigQueryJobEndTime, jobCostMeta } = jobStats || {};
-    const text = `Query results ran at: ${bigQueryJobEndTime || ''} | Took: (${elapsedTime} seconds) | billed: ${jobCostMeta || '0'} | jobId: ${bigQueryJobId}`;
+    const text = `Query results ran at: ${bigQueryJobEndTime || ''} | Took: (${elapsedTime} seconds) | billed: ${jobCostMeta || '0'} | jobId: ${jobIdToUse}`;
     return <span className="text-sm font-mono text-zinc-600 dark:text-zinc-400">{text}</span>;
   };
   
   const renderBigQueryLink = () => {
-    if (!bigQueryJobId) return null;
-    const parts = bigQueryJobId.split(':');
+    const jobIdToUse = jobStats?.bigQueryJobId || bigQueryJobId;
+    if (!jobIdToUse) return null;
+    const parts = jobIdToUse.split(':');
     if (parts.length < 2) return null;
     const projectId = parts[0];
     const jobId = parts[1].replace('.', ':');
