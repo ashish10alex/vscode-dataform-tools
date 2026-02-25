@@ -101,12 +101,14 @@ export default function App() {
         }
         
         setNoResults(false);
+        setActiveTab('results');
         stopLoading();
       }
       
       if (msg.bigQueryJobCancelled && msg.bigQueryJobId) {
         setMultiResults(false);
         setBigQueryJobCancelledMsg(`❕ BigQuery Job was cancelled, bigQueryJobId: ${msg.bigQueryJobId}`);
+        setActiveTab('results');
         stopLoading();
       }
       
@@ -116,17 +118,23 @@ export default function App() {
         setResults(null);
         setJobStats(msg.jobStats);
         setErrorMessage(null);
+        setActiveTab('results');
         stopLoading();
       }
 
       if (msg.query) {
         setQuery(msg.query);
+        // If this is a preemptive query update without any results, show the query tab
+        if (!msg.results && !msg.noResults && !msg.errorMessage && !msg.showLoadingMessage && !msg.multiResults) {
+          setActiveTab('query');
+        }
       }
       
       if (msg.errorMessage && !msg.results) { // don't override assertion failure message
         setMultiResults(false);
         setErrorMessage(msg.errorMessage);
         setResults(null);
+        setActiveTab('results');
         stopLoading();
       }
     };

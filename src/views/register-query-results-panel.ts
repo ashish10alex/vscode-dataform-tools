@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import { getCurrentFileMetadata, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
+import { getQueryStringForPreview } from '../previewQueryResults';
 import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
 import { Job } from '@google-cloud/bigquery';
@@ -58,9 +59,15 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         }
       }else {
         let curFileMeta = await getCurrentFileMetadata(false);
-        let type = curFileMeta?.fileMetadata?.queryMeta.type;
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+        if (curFileMeta?.fileMetadata) {
+            let type = curFileMeta.fileMetadata.queryMeta.type;
+            let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+            webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+            this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "query": query });
+        } else {
+            webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+            this._view.webview.postMessage({ "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+        }
       }
 
       webviewView.onDidChangeVisibility(async() => {
@@ -73,8 +80,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             });
           } else {
             let curFileMeta = await getCurrentFileMetadata(false);
-            let type = curFileMeta?.fileMetadata?.queryMeta.type;
-            this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit});
+            if (curFileMeta?.fileMetadata) {
+                let type = curFileMeta.fileMetadata.queryMeta.type;
+                let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+                this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "query": query});
+            }
           }
         }
       });
@@ -93,8 +103,11 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                     await this.updateContent({query: this._query, type: this.queryType});
                 } else {
                     let curFileMeta = await getCurrentFileMetadata(false);
-                    let type = curFileMeta?.fileMetadata?.queryMeta.type;
-                    this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit": queryLimit});
+                    if (curFileMeta?.fileMetadata) {
+                        let type = curFileMeta.fileMetadata.queryMeta.type;
+                        let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+                        this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit": queryLimit, "query": query});
+                    }
                 }
                 return;
               case 'cancelBigQueryJob':
