@@ -249,6 +249,15 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
                 obj[key] = extractValue(value);
             }
         });
+        
+        if (obj._children && obj._children.length > 0) {
+            const firstChild = obj._children.shift();
+            Object.assign(obj, firstChild);
+            if (obj._children.length === 0) {
+                delete obj._children;
+            }
+        }
+        
         return obj;
     });
 
