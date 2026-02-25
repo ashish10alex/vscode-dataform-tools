@@ -110,11 +110,22 @@
 
 ### <a id="preview_query_results">Preview query results</a>
 
-![preview_query_results](/media/images/preview_query_results.png)
+<!-- ![preview_query_results](/media/images/preview_query_results.png) -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/images/preview_query_results_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="media/images/preview_query_results_light.png">
+  <!-- Fallback image if picture is not supported -->
+  <img alt="preview_query_results" src="media/images/preview_query_results.png">
+</picture>
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
-![cost_estimator](/media/images/tag_cost_estimator.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/images/tag_cost_estimator_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="media/images/tag_cost_estimator_light.png">
+  <!-- Fallback image if picture is not supported -->
+  <img alt="cost_estimator" src="media/images/tag_cost_estimator.png">
+</picture>
 
 ### <a id="definition">Go to definition</a>
 
