@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { vscode } from './vscode';
 import { DataTable } from '../preview_compiled/components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import hljs from 'highlight.js';
+import { CodeBlock } from '../preview_compiled/components/CodeBlock';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'results' | 'query'>('results');
@@ -145,18 +145,6 @@ export default function App() {
         timerRef.current = null;
     }
   };
-
-  useEffect(() => {
-    if (activeTab === 'query' && query) {
-      const codeBlock = document.getElementById('sqlCodeBlock');
-      if (codeBlock) {
-        codeBlock.textContent = query;
-        codeBlock.removeAttribute('data-highlighted');
-        codeBlock.className = 'language-sql';
-        hljs.highlightElement(codeBlock);
-      }
-    }
-  }, [activeTab, query]);
 
   const convertedColumns = useMemo<ColumnDef<any, any>[]>(() => {
     if (!columns) return [];
@@ -399,9 +387,7 @@ export default function App() {
             </div>
 
             <div className={`h-full overflow-auto ${activeTab === 'query' ? 'block' : 'hidden'}`}>
-              <pre className="m-0 h-full">
-                <code id="sqlCodeBlock" className="language-sql text-sm block h-full"></code>
-              </pre>
+              <CodeBlock code={query} language="sql" className="h-full" />
             </div>
           </>
         )}
