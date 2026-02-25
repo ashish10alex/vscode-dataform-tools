@@ -156,7 +156,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
             //NOTE: If handleBigQueryError didn't throw, retry the query
             return await runQueryInBigQuery(query);
         } catch (finalError: any) {
-            vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
+            // vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
             return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};
         }
     }
@@ -176,7 +176,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
     try {
         [rows] = await bigQueryJob.getQueryResults(options);
     } catch (error: any) {
-        vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
+        // vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
         return { rows: undefined, jobStats: undefined, errorMessage: error.message };
     }
 

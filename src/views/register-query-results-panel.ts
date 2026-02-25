@@ -9,15 +9,23 @@ import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
 import { Job } from '@google-cloud/bigquery';
 
-function waitForBigQueryJob(timeout = getBigQueryTimeoutMs()): Promise<Job> { // default timeout from config
+function waitForBigQueryJob(queryOutputPromise?: Promise<any>, timeout = getBigQueryTimeoutMs()): Promise<Job | null> { // default timeout from config
   return new Promise((resolve, reject) => {
     const start = Date.now();
+    let isQueryDone = false;
+
+    if (queryOutputPromise) {
+        queryOutputPromise.then(() => isQueryDone = true).catch(() => isQueryDone = true);
+    }
 
     const pollInterval = setInterval(() => {
       if (bigQueryJob) {
         globalThis.bigQueryJob = bigQueryJob;
         clearInterval(pollInterval);
         resolve(bigQueryJob);
+      } else if (isQueryDone) {
+        clearInterval(pollInterval);
+        resolve(null);
       } else if (Date.now() - start > timeout) {
         clearInterval(pollInterval);
         reject(new Error('Timed out waiting for bigQueryJob'));
@@ -259,9 +267,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             const singleQuery = allQueries[i];
             const queryOutput = queryBigQuery(singleQuery);
             // const { results, columns, jobStats, errorMessage } = queryBigQuery(singleQuery);
-            const job = await waitForBigQueryJob();
+            const job = await waitForBigQueryJob(queryOutput);
 
-            if (this?._view?.webview) {
+            if (this?._view?.webview && job) {
               this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id };
               this._view.webview.postMessage(this._lastRenderPayload);
             }
@@ -321,12 +329,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             }
           }
       } catch (error:any) {
-        let errorMessage = error?.message;
-        if(errorMessage){
-          this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit };
-          this._view.webview.postMessage(this._lastRenderPayload);
-          this._view.show(true);
-        }
+        let errorMessage = error?.message || "An unknown error occurred during query execution.";
+        this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit };
+        this._view.webview.postMessage(this._lastRenderPayload);
+        this._view.show(true);
       }
   }
 

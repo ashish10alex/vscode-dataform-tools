@@ -63,6 +63,8 @@ export default function App() {
       
       if (msg.showLoadingMessage) {
         setLoading(true);
+        setErrorMessage(null);
+        setNoResults(false);
         setBigQueryJobCancelledMsg(null);
         startTimeRef.current = Date.now();
         setElapsedTime(0);
