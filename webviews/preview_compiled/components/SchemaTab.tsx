@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { WebviewState } from '../types';
-import { DataTable } from './ui/data-table';
+import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { Download, Edit2, Copy, Check } from 'lucide-react';
 import { vscode } from '../utils/vscode';

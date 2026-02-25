@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { vscode } from './vscode';
-import { DataTable } from '../preview_compiled/components/ui/data-table';
+import { DataTable } from '../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { CodeBlock } from '../preview_compiled/components/CodeBlock';
+import { CodeBlock } from '../components/CodeBlock';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'results' | 'query'>('results');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { WebviewState } from "../types";
-import { CodeBlock } from "./CodeBlock";
+import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import {
   Play,
