@@ -177,7 +177,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox ,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id,
+                        "bigQueryJobId": jobStats.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -189,7 +189,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id,
+                        "bigQueryJobId": jobStats.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -200,7 +200,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id,
+                        "bigQueryJobId": jobStats.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -311,19 +311,19 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             if(results && !errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._lastRenderPayload = {"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId || bigQueryJob?.id};
+              this._lastRenderPayload = {"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId};
               this._view.webview.postMessage(this._lastRenderPayload);
               this._view.show(true);
             } else if (!errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._lastRenderPayload = {"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId || bigQueryJob?.id};
+              this._lastRenderPayload = {"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId};
               this._view.show(true);
               this._view.webview.postMessage(this._lastRenderPayload);
             } else if(errorMessage){
               this._cachedResults = undefined;
               this._cachedMultiResults = undefined;
-              this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId || bigQueryJob?.id};
+              this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId};
               this._view.webview.postMessage(this._lastRenderPayload);
               this._view.show(true);
             }
