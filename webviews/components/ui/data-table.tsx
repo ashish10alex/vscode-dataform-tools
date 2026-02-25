@@ -6,6 +6,7 @@ import {
   getSortedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
+  getExpandedRowModel,
   useReactTable,
   SortingState,
   ColumnFiltersState,
@@ -38,11 +39,15 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
+    getSubRows: (row: any) => row._children,
+    getExpandedRowModel: getExpandedRowModel(),
     state: {
       sorting,
       columnFilters,
       globalFilter,
+      expanded: true,
     },
+    columnResizeMode: 'onChange',
     initialState: {
         pagination: {
             pageSize: 50,
@@ -53,16 +58,16 @@ export function DataTable<TData, TValue>({
   return (
     <div className="flex flex-col h-full overflow-hidden space-y-2">
       <div className="overflow-auto rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex-1">
-        <table className="w-full text-sm text-left rtl:text-right text-zinc-500 dark:text-zinc-400 table-fixed">
-          <thead className="text-xs text-zinc-700 uppercase bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-400 sticky top-0 z-10 shadow-sm">
+        <table className="w-full text-sm text-left rtl:text-right text-zinc-500 dark:text-zinc-400 table-fixed border-separate border-spacing-0">
+          <thead className="text-xs text-zinc-700 uppercase bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-400 shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
                     <th 
                       key={header.id} 
-                      className="px-4 py-3 font-medium border-b border-zinc-200 dark:border-zinc-700"
-                      style={{ width: header.column.columnDef.size }}
+                      className="px-4 py-3 font-medium border-b border-zinc-200 dark:border-zinc-700 group bg-zinc-50 dark:bg-zinc-800"
+                      style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10 }}
                     >
                       {header.isPlaceholder ? null : (
                         <div className="space-y-2">
@@ -105,6 +110,15 @@ export function DataTable<TData, TValue>({
                             ) : null}
                         </div>
                       )}
+                      {header.column.getCanResize() && (
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none bg-zinc-300 dark:bg-zinc-600 opacity-0 group-hover:opacity-100 ${
+                            header.column.getIsResizing() ? 'opacity-100 bg-blue-500' : ''
+                          }`}
+                        />
+                      )}
                     </th>
                   )
                 })}
@@ -121,8 +135,8 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <td 
                       key={cell.id} 
-                      className="px-4 py-2 break-words align-top"
-                      style={{ width: cell.column.columnDef.size }}
+                      className="px-4 py-2 break-words align-top border-r border-zinc-200 dark:border-zinc-800"
+                      style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>

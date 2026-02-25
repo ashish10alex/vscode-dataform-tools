@@ -82,26 +82,31 @@ function parseObject(key:any, obj: any, _childrens: any) {
 }
 
 
-function createTabulatorColumns(data: any) {
+function createTabulatorColumns(data: any | any[]) {
     if (!data) {
         return [];
     }
 
     const columns = new Set<string>();
+    const rowsToScan = Array.isArray(data) ? data.slice(0, 100) : [data];
 
-    // Add top-level properties (excluding '_children')
-    Object.keys(data).forEach(key => {
-        if (key !== '_children') {
-            columns.add(key);
+    rowsToScan.forEach(row => {
+        if (!row) {return;};
+
+        // Add top-level properties (excluding '_children')
+        Object.keys(row).forEach(key => {
+            if (key !== '_children') {
+                columns.add(key);
+            }
+        });
+
+        // Add all properties from all children
+        if (row._children && row._children.length > 0) {
+            row._children.forEach((child: any) => {
+                Object.keys(child).forEach(key => columns.add(key));
+            });
         }
     });
-
-    // Add all properties from all children
-    if (data._children && data._children.length > 0) {
-        data._children.forEach((child: any) => {
-            Object.keys(child).forEach(key => columns.add(key));
-        });
-    }
 
     // Convert Set to array of column objects
     return Array.from(columns).map(key => ({
@@ -151,7 +156,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
             //NOTE: If handleBigQueryError didn't throw, retry the query
             return await runQueryInBigQuery(query);
         } catch (finalError: any) {
-            vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
+            // vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
             return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};
         }
     }
@@ -171,7 +176,7 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
     try {
         [rows] = await bigQueryJob.getQueryResults(options);
     } catch (error: any) {
-        vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
+        // vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
         return { rows: undefined, jobStats: undefined, errorMessage: error.message };
     }
 
@@ -249,10 +254,60 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
                 obj[key] = extractValue(value);
             }
         });
+        
+        if (obj._children && obj._children.length > 0) {
+            const parentKeys = new Set(Object.keys(obj));
+            parentKeys.delete('_children');
+
+            const keysToRename = new Map<string, string>();
+            obj._children.forEach((child: any) => {
+                Object.keys(child).forEach(childKey => {
+                    if (parentKeys.has(childKey) && !keysToRename.has(childKey)) {
+                        let newKey = childKey;
+                        let counter = 1;
+                        while (parentKeys.has(newKey) || keysToRename.has(newKey)) {
+                            newKey = `${childKey}_${counter}`;
+                            counter++;
+                        }
+                        keysToRename.set(childKey, newKey);
+                    }
+                });
+            });
+
+            if (keysToRename.size > 0) {
+                obj._children = obj._children.map((child: any) => {
+                    const newChild: any = {};
+                    Object.entries(child).forEach(([childKey, childValue]) => {
+                        const renamedKey = keysToRename.get(childKey);
+                        if (renamedKey) {
+                            newChild[renamedKey] = childValue;
+                        } else {
+                            newChild[childKey] = childValue;
+                        }
+                    });
+                    return newChild;
+                });
+            }
+
+            const firstChild = obj._children.shift();
+            if (firstChild) {
+                // Safely merge child fields, completely avoiding silent overwrites
+                Object.entries(firstChild).forEach(([childKey, childValue]) => {
+                    if (!(childKey in obj)) {
+                        obj[childKey] = childValue;
+                    }
+                });
+            }
+            
+            if (obj._children.length === 0) {
+                delete obj._children;
+            }
+        }
+        
         return obj;
     });
 
-    let columns = createTabulatorColumns(results[0]);
+    let columns = createTabulatorColumns(results);
 
     return { results: results, columns: columns, jobStats: jobStats, errorMessage: errorMessage };
 }

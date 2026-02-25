@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { WebviewState } from '../types';
 import { vscode } from '../utils/vscode';
 import { Loader2, Info } from 'lucide-react';
-import { DataTable } from './ui/data-table';
+import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 
 interface CostEstimatorTabProps {
