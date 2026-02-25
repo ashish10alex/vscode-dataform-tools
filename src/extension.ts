@@ -18,7 +18,7 @@ import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './c
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
-import { previewQueryResults, runQueryInPanel } from './previewQueryResults';
+import { getQueryStringForPreview, previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
@@ -88,7 +88,9 @@ export async function activate(context: vscode.ExtensionContext) {
     registerCompiledQueryPanel(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider));
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider, {
+        webviewOptions: { retainContextWhenHidden: true }
+    }));
 
 
     context.subscriptions.push(
@@ -105,8 +107,11 @@ export async function activate(context: vscode.ExtensionContext) {
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
         if (editor && queryResultsViewProvider._view?.visible) {
             let curFileMeta = await getCurrentFileMetadata(false);
-            let type = curFileMeta?.fileMetadata?.queryMeta.type;
-            queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox });
+            if (curFileMeta?.fileMetadata) {
+                let type = curFileMeta.fileMetadata.queryMeta.type;
+                let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+                queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "query": query });
+            }
         }
     }, 500);
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);

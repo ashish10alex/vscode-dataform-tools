@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { WebviewState } from '../types';
 import { vscode } from '../utils/vscode';
-import { Loader2 } from 'lucide-react';
-import { DataTable } from './ui/data-table';
+import { Loader2, Info } from 'lucide-react';
+import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 
 interface CostEstimatorTabProps {
@@ -119,9 +119,26 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
     <div className="h-full flex flex-col space-y-4">
         <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded border border-zinc-200 dark:border-zinc-700">
             <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-2">Cost Estimator</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
                 Estimate the cost of running models associated with a specific tag.
             </p>
+
+            <details className="mb-5 group">
+                <summary className="text-sm text-zinc-500 dark:text-zinc-400 cursor-pointer list-none flex items-center gap-1.5 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors w-fit pb-1">
+                    <Info className="w-4 h-4" />
+                    <span>How is cost calculated?</span>
+                </summary>
+                <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-3 rounded">
+                    <p className="mb-2">For each model in the tag, we construct a full query and perform a dry run:</p>
+                    <ul className="space-y-1.5 ml-1">
+                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Table / View:</strong> Pre-operation + Create or replace statement + Main query</li>
+                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Partitioned / Clustered Tables:</strong> Pre-operations + Main query</li>
+                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Incremental:</strong> Incremental pre-operation query + Create or replace statement + Main query</li>
+                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Partitioned / Clustered Incremental:</strong> Incremental pre-operation query + Main query</li>
+                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Assertion & Operation:</strong> Main query</li>
+                    </ul>
+                </div>
+            </details>
 
             <div className="flex items-center gap-4">
                 <select 

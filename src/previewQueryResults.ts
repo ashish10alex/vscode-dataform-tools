@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getCurrentFileMetadata, handleSemicolonPrePostOps } from "./utils";
 import { CustomViewProvider } from './views/register-query-results-panel';
-import { QueryWtType } from './types';
+import { QueryWtType, TablesWtFullQuery } from './types';
 
 export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsViewProvider: CustomViewProvider) {
     if (!queryResultsViewProvider._view) {
@@ -11,14 +11,7 @@ export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsView
     }
 }
 
-export async function previewQueryResults(queryResultsViewProvider: CustomViewProvider) {
-    let curFileMeta = await getCurrentFileMetadata(false);
-    if (!curFileMeta?.fileMetadata) {
-        return;
-    }
-
-    let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
-
+export function getQueryStringForPreview(fileMetadata: TablesWtFullQuery, isIncremental: boolean): string {
     let query = "";
     if (fileMetadata.queryMeta.type === "assertion") {
         query = fileMetadata.queryMeta.assertionQuery;
@@ -27,12 +20,24 @@ export async function previewQueryResults(queryResultsViewProvider: CustomViewPr
     } else if (fileMetadata.queryMeta.type === "operations") {
         query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (fileMetadata.queryMeta.type === "incremental") {
-        if (incrementalCheckBox === true){
+        if (isIncremental === true){
             query = fileMetadata.queryMeta.incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery;
         } else {
             query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery;
         }
     }
+    return query;
+}
+
+export async function previewQueryResults(queryResultsViewProvider: CustomViewProvider) {
+    let curFileMeta = await getCurrentFileMetadata(false);
+    if (!curFileMeta?.fileMetadata) {
+        return;
+    }
+
+    let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
+    let query = getQueryStringForPreview(fileMetadata, incrementalCheckBox);
+
     if (query === "") {
         vscode.window.showWarningMessage("No query to run");
         return;

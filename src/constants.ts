@@ -1,4 +1,5 @@
 import os from 'os';
+import * as vscode from 'vscode';
 import path from 'path';
 import { SupportedCurrency as SupportedCurrencies } from './types';
 import { getWorkspaceFolder } from './utils';
@@ -12,7 +13,7 @@ export const assertionQueryOffset = 4;
 export const windowsDataformCliNotAvailableErrorMessage = "'dataform.cmd' is not recognized as an internal or external command";
 export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not found";
 export const costInPoundsForOneGb = 0.005;
-export const bigQuerytimeoutMs = 20000;
+export const getBigQueryTimeoutMs = () => vscode.workspace.getConfiguration("vscode-dataform-tools").get<number>("bigQueryTimeoutMs") ?? 20000;
 
 export const configBlockHoverOptions: Record<string, string> = {
   // Assertions

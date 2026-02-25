@@ -650,6 +650,9 @@ export class CompiledQueryPanel {
         let dryRunStat = "";
         const formatCost = (result: any, type: string) => {
             if(result?.statistics?.cost && result?.error?.hasError === false){
+                if (result.statistics.statementType === 'SCRIPT' && result.statistics.totalBytesProcessedAccuracy !== 'PRECISE') {
+                    return (type ? type + ": " : "") + "NOTE: Could not compute bytes processed estimate for script.";
+                }
                 return (type ? type + ": " : "") + "(" + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
             }
             return "";
@@ -814,7 +817,6 @@ export class CompiledQueryPanel {
     private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
-        const codiconsUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "node_modules", "@vscode/codicons", "dist", "codicon.css"));
         const nonce = getNonce();
 
         return /*html*/ `
@@ -823,9 +825,8 @@ export class CompiledQueryPanel {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
             <link href="${styleUri}" rel="stylesheet">
-            <link href="${codiconsUri}" rel="stylesheet">
             <title>Compiled Query Preview</title>
         </head>
         <body>
