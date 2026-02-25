@@ -6,6 +6,7 @@ import {
   getSortedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
+  getExpandedRowModel,
   useReactTable,
   SortingState,
   ColumnFiltersState,
@@ -38,10 +39,13 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
+    getSubRows: (row: any) => row._children,
+    getExpandedRowModel: getExpandedRowModel(),
     state: {
       sorting,
       columnFilters,
       globalFilter,
+      expanded: true,
     },
     columnResizeMode: 'onChange',
     initialState: {

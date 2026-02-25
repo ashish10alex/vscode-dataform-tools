@@ -162,7 +162,11 @@ export default function App() {
         id: 'rowIndex',
         header: '',
         size: 80,
-        cell: ({ row }: any) => <span className="text-zinc-400 font-mono text-xs">{Number(row.id) + 1}</span>,
+        cell: ({ row }: any) => (
+          <span className="text-zinc-400 font-mono text-xs">
+            {row.depth > 0 ? '' : Number(row.id) + 1}
+          </span>
+        ),
       },
       ...baseColumns
     ];
