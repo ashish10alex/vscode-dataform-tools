@@ -91,7 +91,7 @@ export default function App() {
       if (msg.results && msg.columns) {
         setResults(msg.results);
         setColumns(msg.columns);
-        setJobStats(msg.jobStats || msg.jobStats);
+        setJobStats(msg.jobStats ?? null);
         
         if (msg.type === 'assertion' && msg.errorMessage) {
           setErrorMessage('Assertion failed !');
