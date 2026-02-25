@@ -112,11 +112,7 @@ export default function App() {
         setNoResults(true);
         setResults(null);
         setJobStats(msg.jobStats);
-        if (msg.type === 'assertion') {
-          setErrorMessage(null);
-        } else {
-          setErrorMessage(null);
-        }
+        setErrorMessage(null);
         stopLoading();
       }
 
