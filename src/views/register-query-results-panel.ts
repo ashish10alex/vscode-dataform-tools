@@ -208,6 +208,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 return;
               case 'incrementalCheckBox':
                 incrementalCheckBox = message.value;
+                let curFileMetaForInc = await getCurrentFileMetadata(false);
+                if (curFileMetaForInc?.fileMetadata) {
+                    let type = curFileMetaForInc.fileMetadata.queryMeta.type;
+                    let query = getQueryStringForPreview(curFileMetaForInc.fileMetadata, incrementalCheckBox);
+                    this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit": queryLimit, "query": query});
+                }
                 return;
               case 'openExternal':
                 if (message.value) {
