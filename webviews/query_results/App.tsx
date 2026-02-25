@@ -74,7 +74,7 @@ export default function App() {
       
       if (msg.queryLimit) setQueryLimit(msg.queryLimit);
       if (msg.incrementalCheckBox !== undefined) setIncrementalCheckBox(msg.incrementalCheckBox);
-      if (msg.type) setType(msg.type);
+      if ('type' in msg) setType(msg.type || '');
       if (msg.bigQueryJobId) setBigQueryJobId(msg.bigQueryJobId);
       
       if (msg.multiResults && msg.summaryData) {

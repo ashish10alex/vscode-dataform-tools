@@ -1,0 +1,2 @@
+1. **App.tsx**: Change `if (msg.type) setType(msg.type);` to `if (msg.type !== undefined) setType(msg.type);` so that the `type` state is always accurately reflecting the message sent from the backend, even if it is an empty string.
+2. **extension.ts**: In `debouncedActiveEditorChange`, check if `queryLimit` should also be passed to avoid missing fields. Wait, `queryLimit` is passed in `register-query-results-panel.ts`, so maybe it's not strictly necessary. Let's fix `App.tsx` first.
