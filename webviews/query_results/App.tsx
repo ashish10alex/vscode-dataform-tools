@@ -368,7 +368,7 @@ export default function App() {
         {/* Single result viewing mode (either single query, or drilling down into multi results) */}
         {(!multiResults || viewingDetailMode) && (
           <>
-            <div className={`h-full flex flex-col ${activeTab === 'results' ? 'block' : 'hidden'}`}>
+            <div className={`h-full flex-col ${activeTab === 'results' ? 'flex' : 'hidden'}`}>
               {errorMessage && (
                 <div className="text-red-500 dark:text-red-400 mb-4 font-mono text-sm whitespace-pre-wrap">
                   {errorMessage}
