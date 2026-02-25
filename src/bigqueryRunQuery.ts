@@ -91,7 +91,7 @@ function createTabulatorColumns(data: any | any[]) {
     const rowsToScan = Array.isArray(data) ? data.slice(0, 100) : [data];
 
     rowsToScan.forEach(row => {
-        if (!row) return;
+        if (!row) {return;};
 
         // Add top-level properties (excluding '_children')
         Object.keys(row).forEach(key => {
