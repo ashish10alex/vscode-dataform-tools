@@ -1,12 +1,11 @@
 import type { VSCodeMessage } from './types';
 
-//@ts-ignore
-import { WebviewApi } from "vscode-webview";
+import type { WebviewApi } from "vscode-webview";
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
 class VSCodeAPIWrapper {
-    private readonly vsCodeApi: any;
+    private readonly vsCodeApi?: WebviewApi<unknown>;
 
     constructor() {
         if (typeof acquireVsCodeApi === 'function') {
@@ -30,7 +29,7 @@ class VSCodeAPIWrapper {
         }
     }
 
-    public setState(state: any) {
+    public setState(state: Parameters<WebviewApi<unknown>['setState']>[0]) {
         if (this.vsCodeApi) {
             this.vsCodeApi.setState(state);
         } else {
