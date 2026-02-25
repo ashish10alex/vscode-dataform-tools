@@ -211,7 +211,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               //@ts-ignore
               case 'queryLimit':
                 if (message.value){
-                  queryLimit = message.value;
+                  queryLimit = Number(message.value);
                 }
                 return;
               case 'incrementalCheckBox':
