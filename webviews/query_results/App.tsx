@@ -140,6 +140,8 @@ export default function App() {
     };
     
     window.addEventListener('message', handleMessage);
+    vscode.postMessage({ command: 'appLoaded' });
+    
     return () => {
       window.removeEventListener('message', handleMessage);
       if (timerRef.current) clearInterval(timerRef.current);
