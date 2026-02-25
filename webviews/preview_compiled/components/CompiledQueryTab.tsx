@@ -280,9 +280,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                return (
                                    <li key={`${idx}-${tIdx}`} className="flex items-center text-sm group">
                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>
-                                       <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-zinc-900 dark:hover:text-white transition-colors">
+                                       <a
+                                            href={getUrlToNavigateToTableInBigQuery(
+                                                target.database,
+                                                target.schema,
+                                                target.name
+                                            )}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                       >
                                             {id}
-                                       </span>
+                                       </a>
                                        <button 
                                             onClick={() => handleLineageNavigation(id)}
                                             className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -314,9 +323,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                  return (
                                     <li key={idx} className="flex items-center text-sm group">
                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>
-                                        <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-zinc-900 dark:hover:text-white transition-colors">
+                                        <a
+                                             href={typeof dependent === 'string' ? (() => {
+                                                 const parts = dependent.split('.');
+                                                 return getUrlToNavigateToTableInBigQuery(parts[0], parts[1], parts[2]);
+                                             })() : getUrlToNavigateToTableInBigQuery(dependent.database, dependent.schema, dependent.name)}
+                                             target="_blank"
+                                             rel="noopener noreferrer"
+                                             className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                        >
                                              {id}
-                                        </span>
+                                        </a>
                                            <button 
                                                 onClick={() => handleLineageNavigation(id)}
                                                 className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -361,7 +378,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                                 return (
                                                   <li key={idx} className="flex items-center text-sm">
                                                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
-                                                      <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all">{item}</span>
+                                                      <a
+                                                          href={(() => {
+                                                              const parts = item.split('.');
+                                                              return getUrlToNavigateToTableInBigQuery(parts[0], parts[1], parts[2]);
+                                                          })()}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                                      >
+                                                          {item}
+                                                      </a>
                                                       {isExternal && (
                                                           <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                                                               External
