@@ -89,6 +89,7 @@ export default function App() {
       }
 
       if (msg.results && msg.columns) {
+        setMultiResults(false);
         setResults(msg.results);
         setColumns(msg.columns);
         setJobStats(msg.jobStats ?? null);
@@ -104,11 +105,13 @@ export default function App() {
       }
       
       if (msg.bigQueryJobCancelled && msg.bigQueryJobId) {
+        setMultiResults(false);
         setBigQueryJobCancelledMsg(`❕ BigQuery Job was cancelled, bigQueryJobId: ${msg.bigQueryJobId}`);
         stopLoading();
       }
       
       if (msg.noResults) {
+        setMultiResults(false);
         setNoResults(true);
         setResults(null);
         setJobStats(msg.jobStats);
@@ -121,6 +124,7 @@ export default function App() {
       }
       
       if (msg.errorMessage && !msg.results) { // don't override assertion failure message
+        setMultiResults(false);
         setErrorMessage(msg.errorMessage);
         setResults(null);
         stopLoading();
