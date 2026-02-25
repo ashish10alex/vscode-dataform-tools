@@ -1,5 +1,4 @@
-//@ts-ignore
-import { WebviewApi } from "vscode-webview";
+import type { WebviewApi } from "vscode-webview";
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
@@ -39,7 +38,7 @@ class VSCodeAPIWrapper {
    * Set the state of the webview
    * @param state The new state
    */
-  public setState(state: unknown) {
+  public setState(state: Parameters<WebviewApi<unknown>['setState']>[0]) {
     if (this.vsCodeApi) {
       this.vsCodeApi.setState(state);
     } else {

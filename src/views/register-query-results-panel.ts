@@ -2,21 +2,30 @@ import * as vscode from 'vscode';
 import {  Uri } from "vscode";
 import path from 'path';
 import os from 'os';
-import { getTabulatorThemeUri, getCurrentFileMetadata, getHighlightJsThemeUri, getNonce, saveCsvFile } from '../utils';
+import { getCurrentFileMetadata, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, queryBigQuery } from '../bigqueryRunQuery';
+import { getQueryStringForPreview } from '../previewQueryResults';
 import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
 import { Job } from '@google-cloud/bigquery';
 
-function waitForBigQueryJob(timeout = getBigQueryTimeoutMs()): Promise<Job> { // default timeout from config
+function waitForBigQueryJob(queryOutputPromise?: Promise<any>, timeout = getBigQueryTimeoutMs()): Promise<Job | null> { // default timeout from config
   return new Promise((resolve, reject) => {
     const start = Date.now();
+    let isQueryDone = false;
+
+    if (queryOutputPromise) {
+        queryOutputPromise.then(() => isQueryDone = true).catch(() => isQueryDone = true);
+    }
 
     const pollInterval = setInterval(() => {
       if (bigQueryJob) {
         globalThis.bigQueryJob = bigQueryJob;
         clearInterval(pollInterval);
         resolve(bigQueryJob);
+      } else if (isQueryDone) {
+        clearInterval(pollInterval);
+        resolve(null);
       } else if (Date.now() - start > timeout) {
         clearInterval(pollInterval);
         reject(new Error('Timed out waiting for bigQueryJob'));
@@ -32,6 +41,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     private _cachedResults?: { results: any[] | undefined, columns:any | undefined, jobStats: any, query:string|undefined };
     private _cachedMultiResults?: { multiResultsMetadata: any[], query:string|undefined };
     private _query?:string;
+    private _lastRenderPayload?: any;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
   
@@ -44,7 +54,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       this._view = webviewView;
       webviewView.webview.options = {
         enableScripts: true,
-        localResourceRoots: [Uri.joinPath(this._extensionUri, "media")]
+        localResourceRoots: [
+          Uri.joinPath(this._extensionUri, "media"),
+          Uri.joinPath(this._extensionUri, "dist")
+        ]
       };
 
       if (this._invokedByCommand){
@@ -54,22 +67,32 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         }
       }else {
         let curFileMeta = await getCurrentFileMetadata(false);
-        let type = curFileMeta?.fileMetadata?.queryMeta.type;
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+        if (curFileMeta?.fileMetadata) {
+            let type = curFileMeta.fileMetadata.queryMeta.type;
+            let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+            webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+            this._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "query": query });
+        } else {
+            webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+            this._view.webview.postMessage({ "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+        }
       }
 
       webviewView.onDidChangeVisibility(async() => {
-        // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
         if (webviewView.visible) {
-          if (this._cachedResults) {
-            this._view?.webview.postMessage({...this._cachedResults, "queryLimit":  queryLimit});
-          } else if (this._cachedMultiResults) {
-            this._view?.webview.postMessage({...this._cachedMultiResults, "queryLimit":  queryLimit});
+          if (this._lastRenderPayload) {
+            this._view?.webview.postMessage({
+              ...this._lastRenderPayload,
+              "incrementalCheckBox": incrementalCheckBox,
+              "queryLimit": queryLimit
+            });
           } else {
             let curFileMeta = await getCurrentFileMetadata(false);
-            let type = curFileMeta?.fileMetadata?.queryMeta.type;
-            this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit});
+            if (curFileMeta?.fileMetadata) {
+                let type = curFileMeta.fileMetadata.queryMeta.type;
+                let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+                this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "query": query});
+            }
           }
         }
       });
@@ -77,17 +100,52 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       webviewView.webview.onDidReceiveMessage(
           async message => {
             switch (message.command) {
+              case 'appLoaded':
+                if (this._lastRenderPayload) {
+                    this._view?.webview.postMessage({
+                        ...this._lastRenderPayload,
+                        "incrementalCheckBox": incrementalCheckBox,
+                        "queryLimit": queryLimit
+                    });
+                } else if (this._query) {
+                    await this.updateContent({query: this._query, type: this.queryType});
+                } else {
+                    let curFileMeta = await getCurrentFileMetadata(false);
+                    if (curFileMeta?.fileMetadata) {
+                        let type = curFileMeta.fileMetadata.queryMeta.type;
+                        let query = getQueryStringForPreview(curFileMeta.fileMetadata, incrementalCheckBox);
+                        this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit": queryLimit, "query": query});
+                    }
+                }
+                return;
               case 'cancelBigQueryJob':
                 let resp = await cancelBigQueryJob();
                 cancelBigQueryJobSignal = false;
                 if (resp.cancelled && this._view){
                   this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true, "queryLimit":  queryLimit});
+                  this._lastRenderPayload = {"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true, "queryLimit":  queryLimit};
+                  this._view.webview.postMessage(this._lastRenderPayload);
                   this._view.show(true);
                 }
                 return;
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+                return;
+              case 'backToSummary':
+                if (this._cachedMultiResults) {
+                  const summaryData = this._cachedMultiResults.multiResultsMetadata.map((meta: any, index: number) => {
+                    const status = meta.errorMessage ? 'Failed' : (meta.results && meta.results.length > 0) ? '❌' : '✅';
+                    return { index, status, query: meta.query };
+                  });
+                  this._lastRenderPayload = {
+                    "multiResults": true,
+                    "summaryData": summaryData,
+                    "type": this.queryType,
+                    "incrementalCheckBox": incrementalCheckBox,
+                    "queryLimit": queryLimit
+                  };
+                  this._view?.webview.postMessage(this._lastRenderPayload);
+                }
                 return;
               case 'downloadDataAsCsv':
                   
@@ -111,7 +169,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                     const { results, columns, jobStats, errorMessage, query } = resultMetadata;
                     
                     if (results && !errorMessage) {
-                      this._view?.webview.postMessage({
+                      this._lastRenderPayload = {
                         "results": results, 
                         "columns": columns, 
                         "jobStats": jobStats, 
@@ -119,27 +177,33 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox ,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id
-                      });
+                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "viewingDetailMode": true
+                      };
+                      this._view?.webview.postMessage(this._lastRenderPayload);
                     } else if (!errorMessage) {
-                      this._view?.webview.postMessage({
+                      this._lastRenderPayload = {
                         "noResults": true, 
                         "jobStats": jobStats, 
                         "query": query, 
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id
-                      });
+                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "viewingDetailMode": true
+                      };
+                      this._view?.webview.postMessage(this._lastRenderPayload);
                     } else {
-                      this._view?.webview.postMessage({
+                      this._lastRenderPayload = {
                         "errorMessage": errorMessage, 
                         "query": query, 
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id
-                      });
+                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "viewingDetailMode": true
+                      };
+                      this._view?.webview.postMessage(this._lastRenderPayload);
                     }
                   }
                 }
@@ -147,10 +211,25 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               //@ts-ignore
               case 'queryLimit':
                 if (message.value){
-                  queryLimit = message.value;
+                  queryLimit = Number(message.value);
                 }
+                return;
               case 'incrementalCheckBox':
                 incrementalCheckBox = message.value;
+                let curFileMetaForInc = await getCurrentFileMetadata(false);
+                if (curFileMetaForInc?.fileMetadata) {
+                    let type = curFileMetaForInc.fileMetadata.queryMeta.type;
+                    let query = getQueryStringForPreview(curFileMetaForInc.fileMetadata, incrementalCheckBox);
+                    this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit": queryLimit, "query": query});
+                }
+                return;
+              case 'openExternal':
+                if (message.value) {
+                  const uri = vscode.Uri.parse(message.value);
+                  if (uri.scheme === 'https' || uri.scheme === 'http') {
+                    vscode.env.openExternal(uri);
+                  }
+                }
                 return;
             }
           },
@@ -173,8 +252,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         return;
     }
       try {
-          this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+          this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit };
+          this._view.webview.postMessage(this._lastRenderPayload);
           this._view.show(true);
           let allQueries = [];
           if(type === "assertion"){
@@ -188,11 +267,12 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             const singleQuery = allQueries[i];
             const queryOutput = queryBigQuery(singleQuery);
             // const { results, columns, jobStats, errorMessage } = queryBigQuery(singleQuery);
-            const job = await waitForBigQueryJob();
+            const job = await waitForBigQueryJob(queryOutput);
 
-            if (this?._view?.webview) {
-              this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id });
-          }
+            if (this?._view?.webview && job) {
+              this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id };
+              this._view.webview.postMessage(this._lastRenderPayload);
+            }
 
             const {results, columns, jobStats, errorMessage} = await queryOutput;
             resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery});
@@ -213,13 +293,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               };
             });
             
-            this._view.webview.postMessage({
+            this._lastRenderPayload = {
               "multiResults": true,
               "summaryData": summaryData,
               "type": type,
               "incrementalCheckBox": incrementalCheckBox,
               "queryLimit":  queryLimit
-            });
+            };
+            this._view.webview.postMessage(this._lastRenderPayload);
             
             this._view.show(true);
           } else if (resultsMetadata.length === 1) {
@@ -230,46 +311,35 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             if(results && !errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit});
+              this._lastRenderPayload = {"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId};
+              this._view.webview.postMessage(this._lastRenderPayload);
               this._view.show(true);
             } else if (!errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+              this._lastRenderPayload = {"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId};
               this._view.show(true);
-              this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit});
+              this._view.webview.postMessage(this._lastRenderPayload);
             } else if(errorMessage){
               this._cachedResults = undefined;
               this._cachedMultiResults = undefined;
-              this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-              this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit});
+              this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId};
+              this._view.webview.postMessage(this._lastRenderPayload);
               this._view.show(true);
             }
           }
       } catch (error:any) {
-        let errorMessage = error?.message;
-        if(errorMessage){
-          this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
-          this._view.show(true);
-        }
+        let errorMessage = error?.message || "An unknown error occurred during query execution.";
+        this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit };
+        this._view.webview.postMessage(this._lastRenderPayload);
+        this._view.show(true);
       }
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    const showQueryResultsScriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "showQueryResults.js"));
-    const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "query.css"));
-    let customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_dark.css"));
-    const highlightJsCopyExtUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.js"));
-    const highlightJsCopyExtCssUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "js", "deps", "highlightjs-copy", "highlightjs-copy.min.css"));
+    const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "query_results.js"));
+    const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "query_results.css"));
     const nonce = getNonce();
-    // TODO: light theme does not seem to get picked up
-    let highlighJstThemeUri = getHighlightJsThemeUri();
-
-      let {tabulatorCssUri, type} = getTabulatorThemeUri();
-      if(type === "light"){
-          customTabulatorCss = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "css", "tabulator_custom_light.css"));
-      }
 
     return /*html*/ `
       <!DOCTYPE html>
@@ -277,81 +347,13 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link rel="stylesheet" href="${cdnLinks.highlightJsCssUri}">
-          <script src="${cdnLinks.highlightJsUri}"></script>
-          <script src="${highlightJsCopyExtUri}"></script>
-          <link rel="stylesheet" href="${highlightJsCopyExtCssUri}" />
-          <link rel="stylesheet" href="${highlighJstThemeUri}">
-
-          <link href="${tabulatorCssUri}" rel="stylesheet">
-          <script type="text/javascript" src="${cdnLinks.tabulatorUri}"></script>
-
-          <link href="${styleResetUri}" rel="stylesheet">
-          <link href="${customTabulatorCss}" rel="stylesheet">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource} https:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; font-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:;">
+          <link href="${styleUri}" rel="stylesheet">
+          <title>Query Results</title>
       </head>
-
-      <body id="query-results-body">
-
-      <div class="topnav">
-        <a class="active" href="#results">Results</a>
-        <a href="#query">Query</a>
-      </div>
-
-      <span class="bigquery-job-cancelled"></span>
-
-      <div id="incrementalCheckBoxDiv" style="display: none;" >
-        <label class="checkbox-container">
-                <input type="checkbox" id="incrementalCheckbox" class="checkbox"> 
-                <span class="custom-checkbox"></span>
-                Incremental
-        </label>
-      </div>
-
-      <select id="queryLimit">
-        <option value="1000">Limit: 1000</option>
-        <option value="50000">Limit: 50000</option>
-        <option value="100000">Limit: 100000</option>
-        <option value="500000">Limit: 500000</option>
-      </select>
-
-      <button id="runQueryButton" class="runQueryButton">RUN</button>
-      <button id="cancelBigQueryJobButton" class="cancelBigQueryJobButton">Cancel query</button>
-      <button id="downloadCsvButton" class="downloadCsvButton">Download CSV</button>
-
-
-      <p>
-      <span id="datetime"></span>
-      <span id="bigQueryJobLinkDivider"></span>
-      <a id="bigQueryJobLink" href="" target="_blank"></a>
-      </p>
-
-      <div class="error-message-container" id="errorsDiv" style="display: none;" >
-          <p><span id="errorMessage"></span></p>
-      </div>
-
-      <div class="no-errors-container" id="noResultsDiv" style="display: none;" >
-          <p><span id="noResults"></span></p>
-      </div>
-
-      <div id="multiResultsBlock" style="display: none;">
-        <h3>Assertion Checks</h3>
-        <table id="multiQueryResults" class="display" width="100%"></table>
-      </div>
-
-      <div id="backToSummaryDiv" style="display: none; margin-bottom: 10px; margin-top: 10px;">
-        <button id="backToSummaryButton" style="padding: 5px 10px; background-color: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">← Back to results summary</button>
-      </div>
-
-      <div id="codeBlock" style="display: none;">
-        <pre><code  id="sqlCodeBlock" class="language-sql"></code></pre>
-        <script nonce="${nonce}" type="text/javascript" src="${showQueryResultsScriptUri}"></script>
-      </div>
-
-      <div id="resultBlock">
-        <p  style="color: red"><span id="bigqueryError"></span></p>
-        <table id="bigqueryResults" width="100%"></table>
-      </div>
-
+      <body>
+          <div id="root"></div>
+          <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
       </body>
       </html>
     `;

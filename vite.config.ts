@@ -9,7 +9,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         dependancy_graph: './webviews/dependancy_graph/index.tsx',
-        preview_compiled: './webviews/preview_compiled/index.tsx'
+        preview_compiled: './webviews/preview_compiled/index.tsx',
+        query_results: './webviews/query_results/index.tsx'
       },
       output: {
         entryFileNames: '[name].js',
