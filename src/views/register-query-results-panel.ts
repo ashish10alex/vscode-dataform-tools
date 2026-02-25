@@ -158,7 +158,10 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                 return;
               case 'openExternal':
                 if (message.value) {
-                  vscode.env.openExternal(vscode.Uri.parse(message.value));
+                  const uri = vscode.Uri.parse(message.value);
+                  if (uri.scheme === 'https' || uri.scheme === 'http') {
+                    vscode.env.openExternal(uri);
+                  }
                 }
                 return;
             }
