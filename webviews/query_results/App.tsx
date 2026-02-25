@@ -283,17 +283,18 @@ export default function App() {
 
       <div className="flex items-center space-x-4 mb-4 text-sm flex-wrap gap-y-2">
         {type === 'incremental' && (
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="relative inline-flex items-center cursor-pointer group">
             <input 
               type="checkbox" 
-              className="rounded text-blue-500 focus:ring-blue-500 bg-zinc-100 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600"
+              className="sr-only peer"
               checked={incrementalCheckBox}
               onChange={(e) => {
                 setIncrementalCheckBox(e.target.checked);
                 vscode.postMessage({ command: 'incrementalCheckBox', value: e.target.checked });
               }}
             />
-            <span>Incremental</span>
+            <div className="w-9 h-5 bg-zinc-200 group-hover:bg-zinc-300 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 dark:group-hover:bg-zinc-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-blue-600"></div>
+            <span className="ml-2 font-medium">Incremental</span>
           </label>
         )}
         
