@@ -230,6 +230,7 @@ export default function App() {
     setResults(null);
     setErrorMessage(null);
     setNoResults(false);
+    vscode.postMessage({ command: 'backToSummary' });
   };
 
   const renderDateTimeText = () => {
