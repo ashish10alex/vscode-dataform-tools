@@ -87,7 +87,9 @@ export async function activate(context: vscode.ExtensionContext) {
     registerCompiledQueryPanel(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider));
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider, {
+        webviewOptions: { retainContextWhenHidden: true }
+    }));
 
 
     context.subscriptions.push(

@@ -32,6 +32,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     private _cachedResults?: { results: any[] | undefined, columns:any | undefined, jobStats: any, query:string|undefined };
     private _cachedMultiResults?: { multiResultsMetadata: any[], query:string|undefined };
     private _query?:string;
+    private _lastRenderPayload?: any;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
   
@@ -63,12 +64,13 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       }
 
       webviewView.onDidChangeVisibility(async() => {
-        // TODO: check if we can handle the query execution and hiding and unhiding of panel separately
         if (webviewView.visible) {
-          if (this._cachedResults) {
-            this._view?.webview.postMessage({...this._cachedResults, "queryLimit":  queryLimit});
-          } else if (this._cachedMultiResults) {
-            this._view?.webview.postMessage({...this._cachedMultiResults, "queryLimit":  queryLimit});
+          if (this._lastRenderPayload) {
+            this._view?.webview.postMessage({
+              ...this._lastRenderPayload,
+              "incrementalCheckBox": incrementalCheckBox,
+              "queryLimit": queryLimit
+            });
           } else {
             let curFileMeta = await getCurrentFileMetadata(false);
             let type = curFileMeta?.fileMetadata?.queryMeta.type;
@@ -80,17 +82,49 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       webviewView.webview.onDidReceiveMessage(
           async message => {
             switch (message.command) {
+              case 'appLoaded':
+                if (this._lastRenderPayload) {
+                    this._view?.webview.postMessage({
+                        ...this._lastRenderPayload,
+                        "incrementalCheckBox": incrementalCheckBox,
+                        "queryLimit": queryLimit
+                    });
+                } else if (this._query) {
+                    await this.updateContent({query: this._query, type: this.queryType});
+                } else {
+                    let curFileMeta = await getCurrentFileMetadata(false);
+                    let type = curFileMeta?.fileMetadata?.queryMeta.type;
+                    this._view?.webview.postMessage({"type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit": queryLimit});
+                }
+                return;
               case 'cancelBigQueryJob':
                 let resp = await cancelBigQueryJob();
                 cancelBigQueryJobSignal = false;
                 if (resp.cancelled && this._view){
                   this._view.webview.html = this._getHtmlForWebview(this._view.webview);
-                  this._view.webview.postMessage({"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true, "queryLimit":  queryLimit});
+                  this._lastRenderPayload = {"bigQueryJobId": resp.bigQueryJobId, "bigQueryJobCancelled": true, "queryLimit":  queryLimit};
+                  this._view.webview.postMessage(this._lastRenderPayload);
                   this._view.show(true);
                 }
                 return;
               case 'runBigQueryJob':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+                return;
+              case 'backToSummary':
+                if (this._cachedMultiResults) {
+                  const summaryData = this._cachedMultiResults.multiResultsMetadata.map((meta: any, index: number) => {
+                    const status = meta.errorMessage ? 'Failed' : (meta.results && meta.results.length > 0) ? '❌' : '✅';
+                    return { index, status, query: meta.query };
+                  });
+                  this._lastRenderPayload = {
+                    "multiResults": true,
+                    "summaryData": summaryData,
+                    "type": this.queryType,
+                    "incrementalCheckBox": incrementalCheckBox,
+                    "queryLimit": queryLimit
+                  };
+                  this._view?.webview.postMessage(this._lastRenderPayload);
+                }
                 return;
               case 'downloadDataAsCsv':
                   
@@ -114,7 +148,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                     const { results, columns, jobStats, errorMessage, query } = resultMetadata;
                     
                     if (results && !errorMessage) {
-                      this._view?.webview.postMessage({
+                      this._lastRenderPayload = {
                         "results": results, 
                         "columns": columns, 
                         "jobStats": jobStats, 
@@ -122,27 +156,33 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox ,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id
-                      });
+                        "bigQueryJobId": bigQueryJob?.id,
+                        "viewingDetailMode": true
+                      };
+                      this._view?.webview.postMessage(this._lastRenderPayload);
                     } else if (!errorMessage) {
-                      this._view?.webview.postMessage({
+                      this._lastRenderPayload = {
                         "noResults": true, 
                         "jobStats": jobStats, 
                         "query": query, 
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id
-                      });
+                        "bigQueryJobId": bigQueryJob?.id,
+                        "viewingDetailMode": true
+                      };
+                      this._view?.webview.postMessage(this._lastRenderPayload);
                     } else {
-                      this._view?.webview.postMessage({
+                      this._lastRenderPayload = {
                         "errorMessage": errorMessage, 
                         "query": query, 
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": bigQueryJob?.id
-                      });
+                        "bigQueryJobId": bigQueryJob?.id,
+                        "viewingDetailMode": true
+                      };
+                      this._view?.webview.postMessage(this._lastRenderPayload);
                     }
                   }
                 }
@@ -185,7 +225,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
         return;
     }
       try {
-          this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+          this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit };
+          this._view.webview.postMessage(this._lastRenderPayload);
           this._view.show(true);
           let allQueries = [];
           if(type === "assertion"){
@@ -202,8 +243,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             const job = await waitForBigQueryJob();
 
             if (this?._view?.webview) {
-              this._view.webview.postMessage({"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id });
-          }
+              this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id };
+              this._view.webview.postMessage(this._lastRenderPayload);
+            }
 
             const {results, columns, jobStats, errorMessage} = await queryOutput;
             resultsMetadata.push({results, columns, jobStats, errorMessage, query: singleQuery});
@@ -224,13 +266,14 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
               };
             });
             
-            this._view.webview.postMessage({
+            this._lastRenderPayload = {
               "multiResults": true,
               "summaryData": summaryData,
               "type": type,
               "incrementalCheckBox": incrementalCheckBox,
               "queryLimit":  queryLimit
-            });
+            };
+            this._view.webview.postMessage(this._lastRenderPayload);
             
             this._view.show(true);
           } else if (resultsMetadata.length === 1) {
@@ -241,24 +284,28 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             if(results && !errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
-              this._view.webview.postMessage({"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit});
+              this._lastRenderPayload = {"results": results, "columns": columns, "jobStats": jobStats, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId || bigQueryJob?.id};
+              this._view.webview.postMessage(this._lastRenderPayload);
               this._view.show(true);
             } else if (!errorMessage){
               this._cachedResults = { results, columns, jobStats, query };
               this._cachedMultiResults = undefined;
+              this._lastRenderPayload = {"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId || bigQueryJob?.id};
               this._view.show(true);
-              this._view.webview.postMessage({"noResults": true, "query": query, "type":type, "jobStats": jobStats, "incrementalCheckBox": incrementalCheckBox,  "queryLimit":  queryLimit});
+              this._view.webview.postMessage(this._lastRenderPayload);
             } else if(errorMessage){
               this._cachedResults = undefined;
               this._cachedMultiResults = undefined;
-              this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit});
+              this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox ,"queryLimit":  queryLimit, "bigQueryJobId": jobStats?.bigQueryJobId || bigQueryJob?.id};
+              this._view.webview.postMessage(this._lastRenderPayload);
               this._view.show(true);
             }
           }
       } catch (error:any) {
         let errorMessage = error?.message;
         if(errorMessage){
-          this._view.webview.postMessage({"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit });
+          this._lastRenderPayload = {"errorMessage": errorMessage, "query": query, "type": type, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit };
+          this._view.webview.postMessage(this._lastRenderPayload);
           this._view.show(true);
         }
       }
