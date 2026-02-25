@@ -30,7 +30,7 @@ export default function App() {
   
   const [viewingDetailMode, setViewingDetailMode] = useState(false);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
