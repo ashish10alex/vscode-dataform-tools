@@ -11,7 +11,7 @@ import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverPro
 import { defaultCdnLinks, executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, runCompilation } from './utils';
 import { executableIsAvailable } from './utils';
-import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
+import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable, configBlockAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { createNewDataformProject } from './createNewDataformProject';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
@@ -26,6 +26,7 @@ import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
+import { registerConfigBlockDiagnostics } from './configBlockDiagnostics';
 
 
 // This method is called when your extension is activated
@@ -114,12 +115,11 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         }
     }, 500);
-
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 
-
-
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
+
+    registerConfigBlockDiagnostics(context);
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.selectWorkspaceFolder', async () => { await selectWorkspaceFolder(); }));
 
@@ -200,6 +200,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(sourcesAutoCompletionDisposable());
     context.subscriptions.push(schemaAutoCompletionDisposable());
+    context.subscriptions.push(configBlockAutoCompletionDisposable());
 
     context.subscriptions.push(dependenciesAutoCompletionDisposable());
 

@@ -1,0 +1,13 @@
+config {
+  type: "table",
+  assertions: {
+    uniqueKey: ["user_id"],
+    nonNull: ["user_id", "customer_id"],
+    rowConditions: [
+      'signup_date is null or signup_date > "2019-01-01"',
+      'email like "%@%.%"'
+    ],
+    uniqueKeys: [["user_id"], ["signup_date", "customer_id"]]
+  }
+}
+SELECT 1 as test

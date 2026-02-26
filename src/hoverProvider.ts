@@ -16,7 +16,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
-import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
+import { sqlKeywordsToExcludeFromHoverDefinition, configBlockHoverOptions } from "./constants";
 
 async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
@@ -473,6 +473,13 @@ export class DataformConfigProvider implements vscode.HoverProvider {
             return null;
         }
         const word = document.getText(range);
+
+        if (configBlockHoverOptions[word]) {
+            const wordRegex = new RegExp(`\\b${word}\\s*:`);
+            if (line.match(wordRegex)) {
+                return new vscode.Hover(new vscode.MarkdownString(`**${word}**: ${configBlockHoverOptions[word]}`));
+            }
+        }
 
         if(sqlKeywordsToExcludeFromHoverDefinition.includes(word.toLowerCase())){
           return null;

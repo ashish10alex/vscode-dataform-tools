@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    database: "my_db",
+    schema: "my_schema",
+    name: constants.TEST_TABLE,
+    description: "A proper table",
+    columns: {
+        col1: "First column"
+    },
+    tags: ["tag1", "tag2"],
+    dependencies: ["dep1"],
+    hasOutput: true,
+    materialized: false,
+    onSchemaChange: "EXTEND",
+    protected: true,
+    bigquery: {
+        partitionBy: "DATE(timestamp)",
+        clusterBy: ["col1"],
+        requirePartitionFilter: true,
+        partitionExpirationDays: 30,
+        labels: {
+            "env": "prod"
+        }
+    }
+}
+select 1 as test
