@@ -103,7 +103,11 @@
       <td>Preview query results in a table by running the file</td>
     </tr>
     <tr>
-      <td><a href="#cost_estimator">Cost estimator</a> 💸</td>
+      <td><a href="#hover">BigQuery hover provider</a></td>
+      <td>Hover definition for tables, columns, column descriptions, types and common BigQuery functions</td>
+    </tr>
+    <tr>
+      <td><a href="#cost_estimator">Cost estimator</a> </td>
       <td>Estimate the cost of running a Tag</td>
     </tr>
     <tr>
@@ -137,14 +141,10 @@
       <td><a href="#snippets">BigQuery snippets</a></td>
       <td>Code snippets for generic BigQuery functions taken from <a href="https://github.com/shinichi-takii/vscode-language-sql-bigquery">vscode-language-sql-bigquery</a> extension</td>
     </tr>
-    <tr>
-      <td><a href="#hover">BigQuery hover definition provider</a></td>
-      <td>Hover definition for column descriptions, type and commonly used BigQuery functions</td>
-    </tr>
   </tbody>
 </table>
 
-### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
+### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files</a>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="media/images/diagnostics_dark.png">
@@ -172,6 +172,17 @@
   <img alt="preview_query_results" src="media/images/preview_query_results.png">
 </picture>
 
+### <a id="hover">BigQuery hover definition provider</a>
+
+Hover over tables, columns, column types and BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/images/table_hover_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="media/images/table_hover_light.png">
+  <!-- Fallback image if picture is not supported -->
+  <img alt="table_hover" src="media/images/table_hover_dark.png">
+</picture>
+
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
 <picture>
@@ -197,12 +208,6 @@ Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> chara
 ### <a id="formatting">Formatting using sqlfluff</a>
 
 ![formatting](media/images/formatting.gif)
-
-### <a id="hover">BigQuery hover definition provider</a>
-
-Hover over BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
-
-![go-to-definition](media/images/func_def_on_hover.png)
 
 ---
 
