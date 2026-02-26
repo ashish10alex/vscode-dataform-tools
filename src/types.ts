@@ -378,6 +378,7 @@ export interface WebviewMessage {
   declarations?: Declarations[] | null;
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
+  missingExecutables?: string[];
 }
 
 export type CreateCompilationResultResponse = Promise<
