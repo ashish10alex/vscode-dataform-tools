@@ -359,20 +359,26 @@ export async function activate(context: vscode.ExtensionContext) {
     //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
     workspaceFolder = await getWorkspaceFolder();
     if (workspaceFolder) {
-        createBigQueryClient();
-        setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
+        // Trigger background compilation and bigquery connection prepopulation concurrently
+        logger.info('Initiating background tasks on load...');
         
-        // Trigger background compilation to prepopulate cache on load
-        logger.info('Initiating background dataform compilation on load...');
-        runCompilation(workspaceFolder).then((res) => {
+        const compilationPromise = runCompilation(workspaceFolder).then((res) => {
             if (res.errors && res.errors.length > 0) {
                  logger.debug(`Background compile finished with errors. Cache dirty flag remains TRUE.`);
             } else if (res.dataformCompiledJson) {
-                 logger.debug(`Background compile finished successfully. Cache flag is now FALSE.`);
+                 logger.debug(`Background compile finished successfully. Cache dirty flag is now FALSE.`);
+                 vscode.window.showInformationMessage('Background compilation finished successfully');
             }
         }).catch(e => {
             logger.error(`Background compilation failed: ${e.message}`);
+            vscode.window.showErrorMessage('Background compilation failed');
         });
+
+        const bqClientPromise = createBigQueryClient().then(() => {
+            setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
+        });
+
+        Promise.allSettled([compilationPromise, bqClientPromise]);
     }
 
     // Set up file watchers to track changes to dataform files
