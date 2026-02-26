@@ -79,6 +79,8 @@ function App() {
     }
   }
 
+  const isBigQueryClientError = state.errorMessage && state.errorMessage.includes("Error creating BigQuery client");
+
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-300 overflow-hidden">
       {/* Header / Tabs */}
@@ -180,7 +182,30 @@ function App() {
             </div>
         )}
 
-        {state.errorMessage && !state.recompiling && (!state.missingExecutables || state.missingExecutables.length === 0) && (
+        {isBigQueryClientError && !state.recompiling && (!state.missingExecutables || state.missingExecutables.length === 0) && (
+            <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 p-4 mb-4 rounded-r shadow-sm">
+                <div className="flex items-start">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                    <div>
+                        <div className="text-red-800 dark:text-red-200 text-sm overflow-auto mb-3" dangerouslySetInnerHTML={{__html: sanitizedError}} />
+                        
+                        <h4 className="mt-0 mb-2 text-md font-semibold text-red-800 dark:text-red-200">Possible fix:</h4>
+                        <p className="mt-0 mb-3 text-red-700 dark:text-red-300">
+                            <a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener noreferrer" className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100 font-medium">Install gcloud cli</a>
+                        </p>
+                        <p className="mt-0 mb-3 text-red-700 dark:text-red-300">After gcloud cli is installed run the following in the terminal in order:</p>
+                        
+                        <ol className="mt-0 ml-5 list-decimal list-outside text-red-700 dark:text-red-300 space-y-2">
+                            <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud init</code></li>
+                            <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud auth application-default login</code></li>
+                            <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud config set project your-project-id</code> <span className="opacity-80 italic text-sm"># replace with your gcp project id</span></li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {state.errorMessage && !isBigQueryClientError && !state.recompiling && (!state.missingExecutables || state.missingExecutables.length === 0) && (
             <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 p-4 mb-4 rounded-r shadow-sm">
                 <div className="flex items-start">
                     <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-2 flex-shrink-0" />
