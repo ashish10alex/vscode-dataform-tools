@@ -48,8 +48,8 @@ export default function FeaturesTable() {
       imageDark: "/diagnostics_dark.png",
     },
     {
-      name: "Dependancy graph",
-      description: "Interative dependancy graph with external sources higlighted in distinct colors",
+      name: "Dependency graph",
+      description: "Interactive dependency graph with external sources highlighted in distinct colors",
       anchor: "depgraph",
       image: "/dependancy_tree_light.png",
       imageDark: "/dependancy_tree_dark.png",
