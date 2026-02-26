@@ -2,7 +2,7 @@
   <h1>Dataform Tools</h1>
 </div>
 
-<b>Officially recommended by Google[^1]</b> ✨. The essential VS Code extension for Dataform (v2 & v3). Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>.
+<b>Officially recommended VS Code extension for Dataform by Google[^1]</b> ✨. Supports all major operating systems and both Dataform versions 2.9.x and 3.x. Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
@@ -17,6 +17,7 @@
   <img alt="compilation" src="media/images/compiled_query_preview.png">
 </picture>
 
+<div align="center">
 <table>
   <thead>
     <tr>
@@ -27,16 +28,9 @@
       </a>
        </th>
     </tr>
-    <tr>
-      <th>Supported Operating Systems</th>
-      <th>
-         <img src="https://img.shields.io/badge/macOS-supported-success" alt="macOS">
-         <img src="https://img.shields.io/badge/windows-supported-success" alt="Windows">
-         <img src="https://img.shields.io/badge/Linux-supported-success" alt="Linux">
-      </th>
-    </tr>
   </thead>
 </table>
+</div>
 
 ---
 
