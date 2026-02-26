@@ -105,6 +105,11 @@ declare global {
     };
   };
 }
+
+declare global {
+  var dataformFilesChangedSinceLastCompile: boolean;
+}
+
 declare global {
   var compilerOptionsMap: {
       assertionSchema?: string,

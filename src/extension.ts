@@ -9,7 +9,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { defaultCdnLinks, executablesToCheck } from './constants';
-import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
+import { getWorkspaceFolder, getCurrentFileMetadata, sendNotifactionToUserOnExtensionUpdate, selectWorkspaceFolder, runCompilation } from './utils';
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
@@ -42,6 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
+    globalThis.dataformFilesChangedSinceLastCompile = true;
     logger.debug('Extension activated - initialized global cache (CACHED_COMPILED_DATAFORM_JSON = undefined)');
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
@@ -359,7 +360,46 @@ export async function activate(context: vscode.ExtensionContext) {
     if (workspaceFolder) {
         createBigQueryClient();
         setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
+        
+        // Trigger background compilation to prepopulate cache on load
+        logger.info('Initiating background dataform compilation on load...');
+        runCompilation(workspaceFolder).then((res) => {
+            if (res.errors && res.errors.length > 0) {
+                 logger.debug(`Background compile finished with errors. Cache dirty flag remains TRUE.`);
+            } else if (res.dataformCompiledJson) {
+                 logger.debug(`Background compile finished successfully. Cache flag is now FALSE.`);
+            }
+        }).catch(e => {
+            logger.error(`Background compilation failed: ${e.message}`);
+        });
     }
+
+    // Set up file watchers to track changes to dataform files
+    const markFilesChanged = (source: string) => {
+        if (!globalThis.dataformFilesChangedSinceLastCompile) {
+            logger.debug(`Dataform files changed via ${source}, marking cache as dirty.`);
+            globalThis.dataformFilesChangedSinceLastCompile = true;
+        }
+    };
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(e => {
+            if (e.contentChanges.length === 0) return;
+            if (e.document.uri.scheme !== 'file') return;
+            
+            const fileName = e.document.fileName;
+            if (fileName.includes('.git') || fileName.includes('node_modules') || fileName.includes('.vscode')) return;
+
+            const ext = path.extname(fileName).toLowerCase();
+            if (['.sqlx', '.js', '.json', '.yaml', '.yml'].includes(ext)) {
+                markFilesChanged(`TextEdit: ${path.basename(fileName)}`);
+            }
+        })
+    );
+
+    const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.{sqlx,js,json,yaml,yml}');
+    context.subscriptions.push(fileWatcher.onDidCreate(uri => markFilesChanged(`FileCreate: ${path.basename(uri.fsPath)}`)));
+    context.subscriptions.push(fileWatcher.onDidDelete(uri => markFilesChanged(`FileDelete: ${path.basename(uri.fsPath)}`)));
 
     logger.info('Dataform Tools extension activated successfully');
 }

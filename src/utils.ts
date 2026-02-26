@@ -497,8 +497,11 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     logger.debug(`Workspace folder: ${workspaceFolder}`);
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
-        if (freshCompilation) {
-            logger.debug('Fresh compilation requested, ignoring cache');
+        if (freshCompilation && globalThis.dataformFilesChangedSinceLastCompile) {
+            logger.debug('Fresh compilation requested and files changed, ignoring cache');
+        } else if (freshCompilation && !globalThis.dataformFilesChangedSinceLastCompile && CACHED_COMPILED_DATAFORM_JSON) {
+            logger.debug('Fresh compilation requested but files have not changed. Reusing cached compilation.');
+            return getCachedFileMetadata(filename, relativeFilePath, extension, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder, document);
         } else {
             logger.debug('No cached compilation found, performing fresh compilation');
         }
@@ -569,39 +572,44 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
+        return getCachedFileMetadata(filename, relativeFilePath, extension, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder, document);
+    }
+    return undefined;
+}
 
-        if (fileMetadata?.queryMeta.error !== "") {
-            return {
-                errors: { queryMetaError: fileMetadata?.queryMeta.error },
-                pathMeta: {
-                    filename: filename,
-                    extension: extension,
-                    relativeFilePath: relativeFilePath
-                },
-            };
-        }
+// Helper to avoid duplicating cache retrieval logic
+async function getCachedFileMetadata(filename: string, relativeFilePath: string, extension: string, cachedJson: DataformCompiledJson, workspaceFolder: string, document: vscode.TextDocument): Promise<CurrentFileMetadata | undefined> {
+    let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, cachedJson, workspaceFolder);
 
-        const targetToSearch = fileMetadata?.tables[0]?.target;
-        let dependents = undefined;
-        if (targetToSearch) {
-            dependents = await getDependentsOfTarget(targetToSearch);
-        }
-
+    if (fileMetadata?.queryMeta.error !== "") {
         return {
-            isDataformWorkspace: true,
-            fileMetadata: fileMetadata,
-            dependents: dependents,
-            lineageMetadata: null,
+            errors: { queryMetaError: fileMetadata?.queryMeta.error },
             pathMeta: {
                 filename: filename,
                 extension: extension,
                 relativeFilePath: relativeFilePath
             },
-            document: document
         };
     }
-    return undefined;
+
+    const targetToSearch = fileMetadata?.tables[0]?.target;
+    let dependents = undefined;
+    if (targetToSearch) {
+        dependents = await getDependentsOfTarget(targetToSearch);
+    }
+
+    return {
+        isDataformWorkspace: true,
+        fileMetadata: fileMetadata,
+        dependents: dependents,
+        lineageMetadata: null,
+        pathMeta: {
+            filename: filename,
+            extension: extension,
+            relativeFilePath: relativeFilePath
+        },
+        document: document
+    };
 }
 
 //@ts-ignore
@@ -1659,6 +1667,7 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
                 dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
             }
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+            globalThis.dataformFilesChangedSinceLastCompile = false;
             buildIndices(dataformCompiledJson);
             logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
             return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions };
