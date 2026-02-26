@@ -2,7 +2,7 @@
   <h1>Dataform Tools</h1>
 </div>
 
-<b>Officially recommended VS Code extension for Dataform by Google[^1]</b> ✨. Supports all major operating systems and both Dataform versions 2.9.x and 3.x. Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>.
+<b>Officially recommended VS Code extension for Dataform by Google[^1]</b> ✨. Supports all major operating systems and both Dataform versions 2.9.x and 3.x. Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>. Support the project: <a href="https://buymeacoffee.com/ashishalexj"><img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" width="120"></a>
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
@@ -16,21 +16,6 @@
   <!-- Fallback image if picture is not supported -->
   <img alt="compilation" src="media/images/compiled_query_preview.png">
 </picture>
-
-<div align="center">
-<table>
-  <thead>
-    <tr>
-      <th>Support the project</th>
-      <th>
-      <a href="https://buymeacoffee.com/ashishalexj">
-         <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" height="25">
-      </a>
-       </th>
-    </tr>
-  </thead>
-</table>
-</div>
 
 ---
 
