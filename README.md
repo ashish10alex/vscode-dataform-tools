@@ -2,13 +2,17 @@
   <h1>Dataform Tools</h1>
 </div>
 
-<b>Officially recommended VS Code extension for Dataform by Google[^1]</b> ✨. Supports all major operating systems and both Dataform versions 2.9.x and 3.x. Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>. Support the project: <a href="https://buymeacoffee.com/ashishalexj"><img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" width="120"></a>
+<b>Officially recommended VS Code extension for Dataform by Google[^1]</b> ✨. Supports all major operating systems and both Dataform versions 2.9.x and 3.x. Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
-    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube" width="180" style="padding: 5px">
+    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube" height="25" style="margin-right: 10px;">
+  </a>
+  <a href="https://buymeacoffee.com/ashishalexj">
+    <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" height="25">
   </a>
 </div>
+<br>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="media/images/compiled_query_preview_dark.png">
