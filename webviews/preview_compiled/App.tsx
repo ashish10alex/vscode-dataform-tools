@@ -149,27 +149,30 @@ function App() {
                 <div className="flex items-start">
                     <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-3 flex-shrink-0" />
                     <div>
-                        <h3 className="mt-0 mb-2 text-lg font-semibold text-red-800 dark:text-red-200">Missing Required CLIs</h3>
-                        <p className="mt-0 mb-3 text-red-700 dark:text-red-300">The following mandatory CLIs are not installed or not found in your system PATH: <b className="font-mono bg-red-100 dark:bg-red-900/40 px-1 rounded">{state.missingExecutables.join(', ')}</b></p>
-                        <p className="mt-0 mb-4 text-red-700 dark:text-red-300">Please install them to use this feature. <a href="https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#installation" target="_blank" rel="noopener noreferrer" className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100 font-medium">View Installation Guide in README</a></p>
+                        <h3 className="mt-0 mb-2 text-lg font-semibold text-red-800 dark:text-red-200">Missing Required {state.missingExecutables.length > 1 ? 'CLIs' : 'CLI'}</h3>
+                        <p className="mt-0 mb-3 text-red-700 dark:text-red-300">The following mandatory {state.missingExecutables.length > 1 ? 'CLIs are' : 'CLI is'} not installed or not found in your system PATH: <b className="font-mono bg-red-100 dark:bg-red-900/40 px-1 rounded">{state.missingExecutables.join(', ')}</b></p>
+                        <p className="mt-0 mb-4 text-red-700 dark:text-red-300"><a href="https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#installation" target="_blank" rel="noopener noreferrer" className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100 font-medium">Installation steps on GitHub</a></p>
                         
-                        <h4 className="mt-0 mb-2 font-medium text-red-800 dark:text-red-200">Quick Installation Guide:</h4>
                         <ol className="mt-0 list-decimal list-inside text-red-700 dark:text-red-300 space-y-3">
-                            <li>
-                                <b className="text-red-800 dark:text-red-200">Dataform CLI</b> (requires Node.js)
-                                <ul className="mt-2 ml-6 pl-3 border-l-2 border-red-200 dark:border-red-800/50 list-none space-y-2">
-                                    <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">npm i -g @dataform/cli</code></li>
-                                    <li>Run <code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">dataform compile</code> from the root of your project to verify</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <b className="text-red-800 dark:text-red-200">Google Cloud CLI</b> (<a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener noreferrer" className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100">Installation Documentation</a>)
-                                <ul className="mt-2 ml-6 pl-3 border-l-2 border-red-200 dark:border-red-800/50 list-none space-y-2">
-                                    <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud init</code></li>
-                                    <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud auth application-default login</code></li>
-                                    <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud config set project &lt;project_id&gt;</code></li>
-                                </ul>
-                            </li>
+                            {state.missingExecutables.includes('dataform') && (
+                                <li>
+                                    <b className="text-red-800 dark:text-red-200">Dataform CLI</b> (requires Node.js)
+                                    <ul className="mt-2 ml-6 pl-3 border-l-2 border-red-200 dark:border-red-800/50 list-none space-y-2">
+                                        <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">npm i -g @dataform/cli</code></li>
+                                        <li>Run <code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">dataform compile</code> from the root of your project to verify</li>
+                                    </ul>
+                                </li>
+                            )}
+                            {state.missingExecutables.includes('gcloud') && (
+                                <li>
+                                    <b className="text-red-800 dark:text-red-200">Google Cloud CLI</b> (<a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener noreferrer" className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100">Installation Documentation</a>)
+                                    <ul className="mt-2 ml-6 pl-3 border-l-2 border-red-200 dark:border-red-800/50 list-none space-y-2">
+                                        <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud init</code></li>
+                                        <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud auth application-default login</code></li>
+                                        <li><code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">gcloud config set project &lt;project_id&gt;</code></li>
+                                    </ul>
+                                </li>
+                            )}
                         </ol>
                         <p className="mt-5 mb-0 text-sm italic text-red-600 dark:text-red-400">Note: You may need to restart VS Code after installing these tools so they are picked up in the system PATH.</p>
                     </div>
