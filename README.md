@@ -42,7 +42,7 @@
 
 ## Installation
 
-1. Install the extension from the marketplace.
+1. Install the extension from the [marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode).
 2. [Install Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
    ```bash
