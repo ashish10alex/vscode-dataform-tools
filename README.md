@@ -208,8 +208,7 @@ Hover over BigQuery functions to see their documentation, syntax, and examples m
 
 ## Commands
 
-Most features can be invoked via command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and searching for the following. These key bindings can also be attached to a keybinding to
-further streamline your workflow.
+Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> on Mac and searching for the following. These key bindings can also be attached to a keybinding to further streamline your workflow.
 
 <table>
   <thead>
