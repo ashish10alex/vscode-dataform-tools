@@ -1,6 +1,7 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { getVsCodeApi } from './vscode';
+import { getUrlToNavigateToTableInBigQuery } from '../utils/bigquery';
 
 interface NodeData {
   modelName: string;
@@ -35,9 +36,6 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
     });
   };
 
-  const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
-    return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
-  };
 
   const nodeStyle = {
     background: isExternalSource ? datasetColor : '#ffffff',
