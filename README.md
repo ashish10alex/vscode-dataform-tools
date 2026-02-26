@@ -1,9 +1,26 @@
-# Dataform tools - a vscode extension
+<div align="center">
+  <h1>Dataform Tools</h1>
+  <p>✨ <b>Officially recommended by Google[^1]</b> ✨</p>
+  <p><i>The essential VS Code extension for Dataform (v2 & v3)</i></p>
 
-> ▶️ [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
+  <p>
+    <b>Works in:</b>
+    <a href="https://code.visualstudio.com/">VS Code</a> •
+    <a href="https://cursor.com">Cursor</a> •
+    <a href="https://antigravity.google/">Antigravity</a>
+  </p>
 
-[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as <a href="https://cursor.com">Cursor</a> & <a href="https://antigravity.google/">Antigravity</a>.
-✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product.
+  <br/>
+
+  <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
+    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube">
+  </a>
+</div>
+
+> [!IMPORTANT]
+> While officially recommended [^1], this is a community-led project and not an officially supported Google product.
+
+---
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="media/images/compiled_query_preview_dark.png">
@@ -33,7 +50,7 @@
   </thead>
 </table>
 
-----
+---
 
 ## Installation
 
@@ -69,7 +86,7 @@
 * ️▶️ [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 * ️▶️ [Dataform workspace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
 
-----
+---
 
 ## ✨ Features / Previews
 
@@ -199,7 +216,7 @@ Hover over BigQuery functions to see their documentation, syntax, and examples m
 
 ![go-to-definition](media/images/func_def_on_hover.png)
 
-----
+---
 
 ## Commands
 
@@ -289,7 +306,7 @@ further streamline your workflow.
   </tbody>
 </table>
 
-----
+---
 
 ## Products
 
@@ -343,7 +360,7 @@ further streamline your workflow.
   </tbody>
 </table>
 
-----
+---
 
 ## Known Issues
 
