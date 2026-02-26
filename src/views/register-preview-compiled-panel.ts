@@ -1,11 +1,11 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
-import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
+import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -478,6 +478,26 @@ export class CompiledQueryPanel {
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
         const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
+        const missingExecutables: string[] = [];
+        for (let i = 0; i < executablesToCheck.length; i++) {
+            let executable = executablesToCheck[i];
+            if (!executableIsAvailable(executable, false)) {
+                missingExecutables.push(executable);
+            }
+        }
+
+        if (missingExecutables.length > 0) {
+            if(this.webviewPanel.webview.html === ""){
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions });
+            } else {
+                await webview.postMessage({
+                    "missingExecutables": missingExecutables,
+                    "recompiling": false
+                });
+            }
+            return;
+        }
+
         if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions });
         }
@@ -685,16 +705,6 @@ export class CompiledQueryPanel {
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
             errorMessage = "";
-        } else if (dryRunResult?.error.message.includes("Error creating BigQuery client")){
-            errorMessage = dryRunResult?.error.message + "<br>";
-            errorMessage += `<h4>Possible fix: </h4>
-            <a href="https://cloud.google.com/sdk/docs/install">Install gcloud cli</a> <br>
-            <p> After gcloud cli is installed run the following in the terminal in order </p>
-             <ol>
-                <li><b>gcloud init</b></li>
-                <li><b>gcloud auth application-default login</b></li>
-                <li><b>gcloud config set project your-project-id</b>  #replace with your gcp project id</li>
-             </ol>`;
         }
         if(!dryRunStat){
             dryRunStat = "";
