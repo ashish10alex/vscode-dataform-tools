@@ -777,7 +777,7 @@ export function executableIsAvailable(name: string, showErrorOnNotFound: boolean
     if (!foundPath && showErrorOnNotFound) {
         vscode.window.showErrorMessage(`${name} cli not found`, "Installation Guide").then(selection => {
             if (selection === "Installation Guide") {
-                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#requirements"));
+                vscode.env.openExternal(vscode.Uri.parse("https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#installation"));
             }
         });
     }
