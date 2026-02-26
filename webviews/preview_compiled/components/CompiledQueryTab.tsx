@@ -388,7 +388,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       <div className="flex flex-col gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
           <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded">
-                  {state.relativeFilePath || "No file selected"}
+                  {state.relativeFilePath || ""}
               </span>
               <div className="flex-grow"></div>
               <button onClick={handleFormat} disabled={formatting} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
