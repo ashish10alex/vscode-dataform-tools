@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.20.0...v1.0.0) (2026-02-26)
+
+
+### Features
+
+* add ability to navigate to bigquery to tables in lineage ([#265](https://github.com/ashish10alex/vscode-dataform-tools/issues/265)) ([e97f857](https://github.com/ashish10alex/vscode-dataform-tools/commit/e97f857811df3bc2a2a6f5caea0d25dd29454813))
+* add build in git extension as a dependancy explicitly ([#253](https://github.com/ashish10alex/vscode-dataform-tools/issues/253)) ([1ffe0a4](https://github.com/ashish10alex/vscode-dataform-tools/commit/1ffe0a47298ae70e9a802a68f73ae086e60b3194))
+* add details section in cost estimator to show how cost is caculated ([#261](https://github.com/ashish10alex/vscode-dataform-tools/issues/261)) ([f1726bb](https://github.com/ashish10alex/vscode-dataform-tools/commit/f1726bbc6bb043ed2e408225b6eb4f5917596808))
+* add option to run open files ([#248](https://github.com/ashish10alex/vscode-dataform-tools/issues/248)) ([3708990](https://github.com/ashish10alex/vscode-dataform-tools/commit/370899051f3f68d9a2b6ea44a9248b0ae48da6db))
+* add option to skip pre operations query in dry run ([#254](https://github.com/ashish10alex/vscode-dataform-tools/issues/254)) ([1bd655b](https://github.com/ashish10alex/vscode-dataform-tools/commit/1bd655bd8a326b3ddcaea19b8199ad27e526cf3b))
+* add workflows tab to the compiled query web view ([#258](https://github.com/ashish10alex/vscode-dataform-tools/issues/258)) ([f9d70ca](https://github.com/ashish10alex/vscode-dataform-tools/commit/f9d70ca4c64f01f1f0655b620f86d246ff82c9a8))
+* improve dry run messages to align with BigQuery ([#262](https://github.com/ashish10alex/vscode-dataform-tools/issues/262)) ([58303cc](https://github.com/ashish10alex/vscode-dataform-tools/commit/58303cc211d6cff252b92cf7b484ac997a14c3d4))
+* more informative onboarding  ([#266](https://github.com/ashish10alex/vscode-dataform-tools/issues/266)) ([adb32d7](https://github.com/ashish10alex/vscode-dataform-tools/commit/adb32d7ea12371b56140d80323b1d16d378295d9))
+* **preview:** add ability for user to increase the query timeout ([#260](https://github.com/ashish10alex/vscode-dataform-tools/issues/260)) ([afbe3ed](https://github.com/ashish10alex/vscode-dataform-tools/commit/afbe3ed2f7cd4fe14d3efb9af2fd6d56b16c1fd6))
+* **sqlfluff:** add the ability to define formatting order ([#255](https://github.com/ashish10alex/vscode-dataform-tools/issues/255)) ([066267c](https://github.com/ashish10alex/vscode-dataform-tools/commit/066267cbb78c55b0bfc7bc107df527a2224d48e3))
+* **ui:** migrate previews results ui to react  ([#263](https://github.com/ashish10alex/vscode-dataform-tools/issues/263)) ([99c2a73](https://github.com/ashish10alex/vscode-dataform-tools/commit/99c2a7338c023077b574c1ffd11f0cbf4ba7c09f))
+* **ui:** refresh compiled query web view  ([#251](https://github.com/ashish10alex/vscode-dataform-tools/issues/251)) ([c0e8f49](https://github.com/ashish10alex/vscode-dataform-tools/commit/c0e8f49450e16eba7d239c9ccd1b8bf4f4845b6b))
+* update website to reflect the new ui ([#267](https://github.com/ashish10alex/vscode-dataform-tools/issues/267)) ([0de0645](https://github.com/ashish10alex/vscode-dataform-tools/commit/0de0645907fd1ed9acd91272ebabd80cb3c3345d))
+
+
+### Bug Fixes
+
+* prevent errors when post-operations are empty or undefined ([04eb432](https://github.com/ashish10alex/vscode-dataform-tools/commit/04eb432b54ae334e3fb25b1834e1c93198a3a202))
+* **runFiles:** exclude closed but cached .sqlx files from 'run open sqlx files' command ([e025719](https://github.com/ashish10alex/vscode-dataform-tools/commit/e0257194972b9b9ee2e2985cea28aaaa51177895))
+
+
+### Performance
+
+* Introduce debounce utility, apply it to editor event listeners, prevent concurrent BigQuery client creation, and optimize dependency collection. ([#252](https://github.com/ashish10alex/vscode-dataform-tools/issues/252)) ([1872731](https://github.com/ashish10alex/vscode-dataform-tools/commit/1872731e8431f3f72d20f778443b76f49ec6b820))
+* optimize go-to-definition and webview responsiveness with O(1) hash map lookups ([#257](https://github.com/ashish10alex/vscode-dataform-tools/issues/257)) ([41fab56](https://github.com/ashish10alex/vscode-dataform-tools/commit/41fab56e2913129fee5de1dbb81ae72264164d2f))
+
 ## [0.20.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v0.19.0...v0.20.0) (2026-02-05)
 
 
