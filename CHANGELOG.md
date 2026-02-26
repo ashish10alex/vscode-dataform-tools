@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.0.1...v1.0.2) (2026-02-26)
+
+
+### Bug Fixes
+
+* **docs:** duplicate screenshot rendering due to marketplace not being able to render theme aware screenshots ([75f68a7](https://github.com/ashish10alex/vscode-dataform-tools/commit/75f68a7a1182b2d1a0b61378169b89f9f6567d8e))
+
 ### [1.0.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.0.0...v1.0.1) (2026-02-26)
 
 
