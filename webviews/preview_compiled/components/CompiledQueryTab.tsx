@@ -413,15 +413,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       )}
                       <span className="font-semibold text-zinc-700 dark:text-zinc-200">Compiler Overrides</span>
                   </div>
-                  <a 
-                    href="https://dataformtools.com/blog/compiler-options"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
+                  <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        vscode.postMessage({ command: 'openExternal', url: 'https://dataformtools.com/blog/compiler-options' });
+                    }}
                     className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
                   >
                     Docs <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
+                  </button>
               </div>
 
               {isCompilerOptionsOpen && (
