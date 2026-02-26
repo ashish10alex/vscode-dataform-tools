@@ -16,49 +16,64 @@ interface FeatureItem {
   description: React.ReactNode;
   anchor: string;
   image?: string;
+  imageDark?: string;
 }
+
+import { useTheme } from "next-themes";
 
 export default function FeaturesTable() {
   const [selectedFeature, setSelectedFeature] = useState<string>("compilation");
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const features: FeatureItem[] = [
     {
       name: "Compiled Query & Dry run stats",
-      description: "Compiled query with dry run stats in a vertical split on saving the file",
+      description: "Compiled query with dry run stats in a vertical split",
       anchor: "compilation",
-      image: "/compiled_query_preview.png",
-    },
-    {
-      name: "Dependancy graph",
-      description: "Interative dependancy graph with external sources higlighted in distinct colors",
-      anchor: "depgraph",
-      image: "/dependancy_tree.png",
+      image: "/compiled_query_preview_light.png",
+      imageDark: "/compiled_query_preview_dark.png",
     },
     {
       name: "Inline diagnostics on `.sqlx` file 🚨",
       description: "Native LSP like experience with diagnostics being directly put on sqlx file",
       anchor: "diagnostics",
-      image: "/diagnostics.png",
+      image: "/diagnostics_light.png",
+      imageDark: "/diagnostics_dark.png",
+    },
+    {
+      name: "Dependancy graph",
+      description: "Interative dependancy graph with external sources higlighted in distinct colors",
+      anchor: "depgraph",
+      image: "/dependancy_tree_light.png",
+      imageDark: "/dependancy_tree_dark.png",
     },
     {
       name: "Preview query results",
       description: "Preview query results in a table by running the file",
       anchor: "preview_query_results",
-      image: "/preview_query_results.png",
+      image: "/preview_query_results_light.png",
+      imageDark: "/preview_query_results_dark.png",
     },
     {
-      name: "Schema code generation",
-      description: "Edit the schema of the model to genrate code that can be used for documentation",
-      anchor: "schema_code_gen",
-      image: "/schema_code_gen.gif",
+      name: "BigQuery hover definition provider",
+      description: "Hover definition for tables, columns, column descriptions, types and common BigQuery functions",
+      anchor: "hover",
+      image: "/table_hover_light.png",
+      imageDark: "/table_hover_dark.png",
     },
     {
-      name: "Cost estimator 💸",
+      name: "Cost estimator",
       description: "Estimate the cost of running a Tag",
       anchor: "cost_estimator",
-      image: "/tag_cost_estimator.png",
+      image: "/tag_cost_estimator_light.png",
+      imageDark: "/tag_cost_estimator_dark.png",
     },
     {
       name: "Go to definition",
@@ -68,39 +83,31 @@ export default function FeaturesTable() {
     },
     {
       name: "Auto-completion",
-      description: "Completion for sources, tags, models, variables, etc",
+      description: "Completion for column names, dependencies and declarations in `${ref(\"..\")}` and config block",
       anchor: "autocomplete",
       image: "/sources_autocompletion.gif",
     },
     {
       name: "Code actions",
-      description: "Apply quick fixes at the speed of thought",
+      description: "Apply dry run suggestions at the speed of thought",
       anchor: "codeactions",
       image: "/quick_fix.png",
     },
     {
       name: "Run file(s)/tag(s)",
-      description: "Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using vscode command pallet or compiled query web view",
+      description: "Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or <a href='https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient' target='_blank' rel='noopener noreferrer'>Dataform API</a>",
       anchor: "filetagruns",
-      image: "",
     },
     {
       name: "Format using Sqlfluff 🪄",
-      description: "Format sqlx files with javascript blocks using <a href='https://github.com/sqlfluff/sqlfluff' target='_blank' rel='noopener noreferrer'>sqlfluff</a>",
+      description: "Format `.sqlx` files using <a href='https://github.com/sqlfluff/sqlfluff' target='_blank' rel='noopener noreferrer'>sqlfluff</a>",
       anchor: "formatting",
-      image: "formatting.gif",
+      image: "/formatting.gif",
     },
     {
       name: "BigQuery snippets",
-      description: "Code snippets for generic BigQuery functions taken from <a href='https://github.com/shinichi-takii/vscode-language-sql-bigquery' target='_blank' rel='noopener noreferrer'>vscode-langauge-sql-bigquery</a> extension",
+      description: "Code snippets for generic BigQuery functions taken from <a href='https://github.com/shinichi-takii/vscode-language-sql-bigquery' target='_blank' rel='noopener noreferrer'>vscode-language-sql-bigquery</a> extension",
       anchor: "snippets",
-      image: "",
-    },
-    {
-      name: "BigQuery hover definition provider",
-      description: "Hover definition for commonly used BigQuery functions",
-      anchor: "hover",
-      image: "/func_def_on_hover.png",
     },
   ];
 
@@ -189,13 +196,15 @@ export default function FeaturesTable() {
           <div className="relative flex-1 bg-muted/20 rounded-md overflow-hidden flex items-center justify-center" style={{ minHeight: '80vh' }}>
             <Carousel className="w-full h-full" setApi={setCarouselApi}>
               <CarouselContent className="h-full">
-                {featureImages.map((feature) => (
+                {featureImages.map((feature) => {
+                  const src = !mounted ? (feature.imageDark || feature.image!) : (resolvedTheme === 'light' ? feature.image! : (feature.imageDark || feature.image!));
+                  return (
                   <CarouselItem key={feature.anchor} className="h-full">
                     <div className="relative w-full h-full flex items-center justify-center">
                       {feature.image ? (
                         <div className="relative w-full" style={{ height: '75vh' }}>
                           <Image 
-                            src={feature.image}
+                            src={src}
                             alt={`${feature.name} demonstration`}
                             fill
                             className="object-contain"
@@ -209,7 +218,7 @@ export default function FeaturesTable() {
                       )}
                     </div>
                   </CarouselItem>
-                ))}
+                )})}
               </CarouselContent>
               <CarouselPrevious className="h-10 w-10 left-4" />
               <CarouselNext className="h-10 w-10 right-4" />

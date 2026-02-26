@@ -12,10 +12,21 @@ export default function Home() {
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
           Dataform Tools VS Code Extension
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
-            A powerful VS Code extension for Dataform (v2.x & v3.x) with features like compiled query previews, dependency graphs, 
-            inline diagnostics, schema generation, cost estimation, and more.
-          </p>
+          <div className="mt-3 text-sm text-muted-foreground md:text-base text-center">
+            <p className="mb-1">
+              <a 
+                href="https://github.com/dataform-co/dataform/blob/main/vscode/README.md" 
+                className="font-semibold text-foreground hover:underline" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                Officially recommended VS Code extension for Dataform by Google
+              </a> ✨
+            </p>
+            <p>
+              Supports all major operating systems and both Dataform versions 2.9.x and 3.x.<br className="hidden sm:inline" /> Works in: <a href="https://code.visualstudio.com/" className="underline hover:text-foreground" target="_blank" rel="noopener noreferrer">VS Code</a>, <a href="https://cursor.com" className="underline hover:text-foreground" target="_blank" rel="noopener noreferrer">Cursor</a>, <a href="https://antigravity.google/" className="underline hover:text-foreground" target="_blank" rel="noopener noreferrer">Antigravity</a>.
+            </p>
+          </div>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
             <Button asChild>
               <Link
@@ -44,8 +55,8 @@ export default function Home() {
         <div className="mx-auto max-w-[90%] rounded-lg border bg-card p-3 md:p-5 shadow-sm">
           <div className="flex justify-center items-center overflow-hidden rounded-md">
             <ThemeImage 
-              lightSrc="compiled_query_preview_light_mode.png"
-              darkSrc="compiled_query_preview_dark_mode.png"
+              lightSrc="/compiled_query_preview_light.png"
+              darkSrc="/compiled_query_preview_dark.png"
               alt="Dataform Tools VS Code Extension Preview"
               className="w-full max-w-[1400px] h-auto object-contain"
               width={1400}
