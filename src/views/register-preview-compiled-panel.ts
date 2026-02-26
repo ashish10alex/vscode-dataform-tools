@@ -487,13 +487,15 @@ export class CompiledQueryPanel {
         }
 
         if (missingExecutables.length > 0) {
+            const missingCliErrorMessage = `The following mandatory CLIs are not installed: <b>${missingExecutables.join(', ')}</b>. Please install them to use this feature.`;
             if(this.webviewPanel.webview.html === ""){
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: false, compilerOptions });
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { errorMessage: missingCliErrorMessage, recompiling: false, compilerOptions });
+            } else {
+                await webview.postMessage({
+                    "errorMessage": missingCliErrorMessage,
+                    "recompiling": false
+                });
             }
-            await webview.postMessage({
-                "errorMessage": `The following mandatory CLIs are not installed: <b>${missingExecutables.join(', ')}</b>. Please install them to use this feature.`,
-                "recompiling": false
-            });
             return;
         }
 
