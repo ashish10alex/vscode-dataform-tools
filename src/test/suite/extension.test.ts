@@ -333,7 +333,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
@@ -363,7 +363,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
@@ -403,7 +403,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
@@ -442,7 +442,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
@@ -481,7 +481,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
@@ -521,7 +521,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
@@ -591,7 +591,7 @@ suite('getQueryMetaForCurrentFile', () => {
                 }
             }
             if (errors) {
-                throw new Error(errors.join('\n'));
+                throw new Error(JSON.stringify(errors, null, 2));
             }
         } catch (error: any) {
             console.error('Test failed:', error);
