@@ -338,7 +338,7 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
           <img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version">
         </a>
       </td>
-      <td>wrapper for google-cloud-dataform python pacakge</td>
+      <td>wrapper for google-cloud-dataform python package</td>
     </tr>
     <tr>
       <td> <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
