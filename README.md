@@ -130,7 +130,7 @@
     </tr>
     <tr>
       <td><a href="#snippets">BigQuery snippets</a></td>
-      <td>Code snippets for generic BigQuery functions taken from <a href="https://github.com/shinichi-takii/vscode-language-sql-bigquery">vscode-langauge-sql-bigquery</a> extension</td>
+      <td>Code snippets for generic BigQuery functions taken from <a href="https://github.com/shinichi-takii/vscode-language-sql-bigquery">vscode-language-sql-bigquery</a> extension</td>
     </tr>
     <tr>
       <td><a href="#hover">BigQuery hover definition provider</a></td>
