@@ -126,7 +126,7 @@ function App() {
             href="https://github.com/ashish10alex/vscode-dataform-tools/issues" 
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
+            className="flex items-center text-xs text-yellow-600 hover:text-yellow-700 dark:text-yellow-500 dark:hover:text-yellow-400"
         >
             Report an issue
             <MessageSquareWarning className="w-3 h-3 ml-1" />
