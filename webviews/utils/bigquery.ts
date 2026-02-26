@@ -10,14 +10,25 @@ export const parseBigQueryTableId = (
   id: any
 ): { database: string; schema: string; name: string } | null => {
   if (typeof id === "string") {
-    const parts = id.split(".");
-    if (parts.length === 3) {
+    const parts = id.split(".").map((part) => part.trim());
+    if (parts.length === 3 && parts.every(Boolean)) {
       return { database: parts[0], schema: parts[1], name: parts[2] };
     }
     return null;
   }
-  if (id && typeof id === "object" && id.database && id.schema && id.name) {
-    return { database: id.database, schema: id.schema, name: id.name };
+  if (
+    id &&
+    typeof id === "object" &&
+    typeof id.database === "string" &&
+    typeof id.schema === "string" &&
+    typeof id.name === "string"
+  ) {
+    const database = id.database.trim();
+    const schema = id.schema.trim();
+    const name = id.name.trim();
+    if (database && schema && name) {
+      return { database, schema, name };
+    }
   }
   return null;
 };
