@@ -48,6 +48,25 @@ export default function Home() {
               </Link>
             </Button>
           </div>
+          
+          <div className="mt-8 flex flex-col items-center">
+            <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wider">Available On</p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm opacity-80 hover:opacity-100 transition-opacity">
+              <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:bg-muted p-1.5 rounded-md transition-colors" title="VS Code marketplace">
+                <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode?style=flat-square&color=blue" alt="VS Code marketplace" className="h-5" />
+                <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg?style=flat-square&color=blue" alt="Downloads" className="h-5 hidden sm:block" />
+              </a>
+              <a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:bg-muted p-1.5 rounded-md transition-colors" title="Open VSX marketplace">
+                <img src="https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode?style=flat-square&color=blue" alt="Open VSX Version" className="h-5" />
+              </a>
+              <a href="https://pypi.org/project/dataform-tools/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:bg-muted p-1.5 rounded-md transition-colors" title="PyPi wrapper">
+                <img src="https://img.shields.io/pypi/v/dataform-tools?style=flat-square&color=blue" alt="PyPI - Version" className="h-5" />
+              </a>
+              <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:bg-muted p-1.5 rounded-md transition-colors" title="npm wrapper">
+                <img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools?style=flat-square&color=blue" alt="NPM Version" className="h-5" />
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
