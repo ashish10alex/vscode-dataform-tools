@@ -1,11 +1,11 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
-import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView } from "../constants";
+import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -477,6 +477,25 @@ export class CompiledQueryPanel {
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
         const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+
+        const missingExecutables: string[] = [];
+        for (let i = 0; i < executablesToCheck.length; i++) {
+            let executable = executablesToCheck[i];
+            if (!executableIsAvailable(executable, false)) {
+                missingExecutables.push(executable);
+            }
+        }
+
+        if (missingExecutables.length > 0) {
+            if(this.webviewPanel.webview.html === ""){
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: false, compilerOptions });
+            }
+            await webview.postMessage({
+                "errorMessage": `The following mandatory CLIs are not installed: <b>${missingExecutables.join(', ')}</b>. Please install them to use this feature.`,
+                "recompiling": false
+            });
+            return;
+        }
 
         if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions });
