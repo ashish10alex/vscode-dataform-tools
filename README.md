@@ -12,7 +12,6 @@
   <img alt="compilation" src="media/images/compiled_query_preview.png">
 </picture>
 
-
 <table>
   <thead>
     <tr>
@@ -45,6 +44,7 @@
    # requires nodejs & npm - https://nodejs.org/en/download
    npm i -g @dataform/cli
    ```
+
    Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli.
 
 3. [Install gcloud cli](https://cloud.google.com/sdk/docs/install) and run
@@ -73,21 +73,71 @@
 
 ## ✨ Features / Previews
 
-| Feature | Description |
-|---------|-------------|
-| [Compiled Query & Dry run stats](#compilation) | Compiled query with dry run stats in a vertical split |
-| [Inline diagnostics on `.sqlx` file](#diagnostics) 🚨 | Native LSP like experience with diagnostics being directly put on sqlx file |
-| [Dependancy graph](#depgraph) | Interative dependancy graph with external sources higlighted in distinct colors |
-| [Preview query results](#preview_query_results) | Preview query results in a table by running the file |
-| [Cost estimator](#cost_estimator) 💸 | Estimate the cost of running a Tag|
-| [Go to definition](#definition) | Go to definition for source in `$ref{("my_source")}` and javascript blocks in `.sqlx` files  |
-| [Auto-completion](#autocomplete) | - Column names of current model <br> - Dependencies and declarations in `${ref("..")}` trigger when `$` character is typed <br> - Dependencies when `"` or `'` is typed inside the config block which has `dependencies` keyword is in the line prefix <br> - `tags` when `"` or `'` is typed inside the config block which has `tags` keyword is in the line prefix |
-| [Code actions](#codeactions) | Apply dry run suggestions at the speed of thought |
-| [Run file(s)/tag(s)](#filetagruns) | Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or [Dataform API](https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient) |
-| [Format using Sqlfluff](#formatting) 🪄 | Fromat `.sqlx` files using [sqlfluff](https://github.com/sqlfluff/sqlfluff)|
-| [BigQuery snippets](#snippets) | Code snippets for generic BigQuery functions taken from [vscode-langauge-sql-bigquery](https://github.com/shinichi-takii/vscode-language-sql-bigquery) extension |
-| [BigQuery hover definition provider](#hover) | Hover definition for column descriptions, type and commonly used BigQuery functions |
-
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="#compilation">Compiled Query & Dry run stats</a></td>
+      <td>Compiled query with dry run stats in a vertical split</td>
+    </tr>
+    <tr>
+      <td><a href="#diagnostics">Inline diagnostics on <code>.sqlx</code> file</a> 🚨</td>
+      <td>Native LSP like experience with diagnostics being directly put on sqlx file</td>
+    </tr>
+    <tr>
+      <td><a href="#depgraph">Dependancy graph</a></td>
+      <td>Interative dependancy graph with external sources higlighted in distinct colors</td>
+    </tr>
+    <tr>
+      <td><a href="#preview_query_results">Preview query results</a></td>
+      <td>Preview query results in a table by running the file</td>
+    </tr>
+    <tr>
+      <td><a href="#cost_estimator">Cost estimator</a> 💸</td>
+      <td>Estimate the cost of running a Tag</td>
+    </tr>
+    <tr>
+      <td><a href="#definition">Go to definition</a></td>
+      <td>Go to definition for source in <code>$ref{("my_source")}</code> and javascript blocks in <code>.sqlx</code> files</td>
+    </tr>
+    <tr>
+      <td><a href="#autocomplete">Auto-completion</a></td>
+      <td>
+        <ul>
+          <li>Column names of current model</li>
+          <li>Dependencies and declarations in <code>${ref("..")}</code> trigger when <code>$</code> character is typed</li>
+          <li>Dependencies when <code>"</code> or <code>'</code> is typed inside the config block which has <code>dependencies</code> keyword is in the line prefix</li>
+          <li><code>tags</code> when <code>"</code> or <code>'</code> is typed inside the config block which has <code>tags</code> keyword is in the line prefix</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><a href="#codeactions">Code actions</a></td>
+      <td>Apply dry run suggestions at the speed of thought</td>
+    </tr>
+    <tr>
+      <td><a href="#filetagruns">Run file(s)/tag(s)</a></td>
+      <td>Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or <a href="https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient">Dataform API</a></td>
+    </tr>
+    <tr>
+      <td><a href="#formatting">Format using Sqlfluff</a> 🪄</td>
+      <td>Fromat <code>.sqlx</code> files using <a href="https://github.com/sqlfluff/sqlfluff">sqlfluff</a></td>
+    </tr>
+    <tr>
+      <td><a href="#snippets">BigQuery snippets</a></td>
+      <td>Code snippets for generic BigQuery functions taken from <a href="https://github.com/shinichi-takii/vscode-language-sql-bigquery">vscode-langauge-sql-bigquery</a> extension</td>
+    </tr>
+    <tr>
+      <td><a href="#hover">BigQuery hover definition provider</a></td>
+      <td>Hover definition for column descriptions, type and commonly used BigQuery functions</td>
+    </tr>
+  </tbody>
+</table>
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files ❗</a>
 
@@ -106,7 +156,6 @@
   <!-- Fallback image if picture is not supported -->
   <img alt="depgraph" src="media/images/dependancy_tree.png">
 </picture>
-
 
 ### <a id="preview_query_results">Preview query results</a>
 
@@ -152,33 +201,93 @@ Hover over BigQuery functions to see their documentation, syntax, and examples m
 
 ----
 
-
-
 ## Commands
 
 Most features can be invoked via command pallet by pressing <kbd>CTLR</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>p</kbd> on mac and searching for the following. These key bindings can also be attached to a keybinding to
 further streamline your workflow.
 
-| Command | Description |
-|---------|-------------|
-| `vscode-dataform-tools.showCompiledQueryInWebView` | Show compiled Query in web view |
-| `vscode-dataform-tools.runCurrentFile` | Run current file |
-| `vscode-dataform-tools.runCurrentFileWtDeps` | Run current file with dependencies |
-| `vscode-dataform-tools.runCurrentFileWtDownstreamDeps` | Run current file with dependents |
-| `vscode-dataform-tools.runQuery` | Preview query results |
-| `vscode-dataform-tools.runTag` | Run a tag |
-| `vscode-dataform-tools.runTagWtDeps` | Run a tag with dependencies |
-| `vscode-dataform-tools.runTagWtDownstreamDeps` | Run a tag with dependents |
-| `vscode-dataform-tools.runFilesTagsWtOptions` | Run file(s) / tag(s) with options |
-| `vscode-dataform-tools.runFilesTagsWtOptionsApi` | Run file(s) / tag(s) with options using API |
-| `vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace` | Run file(s) / tag(s) with options using API in remote workspace [beta] |
-| `vscode-dataform-tools.dependencyGraphPanel` | Show dependency graph |
-| `vscode-dataform-tools.runTagWtApi` | Run a tag using API |
-| `vscode-dataform-tools.runTagWtDependenciesApi` | Run tag with dependencies using API |
-| `vscode-dataform-tools.runCurrentFileWtApi` | Run current file using API |
-| `vscode-dataform-tools.runCurrentFileWtDependenciesApi` | Run current file with dependencies using API |
-| `vscode-dataform-tools.runCurrentFileWtDependentsApi` | Run current file with dependents using API |
-| `vscode-dataform-tools.clearExtensionCache` |  Clear extension cache|
+<table>
+  <thead>
+    <tr>
+      <th>Command</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>vscode-dataform-tools.showCompiledQueryInWebView</code></td>
+      <td>Show compiled Query in web view</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runCurrentFile</code></td>
+      <td>Run current file</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runCurrentFileWtDeps</code></td>
+      <td>Run current file with dependencies</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runCurrentFileWtDownstreamDeps</code></td>
+      <td>Run current file with dependents</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runQuery</code></td>
+      <td>Preview query results</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runTag</code></td>
+      <td>Run a tag</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runTagWtDeps</code></td>
+      <td>Run a tag with dependencies</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runTagWtDownstreamDeps</code></td>
+      <td>Run a tag with dependents</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runFilesTagsWtOptions</code></td>
+      <td>Run file(s) / tag(s) with options</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runFilesTagsWtOptionsApi</code></td>
+      <td>Run file(s) / tag(s) with options using API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace</code></td>
+      <td>Run file(s) / tag(s) with options using API in remote workspace [beta]</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.dependencyGraphPanel</code></td>
+      <td>Show dependency graph</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runTagWtApi</code></td>
+      <td>Run a tag using API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runTagWtDependenciesApi</code></td>
+      <td>Run tag with dependencies using API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runCurrentFileWtApi</code></td>
+      <td>Run current file using API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runCurrentFileWtDependenciesApi</code></td>
+      <td>Run current file with dependencies using API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runCurrentFileWtDependentsApi</code></td>
+      <td>Run current file with dependents using API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.clearExtensionCache</code></td>
+      <td>Clear extension cache</td>
+    </tr>
+  </tbody>
+</table>
 
 ----
 
