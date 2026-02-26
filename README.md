@@ -126,7 +126,7 @@
     </tr>
     <tr>
       <td><a href="#formatting">Format using Sqlfluff</a> 🪄</td>
-      <td>Fromat <code>.sqlx</code> files using <a href="https://github.com/sqlfluff/sqlfluff">sqlfluff</a></td>
+      <td>Format <code>.sqlx</code> files using <a href="https://github.com/sqlfluff/sqlfluff">sqlfluff</a></td>
     </tr>
     <tr>
       <td><a href="#snippets">BigQuery snippets</a></td>
