@@ -385,11 +385,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.contentChanges.length === 0) return;
-            if (e.document.uri.scheme !== 'file') return;
+            if (e.contentChanges.length === 0) {return;}
+            if (e.document.uri.scheme !== 'file') {return;}
             
             const fileName = e.document.fileName;
-            if (fileName.includes('.git') || fileName.includes('node_modules') || fileName.includes('.vscode')) return;
+            if (fileName.includes('.git') || fileName.includes('node_modules') || fileName.includes('.vscode')) {return;}
 
             const ext = path.extname(fileName).toLowerCase();
             if (['.sqlx', '.js', '.json', '.yaml', '.yml'].includes(ext)) {
