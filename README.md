@@ -15,12 +15,8 @@
 </div>
 <br>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/images/compiled_query_preview_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="media/images/compiled_query_preview_light.png">
-  <!-- Fallback image if picture is not supported -->
-  <img alt="compilation" src="media/images/compiled_query_preview.png">
-</picture>
+![compilation](media/images/compiled_query_preview_dark.png#gh-dark-mode-only)
+![compilation](media/images/compiled_query_preview_light.png#gh-light-mode-only)
 
 ---
 
@@ -130,51 +126,31 @@
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files</a>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/images/diagnostics_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="media/images/diagnostics_light.png">
-  <!-- Fallback image if picture is not supported -->
-  <img alt="diagnostics" src="media/images/diagnostics.png">
-</picture>
+![diagnostics](media/images/diagnostics_dark.png#gh-dark-mode-only)
+![diagnostics](media/images/diagnostics_light.png#gh-light-mode-only)
 
 ### <a id="depgraph">Dependency graph</a>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/images/dependancy_tree_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="media/images/dependancy_tree_light.png">
-  <!-- Fallback image if picture is not supported -->
-  <img alt="depgraph" src="media/images/dependancy_tree.png">
-</picture>
+![depgraph](media/images/dependancy_tree_dark.png#gh-dark-mode-only)
+![depgraph](media/images/dependancy_tree_light.png#gh-light-mode-only)
 
 ### <a id="preview_query_results">Preview query results</a>
 
 <!-- ![preview_query_results](/media/images/preview_query_results.png) -->
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/images/preview_query_results_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="media/images/preview_query_results_light.png">
-  <!-- Fallback image if picture is not supported -->
-  <img alt="preview_query_results" src="media/images/preview_query_results.png">
-</picture>
+![preview_query_results](media/images/preview_query_results_dark.png#gh-dark-mode-only)
+![preview_query_results](media/images/preview_query_results_light.png#gh-light-mode-only)
 
 ### <a id="hover">BigQuery hover definition provider</a>
 
 Hover over tables, columns, column types and BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/images/table_hover_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="media/images/table_hover_light.png">
-  <!-- Fallback image if picture is not supported -->
-  <img alt="table_hover" src="media/images/table_hover_dark.png">
-</picture>
+![table_hover](media/images/table_hover_dark.png#gh-dark-mode-only)
+![table_hover](media/images/table_hover_light.png#gh-light-mode-only)
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/images/tag_cost_estimator_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="media/images/tag_cost_estimator_light.png">
-  <!-- Fallback image if picture is not supported -->
-  <img alt="cost_estimator" src="media/images/tag_cost_estimator.png">
-</picture>
+![cost_estimator](media/images/tag_cost_estimator_dark.png#gh-dark-mode-only)
+![cost_estimator](media/images/tag_cost_estimator_light.png#gh-light-mode-only)
 
 ### <a id="definition">Go to definition</a>
 
