@@ -1,26 +1,14 @@
 <div align="center">
   <h1>Dataform Tools</h1>
-  <p>✨ <b>Officially recommended by Google[^1]</b> ✨</p>
-  <p><i>The essential VS Code extension for Dataform (v2 & v3)</i></p>
-
-  <p>
-    <b>Works in:</b>
-    <a href="https://code.visualstudio.com/">VS Code</a> •
-    <a href="https://cursor.com">Cursor</a> •
-    <a href="https://antigravity.google/">Antigravity</a>
-  </p>
-
-  <br/>
-
-  <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
-    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube">
-  </a>
 </div>
 
-> [!IMPORTANT]
-> While officially recommended [^1], this is a community-led project and not an officially supported Google product.
+<b>Officially recommended by Google[^1]</b> ✨. The essential VS Code extension for Dataform (v2 & v3). Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>.
 
----
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
+    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube" width="180" style="padding: 5px">
+  </a>
+</div>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="media/images/compiled_query_preview_dark.png">
@@ -372,4 +360,4 @@ further streamline your workflow.
 * [ ] Add hover docs for config block elements. e.g. Assertions, type etc
 * [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 
-[^1]: [Link to confirmation of official recommendation by Google:](https://github.com/dataform-co/dataform/blob/main/vscode/README.md)
+[^1]: [Link to confirmation of official recommendation by Google:](https://github.com/dataform-co/dataform/blob/main/vscode/README.md). Note that this is a community-led project and not an officially supported Google product.
