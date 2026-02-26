@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD041 -->
 <div align="center">
   <h1>Dataform Tools</h1>
 </div>
