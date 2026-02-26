@@ -17,14 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import clsx from "clsx";
-
-const getUrlToNavigateToTableInBigQuery = (
-  gcpProjectId: string,
-  datasetId: string,
-  tableName: string
-) => {
-  return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
-};
+import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 
 interface CompiledQueryTabProps {
   state: WebviewState;
@@ -188,19 +181,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <a
-                      href={getUrlToNavigateToTableInBigQuery(
-                        target.database,
-                        target.schema,
-                        target.name
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <BigQueryTableLink 
+                      id={target} 
+                      showIcon={true} 
                       className="flex items-center text-sm font-mono text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      {target.database}.{target.schema}.{target.name}
-                    </a>
+                      fallbackClassName="flex items-center text-sm font-mono text-red-500 dark:text-red-400"
+                    />
                     <button
                       onClick={() => {
                         const text = `\`${target.database}.${target.schema}.${target.name}\``;
@@ -280,9 +266,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                return (
                                    <li key={`${idx}-${tIdx}`} className="flex items-center text-sm group">
                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>
-                                       <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-zinc-900 dark:hover:text-white transition-colors">
-                                            {id}
-                                       </span>
+                                       <BigQueryTableLink id={target} label={id} />
                                        <button 
                                             onClick={() => handleLineageNavigation(id)}
                                             className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -314,9 +298,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                  return (
                                     <li key={idx} className="flex items-center text-sm group">
                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>
-                                        <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-zinc-900 dark:hover:text-white transition-colors">
-                                             {id}
-                                        </span>
+                                        <BigQueryTableLink id={dependent} label={id} />
                                            <button 
                                                 onClick={() => handleLineageNavigation(id)}
                                                 className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -359,9 +341,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                             {state.lineageMetadata.dependencies.map((item: string, idx: number) => {
                                                 const isExternal = !localDependentIds.has(item);
                                                 return (
-                                                  <li key={idx} className="flex items-center text-sm">
+                                                   <li key={idx} className="flex items-center text-sm">
                                                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
-                                                      <span className="text-zinc-600 dark:text-zinc-300 font-mono select-all">{item}</span>
+                                                      <BigQueryTableLink id={item} />
                                                       {isExternal && (
                                                           <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                                                               External
@@ -406,7 +388,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       <div className="flex flex-col gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
           <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded">
-                  {state.relativeFilePath || "No file selected"}
+                  {state.relativeFilePath || " "}
               </span>
               <div className="flex-grow"></div>
               <button onClick={handleFormat} disabled={formatting} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
@@ -431,15 +413,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       )}
                       <span className="font-semibold text-zinc-700 dark:text-zinc-200">Compiler Overrides</span>
                   </div>
-                  <a 
-                    href="https://dataformtools.com/blog/compiler-options"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
+                  <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        vscode.postMessage({ command: 'openExternal', url: 'https://dataformtools.com/blog/compiler-options' });
+                    }}
                     className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
                   >
                     Docs <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
+                  </button>
               </div>
 
               {isCompilerOptionsOpen && (
