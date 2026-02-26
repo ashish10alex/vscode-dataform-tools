@@ -16,7 +16,6 @@
 <br>
 
 ![compilation](media/images/compiled_query_preview_dark.png#gh-dark-mode-only)
-![compilation](media/images/compiled_query_preview_light.png#gh-light-mode-only)
 
 ---
 
@@ -127,30 +126,25 @@
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files</a>
 
 ![diagnostics](media/images/diagnostics_dark.png#gh-dark-mode-only)
-![diagnostics](media/images/diagnostics_light.png#gh-light-mode-only)
 
 ### <a id="depgraph">Dependency graph</a>
 
 ![depgraph](media/images/dependancy_tree_dark.png#gh-dark-mode-only)
-![depgraph](media/images/dependancy_tree_light.png#gh-light-mode-only)
 
 ### <a id="preview_query_results">Preview query results</a>
 
 <!-- ![preview_query_results](/media/images/preview_query_results.png) -->
 ![preview_query_results](media/images/preview_query_results_dark.png#gh-dark-mode-only)
-![preview_query_results](media/images/preview_query_results_light.png#gh-light-mode-only)
 
 ### <a id="hover">BigQuery hover definition provider</a>
 
 Hover over tables, columns, column types and BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
 
 ![table_hover](media/images/table_hover_dark.png#gh-dark-mode-only)
-![table_hover](media/images/table_hover_light.png#gh-light-mode-only)
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
 ![cost_estimator](media/images/tag_cost_estimator_dark.png#gh-dark-mode-only)
-![cost_estimator](media/images/tag_cost_estimator_light.png#gh-light-mode-only)
 
 ### <a id="definition">Go to definition</a>
 
