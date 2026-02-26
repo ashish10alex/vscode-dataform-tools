@@ -2,7 +2,7 @@
 
 > ▶️ [Click here for YouTube video with installation steps and demo →](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 
-[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as Cursor & Antigravity.
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) for [Dataform](https://github.com/dataform-co/dataform). Supports both Dataform version 2.x and 3.x and works in VS Code forks such as <a href="https://cursor.com">Cursor</a> & <a href="https://antigravity.google/">Antigravity</a>.
 ✨ **Officially recommended by Google[^1]** ✨. Though not an officially supported Google product.
 
 <picture>
@@ -305,32 +305,39 @@ further streamline your workflow.
     <tr>
       <td><a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">VS Code marketplace</a></td>
       <td>
-      <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace">
-      <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads"></td>
-      </td>
-      <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode"></a>
+        <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">
+          <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace">
+          <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads">
+        </a>
       </td>
       <td>Marketplace for VS Code editor</td>
     </tr>
     <tr>
       <td><a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">Open VSX marketplace</a></td>
       <td>
-      <img src="https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
-      <img src="https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+        <a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">
+          <img src="https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+          <img src="https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
+        </a>
       </td>
-      <a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode"></a>
-      <td>Marketplace for VS Code forks such as <a href="https://cursor.com">Cursor</a></td>
+      <td>Marketplace for VS Code forks such as <a href="https://cursor.com">Cursor</a> and <a href="https://antigravity.google/">Antigravity</a></td>
     </tr>
     <tr>
       <td> <a href="https://pypi.org/project/dataform-tools/">PyPi</a></td>
-      <td><img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version"></td>
-      <a href="https://pypi.org/project/dataform-tools/"></a>
+      <td>
+        <a href="https://pypi.org/project/dataform-tools/">
+          <img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version">
+        </a>
+      </td>
       <td>wrapper for google-cloud-dataform python pacakge</td>
     </tr>
     <tr>
       <td> <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
-      <td><img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools" alt="NPM Version"></td>
-      <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools"></a>
+      <td>
+        <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">
+          <img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools" alt="NPM Version">
+        </a>
+      </td>
       <td>wrapper for google-cloud/dataform npm package </td>
     </tr>
   </tbody>
