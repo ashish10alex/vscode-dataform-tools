@@ -1558,12 +1558,12 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
         spawnedProcess.on('close', async (code: number) => {
             if (code === 0) {
                 if(compilerOptions.length>0){
-                    compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
+                    globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
                 }else{
-                    compilerOptionsMap = {};
+                    globalThis.compilerOptionsMap = {};
                 }
 
-                logger.debug(`compilerOptionsMap: ${JSON.stringify(compilerOptionsMap)}`);
+                logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {

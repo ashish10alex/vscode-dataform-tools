@@ -694,7 +694,7 @@ export class CompiledQueryPanel {
         }
 
 
-        let errorMessage = (preOpsDryRunResult?.error.message && !errorInPreOpsDenyList ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
+        let errorMessage = (preOpsDryRunResult?.error.message && !globalThis.errorInPreOpsDenyList ? "(Pre operations): " + preOpsDryRunResult?.error.message + "<br>" : "")
                             + (dryRunResult?.error.message ? "(Main query): " + dryRunResult?.error.message + "<br>" : "")
                             + (postOpsDryRunResult?.error.message ? "(Post operations): " + postOpsDryRunResult?.error.message + "<br>" : "")
                             + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")

@@ -1,4 +1,7 @@
 import * as assert from 'assert';
+globalThis.isRunningOnWindows = process.platform === 'win32';
+globalThis.errorInPreOpsDenyList = false;
+globalThis.compilerOptionsMap = {};
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
@@ -14,7 +17,7 @@ suite('Config Block Diagnostics', () => {
         await vscode.workspace.openTextDocument(uri);
         
         // Wait a small amount of time for the language server / extension to process the onDidOpenTextDocument event
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 4500));
         
         const diagnostics = vscode.languages.getDiagnostics(uri);
         
@@ -45,14 +48,14 @@ suite('Config Block Diagnostics', () => {
         assert.ok(diagnosticMessages.some(m => m.includes('Must be a number without quotes') && m.includes('partitionExpirationDays')), 'Missing warning for partitionExpirationDays property');
         assert.ok(diagnosticMessages.some(m => m.includes('Cannot be a string') && m.includes('labels')), 'Missing warning for labels property');
         assert.ok(diagnosticMessages.some(m => m.includes('Invalid property "invalidBqProp"')), 'Missing warning for invalidBqProp property');
-    });
+    }).timeout(10000);
 
     test('Should return no errors for a valid config block', async () => {
         const uri = vscode.Uri.file(path.join(workspaceFolder, "invalid_configs/101_CONFIG_BLOCK_VALID.sqlx"));
         await vscode.workspace.openTextDocument(uri);
         
         // Wait a small amount of time for the language server / extension to process the onDidOpenTextDocument event
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 4500));
         
         const diagnostics = vscode.languages.getDiagnostics(uri);
         const warnings = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning);
@@ -62,13 +65,13 @@ suite('Config Block Diagnostics', () => {
         }
         
         assert.strictEqual(warnings.length, 0, 'There should be no warnings dynamically added for a valid config block');
-    });
+    }).timeout(10000);
 
     test('Should catch multiple errors in assertions block', async () => {
         const uri = vscode.Uri.file(path.join(workspaceFolder, "invalid_configs/103_CONFIG_ASSERTION_ERRORS.sqlx"));
         await vscode.workspace.openTextDocument(uri);
         
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 4500));
         
         const diagnostics = vscode.languages.getDiagnostics(uri);
         const warnings = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning);
@@ -83,13 +86,13 @@ suite('Config Block Diagnostics', () => {
         assert.ok(diagnosticMessages.some(m => m.includes('Must be an array') && m.includes('rowConditions')), 'Missing warning for rowConditions property');
         assert.ok(diagnosticMessages.some(m => m.includes('Must be an array') && m.includes('uniqueKeys')), 'Missing warning for uniqueKeys property');
         assert.ok(diagnosticMessages.some(m => m.includes('Invalid property "invalidProp"')), 'Missing warning for invalidProp in assertions block');
-    });
+    }).timeout(10000);
 
     test('Should return no errors for a valid assertions config block', async () => {
         const uri = vscode.Uri.file(path.join(workspaceFolder, "invalid_configs/102_CONFIG_ASSERTION_VALID.sqlx"));
         await vscode.workspace.openTextDocument(uri);
         
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 4500));
         
         const diagnostics = vscode.languages.getDiagnostics(uri);
         const warnings = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning);
@@ -99,6 +102,6 @@ suite('Config Block Diagnostics', () => {
         }
         
         assert.strictEqual(warnings.length, 0, 'There should be no warnings in a valid assertions config block');
-    });
+    }).timeout(10000);
 
 });

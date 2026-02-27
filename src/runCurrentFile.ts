@@ -84,7 +84,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
                     "Dataform remote workspace execution cancelled",
                     context,
                     invocationConfig,
-                    compilerOptionsMap,
+                    globalThis.compilerOptionsMap,
                 );
                 return;
             }
@@ -106,7 +106,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
             const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
-            const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+            const output = await dataformClient.runDataformRemotely(repositoryName, globalThis.compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
             if(!output){
                 throw new Error("Error creating workflow invocation");
             }

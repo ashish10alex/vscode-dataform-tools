@@ -30,7 +30,7 @@
         "workspaceContains:**/workflow_settings.yaml",
         "workspaceContains:**/dataform.json"
     ],
-    "main": "./out/src/extension.js",
+    "main": "./dist/extension.js",
     "contributes": {
         "viewsContainers": {
             "panel": [
@@ -418,10 +418,15 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./ && npm run build:webviews",
-        "watch": "tsc -watch -p ./",
+        "vscode:prepublish": "npm run package",
+        "compile": "npm run check-types && npm run build:webviews && npm run esbuild",
+        "watch": "concurrently \"npm run check-types -- --watch\" \"npm run esbuild-watch\" \"npm run webviews:watch\"",
         "build:webviews": "vite build",
+        "webviews:watch": "vite build --watch",
+        "esbuild": "node esbuild.js",
+        "esbuild-watch": "node esbuild.js --watch",
+        "package": "npm run check-types && npm run build:webviews && node esbuild.js --production",
+        "check-types": "tsc -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test": "rm -rf .vscode-test/user-data; vscode-test",
@@ -451,6 +456,7 @@
         "clsx": "^2.1.1",
         "concurrently": "^9.1.2",
         "dagre": "^0.8.5",
+        "esbuild": "^0.27.3",
         "eslint": "^8.57.0",
         "lucide-react": "^0.564.0",
         "postcss": "^8.5.6",

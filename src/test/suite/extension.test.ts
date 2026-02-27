@@ -1,4 +1,7 @@
 import * as assert from 'assert';
+globalThis.isRunningOnWindows = process.platform === 'win32';
+globalThis.errorInPreOpsDenyList = false;
+globalThis.compilerOptionsMap = {};
 import path from 'path';
 import * as vscode from 'vscode';
 import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices } from '../../utils';
