@@ -100,7 +100,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
             "Dataform remote workspace execution cancelled",
             context,
             invocationConfig,
-            compilerOptionsMap,
+            globalThis.compilerOptionsMap,
         );
         return;
     }
@@ -138,7 +138,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
 
         const dataformClient = new DataformTools(projectId, gcpProjectLocation);
 
-        const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
+        const output = await dataformClient.runDataformRemotely(repositoryName, globalThis.compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
         if(!output){
             throw new Error("Error creating workflow invocation");
         }
