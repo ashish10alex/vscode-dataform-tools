@@ -164,7 +164,7 @@ export class CompiledQueryPanel {
 
             const panel = window.createWebviewPanel(
                 CompiledQueryPanel.viewType,
-                "Compiled query preview",
+                "Dataform Tools (experimental)",
                 { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
                 {
                     enableFindWidget: true,
