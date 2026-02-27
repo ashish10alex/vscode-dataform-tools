@@ -211,7 +211,7 @@ export function registerConfigBlockDiagnostics(context: vscode.ExtensionContext)
                     const allowedConfigProps = [
                         'type', 'database', 'schema', 'name', 'description', 'columns',
                         'tags', 'dependencies', 'hasOutput', 'assertions', 'bigquery',
-                        'materialized', 'onSchemaChange', 'protected'
+                        'materialized', 'onSchemaChange', 'protected', 'dependOnDependencyAssertions'
                     ];
                     if (configBraceDepth === 1) {
                         checkAllowedProperties(allowedConfigProps, line, i, 'config');
