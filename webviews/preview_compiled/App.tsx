@@ -140,7 +140,7 @@ function App() {
         {state.recompiling && (
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-4">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Compiling Dataform...</span>
+                <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
             </div>
         )}
 

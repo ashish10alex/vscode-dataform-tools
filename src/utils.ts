@@ -16,6 +16,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { GitService } from './gitClient';
+import { load as loadYaml, YAMLException } from 'js-yaml';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -2102,4 +2103,25 @@ function parseNotebookFilenames(content: string): string[] {
   }
 
   return filenames;
+}
+
+export function readDataformCoreVersionFromWorkflowSettings(
+  resolvedProjectPath: string
+): string | undefined {
+  const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
+  if (!fs.existsSync(workflowSettingsPath)) {
+    return;
+  }
+
+  const workflowSettingsContent = fs.readFileSync(workflowSettingsPath, "utf-8");
+  let workflowSettingsAsJson: any = {};
+  try {
+    workflowSettingsAsJson = loadYaml(workflowSettingsContent);
+  } catch (e) {
+    if (e instanceof YAMLException) {
+      throw new Error(`${workflowSettingsPath} is not a valid YAML file: ${e}`);
+    }
+    throw e;
+  }
+  return workflowSettingsAsJson?.dataformCoreVersion;
 }
