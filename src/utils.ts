@@ -2105,15 +2105,17 @@ function parseNotebookFilenames(content: string): string[] {
   return filenames;
 }
 
-export function readDataformCoreVersionFromWorkflowSettings(
+export async function readDataformCoreVersionFromWorkflowSettings(
   resolvedProjectPath: string
-): string | undefined {
+): Promise<string | undefined> {
   const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
-  if (!fs.existsSync(workflowSettingsPath)) {
+  try {
+    await fs.promises.access(workflowSettingsPath);
+  } catch {
     return;
   }
 
-  const workflowSettingsContent = fs.readFileSync(workflowSettingsPath, "utf-8");
+  const workflowSettingsContent = await fs.promises.readFile(workflowSettingsPath, "utf-8");
   let workflowSettingsAsJson: any = {};
   try {
     workflowSettingsAsJson = loadYaml(workflowSettingsContent);

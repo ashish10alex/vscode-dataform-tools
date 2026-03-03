@@ -85,7 +85,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 const workspaceFolder = await getWorkspaceFolder();
                 let dataformCoreVersion = undefined;
                 if (workspaceFolder) {
-                    dataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+                    dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
                 }
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true,
@@ -484,6 +484,12 @@ export class CompiledQueryPanel {
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
         const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
+        const workspaceFolder = await getWorkspaceFolder();
+        let dataformCoreVersion = undefined;
+        if (workspaceFolder) {
+            dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+        }
+
         const missingExecutables: string[] = [];
         for (let i = 0; i < executablesToCheck.length; i++) {
             let executable = executablesToCheck[i];
@@ -494,11 +500,6 @@ export class CompiledQueryPanel {
 
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
-                const workspaceFolder = await getWorkspaceFolder();
-                let dataformCoreVersion = undefined;
-                if (workspaceFolder) {
-                    dataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
-                }
                 this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion });
             } else {
                 await webview.postMessage({
@@ -510,22 +511,11 @@ export class CompiledQueryPanel {
         }
 
         if(this.webviewPanel.webview.html === ""){
-            const workspaceFolder = await getWorkspaceFolder();
-            let dataformCoreVersion = undefined;
-            if (workspaceFolder) {
-                dataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
-            }
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion });
         }
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
-            const workspaceFolder = await getWorkspaceFolder();
-            let dataformCoreVersion = undefined;
-            if (workspaceFolder) {
-                dataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
-            }
-            vscode.window.showInformationMessage(`dataformCoreVersion: ${dataformCoreVersion}`);
             await webview.postMessage({
                 "recompiling": true,
                 "compilerOptions": compilerOptions,
