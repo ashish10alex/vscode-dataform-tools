@@ -17,6 +17,8 @@ export interface WebviewState {
   operationsQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
+  errorType?: string;
+  workspaceFolder?: string;
   dryRunStat?: string;
   modelType?: string;
   workflowInvocationUrlGCP?: string;
