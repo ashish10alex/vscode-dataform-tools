@@ -2121,7 +2121,7 @@ export async function readDataformCoreVersionFromWorkflowSettings(
     workflowSettingsAsJson = loadYaml(workflowSettingsContent);
   } catch (e) {
     if (e instanceof YAMLException) {
-      throw new Error(`${workflowSettingsPath} is not a valid YAML file: ${e}`);
+      return undefined;
     }
     throw e;
   }
