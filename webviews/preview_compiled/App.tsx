@@ -138,9 +138,16 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
         {state.recompiling && (
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-4">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
+            <div className="mb-4">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
+                    <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
+                </div>
+                {state.dataformCoreVersion && (
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400 ml-7">
+                        When specifying dataformCoreVersion in workflow_settings.yaml, Dataform copies over the project to a temporary directory and adds package.json and installs dataform core using npm install which requires a network call and might take time if the dataform core is not available in npm cache already.
+                    </p>
+                )}
             </div>
         )}
 
