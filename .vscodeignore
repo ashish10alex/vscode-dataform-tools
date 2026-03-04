@@ -17,6 +17,9 @@ vsc-extension-quickstart.md
 FAQ.md
 webviews/**
 .github/**
+media/images/*.gif
+media/images/*_dark.png
+media/images/*_light.png
 media/images/cli_scope.png
 media/images/dataform_tools_run_and_debug.png
 media/images/disable_save_on_compile.png
