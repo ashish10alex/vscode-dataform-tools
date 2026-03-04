@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersionFromWorkflowSettings } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -82,8 +82,14 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || (CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)) {
             if (CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
+                const workspaceFolder = await getWorkspaceFolder();
+                let dataformCoreVersion = undefined;
+                if (workspaceFolder) {
+                    dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+                }
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
-                    "recompiling": true
+                    "recompiling": true,
+                    "dataformCoreVersion": dataformCoreVersion
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
@@ -478,6 +484,12 @@ export class CompiledQueryPanel {
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
         const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
+        const workspaceFolder = await getWorkspaceFolder();
+        let dataformCoreVersion = undefined;
+        if (workspaceFolder) {
+            dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+        }
+
         const missingExecutables: string[] = [];
         for (let i = 0; i < executablesToCheck.length; i++) {
             let executable = executablesToCheck[i];
@@ -488,7 +500,7 @@ export class CompiledQueryPanel {
 
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions });
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion });
             } else {
                 await webview.postMessage({
                     "missingExecutables": missingExecutables,
@@ -499,14 +511,15 @@ export class CompiledQueryPanel {
         }
 
         if(this.webviewPanel.webview.html === ""){
-            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions });
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion });
         }
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
             await webview.postMessage({
                 "recompiling": true,
-                "compilerOptions": compilerOptions
+                "compilerOptions": compilerOptions,
+                "dataformCoreVersion": dataformCoreVersion
             });
         }
 
