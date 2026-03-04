@@ -26,6 +26,7 @@ jobs:
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
           preRelease: ${{ github.event.inputs.preRelease == 'true' }}
+          dryRun: ${{ github.event_name != 'workflow_dispatch' }}
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@v2
         with:
@@ -33,3 +34,4 @@ jobs:
           registryUrl: https://marketplace.visualstudio.com
           extensionFile: ${{ steps.publishToOpenVSX.outputs.vsixPath }}
           preRelease: ${{ github.event.inputs.preRelease == 'true' }}
+          dryRun: ${{ github.event_name != 'workflow_dispatch' }}
