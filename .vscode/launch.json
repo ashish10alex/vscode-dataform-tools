@@ -12,7 +12,7 @@
         "${workspaceFolder}/out/**/*.js",
         "${workspaceFolder}/dist/**/*.js"
       ],
-      "preLaunchTask": "Build All"
+      "preLaunchTask": "Start Watchers" 
     },
     {
       "name": "Run Extension Tests",
@@ -25,7 +25,7 @@
         "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
       ],
       "outFiles": ["${workspaceFolder}/out/test/**/*.js"],
-      "preLaunchTask": "Build All"
+      "preLaunchTask": "Start Watchers"
     }
   ]
 }
