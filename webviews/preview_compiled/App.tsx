@@ -1,6 +1,6 @@
 import  { useState, useEffect } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, AlertCircle, MessageSquareWarning } from 'lucide-react';
+import { Loader2, AlertCircle, MessageSquareWarning, Info } from 'lucide-react';
 import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -138,9 +138,24 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
         {state.recompiling && (
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-4">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Compiling Dataform...</span>
+            <div className="mb-4">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
+                    <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
+                </div>
+                {state.dataformCoreVersion && (
+                    <div className="mt-4 border-l-[3px] border-blue-500 pl-4 py-2 ml-7 mr-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-r-md">
+                        <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                            <Info className="w-4 h-4" />
+                            Note
+                        </h4>
+                        <div className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                            <p className="m-0">
+                                When specifying <code className="bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-[13px] border border-zinc-200 dark:border-zinc-700">dataformCoreVersion</code> in <code className="bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-[13px] border border-zinc-200 dark:border-zinc-700">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-[13px] border border-zinc-200 dark:border-zinc-700">package.json</code>, and installs dataform core by running <code className="bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-[13px] border border-zinc-200 dark:border-zinc-700">npm install</code>. This requires a network call and might take time if the dependency is not cached in your npm cache. You can avoid this bottleneck by creating a <code className="bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-[13px] border border-zinc-200 dark:border-zinc-700">package.json</code> and specifying dataform core locally.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         )}
 
