@@ -18,7 +18,7 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions:{name:string, metadata: any}[] = [];
 
-    if (currentFileMetadata?.fileMetadata?.tables) {
+    if (currentFileMetadata?.fileMetadata?.tables && currentFileMetadata.fileMetadata.tables.length > 0) {
         await Promise.all(currentFileMetadata.fileMetadata.tables.map(async (table:any) => {
             const dependencyTargets = table.dependencyTargets;
 
@@ -31,8 +31,15 @@ async function updateSchemaAutoCompletions(currentFileMetadata:any) {
                 allSchemaCompletions.push(...allSchemas);
             }
         }));
+        // Update both the general and config-block-specific completions when successful
+        schemaAutoCompletions = allSchemaCompletions;
+        configBlockSchemaCompletions = allSchemaCompletions;
+    } else {
+        // If there's an error causing tables to be unparsed, clear regular autocomplete but 
+        // fall back to previous valid completions for the config block
+        schemaAutoCompletions = [];
+        // configBlockSchemaCompletions retains its previous values
     }
-    schemaAutoCompletions = allSchemaCompletions;
 }
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {

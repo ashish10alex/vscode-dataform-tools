@@ -1,0 +1,14 @@
+config {
+    type: "table",
+    bigquery: {
+        partitionBy: "",
+        clusterBy: [
+            ""
+        ]
+    },
+    assertions: {
+        nonNull: [""],
+        uniqueKey: [""],
+        rowConditions: [""]
+    }
+}

@@ -77,6 +77,10 @@ declare global {
 }
 
 declare global {
+  var configBlockSchemaCompletions: {name: string, metadata: Metadata }[];
+}
+
+declare global {
   var columnHoverDescription: CompiledQuerySchema | undefined;
 }
 

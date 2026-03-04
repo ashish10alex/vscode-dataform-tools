@@ -17,13 +17,16 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
             let configBraceDepth = 0;
             let bigQueryBraceDepth = 0;
             let assertionBraceDepth = 0;
+            let arrayBracketDepth = 0;
 
             // Hard limit: only scan up to 50 lines to prevent O(N) performance on massive files.
             // Config blocks are almost exclusively at the very top of .sqlx files.
             const maxLinesToScan = Math.min(position.line, 50);
 
             for (let i = 0; i <= maxLinesToScan; i++) {
-                const line = document.lineAt(i).text;
+                const isCurrentLine = i === position.line;
+                const fullLine = document.lineAt(i).text;
+                const line = isCurrentLine ? fullLine.substring(0, position.character) : fullLine;
                 const trimmed = line.trim();
                 
                 // Skip empty lines early
@@ -69,6 +72,8 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
                     for (let j = 0; j < line.length; j++) {
                         if (line[j] === '{') { openBraces++; }
                         else if (line[j] === '}') { closedBraces++; }
+                        else if (line[j] === '[') { arrayBracketDepth++; }
+                        else if (line[j] === ']') { arrayBracketDepth--; }
                     }
                     
                     if (inBigQueryBlock) {
@@ -126,6 +131,29 @@ export const configBlockAutoCompletionDisposable = () => vscode.languages.regist
                     item.detail = t.detail;
                     item.insertText = linePrefix.endsWith('"') || linePrefix.endsWith("'") ? t.label : `"${t.label}"`;
                     return item;
+                });
+            }
+
+            // Suggest schema columns if we are inside an array or specifying a column name property
+            if ((inAssertionBlock || inBigQueryBlock) && 
+                (arrayBracketDepth > 0 || linePrefix.match(/(?:nonNull|uniqueKey|uniqueKeys|rowConditions|partitionBy|clusterBy)\s*:\s*["']?$/))) {
+                
+                // Use configBlockSchemaCompletions instead of schemaAutoCompletions here
+                // Because on compile error, current tables disappear and schemaAutoCompletions gets cleared,
+                // but configBlockSchemaCompletions retains its last known good state
+                const currentCompletions = globalThis.configBlockSchemaCompletions || schemaAutoCompletions;
+
+                return currentCompletions.map((item: SchemaMetadata) => {
+                    const completionItem = new vscode.CompletionItem(item.name, vscode.CompletionItemKind.Variable);
+                    completionItem.detail = item.metadata?.fullTableId || '';
+                    if (item.metadata) {
+                        const markdownString = new vscode.MarkdownString(`[ ${item.metadata.type} ] \n\n ${item.metadata.description}`);
+                        markdownString.isTrusted = true;
+                        markdownString.supportHtml = true;
+                        completionItem.documentation = markdownString;
+                    }
+                    completionItem.insertText = linePrefix.endsWith('"') || linePrefix.endsWith("'") ? item.name : `"${item.name}"`;
+                    return completionItem;
                 });
             }
 
