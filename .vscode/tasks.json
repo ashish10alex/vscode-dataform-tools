@@ -21,8 +21,8 @@
           "owner": "esbuild",
           "background": {
             "activeOnStart": true,
-            "beginsPattern": "build started",
-            "endsPattern": "build finished"
+            "beginsPattern": "^\\[watch\\] build started$",
+            "endsPattern": "^\\[watch\\] build finished$"
           },
           "pattern": {
             "regexp": "✘ \\[ERROR\\] (.+)$",
