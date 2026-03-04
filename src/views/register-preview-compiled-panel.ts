@@ -74,7 +74,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
         }
-    }, 500);
+    }, globalThis.DEBOUNCE_WAIT);
 
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 
@@ -115,7 +115,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
             }
         }
-    }, 500);
+    }, globalThis.DEBOUNCE_WAIT);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(debouncedSaveHandler));
 
