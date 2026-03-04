@@ -6,39 +6,30 @@
     {
       "type": "npm",
       "script": "watch",
+      "label": "Start Watchers",
       "isBackground": true,
-      "problemMatcher": {
-        "owner": "typescript",
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "\\[watch\\] build started",
-          "endsPattern": "\\[watch\\] build finished"
-        },
-        "pattern": {
-          "regexp": "✘ \\[ERROR\\] (.+)$",
-          "message": 1
-        }
+      "group": {
+        "kind": "build",
+        "isDefault": true
       },
       "presentation": {
         "reveal": "never"
       },
-      "group": "build"
-    },
-    {
-      "type": "shell",
-      "label": "vite-build",
-      "command": "./node_modules/.bin/vite",
-      "args": ["build"],
-      "group": "build"
-    },
-    {
-      "label": "Build All",
-      "dependsOrder": "sequence",
-      "dependsOn": ["vite-build", "npm: watch"],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
+      "problemMatcher": [
+        "$tsc-watch",
+        {
+          "owner": "esbuild",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "build started",
+            "endsPattern": "build finished"
+          },
+          "pattern": {
+            "regexp": "✘ \\[ERROR\\] (.+)$",
+            "message": 1
+          }
+        }
+      ]
     }
   ]
 }
