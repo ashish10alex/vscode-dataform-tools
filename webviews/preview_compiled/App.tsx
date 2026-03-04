@@ -1,6 +1,7 @@
 import  { useState, useEffect } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, AlertCircle, MessageSquareWarning, Info } from 'lucide-react';
+import { vscode } from './utils/vscode';
+import { Loader2, AlertCircle, MessageSquareWarning, Info  } from 'lucide-react';
 import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -220,7 +221,49 @@ function App() {
             </div>
         )}
 
-        {state.errorMessage && !isBigQueryClientError && !state.recompiling && (!state.missingExecutables || state.missingExecutables.length === 0) && (
+        {state.errorType === 'FILE_NOT_FOUND' && !state.recompiling && (!state.missingExecutables || state.missingExecutables.length === 0) && (
+            <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 p-4 mb-4 rounded-r shadow-sm">
+                <div className="flex items-start">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                    <div className="text-red-800 dark:text-red-200 text-sm overflow-auto">
+                        <p className="mt-0 mb-2">
+                          File <b className="font-mono bg-red-100 dark:bg-red-900/40 px-1 rounded">"{state.relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b className="font-mono bg-red-100 dark:bg-red-900/40 px-1 rounded">"{state.workspaceFolder}"</b>
+                        </p>
+                        <p className="mt-0 mb-3 text-red-700 dark:text-red-300">Ignore the error if the file you are in is not expected to produce a sql output</p>
+                        
+                        <h4 className="mt-0 mb-2 text-md font-semibold text-red-800 dark:text-red-200">Possible resolution/fix(s):</h4>
+                        <ol className="mt-0 ml-5 list-decimal list-outside text-red-700 dark:text-red-300 space-y-2">
+                            <li>
+                              If you are using multi-root workspace, select the correct workspace folder for the file by{' '}
+                              <a 
+                                href="#" 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  vscode.postMessage({ command: 'selectWorkspaceFolder' });
+                                }}
+                                className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100 font-medium cursor-pointer"
+                              >
+                                clicking here
+                              </a>
+                            </li>
+                            <li>Check if running <code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 rounded font-mono text-sm border border-red-200 dark:border-red-800/50">dataform compile</code> throws an error</li>
+                            <li>
+                              Check if case of the file has been changed and the case does not match what is being shown in the error message above, 
+                              this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660" target="_blank" rel="noopener noreferrer" className="text-red-800 dark:text-red-200 underline hover:text-red-900 dark:hover:text-red-100">#123660</a>. 
+                              A workaround for this is:
+                              <ol className="mt-2 ml-5 list-[lower-alpha] list-outside space-y-1">
+                                <li>Change the filename to something arbitrary and save it</li>
+                                <li>Reload the VSCode window</li>
+                                <li>Change the file name to the case you want and recompile Dataform by saving the file</li>
+                              </ol>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {state.errorMessage && state.errorType !== 'FILE_NOT_FOUND' && !isBigQueryClientError && !state.recompiling && (!state.missingExecutables || state.missingExecutables.length === 0) && (
             <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 p-4 mb-4 rounded-r shadow-sm">
                 <div className="flex items-start">
                     <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-2 flex-shrink-0" />

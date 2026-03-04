@@ -5,7 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
-import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView, executablesToCheck } from "../constants";
+import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -550,9 +550,11 @@ export class CompiledQueryPanel {
                 "recompiling": false
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
-            const errorMessage = await getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
+            const workspaceFolder = await getWorkspaceFolder();
             await webview.postMessage({
-                "errorMessage": errorMessage,
+                "errorType": "FILE_NOT_FOUND",
+                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
+                "workspaceFolder": workspaceFolder,
                 "recompiling": false
             });
             return;
