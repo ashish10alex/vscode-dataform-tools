@@ -50,6 +50,7 @@ export interface WebviewState {
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
   missingExecutables?: string[];
+  dataformCoreVersion?: string;
 }
 
 export interface Target {

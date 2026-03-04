@@ -3,6 +3,10 @@ import { CompiledQuerySchema, DataformCompiledJson, Metadata, Table, Assertion, 
 import * as vscode from 'vscode';
 
 declare global {
+  var DEBOUNCE_WAIT: number;
+}
+
+declare global {
   var CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson | undefined;
 }
 

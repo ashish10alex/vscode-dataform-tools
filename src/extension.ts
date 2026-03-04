@@ -65,6 +65,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.FILE_NODE_MAP = new Map();
     globalThis.TARGET_DEPENDENTS_MAP = new Map();
     globalThis.TARGET_NAME_MAP = new Map();
+    globalThis.DEBOUNCE_WAIT = 750;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
@@ -112,7 +113,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 queryResultsViewProvider._view.webview.postMessage({ "type": type, "incrementalCheckBox": incrementalCheckBox, "query": query });
             }
         }
-    }, 500);
+    }, globalThis.DEBOUNCE_WAIT);
 
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 

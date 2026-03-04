@@ -8,7 +8,7 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
 
         const diagnostics: vscode.Diagnostic[] = [];
         const severity = vscode.DiagnosticSeverity.Error;
-        errorInPreOpsDenyList = false;
+        globalThis.errorInPreOpsDenyList = false;
 
         let errLineNumber;
         let errColumnNumber = 0;

@@ -16,6 +16,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { GitService } from './gitClient';
+import { load as loadYaml, YAMLException } from 'js-yaml';
 
 let supportedExtensions = ['sqlx', 'js'];
 
@@ -1550,12 +1551,12 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
         spawnedProcess.on('close', async (code: number) => {
             if (code === 0) {
                 if(compilerOptions.length>0){
-                    compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
+                    globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
                 }else{
-                    compilerOptionsMap = {};
+                    globalThis.compilerOptionsMap = {};
                 }
 
-                logger.debug(`compilerOptionsMap: ${JSON.stringify(compilerOptionsMap)}`);
+                logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
                 resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
             } else {
                 if (stdOut !== '') {
@@ -2102,4 +2103,27 @@ function parseNotebookFilenames(content: string): string[] {
   }
 
   return filenames;
+}
+
+export async function readDataformCoreVersionFromWorkflowSettings(
+  resolvedProjectPath: string
+): Promise<string | undefined> {
+  const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
+  try {
+    await fs.promises.access(workflowSettingsPath);
+  } catch {
+    return;
+  }
+
+  const workflowSettingsContent = await fs.promises.readFile(workflowSettingsPath, "utf-8");
+  let workflowSettingsAsJson: any = {};
+  try {
+    workflowSettingsAsJson = loadYaml(workflowSettingsContent);
+  } catch (e) {
+    if (e instanceof YAMLException) {
+      return undefined;
+    }
+    throw e;
+  }
+  return workflowSettingsAsJson?.dataformCoreVersion;
 }
