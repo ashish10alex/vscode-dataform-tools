@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "1.0.2",
+    "version": "1.1.4",
     "sponsor": {
         "url": "https://buymeacoffee.com/ashishalexj"
     },
@@ -419,8 +419,9 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
-        "compile": "npm run check-types && npm run build:webviews && npm run esbuild",
-        "watch": "concurrently \"npm run check-types -- --watch\" \"npm run esbuild-watch\" \"npm run webviews:watch\"",
+        "clean": "rm -rf dist",
+        "compile": "npm run clean && npm run check-types && npm run build:webviews && npm run esbuild",
+        "watch": "npm run clean && concurrently --raw \"npm run check-types -- --watch\" \"npm run esbuild-watch\" \"npm run webviews:watch\"",
         "build:webviews": "vite build",
         "webviews:watch": "vite build --watch",
         "esbuild": "node esbuild.js",

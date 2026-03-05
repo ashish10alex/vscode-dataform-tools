@@ -506,7 +506,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         } else {
             logger.debug('No cached compilation found, performing fresh compilation');
         }
-        let { dataformCompiledJson, errors, possibleResolutions } = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
@@ -527,6 +527,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
+                    compilationTimeMs: compilationTimeMs
                 };
             };
 
@@ -548,7 +549,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     extension: extension,
                     relativeFilePath: relativeFilePath
                 },
-                document: document
+                document: document,
+                compilationTimeMs: compilationTimeMs
             };
         }
         else if (errors?.length !== 0) {
@@ -568,7 +570,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     extension: extension,
                     relativeFilePath: relativeFilePath
                 },
-                document: document
+                document: document,
+                compilationTimeMs: compilationTimeMs
             };
         }
     } else {
@@ -1531,7 +1534,7 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     return resolvedPath;
 }
 
-export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined }> {
+export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
     let compilerOptions: string[] = [];
@@ -1540,6 +1543,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
     }
     logger.debug(`compilerOptions: ${compilerOptions}`);
     return new Promise((resolve, reject) => {
+        const startTime = performance.now();
         let spawnedProcess;
         let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
         logger.debug(`customDataformCliPath: ${customDataformCliPath}`);
@@ -1565,7 +1569,8 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                 }
 
                 logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
-                resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined });
+                const endTime = performance.now();
+                resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
             } else {
                 if (stdOut !== '') {
                     let compiledJson: DataformCompiledJson;
@@ -1587,7 +1592,8 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                         } else if (errorOutput.includes(dataformInstallHintv2)) {
                             possibleResolutions.push("run `<b>dataform install</b>` in terminal followed by reload window and compile the file again");
                         }
-                        resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions });
+                        const endTime = performance.now();
+                        resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions, compilationTimeMs: endTime - startTime });
                         return;
                     }
 
@@ -1595,7 +1601,8 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     graphErrors.forEach((graphError: { message: string, fileName: string }) => {
                         errors.push({ error: graphError.message, fileName: graphError.fileName });
                     });
-                    resolve({ compiledString: undefined, errors: errors, possibleResolutions: undefined });
+                    const endTime = performance.now();
+                    resolve({ compiledString: undefined, errors: errors, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
                 } else {
                     let possibleResolutions = [];
                     const dataformInstallHintv3 = "If using `package.json`, then run `dataform install`";
@@ -1611,7 +1618,8 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     } else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)) {
                         possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
                     };
-                    resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions });
+                    const endTime = performance.now();
+                    resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions, compilationTimeMs: endTime - startTime });
                 }
             }
         });
@@ -1657,9 +1665,9 @@ function extractDataformJsonFromMultipleJson(compiledString: string) {
     }
 }
 
-export async function runCompilation(workspaceFolder: string): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined }> {
+export async function runCompilation(workspaceFolder: string): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     try {
-        let { compiledString, errors, possibleResolutions } = await compileDataform(workspaceFolder);
+        let { compiledString, errors, possibleResolutions, compilationTimeMs } = await compileDataform(workspaceFolder);
         if (compiledString) {
             let dataformCompiledJson: DataformCompiledJson;
             try {
@@ -1671,11 +1679,11 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
             globalThis.dataformFilesChangedSinceLastCompile = false;
             buildIndices(dataformCompiledJson);
             logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
-            return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions };
+            return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
         }
-        return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions };
+        return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
     } catch (error: any) {
-        return { dataformCompiledJson: undefined, errors: [{ error: `Error compiling Dataform: ${error.message}`, fileName: "" }], possibleResolutions: undefined };
+        return { dataformCompiledJson: undefined, errors: [{ error: `Error compiling Dataform: ${error.message}`, fileName: "" }], possibleResolutions: undefined, compilationTimeMs: undefined };
     }
 }
 

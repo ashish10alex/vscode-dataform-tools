@@ -14,9 +14,13 @@ const esbuildProblemMatcherPlugin = {
       console.log('[watch] build started');
     });
     build.onEnd((result) => {
-      result.errors.forEach(({ text, location }) => {
+      result.errors.forEach(({ text, location, pluginName }) => {
         console.error(`✘ [ERROR] ${text}`);
-        console.error(`    ${location.file}:${location.line}:${location.column}:`);
+        if (location) {
+          console.error(`    ${location.file}:${location.line}:${location.column}:`);
+        } else {
+          console.error(`    location: unknown${pluginName ? ` (plugin: ${pluginName})` : ''}`);
+        }
       });
       console.log('[watch] build finished');
     });

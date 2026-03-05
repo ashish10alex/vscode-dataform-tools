@@ -5,7 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
-import { currencySymbolMapping, getFileNotFoundErrorMessageForWebView, executablesToCheck } from "../constants";
+import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -177,7 +177,7 @@ export class CompiledQueryPanel {
 
             const panel = window.createWebviewPanel(
                 CompiledQueryPanel.viewType,
-                "Dataform Tools (experimental)",
+                "Dataform Tools",
                 { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
                 {
                     enableFindWidget: true,
@@ -537,7 +537,8 @@ export class CompiledQueryPanel {
         if(!curFileMeta){
             await webview.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         }
@@ -548,25 +549,30 @@ export class CompiledQueryPanel {
             const currentDirectory = workspaceFolder?.uri.fsPath;
             await webview.postMessage({
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await webview.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
-            const errorMessage = await getFileNotFoundErrorMessageForWebView(curFileMeta?.pathMeta?.relativeFilePath);
+            const workspaceFolder = await getWorkspaceFolder();
             await webview.postMessage({
-                "errorMessage": errorMessage,
+                "errorType": "FILE_NOT_FOUND",
+                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
+                "workspaceFolder": workspaceFolder,
                 "recompiling": false
             });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             await webview.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         }
@@ -606,7 +612,8 @@ export class CompiledQueryPanel {
 
             await webview.postMessage({
                 "errorMessage": errorString,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         }
@@ -623,7 +630,9 @@ export class CompiledQueryPanel {
                     }
                     await webview.postMessage({
                         "declarations": filteredDeclarations,
-                        "recompiling": false
+                        "recompiling": false,
+                        "errorType": null,
+                        "errorMessage": null
                     });
                     return;
                 }
@@ -649,6 +658,7 @@ export class CompiledQueryPanel {
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
+            "compilationTimeMs": curFileMeta.compilationTimeMs,
             "compiledQuerySchema": compiledQuerySchema,
             "targetTablesOrViews": targetTablesOrViews,
             "dependents": curFileMeta.dependents,
@@ -659,7 +669,9 @@ export class CompiledQueryPanel {
             "dryRunning": true,
             "declarations": null,
             "compilerOptions": compilerOptions,
-            "workflowUrls": workflowUrls
+            "workflowUrls": workflowUrls,
+            "errorType": null,
+            "errorMessage": null
     });
 
         if(diagnosticCollection){
@@ -804,6 +816,7 @@ export class CompiledQueryPanel {
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                 "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
+                "compilationTimeMs": curFileMeta.compilationTimeMs,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
                 "currencySymbol": currencySymbol,
@@ -818,7 +831,8 @@ export class CompiledQueryPanel {
                 "dryRunning": false,
                 "declarations": null,
                 "compilerOptions": compilerOptions,
-                "workflowUrls": workflowUrls
+                "workflowUrls": workflowUrls,
+                "errorType": null
             });
             this._cachedResults = { 
                 fileMetadata, 
@@ -857,7 +871,13 @@ export class CompiledQueryPanel {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
             <link href="${styleUri}" rel="stylesheet">
+<<<<<<< HEAD
             <title>Dataform Tools (experimental)</title>
+||||||| 07f09db
+            <title>Compiled Query Preview</title>
+=======
+            <title>Dataform Tools</title>
+>>>>>>> main
         </head>
         <body>
             <div id="root"></div>

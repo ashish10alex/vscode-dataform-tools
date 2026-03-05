@@ -275,6 +275,7 @@ export type CurrentFileMetadata = {
         relativeFilePath: string;
     };
     document?: TextDocument;
+    compilationTimeMs?: number;
 };
 
 export type TagDryRunStats = {

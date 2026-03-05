@@ -15,7 +15,7 @@
 </div>
 <br>
 
-![compilation](media/images/compiled_query_preview_dark.png#gh-dark-mode-only)
+![compilation](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/compiled_query_preview_dark.png#gh-dark-mode-only)
 
 ---
 
@@ -125,43 +125,43 @@
 
 ### <a id="diagnostics">Inline diagnostics errors on `.sqlx` files</a>
 
-![diagnostics](media/images/diagnostics_dark.png#gh-dark-mode-only)
+![diagnostics](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/diagnostics_dark.png#gh-dark-mode-only)
 
 ### <a id="depgraph">Dependency graph</a>
 
-![depgraph](media/images/dependancy_tree_dark.png#gh-dark-mode-only)
+![depgraph](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/dependancy_tree_dark.png#gh-dark-mode-only)
 
 ### <a id="preview_query_results">Preview query results</a>
 
 <!-- ![preview_query_results](/media/images/preview_query_results.png) -->
-![preview_query_results](media/images/preview_query_results_dark.png#gh-dark-mode-only)
+![preview_query_results](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/preview_query_results_dark.png#gh-dark-mode-only)
 
 ### <a id="hover">BigQuery hover definition provider</a>
 
 Hover over tables, columns, column types and BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
 
-![table_hover](media/images/table_hover_dark.png#gh-dark-mode-only)
+![table_hover](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/table_hover_dark.png#gh-dark-mode-only)
 
 ### <a id="cost_estimator">Estimate cost of running a Tag</a>
 
-![cost_estimator](media/images/tag_cost_estimator_dark.png#gh-dark-mode-only)
+![cost_estimator](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/tag_cost_estimator_dark.png#gh-dark-mode-only)
 
 ### <a id="definition">Go to definition</a>
 
 Go to definition for source in `$ref{("my_source")}`. Takes you to `my_source.sqlx` or `sources.js` at the line where `my_source` is defined. There is also support for go to definiton
 from a javascript variable/module from a `.sqlx` file to `js` block or `.js` file where the virable or module declaration exsists
 
-![go-to-definition](media/images/go_to_definition.gif)
+![go-to-definition](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/go_to_definition.gif)
 
 ### <a id="autocomplete">Autocomplete model, tags, dependencies</a>
 
 Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> character is typed and `dependencies` and `tags` in config block when `"` or `'` is typed.
 
-![auto-completion](media/images/sources_autocompletion.gif)
+![auto-completion](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/sources_autocompletion.gif)
 
 ### <a id="formatting">Formatting using sqlfluff</a>
 
-![formatting](media/images/formatting.gif)
+![formatting](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/formatting.gif)
 
 ---
 

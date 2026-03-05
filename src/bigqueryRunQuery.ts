@@ -215,8 +215,11 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
     let results = rows.map((row: { [s: string]: unknown }) => {
         const obj: { [key: string]: any } = {};
         Object.entries(row).forEach(([key, value]: [any, any]) => {
+            const isBqWrapperType = ["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name);
+            const isPlainValueWrapper = typeof value === "object" && value !== null && Object.keys(value).length === 1 && "value" in value;
+            
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
-            if (typeof (value) === "object" && value !== null && !["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
+            if (typeof (value) === "object" && value !== null && !(isBqWrapperType || isPlainValueWrapper)) {
                 if (Array.isArray(value) && ((value[0] && typeof value[0] === "string") || (value.length === 0) || (value[0] && Object.keys(value[0])[0] === "value"))) {
                     value = convertArrayToObject(value, key);
                 } else if (typeof value === "object" && !Array.isArray(value) && value !== null) {

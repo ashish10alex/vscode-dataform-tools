@@ -17,6 +17,8 @@ export interface WebviewState {
   operationsQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
+  errorType?: string;
+  workspaceFolder?: string;
   dryRunStat?: string;
   modelType?: string;
   workflowInvocationUrlGCP?: string;
@@ -24,6 +26,7 @@ export interface WebviewState {
   apiUrlLoading?: boolean;
   recompiling?: boolean;
   dryRunning?: boolean;
+  compilationTimeMs?: number;
   dataformTags?: string[];
   selectedTag?: string;
   currencySymbol?: string;

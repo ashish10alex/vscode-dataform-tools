@@ -2,6 +2,82 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.3...v1.1.4) (2026-03-05)
+
+
+### Bug Fixes
+
+* file not found error in webview when creating new file even though compilation was successful ([b3f1f49](https://github.com/ashish10alex/vscode-dataform-tools/commit/b3f1f499e8c7e6ecfea721b2682cebbba3d02fa7))
+
+### [1.1.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.2...v1.1.3) (2026-03-05)
+
+
+### Features
+
+* show time taken to compile project in webview ([#272](https://github.com/ashish10alex/vscode-dataform-tools/issues/272)) ([c4df525](https://github.com/ashish10alex/vscode-dataform-tools/commit/c4df525c6600f158ef369f713ba7a6637d4afd33))
+
+
+### Bug Fixes
+
+* Correctly identify and skip unwrapping BigQuery wrapper types and plain value objects during result processing. ([#273](https://github.com/ashish10alex/vscode-dataform-tools/issues/273)) ([a414ae6](https://github.com/ashish10alex/vscode-dataform-tools/commit/a414ae617dcc5f3b57ab1c787b2f8b2a66fb8204))
+
+### [1.1.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.1...v1.1.2) (2026-03-05)
+
+
+### Features
+
+* Implement explicit build directory cleaning via a new script and disable Vite's automatic output clearing. ([182e01c](https://github.com/ashish10alex/vscode-dataform-tools/commit/182e01cd188386f34ea96ed33238b69e6077ae03))
+
+
+### Bug Fixes
+
+* api execution by remove google-gax dependency override from package.json ([3e73c51](https://github.com/ashish10alex/vscode-dataform-tools/commit/3e73c516c42b0b7537927c41c6dddb2a54f76ad2))
+
+
+### CI
+
+* match local and github ci node versions ([c23dd89](https://github.com/ashish10alex/vscode-dataform-tools/commit/c23dd89e45fe7a95ef13327c5459f0180516c02e))
+
+### [1.1.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.0...v1.1.1) (2026-03-05)
+
+
+### CI
+
+* fix pre-release publishing to Open VSX ([ca97305](https://github.com/ashish10alex/vscode-dataform-tools/commit/ca9730592a3a2abe51484b70ce1a33ebb87611d2))
+
+## [1.1.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.0.2...v1.1.0) (2026-03-05)
+
+
+### Features
+
+* enhance "file not found" error display in webview  ([#270](https://github.com/ashish10alex/vscode-dataform-tools/issues/270)) ([cc70caa](https://github.com/ashish10alex/vscode-dataform-tools/commit/cc70caa628857e82e13ca3bda285e499f2368cae))
+* Introduce workflow_dispatch event to allow manual pre-release deployments. ([9a8d99c](https://github.com/ashish10alex/vscode-dataform-tools/commit/9a8d99c9a60541b849a6e09f1e76d6513c119827))
+* show informative message when stateless compilation is being performed ([#269](https://github.com/ashish10alex/vscode-dataform-tools/issues/269)) ([8440c3f](https://github.com/ashish10alex/vscode-dataform-tools/commit/8440c3fb3f87b2a9d5a49efa2f76da85ad1e8a52))
+
+
+### Bug Fixes
+
+* **ci:** update package-lock.json to include missing yaml@2.8.2 dependency for npm 10 ([ad399d1](https://github.com/ashish10alex/vscode-dataform-tools/commit/ad399d1488a81c7dd381a36974b0f6cae908a723))
+* docs link only openable when pressed with cmd / ctrl + click ([a4fa9ab](https://github.com/ashish10alex/vscode-dataform-tools/commit/a4fa9abddd435286080dc613b4398448f788fe70))
+
+
+### Refactors
+
+* make debounce wait time global variable and set to 750ms ([07f09db](https://github.com/ashish10alex/vscode-dataform-tools/commit/07f09db02b704506c6ccfd92c88102c9aec5dd9c))
+
+
+### Performance
+
+* reduce bundle size from 28 Mb to approx 3 Mb ([#271](https://github.com/ashish10alex/vscode-dataform-tools/issues/271)) ([e014bfa](https://github.com/ashish10alex/vscode-dataform-tools/commit/e014bfa2bccceab1a092ed07c8a5d7b9057f77e0))
+
+
+### CI
+
+* add support for dry runs in github ci vsce pacakge ([28d0a5d](https://github.com/ashish10alex/vscode-dataform-tools/commit/28d0a5dd0e7bdad3eed491a119e789a291093b00))
+* automate pre-release deployment based on tags ([3cf70ce](https://github.com/ashish10alex/vscode-dataform-tools/commit/3cf70ce8ded3fd65aea59955b0a32df2a89b00cd))
+* only build website in vercel when changes are made to the website directory ([e8109e8](https://github.com/ashish10alex/vscode-dataform-tools/commit/e8109e8b61aaded173f78fc732ef40eef8c8d5c0))
+* trigger dryRun on push to main ([ae8788e](https://github.com/ashish10alex/vscode-dataform-tools/commit/ae8788e65649552175f2dc6ceef8bf1d3dd37881))
+
 ### [1.0.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.0.1...v1.0.2) (2026-02-26)
 
 
