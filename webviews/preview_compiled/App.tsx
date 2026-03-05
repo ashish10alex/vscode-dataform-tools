@@ -160,7 +160,11 @@ function App() {
             </div>
         )}
 
-
+        {state.compilationTimeMs !== undefined && state.recompiling === false && (
+            <div className="mb-4 flex justify-start text-xs text-zinc-500 dark:text-zinc-400">
+                <span>Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s</span>
+            </div>
+        )}
 
         {state.missingExecutables && state.missingExecutables.length > 0 && !state.recompiling && (
             <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 p-4 mb-4 rounded-r shadow-sm">
