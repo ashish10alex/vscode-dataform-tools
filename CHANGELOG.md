@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.1...v1.1.2) (2026-03-05)
+
+
+### Features
+
+* Implement explicit build directory cleaning via a new script and disable Vite's automatic output clearing. ([182e01c](https://github.com/ashish10alex/vscode-dataform-tools/commit/182e01cd188386f34ea96ed33238b69e6077ae03))
+
+
+### Bug Fixes
+
+* api execution by remove google-gax dependency override from package.json ([3e73c51](https://github.com/ashish10alex/vscode-dataform-tools/commit/3e73c516c42b0b7537927c41c6dddb2a54f76ad2))
+
+
+### CI
+
+* match local and github ci node versions ([c23dd89](https://github.com/ashish10alex/vscode-dataform-tools/commit/c23dd89e45fe7a95ef13327c5459f0180516c02e))
+
 ### [1.1.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.0...v1.1.1) (2026-03-05)
 
 

@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "1.1.1",
+    "version": "1.1.2",
     "sponsor": {
         "url": "https://buymeacoffee.com/ashishalexj"
     },
@@ -484,8 +484,5 @@
         "tablemark": "^3.1.0",
         "tabulator-tables": "^6.3.1",
         "typescript": "^5.7.3"
-    },
-    "overrides": {
-        "google-gax": "^4.0.0"
     }
 }
