@@ -1836,7 +1836,8 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
 
     if(executionMode === "api"){
 
-        const projectId = CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase;
+        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
             return;
