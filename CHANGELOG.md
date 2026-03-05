@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.0...v1.1.1) (2026-03-05)
+
+
+### CI
+
+* fix pre-release publishing to Open VSX ([ca97305](https://github.com/ashish10alex/vscode-dataform-tools/commit/ca9730592a3a2abe51484b70ce1a33ebb87611d2))
+
 ## [1.1.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.0.2...v1.1.0) (2026-03-05)
 
 
