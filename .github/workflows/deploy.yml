@@ -35,18 +35,19 @@ jobs:
              echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@v2
-        id: publishToOpenVSX
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
-          dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@v2
+        id: publishToVSMarketplace
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
-          extensionFile: ${{ steps.publishToOpenVSX.outputs.vsixPath }}
+          preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
+          dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@v2
+        with:
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+          registryUrl: https://open-vsx.org
+          extensionFile: ${{ steps.publishToVSMarketplace.outputs.vsixPath }}
           preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
           dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
