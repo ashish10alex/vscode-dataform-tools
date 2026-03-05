@@ -484,8 +484,5 @@
         "tablemark": "^3.1.0",
         "tabulator-tables": "^6.3.1",
         "typescript": "^5.7.3"
-    },
-    "overrides": {
-        "google-gax": "^4.0.0"
     }
 }
