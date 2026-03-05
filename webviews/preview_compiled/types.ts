@@ -26,6 +26,7 @@ export interface WebviewState {
   apiUrlLoading?: boolean;
   recompiling?: boolean;
   dryRunning?: boolean;
+  compilationTimeMs?: number;
   dataformTags?: string[];
   selectedTag?: string;
   currencySymbol?: string;
