@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.3...v1.1.4) (2026-03-05)
+
+
+### Bug Fixes
+
+* file not found error in webview when creating new file even though compilation was successful ([b3f1f49](https://github.com/ashish10alex/vscode-dataform-tools/commit/b3f1f499e8c7e6ecfea721b2682cebbba3d02fa7))
+
 ### [1.1.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.2...v1.1.3) (2026-03-05)
 
 
