@@ -530,7 +530,8 @@ export class CompiledQueryPanel {
         if(!curFileMeta){
             await webview.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         }
@@ -541,13 +542,15 @@ export class CompiledQueryPanel {
             const currentDirectory = workspaceFolder?.uri.fsPath;
             await webview.postMessage({
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await webview.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
@@ -561,7 +564,8 @@ export class CompiledQueryPanel {
         } else if (curFileMeta?.errors?.queryMetaError){
             await webview.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         }
@@ -601,7 +605,8 @@ export class CompiledQueryPanel {
 
             await webview.postMessage({
                 "errorMessage": errorString,
-                "recompiling": false
+                "recompiling": false,
+                "errorType": null
             });
             return;
         }
@@ -618,7 +623,9 @@ export class CompiledQueryPanel {
                     }
                     await webview.postMessage({
                         "declarations": filteredDeclarations,
-                        "recompiling": false
+                        "recompiling": false,
+                        "errorType": null,
+                        "errorMessage": null
                     });
                     return;
                 }
@@ -655,7 +662,9 @@ export class CompiledQueryPanel {
             "dryRunning": true,
             "declarations": null,
             "compilerOptions": compilerOptions,
-            "workflowUrls": workflowUrls
+            "workflowUrls": workflowUrls,
+            "errorType": null,
+            "errorMessage": null
     });
 
         if(diagnosticCollection){
@@ -815,7 +824,8 @@ export class CompiledQueryPanel {
                 "dryRunning": false,
                 "declarations": null,
                 "compilerOptions": compilerOptions,
-                "workflowUrls": workflowUrls
+                "workflowUrls": workflowUrls,
+                "errorType": null
             });
             this._cachedResults = { 
                 fileMetadata, 
