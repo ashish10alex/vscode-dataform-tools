@@ -871,13 +871,7 @@ export class CompiledQueryPanel {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
             <link href="${styleUri}" rel="stylesheet">
-<<<<<<< HEAD
             <title>Dataform Tools (experimental)</title>
-||||||| 07f09db
-            <title>Compiled Query Preview</title>
-=======
-            <title>Dataform Tools</title>
->>>>>>> main
         </head>
         <body>
             <div id="root"></div>
