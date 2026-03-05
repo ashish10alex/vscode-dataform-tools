@@ -445,7 +445,9 @@ export class CompiledQueryPanel {
                     const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
                         if (item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
                             try {
-                                const dataformClient = new DataformTools(item.projectId, item.location);
+                                const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+                                const projId = (gcpProjectIdOveride || item.projectId) as string;
+                                const dataformClient = new DataformTools(projId, item.location);
                                 const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
                                 if (invocation && invocation.state) {
                                   item.state = invocation.state as string;
