@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.4...v1.2.0) (2026-03-05)
+
+
+### Bug Fixes
+
+* **api:** use configured gcpProjectId instead of defaultDatabase for API runs ([#275](https://github.com/ashish10alex/vscode-dataform-tools/issues/275)) ([1c42e70](https://github.com/ashish10alex/vscode-dataform-tools/commit/1c42e702ad1c3371ad2e4a87ef5f0c56d71d08a4))
+
 ### [1.1.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.3...v1.1.4) (2026-03-05)
 
 
