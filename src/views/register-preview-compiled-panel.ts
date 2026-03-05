@@ -446,8 +446,8 @@ export class CompiledQueryPanel {
                         if (item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
                             try {
                                 const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-                                const projId = (gcpProjectIdOveride || item.projectId) as string;
-                                const dataformClient = new DataformTools(projId, item.location);
+                                const projectId = (gcpProjectIdOveride || item.projectId) as string;
+                                const dataformClient = new DataformTools(projectId, item.location);
                                 const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
                                 if (invocation && invocation.state) {
                                   item.state = invocation.state as string;
