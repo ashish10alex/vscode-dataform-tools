@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
+    emptyOutDir: false,
     rollupOptions: {
       input: {
         dependancy_graph: './webviews/dependancy_graph/index.tsx',
