@@ -4,13 +4,6 @@ on:
       - main
     tags:
       - "*"
-  workflow_dispatch:
-    inputs:
-      preRelease:
-        description: 'Publish as a pre-release'
-        required: true
-        type: boolean
-        default: false
 
 name: Deploy extension to marketplace
 jobs:
@@ -22,18 +15,38 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+
+      - name: Determine if Pre-Release (Odd Minor Version)
+        id: check_prerelease
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Extract the version from the tag (e.g., v1.3.2 -> 1.3.2)
+            VERSION=${GITHUB_REF#refs/tags/v}
+            # Extract the minor version (e.g., 1.3.2 -> 3)
+            MINOR=$(echo $VERSION | cut -d. -f2)
+            # Check if minor is odd
+            if [ $((MINOR % 2)) -ne 0 ]; then
+              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            fi
+          else
+             # For pushes that aren't tags
+             echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to Open VSX Registry
         uses: HaaLeo/publish-vscode-extension@v2
         id: publishToOpenVSX
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          preRelease: ${{ github.event.inputs.preRelease == 'true' }}
-          dryRun: ${{ github.event_name != 'workflow_dispatch' }}
+          preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
+          dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@v2
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
           extensionFile: ${{ steps.publishToOpenVSX.outputs.vsixPath }}
-          preRelease: ${{ github.event.inputs.preRelease == 'true' }}
-          dryRun: ${{ github.event_name != 'workflow_dispatch' }}
+          preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
+          dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
