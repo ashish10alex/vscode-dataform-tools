@@ -9,13 +9,15 @@ import {
   ReactFlowProvider,
   ReactFlowInstance,
   Node,
-  Edge
+  Edge,
+  MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
 import { getVsCodeApi } from './vscode';
 import StyledSelect, { OptionType } from './components/StyledSelect';
+import DownloadButton from './DownloadButton';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -60,6 +62,7 @@ const Flow: React.FC = () => {
   const [_, setIsReady] = useState<boolean>(false);
   const [tableOptions, setTableOptions] = useState<OptionType[]>([]);
   const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
+  const [rootNodeId, setRootNodeId] = useState<string | null>(null);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -97,6 +100,10 @@ const Flow: React.FC = () => {
           );
           setNodes(positionedNodes);
           setEdges(positionedEdges);
+
+          if (currentActiveEditorIdx) {
+            setRootNodeId(currentActiveEditorIdx);
+          }
 
           setTableOptions(initialNodesStatic.map((node: any) => ({
             value: node.id,
@@ -155,6 +162,7 @@ const Flow: React.FC = () => {
 
         setNodes(positionedNodes);
         setEdges(positionedEdges);
+        setRootNodeId(option.value);
 
         if (reactFlowInstance.current) {
             reactFlowInstance.current?.fitView({
@@ -224,7 +232,66 @@ const Flow: React.FC = () => {
     );
     setNodes(filteredNodesWithPosition.nodes);
     setEdges(filteredNodesWithPosition.edges);
+    setRootNodeId(node.id);
   }, [fullNodes, fullEdges, nodes, edges, setNodes, setEdges]);
+
+  const expandToLeft = () => {
+    if (!rootNodeId) return;
+
+    const visitedNodes = new Set<string>();
+    const visitedEdges = new Set<string>();
+    const stack = [rootNodeId];
+
+    while (stack.length > 0) {
+      const currentNodeId = stack.pop()!;
+      if (visitedNodes.has(currentNodeId)) continue;
+      visitedNodes.add(currentNodeId);
+
+      const upstreamEdges = fullEdges.filter(edge => edge.target === currentNodeId);
+      upstreamEdges.forEach(edge => {
+        if (!visitedEdges.has(edge.id)) {
+          visitedEdges.add(edge.id);
+          stack.push(edge.source);
+        }
+      });
+    }
+
+    const filteredNodes = fullNodes.filter(node => visitedNodes.has(node.id));
+    const filteredEdges = fullEdges.filter(edge => visitedEdges.has(edge.id));
+
+    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
+  };
+
+  const expandToRight = () => {
+    if (!rootNodeId) return;
+
+    const visitedNodes = new Set<string>();
+    const visitedEdges = new Set<string>();
+    const stack = [rootNodeId];
+
+    while (stack.length > 0) {
+      const currentNodeId = stack.pop()!;
+      if (visitedNodes.has(currentNodeId)) continue;
+      visitedNodes.add(currentNodeId);
+
+      const downstreamEdges = fullEdges.filter(edge => edge.source === currentNodeId);
+      downstreamEdges.forEach(edge => {
+        if (!visitedEdges.has(edge.id)) {
+          visitedEdges.add(edge.id);
+          stack.push(edge.target);
+        }
+      });
+    }
+
+    const filteredNodes = fullNodes.filter(node => visitedNodes.has(node.id));
+    const filteredEdges = fullEdges.filter(edge => visitedEdges.has(edge.id));
+
+    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
+  };
 
   return (
     <div className="h-full">
@@ -257,6 +324,23 @@ const Flow: React.FC = () => {
             placeholder="Search for a table..."
             width="w-1/3"
           />
+
+          <div className="flex gap-2">
+            <button
+              onClick={expandToLeft}
+              disabled={!rootNodeId}
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              Expand to left
+            </button>
+            <button
+              onClick={expandToRight}
+              disabled={!rootNodeId}
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              Expand to right
+            </button>
+          </div>
         </div>
       </div>
       
@@ -272,11 +356,22 @@ const Flow: React.FC = () => {
           onInit={(instance) => {
             reactFlowInstance.current = instance;
           }}
+          defaultEdgeOptions={{
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: '#b1b1b7',
+            },
+            style: {
+              strokeWidth: 2,
+              stroke: '#b1b1b7',
+            },
+          }}
           fitView
         >
           <Controls />
           {/* @ts-ignore */}
           <Background variant="dots" gap={12} size={1} />
+          <DownloadButton />
         </ReactFlow>
       ) : (
         <div className="flex items-center justify-center h-[80vh] text-gray-400">
@@ -292,7 +387,7 @@ const App: React.FC = () => {
     <div className="p-4 min-h-screen">
       <h2 className="text-2xl font-bold text-white-600">Dataform dependency graph</h2>
 
-      <div style={{ width: '100vw', height: '100vh' }}>
+      <div style={{ width: '100%', height: '80vh' }}>
         <ReactFlowProvider>
           <Flow />
         </ReactFlowProvider>
