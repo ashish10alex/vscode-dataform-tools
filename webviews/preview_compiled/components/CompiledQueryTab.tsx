@@ -391,10 +391,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   {state.relativeFilePath || " "}
               </span>
               <div className="flex-grow"></div>
-              <button onClick={handleFormat} disabled={formatting} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
+              <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
                   <AlignLeft className="w-3 h-3 mr-1.5" /> Format
               </button>
-               <button onClick={handleLint} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200">
+               <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
                   <Eye className="w-3 h-3 mr-1.5" /> Lint
               </button>
           </div>
@@ -508,16 +508,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
            </div>
 
            <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-700/50">
-               <button onClick={handleDependencyGraph} className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-white rounded text-sm flex items-center">
+               <button onClick={handleDependencyGraph} disabled={state.recompiling} className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-white rounded text-sm flex items-center disabled:opacity-50">
                    <Network className="w-4 h-4 mr-1.5" /> Graph
                </button>
-               <button onClick={handlePreviewResults} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center">
+               <button onClick={handlePreviewResults} disabled={state.recompiling} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center disabled:opacity-50">
                    <Eye className="w-4 h-4 mr-1.5" /> Preview Data
                </button>
-               <button onClick={() => handleRunModel(false)} disabled={runningModel} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center disabled:opacity-50">
+               <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center disabled:opacity-50">
                    <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
                </button>
-                <button onClick={() => handleRunModel(true)} disabled={runningModel} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm flex items-center disabled:opacity-50 relative">
+                <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm flex items-center disabled:opacity-50 relative">
                    <Play className="w-4 h-4 mr-1.5" /> Run (API)
                    <span className="absolute -top-2 -right-2 bg-yellow-500 text-black text-[10px] font-bold px-1.5 rounded-full">NEW</span>
                </button>
