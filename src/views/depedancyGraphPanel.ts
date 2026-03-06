@@ -15,7 +15,7 @@ export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource} https:; script-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-eval'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https:;">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource} https:; script-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-eval'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https: data: blob:;">
         <link href="${styleUri}" rel="stylesheet">
         <title>My Extension</title>
       </head>
@@ -97,6 +97,33 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                             }
                         } else {
                             vscode.window.showErrorMessage('Workspace folder not found');
+                        }
+                    }
+                    return;
+                case 'saveGraphImage':
+                    const dataUrl = message.value.dataUrl;
+                    const format = message.value.format;
+                    const defaultFileName = `dependency_graph.${format}`;
+
+                    const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(defaultFileName),
+                        filters: {
+                            'Images': [format]
+                        }
+                    });
+
+                    if (uri) {
+                        try {
+                            const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
+                            const fileData = Buffer.from(base64Data, 'base64');
+                            
+                            await vscode.workspace.fs.writeFile(
+                                uri,
+                                fileData
+                            );
+                            vscode.window.showInformationMessage(`Graph saved successfully to ${uri.fsPath}`);
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Failed to save graph: ${e.message}`);
                         }
                     }
                     return;

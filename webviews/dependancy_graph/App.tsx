@@ -9,13 +9,15 @@ import {
   ReactFlowProvider,
   ReactFlowInstance,
   Node,
-  Edge
+  Edge,
+  MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
 import { getVsCodeApi } from './vscode';
 import StyledSelect, { OptionType } from './components/StyledSelect';
+import DownloadButton from './DownloadButton';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -272,11 +274,22 @@ const Flow: React.FC = () => {
           onInit={(instance) => {
             reactFlowInstance.current = instance;
           }}
+          defaultEdgeOptions={{
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: '#b1b1b7',
+            },
+            style: {
+              strokeWidth: 2,
+              stroke: '#b1b1b7',
+            },
+          }}
           fitView
         >
           <Controls />
           {/* @ts-ignore */}
           <Background variant="dots" gap={12} size={1} />
+          <DownloadButton />
         </ReactFlow>
       ) : (
         <div className="flex items-center justify-center h-[80vh] text-gray-400">
@@ -292,7 +305,7 @@ const App: React.FC = () => {
     <div className="p-4 min-h-screen">
       <h2 className="text-2xl font-bold text-white-600">Dataform dependency graph</h2>
 
-      <div style={{ width: '100vw', height: '100vh' }}>
+      <div style={{ width: '100%', height: '80vh' }}>
         <ReactFlowProvider>
           <Flow />
         </ReactFlowProvider>
