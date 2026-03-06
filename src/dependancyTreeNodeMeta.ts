@@ -2,13 +2,26 @@ import { Assertion, Declarations, DependancyModelMetadata, Operation, Table } fr
 import { getRelativePath, getVSCodeDocument, getWorkspaceFolder, runCompilation } from "./utils";
 
 const datasetColors = [
-    "#FF0000", "#00FF00", "#0000FF", "#FF00FF", "#FFFF00", "#00FFFF",
-    "#FF8000", "#80FF00", "#00FF80", "#0080FF", "#8000FF", "#FF0080",
-    "#A0522D", "#006400", "#483D8B", "#800000", "#008080", "#4B0082",
-    "#FFB6C1", "#98FB98", "#87CEEB", "#DDA0DD", "#F0E68C", "#E0FFFF",
-    "#FF4500", "#32CD32", "#1E90FF", "#FF1493", "#FFD700", "#20B2AA",
-    "#8B4513", "#228B22", "#4169E1", "#8B008B", "#DAA520", "#008B8B",
-    "#FF6347", "#90EE90", "#6495ED", "#BA55D3"
+    "#3B82F6", // Blue
+    "#EF4444", // Soft Red
+    "#10B981", // Emerald
+    "#F59E0B", // Amber
+    "#8B5CF6", // Violet
+    "#EC4899", // Pink
+    "#06B6D4", // Cyan
+    "#F97316", // Orange
+    "#6366F1", // Indigo
+    "#14B8A6", // Teal
+    "#84CC16", // Lime
+    "#F43F5E", // Rose
+    "#64748B", // Slate
+    "#D946EF", // Fuchsia
+    "#0EA5E9", // Sky Blue
+    "#22C55E", // Green
+    "#EAB308", // Yellow
+    "#A855F7", // Purple
+    "#FB923C", // Light Orange
+    "#38BDF8"  // Light Sky Blue
 ];
 
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyModelMetadata[], initialEdgesStatic: any[], modelIdx: number, modelNameToIdx: Map<string, number>, datasetColorMap: Map<string, string>, currentActiveEditorRelativePath: string, currentActiveEditorIdx: string) {
