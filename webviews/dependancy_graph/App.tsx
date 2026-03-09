@@ -10,8 +10,11 @@ import {
   ReactFlowInstance,
   Node,
   Edge,
-  MarkerType
+  MarkerType,
+  getNodesBounds,
+  getViewportForBounds
 } from '@xyflow/react';
+import { toPng } from 'html-to-image';
 import '@xyflow/react/dist/style.css';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
@@ -236,7 +239,7 @@ const Flow: React.FC = () => {
   }, [fullNodes, fullEdges, nodes, edges, setNodes, setEdges]);
 
   const expandToLeft = () => {
-    if (!rootNodeId) return;
+    if (!rootNodeId) {return;}
 
     const visitedNodes = new Set<string>();
     const visitedEdges = new Set<string>();
@@ -244,7 +247,7 @@ const Flow: React.FC = () => {
 
     while (stack.length > 0) {
       const currentNodeId = stack.pop()!;
-      if (visitedNodes.has(currentNodeId)) continue;
+      if (visitedNodes.has(currentNodeId)) {continue;}
       visitedNodes.add(currentNodeId);
 
       const upstreamEdges = fullEdges.filter(edge => edge.target === currentNodeId);
@@ -265,7 +268,7 @@ const Flow: React.FC = () => {
   };
 
   const expandToRight = () => {
-    if (!rootNodeId) return;
+    if (!rootNodeId) {return;}
 
     const visitedNodes = new Set<string>();
     const visitedEdges = new Set<string>();
@@ -273,7 +276,7 @@ const Flow: React.FC = () => {
 
     while (stack.length > 0) {
       const currentNodeId = stack.pop()!;
-      if (visitedNodes.has(currentNodeId)) continue;
+      if (visitedNodes.has(currentNodeId)) {continue;}
       visitedNodes.add(currentNodeId);
 
       const downstreamEdges = fullEdges.filter(edge => edge.source === currentNodeId);
@@ -291,6 +294,54 @@ const Flow: React.FC = () => {
     const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
     setNodes(positionedNodes);
     setEdges(positionedEdges);
+  };
+
+  const handleDownload = () => {
+    if (nodes.length === 0) {return;}
+
+    const nodesBounds = getNodesBounds(nodes);
+    const imageWidth = nodesBounds.width + 100;
+    const imageHeight = nodesBounds.height + 100;
+
+    const transform = getViewportForBounds(
+      nodesBounds,
+      imageWidth,
+      imageHeight,
+      0.5,
+      2,
+      0.2
+    );
+
+    const targetElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!targetElement) {return;};
+
+    const originalStyle = targetElement.style.cssText;
+
+    toPng(targetElement, {
+      backgroundColor: '#ffffff',
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: `${imageWidth}px`,
+        height: `${imageHeight}px`,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+        'stroke': '#b1b1b7',
+        strokeWidth: '2px',
+      },
+      pixelRatio: 3,
+    }).then((dataUrl) => {
+      vscode.postMessage({
+        type: 'saveGraphImage',
+        value: {
+          dataUrl,
+          format: 'png',
+        }
+      });
+      targetElement.style.cssText = originalStyle;
+    }).catch((err) => {
+      console.error('Failed to download image', err);
+      targetElement.style.cssText = originalStyle;
+    });
   };
 
   return (
@@ -340,6 +391,7 @@ const Flow: React.FC = () => {
             >
               Expand to right
             </button>
+            <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} />
           </div>
         </div>
       </div>
@@ -371,7 +423,6 @@ const Flow: React.FC = () => {
           <Controls />
           {/* @ts-ignore */}
           <Background variant="dots" gap={12} size={1} />
-          <DownloadButton />
         </ReactFlow>
       ) : (
         <div className="flex items-center justify-center h-[80vh] text-gray-400">
