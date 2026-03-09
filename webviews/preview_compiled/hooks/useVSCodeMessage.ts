@@ -13,7 +13,12 @@ export const useVSCodeMessage = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
-      setState((prevState) => ({ ...prevState, ...message }));
+      setState((prevState) => ({
+        ...prevState,
+        ...message,
+        // Unless the host explicitly says recompiling: true, clear it
+        recompiling: message.recompiling === true ? true : false,
+      }));
     };
 
     window.addEventListener("message", handleMessage);

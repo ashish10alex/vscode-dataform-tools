@@ -576,6 +576,7 @@ export class CompiledQueryPanel {
 
             let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
+                await webview.postMessage({ "recompiling": false });
                 return;
             }
 
@@ -634,6 +635,7 @@ export class CompiledQueryPanel {
 
         if(!curFileMeta.fileMetadata || !curFileMeta.pathMeta){
             //TODO: show some error message in this case
+            await webview.postMessage({ "recompiling": false });
             return;
         }
 
