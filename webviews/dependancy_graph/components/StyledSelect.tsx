@@ -19,58 +19,58 @@ const StyledSelect: React.FC<StyledSelectProps> = ({ width = 'w-96', ...props })
       styles={{
         control: (base, state) => ({
           ...base,
-          backgroundColor: '#1a1a1a',
+          backgroundColor: 'var(--vscode-input-background)',
           borderRadius: '0.75rem',
-          borderColor: state.isFocused ? '#3b82f6' : '#374151',
+          borderColor: state.isFocused ? 'var(--vscode-focusBorder)' : 'var(--vscode-input-border)',
           borderWidth: '2px',
-          boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
+          boxShadow: state.isFocused ? '0 0 0 1px var(--vscode-focusBorder)' : 'none',
           padding: '2px',
           transition: 'all 0.2s ease',
           '&:hover': {
-            borderColor: '#3b82f6'
+            borderColor: 'var(--vscode-focusBorder)'
           }
         }),
         input: (base) => ({
           ...base,
-          color: '#fff'
+          color: 'var(--vscode-input-foreground)'
         }),
         placeholder: (base) => ({
           ...base,
-          color: '#6b7280'
+          color: 'var(--vscode-input-placeholderForeground)'
         }),
         option: (base, state) => ({
           ...base,
-          backgroundColor: state.isFocused ? '#2563eb' : '#1a1a1a',
-          color: state.isFocused ? 'white' : '#e5e7eb',
+          backgroundColor: state.isFocused ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-dropdown-background)',
+          color: state.isFocused ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-dropdown-foreground)',
           padding: '10px 12px',
           cursor: 'pointer',
           '&:hover': {
-            backgroundColor: '#2563eb'
+            backgroundColor: 'var(--vscode-list-activeSelectionBackground)'
           }
         }),
         menu: (base) => ({
           ...base,
-          backgroundColor: '#1a1a1a',
-          border: '2px solid #374151',
+          backgroundColor: 'var(--vscode-dropdown-background)',
+          border: '2px solid var(--vscode-dropdown-border)',
           borderRadius: '0.75rem',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }),
         singleValue: (base) => ({
           ...base,
-          color: '#fff'
+          color: 'var(--vscode-input-foreground)'
         }),
         dropdownIndicator: (base, state) => ({
           ...base,
-          color: state.isFocused ? '#3b82f6' : '#6b7280',
+          color: state.isFocused ? 'var(--vscode-focusBorder)' : 'var(--vscode-input-placeholderForeground)',
           '&:hover': {
-            color: '#3b82f6'
+            color: 'var(--vscode-focusBorder)'
           }
         }),
         clearIndicator: (base) => ({
           ...base,
-          color: '#6b7280',
+          color: 'var(--vscode-input-placeholderForeground)',
           '&:hover': {
-            color: '#ef4444'
+            color: 'var(--vscode-errorForeground)'
           }
         })
       }}
