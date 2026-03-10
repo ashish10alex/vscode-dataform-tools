@@ -344,6 +344,11 @@ const Flow: React.FC = () => {
     });
   };
 
+  const activeDatasets = new Set(nodes.map((node: any) => node.data?.datasetId as string).filter(Boolean));
+  const activeDatasetColorMap = new Map(
+    Array.from(datasetColorMap.entries()).filter(([dataset]) => activeDatasets.has(dataset))
+  );
+
   return (
     <div className="h-full">
       {/* Add message display */}
@@ -355,8 +360,8 @@ const Flow: React.FC = () => {
       
       {/* Add the Legend component here, before the search dropdown */}
       <div className="p-4">
-        {datasetColorMap.size > 0 && (
-          <Legend datasetColorMap={datasetColorMap} />
+        {activeDatasetColorMap.size > 0 && (
+          <Legend datasetColorMap={activeDatasetColorMap} />
         )}
         
         <div className="flex gap-4">
