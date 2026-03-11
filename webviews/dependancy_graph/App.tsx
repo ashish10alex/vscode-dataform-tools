@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useEffect, useState} from 'react';
+import React, {useCallback, useRef, useEffect, useState, useMemo} from 'react';
 import {
   ReactFlow,
   Controls,
@@ -16,6 +16,8 @@ import {
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import '@xyflow/react/dist/style.css';
+import { DataTable } from '../components/ui/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
 import { getVsCodeApi } from './vscode';
@@ -29,6 +31,14 @@ const nodeTypes = {
 // Get vscode API
 // @ts-ignore
 const vscode = getVsCodeApi();
+
+interface ModelData {
+  id: string;
+  modelName: string;
+  datasetId: string;
+  type: string;
+  tags: string[];
+}
 
 // Add this new Legend component at the top of the file, before the Flow component
 const Legend: React.FC<{ datasetColorMap: Map<string, string> }> = ({ datasetColorMap }) => {
@@ -225,13 +235,26 @@ const Flow: React.FC = () => {
     // get the dependent and dependecies of the clicked node
     const filteredEdges = fullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);
     const filteredNodes = fullNodes.filter((n: Node) => filteredEdges.some((edge: Edge) => edge.source === n.id || edge.target === n.id));
-    // add to the current nodes and edges the filtered nodes and edges
-    setNodes([...nodes, ...filteredNodes]);
-    setEdges([...edges, ...filteredEdges]);
+    
+    // add to the current nodes and edges the filtered nodes and edges, preventing duplicates
+    const combinedNodes = [...nodes];
+    filteredNodes.forEach(fn => {
+      if (!combinedNodes.some(n => n.id === fn.id)) {
+        combinedNodes.push(fn);
+      }
+    });
+
+    const combinedEdges = [...edges];
+    filteredEdges.forEach(fe => {
+      if (!combinedEdges.some(e => e.id === fe.id)) {
+        combinedEdges.push(fe);
+      }
+    });
+
     // recompute the positions of the nodes
     const filteredNodesWithPosition = nodePositioning(
-      [...nodes, ...filteredNodes],
-      [...edges, ...filteredEdges],
+      combinedNodes,
+      combinedEdges,
     );
     setNodes(filteredNodesWithPosition.nodes);
     setEdges(filteredNodesWithPosition.edges);
@@ -349,22 +372,40 @@ const Flow: React.FC = () => {
     Array.from(datasetColorMap.entries()).filter(([dataset]) => activeDatasets.has(dataset))
   );
 
+  const tableData = useMemo<ModelData[]>(() => {
+    return nodes.map(node => ({
+      id: node.id,
+      modelName: node.data.modelName as string,
+      datasetId: node.data.datasetId as string,
+      type: node.data.type as string,
+      tags: node.data.tags as string[],
+    }));
+  }, [nodes]);
+
+  const columns = useMemo<ColumnDef<ModelData>[]>(() => [
+    {
+      accessorKey: "modelName",
+      header: "Model Name",
+      size: 300,
+    },
+  ], []);
+
   return (
-    <div className="h-full">
+    <div className="flex flex-col h-full bg-[var(--vscode-editor-background)]">
       {/* Add message display */}
       {message && (
-        <div className="p-4 bg-blue-100 text-blue-800 mb-4">
+        <div className="p-4 bg-blue-100 text-blue-800 mb-4 mx-4 mt-4 rounded">
           Message from extension: {message}
         </div>
       )}
       
-      {/* Add the Legend component here, before the search dropdown */}
-      <div className="p-4">
+      {/* Search and Legend Section */}
+      <div className="p-4 border-b border-[var(--vscode-widget-border)]">
         {activeDatasetColorMap.size > 0 && (
           <Legend datasetColorMap={activeDatasetColorMap} />
         )}
         
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <StyledSelect
             options={tagOptions}
             onChange={handleTagSelect}
@@ -385,14 +426,14 @@ const Flow: React.FC = () => {
             <button
               onClick={expandToLeft}
               disabled={!rootNodeId}
-              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
               Expand to left
             </button>
             <button
               onClick={expandToRight}
               disabled={!rootNodeId}
-              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
               Expand to right
             </button>
@@ -401,49 +442,77 @@ const Flow: React.FC = () => {
         </div>
       </div>
       
-      {nodes.length > 0 ? (
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onInit={(instance) => {
-            reactFlowInstance.current = instance;
-          }}
-          defaultEdgeOptions={{
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: '#b1b1b7',
-            },
-            style: {
-              strokeWidth: 2,
-              stroke: '#b1b1b7',
-            },
-          }}
-          fitView
-        >
-          <Controls />
-          {/* @ts-ignore */}
-          <Background variant="dots" gap={12} size={1} />
-        </ReactFlow>
-      ) : (
-        <div className="flex items-center justify-center h-[80vh] text-gray-400">
-          Select a table to view its dependencies
+      {/* Main Content Area: Side-by-Side Layout */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Left Side: Dependency Graph */}
+        <div className="flex-1 relative border-r border-[var(--vscode-widget-border)]">
+          {nodes.length > 0 ? (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              onInit={(instance) => {
+                reactFlowInstance.current = instance;
+              }}
+              defaultEdgeOptions={{
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: '#b1b1b7',
+                },
+                style: {
+                  strokeWidth: 2,
+                  stroke: '#b1b1b7',
+                },
+              }}
+              fitView
+              minZoom={0.1}
+              maxZoom={4}
+            >
+              <Controls />
+              {/* @ts-ignore */}
+              <Background variant="dots" gap={12} size={1} />
+            </ReactFlow>
+          ) : (
+            <div className="flex items-center justify-center h-full text-zinc-500 font-medium">
+              Select a table to view its dependencies
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right Side: Active Models Table */}
+        {nodes.length > 0 && (
+          <div className="w-80 flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden">
+            <div className="p-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)]">
+              <h3 className="text-sm font-bold text-[var(--vscode-foreground)] uppercase tracking-wider">
+                Active Models ({nodes.length})
+              </h3>
+            </div>
+            <div className="flex-1 overflow-hidden p-2">
+              <DataTable 
+                columns={columns} 
+                data={tableData} 
+                searchPlaceholder="Filter models..." 
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <div className="p-4 min-h-screen">
-      <h2 className="text-2xl font-bold text-white-600">Dataform dependency graph</h2>
+    <div className="h-screen flex flex-col">
+      <div className="px-6 py-4 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-widget-border)]">
+        <h2 className="text-xl font-bold text-[var(--vscode-foreground)]">Dataform Dependency Graph</h2>
+      </div>
 
-      <div style={{ width: '100%', height: '80vh' }}>
+      <div className="flex-1 overflow-hidden">
         <ReactFlowProvider>
           <Flow />
         </ReactFlowProvider>
