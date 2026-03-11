@@ -118,6 +118,15 @@ const Flow: React.FC = () => {
             setRootNodeId(currentActiveEditorIdx);
           }
 
+          // Initial fitView 
+          setTimeout(() => {
+            if (reactFlowInstance.current) {
+              reactFlowInstance.current.fitView({
+                maxZoom: 2.5,
+              });
+            }
+          }, 100);
+
           setTableOptions(initialNodesStatic.map((node: any) => ({
             value: node.id,
             label: node.data.modelName as string
