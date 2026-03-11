@@ -367,6 +367,17 @@ const Flow: React.FC = () => {
     });
   };
 
+  const handleRowClick = useCallback((model: ModelData) => {
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: model.id }],
+        duration: 800,
+        maxZoom: 0.8,
+        padding: 0.2,
+      });
+    }
+  }, []);
+
   const activeDatasets = new Set(nodes.map((node: any) => node.data?.datasetId as string).filter(Boolean));
   const activeDatasetColorMap = new Map(
     Array.from(datasetColorMap.entries()).filter(([dataset]) => activeDatasets.has(dataset))
@@ -495,7 +506,8 @@ const Flow: React.FC = () => {
               <DataTable 
                 columns={columns} 
                 data={tableData} 
-                searchPlaceholder="Filter models..." 
+                searchPlaceholder="Filter models..."
+                onRowClick={handleRowClick}
               />
             </div>
           </div>

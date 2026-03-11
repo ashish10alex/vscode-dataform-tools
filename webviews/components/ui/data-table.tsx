@@ -18,12 +18,14 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchPlaceholder?: string
   autoFocusColumnId?: string
+  onRowClick?: (data: TData) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   autoFocusColumnId,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -130,7 +132,10 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                  onClick={() => onRowClick?.(row.original)}
+                  className={`bg-white dark:bg-zinc-900 transition-colors ${
+                    onRowClick ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                  }`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td 
