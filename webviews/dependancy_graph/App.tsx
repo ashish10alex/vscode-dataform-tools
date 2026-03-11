@@ -259,6 +259,15 @@ const Flow: React.FC = () => {
     setNodes(filteredNodesWithPosition.nodes);
     setEdges(filteredNodesWithPosition.edges);
     setRootNodeId(node.id);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: node.id }],
+        duration: 800,
+        maxZoom: 0.8,
+        padding: 0.2,
+      });
+    }
   }, [fullNodes, fullEdges, nodes, edges, setNodes, setEdges]);
 
   const expandToLeft = () => {
@@ -288,6 +297,15 @@ const Flow: React.FC = () => {
     const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
     setNodes(positionedNodes);
     setEdges(positionedEdges);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: rootNodeId }],
+        duration: 800,
+        maxZoom: 0.8,
+        padding: 0.2,
+      });
+    }
   };
 
   const expandToRight = () => {
@@ -317,6 +335,15 @@ const Flow: React.FC = () => {
     const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
     setNodes(positionedNodes);
     setEdges(positionedEdges);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: rootNodeId }],
+        duration: 800,
+        maxZoom: 1.0,
+        padding: 0.2,
+      });
+    }
   };
 
   const handleDownload = () => {
