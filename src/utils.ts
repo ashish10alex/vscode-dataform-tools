@@ -1119,7 +1119,7 @@ export async function getOrCompileDataformJson(
     }
     logger.debug('No cached compilation found, compiling dataform project...');
     vscode.window.showWarningMessage(
-        "Compiling Dataform project, this may take a few moments..."
+        "Compiling Dataform project, this may take a moment..."
     );
     const { dataformCompiledJson } = await runCompilation(workspaceFolder);
     return dataformCompiledJson;
