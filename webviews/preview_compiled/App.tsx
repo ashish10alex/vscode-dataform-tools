@@ -153,7 +153,7 @@ function App() {
                     <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
                 </div>
                 {state.dataformCoreVersion && (
-                    <div className="mt-4 border-l-[3px] border-[var(--vscode-textLink-foreground)] pl-4 py-2 ml-7 mr-4 bg-[var(--vscode-sideBar-background)] rounded-r-md">
+                    <div className="mt-4 border-l-[3px] border-[var(--vscode-textLink-foreground)] pl-4 py-2 mr-4 bg-[var(--vscode-sideBar-background)] rounded-r-md">
                         <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-textLink-foreground)] mb-2">
                             <Info className="w-4 h-4" />
                             Note
