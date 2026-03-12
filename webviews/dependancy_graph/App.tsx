@@ -23,6 +23,7 @@ import { nodePositioning } from './nodePositioning';
 import { getVsCodeApi } from './vscode';
 import StyledSelect, { OptionType } from './components/StyledSelect';
 import DownloadButton from './DownloadButton';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -76,6 +77,7 @@ const Flow: React.FC = () => {
   const [tableOptions, setTableOptions] = useState<OptionType[]>([]);
   const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
   const [rootNodeId, setRootNodeId] = useState<string | null>(null);
+  const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -533,20 +535,31 @@ const Flow: React.FC = () => {
 
         {/* Right Side: Active Models Table */}
         {nodes.length > 0 && (
-          <div className="w-90 flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden">
-            <div className="p-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)]">
-              <h3 className="text-sm font-bold text-[var(--vscode-foreground)] uppercase tracking-wider">
-                Active Models ({nodes.length})
-              </h3>
+          <div className={`${isTableCollapsed ? 'w-10' : 'w-90'} flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden transition-all duration-300 ease-in-out border-l border-[var(--vscode-widget-border)]`}>
+            <div className={`p-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] flex items-center ${isTableCollapsed ? 'justify-center p-2' : 'justify-between'}`}>
+              {!isTableCollapsed && (
+                <h3 className="text-sm font-bold text-[var(--vscode-foreground)] uppercase tracking-wider truncate mr-2">
+                  Active Models ({nodes.length})
+                </h3>
+              )}
+              <button
+                onClick={() => setIsTableCollapsed(!isTableCollapsed)}
+                className="p-1 hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors text-[var(--vscode-foreground)]"
+                title={isTableCollapsed ? "Expand section" : "Collapse section"}
+              >
+                {isTableCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+              </button>
             </div>
-            <div className="flex-1 overflow-hidden p-2">
-              <DataTable 
-                columns={columns} 
-                data={tableData} 
-                searchPlaceholder="Filter models..."
-                onRowClick={handleRowClick}
-              />
-            </div>
+            {!isTableCollapsed && (
+              <div className="flex-1 overflow-hidden p-2">
+                <DataTable 
+                  columns={columns} 
+                  data={tableData} 
+                  searchPlaceholder="Filter models..."
+                  onRowClick={handleRowClick}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
