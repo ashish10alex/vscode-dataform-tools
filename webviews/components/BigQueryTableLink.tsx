@@ -13,9 +13,9 @@ interface BigQueryTableLinkProps {
 export const BigQueryTableLink: React.FC<BigQueryTableLinkProps> = ({
   id,
   label,
-  className = "text-zinc-600 dark:text-zinc-300 font-mono select-all hover:text-blue-600 dark:hover:text-blue-400 transition-colors",
+  className = "text-zinc-600 dark:text-zinc-300 font-mono select-all text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] transition-colors",
   showIcon = false,
-  fallbackClassName = "text-zinc-400 dark:text-zinc-500 font-mono italic"
+  fallbackClassName = "text-zinc-400 dark:text-zinc-500 font-mono italic text-[var(--vscode-errorForeground)]"
 }) => {
   const parsed = parseBigQueryTableId(id);
   const displayLabel = label || (parsed ? `${parsed.database}.${parsed.schema}.${parsed.name}` : (typeof id === 'string' ? id : 'Invalid ID'));

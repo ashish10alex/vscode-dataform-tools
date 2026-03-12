@@ -50,7 +50,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
           <div className="relative group flex items-center">
             <input
               type="text"
-              className="w-full px-2 py-1 text-xs bg-transparent border border-transparent rounded hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-blue-500 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+              className="w-full px-2 py-1 text-xs bg-transparent border border-transparent rounded hover:border-[var(--vscode-input-border)] focus:border-[var(--vscode-focusBorder)] focus:bg-[var(--vscode-input-background)] focus:outline-none transition-colors"
               value={value || ''}
               onChange={(e) => {
                 setEditedDescriptions(prev => ({
@@ -60,7 +60,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
               }}
               placeholder="Add description..."
             />
-            <Edit2 className="absolute right-2 w-3 h-3 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <Edit2 className="absolute right-2 w-3 h-3 text-[var(--vscode-descriptionForeground)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           </div>
         );
       }
@@ -110,22 +110,22 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
   if (!state.compiledQuerySchema || state.compiledQuerySchema.fields.length === 0) {
     return (
-        <div className="p-8 text-center text-zinc-400 dark:text-zinc-500">
+        <div className="p-8 text-center text-[var(--vscode-descriptionForeground)]">
             <p>No schema available.</p>
         </div>
-    )
+    );
   }
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-end gap-2 p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+      <div className="flex justify-end gap-2 p-2 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
         <button
           onClick={handleCopyJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm w-28 justify-center"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm w-28 justify-center"
         >
           {isCopied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />
               Copied!
             </>
           ) : (
@@ -137,7 +137,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
         </button>
         <button
           onClick={handleExportJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-sm w-28 justify-center"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm w-28 justify-center"
         >
           <Download className="w-3.5 h-3.5" />
           Export JSON

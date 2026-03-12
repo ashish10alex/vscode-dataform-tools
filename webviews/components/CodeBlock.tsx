@@ -43,11 +43,13 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
       >
         {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
       </button>
-      <pre className="overflow-x-auto p-4 bg-[var(--hljs-bg)] rounded-md border border-zinc-200 dark:border-zinc-800">
-        <code ref={codeRef} className={`language-${language}`}>
-          {code}
-        </code>
-      </pre>
+      <div className="relative group bg-[var(--vscode-editor-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+        <pre className="overflow-x-auto p-4">
+          <code ref={codeRef} className={`language-${language}`}>
+            {code}
+          </code>
+        </pre>
+      </div>
     </div>
   );
 };
