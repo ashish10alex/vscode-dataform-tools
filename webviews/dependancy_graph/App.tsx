@@ -582,7 +582,7 @@ const Flow: React.FC = () => {
 
         {/* Right Side: Active Models Table */}
         {nodes.length > 0 && (
-          <div className={`${isTableCollapsed ? 'w-10' : 'w-90'} flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden transition-all duration-300 ease-in-out border-l border-[var(--vscode-widget-border)]`}>
+          <div className={`${isTableCollapsed ? 'w-10' : 'w-96'} flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden transition-all duration-300 ease-in-out border-l border-[var(--vscode-widget-border)]`}>
             <div className={`p-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] flex items-center ${isTableCollapsed ? 'justify-center p-2' : 'justify-between'}`}>
               {!isTableCollapsed && (
                 <h3 className="text-sm font-bold text-[var(--vscode-foreground)] uppercase tracking-wider truncate mr-2">
