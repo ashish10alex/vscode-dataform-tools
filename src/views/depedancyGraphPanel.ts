@@ -100,7 +100,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                         }
                     }
                     return;
-                case 'saveGraphImage':
+                case 'saveGraphImage': {
                     const dataUrl = message.value.dataUrl;
                     const format = message.value.format;
                     const defaultFileName = `dependency_graph.${format}`;
@@ -147,6 +147,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                         }
                     }
                     return;
+                }
             }
         },
         undefined,
