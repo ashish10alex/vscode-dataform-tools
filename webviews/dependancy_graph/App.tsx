@@ -533,7 +533,7 @@ const Flow: React.FC = () => {
 
         {/* Right Side: Active Models Table */}
         {nodes.length > 0 && (
-          <div className="w-80 flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden">
+          <div className="w-90 flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden">
             <div className="p-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)]">
               <h3 className="text-sm font-bold text-[var(--vscode-foreground)] uppercase tracking-wider">
                 Active Models ({nodes.length})
