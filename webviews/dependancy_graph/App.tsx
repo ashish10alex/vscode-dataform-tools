@@ -78,6 +78,7 @@ const Flow: React.FC = () => {
   const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
   const [rootNodeId, setRootNodeId] = useState<string | null>(null);
   const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -359,51 +360,60 @@ const Flow: React.FC = () => {
 
   const handleDownload = () => {
     if (nodes.length === 0) {return;}
+    setIsDownloading(true);
 
-    const nodesBounds = getNodesBounds(nodes);
-    const imageWidth = nodesBounds.width + 100;
-    const imageHeight = nodesBounds.height + 100;
+    // Use setTimeout to allow React to render the loading state before the heavy processing begins
+    setTimeout(() => {
+      const nodesBounds = getNodesBounds(nodes);
+      const imageWidth = nodesBounds.width + 100;
+      const imageHeight = nodesBounds.height + 100;
 
-    const transform = getViewportForBounds(
-      nodesBounds,
-      imageWidth,
-      imageHeight,
-      0.5,
-      2,
-      0.2
-    );
+      const transform = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        0.5,
+        2,
+        0.2
+      );
 
-    const targetElement = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!targetElement) {return;};
+      const targetElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+      if (!targetElement) {
+        setIsDownloading(false);
+        return;
+      };
 
-    const originalStyle = targetElement.style.cssText;
-    const computedBackground = getComputedStyle(document.documentElement).getPropertyValue('--vscode-editor-background').trim() || '#ffffff';
+      const originalStyle = targetElement.style.cssText;
+      const computedBackground = getComputedStyle(document.documentElement).getPropertyValue('--vscode-editor-background').trim() || '#ffffff';
 
-    toPng(targetElement, {
-      backgroundColor: computedBackground,
-      width: imageWidth,
-      height: imageHeight,
-      style: {
-        width: `${imageWidth}px`,
-        height: `${imageHeight}px`,
-        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
-        'stroke': '#b1b1b7',
-        strokeWidth: '2px',
-      },
-      pixelRatio: 3,
-    }).then((dataUrl) => {
-      vscode.postMessage({
-        type: 'saveGraphImage',
-        value: {
-          dataUrl,
-          format: 'png',
-        }
+      toPng(targetElement, {
+        backgroundColor: computedBackground,
+        width: imageWidth,
+        height: imageHeight,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+          'stroke': '#b1b1b7',
+          strokeWidth: '2px',
+        },
+        pixelRatio: 3,
+      }).then((dataUrl) => {
+        vscode.postMessage({
+          type: 'saveGraphImage',
+          value: {
+            dataUrl,
+            format: 'png',
+          }
+        });
+        targetElement.style.cssText = originalStyle;
+        setIsDownloading(false);
+      }).catch((err) => {
+        console.error('Failed to download image', err);
+        targetElement.style.cssText = originalStyle;
+        setIsDownloading(false);
       });
-      targetElement.style.cssText = originalStyle;
-    }).catch((err) => {
-      console.error('Failed to download image', err);
-      targetElement.style.cssText = originalStyle;
-    });
+    }, 0);
   };
 
   const handleRowClick = useCallback((model: ModelData) => {
@@ -487,7 +497,7 @@ const Flow: React.FC = () => {
             >
               Expand to right
             </button>
-            <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} />
+            <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
           </div>
         </div>
       </div>
