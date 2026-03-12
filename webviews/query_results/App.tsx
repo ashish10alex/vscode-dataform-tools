@@ -270,13 +270,13 @@ export default function App() {
       {(!multiResults || viewingDetailMode) && (
         <div className="flex border-b border-[var(--vscode-widget-border)] mb-4">
           <button 
-            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'results' ? 'border-b-2 border-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]' : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'}`}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'results' ? 'border-b-2 border-[var(--vscode-button-background)] text-[var(--vscode-foreground)]' : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'}`}
             onClick={() => setActiveTab('results')}
           >
             Results
           </button>
           <button 
-            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'query' ? 'border-b-2 border-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]' : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'}`}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'query' ? 'border-b-2 border-[var(--vscode-button-background)] text-[var(--vscode-foreground)]' : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'}`}
             onClick={() => setActiveTab('query')}
           >
             Query
