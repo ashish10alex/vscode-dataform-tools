@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
+import DOMPurify from "dompurify";
 
 interface CompiledQueryTabProps {
   state: WebviewState;
@@ -390,7 +391,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   <CheckCircle2 className="w-5 h-5 text-[var(--vscode-extensionIcon-preReleaseForeground)] mt-0.5 mr-2 flex-shrink-0" />
                   <div className="text-[var(--vscode-foreground)] text-sm">
                       <span className="font-semibold">Query will process:</span>
-                      <div className="font-mono mt-1 opacity-90" dangerouslySetInnerHTML={{__html: state.dryRunStat}} />
+                      <div className="font-mono mt-1 opacity-90" dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(state.dryRunStat)}} />
                   </div>
              </div>
          )
