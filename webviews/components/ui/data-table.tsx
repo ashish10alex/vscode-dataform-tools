@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -10,24 +10,26 @@ import {
   useReactTable,
   SortingState,
   ColumnFiltersState,
-} from '@tanstack/react-table'
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
+} from '@tanstack/react-table';
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   searchPlaceholder?: string
   autoFocusColumnId?: string
+  onRowClick?: (data: TData) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   autoFocusColumnId,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
 
   const table = useReactTable({
     data,
@@ -53,20 +55,20 @@ export function DataTable<TData, TValue>({
             pageSize: 50,
         }
     }
-  })
+  });
 
   return (
     <div className="flex flex-col h-full overflow-hidden space-y-2">
-      <div className="overflow-auto rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex-1">
-        <table className="w-full text-sm text-left rtl:text-right text-zinc-500 dark:text-zinc-400 table-fixed border-separate border-spacing-0">
-          <thead className="text-xs text-zinc-700 uppercase bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-400 shadow-sm">
+      <div className="overflow-auto rounded-md border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] flex-1">
+        <table className="w-full text-sm text-left rtl:text-right text-[var(--vscode-foreground)] table-fixed border-separate border-spacing-0">
+          <thead className="text-xs uppercase bg-[var(--vscode-sideBarSectionHeader-background)] text-[var(--vscode-foreground)] shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
                     <th 
                       key={header.id} 
-                      className="px-4 py-3 font-medium border-b border-zinc-200 dark:border-zinc-700 group bg-zinc-50 dark:bg-zinc-800"
+                      className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] group bg-[var(--vscode-sideBarSectionHeader-background)]"
                       style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10 }}
                     >
                       {header.isPlaceholder ? null : (
@@ -74,7 +76,7 @@ export function DataTable<TData, TValue>({
                             <div
                                 className={`flex items-center space-x-2 ${
                                 header.column.getCanSort()
-                                    ? 'cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-200'
+                                    ? 'cursor-pointer select-none hover:text-[var(--vscode-list-hoverForeground)]'
                                     : ''
                                 }`}
                                 onClick={header.column.getToggleSortingHandler()}
@@ -86,7 +88,7 @@ export function DataTable<TData, TValue>({
                                     )}
                                 </span>
                                 {header.column.getCanSort() && (
-                                    <ArrowUpDown className="w-3 h-3 ml-1 text-zinc-400" />
+                                    <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />
                                 )}
                             </div>
                             {/* Column Filter Input */}
@@ -103,7 +105,7 @@ export function DataTable<TData, TValue>({
                                             }
                                         }}
                                         placeholder={`Filter...`}
-                                        className="w-full px-2 py-1 text-xs border rounded bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
+                                        className="w-full px-2 py-1 text-xs border rounded bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] text-[var(--vscode-input-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)]"
                                         onClick={(e) => e.stopPropagation()} // Prevent sorting when clicking input
                                     />
                                 </div>
@@ -114,28 +116,31 @@ export function DataTable<TData, TValue>({
                         <div
                           onMouseDown={header.getResizeHandler()}
                           onTouchStart={header.getResizeHandler()}
-                          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none bg-zinc-300 dark:bg-zinc-600 opacity-0 group-hover:opacity-100 ${
-                            header.column.getIsResizing() ? 'opacity-100 bg-blue-500' : ''
+                          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none bg-[var(--vscode-widget-border)] opacity-0 group-hover:opacity-100 ${
+                            header.column.getIsResizing() ? 'opacity-100 bg-[var(--vscode-focusBorder)]' : ''
                           }`}
                         />
                       )}
                     </th>
-                  )
+                  );
                 })}
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <tbody className="divide-y divide-[var(--vscode-widget-border)]">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                  onClick={() => onRowClick?.(row.original)}
+                  className={`bg-[var(--vscode-editor-background)] transition-colors ${
+                    onRowClick ? 'cursor-pointer hover:bg-[var(--vscode-list-hoverBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
+                  }`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td 
                       key={cell.id} 
-                      className="px-4 py-2 break-words align-top border-r border-zinc-200 dark:border-zinc-800"
+                      className="px-4 py-2 break-words align-top border-r border-[var(--vscode-widget-border)]"
                       style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -145,14 +150,14 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="h-24 text-center">
+                <td colSpan={columns.length} className="h-24 text-center text-[var(--vscode-disabledForeground)]">
                   No results.
                 </td>
               </tr>
             )}
           </tbody>
           {table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer)) && (
-             <tfoot className="bg-zinc-50 dark:bg-zinc-800 font-medium text-zinc-900 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 sticky bottom-0 z-10 shadow-sm">
+             <tfoot className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)] border-t border-[var(--vscode-widget-border)] sticky bottom-0 z-10 shadow-sm">
                {table.getFooterGroups().map((footerGroup) => (
                  <tr key={footerGroup.id}>
                    {footerGroup.headers.map((header) => (
@@ -174,7 +179,7 @@ export function DataTable<TData, TValue>({
 
        {/* Pagination */}
        {table.getPageCount() > 1 && (
-        <div className="flex items-center justify-between px-2 py-2 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center justify-between px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] text-xs text-[var(--vscode-foreground)]">
              <div className="flex items-center space-x-2">
                 <span className="flex items-center gap-1">
                     <div>Page</div>
@@ -182,7 +187,7 @@ export function DataTable<TData, TValue>({
                         {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
                     </strong>
                 </span>
-                <span className="hidden sm:inline-block text-zinc-400">|</span>
+                <span className="hidden sm:inline-block opacity-50">|</span>
                 <span className="hidden sm:flex items-center gap-1">
                     Go to page:
                     <input
@@ -191,18 +196,18 @@ export function DataTable<TData, TValue>({
                         max={table.getPageCount()}
                         value={table.getState().pagination.pageIndex + 1}
                         onChange={e => {
-                            const page = e.target.value ? Number(e.target.value) - 1 : 0
-                            table.setPageIndex(page)
+                            const page = e.target.value ? Number(e.target.value) - 1 : 0;
+                            table.setPageIndex(page);
                         }}
-                        className="border p-1 rounded w-16 bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none m-0"
+                        className="border p-1 rounded w-16 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] appearance-none m-0"
                     />
                 </span>
                 <select
                     value={table.getState().pagination.pageSize}
                     onChange={e => {
-                        table.setPageSize(Number(e.target.value))
+                        table.setPageSize(Number(e.target.value));
                     }}
-                    className="border p-1 rounded bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="border p-1 rounded bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)]"
                 >
                     {[10, 20, 30, 40, 50, 100].map(pageSize => (
                         <option key={pageSize} value={pageSize}>
@@ -213,28 +218,28 @@ export function DataTable<TData, TValue>({
              </div>
             <div className="flex items-center space-x-1">
                 <button
-                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => table.setPageIndex(0)}
                     disabled={!table.getCanPreviousPage()}
                 >
                     <ChevronsLeft className="h-4 w-4" />
                 </button>
                 <button
-                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                 >
                     <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
-                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                 >
                     <ChevronRight className="h-4 w-4" />
                 </button>
                 <button
-                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                     disabled={!table.getCanNextPage()}
                 >
@@ -243,6 +248,7 @@ export function DataTable<TData, TValue>({
             </div>
         </div>
       )}
+
     </div>
-  )
+  );
 }

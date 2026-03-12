@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useEffect, useState} from 'react';
+import React, {useCallback, useRef, useEffect, useState, useMemo} from 'react';
 import {
   ReactFlow,
   Controls,
@@ -9,13 +9,22 @@ import {
   ReactFlowProvider,
   ReactFlowInstance,
   Node,
-  Edge
+  Edge,
+  MarkerType,
+  getNodesBounds,
+  getViewportForBounds,
+  Panel
 } from '@xyflow/react';
+import { toPng } from 'html-to-image';
 import '@xyflow/react/dist/style.css';
+import { DataTable } from '../components/ui/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
 import { getVsCodeApi } from './vscode';
 import StyledSelect, { OptionType } from './components/StyledSelect';
+import DownloadButton from './DownloadButton';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -24,6 +33,14 @@ const nodeTypes = {
 // Get vscode API
 // @ts-ignore
 const vscode = getVsCodeApi();
+
+interface ModelData {
+  id: string;
+  modelName: string;
+  datasetId: string;
+  type: string;
+  tags: string[];
+}
 
 // Add this new Legend component at the top of the file, before the Flow component
 const Legend: React.FC<{ datasetColorMap: Map<string, string> }> = ({ datasetColorMap }) => {
@@ -60,6 +77,9 @@ const Flow: React.FC = () => {
   const [_, setIsReady] = useState<boolean>(false);
   const [tableOptions, setTableOptions] = useState<OptionType[]>([]);
   const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
+  const [rootNodeId, setRootNodeId] = useState<string | null>(null);
+  const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -97,6 +117,19 @@ const Flow: React.FC = () => {
           );
           setNodes(positionedNodes);
           setEdges(positionedEdges);
+
+          if (currentActiveEditorIdx) {
+            setRootNodeId(currentActiveEditorIdx);
+          }
+
+          // Initial fitView 
+          setTimeout(() => {
+            if (reactFlowInstance.current) {
+              reactFlowInstance.current.fitView({
+                maxZoom: 2.5,
+              });
+            }
+          }, 100);
 
           setTableOptions(initialNodesStatic.map((node: any) => ({
             value: node.id,
@@ -155,6 +188,7 @@ const Flow: React.FC = () => {
 
         setNodes(positionedNodes);
         setEdges(positionedEdges);
+        setRootNodeId(option.value);
 
         if (reactFlowInstance.current) {
             reactFlowInstance.current?.fitView({
@@ -214,34 +248,256 @@ const Flow: React.FC = () => {
     // get the dependent and dependecies of the clicked node
     const filteredEdges = fullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);
     const filteredNodes = fullNodes.filter((n: Node) => filteredEdges.some((edge: Edge) => edge.source === n.id || edge.target === n.id));
-    // add to the current nodes and edges the filtered nodes and edges
-    setNodes([...nodes, ...filteredNodes]);
-    setEdges([...edges, ...filteredEdges]);
+    
+    // add to the current nodes and edges the filtered nodes and edges, preventing duplicates
+    const combinedNodes = [...nodes];
+    filteredNodes.forEach(fn => {
+      if (!combinedNodes.some(n => n.id === fn.id)) {
+        combinedNodes.push(fn);
+      }
+    });
+
+    const combinedEdges = [...edges];
+    filteredEdges.forEach(fe => {
+      if (!combinedEdges.some(e => e.id === fe.id)) {
+        combinedEdges.push(fe);
+      }
+    });
+
     // recompute the positions of the nodes
     const filteredNodesWithPosition = nodePositioning(
-      [...nodes, ...filteredNodes],
-      [...edges, ...filteredEdges],
+      combinedNodes,
+      combinedEdges,
     );
     setNodes(filteredNodesWithPosition.nodes);
     setEdges(filteredNodesWithPosition.edges);
+    setRootNodeId(node.id);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: node.id }],
+        duration: 800,
+        maxZoom: 0.8,
+        padding: 0.2,
+      });
+    }
   }, [fullNodes, fullEdges, nodes, edges, setNodes, setEdges]);
 
+  const expandToLeft = () => {
+    if (!rootNodeId) {return;}
+
+    const visitedNodes = new Set<string>();
+    const visitedEdges = new Set<string>();
+    const stack = [rootNodeId];
+
+    while (stack.length > 0) {
+      const currentNodeId = stack.pop()!;
+      if (visitedNodes.has(currentNodeId)) {continue;}
+      visitedNodes.add(currentNodeId);
+
+      const upstreamEdges = fullEdges.filter(edge => edge.target === currentNodeId);
+      upstreamEdges.forEach(edge => {
+        if (!visitedEdges.has(edge.id)) {
+          visitedEdges.add(edge.id);
+          stack.push(edge.source);
+        }
+      });
+    }
+
+    const filteredNodes = fullNodes.filter(node => visitedNodes.has(node.id));
+    const filteredEdges = fullEdges.filter(edge => visitedEdges.has(edge.id));
+
+    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: rootNodeId }],
+        duration: 800,
+        maxZoom: 0.8,
+        padding: 0.2,
+      });
+    }
+  };
+
+  const expandToRight = () => {
+    if (!rootNodeId) {return;}
+
+    const visitedNodes = new Set<string>();
+    const visitedEdges = new Set<string>();
+    const stack = [rootNodeId];
+
+    while (stack.length > 0) {
+      const currentNodeId = stack.pop()!;
+      if (visitedNodes.has(currentNodeId)) {continue;}
+      visitedNodes.add(currentNodeId);
+
+      const downstreamEdges = fullEdges.filter(edge => edge.source === currentNodeId);
+      downstreamEdges.forEach(edge => {
+        if (!visitedEdges.has(edge.id)) {
+          visitedEdges.add(edge.id);
+          stack.push(edge.target);
+        }
+      });
+    }
+
+    const filteredNodes = fullNodes.filter(node => visitedNodes.has(node.id));
+    const filteredEdges = fullEdges.filter(edge => visitedEdges.has(edge.id));
+
+    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: rootNodeId }],
+        duration: 800,
+        maxZoom: 1.0,
+        padding: 0.2,
+      });
+    }
+  };
+
+  const handleDownload = () => {
+    if (nodes.length === 0) {return;}
+    setIsDownloading(true);
+
+    // Use setTimeout to allow React to render the loading state before the heavy processing begins
+    setTimeout(() => {
+      const nodesBounds = getNodesBounds(nodes);
+      const padding = 50;
+      const imageWidth = nodesBounds.width + (padding * 2);
+      const imageHeight = nodesBounds.height + (padding * 2);
+
+      const transform = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        0.5,
+        2,
+        0.2
+      );
+
+      const targetElement = document.querySelector('.react-flow') as HTMLElement;
+      if (!targetElement) {
+        setIsDownloading(false);
+        return;
+      };
+
+      const viewport = targetElement.querySelector('.react-flow__viewport') as HTMLElement;
+      const legend = targetElement.querySelector('.export-legend') as HTMLElement;
+      
+      const originalViewportStyle = viewport?.style.cssText;
+      const originalLegendDisplay = legend?.style.display;
+
+      if (viewport) {
+        viewport.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`;
+      }
+      if (legend) {
+        legend.classList.remove('hidden');
+        legend.style.display = 'block';
+      }
+
+      const computedBackground = getComputedStyle(document.documentElement).getPropertyValue('--vscode-editor-background').trim() || '#ffffff';
+
+      toPng(targetElement, {
+        backgroundColor: computedBackground,
+        width: imageWidth,
+        height: imageHeight,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+        },
+        pixelRatio: 3,
+        filter: (node: HTMLElement) => {
+          // Filter out controls and other UI elements that shouldn't be in the export
+          const exclusionClasses = ['react-flow__controls', 'react-flow__attribution'];
+          return !exclusionClasses.some(className => node.classList?.contains(className));
+        },
+      }).then((dataUrl) => {
+        vscode.postMessage({
+          type: 'saveGraphImage',
+          value: {
+            dataUrl,
+            format: 'png',
+          }
+        });
+        
+        // Revert styles
+        if (viewport) {
+          viewport.style.cssText = originalViewportStyle;
+        }
+        if (legend) {
+          legend.classList.add('hidden');
+          legend.style.display = originalLegendDisplay || 'none';
+        }
+        setIsDownloading(false);
+      }).catch((err) => {
+        console.error('Failed to download image', err);
+        // Revert styles on error too
+        if (viewport) {
+          viewport.style.cssText = originalViewportStyle;
+        }
+        if (legend) {
+          legend.classList.add('hidden');
+          legend.style.display = originalLegendDisplay || 'none';
+        }
+        setIsDownloading(false);
+      });
+    }, 0);
+  };
+
+  const handleRowClick = useCallback((model: ModelData) => {
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        nodes: [{ id: model.id }],
+        duration: 800,
+        maxZoom: 0.8,
+        padding: 0.2,
+      });
+    }
+  }, []);
+
+  const activeDatasets = new Set(nodes.map((node: any) => node.data?.datasetId as string).filter(Boolean));
+  const activeDatasetColorMap = new Map(
+    Array.from(datasetColorMap.entries()).filter(([dataset]) => activeDatasets.has(dataset))
+  );
+
+  const tableData = useMemo<ModelData[]>(() => {
+    return nodes.map(node => ({
+      id: node.id,
+      modelName: node.data.modelName as string,
+      datasetId: node.data.datasetId as string,
+      type: node.data.type as string,
+      tags: node.data.tags as string[],
+    }));
+  }, [nodes]);
+
+  const columns = useMemo<ColumnDef<ModelData>[]>(() => [
+    {
+      accessorKey: "modelName",
+      header: "Model Name",
+      size: 300,
+    },
+  ], []);
+
   return (
-    <div className="h-full">
+    <div className="flex flex-col h-full bg-[var(--vscode-editor-background)]">
       {/* Add message display */}
       {message && (
-        <div className="p-4 bg-blue-100 text-blue-800 mb-4">
+        <div className="p-4 bg-blue-100 text-blue-800 mb-4 mx-4 mt-4 rounded">
           Message from extension: {message}
         </div>
       )}
       
-      {/* Add the Legend component here, before the search dropdown */}
-      <div className="p-4">
-        {datasetColorMap.size > 0 && (
-          <Legend datasetColorMap={datasetColorMap} />
+      {/* Search and Legend Section */}
+      <div className="p-4 border-b border-[var(--vscode-widget-border)]">
+        {activeDatasetColorMap.size > 0 && (
+          <Legend datasetColorMap={activeDatasetColorMap} />
         )}
         
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <StyledSelect
             options={tagOptions}
             onChange={handleTagSelect}
@@ -257,42 +513,115 @@ const Flow: React.FC = () => {
             placeholder="Search for a table..."
             width="w-1/3"
           />
+
+          <div className="flex gap-2">
+            <button
+              onClick={expandToLeft}
+              disabled={!rootNodeId}
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+            >
+              Expand to left
+            </button>
+            <button
+              onClick={expandToRight}
+              disabled={!rootNodeId}
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+            >
+              Expand to right
+            </button>
+            <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
+          </div>
         </div>
       </div>
       
-      {nodes.length > 0 ? (
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onInit={(instance) => {
-            reactFlowInstance.current = instance;
-          }}
-          fitView
-        >
-          <Controls />
-          {/* @ts-ignore */}
-          <Background variant="dots" gap={12} size={1} />
-        </ReactFlow>
-      ) : (
-        <div className="flex items-center justify-center h-[80vh] text-gray-400">
-          Select a table to view its dependencies
+      {/* Main Content Area: Side-by-Side Layout */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Left Side: Dependency Graph */}
+        <div className="flex-1 relative border-r border-[var(--vscode-widget-border)]">
+          {nodes.length > 0 ? (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              onInit={(instance) => {
+                reactFlowInstance.current = instance;
+              }}
+              defaultEdgeOptions={{
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: '#b1b1b7',
+                },
+                style: {
+                  strokeWidth: 2,
+                  stroke: '#b1b1b7',
+                },
+              }}
+              fitView
+              minZoom={0.1}
+              maxZoom={4}
+            >
+              <Controls />
+              {/* @ts-ignore */}
+              <Background variant="dots" gap={12} size={1} />
+              {activeDatasetColorMap.size > 0 && (
+                <Panel position="top-right" className="export-legend hidden">
+                  <Legend datasetColorMap={activeDatasetColorMap} />
+                </Panel>
+              )}
+            </ReactFlow>
+          ) : (
+            <div className="flex items-center justify-center h-full text-zinc-500 font-medium">
+              Select a table to view its dependencies
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right Side: Active Models Table */}
+        {nodes.length > 0 && (
+          <div className={`${isTableCollapsed ? 'w-10' : 'w-96'} flex flex-col bg-[var(--vscode-sideBar-background)] overflow-hidden transition-all duration-300 ease-in-out border-l border-[var(--vscode-widget-border)]`}>
+            <div className={`p-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] flex items-center ${isTableCollapsed ? 'justify-center p-2' : 'justify-between'}`}>
+              {!isTableCollapsed && (
+                <h3 className="text-sm font-bold text-[var(--vscode-foreground)] uppercase tracking-wider truncate mr-2">
+                  Active Models ({nodes.length})
+                </h3>
+              )}
+              <button
+                onClick={() => setIsTableCollapsed(!isTableCollapsed)}
+                className="p-1 hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors text-[var(--vscode-foreground)]"
+                title={isTableCollapsed ? "Expand section" : "Collapse section"}
+              >
+                {isTableCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+              </button>
+            </div>
+            {!isTableCollapsed && (
+              <div className="flex-1 overflow-hidden p-2">
+                <DataTable 
+                  columns={columns} 
+                  data={tableData} 
+                  searchPlaceholder="Filter models..."
+                  onRowClick={handleRowClick}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <div className="p-4 min-h-screen">
-      <h2 className="text-2xl font-bold text-white-600">Dataform dependency graph</h2>
+    <div className="h-screen flex flex-col">
+      <div className="px-6 py-4 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-widget-border)]">
+        <h2 className="text-xl font-bold text-[var(--vscode-foreground)]">Dataform Dependency Graph</h2>
+      </div>
 
-      <div style={{ width: '100vw', height: '100vh' }}>
+      <div className="flex-1 overflow-hidden">
         <ReactFlowProvider>
           <Flow />
         </ReactFlowProvider>
