@@ -82,7 +82,7 @@ function parseObject(key:any, obj: any, _childrens: any) {
 }
 
 
-function createTabulatorColumns(data: any | any[]) {
+function createDataColumns(data: any | any[]) {
     if (!data) {
         return [];
     }
@@ -233,7 +233,7 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
                 let _childrens: any = [];
                 _childrens = parseObject(key, value, _childrens);
 
-                // Nested object in Tabulator are displayed by adding the key _children to the exsisting array
+                // Nested object support. This if statement might not be robust
                 if (obj._children) {
                     for (let i = 0; i < _childrens.length; i++) {
                         if (obj._children[i]) {
@@ -310,7 +310,7 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
         return obj;
     });
 
-    let columns = createTabulatorColumns(results);
+    let columns = createDataColumns(results);
 
     return { results: results, columns: columns, jobStats: jobStats, errorMessage: errorMessage };
 }

@@ -2,36 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Tabulator Styles (if needed to override or supplement) */
-.tabulator {
-    background-color: var(--vscode-editor-background);
-    color: var(--vscode-editor-foreground);
-    border: none;
-}
-
-.tabulator .tabulator-header {
-    background-color: var(--vscode-sideBarSectionHeader-background);
-    color: var(--vscode-foreground);
-    border-bottom: 1px solid var(--vscode-widget-border);
-}
-
-.tabulator .tabulator-row {
-    background-color: var(--vscode-editor-background);
-}
-
-.tabulator .tabulator-row:hover {
-    background-color: var(--vscode-list-hoverBackground);
-}
-
-.tabulator .tabulator-cell {
-    border-right: 1px solid var(--vscode-widget-border);
-}
-
-.tabulator .tabulator-row:nth-child(even) {
-    background-color: var(--vscode-editor-background);
-    opacity: 0.9;
-}
-
 /* Theme-aware Syntax Highlighting (Highlight.js) */
 :root {
     --hljs-bg: var(--vscode-editor-background);

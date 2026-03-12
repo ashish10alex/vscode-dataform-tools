@@ -158,7 +158,4 @@ export const defaultCdnLinks = {
   highlightJsOneDarkThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css",
   highlightJsOneLightThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-light.min.css",
   highlightJsLineNoExtUri: "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
-  tabulatorDarkCssUri: "https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_midnight.min.css",
-  tabulatorLightCssUri: "https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css",
-  tabulatorUri: "https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js",
 };
