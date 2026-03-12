@@ -114,8 +114,27 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
 
                     if (uri) {
                         try {
-                            const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
-                            const fileData = Buffer.from(base64Data, 'base64');
+                            if (!dataUrl) {
+                                throw new Error('No data URL provided');
+                            }
+
+                            const commaIndex = dataUrl.indexOf(',');
+                            if (commaIndex === -1) {
+                                throw new Error('Invalid data URL format: missing comma');
+                            }
+
+                            const prefix = dataUrl.substring(0, commaIndex);
+                            if (!/^data:[^;]+;base64$/.test(prefix)) {
+                                throw new Error('Invalid data URL format: not a base64 encoded image');
+                            }
+
+                            const base64Data = dataUrl.substring(commaIndex + 1);
+                            let fileData: Buffer;
+                            try {
+                                fileData = Buffer.from(base64Data, 'base64');
+                            } catch (error: any) {
+                                throw new Error(`Failed to decode base64 data: ${error.message}`);
+                            }
                             
                             await vscode.workspace.fs.writeFile(
                                 uri,
@@ -123,6 +142,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                             );
                             vscode.window.showInformationMessage(`Graph saved successfully to ${uri.fsPath}`);
                         } catch (e: any) {
+                            logger.error(`Failed to save graph: ${e.message}`);
                             vscode.window.showErrorMessage(`Failed to save graph: ${e.message}`);
                         }
                     }
