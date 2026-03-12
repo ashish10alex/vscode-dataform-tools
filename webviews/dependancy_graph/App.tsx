@@ -12,7 +12,8 @@ import {
   Edge,
   MarkerType,
   getNodesBounds,
-  getViewportForBounds
+  getViewportForBounds,
+  Panel
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import '@xyflow/react/dist/style.css';
@@ -365,8 +366,9 @@ const Flow: React.FC = () => {
     // Use setTimeout to allow React to render the loading state before the heavy processing begins
     setTimeout(() => {
       const nodesBounds = getNodesBounds(nodes);
-      const imageWidth = nodesBounds.width + 100;
-      const imageHeight = nodesBounds.height + 100;
+      const padding = 50;
+      const imageWidth = nodesBounds.width + (padding * 2);
+      const imageHeight = nodesBounds.height + (padding * 2);
 
       const transform = getViewportForBounds(
         nodesBounds,
@@ -377,13 +379,26 @@ const Flow: React.FC = () => {
         0.2
       );
 
-      const targetElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+      const targetElement = document.querySelector('.react-flow') as HTMLElement;
       if (!targetElement) {
         setIsDownloading(false);
         return;
       };
 
-      const originalStyle = targetElement.style.cssText;
+      const viewport = targetElement.querySelector('.react-flow__viewport') as HTMLElement;
+      const legend = targetElement.querySelector('.export-legend') as HTMLElement;
+      
+      const originalViewportStyle = viewport?.style.cssText;
+      const originalLegendDisplay = legend?.style.display;
+
+      if (viewport) {
+        viewport.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`;
+      }
+      if (legend) {
+        legend.classList.remove('hidden');
+        legend.style.display = 'block';
+      }
+
       const computedBackground = getComputedStyle(document.documentElement).getPropertyValue('--vscode-editor-background').trim() || '#ffffff';
 
       toPng(targetElement, {
@@ -393,11 +408,13 @@ const Flow: React.FC = () => {
         style: {
           width: `${imageWidth}px`,
           height: `${imageHeight}px`,
-          transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
-          'stroke': '#b1b1b7',
-          strokeWidth: '2px',
         },
         pixelRatio: 3,
+        filter: (node: HTMLElement) => {
+          // Filter out controls and other UI elements that shouldn't be in the export
+          const exclusionClasses = ['react-flow__controls', 'react-flow__attribution'];
+          return !exclusionClasses.some(className => node.classList?.contains(className));
+        },
       }).then((dataUrl) => {
         vscode.postMessage({
           type: 'saveGraphImage',
@@ -406,11 +423,26 @@ const Flow: React.FC = () => {
             format: 'png',
           }
         });
-        targetElement.style.cssText = originalStyle;
+        
+        // Revert styles
+        if (viewport) {
+          viewport.style.cssText = originalViewportStyle;
+        }
+        if (legend) {
+          legend.classList.add('hidden');
+          legend.style.display = originalLegendDisplay || 'none';
+        }
         setIsDownloading(false);
       }).catch((err) => {
         console.error('Failed to download image', err);
-        targetElement.style.cssText = originalStyle;
+        // Revert styles on error too
+        if (viewport) {
+          viewport.style.cssText = originalViewportStyle;
+        }
+        if (legend) {
+          legend.classList.add('hidden');
+          legend.style.display = originalLegendDisplay || 'none';
+        }
         setIsDownloading(false);
       });
     }, 0);
@@ -535,6 +567,11 @@ const Flow: React.FC = () => {
               <Controls />
               {/* @ts-ignore */}
               <Background variant="dots" gap={12} size={1} />
+              {activeDatasetColorMap.size > 0 && (
+                <Panel position="top-right" className="export-legend hidden">
+                  <Legend datasetColorMap={activeDatasetColorMap} />
+                </Panel>
+              )}
             </ReactFlow>
           ) : (
             <div className="flex items-center justify-center h-full text-zinc-500 font-medium">
