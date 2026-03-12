@@ -180,7 +180,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const target = model.target;
             const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
 
-            if (!target) return null;
+            if (!target) { return null; }
 
             return (
               <div
@@ -285,7 +285,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                            <ExternalLink className="w-3 h-3" />
                                        </button>
                                    </li>
-                               )
+                               );
                            })
                        ))}
                    </ul>
@@ -319,7 +319,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                                <ExternalLink className="w-3 h-3" />
                                            </button>
                                     </li>
-                                 )
+                                 );
                             })}
                         </ul>
                     )}
