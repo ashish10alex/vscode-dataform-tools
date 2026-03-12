@@ -375,9 +375,10 @@ const Flow: React.FC = () => {
     if (!targetElement) {return;};
 
     const originalStyle = targetElement.style.cssText;
+    const computedBackground = getComputedStyle(document.documentElement).getPropertyValue('--vscode-editor-background').trim() || '#ffffff';
 
     toPng(targetElement, {
-      backgroundColor: '#ffffff',
+      backgroundColor: computedBackground,
       width: imageWidth,
       height: imageHeight,
       style: {
