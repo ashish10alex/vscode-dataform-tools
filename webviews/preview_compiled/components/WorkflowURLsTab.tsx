@@ -210,7 +210,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                             <span
                                                 className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                                                     item.fullRefresh
-                                                        ? 'bg-[var(--vscode-extensionIcon-preReleaseForeground)] opacity-30 border-[var(--vscode-extensionIcon-preReleaseForeground)] text-[var(--vscode-foreground)]'
+                                                        ? 'bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border-[var(--vscode-badge-background)]'
                                                         : 'bg-[var(--vscode-sideBar-background)] border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]'
                                                 }`}
                                             >
@@ -219,7 +219,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                             <span
                                                 className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                                                     item.includeDependencies
-                                                        ? 'bg-[var(--vscode-extensionIcon-preReleaseForeground)] opacity-30 border-[var(--vscode-extensionIcon-preReleaseForeground)] text-[var(--vscode-foreground)]'
+                                                        ? 'bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border-[var(--vscode-badge-background)]'
                                                         : 'bg-[var(--vscode-sideBar-background)] border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]'
                                                 }`}
                                             >
@@ -228,7 +228,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                             <span
                                                 className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                                                     item.includeDependents
-                                                        ? 'bg-[var(--vscode-extensionIcon-preReleaseForeground)] opacity-30 border-[var(--vscode-extensionIcon-preReleaseForeground)] text-[var(--vscode-foreground)]'
+                                                        ? 'bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border-[var(--vscode-badge-background)]'
                                                         : 'bg-[var(--vscode-sideBar-background)] border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]'
                                                 }`}
                                             >
