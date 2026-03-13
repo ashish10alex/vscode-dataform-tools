@@ -1,9 +1,9 @@
-import type { WorkflowUrlEntry } from "../../src/types";
+import type { WorkflowUrlEntry, ProjectConfig } from "../../src/types";
 
 export interface LastModifiedTimeMetaItem {
-  lastModifiedTime?: string;
-  modelWasUpdatedToday?: boolean;
-  error?: { message?: string };
+  lastModifiedTime: string | undefined;
+  modelWasUpdatedToday: boolean | undefined;
+  error: { message: string | undefined };
 }
 
 export interface WebviewState {
@@ -52,6 +52,7 @@ export interface WebviewState {
   workflowUrls?: WorkflowUrlEntry[];
   missingExecutables?: string[];
   dataformCoreVersion?: string;
+  projectConfig?: ProjectConfig;
 }
 
 export interface Target {

@@ -1,7 +1,7 @@
 import  { useState, useEffect } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
 import { vscode } from './utils/vscode';
-import { Loader2, AlertCircle, MessageSquareWarning, Info  } from 'lucide-react';
+import { Loader2, AlertCircle, MessageSquareWarning, Info, Settings  } from 'lucide-react';
 import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -10,10 +10,13 @@ import { WorkflowURLsTab } from './components/WorkflowURLsTab';
 import DOMPurify from 'dompurify';
 
 import { DeclarationsView } from './components/DeclarationsView';
+import { ProjectConfigTab } from './components/ProjectConfigTab';
 
 function App() {
   const state = useVSCodeMessage();
-  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls'>('compilation');
+  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
+
+  const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json';
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
@@ -66,6 +69,14 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json') {
+      setActiveTab('project_config');
+    } else if (activeTab === 'project_config') {
+      setActiveTab('compilation');
+    }
+  }, [state.relativeFilePath, activeTab]);
+
   // Handle declarations view (full page override)
   if (state.declarations) {
     return <DeclarationsView declarations={state.declarations} />;
@@ -85,63 +96,87 @@ function App() {
   return (
     <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
       {/* Header / Tabs */}
-      <div className="flex items-center space-x-4 p-4 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] z-10">
-        <button
-          onClick={() => setActiveTab('compilation')}
-          className={clsx(
-            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-            activeTab === 'compilation' 
-              ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-              : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-          )}
-        >
-          Compiled Query
-        </button>
-        <button
-          onClick={() => setActiveTab('schema')}
-          className={clsx(
-            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-            activeTab === 'schema' 
-              ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-              : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-          )}
-        >
-          Schema
-        </button>
-        <button
-          onClick={() => setActiveTab('cost')}
-          className={clsx(
-            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-            activeTab === 'cost' 
-              ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-              : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-          )}
-        >
-          Cost Estimator
-        </button>
-        <button
-          onClick={() => setActiveTab('workflow_urls')}
-          className={clsx(
-            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-            activeTab === 'workflow_urls' 
-              ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-              : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-          )}
-        >
-          Workflow Executions
-        </button>
-        
-        <div className="flex-grow"></div>
-        
-        <a 
-            href="https://github.com/ashish10alex/vscode-dataform-tools/issues" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-        >
-            Report an issue
-            <MessageSquareWarning className="w-3 h-3 ml-1" />
-        </a>
+      <div className="flex items-center w-full p-4 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] z-10">
+        {/* Tab Navigation */}
+        {!isConfigFile && (
+          <div className="flex items-center space-x-2 flex-grow overflow-x-auto scrollbar-thin">
+            <button
+              onClick={() => setActiveTab('compilation')}
+              className={clsx(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                activeTab === 'compilation' 
+                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
+                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+              )}
+            >
+              Compiled Query
+            </button>
+            <button
+              onClick={() => setActiveTab('schema')}
+              className={clsx(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                activeTab === 'schema' 
+                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
+                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+              )}
+            >
+              Schema
+            </button>
+            <button
+              onClick={() => setActiveTab('cost')}
+              className={clsx(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                activeTab === 'cost' 
+                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
+                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+              )}
+            >
+              Cost Estimator
+            </button>
+            <button
+              onClick={() => setActiveTab('workflow_urls')}
+              className={clsx(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                activeTab === 'workflow_urls' 
+                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
+                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+              )}
+            >
+              Workflow Executions
+            </button>
+            
+            <div className="flex-grow"></div>
+            
+            <a 
+                href="https://github.com/ashish10alex/vscode-dataform-tools/issues" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
+            >
+                Report an issue
+                <MessageSquareWarning className="w-3 h-3 ml-1" />
+            </a>
+          </div>
+        )}
+
+        {isConfigFile && (
+          <div className="flex items-center w-full">
+            <h2 className="text-sm font-semibold text-[var(--vscode-foreground)] flex items-center">
+              <Settings className="w-4 h-4 mr-2" />
+              Project Configuration
+            </h2>
+            <div className="flex-grow"></div>
+            <a 
+                href="https://github.com/ashish10alex/vscode-dataform-tools/issues" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
+            >
+                Report an issue
+                <MessageSquareWarning className="w-3 h-3 ml-1" />
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -284,10 +319,11 @@ function App() {
             </div>
         )}
 
-        {activeTab === 'compilation' && <CompiledQueryTab state={state} />}
-        {activeTab === 'schema' && <SchemaTab state={state} />}
-        {activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
+        {!isConfigFile && activeTab === 'compilation' && <CompiledQueryTab state={state} />}
+        {!isConfigFile && activeTab === 'schema' && <SchemaTab state={state} />}
+        {!isConfigFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
+        {!isConfigFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
+        {isConfigFile && <ProjectConfigTab state={state} />}
 
       </div>
     </div>

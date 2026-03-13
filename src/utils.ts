@@ -18,7 +18,7 @@ import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "
 import { GitService } from './gitClient';
 import { load as loadYaml, YAMLException } from 'js-yaml';
 
-let supportedExtensions = ['sqlx', 'js'];
+let supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
 
 export function formatTimestamp(lastModifiedTime:Date):string {
@@ -594,7 +594,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 extension: extension,
                 relativeFilePath: relativeFilePath
             },
-            document: document
+            document: document,
+            projectConfig: CACHED_COMPILED_DATAFORM_JSON.projectConfig,
+            dataformCoreVersion: CACHED_COMPILED_DATAFORM_JSON.dataformCoreVersion
         };
     }
     return undefined;
@@ -2106,25 +2108,42 @@ function parseNotebookFilenames(content: string): string[] {
   return filenames;
 }
 
-export async function readDataformCoreVersionFromWorkflowSettings(
+export async function readDataformCoreVersion(
   resolvedProjectPath: string
 ): Promise<string | undefined> {
   const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
+  const dataformJsonPath = path.join(resolvedProjectPath, "dataform.json");
+
+  let configPath = workflowSettingsPath;
   try {
     await fs.promises.access(workflowSettingsPath);
   } catch {
-    return;
+    try {
+      await fs.promises.access(dataformJsonPath);
+      configPath = dataformJsonPath;
+    } catch {
+      return;
+    }
   }
 
-  const workflowSettingsContent = await fs.promises.readFile(workflowSettingsPath, "utf-8");
-  let workflowSettingsAsJson: any = {};
-  try {
-    workflowSettingsAsJson = loadYaml(workflowSettingsContent);
-  } catch (e) {
-    if (e instanceof YAMLException) {
+  const content = await fs.promises.readFile(configPath, "utf-8");
+  let configAsJson: any = {};
+  if (configPath.endsWith(".yaml")) {
+    try {
+      configAsJson = loadYaml(content);
+    } catch (e) {
+      if (e instanceof YAMLException) {
+        return undefined;
+      }
+      throw e;
+    }
+  } else {
+    try {
+      configAsJson = JSON.parse(content);
+    } catch {
       return undefined;
     }
-    throw e;
   }
-  return workflowSettingsAsJson?.dataformCoreVersion;
+
+  return configAsJson?.dataformCoreVersion;
 }

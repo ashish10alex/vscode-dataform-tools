@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersionFromWorkflowSettings } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -85,7 +85,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 const workspaceFolder = await getWorkspaceFolder();
                 let dataformCoreVersion = undefined;
                 if (workspaceFolder) {
-                    dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+                    dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
                 }
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true,
@@ -487,7 +487,7 @@ export class CompiledQueryPanel {
         const workspaceFolder = await getWorkspaceFolder();
         let dataformCoreVersion = undefined;
         if (workspaceFolder) {
-            dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+            dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
         }
 
         const missingExecutables: string[] = [];
@@ -666,7 +666,9 @@ export class CompiledQueryPanel {
             "compilerOptions": compilerOptions,
             "workflowUrls": workflowUrls,
             "errorType": null,
-            "errorMessage": null
+            "errorMessage": null,
+            "projectConfig": curFileMeta.projectConfig,
+            "dataformCoreVersion": curFileMeta.dataformCoreVersion
     });
 
         if(diagnosticCollection){
@@ -827,7 +829,9 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "compilerOptions": compilerOptions,
                 "workflowUrls": workflowUrls,
-                "errorType": null
+                "errorType": null,
+                "projectConfig": curFileMeta.projectConfig,
+                "dataformCoreVersion": curFileMeta.dataformCoreVersion
             });
             this._cachedResults = { 
                 fileMetadata, 

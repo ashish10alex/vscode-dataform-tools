@@ -92,13 +92,14 @@ export interface Declarations {
     fileName: string;
 }
 
-interface ProjectConfig {
+export interface ProjectConfig {
     warehouse: string;
     defaultSchema: string;
     assertionSchema: string;
     defaultDatabase: string;
     tablePrefix: string;
     defaultLocation: string;
+    vars: { [key: string]: string };
 }
 
 export interface Operation {
@@ -144,6 +145,7 @@ export interface DataformCompiledJson {
     projectConfig: ProjectConfig;
     graphErrors: GraphErrors;
     notebooks: Notebook[];
+    dataformCoreVersion?: string;
 }
 
 export interface DryRunError {
@@ -276,6 +278,8 @@ export type CurrentFileMetadata = {
     };
     document?: TextDocument;
     compilationTimeMs?: number;
+    projectConfig?: ProjectConfig;
+    dataformCoreVersion?: string;
 };
 
 export type TagDryRunStats = {
@@ -380,6 +384,8 @@ export interface WebviewMessage {
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
   missingExecutables?: string[];
+  projectConfig?: ProjectConfig;
+  dataformCoreVersion?: string;
 }
 
 export type CreateCompilationResultResponse = Promise<
