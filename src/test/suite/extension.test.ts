@@ -285,14 +285,23 @@ suite("getDocumentSymbols", () => {
         const hasDatasetTableSingleLine = `\${ref("football_data", "GAMES")}`;
         const hasDataasetTableMultiline = `\${ref("football_data",\n     "GAME_EVENTS")}`;
         const hasProjectDatasetTable =         '${ref(\n' + '        "drawingfire-b72a8",\n' + '        "football_data",\n' + '        "GAME_EVENTS"\n' + '   )}';
-        const expectedSymbolNames = [`\${ref("PLAYERS")}`, `\${ref("PLAYER_VALUATIONS")}`, hasDatasetTableSingleLine  , hasDataasetTableMultiline  , hasProjectDatasetTable];
-        const expectedSymbolCount = 5;
+        const expectedSymbolNames = [
+            `\${ref("PLAYERS")}`, 
+            `\${ref("PLAYER_VALUATIONS")}`, 
+            hasDatasetTableSingleLine, 
+            hasDataasetTableMultiline, 
+            hasProjectDatasetTable,
+            "raw-project.raw-dataset.raw-table"
+        ];
+        const expectedSymbolTypes = ["ref", "ref", "ref", "ref", "ref", "bq_table"];
+        const expectedSymbolCount = 6;
         try {
             const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
             const document = await vscode.workspace.openTextDocument(uri);
             const symbols = getDocumentSymbols(document);
             symbols.forEach((symbol, index) => {
-                assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
+                assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name at index ${index}: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
+                assert.strictEqual(symbol.detail, expectedSymbolTypes[index], `Expected symbol detail (type) at index ${index}: ${expectedSymbolTypes[index]}, got: ${symbol.detail}`);
             });
             assert.strictEqual(symbols.length, expectedSymbolCount, `Expected ${expectedSymbolCount} symbols, got: ${symbols.length}`);
         } catch (error: any) {

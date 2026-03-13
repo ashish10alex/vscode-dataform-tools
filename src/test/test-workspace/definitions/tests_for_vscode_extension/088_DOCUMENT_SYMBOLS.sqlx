@@ -48,3 +48,18 @@ WITH PLAYERS AS (
 )
 
 SELECT * FROM PLAYERS
+
+-- Testing raw BigQuery table references
+raw-project.raw-dataset.raw-table
+
+-- These should be ignored
+-- ignored-project.ignored-dataset.ignored-table
+// also-ignored-project.also-ignored-dataset.also-ignored-table
+/* 
+block-ignored-project.block-ignored-dataset.block-ignored-table 
+*/
+
+-- This should be ignored because it is inside a template
+${
+  "project.dataset.table"
+}
