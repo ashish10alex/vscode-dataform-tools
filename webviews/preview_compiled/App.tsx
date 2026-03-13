@@ -319,11 +319,19 @@ function App() {
             </div>
         )}
 
-        {!isConfigFile && activeTab === 'compilation' && <CompiledQueryTab state={state} />}
-        {!isConfigFile && activeTab === 'schema' && <SchemaTab state={state} />}
-        {!isConfigFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {!isConfigFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
         {isConfigFile && <ProjectConfigTab state={state} />}
+        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.declarations && state.relativeFilePath?.endsWith('.js'))) && (
+            <div>
+                <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
+                    {state.relativeFilePath}
+                </code>
+            </div>
+        )}
+
+        {!isConfigFile && !state.isHelperFile && activeTab === 'compilation' && (state.tableOrViewQuery || state.declarations) && <CompiledQueryTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && activeTab === 'schema' && <SchemaTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
 
       </div>
     </div>

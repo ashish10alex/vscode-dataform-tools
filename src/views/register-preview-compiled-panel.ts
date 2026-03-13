@@ -513,7 +513,8 @@ export class CompiledQueryPanel {
             } else {
                 await webview.postMessage({
                     "missingExecutables": missingExecutables,
-                    "recompiling": false
+                    "recompiling": false,
+                    "isHelperFile": false
                 });
             }
             return;
@@ -528,7 +529,10 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "recompiling": true,
                 "compilerOptions": compilerOptions,
-                "dataformCoreVersion": dataformCoreVersion
+                "dataformCoreVersion": dataformCoreVersion,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "declarations": null
             });
         }
 
@@ -540,7 +544,8 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
                 "recompiling": false,
-                "errorType": null
+                "errorType": null,
+                "isHelperFile": false
             });
             return;
         }
@@ -552,14 +557,16 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
                 "recompiling": false,
-                "errorType": null
+                "errorType": null,
+                "isHelperFile": false
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await webview.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
                 "recompiling": false,
-                "errorType": null
+                "errorType": null,
+                "isHelperFile": false
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
@@ -567,14 +574,16 @@ export class CompiledQueryPanel {
                 "errorType": "FILE_NOT_FOUND",
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
-                "recompiling": false
+                "recompiling": false,
+                "isHelperFile": false
             });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             await webview.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
                 "recompiling": false,
-                "errorType": null
+                "errorType": null,
+                "isHelperFile": false
             });
             return;
         }
@@ -591,6 +600,7 @@ export class CompiledQueryPanel {
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
                 "packageJsonContent": curFileMeta.packageJsonContent,
                 "recompiling": false,
+                "isHelperFile": false,
                 "errorType": null,
                 "errorMessage": null
             });
@@ -635,24 +645,40 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": errorString,
                 "recompiling": false,
-                "errorType": null
+                "errorType": null,
+                "isHelperFile": false
             });
             return;
         }
         const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
-        if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) &&  isJs){
+        if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) && isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
                 if(CACHED_COMPILED_DATAFORM_JSON){
-                    if (!CACHED_COMPILED_DATAFORM_JSON?.declarations) { return; }
-                    const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
-                        .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
+                    if (CACHED_COMPILED_DATAFORM_JSON?.declarations) { 
+                        const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
+                            .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
 
-                    if(diagnosticCollection){
-                        diagnosticCollection.clear();
+                        if (filteredDeclarations.length > 0) {
+                            if(diagnosticCollection){
+                                diagnosticCollection.clear();
+                            }
+                            await webview.postMessage({
+                                "declarations": filteredDeclarations,
+                                "recompiling": false,
+                                "errorType": null,
+                                "errorMessage": null,
+                                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
+                                "isHelperFile": false
+                            });
+                            return;
+                        }
                     }
+                    
+                    // If it's a JS file but has no tables and no declarations, it's a helper file
                     await webview.postMessage({
-                        "declarations": filteredDeclarations,
+                        "isHelperFile": true,
                         "recompiling": false,
+                        "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "errorType": null,
                         "errorMessage": null
                     });
@@ -690,9 +716,9 @@ export class CompiledQueryPanel {
             "workflowUrls": workflowUrls,
             "errorType": null,
             "errorMessage": null,
-            "projectConfig": curFileMeta.projectConfig,
             "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-            "packageJsonContent": curFileMeta.packageJsonContent
+            "packageJsonContent": curFileMeta.packageJsonContent,
+            "isHelperFile": false
     });
 
         if(diagnosticCollection){
@@ -856,7 +882,8 @@ export class CompiledQueryPanel {
                 "errorType": null,
                 "projectConfig": curFileMeta.projectConfig,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "packageJsonContent": curFileMeta.packageJsonContent
+                "packageJsonContent": curFileMeta.packageJsonContent,
+                "isHelperFile": false
             });
             this._cachedResults = { 
                 fileMetadata, 

@@ -53,6 +53,7 @@ export interface WebviewState {
   missingExecutables?: string[];
   dataformCoreVersion?: string;
   projectConfig?: ProjectConfig;
+  isHelperFile?: boolean;
 }
 
 export interface Target {
