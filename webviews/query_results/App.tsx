@@ -74,10 +74,10 @@ export default function App() {
         }, 1000);
       }
       
-      if (msg.queryLimit) { setQueryLimit(msg.queryLimit); }
-      if (msg.incrementalCheckBox !== undefined) { setIncrementalCheckBox(msg.incrementalCheckBox); }
+      if ('queryLimit' in msg) { setQueryLimit(msg.queryLimit); }
+      if ('incrementalCheckBox' in msg) { setIncrementalCheckBox(msg.incrementalCheckBox); }
       if ('type' in msg) { setType(msg.type || ''); }
-      if (msg.bigQueryJobId) { setBigQueryJobId(msg.bigQueryJobId); }
+      if ('bigQueryJobId' in msg) { setBigQueryJobId(msg.bigQueryJobId); }
       
       if (msg.multiResults && msg.summaryData) {
         setMultiResults(true);
