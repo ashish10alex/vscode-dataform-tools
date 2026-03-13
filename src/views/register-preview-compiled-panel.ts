@@ -74,7 +74,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
         const fileExtension = document.fileName.split('.').pop();
-        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js')) {
+        const fileName = path.basename(document.fileName, '.' + fileExtension);
+        const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
+        
+        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js' || isConfigFile)) {
             return;
         }
         activeEditorFileName = document?.fileName;

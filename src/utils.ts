@@ -514,7 +514,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
-            if (fileMetadata?.tables?.length === 0) {
+            const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
+
+            if (fileMetadata?.tables?.length === 0 && !isConfigFile) {
                 return {
                     errors: { fileNotFoundError: true },
                     pathMeta: {
@@ -522,9 +524,11 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
+                    projectConfig: dataformCompiledJson.projectConfig,
+                    dataformCoreVersion: dataformCompiledJson.dataformCoreVersion,
                     packageJsonContent: packageJsonContent
                 };
-            } else if (fileMetadata?.queryMeta.error !== "") {
+            } else if (fileMetadata?.queryMeta && fileMetadata.queryMeta.error !== "" && !isConfigFile) {
                 return {
                     errors: { queryMetaError: fileMetadata?.queryMeta.error },
                     pathMeta: {
@@ -533,6 +537,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         relativeFilePath: relativeFilePath
                     },
                     compilationTimeMs: compilationTimeMs,
+                    projectConfig: dataformCompiledJson.projectConfig,
+                    dataformCoreVersion: dataformCompiledJson.dataformCoreVersion,
                     packageJsonContent: packageJsonContent
                 };
             };
@@ -557,6 +563,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 },
                 document: document,
                 compilationTimeMs: compilationTimeMs,
+                projectConfig: dataformCompiledJson.projectConfig,
+                dataformCoreVersion: dataformCompiledJson.dataformCoreVersion,
                 packageJsonContent: packageJsonContent
             };
         }
@@ -579,6 +587,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 },
                 document: document,
                 compilationTimeMs: compilationTimeMs,
+                projectConfig: (dataformCompiledJson as any)?.projectConfig,
+                dataformCoreVersion: (dataformCompiledJson as any)?.dataformCoreVersion,
                 packageJsonContent: packageJsonContent
             };
         }
