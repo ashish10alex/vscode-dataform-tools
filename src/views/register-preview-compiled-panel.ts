@@ -4,7 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -94,18 +94,6 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                     "recompiling": true,
                     "dataformCoreVersion": dataformCoreVersion,
                     "relativeFilePath": getRelativePath(document.fileName),
-                    "projectConfig": null,
-                    "packageJsonContent": null,
-                    "declarations": null,
-                    "isHelperFile": false,
-                    "tableOrViewQuery": null,
-                    "assertionQuery": null,
-                    "preOperations": null,
-                    "postOperations": null,
-                    "incrementalPreOpsQuery": null,
-                    "incrementalQuery": null,
-                    "nonIncrementalQuery": null,
-                    "operationsQuery": null
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
@@ -527,7 +515,12 @@ export class CompiledQueryPanel {
                 await webview.postMessage({
                     "missingExecutables": missingExecutables,
                     "recompiling": false,
-                    "isHelperFile": false
+                    "errorType": CompilationErrorType.MISSING_EXECUTABLE,
+                    "isHelperFile": false,
+                    "tableOrViewQuery": null,
+                    "projectConfig": null,
+                    "packageJsonContent": null,
+                    "declarations": null
                 });
             }
             return;
@@ -543,19 +536,7 @@ export class CompiledQueryPanel {
                 "recompiling": true,
                 "compilerOptions": compilerOptions,
                 "dataformCoreVersion": dataformCoreVersion,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "declarations": null,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "assertionQuery": null,
-                "preOperations": null,
-                "postOperations": null,
-                "incrementalPreOpsQuery": null,
-                "incrementalQuery": null,
-                "nonIncrementalQuery": null,
-                "operationsQuery": null
             });
         }
 
@@ -567,9 +548,12 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
                 "recompiling": false,
-                "errorType": null,
+                "errorType": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
                 "isHelperFile": false,
-                "declarations": null
+                "declarations": null,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null
             });
             return;
         }
@@ -581,34 +565,49 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
                 "recompiling": false,
-                "errorType": null,
-                "isHelperFile": false
+                "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await webview.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
                 "recompiling": false,
-                "errorType": null,
-                "isHelperFile": false
+                "errorType": CompilationErrorType.COMPILATION_ERROR,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
             await webview.postMessage({
-                "errorType": "FILE_NOT_FOUND",
+                "errorType": CompilationErrorType.FILE_NOT_FOUND,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
                 "recompiling": false,
-                "isHelperFile": false
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null
             });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             await webview.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
                 "recompiling": false,
-                "errorType": null,
+                "errorType": CompilationErrorType.QUERY_META_ERROR,
                 "isHelperFile": false,
-                "declarations": null
+                "declarations": null,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null
             });
             return;
         }
@@ -648,9 +647,12 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": errorString,
                 "recompiling": false,
-                "errorType": null,
+                "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
-                "declarations": null
+                "declarations": null,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null
             });
             return;
         }

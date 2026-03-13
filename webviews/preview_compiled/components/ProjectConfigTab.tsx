@@ -1,10 +1,8 @@
-import React from 'react';
 import { Settings, Package } from 'lucide-react';
-import { WebviewMessage } from '../../../src/types';
-import { CompilationError } from './CompilationError';
+import { WebviewState } from '../types';
 
 interface ProjectConfigTabProps {
-  state: WebviewMessage;
+  state: WebviewState;
 }
 
 export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => {
@@ -12,15 +10,8 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
     projectConfig, 
     dataformCoreVersion, 
     packageJsonContent, 
-    errorMessage, 
-    recompiling, 
-    missingExecutables, 
-    errorType 
   } = state;
 
-  if (recompiling) {
-    return null;
-  }
 
   if (packageJsonContent) {
     return (
@@ -43,14 +34,14 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
                 {packageJsonContent.dependencies && Object.entries(packageJsonContent.dependencies).map(([name, version]) => (
                   <tr key={name} className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
                     <td className="px-4 py-2 font-mono text-xs text-[var(--vscode-symbolIcon-variableForeground)]">{name}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{version}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{version as string}</td>
                     <td className="px-4 py-2 text-xs text-right opacity-70">dependency</td>
                   </tr>
                 ))}
                 {packageJsonContent.devDependencies && Object.entries(packageJsonContent.devDependencies).map(([name, version]) => (
                   <tr key={name} className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
                     <td className="px-4 py-2 font-mono text-xs text-[var(--vscode-symbolIcon-variableForeground)]">{name}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{version}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{version as string}</td>
                     <td className="px-4 py-2 text-xs text-right opacity-70">devDependency</td>
                   </tr>
                 ))}
@@ -63,9 +54,6 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
   }
 
   if (!projectConfig) {
-    if (errorMessage || (missingExecutables && missingExecutables.length > 0) || errorType === 'FILE_NOT_FOUND') {
-      return <CompilationError state={state} />;
-    }
     return (
       <div className="flex flex-col items-center justify-center h-64 opacity-50">
         <Settings className="w-12 h-12 mb-4" />

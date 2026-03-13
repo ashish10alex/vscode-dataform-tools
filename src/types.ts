@@ -314,6 +314,16 @@ export const supportedCurrencies = {
 } as const;
 
 export type SupportedCurrency = keyof typeof supportedCurrencies;
+  
+export enum CompilationErrorType {
+    NONE = "NONE",
+    COMPILATION_ERROR = "COMPILATION_ERROR",
+    MISSING_EXECUTABLE = "MISSING_EXECUTABLE",
+    FILE_NOT_FOUND = "FILE_NOT_FOUND",
+    NOT_A_DATAFORM_WORKSPACE = "NOT_A_DATAFORM_WORKSPACE",
+    UNSUPPORTED_FILE_TYPE = "UNSUPPORTED_FILE_TYPE",
+    QUERY_META_ERROR = "QUERY_META_ERROR"
+}
 
 export type LastModifiedTimeMeta = {
     lastModifiedTime: string | undefined;
@@ -373,7 +383,7 @@ export interface WebviewMessage {
   operationsQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
-  errorType?: string;
+  errorType?: CompilationErrorType;
   dryRunStat?: any; 
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;

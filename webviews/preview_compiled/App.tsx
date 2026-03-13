@@ -177,14 +177,14 @@ function App() {
                     <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
                 </div>
                 {state.dataformCoreVersion && (
-                    <div className="mt-4 border-l-[3px] border-[var(--vscode-textLink-foreground)] pl-4 py-2 mr-4 bg-[var(--vscode-sideBar-background)] rounded-r-md">
-                        <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-textLink-foreground)] mb-2">
+                    <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
+                        <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
                             <Info className="w-4 h-4" />
                             Note
                         </h4>
-                        <div className="text-sm text-[var(--vscode-foreground)] opacity-90 leading-relaxed">
+                        <div className="text-[13px] text-[var(--vscode-foreground)] opacity-90 leading-relaxed pr-2">
                             <p className="m-0">
-                                When specifying <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[13px] border border-[var(--vscode-widget-border)]">dataformCoreVersion</code> in <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[13px] border border-[var(--vscode-widget-border)]">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[13px] border border-[var(--vscode-widget-border)]">package.json</code>, and installs dataform core by running <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[13px] border border-[var(--vscode-widget-border)]">npm install</code>. This requires a network call and might take time if the dependency is not cached in your npm cache. You can avoid this bottleneck by creating a <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[13px] border border-[var(--vscode-widget-border)]">package.json</code> and specifying dataform core locally.
+                                When specifying <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">dataformCoreVersion</code> in <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>, and installs dataform core by running <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">npm install</code>. This requires a network call and might take time. To avoid this, create a local <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>.
                             </p>
                         </div>
                     </div>

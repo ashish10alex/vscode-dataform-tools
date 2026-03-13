@@ -1,4 +1,4 @@
-import type { WorkflowUrlEntry, ProjectConfig } from "../../src/types";
+import type { WorkflowUrlEntry, ProjectConfig, CompilationErrorType } from "../../src/types";
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;
@@ -17,7 +17,7 @@ export interface WebviewState {
   operationsQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
-  errorType?: string;
+  errorType?: CompilationErrorType;
   workspaceFolder?: string;
   dryRunStat?: string;
   modelType?: string;
@@ -53,6 +53,11 @@ export interface WebviewState {
   missingExecutables?: string[];
   dataformCoreVersion?: string;
   projectConfig?: ProjectConfig;
+  packageJsonContent?: {
+    name?: string;
+    dependencies?: { [key: string]: string };
+    devDependencies?: { [key: string]: string };
+  };
   isHelperFile?: boolean;
 }
 

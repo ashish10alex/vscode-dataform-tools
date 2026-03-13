@@ -56,44 +56,46 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
 
     return (
         <div className="flex flex-col space-y-4">
-            <div className="flex flex-col gap-3 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] shadow-sm">
-                <div className="text-sm">
-                    <h3 className="font-semibold text-[var(--vscode-foreground)] mb-1">Trigger Execution via API</h3>
-                    <p className="text-[var(--vscode-descriptionForeground)] text-xs text-balance">
-                        Run file(s) or tag(s) by triggering an execution in GCP using your Dataform API.
-                    </p>
-                </div>
-                
-                <div className="flex gap-4 mt-1">
-                    <div className="flex-1 flex flex-col gap-2">
-                        <button
-                            onClick={handleRunApi}
-                            className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] disabled:opacity-50 rounded transition-colors text-xs font-medium"
-                            title="Run execution using git branch"
-                        >
-                            <Play className="w-3.5 h-3.5" />
-                            <span>Run from Git Commit</span>
-                        </button>
-                        <p className="text-[11px] text-[var(--vscode-descriptionForeground)] leading-relaxed">
-                            Executes the committed code of your active git branch. Changes must be committed and pushed to the remote repository.
+            {!state.errorMessage && (
+                <div className="flex flex-col gap-3 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] shadow-sm">
+                    <div className="text-sm">
+                        <h3 className="font-semibold text-[var(--vscode-foreground)] mb-1">Trigger Execution via API</h3>
+                        <p className="text-[var(--vscode-descriptionForeground)] text-xs text-balance">
+                            Run file(s) or tag(s) by triggering an execution in GCP using your Dataform API.
                         </p>
                     </div>
+                    
+                    <div className="flex gap-4 mt-1">
+                        <div className="flex-1 flex flex-col gap-2">
+                            <button
+                                onClick={handleRunApi}
+                                className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] disabled:opacity-50 rounded transition-colors text-xs font-medium"
+                                title="Run execution using git branch"
+                            >
+                                <Play className="w-3.5 h-3.5" />
+                                <span>Run from Git Commit</span>
+                            </button>
+                            <p className="text-[11px] text-[var(--vscode-descriptionForeground)] leading-relaxed">
+                                Executes the committed code of your active git branch. Changes must be committed and pushed to the remote repository.
+                            </p>
+                        </div>
 
-                    <div className="flex-1 flex flex-col gap-2">
-                        <button
-                            onClick={handleRunWorkspace}
-                            className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] disabled:opacity-50 rounded transition-colors text-xs font-medium"
-                            title="Run execution using workspace code"
-                        >
-                            <Play className="w-3.5 h-3.5" />
-                            <span>Run from GCP Workspace</span>
-                        </button>
-                        <p className="text-[11px] text-[var(--vscode-descriptionForeground)] leading-relaxed">
-                            Executes local changes by syncing them to the remote GCP Dataform workspace. Useful for testing without needing to commit.
-                        </p>
+                        <div className="flex-1 flex flex-col gap-2">
+                            <button
+                                onClick={handleRunWorkspace}
+                                className="flex items-center justify-center space-x-1.5 py-1.5 px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] disabled:opacity-50 rounded transition-colors text-xs font-medium"
+                                title="Run execution using workspace code"
+                            >
+                                <Play className="w-3.5 h-3.5" />
+                                <span>Run from GCP Workspace</span>
+                            </button>
+                            <p className="text-[11px] text-[var(--vscode-descriptionForeground)] leading-relaxed">
+                                Executes local changes by syncing them to the remote GCP Dataform workspace. Useful for testing without needing to commit.
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {urls.length > 0 ? (
                 <div className="flex flex-col gap-2">
