@@ -520,7 +520,9 @@ export class CompiledQueryPanel {
                     "tableOrViewQuery": null,
                     "projectConfig": null,
                     "packageJsonContent": null,
-                    "declarations": null
+                    "declarations": null,
+                    "compiledQuerySchema": null,
+                    "dryRunStat": null
                 });
             }
             return;
@@ -553,7 +555,9 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "tableOrViewQuery": null,
                 "projectConfig": null,
-                "packageJsonContent": null
+                "packageJsonContent": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         }
@@ -570,7 +574,9 @@ export class CompiledQueryPanel {
                 "tableOrViewQuery": null,
                 "projectConfig": null,
                 "packageJsonContent": null,
-                "declarations": null
+                "declarations": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
@@ -582,7 +588,9 @@ export class CompiledQueryPanel {
                 "tableOrViewQuery": null,
                 "projectConfig": null,
                 "packageJsonContent": null,
-                "declarations": null
+                "declarations": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
@@ -607,7 +615,9 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "tableOrViewQuery": null,
                 "projectConfig": null,
-                "packageJsonContent": null
+                "packageJsonContent": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         }
@@ -652,7 +662,9 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "tableOrViewQuery": null,
                 "projectConfig": null,
-                "packageJsonContent": null
+                "packageJsonContent": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         }
