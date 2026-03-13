@@ -373,6 +373,7 @@ export interface WebviewMessage {
   operationsQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
+  errorType?: string;
   dryRunStat?: any; 
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;

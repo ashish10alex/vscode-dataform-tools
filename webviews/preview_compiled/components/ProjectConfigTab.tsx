@@ -1,13 +1,26 @@
 import React from 'react';
 import { Settings, Package } from 'lucide-react';
 import { WebviewMessage } from '../../../src/types';
+import { CompilationError } from './CompilationError';
 
 interface ProjectConfigTabProps {
   state: WebviewMessage;
 }
 
 export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => {
-  const { projectConfig, dataformCoreVersion, packageJsonContent } = state;
+  const { 
+    projectConfig, 
+    dataformCoreVersion, 
+    packageJsonContent, 
+    errorMessage, 
+    recompiling, 
+    missingExecutables, 
+    errorType 
+  } = state;
+
+  if (recompiling) {
+    return null;
+  }
 
   if (packageJsonContent) {
     return (
@@ -50,6 +63,9 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
   }
 
   if (!projectConfig) {
+    if (errorMessage || (missingExecutables && missingExecutables.length > 0) || errorType === 'FILE_NOT_FOUND') {
+      return <CompilationError state={state} />;
+    }
     return (
       <div className="flex flex-col items-center justify-center h-64 opacity-50">
         <Settings className="w-12 h-12 mb-4" />

@@ -587,28 +587,6 @@ export class CompiledQueryPanel {
             });
             return;
         }
-        const isConfigFile = curFileMeta.pathMeta && (
-            curFileMeta.pathMeta.filename === 'workflow_settings' || 
-            curFileMeta.pathMeta.filename === 'dataform' || 
-            (curFileMeta.pathMeta.filename === 'package' && curFileMeta.pathMeta.extension === 'json')
-        );
-
-        if (isConfigFile) {
-            await webview.postMessage({
-                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "projectConfig": curFileMeta.projectConfig,
-                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "packageJsonContent": curFileMeta.packageJsonContent,
-                "recompiling": false,
-                "isHelperFile": false,
-                "errorType": null,
-                "errorMessage": null
-            });
-            return;
-        }
-
-        updateSchemaAutoCompletions(curFileMeta);
-
         if(curFileMeta.errors?.dataformCompilationErrors){
             let errorString = "<h3>Error compiling Dataform:</h3><ul>";
 
@@ -650,7 +628,30 @@ export class CompiledQueryPanel {
             });
             return;
         }
+
+        const isConfigFile = curFileMeta.pathMeta && (
+            curFileMeta.pathMeta.filename === 'workflow_settings' || 
+            curFileMeta.pathMeta.filename === 'dataform' || 
+            (curFileMeta.pathMeta.filename === 'package' && curFileMeta.pathMeta.extension === 'json')
+        );
+
+        if (isConfigFile) {
+            await webview.postMessage({
+                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
+                "projectConfig": curFileMeta.projectConfig,
+                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+                "packageJsonContent": curFileMeta.packageJsonContent,
+                "recompiling": false,
+                "isHelperFile": false,
+                "errorType": null,
+                "errorMessage": null
+            });
+            return;
+        }
         const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
+        
+        updateSchemaAutoCompletions(curFileMeta);
+
         if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) && isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
                 if(CACHED_COMPILED_DATAFORM_JSON){
