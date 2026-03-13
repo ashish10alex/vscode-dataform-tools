@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -92,7 +92,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 }
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true,
-                    "dataformCoreVersion": dataformCoreVersion
+                    "dataformCoreVersion": dataformCoreVersion,
+                    "relativeFilePath": getRelativePath(document.fileName),
+                    "projectConfig": null,
+                    "packageJsonContent": null
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
@@ -532,7 +535,10 @@ export class CompiledQueryPanel {
                 "dataformCoreVersion": dataformCoreVersion,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
-                "declarations": null
+                "declarations": null,
+                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
+                "projectConfig": null,
+                "packageJsonContent": null
             });
         }
 

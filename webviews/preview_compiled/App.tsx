@@ -209,7 +209,13 @@ function App() {
             </div>
         )}
 
-        {!isConfigFile && !state.isHelperFile && activeTab === 'compilation' && (state.tableOrViewQuery || state.declarations) && <CompiledQueryTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && activeTab === 'compilation' && (
+          state.tableOrViewQuery || 
+          state.operationsQuery || 
+          state.assertionQuery || 
+          state.incrementalQuery || 
+          state.declarations
+        ) && <CompiledQueryTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'schema' && <SchemaTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
