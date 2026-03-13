@@ -387,7 +387,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
          </div>
        ) : (
          state.dryRunStat && (
-             <div className="bg-[var(--vscode-sideBar-background)] border border-[var(--vscode-widget-border)] border-l-4 border-l-[var(--vscode-extensionIcon-preReleaseForeground)] p-4 rounded shadow-sm flex items-start">
+             <div className="bg-[var(--vscode-diffEditor-insertedTextBackground)] border border-[var(--vscode-widget-border)] border-l-4 border-l-[var(--vscode-extensionIcon-preReleaseForeground)] p-4 rounded shadow-sm flex items-start">
                   <CheckCircle2 className="w-5 h-5 text-[var(--vscode-extensionIcon-preReleaseForeground)] mt-0.5 mr-2 flex-shrink-0" />
                   <div className="text-[var(--vscode-foreground)] text-sm">
                       <span className="font-semibold">Query will process:</span>
