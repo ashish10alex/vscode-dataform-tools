@@ -307,13 +307,12 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     document: vscode.TextDocument,
     position: vscode.Position,
   ) {
-    let searchTerm = document.getText(
-      document.getWordRangeAtPosition(position)
-    );
     const line = document.lineAt(position.line).text;
 
-    // early return
-    if (line.indexOf("${") === -1) {
+    const bqTableRegex = /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/;
+    const bqRange = document.getWordRangeAtPosition(position, bqTableRegex);
+
+    if (line.indexOf("${") === -1 && !bqRange) {
       return undefined;
     }
 
@@ -321,6 +320,31 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     if (!workspaceFolder) {
       return;
     }
+
+    if (bqRange) {
+      const bqIdentifier = document.getText(bqRange);
+      const parts = bqIdentifier.split('.');
+      if (parts.length === 3) {
+        const [project, dataset, table] = parts;
+        const tableMetadata = await getTableMetadata(project, dataset, table);
+        if (tableMetadata) {
+          const target = { database: project, schema: dataset, name: table };
+          const hoverMarkdownString = await createHoverContentForTable(tableMetadata, target, "", "table");
+          return new vscode.Hover(hoverMarkdownString);
+        }
+      }
+    }
+
+    if (line.indexOf("${") === -1) {
+      return undefined;
+    }
+
+    const wordRange = document.getWordRangeAtPosition(position);
+    if (!wordRange) {
+      return undefined;
+    }
+
+    let searchTerm = document.getText(wordRange);
 
     if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
       const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
