@@ -280,6 +280,11 @@ export type CurrentFileMetadata = {
     compilationTimeMs?: number;
     projectConfig?: ProjectConfig;
     dataformCoreVersion?: string;
+    packageJsonContent?: {
+        name?: string;
+        dependencies?: { [key: string]: string };
+        devDependencies?: { [key: string]: string };
+    } | null;
 };
 
 export type TagDryRunStats = {
@@ -386,6 +391,11 @@ export interface WebviewMessage {
   missingExecutables?: string[];
   projectConfig?: ProjectConfig;
   dataformCoreVersion?: string;
+  packageJsonContent?: {
+    name?: string;
+    dependencies?: { [key: string]: string };
+    devDependencies?: { [key: string]: string };
+  };
 }
 
 export type CreateCompilationResultResponse = Promise<

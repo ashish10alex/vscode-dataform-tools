@@ -142,7 +142,13 @@ export class CompiledQueryPanel {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
-                if (!currentFileMetadata?.errors?.errorGettingFileNameFromDocument || !currentFileMetadata.fileMetadata) {
+                const isConfigFile = currentFileMetadata?.pathMeta && (
+                    currentFileMetadata.pathMeta.filename === 'workflow_settings' || 
+                    currentFileMetadata.pathMeta.filename === 'dataform' || 
+                    (currentFileMetadata.pathMeta.filename === 'package' && currentFileMetadata.pathMeta.extension === 'json')
+                );
+
+                if (!isConfigFile && (!currentFileMetadata?.errors?.errorGettingFileNameFromDocument || !currentFileMetadata.fileMetadata)) {
                     return;
                 }
 
@@ -358,7 +364,7 @@ export class CompiledQueryPanel {
                         "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                         "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                        "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                        "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
@@ -408,7 +414,7 @@ export class CompiledQueryPanel {
                     "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                     "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                     "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                    "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                    "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                     "lineageMetadata": lineageMetadata,
                     "errorMessage": errorMessage,
                     "dryRunStat":  dryRunStat,
@@ -569,6 +575,25 @@ export class CompiledQueryPanel {
             });
             return;
         }
+        const isConfigFile = curFileMeta.pathMeta && (
+            curFileMeta.pathMeta.filename === 'workflow_settings' || 
+            curFileMeta.pathMeta.filename === 'dataform' || 
+            (curFileMeta.pathMeta.filename === 'package' && curFileMeta.pathMeta.extension === 'json')
+        );
+
+        if (isConfigFile) {
+            await webview.postMessage({
+                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
+                "projectConfig": curFileMeta.projectConfig,
+                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+                "packageJsonContent": curFileMeta.packageJsonContent,
+                "recompiling": false,
+                "errorType": null,
+                "errorMessage": null
+            });
+            return;
+        }
+
         updateSchemaAutoCompletions(curFileMeta);
 
         if(curFileMeta.errors?.dataformCompilationErrors){
@@ -633,14 +658,9 @@ export class CompiledQueryPanel {
             }
         }
 
-        if(!curFileMeta.fileMetadata || !curFileMeta.pathMeta){
-            //TODO: show some error message in this case
-            await webview.postMessage({ "recompiling": false });
-            return;
-        }
 
-        let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
-        let targetTablesOrViews = curFileMeta.fileMetadata.tables;
+        let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata!);
+        let targetTablesOrViews = curFileMeta.fileMetadata!.tables;
 
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -651,7 +671,7 @@ export class CompiledQueryPanel {
             "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-            "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+            "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
             "compiledQuerySchema": compiledQuerySchema,
@@ -659,7 +679,7 @@ export class CompiledQueryPanel {
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
-            "models": curFileMeta.fileMetadata.tables,
+            "models": curFileMeta.fileMetadata!.tables,
             "recompiling": false,
             "dryRunning": true,
             "declarations": null,
@@ -668,7 +688,8 @@ export class CompiledQueryPanel {
             "errorType": null,
             "errorMessage": null,
             "projectConfig": curFileMeta.projectConfig,
-            "dataformCoreVersion": curFileMeta.dataformCoreVersion
+            "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+            "packageJsonContent": curFileMeta.packageJsonContent
     });
 
         if(diagnosticCollection){
@@ -740,7 +761,7 @@ export class CompiledQueryPanel {
         }
 
         if (compiledQuerySchema?.fields) {
-            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
+            const curFileActionDescriptor: ActionDescription | undefined = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
             // Remove 'mode' attribute from each field
             compiledQuerySchema.fields = compiledQuerySchema.fields.map(({ mode, ...rest }) => rest);
 
@@ -811,7 +832,7 @@ export class CompiledQueryPanel {
                 "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                 "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
                 "errorMessage": errorMessage,
@@ -819,7 +840,7 @@ export class CompiledQueryPanel {
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTablesOrViews": targetTablesOrViews,
-                "models": curFileMeta.fileMetadata.tables,
+                "models": curFileMeta.fileMetadata?.tables,
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
@@ -831,7 +852,8 @@ export class CompiledQueryPanel {
                 "workflowUrls": workflowUrls,
                 "errorType": null,
                 "projectConfig": curFileMeta.projectConfig,
-                "dataformCoreVersion": curFileMeta.dataformCoreVersion
+                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+                "packageJsonContent": curFileMeta.packageJsonContent
             });
             this._cachedResults = { 
                 fileMetadata, 

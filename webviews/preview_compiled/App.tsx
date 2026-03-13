@@ -16,7 +16,7 @@ function App() {
   const state = useVSCodeMessage();
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
 
-  const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json';
+  const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
@@ -70,7 +70,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json') {
+    if (state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json') {
       setActiveTab('project_config');
     } else if (activeTab === 'project_config') {
       setActiveTab('compilation');

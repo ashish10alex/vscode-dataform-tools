@@ -488,6 +488,21 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     }
     if (!workspaceFolder) { return { isDataformWorkspace: false }; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);
+    
+    let packageJsonContent: any = null;
+    if (filename === 'package' && extension === 'json') {
+        try {
+            const content = await fs.promises.readFile(document.uri.fsPath, 'utf-8');
+            const pkg = JSON.parse(content);
+            packageJsonContent = {
+                name: pkg.name,
+                dependencies: pkg.dependencies,
+                devDependencies: pkg.devDependencies
+            };
+        } catch (e) {
+            logger.error(`Error reading package.json: ${e}`);
+        }
+    }
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
         if (freshCompilation) {
@@ -507,6 +522,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
+                    packageJsonContent: packageJsonContent
                 };
             } else if (fileMetadata?.queryMeta.error !== "") {
                 return {
@@ -516,7 +532,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
-                    compilationTimeMs: compilationTimeMs
+                    compilationTimeMs: compilationTimeMs,
+                    packageJsonContent: packageJsonContent
                 };
             };
 
@@ -539,7 +556,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     relativeFilePath: relativeFilePath
                 },
                 document: document,
-                compilationTimeMs: compilationTimeMs
+                compilationTimeMs: compilationTimeMs,
+                packageJsonContent: packageJsonContent
             };
         }
         else if (errors?.length !== 0) {
@@ -560,12 +578,13 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     relativeFilePath: relativeFilePath
                 },
                 document: document,
-                compilationTimeMs: compilationTimeMs
+                compilationTimeMs: compilationTimeMs,
+                packageJsonContent: packageJsonContent
             };
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -575,6 +594,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     extension: extension,
                     relativeFilePath: relativeFilePath
                 },
+                packageJsonContent: packageJsonContent
             };
         }
 
@@ -583,6 +603,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         if (targetToSearch) {
             dependents = await getDependentsOfTarget(targetToSearch);
         }
+
 
         return {
             isDataformWorkspace: true,
@@ -595,8 +616,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 relativeFilePath: relativeFilePath
             },
             document: document,
-            projectConfig: CACHED_COMPILED_DATAFORM_JSON.projectConfig,
-            dataformCoreVersion: CACHED_COMPILED_DATAFORM_JSON.dataformCoreVersion
+            projectConfig: CACHED_COMPILED_DATAFORM_JSON!.projectConfig,
+            dataformCoreVersion: CACHED_COMPILED_DATAFORM_JSON!.dataformCoreVersion,
+            packageJsonContent: packageJsonContent
         };
     }
     return undefined;
