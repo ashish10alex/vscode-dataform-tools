@@ -307,20 +307,53 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     document: vscode.TextDocument,
     position: vscode.Position,
   ) {
-    let searchTerm = document.getText(
-      document.getWordRangeAtPosition(position)
-    );
     const line = document.lineAt(position.line).text;
 
-    // early return
-    if (line.indexOf("${") === -1) {
+    // Check if cursor is inside ${...}
+    let isInsideTemplate = false;
+    const templateRegex = /\$\{([^}]+)\}/g;
+    let templateMatch;
+    while ((templateMatch = templateRegex.exec(line)) !== null) {
+      const start = templateMatch.index;
+      const end = templateMatch.index + templateMatch[0].length;
+      if (position.character >= start && position.character <= end) {
+        isInsideTemplate = true;
+        break;
+      }
+    }
+
+    // If NOT inside template, check for BQ raw ID hover
+    if (!isInsideTemplate) {
+      const bqTableRegex = /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/;
+      const bqRange = document.getWordRangeAtPosition(position, bqTableRegex);
+      if (bqRange) {
+        const bqIdentifier = document.getText(bqRange);
+        const parts = bqIdentifier.split('.');
+        if (parts.length === 3) {
+          const [project, dataset, table] = parts;
+          const tableMetadata = await getTableMetadata(project, dataset, table);
+          if (tableMetadata) {
+            const target = { database: project, schema: dataset, name: table };
+            const hoverMarkdownString = await createHoverContentForTable(tableMetadata, target, "", "table");
+            return new vscode.Hover(hoverMarkdownString);
+          }
+        }
+      }
       return undefined;
     }
 
+    // If we are inside a template, proceed with Dataform specific logic
     const workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
-      return;
+      return undefined;
     }
+
+    const wordRange = document.getWordRangeAtPosition(position);
+    if (!wordRange) {
+      return undefined;
+    }
+
+    let searchTerm = document.getText(wordRange);
 
     if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
       const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
