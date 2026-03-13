@@ -336,6 +336,15 @@ export class DataformHoverProvider implements vscode.HoverProvider {
             const target = { database: project, schema: dataset, name: table };
             const hoverMarkdownString = await createHoverContentForTable(tableMetadata, target, "", "table");
             return new vscode.Hover(hoverMarkdownString);
+          } else {
+            const target = { database: project, schema: dataset, name: table };
+            const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
+            const hoverMarkdownString = new vscode.MarkdownString(
+              `#### ${markdownTableIdWtLink}\n\n ---- \n\n $(warning) **Metadata unavailable**`
+            );
+            hoverMarkdownString.isTrusted = true;
+            hoverMarkdownString.supportThemeIcons = true;
+            return new vscode.Hover(hoverMarkdownString);
           }
         }
       }
