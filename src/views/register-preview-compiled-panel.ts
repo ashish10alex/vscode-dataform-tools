@@ -95,7 +95,17 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                     "dataformCoreVersion": dataformCoreVersion,
                     "relativeFilePath": getRelativePath(document.fileName),
                     "projectConfig": null,
-                    "packageJsonContent": null
+                    "packageJsonContent": null,
+                    "declarations": null,
+                    "isHelperFile": false,
+                    "tableOrViewQuery": null,
+                    "assertionQuery": null,
+                    "preOperations": null,
+                    "postOperations": null,
+                    "incrementalPreOpsQuery": null,
+                    "incrementalQuery": null,
+                    "nonIncrementalQuery": null,
+                    "operationsQuery": null
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
@@ -538,7 +548,14 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "projectConfig": null,
-                "packageJsonContent": null
+                "packageJsonContent": null,
+                "assertionQuery": null,
+                "preOperations": null,
+                "postOperations": null,
+                "incrementalPreOpsQuery": null,
+                "incrementalQuery": null,
+                "nonIncrementalQuery": null,
+                "operationsQuery": null
             });
         }
 
@@ -551,7 +568,8 @@ export class CompiledQueryPanel {
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
                 "recompiling": false,
                 "errorType": null,
-                "isHelperFile": false
+                "isHelperFile": false,
+                "declarations": null
             });
             return;
         }
@@ -589,7 +607,8 @@ export class CompiledQueryPanel {
                 "errorMessage": curFileMeta.errors.queryMetaError,
                 "recompiling": false,
                 "errorType": null,
-                "isHelperFile": false
+                "isHelperFile": false,
+                "declarations": null
             });
             return;
         }
@@ -630,7 +649,8 @@ export class CompiledQueryPanel {
                 "errorMessage": errorString,
                 "recompiling": false,
                 "errorType": null,
-                "isHelperFile": false
+                "isHelperFile": false,
+                "declarations": null
             });
             return;
         }
@@ -649,8 +669,17 @@ export class CompiledQueryPanel {
                 "packageJsonContent": curFileMeta.packageJsonContent,
                 "recompiling": false,
                 "isHelperFile": false,
+                "declarations": null,
                 "errorType": null,
-                "errorMessage": null
+                "errorMessage": null,
+                "tableOrViewQuery": null,
+                "assertionQuery": null,
+                "preOperations": null,
+                "postOperations": null,
+                "incrementalPreOpsQuery": null,
+                "incrementalQuery": null,
+                "nonIncrementalQuery": null,
+                "operationsQuery": null
             });
             return;
         }
@@ -687,7 +716,16 @@ export class CompiledQueryPanel {
                         "recompiling": false,
                         "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "errorType": null,
-                        "errorMessage": null
+                        "errorMessage": null,
+                        "declarations": null,
+                        "tableOrViewQuery": null,
+                        "assertionQuery": null,
+                        "preOperations": null,
+                        "postOperations": null,
+                        "incrementalPreOpsQuery": null,
+                        "incrementalQuery": null,
+                        "nonIncrementalQuery": null,
+                        "operationsQuery": null
                     });
                     return;
                 }
