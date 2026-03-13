@@ -27,9 +27,6 @@ declare  global {
       highlightJsCssUri: string;
       highlightJsUri: string;
       highlightJsLineNoExtUri: string;
-      tabulatorUri: string;
-      tabulatorDarkCssUri: string;
-      tabulatorLightCssUri: string;
       highlightJsOneDarkThemeUri: string;
       highlightJsOneLightThemeUri: string;
   }

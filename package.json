@@ -445,7 +445,6 @@
         "@types/node": "20.x",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
-        "@types/tabulator-tables": "^6.3.1",
         "@types/vscode": "^1.89.0",
         "@types/vscode-webview": "^1.57.5",
         "@typescript-eslint/eslint-plugin": "^7.7.1",
@@ -484,7 +483,6 @@
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
         "tablemark": "^3.1.0",
-        "tabulator-tables": "^6.3.1",
         "typescript": "^5.7.3"
     }
 }

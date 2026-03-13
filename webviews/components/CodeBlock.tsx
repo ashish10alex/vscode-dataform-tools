@@ -35,19 +35,29 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
   };
 
   return (
-    <div className={`relative group ${className}`}>
-      <button
-        onClick={handleCopy}
-        className="absolute top-2 right-2 p-1 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity"
-        title="Copy code"
-      >
-        {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-      </button>
-      <pre className="overflow-x-auto p-4 bg-[var(--hljs-bg)] rounded-md border border-zinc-200 dark:border-zinc-800">
-        <code ref={codeRef} className={`language-${language}`}>
-          {code}
-        </code>
-      </pre>
+    <div className={`relative group w-full ${className || ''}`}>
+      <div className="relative w-full bg-[var(--vscode-editor-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+        <button
+          onClick={handleCopy}
+          className="absolute top-3 right-3 p-1.5 rounded bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md border border-[var(--vscode-widget-border)]"
+          style={{ right: '12px' }}
+          title="Copy code"
+        >
+          {copied ? (
+            <div className="flex items-center space-x-1 px-1">
+              <Check className="w-3.5 h-3.5 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />
+              <span className="text-[10px]">Copied</span>
+            </div>
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+        <pre className="overflow-x-auto p-4 pt-10">
+          <code ref={codeRef} className={`language-${language}`}>
+            {code}
+          </code>
+        </pre>
+      </div>
     </div>
   );
 };

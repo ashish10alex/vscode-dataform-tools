@@ -449,14 +449,6 @@ export function getHighlightJsThemeUri() {
     }
 }
 
-export function getTabulatorThemeUri() {
-    let themeKind = vscode.window.activeColorTheme.kind;
-    if (themeKind === vscode.ColorThemeKind.HighContrastLight || themeKind === vscode.ColorThemeKind.Light) {
-        return { tabulatorCssUri: cdnLinks.tabulatorLightCssUri, type: "light" };
-    } else {
-        return { tabulatorCssUri: cdnLinks.tabulatorDarkCssUri, type: "dark" };
-    }
-}
 
 //@ts-ignore
 function getTreeRootFromWordInStruct(struct: Table[] | Operation[] | Assertion[] | Declarations[], searchTerm: string): string | undefined {

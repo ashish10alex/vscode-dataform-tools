@@ -14,7 +14,7 @@ type CostEstimateRow = {
     type: string;
     statementType: string;
     totalBytesProcessedAccuracy: string;
-    totalGBProcessed: string; // or number? Tabulator had parseFloat
+    totalGBProcessed: string; // or number? <b>parseFloat</b> was used in previous implementation
     costOfRunningModel: string;
     error?: string;
 };
@@ -30,7 +30,9 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
   }, [state.selectedTag]);
 
   const handleEstimate = () => {
-    if (!selectedTag) return;
+    if (!selectedTag) {
+        return;
+    }
     setLoading(true);
     vscode.postMessage({
         command: 'costEstimator',
@@ -51,8 +53,12 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
           // Sort errors to the top
           const aHasError = !!a.error;
           const bHasError = !!b.error;
-          if (aHasError && !bHasError) return -1;
-          if (!aHasError && bHasError) return 1;
+          if (aHasError && !bHasError) {
+              return -1;
+          }
+          if (!aHasError && bHasError) {
+              return 1;
+          }
           return 0;
       });
   }, [state.tagDryRunStatsMeta]);

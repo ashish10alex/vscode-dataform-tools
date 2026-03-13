@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
+import DOMPurify from "dompurify";
 
 interface CompiledQueryTabProps {
   state: WebviewState;
@@ -64,10 +65,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   // Reconstruct compiler options string when individual fields change
   useEffect(() => {
       const parts = [];
-      if (tablePrefix) parts.push(`--table-prefix="${tablePrefix}"`);
-      if (schemaSuffix) parts.push(`--schema-suffix="${schemaSuffix}"`);
-      if (databaseSuffix) parts.push(`--database-suffix="${databaseSuffix}"`);
-      if (otherOptions) parts.push(otherOptions);
+      if (tablePrefix) {
+          parts.push(`--table-prefix="${tablePrefix}"`);
+      }
+      if (schemaSuffix) {
+          parts.push(`--schema-suffix="${schemaSuffix}"`);
+      }
+      if (databaseSuffix) {
+          parts.push(`--database-suffix="${databaseSuffix}"`);
+      }
+      if (otherOptions) {
+          parts.push(otherOptions);
+      }
       
       const newOptions = parts.join(" ");
       if (newOptions !== compilerOptions) {
@@ -172,20 +181,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const target = model.target;
             const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
 
-            if (!target) return null;
+            if (!target) { return null; }
 
             return (
               <div
                 key={index}
-                className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 flex flex-col space-y-2 group"
+                className="bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <BigQueryTableLink 
                       id={target} 
                       showIcon={true} 
-                      className="flex items-center text-sm font-mono text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                      fallbackClassName="flex items-center text-sm font-mono text-red-500 dark:text-red-400"
+                      className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
+                      fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
                     />
                     <button
                       onClick={() => {
@@ -194,7 +203,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         setCopiedIndex(index);
                         setTimeout(() => setCopiedIndex(null), 2000);
                       }}
-                      className="ml-2 p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      className="ml-2 p-1.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                       title="Copy table ID with backticks"
                     >
                       {copiedIndex === index ? (
@@ -208,12 +217,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
                 {/* Last Update Time */}
                 {lastUpdateMeta && (
-                  <div className="flex items-center space-x-2 text-xs text-zinc-500 pl-6">
+                  <div className="flex items-center space-x-2 text-xs text-[var(--vscode-descriptionForeground)] pl-6">
                     <Clock className="w-3 h-3" />
                     <span>Last updated:</span>
                     {lastUpdateMeta.error?.message ? (
                       <span
-                        className="font-mono text-zinc-400 cursor-help border-b border-dotted border-zinc-300 dark:border-zinc-600"
+                       className="font-mono text-[var(--vscode-descriptionForeground)] opacity-70 cursor-help border-b border-dotted border-[var(--vscode-widget-border)]"
                         title={lastUpdateMeta.error.message}
                       >
                         N/A
@@ -223,8 +232,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         className={clsx(
                           "font-mono",
                           !lastUpdateMeta.modelWasUpdatedToday
-                            ? "text-red-500 dark:text-red-400"
-                            : "text-zinc-600 dark:text-zinc-300"
+                            ? "text-[var(--vscode-errorForeground)]"
+                            : "text-[var(--vscode-foreground)]"
                         )}
                       >
                         {lastUpdateMeta.lastModifiedTime}
@@ -239,9 +248,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       )}
 
       {/* Data Lineage Section */}
-      <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+      <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
         <div
-          className="flex items-center px-4 py-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          className="flex items-center px-4 py-3 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
           onClick={() => setIsLineageOpen(!isLineageOpen)}
         >
           {isLineageOpen ? (
@@ -249,33 +258,35 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           ) : (
             <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
           )}
-          <span className="font-semibold text-zinc-700 dark:text-zinc-200">Data Lineage</span>
+          <span className="font-semibold text-[var(--vscode-foreground)]">Data Lineage</span>
         </div>
 
         {isLineageOpen && (
-          <div className="p-4 border-t border-zinc-200 dark:border-zinc-700 space-y-4">
+          <div className="p-4 border-t border-[var(--vscode-widget-border)] space-y-4">
             {/* Dependencies */}
             {state.models && state.models.length > 0 && (
                 <div>
-                   <h4 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wider">Dependencies</h4>
-                   {!state.models[0]?.dependencyTargets?.length && <span className="text-sm text-zinc-500 italic">No dependencies</span>}
+                   <h4 className="text-sm font-semibold text-[var(--vscode-descriptionForeground)] mb-2 uppercase tracking-wider">Dependencies</h4>
+                   {!state.models[0]?.dependencyTargets?.length && <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No dependencies</span>}
                    <ul className="space-y-1 pl-2">
                        {state.models.map((model, idx) => (
                            model.dependencyTargets?.map((target: any, tIdx: number) => {
                                const id = `${target.database}.${target.schema}.${target.name}`;
                                return (
                                    <li key={`${idx}-${tIdx}`} className="flex items-center text-sm group">
-                                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>
+                                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-functionForeground)] opacity-70 mr-2"></span>
                                        <BigQueryTableLink id={target} label={id} />
                                        <button 
-                                            onClick={() => handleLineageNavigation(id)}
-                                            className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => {
+                                                handleLineageNavigation(id);
+                                            }}
+                                            className="ml-2 p-1 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-textLink-foreground)] opacity-0 group-hover:opacity-100 transition-opacity"
                                             title="Go to definition"
                                        >
                                            <ExternalLink className="w-3 h-3" />
                                        </button>
                                    </li>
-                               )
+                               );
                            })
                        ))}
                    </ul>
@@ -284,45 +295,47 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             
             {/* Dependents */}
              <div>
-                <h4 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wider">Dependents</h4>
+                <h4 className="text-sm font-semibold text-[var(--vscode-descriptionForeground)] mb-2 uppercase tracking-wider">Dependents</h4>
                 
                 {/* Local Dependents Sub-section */}
                 <div className="mb-4 ml-2">
-                    <h5 className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-wider">Local Project</h5>
-                    {(!state.dependents || state.dependents.length === 0) ? (
-                        <span className="text-sm text-zinc-500 italic">No local dependents found.</span>
+                     <h5 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] opacity-80 mb-1 uppercase tracking-wider">Local Project</h5>
+                     {(!state.dependents || state.dependents.length === 0) ? (
+                         <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No local dependents found.</span>
                     ) : (
                         <ul className="space-y-1 pl-2">
                             {state.dependents.map((dependent: any, idx: number) => {
                                  const id = typeof dependent === 'string' ? dependent : `${dependent.database}.${dependent.schema}.${dependent.name}`;
                                  return (
                                     <li key={idx} className="flex items-center text-sm group">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-stringForeground)] opacity-70 mr-2"></span>
                                         <BigQueryTableLink id={dependent} label={id} />
                                            <button 
-                                                onClick={() => handleLineageNavigation(id)}
-                                                className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                    handleLineageNavigation(id);
+                                                }}
+                                                className="ml-2 p-1 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-textLink-foreground)] opacity-0 group-hover:opacity-100 transition-opacity"
                                                 title="Go to definition"
                                            >
                                                <ExternalLink className="w-3 h-3" />
                                            </button>
                                     </li>
-                                 )
+                                 );
                             })}
                         </ul>
                     )}
                 </div>
 
                 {/* Dataplex Dependents Sub-section */}
-                <div className="ml-2">
-                    <h5 className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-wider">Dataplex (Downstream)</h5>
-                    
-                    {!state.lineageMetadata ? (
-                         <button 
-                            onClick={handleLineageMetadata}
-                            disabled={loadingLineage}
-                            className="mt-1 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xs px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 flex items-center transition-colors disabled:opacity-50"
-                         >
+                 <div className="ml-2">
+                     <h5 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] opacity-80 mb-1 uppercase tracking-wider">Dataplex (Downstream)</h5>
+                     
+                     {!state.lineageMetadata ? (
+                          <button 
+                             onClick={handleLineageMetadata}
+                             disabled={loadingLineage}
+                             className="mt-1 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-xs px-2 py-1 rounded text-[var(--vscode-button-secondaryForeground)] flex items-center transition-colors disabled:opacity-50"
+                          >
                             {loadingLineage ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Network className="w-3 h-3 mr-1" />}
                             Load Dataplex Dependencies
                          </button>
@@ -365,44 +378,44 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       </div>
 
       {/* Dry Run Stats */}
-      {state.dryRunning && !state.recompiling ? (
-        <div className="bg-yellow-100 dark:bg-yellow-900/20 border-l-4 border-yellow-500 dark:border-yellow-600 p-4 rounded-r shadow-sm flex items-center">
-             <Loader2 className="w-5 h-5 text-yellow-600 dark:text-yellow-500 animate-spin mr-3 flex-shrink-0" />
-             <div className="text-zinc-700 dark:text-zinc-300 text-sm">
-                 <span className="font-semibold text-yellow-700 dark:text-yellow-400">Performing dry run...</span>
+       {state.dryRunning && !state.recompiling ? (
+         <div className="bg-[var(--vscode-inputValidation-warningBackground)] border-l-4 border-[var(--vscode-inputValidation-warningBorder)] p-4 rounded-r shadow-sm flex items-center">
+              <Loader2 className="w-5 h-5 text-[var(--vscode-inputValidation-warningForeground)] animate-spin mr-3 flex-shrink-0" />
+              <div className="text-[var(--vscode-foreground)] text-sm">
+                  <span className="font-semibold text-[var(--vscode-inputValidation-warningForeground)]">Performing dry run...</span>
+              </div>
+         </div>
+       ) : (
+         state.dryRunStat && (
+             <div className="bg-[var(--vscode-diffEditor-insertedTextBackground)] border border-[var(--vscode-widget-border)] border-l-4 border-l-[var(--vscode-extensionIcon-preReleaseForeground)] p-4 rounded shadow-sm flex items-start">
+                  <CheckCircle2 className="w-5 h-5 text-[var(--vscode-extensionIcon-preReleaseForeground)] mt-0.5 mr-2 flex-shrink-0" />
+                  <div className="text-[var(--vscode-foreground)] text-sm">
+                      <span className="font-semibold">Query will process:</span>
+                      <div className="font-mono mt-1 opacity-90" dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(state.dryRunStat)}} />
+                  </div>
              </div>
-        </div>
-      ) : (
-        state.dryRunStat && (
-            <div className="bg-green-100 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-600 p-4 rounded-r shadow-sm flex items-start">
-                 <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-500 mt-0.5 mr-2 flex-shrink-0" />
-                 <div className="text-zinc-700 dark:text-zinc-300 text-sm">
-                     <span className="font-semibold text-green-700 dark:text-green-400">Query will process:</span>
-                     <div className="font-mono mt-1 text-green-800 dark:text-green-300" dangerouslySetInnerHTML={{__html: state.dryRunStat}} />
-                 </div>
-            </div>
-        )
-      )}
+         )
+       )}
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
-          <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded">
-                  {state.relativeFilePath || " "}
-              </span>
-              <div className="flex-grow"></div>
-              <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
-                  <AlignLeft className="w-3 h-3 mr-1.5" /> Format
-              </button>
-               <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
-                  <Eye className="w-3 h-3 mr-1.5" /> Lint
-              </button>
-          </div>
+       <div className="flex flex-col gap-4 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)]">
+           <div className="flex flex-wrap items-center gap-2">
+               <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
+                   {state.relativeFilePath || " "}
+               </span>
+               <div className="flex-grow"></div>
+               <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+                   <AlignLeft className="w-3 h-3 mr-1.5" /> Format
+               </button>
+                <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+                   <Eye className="w-3 h-3 mr-1.5" /> Lint
+               </button>
+           </div>
 
           {/* Compiler Options Section */}
-          <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+          <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
               <div 
-                  className="flex items-center px-4 py-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors justify-between"
+                  className="flex items-center px-4 py-3 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors justify-between"
                   onClick={() => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
               >
                   <div className="flex items-center">
@@ -425,10 +438,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               </div>
 
               {isCompilerOptionsOpen && (
-                  <div className="p-4 border-t border-zinc-200 dark:border-zinc-700 space-y-3 bg-white dark:bg-zinc-900/30">
+                  <div className="p-4 border-t border-[var(--vscode-widget-border)] space-y-3 bg-[var(--vscode-editor-background)]">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
                                   Table Prefix
                               </label>
                               <input 
@@ -436,12 +449,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                   value={tablePrefix}
                                   onChange={(e) => setTablePrefix(e.target.value)}
                                   placeholder='e.g. AA'
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
                               />
-                              <p className="mt-1 text-[10px] text-zinc-400">Prefixes all table names (e.g. <code>AA_table</code>)</p>
+                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Prefixes all table names (e.g. <code>AA_table</code>)</p>
                           </div>
                           <div>
-                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
                                   Schema Suffix
                               </label>
                               <input 
@@ -449,12 +462,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                   value={schemaSuffix}
                                   onChange={(e) => setSchemaSuffix(e.target.value)}
                                   placeholder='e.g. dev'
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
                               />
-                              <p className="mt-1 text-[10px] text-zinc-400">Suffixes dataset names (e.g. <code>dataset_dev</code>)</p>
+                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Suffixes dataset names (e.g. <code>dataset_dev</code>)</p>
                           </div>
                           <div>
-                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
                                   Database Suffix
                               </label>
                               <input 
@@ -462,12 +475,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                   value={databaseSuffix}
                                   onChange={(e) => setDatabaseSuffix(e.target.value)}
                                   placeholder='e.g. dev'
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
                               />
-                              <p className="mt-1 text-[10px] text-zinc-400">Suffixes project ID (e.g. <code>project_dev</code>)</p>
+                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Suffixes project ID (e.g. <code>project_dev</code>)</p>
                           </div>
                            <div>
-                              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
                                   Other Options
                               </label>
                               <input 
@@ -475,15 +488,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                   value={otherOptions}
                                   onChange={(e) => setOtherOptions(e.target.value)}
                                   placeholder='e.g. --vars=key=value'
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
                               />
-                              <p className="mt-1 text-[10px] text-zinc-400">Additional CLI flags</p>
+                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Additional CLI flags</p>
                           </div>
                       </div>
                       
                       {compilerOptions && (
-                          <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
-                              <span className="text-[10px] font-mono text-zinc-400 select-all">
+                          <div className="mt-2 pt-2 border-t border-[var(--vscode-widget-border)]">
+                              <span className="text-[10px] font-mono text-[var(--vscode-descriptionForeground)] opacity-70 select-all">
                                   Generated: {compilerOptions}
                               </span>
                           </div>
@@ -492,34 +505,34 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               )}
           </div>
 
-           <div className="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-300">
+           <div className="flex flex-wrap gap-4 text-sm text-[var(--vscode-foreground)]">
                 <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
+                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
                     <span>Include Dependencies</span>
                 </label>
                 <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
+                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
                     <span>Include Dependents</span>
                 </label>
                 <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={fullRefresh} onChange={e => setFullRefresh(e.target.checked)} className="form-checkbox h-4 w-4 text-blue-600 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
+                    <input type="checkbox" checked={fullRefresh} onChange={e => setFullRefresh(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
                     <span>Full Refresh</span>
                 </label>
            </div>
 
-           <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-700/50">
-               <button onClick={handleDependencyGraph} disabled={state.recompiling} className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-white rounded text-sm flex items-center disabled:opacity-50">
+           <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--vscode-widget-border)]">
+               <button onClick={handleDependencyGraph} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Network className="w-4 h-4 mr-1.5" /> Graph
                </button>
-               <button onClick={handlePreviewResults} disabled={state.recompiling} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center disabled:opacity-50">
+               <button onClick={handlePreviewResults} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Eye className="w-4 h-4 mr-1.5" /> Preview Data
                </button>
-               <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm flex items-center disabled:opacity-50">
+               <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
                </button>
-                <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm flex items-center disabled:opacity-50 relative">
+                <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
                    <Play className="w-4 h-4 mr-1.5" /> Run (API)
-                   <span className="absolute -top-2 -right-2 bg-yellow-500 text-black text-[10px] font-bold px-1.5 rounded-full">NEW</span>
+                   <span className="absolute -top-2 -right-2 bg-[var(--vscode-statusBarItem-warningBackground)] text-[var(--vscode-statusBarItem-warningForeground)] text-[10px] font-bold px-1.5 rounded-full">NEW</span>
                </button>
            </div>
       </div>
@@ -528,49 +541,49 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       <div className="space-y-6 pb-20">
           {state.preOperations && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Pre Operations</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Pre Operations</h3>
                 <CodeBlock code={state.preOperations} language="sql" />
              </div>
           )}
           {state.postOperations && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Post Operations</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Post Operations</h3>
                 <CodeBlock code={state.postOperations} language="sql" />
              </div>
           )}
            {state.tableOrViewQuery && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Query</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Query</h3>
                 <CodeBlock code={state.tableOrViewQuery} language="sql" />
              </div>
           )}
           {state.assertionQuery && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Assertion</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Assertion</h3>
                 <CodeBlock code={state.assertionQuery} language="sql" />
              </div>
           )}
           {state.incrementalPreOpsQuery && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Incremental Pre Operations</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Incremental Pre Operations</h3>
                 <CodeBlock code={state.incrementalPreOpsQuery} language="sql" />
              </div>
           )}
           {state.incrementalQuery && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Incremental Query</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Incremental Query</h3>
                  <CodeBlock code={state.incrementalQuery} language="sql" />
              </div>
           )}
           {state.nonIncrementalQuery && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Non Incremental Query</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Non Incremental Query</h3>
                  <CodeBlock code={state.nonIncrementalQuery} language="sql" />
              </div>
           )}
           {state.operationsQuery && (
              <div>
-                <h3 className="text-zinc-500 dark:text-zinc-400 font-semibold mb-2">Operations</h3>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Operations</h3>
                  <CodeBlock code={state.operationsQuery} language="sql" />
              </div>
           )}

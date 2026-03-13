@@ -4,29 +4,16 @@
 
 /* Theme-aware Syntax Highlighting (Highlight.js) */
 :root {
-    --hljs-bg: #f6f8fa;
-    --hljs-color: #24292e;
-    --hljs-comment: #6a737d;
-    --hljs-keyword: #d73a49;
-    --hljs-string: #032f62;
-    --hljs-attr: #005cc5;
-    --hljs-literal: #005cc5;
-    --hljs-number: #005cc5;
-    --hljs-type: #d73a49;
-    --hljs-built_in: #e36209;
-}
-
-.dark {
-    --hljs-bg: #0d1117;
-    --hljs-color: #c9d1d9;
-    --hljs-comment: #8b949e;
-    --hljs-keyword: #ff7b72;
-    --hljs-string: #a5d6ff;
-    --hljs-attr: #79c0ff;
-    --hljs-literal: #79c0ff;
-    --hljs-number: #79c0ff;
-    --hljs-type: #ff7b72;
-    --hljs-built_in: #ffa657;
+    --hljs-bg: var(--vscode-editor-background);
+    --hljs-color: var(--vscode-editor-foreground);
+    --hljs-comment: var(--vscode-editorCodeLens-foreground);
+    --hljs-keyword: var(--vscode-symbolIcon-keywordForeground);
+    --hljs-string: var(--vscode-symbolIcon-stringForeground);
+    --hljs-attr: var(--vscode-symbolIcon-propertyForeground);
+    --hljs-literal: var(--vscode-symbolIcon-constantForeground);
+    --hljs-number: var(--vscode-symbolIcon-numberForeground);
+    --hljs-type: var(--vscode-symbolIcon-typeParameterForeground);
+    --hljs-built_in: var(--vscode-symbolIcon-functionForeground);
 }
 
 .hljs {
