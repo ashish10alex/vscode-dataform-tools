@@ -419,7 +419,7 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
-        "clean": "rm -rf dist",
+        "clean": "rimraf dist",
         "compile": "npm run clean && npm run check-types && npm run build:webviews && npm run esbuild",
         "watch": "npm run clean && concurrently --raw \"npm run check-types -- --watch\" \"npm run esbuild-watch\" \"npm run webviews:watch\"",
         "build:webviews": "vite build",
@@ -430,7 +430,7 @@
         "check-types": "tsc -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "rm -rf .vscode-test/user-data; vscode-test",
+        "test": "rimraf .vscode-test/user-data && vscode-test",
         "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {
@@ -467,6 +467,7 @@
         "react-dom": "^19.2.4",
         "react-select": "^5.10.0",
         "react-tabulator": "^0.21.0",
+        "rimraf": "^6.1.3",
         "tailwind-merge": "^3.4.1",
         "tailwindcss": "^3.4.19",
         "vite": "^5.0.0"
