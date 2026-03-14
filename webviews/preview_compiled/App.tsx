@@ -10,6 +10,7 @@ import { WorkflowURLsTab } from './components/WorkflowURLsTab';
 import { DeclarationsView } from './components/DeclarationsView';
 import { ProjectConfigTab } from './components/ProjectConfigTab';
 import { CompilationError } from './components/CompilationError';
+import { SkeletonLoader } from './components/SkeletonLoader';
 
 function App() {
   const state = useVSCodeMessage();
@@ -190,6 +191,10 @@ function App() {
                     </div>
                 )}
             </div>
+        )}
+
+        {state.recompiling && !state.tableOrViewQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && (
+            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 
         {state.compilationTimeMs !== undefined && state.recompiling === false && (
