@@ -32,14 +32,14 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
               </thead>
               <tbody className="divide-y divide-[var(--vscode-widget-border)]">
                 {packageJsonContent.dependencies && Object.entries(packageJsonContent.dependencies).map(([name, version]) => (
-                  <tr key={name} className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
+                  <tr key={`dep:${name}`} className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
                     <td className="px-4 py-2 font-mono text-xs text-[var(--vscode-symbolIcon-variableForeground)]">{name}</td>
                     <td className="px-4 py-2 font-mono text-xs">{version as string}</td>
                     <td className="px-4 py-2 text-xs text-right opacity-70">dependency</td>
                   </tr>
                 ))}
                 {packageJsonContent.devDependencies && Object.entries(packageJsonContent.devDependencies).map(([name, version]) => (
-                  <tr key={name} className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
+                  <tr key={`dev:${name}`} className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
                     <td className="px-4 py-2 font-mono text-xs text-[var(--vscode-symbolIcon-variableForeground)]">{name}</td>
                     <td className="px-4 py-2 font-mono text-xs">{version as string}</td>
                     <td className="px-4 py-2 text-xs text-right opacity-70">devDependency</td>
