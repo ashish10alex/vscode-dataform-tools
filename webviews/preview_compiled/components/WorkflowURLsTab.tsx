@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
-import { WebviewState } from '../types';
+import { WebviewState, CompilationErrorType } from '../types';
 import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 
 interface WorkflowURLsTabProps {
     state: WebviewState;
 }
+
+const isBlockingError = (errorType?: CompilationErrorType) => {
+    return errorType === CompilationErrorType.COMPILATION_ERROR ||
+           errorType === CompilationErrorType.MISSING_EXECUTABLE ||
+           errorType === CompilationErrorType.NOT_A_DATAFORM_WORKSPACE;
+};
 
 export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
     useEffect(() => {
@@ -56,7 +62,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
 
     return (
         <div className="flex flex-col space-y-4">
-            {!state.errorMessage && (
+            {!isBlockingError(state.errorType) && (
                 <div className="flex flex-col gap-3 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] shadow-sm">
                     <div className="text-sm">
                         <h3 className="font-semibold text-[var(--vscode-foreground)] mb-1">Trigger Execution via API</h3>
