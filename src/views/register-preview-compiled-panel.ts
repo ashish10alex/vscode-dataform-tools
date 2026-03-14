@@ -146,13 +146,17 @@ export class CompiledQueryPanel {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
-                const isConfigFile = currentFileMetadata?.pathMeta && (
+                if (!currentFileMetadata) {
+                    return;
+                }
+
+                const isConfigFile = currentFileMetadata.pathMeta && (
                     currentFileMetadata.pathMeta.filename === 'workflow_settings' || 
                     currentFileMetadata.pathMeta.filename === 'dataform' || 
                     (currentFileMetadata.pathMeta.filename === 'package' && currentFileMetadata.pathMeta.extension === 'json')
                 );
 
-                if (!isConfigFile && (!currentFileMetadata?.errors?.errorGettingFileNameFromDocument || !currentFileMetadata.fileMetadata)) {
+                if (!isConfigFile && (currentFileMetadata.errors?.errorGettingFileNameFromDocument || !currentFileMetadata.fileMetadata)) {
                     return;
                 }
 
