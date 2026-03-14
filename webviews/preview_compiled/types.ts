@@ -1,4 +1,7 @@
-import type { WorkflowUrlEntry, ProjectConfig, CompilationErrorType } from "../../src/types";
+import { CompilationErrorType } from "../../src/types";
+import type { WorkflowUrlEntry, ProjectConfig } from "../../src/types";
+export { CompilationErrorType };
+export type { WorkflowUrlEntry, ProjectConfig };
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;

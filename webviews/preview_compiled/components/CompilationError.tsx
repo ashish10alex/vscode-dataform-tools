@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
-import { WebviewState } from '../types';
+import { WebviewState, CompilationErrorType } from '../types';
 
 interface CompilationErrorProps {
   state: WebviewState;
@@ -100,7 +100,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
     );
   }
 
-  if (errorType === 'FILE_NOT_FOUND') {
+  if (errorType === CompilationErrorType.FILE_NOT_FOUND) {
     return (
       <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
         <div className="flex items-start">
