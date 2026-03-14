@@ -1,10 +1,10 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersionFromWorkflowSettings } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry  } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -74,7 +74,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
         const fileExtension = document.fileName.split('.').pop();
-        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js')) {
+        const fileName = path.basename(document.fileName, '.' + fileExtension);
+        const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
+        
+        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js' || isConfigFile)) {
             return;
         }
         activeEditorFileName = document?.fileName;
@@ -85,11 +88,12 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 const workspaceFolder = await getWorkspaceFolder();
                 let dataformCoreVersion = undefined;
                 if (workspaceFolder) {
-                    dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+                    dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
                 }
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true,
-                    "dataformCoreVersion": dataformCoreVersion
+                    "dataformCoreVersion": dataformCoreVersion,
+                    "relativeFilePath": getRelativePath(document.fileName),
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true);
                 updateSchemaAutoCompletions(currentFileMetadata);
@@ -142,7 +146,17 @@ export class CompiledQueryPanel {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
-                if (!currentFileMetadata?.errors?.errorGettingFileNameFromDocument || !currentFileMetadata.fileMetadata) {
+                if (!currentFileMetadata) {
+                    return;
+                }
+
+                const isConfigFile = currentFileMetadata.pathMeta && (
+                    currentFileMetadata.pathMeta.filename === 'workflow_settings' || 
+                    currentFileMetadata.pathMeta.filename === 'dataform' || 
+                    (currentFileMetadata.pathMeta.filename === 'package' && currentFileMetadata.pathMeta.extension === 'json')
+                );
+
+                if (!isConfigFile && (currentFileMetadata.errors?.errorGettingFileNameFromDocument || !currentFileMetadata.fileMetadata)) {
                     return;
                 }
 
@@ -358,7 +372,7 @@ export class CompiledQueryPanel {
                         "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                         "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                        "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                        "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
@@ -408,7 +422,7 @@ export class CompiledQueryPanel {
                     "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                     "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                     "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                    "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                    "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                     "lineageMetadata": lineageMetadata,
                     "errorMessage": errorMessage,
                     "dryRunStat":  dryRunStat,
@@ -487,7 +501,7 @@ export class CompiledQueryPanel {
         const workspaceFolder = await getWorkspaceFolder();
         let dataformCoreVersion = undefined;
         if (workspaceFolder) {
-            dataformCoreVersion = await readDataformCoreVersionFromWorkflowSettings(workspaceFolder);
+            dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
         }
 
         const missingExecutables: string[] = [];
@@ -504,7 +518,15 @@ export class CompiledQueryPanel {
             } else {
                 await webview.postMessage({
                     "missingExecutables": missingExecutables,
-                    "recompiling": false
+                    "recompiling": false,
+                    "errorType": CompilationErrorType.MISSING_EXECUTABLE,
+                    "isHelperFile": false,
+                    "tableOrViewQuery": null,
+                    "projectConfig": null,
+                    "packageJsonContent": null,
+                    "declarations": null,
+                    "compiledQuerySchema": null,
+                    "dryRunStat": null
                 });
             }
             return;
@@ -519,7 +541,8 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "recompiling": true,
                 "compilerOptions": compilerOptions,
-                "dataformCoreVersion": dataformCoreVersion
+                "dataformCoreVersion": dataformCoreVersion,
+                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
             });
         }
 
@@ -531,7 +554,14 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
                 "recompiling": false,
-                "errorType": null
+                "errorType": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
+                "isHelperFile": false,
+                "declarations": null,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         }
@@ -543,34 +573,58 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
                 "recompiling": false,
-                "errorType": null
+                "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await webview.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
                 "recompiling": false,
-                "errorType": null
+                "errorType": CompilationErrorType.COMPILATION_ERROR,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
             await webview.postMessage({
-                "errorType": "FILE_NOT_FOUND",
+                "errorType": CompilationErrorType.FILE_NOT_FOUND,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
-                "recompiling": false
+                "recompiling": false,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null
             });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             await webview.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
                 "recompiling": false,
-                "errorType": null
+                "errorType": CompilationErrorType.QUERY_META_ERROR,
+                "isHelperFile": false,
+                "declarations": null,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
             });
             return;
         }
-        updateSchemaAutoCompletions(curFileMeta);
-
         if(curFileMeta.errors?.dataformCompilationErrors){
             let errorString = "<h3>Error compiling Dataform:</h3><ul>";
 
@@ -607,40 +661,115 @@ export class CompiledQueryPanel {
             await webview.postMessage({
                 "errorMessage": errorString,
                 "recompiling": false,
-                "errorType": null
+                "errorType": CompilationErrorType.COMPILATION_ERROR,
+                "isHelperFile": false,
+                "declarations": null,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
+            });
+            return;
+        }
+
+        const isConfigFile = curFileMeta.pathMeta && (
+            curFileMeta.pathMeta.filename === 'workflow_settings' || 
+            curFileMeta.pathMeta.filename === 'dataform' || 
+            (curFileMeta.pathMeta.filename === 'package' && curFileMeta.pathMeta.extension === 'json')
+        );
+
+        if (isConfigFile) {
+            await webview.postMessage({
+                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
+                "projectConfig": curFileMeta.projectConfig,
+                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+                "packageJsonContent": curFileMeta.packageJsonContent,
+                "recompiling": false,
+                "isHelperFile": false,
+                "declarations": null,
+                "errorType": null,
+                "errorMessage": null,
+                "tableOrViewQuery": null,
+                "assertionQuery": null,
+                "preOperations": null,
+                "postOperations": null,
+                "incrementalPreOpsQuery": null,
+                "incrementalQuery": null,
+                "nonIncrementalQuery": null,
+                "operationsQuery": null
             });
             return;
         }
         const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
-        if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) &&  isJs){
+        
+        updateSchemaAutoCompletions(curFileMeta);
+
+        if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) && isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
                 if(CACHED_COMPILED_DATAFORM_JSON){
-                    if (!CACHED_COMPILED_DATAFORM_JSON?.declarations) { return; }
-                    const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
-                        .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
+                    if (CACHED_COMPILED_DATAFORM_JSON?.declarations) { 
+                        const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
+                            .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
 
-                    if(diagnosticCollection){
-                        diagnosticCollection.clear();
+                        if (filteredDeclarations.length > 0) {
+                            if(diagnosticCollection){
+                                diagnosticCollection.clear();
+                            }
+                            await webview.postMessage({
+                                "declarations": filteredDeclarations,
+                                "recompiling": false,
+                                "errorType": null,
+                                "errorMessage": null,
+                                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
+                                "isHelperFile": false
+                            });
+                            return;
+                        }
                     }
+                    
+                    // If it's a JS file but has no tables and no declarations, it's a helper file
                     await webview.postMessage({
-                        "declarations": filteredDeclarations,
+                        "isHelperFile": true,
                         "recompiling": false,
+                        "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "errorType": null,
-                        "errorMessage": null
+                        "errorMessage": null,
+                        "declarations": null,
+                        "tableOrViewQuery": null,
+                        "assertionQuery": null,
+                        "preOperations": null,
+                        "postOperations": null,
+                        "incrementalPreOpsQuery": null,
+                        "incrementalQuery": null,
+                        "nonIncrementalQuery": null,
+                        "operationsQuery": null
                     });
                     return;
                 }
             }
         }
 
-        if(!curFileMeta.fileMetadata || !curFileMeta.pathMeta){
-            //TODO: show some error message in this case
-            await webview.postMessage({ "recompiling": false });
+
+        const fm = curFileMeta.fileMetadata;
+        if (!fm) {
+            await webview.postMessage({
+                "errorMessage": `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.`,
+                "recompiling": false,
+                "errorType": CompilationErrorType.COMPILATION_ERROR,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
+            });
             return;
         }
 
-        let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
-        let targetTablesOrViews = curFileMeta.fileMetadata.tables;
+        let fileMetadata = handleSemicolonPrePostOps(fm);
+        let targetTablesOrViews = fm.tables;
 
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -651,7 +780,7 @@ export class CompiledQueryPanel {
             "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-            "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+            "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
             "compiledQuerySchema": compiledQuerySchema,
@@ -659,14 +788,17 @@ export class CompiledQueryPanel {
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
-            "models": curFileMeta.fileMetadata.tables,
+            "models": fm.tables,
             "recompiling": false,
             "dryRunning": true,
             "declarations": null,
             "compilerOptions": compilerOptions,
             "workflowUrls": workflowUrls,
             "errorType": null,
-            "errorMessage": null
+            "errorMessage": null,
+            "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+            "packageJsonContent": curFileMeta.packageJsonContent,
+            "isHelperFile": false
     });
 
         if(diagnosticCollection){
@@ -738,7 +870,7 @@ export class CompiledQueryPanel {
         }
 
         if (compiledQuerySchema?.fields) {
-            const curFileActionDescriptor: ActionDescription = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
+            const curFileActionDescriptor: ActionDescription | undefined = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
             // Remove 'mode' attribute from each field
             compiledQuerySchema.fields = compiledQuerySchema.fields.map(({ mode, ...rest }) => rest);
 
@@ -809,7 +941,7 @@ export class CompiledQueryPanel {
                 "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                 "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                "relativeFilePath": curFileMeta.pathMeta.relativeFilePath,
+                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
                 "errorMessage": errorMessage,
@@ -817,7 +949,7 @@ export class CompiledQueryPanel {
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTablesOrViews": targetTablesOrViews,
-                "models": curFileMeta.fileMetadata.tables,
+                "models": curFileMeta.fileMetadata?.tables,
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
@@ -827,7 +959,11 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "compilerOptions": compilerOptions,
                 "workflowUrls": workflowUrls,
-                "errorType": null
+                "errorType": null,
+                "projectConfig": curFileMeta.projectConfig,
+                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+                "packageJsonContent": curFileMeta.packageJsonContent,
+                "isHelperFile": false
             });
             this._cachedResults = { 
                 fileMetadata, 

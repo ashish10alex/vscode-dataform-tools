@@ -116,72 +116,74 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
         header: "Error",
         cell: ({ getValue }) => {
             const error = getValue() as string;
-            return error ? <span className="text-red-500 font-medium">{error}</span> : null; 
+            return error ? <span className="text-[var(--vscode-errorForeground)] font-medium">{error}</span> : null; 
         }
       }
   ], [currencySymbol]);
 
   return (
     <div className="h-full flex flex-col space-y-4">
-        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded border border-zinc-200 dark:border-zinc-700">
-            <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-2">Cost Estimator</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
-                Estimate the cost of running models associated with a specific tag.
-            </p>
+        {!state.errorMessage && (
+            <div className="bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)]">
+                <h2 className="text-lg font-semibold text-[var(--vscode-foreground)] mb-2">Cost Estimator</h2>
+                <p className="text-sm text-[var(--vscode-descriptionForeground)] mb-3">
+                    Estimate the cost of running models associated with a specific tag.
+                </p>
 
-            <details className="mb-5 group">
-                <summary className="text-sm text-zinc-500 dark:text-zinc-400 cursor-pointer list-none flex items-center gap-1.5 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors w-fit pb-1">
-                    <Info className="w-4 h-4" />
-                    <span>How is cost calculated?</span>
-                </summary>
-                <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-3 rounded">
-                    <p className="mb-2">For each model in the tag, we construct a full query and perform a dry run:</p>
-                    <ul className="space-y-1.5 ml-1">
-                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Table / View:</strong> Pre-operation + Create or replace statement + Main query</li>
-                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Partitioned / Clustered Tables:</strong> Pre-operations + Main query</li>
-                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Incremental:</strong> Incremental pre-operation query + Create or replace statement + Main query</li>
-                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Partitioned / Clustered Incremental:</strong> Incremental pre-operation query + Main query</li>
-                        <li><strong className="font-medium text-zinc-700 dark:text-zinc-300">Assertion & Operation:</strong> Main query</li>
-                    </ul>
+                <details className="mb-5 group">
+                    <summary className="text-sm text-[var(--vscode-descriptionForeground)] cursor-pointer list-none flex items-center gap-1.5 hover:text-[var(--vscode-foreground)] transition-colors w-fit pb-1">
+                        <Info className="w-4 h-4" />
+                        <span>How is cost calculated?</span>
+                    </summary>
+                    <div className="mt-2 text-xs text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] p-3 rounded">
+                        <p className="mb-2">For each model in the tag, we construct a full query and perform a dry run:</p>
+                        <ul className="space-y-1.5 ml-1">
+                            <li><strong className="font-medium text-[var(--vscode-foreground)]">Table / View:</strong> Pre-operation + Create or replace statement + Main query</li>
+                            <li><strong className="font-medium text-[var(--vscode-foreground)]">Partitioned / Clustered Tables:</strong> Pre-operations + Main query</li>
+                            <li><strong className="font-medium text-[var(--vscode-foreground)]">Incremental:</strong> Incremental pre-operation query + Create or replace statement + Main query</li>
+                            <li><strong className="font-medium text-[var(--vscode-foreground)]">Partitioned / Clustered Incremental:</strong> Incremental pre-operation query + Main query</li>
+                            <li><strong className="font-medium text-[var(--vscode-foreground)]">Assertion & Operation:</strong> Main query</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <div className="flex items-center gap-4">
+                    <select 
+                        value={selectedTag} 
+                        onChange={(e) => setSelectedTag(e.target.value)}
+                        className="bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] text-sm rounded px-3 py-2 focus:ring-1 focus:ring-[var(--vscode-focusBorder)] outline-none min-w-[200px] transition-colors"
+                    >
+                        <option value="" disabled className="bg-[var(--vscode-input-background)]">Select a tag</option>
+                        {state.dataformTags?.map(tag => (
+                            <option key={tag} value={tag} className="bg-[var(--vscode-input-background)]">{tag}</option>
+                        ))}
+                    </select>
+
+                    <button 
+                        onClick={handleEstimate} 
+                        disabled={!selectedTag || loading}
+                        className="bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
+                    >
+                        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Estimate Cost
+                    </button>
                 </div>
-            </details>
-
-            <div className="flex items-center gap-4">
-                <select 
-                    value={selectedTag} 
-                    onChange={(e) => setSelectedTag(e.target.value)}
-                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none min-w-[200px]"
-                >
-                    <option value="" disabled>Select a tag</option>
-                    {state.dataformTags?.map(tag => (
-                        <option key={tag} value={tag}>{tag}</option>
-                    ))}
-                </select>
-
-                <button 
-                    onClick={handleEstimate} 
-                    disabled={!selectedTag || loading}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                    {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Estimate Cost
-                </button>
             </div>
-        </div>
+        )}
         
         <div className="flex-1 overflow-hidden">
              {data && data.length > 0 ? (
                 <DataTable columns={columns} data={data} searchPlaceholder="Filter costs..." />
              ) : (
-                 <div className="text-center text-zinc-400 dark:text-zinc-500 mt-8">
-                     {state.errorMessage ? (
-                         <span className="text-red-500 dark:text-red-400">{state.errorMessage}</span>
-                     ) : (
+                <div className="text-center text-[var(--vscode-descriptionForeground)] mt-8">
+                     {state.tagDryRunStatsMeta?.error ? (
+                         <span className="text-[var(--vscode-errorForeground)]">{state.tagDryRunStatsMeta.error.message}</span>
+                     ) : !state.errorMessage ? (
                          "Select a tag and click Estimate Cost to see results."
-                     )}
+                     ) : null}
                  </div>
              )}
         </div>
     </div>
-  );
+);
 };
