@@ -178,9 +178,9 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                  <div className="text-center text-zinc-400 dark:text-zinc-500 mt-8">
                      {state.tagDryRunStatsMeta?.error ? (
                          <span className="text-red-500 dark:text-red-400">{state.tagDryRunStatsMeta.error.message}</span>
-                     ) : (
+                     ) : !state.errorMessage ? (
                          "Select a tag and click Estimate Cost to see results."
-                     )}
+                     ) : null}
                  </div>
              )}
         </div>
