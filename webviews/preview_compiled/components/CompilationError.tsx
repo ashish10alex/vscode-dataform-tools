@@ -25,7 +25,10 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
   let sanitizedError = '';
   if (errorMessage) {
     try {
-      sanitizedError = DOMPurify.sanitize(errorMessage);
+      sanitizedError = DOMPurify.sanitize(errorMessage, {
+        ALLOWED_TAGS: ['b', 'i', 'strong', 'em', 'code', 'pre', 'br', 'p', 'span', 'a'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'className']
+      });
     } catch (e) {
       sanitizedError = '';
     }
@@ -77,6 +80,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
         <div className="flex items-start">
           <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-3 flex-shrink-0" />
           <div>
+            {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
             <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto mb-3" dangerouslySetInnerHTML={{__html: sanitizedError}} />
             
             <h4 className="mt-0 mb-2 text-md font-semibold text-[var(--vscode-inputValidation-errorForeground)]">Possible fix:</h4>
@@ -145,6 +149,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
       <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
         <div className="flex items-start">
           <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-2 flex-shrink-0" />
+          {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
           <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
         </div>
       </div>
