@@ -751,8 +751,25 @@ export class CompiledQueryPanel {
         }
 
 
-        let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata!);
-        let targetTablesOrViews = curFileMeta.fileMetadata!.tables;
+        const fm = curFileMeta.fileMetadata;
+        if (!fm) {
+            await webview.postMessage({
+                "errorMessage": `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.`,
+                "recompiling": false,
+                "errorType": CompilationErrorType.COMPILATION_ERROR,
+                "isHelperFile": false,
+                "tableOrViewQuery": null,
+                "projectConfig": null,
+                "packageJsonContent": null,
+                "declarations": null,
+                "compiledQuerySchema": null,
+                "dryRunStat": null
+            });
+            return;
+        }
+
+        let fileMetadata = handleSemicolonPrePostOps(fm);
+        let targetTablesOrViews = fm.tables;
 
         await webview.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
@@ -771,7 +788,7 @@ export class CompiledQueryPanel {
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
-            "models": curFileMeta.fileMetadata!.tables,
+            "models": fm.tables,
             "recompiling": false,
             "dryRunning": true,
             "declarations": null,
