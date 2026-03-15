@@ -6,9 +6,11 @@
         "sourceType": "module"
     },
     "plugins": [
-        "@typescript-eslint"
+        "@typescript-eslint",
+        "react"
     ],
     "rules": {
+        "react/no-danger": "error",
         "@typescript-eslint/naming-convention": [
             "warn",
             {

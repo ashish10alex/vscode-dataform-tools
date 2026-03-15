@@ -92,13 +92,14 @@ export interface Declarations {
     fileName: string;
 }
 
-interface ProjectConfig {
+export interface ProjectConfig {
     warehouse: string;
     defaultSchema: string;
     assertionSchema: string;
     defaultDatabase: string;
     tablePrefix: string;
     defaultLocation: string;
+    vars: { [key: string]: string };
 }
 
 export interface Operation {
@@ -144,6 +145,7 @@ export interface DataformCompiledJson {
     projectConfig: ProjectConfig;
     graphErrors: GraphErrors;
     notebooks: Notebook[];
+    dataformCoreVersion?: string;
 }
 
 export interface DryRunError {
@@ -276,6 +278,13 @@ export type CurrentFileMetadata = {
     };
     document?: TextDocument;
     compilationTimeMs?: number;
+    projectConfig?: ProjectConfig;
+    dataformCoreVersion?: string;
+    packageJsonContent?: {
+        name?: string;
+        dependencies?: { [key: string]: string };
+        devDependencies?: { [key: string]: string };
+    } | null;
 };
 
 export type TagDryRunStats = {
@@ -305,6 +314,16 @@ export const supportedCurrencies = {
 } as const;
 
 export type SupportedCurrency = keyof typeof supportedCurrencies;
+  
+export enum CompilationErrorType {
+    NONE = "NONE",
+    COMPILATION_ERROR = "COMPILATION_ERROR",
+    MISSING_EXECUTABLE = "MISSING_EXECUTABLE",
+    FILE_NOT_FOUND = "FILE_NOT_FOUND",
+    NOT_A_DATAFORM_WORKSPACE = "NOT_A_DATAFORM_WORKSPACE",
+    UNSUPPORTED_FILE_TYPE = "UNSUPPORTED_FILE_TYPE",
+    QUERY_META_ERROR = "QUERY_META_ERROR"
+}
 
 export type LastModifiedTimeMeta = {
     lastModifiedTime: string | undefined;
@@ -364,6 +383,7 @@ export interface WebviewMessage {
   operationsQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
+  errorType?: CompilationErrorType;
   dryRunStat?: any; 
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;
@@ -380,6 +400,13 @@ export interface WebviewMessage {
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
   missingExecutables?: string[];
+  projectConfig?: ProjectConfig;
+  dataformCoreVersion?: string;
+  packageJsonContent?: {
+    name?: string;
+    dependencies?: { [key: string]: string };
+    devDependencies?: { [key: string]: string };
+  };
 }
 
 export type CreateCompilationResultResponse = Promise<

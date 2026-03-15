@@ -391,6 +391,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   <CheckCircle2 className="w-5 h-5 text-[var(--vscode-extensionIcon-preReleaseForeground)] mt-0.5 mr-2 flex-shrink-0" />
                   <div className="text-[var(--vscode-foreground)] text-sm">
                       <span className="font-semibold">Query will process:</span>
+                      {/* eslint-disable-next-line react/no-danger -- sanitized via DOMPurify */}
                       <div className="font-mono mt-1 opacity-90" dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(state.dryRunStat)}} />
                   </div>
              </div>

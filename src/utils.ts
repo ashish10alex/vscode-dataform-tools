@@ -18,7 +18,7 @@ import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "
 import { GitService } from './gitClient';
 import { load as loadYaml, YAMLException } from 'js-yaml';
 
-let supportedExtensions = ['sqlx', 'js'];
+let supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
 
 export function formatTimestamp(lastModifiedTime:Date):string {
@@ -488,6 +488,21 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
     }
     if (!workspaceFolder) { return { isDataformWorkspace: false }; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);
+    
+    let packageJsonContent: any = null;
+    if (filename === 'package' && extension === 'json') {
+        try {
+            const content = await fs.promises.readFile(document.uri.fsPath, 'utf-8');
+            const pkg = JSON.parse(content);
+            packageJsonContent = {
+                name: pkg.name,
+                dependencies: pkg.dependencies,
+                devDependencies: pkg.devDependencies
+            };
+        } catch (e) {
+            logger.error(`Error reading package.json: ${e}`);
+        }
+    }
 
     if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
         if (freshCompilation) {
@@ -499,7 +514,9 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
-            if (fileMetadata?.tables?.length === 0) {
+            const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
+
+            if (fileMetadata?.tables?.length === 0 && !isConfigFile) {
                 return {
                     errors: { fileNotFoundError: true },
                     pathMeta: {
@@ -507,8 +524,11 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
+                    projectConfig: dataformCompiledJson.projectConfig,
+                    dataformCoreVersion: dataformCompiledJson.dataformCoreVersion,
+                    packageJsonContent: packageJsonContent
                 };
-            } else if (fileMetadata?.queryMeta.error !== "") {
+            } else if (fileMetadata?.queryMeta && fileMetadata.queryMeta.error !== "" && !isConfigFile) {
                 return {
                     errors: { queryMetaError: fileMetadata?.queryMeta.error },
                     pathMeta: {
@@ -516,7 +536,10 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                         extension: extension,
                         relativeFilePath: relativeFilePath
                     },
-                    compilationTimeMs: compilationTimeMs
+                    compilationTimeMs: compilationTimeMs,
+                    projectConfig: dataformCompiledJson.projectConfig,
+                    dataformCoreVersion: dataformCompiledJson.dataformCoreVersion,
+                    packageJsonContent: packageJsonContent
                 };
             };
 
@@ -539,7 +562,10 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     relativeFilePath: relativeFilePath
                 },
                 document: document,
-                compilationTimeMs: compilationTimeMs
+                compilationTimeMs: compilationTimeMs,
+                projectConfig: dataformCompiledJson.projectConfig,
+                dataformCoreVersion: dataformCompiledJson.dataformCoreVersion,
+                packageJsonContent: packageJsonContent
             };
         }
         else if (errors?.length !== 0) {
@@ -560,12 +586,15 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     relativeFilePath: relativeFilePath
                 },
                 document: document,
-                compilationTimeMs: compilationTimeMs
+                compilationTimeMs: compilationTimeMs,
+                projectConfig: (dataformCompiledJson as any)?.projectConfig,
+                dataformCoreVersion: (dataformCompiledJson as any)?.dataformCoreVersion,
+                packageJsonContent: packageJsonContent
             };
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -575,6 +604,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                     extension: extension,
                     relativeFilePath: relativeFilePath
                 },
+                packageJsonContent: packageJsonContent
             };
         }
 
@@ -583,6 +613,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         if (targetToSearch) {
             dependents = await getDependentsOfTarget(targetToSearch);
         }
+
 
         return {
             isDataformWorkspace: true,
@@ -594,7 +625,10 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
                 extension: extension,
                 relativeFilePath: relativeFilePath
             },
-            document: document
+            document: document,
+            projectConfig: CACHED_COMPILED_DATAFORM_JSON!.projectConfig,
+            dataformCoreVersion: CACHED_COMPILED_DATAFORM_JSON!.dataformCoreVersion,
+            packageJsonContent: packageJsonContent
         };
     }
     return undefined;
@@ -2106,25 +2140,42 @@ function parseNotebookFilenames(content: string): string[] {
   return filenames;
 }
 
-export async function readDataformCoreVersionFromWorkflowSettings(
+export async function readDataformCoreVersion(
   resolvedProjectPath: string
 ): Promise<string | undefined> {
   const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
+  const dataformJsonPath = path.join(resolvedProjectPath, "dataform.json");
+
+  let configPath = workflowSettingsPath;
   try {
     await fs.promises.access(workflowSettingsPath);
   } catch {
-    return;
+    try {
+      await fs.promises.access(dataformJsonPath);
+      configPath = dataformJsonPath;
+    } catch {
+      return;
+    }
   }
 
-  const workflowSettingsContent = await fs.promises.readFile(workflowSettingsPath, "utf-8");
-  let workflowSettingsAsJson: any = {};
-  try {
-    workflowSettingsAsJson = loadYaml(workflowSettingsContent);
-  } catch (e) {
-    if (e instanceof YAMLException) {
+  const content = await fs.promises.readFile(configPath, "utf-8");
+  let configAsJson: any = {};
+  if (configPath.endsWith(".yaml")) {
+    try {
+      configAsJson = loadYaml(content);
+    } catch (e) {
+      if (e instanceof YAMLException) {
+        return undefined;
+      }
+      throw e;
+    }
+  } else {
+    try {
+      configAsJson = JSON.parse(content);
+    } catch {
       return undefined;
     }
-    throw e;
   }
-  return workflowSettingsAsJson?.dataformCoreVersion;
+
+  return configAsJson?.dataformCoreVersion;
 }
