@@ -29,7 +29,7 @@ const isBigQueryWrapperType = (value: any) => {
     }
 
     // Check for plain value wrapper used by some BQ types
-    if (Object.keys(value).length === 1 && "value" in value) {
+    if (constructorName && constructorName !== 'Object' && Object.keys(value).length === 1 && "value" in value) {
         return true;
     }
 
