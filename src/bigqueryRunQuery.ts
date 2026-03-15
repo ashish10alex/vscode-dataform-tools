@@ -13,11 +13,40 @@ function convertArrayToObject(array: any, columnName: string) {
     return array.map((item: any) => ({ [columnName]: item }));
 }
 
+// Helper to identify BigQuery wrapper types (Numeric, BigQueryDate, etc.)
+const isBigQueryWrapperType = (value: any) => {
+    if (typeof value !== 'object' || value === null) {return false;}
+    const constructorName = value?.constructor?.name;
+
+    // Check for Big.js (Numeric) properties if constructor name is not available or differs
+    if (constructorName === 'Big' || (value.s !== undefined && value.e !== undefined && value.c !== undefined)) {
+        return true;
+    }
+
+    // Check for other BigQuery specific wrapper types
+    if (constructorName && (constructorName.startsWith('BigQuery') || ["Big", "BigNumber"].includes(constructorName))) {
+        return true;
+    }
+
+    // Check for plain value wrapper used by some BQ types
+    if (constructorName && constructorName !== 'Object' && Object.keys(value).length === 1 && "value" in value) {
+        return true;
+    }
+
+    return false;
+};
+
 // Function to recursively extract values from nested objects and handle Big objects
 const extractValue: any = (value: any) => {
     if (typeof value === 'object' && value !== null) {
-        if (value.constructor && value.constructor.name === 'Big') {
-            return value.toString();
+        if (isBigQueryWrapperType(value)) {
+            if (typeof value.toString === 'function' && value.toString() !== '[object Object]') {
+                return value.toString();
+            }
+            if ("value" in value) {
+                return extractValue(value.value);
+            }
+            return Object.values(value).map(extractValue).join(', ');
         } else if (Array.isArray(value)) {
             return value.map(extractValue);
         } else {
@@ -39,8 +68,8 @@ function parseObject(key:any, obj: any, _childrens: any) {
     let _children: any = {};
     Object.entries(obj).forEach(([key, value]: [any, any]) => {
         if (typeof value === 'object' && value !== null) {
-            if (value.constructor && value.constructor.name === 'Big') {
-                _children[key] = value.toString();
+            if (isBigQueryWrapperType(value)) {
+                _children[key] = extractValue(value);
             }
             else if (value.constructor.name === 'Object') {
                 let newValues: any = [];
@@ -122,10 +151,8 @@ function transformBigValues(obj: any) {
     for (const key in obj) {
         if (Object.hasOwnProperty.call(obj, key)) {
             const value = obj[key];
-            if (value && value.constructor && value.constructor.name === 'Big') {
-                obj[key] = value.toString();
-            } else if (value && value.constructor && ["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name)) {
-                obj[key] = Object.values(value).map(extractValue).join(', ');
+            if (isBigQueryWrapperType(value)) {
+                obj[key] = extractValue(value);
             }
         }
     }
@@ -200,26 +227,14 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
     return { rows: rows, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))}, errorMessage: undefined };
 }
 
-export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
-
-    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
-
-    if (errorMessage) {
-        return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };
-    }
-
-    if (!rows || rows.length === 0) {
-        return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: undefined};
-    }
-
+export function processQueryResults(rows: any[]): { results: any[], columns: any[] } {
     let results = rows.map((row: { [s: string]: unknown }) => {
         const obj: { [key: string]: any } = {};
         Object.entries(row).forEach(([key, value]: [any, any]) => {
-            const isBqWrapperType = ["Big", "BigQueryDate", "BigQueryDatetime", "BigQueryTime", "BigQueryTimestamp", "BigQueryRange", "BigQueryInt"].includes(value?.constructor?.name);
-            const isPlainValueWrapper = typeof value === "object" && value !== null && Object.keys(value).length === 1 && "value" in value;
+            const isBqWrapperType = isBigQueryWrapperType(value);
             
             //TODO:  Handling nested BigQuery rows. This if statement might not be robust
-            if (typeof (value) === "object" && value !== null && !(isBqWrapperType || isPlainValueWrapper)) {
+            if (typeof (value) === "object" && value !== null && !isBqWrapperType) {
                 if (Array.isArray(value) && ((value[0] && typeof value[0] === "string") || (value.length === 0) || (value[0] && Object.keys(value[0])[0] === "value"))) {
                     value = convertArrayToObject(value, key);
                 } else if (typeof value === "object" && !Array.isArray(value) && value !== null) {
@@ -311,6 +326,22 @@ export async function queryBigQuery(query: string): Promise<{results: any[] | un
     });
 
     let columns = createDataColumns(results);
+    return { results, columns };
+}
+
+export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+
+    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
+
+    if (errorMessage) {
+        return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };
+    }
+
+    if (!rows || rows.length === 0) {
+        return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: undefined};
+    }
+
+    const { results, columns } = processQueryResults(rows);
 
     return { results: results, columns: columns, jobStats: jobStats, errorMessage: errorMessage };
 }
