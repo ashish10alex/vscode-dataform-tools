@@ -18,6 +18,8 @@ export interface WebviewState {
   incrementalQuery?: string;
   nonIncrementalQuery?: string;
   operationsQuery?: string;
+  testQuery?: string;
+  expectedOutputQuery?: string;
   relativeFilePath?: string;
   errorMessage?: string;
   errorType?: CompilationErrorType;

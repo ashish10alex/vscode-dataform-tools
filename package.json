@@ -205,6 +205,11 @@
                 "command": "vscode-dataform-tools.clearExtensionCache",
                 "category": "Dataform",
                 "title": "Clear extension cache"
+            },
+            {
+                "command": "vscode-dataform-tools.runTests",
+                "category": "Dataform",
+                "title": "Run all tests"
             }
         ],
         "languages": [

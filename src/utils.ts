@@ -119,6 +119,15 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
         addDependenciesToMap(notebook);
         addNodeToTargetNameMap(notebook);
     });
+
+    compiledJson.tests?.forEach(test => {
+        (test as any).type = 'test';
+        addNodeToFileMap(test as any);
+        // Tests don't have dependencyTargets in same way tables do for indices
+        if ((test as any).target) {
+            addNodeToTargetNameMap(test as any);
+        }
+    });
     
     logger.debug(`Built indices: ${FILE_NODE_MAP.size} files, ${TARGET_DEPENDENTS_MAP.size} targets with dependents`);
 }
@@ -1288,6 +1297,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         postOpsQuery: "",
         assertionQuery: "",
         operationsQuery: "",
+        testQuery: "",
+        expectedOutputQuery: "",
         error: "",
     };
     let finalTables: any[] = [];
@@ -1446,6 +1457,28 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     }
                 });
              }
+        }
+
+        // 4. Tests
+        const testNodes = fileNodes.filter((n: any) => n.type === 'test') as any[];
+        if (testNodes.length > 0) {
+            if (queryMeta.type !== "js") {
+                queryMeta.type = "test";
+            }
+
+            testNodes.forEach(test => {
+                queryMeta.testQuery += (queryMeta.testQuery ? "\n" : "") + test.testQuery;
+                queryMeta.expectedOutputQuery += (queryMeta.expectedOutputQuery ? "\n" : "") + test.expectedOutputQuery;
+
+                finalTables.push({
+                    type: "test",
+                    name: test.name,
+                    fileName: relativeFilePath,
+                    testQuery: test.testQuery,
+                    expectedOutputQuery: test.expectedOutputQuery,
+                    target: test.target // dataset name
+                });
+            });
         }
     }
 

@@ -140,6 +140,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const handleLint = () => {
     vscode.postMessage({ command: "lintCurrentFile", value: true });
   };
+  
+  const handleRunTest = () => {
+    if (state.models && state.models.length > 0) {
+        vscode.postMessage({
+            command: "runTests",
+            value: {
+                testName: state.models[0].name,
+                workspaceFolder: state.workspaceFolder
+            }
+        });
+    }
+  };
 
   const handlePreviewResults = () => {
     vscode.postMessage({ command: "previewResults", value: true });
@@ -411,6 +423,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
                    <Eye className="w-3 h-3 mr-1.5" /> Lint
                </button>
+               {state.modelType === 'test' && (
+                    <button onClick={handleRunTest} disabled={state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)] shadow-sm disabled:opacity-50">
+                        <Play className="w-3 h-3 mr-1.5" /> Run Test
+                    </button>
+               )}
            </div>
 
           {/* Compiler Options Section */}
@@ -586,6 +603,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
              <div>
                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Operations</h3>
                  <CodeBlock code={state.operationsQuery} language="sql" />
+             </div>
+          )}
+          {state.testQuery && (
+             <div>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Input Query</h3>
+                 <CodeBlock code={state.testQuery} language="sql" />
+             </div>
+          )}
+          {state.expectedOutputQuery && (
+             <div>
+                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Expected Output Query</h3>
+                 <CodeBlock code={state.expectedOutputQuery} language="sql" />
              </div>
           )}
       </div>

@@ -4,6 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
+import { runTests } from "../runTests";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
@@ -306,6 +307,12 @@ export class CompiledQueryPanel {
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 }
                 return;
+                return;
+              case 'runTests':
+                const testName = message.value.testName;
+                const _workspaceFolder = message.value.workspaceFolder;
+                await runTests(_workspaceFolder, testName);
+                return;
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;
                 const includeDependents = message.value.includeDependents;
@@ -326,6 +333,8 @@ export class CompiledQueryPanel {
                     "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
                     "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
                     "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
+                    "testQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.testQuery,
+                    "expectedOutputQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.expectedOutputQuery,
                     "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
                     "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
                     "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
@@ -372,6 +381,8 @@ export class CompiledQueryPanel {
                         "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                         "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                        "testQuery": fileMetadata.queryMeta.testQuery,
+                        "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                         "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "currencySymbol": currencySymbol,
@@ -422,6 +433,8 @@ export class CompiledQueryPanel {
                     "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                     "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                     "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                    "testQuery": fileMetadata.queryMeta.testQuery,
+                    "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                     "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                     "lineageMetadata": lineageMetadata,
                     "errorMessage": errorMessage,
@@ -780,6 +793,8 @@ export class CompiledQueryPanel {
             "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+            "testQuery": fileMetadata.queryMeta.testQuery,
+            "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
             "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
@@ -941,6 +956,8 @@ export class CompiledQueryPanel {
                 "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                 "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                "testQuery": fileMetadata.queryMeta.testQuery,
+                "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "compilationTimeMs": curFileMeta.compilationTimeMs,

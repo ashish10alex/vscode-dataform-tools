@@ -193,7 +193,7 @@ function App() {
             </div>
         )}
 
-        {state.recompiling && !state.tableOrViewQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && (
+        {state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && (
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 
@@ -206,7 +206,7 @@ function App() {
         <CompilationError state={state} />
 
         {isConfigFile && <ProjectConfigTab state={state} />}
-        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.declarations && state.relativeFilePath?.endsWith('.js'))) && (
+        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && state.relativeFilePath?.endsWith('.js'))) && (
             <div>
                 <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
                     {state.relativeFilePath}
@@ -219,6 +219,8 @@ function App() {
           state.operationsQuery || 
           state.assertionQuery || 
           state.incrementalQuery || 
+          state.testQuery ||
+          state.expectedOutputQuery ||
           state.declarations
         ) && <CompiledQueryTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'schema' && <SchemaTab state={state} />}
