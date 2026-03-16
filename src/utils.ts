@@ -1873,7 +1873,8 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     let includedTargets: {database:string, schema: string, name:string}[] = [];
     fileMetadatas.forEach(fileMetadata => {
         if (fileMetadata) {
-            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; type?: string }) => {
+                if (table.type === 'test') { return; }
                 includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
             });
         }
@@ -1946,7 +1947,8 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         let actionsList: string[] = [];
         fileMetadatas.forEach(fileMetadata => {
             if (fileMetadata) {
-                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; type?: string }) => {
+                    if (table.type === 'test') { return; }
                     const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
                     actionsList.push(action);
                 });
