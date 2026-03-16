@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.2.0...v1.3.0) (2026-03-16)
+
+
+### Features
+
+* add support for `test` model type ([#285](https://github.com/ashish10alex/vscode-dataform-tools/issues/285)) ([ee5e849](https://github.com/ashish10alex/vscode-dataform-tools/commit/ee5e84904a7f2be8fb284a84524b860a6c286dae))
+* **graph:** enhancement to dependancy graph - export to png, expand, better focus ([#277](https://github.com/ashish10alex/vscode-dataform-tools/issues/277)) ([0a2186e](https://github.com/ashish10alex/vscode-dataform-tools/commit/0a2186eab19528344fdf6a8613b2a40892b71ab2))
+* **hover:** support for hover schema when full table name is being used in query ([#281](https://github.com/ashish10alex/vscode-dataform-tools/issues/281)) ([d953ba5](https://github.com/ashish10alex/vscode-dataform-tools/commit/d953ba501d50a6b57d8405e796ad2d19480e10f5))
+* show user metadata when active editor switches to `workflow_settings.yaml` , `dataform.json` , `package.json` ([#283](https://github.com/ashish10alex/vscode-dataform-tools/issues/283)) ([26d689a](https://github.com/ashish10alex/vscode-dataform-tools/commit/26d689ab5a49f088380acc5c9cfa1c5b79467b61))
+* **symbols:** include full table names in document symbols ([#282](https://github.com/ashish10alex/vscode-dataform-tools/issues/282)) ([3e44c0b](https://github.com/ashish10alex/vscode-dataform-tools/commit/3e44c0b58237934d38c1bd6711a8caa21d2c5f05))
+
+
+### Bug Fixes
+
+* `NUMERIC` type not showing correctly in results preview + integration tests ([#284](https://github.com/ashish10alex/vscode-dataform-tools/issues/284)) ([b0c8fc4](https://github.com/ashish10alex/vscode-dataform-tools/commit/b0c8fc484b2db243ec49414c975eedc4cfe0dc7f))
+* **webview:** action buttons should be disabled when compilation is active ([#278](https://github.com/ashish10alex/vscode-dataform-tools/issues/278)) ([50b559e](https://github.com/ashish10alex/vscode-dataform-tools/commit/50b559e7272dbd88b9cc8b0db174e3578119d83c))
+
+
+### Refactors
+
+* migrate to rimraf to make scripts platform independent ([7adad46](https://github.com/ashish10alex/vscode-dataform-tools/commit/7adad4688387ea98e21f350f1e7216a8b0036bcd))
+
+
+### Styling
+
+* align ui feel to active vscode theme ([#280](https://github.com/ashish10alex/vscode-dataform-tools/issues/280)) ([983565e](https://github.com/ashish10alex/vscode-dataform-tools/commit/983565ea92898f10aaa86d979467946f2aea0bc1))
+
 ## [1.2.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.1.4...v1.2.0) (2026-03-05)
 
 
