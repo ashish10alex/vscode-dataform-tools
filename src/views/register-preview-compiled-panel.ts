@@ -309,9 +309,8 @@ export class CompiledQueryPanel {
                 return;
                 return;
               case 'runTests':
-                const testName = message.value.testName;
                 const _workspaceFolder = message.value.workspaceFolder;
-                await runTests(_workspaceFolder, testName);
+                await runTests(_workspaceFolder);
                 return;
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;

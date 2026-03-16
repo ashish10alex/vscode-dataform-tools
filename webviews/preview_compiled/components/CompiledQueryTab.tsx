@@ -24,26 +24,6 @@ interface CompiledQueryTabProps {
   state: WebviewState;
 }
 
-const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-const DryRunStats: React.FC<{ result?: BigQueryDryRunResponse; currencySymbol: string }> = ({ result, currencySymbol }) => {
-    if (!result || !result.statistics || result.error.hasError) return null;
-    return (
-        <div className="text-xs text-[var(--vscode-descriptionForeground)] mt-1 flex items-center gap-1">
-            <span>Query will process: {formatBytes(result.statistics.totalBytesProcessed)}</span>
-            {result.statistics.cost && (
-                <span>({currencySymbol}{result.statistics.cost.value.toFixed(3)})</span>
-            )}
-        </div>
-    );
-};
-
 export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
 }) => {
@@ -166,7 +146,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         vscode.postMessage({
             command: "runTests",
             value: {
-                testName: state.models[0].name,
                 workspaceFolder: state.workspaceFolder
             }
         });
@@ -443,11 +422,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
                    <Eye className="w-3 h-3 mr-1.5" /> Lint
                </button>
-               {state.modelType === 'test' && (
-                    <button onClick={handleRunTest} disabled={state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)] shadow-sm disabled:opacity-50">
-                        <Play className="w-3 h-3 mr-1.5" /> Run Test
-                    </button>
-               )}
            </div>
 
           {/* Compiler Options Section */}
@@ -565,13 +539,21 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                <button onClick={handlePreviewResults} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Eye className="w-4 h-4 mr-1.5" /> Preview Data
                </button>
-               <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
-                   <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
-               </button>
-                <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
-                   <Play className="w-4 h-4 mr-1.5" /> Run (API)
-                   <span className="absolute -top-2 -right-2 bg-[var(--vscode-statusBarItem-warningBackground)] text-[var(--vscode-statusBarItem-warningForeground)] text-[10px] font-bold px-1.5 rounded-full">NEW</span>
-               </button>
+               {state.modelType === 'test' ? (
+                   <button onClick={handleRunTest} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+                       <Play className="w-4 h-4 mr-1.5" /> Run Tests
+                   </button>
+               ) : (
+                   <>
+                       <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+                           <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
+                       </button>
+                        <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
+                           <Play className="w-4 h-4 mr-1.5" /> Run (API)
+                           <span className="absolute -top-2 -right-2 bg-[var(--vscode-statusBarItem-warningBackground)] text-[var(--vscode-statusBarItem-warningForeground)] text-[10px] font-bold px-1.5 rounded-full">NEW</span>
+                       </button>
+                   </>
+               )}
            </div>
       </div>
 
@@ -628,14 +610,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           {state.testQuery && (
              <div>
                  <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Input Query</h3>
-                  <DryRunStats result={state.testDryRunResult} currencySymbol={state.currencySymbol || "$"} />
                   <CodeBlock code={state.testQuery} language="sql" />
              </div>
           )}
           {state.expectedOutputQuery && (
              <div>
                  <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Expected Output Query</h3>
-                  <DryRunStats result={state.expectedOutputDryRunResult as BigQueryDryRunResponse} currencySymbol={state.currencySymbol || "$"} />
                   <CodeBlock code={state.expectedOutputQuery} language="sql" />
              </div>
            )}

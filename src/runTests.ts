@@ -1,11 +1,15 @@
 import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, runCommandInTerminal } from "./utils";
 
-export async function runTests(workspaceFolder: string, testName: string) {
+export async function runTests(workspaceFolder: string) {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
     
-    // dataform test --timeout=5m --tests="test_name"
-    let cmd = `${customDataformCliPath} test "${workspaceFolder}" --timeout=${dataformCompilationTimeoutVal} --tests="${testName}"`;
+    if (dataformCompilationTimeoutVal) {
+        dataformCompilationTimeoutVal = `--timeout=${dataformCompilationTimeoutVal}`;
+    } else {
+        dataformCompilationTimeoutVal = "";
+    }
+    let cmd = `${customDataformCliPath} test "${workspaceFolder}" ${dataformCompilationTimeoutVal}`;
     
     runCommandInTerminal(cmd);
 }

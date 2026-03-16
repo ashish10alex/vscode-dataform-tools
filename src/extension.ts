@@ -118,8 +118,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTests', async (workspaceFolder: string, testName: string) => {
-        await runTests(workspaceFolder, testName);
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTests', async (workspaceFolder: string) => {
+        await runTests(workspaceFolder);
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
