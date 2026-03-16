@@ -843,11 +843,23 @@ export class CompiledQueryPanel {
         // Filter out test nodes as they don't have a table to check last modified time for
         const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
 
-        const [dryRunResults, modelsLastUpdateTimesMeta] = await Promise.all([
+        const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([])
         ]);
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
+
+        const modelsLastUpdateTimesMeta: any[] = [];
+        let timeIndex = 0;
+        const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
+        for (const table of targetTablesOrViews) {
+            if (table.type !== "test") {
+                modelsLastUpdateTimesMeta.push(safeModelsLastUpdateTimesMeta[timeIndex]);
+                timeIndex++;
+            } else {
+                modelsLastUpdateTimesMeta.push(null);
+            }
+        }
 
 
         let currency = "USD" as SupportedCurrency;
