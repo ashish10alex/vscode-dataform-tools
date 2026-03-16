@@ -4,6 +4,7 @@ import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQue
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
+import { runTests } from "../runTests";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
@@ -306,6 +307,11 @@ export class CompiledQueryPanel {
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 }
                 return;
+              case 'runTests': {
+                const _workspaceFolder = message.value.workspaceFolder;
+                await runTests(_workspaceFolder);
+                return;
+              }
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;
                 const includeDependents = message.value.includeDependents;
@@ -326,6 +332,8 @@ export class CompiledQueryPanel {
                     "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
                     "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
                     "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
+                    "testQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.testQuery,
+                    "expectedOutputQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.expectedOutputQuery,
                     "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
                     "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
                     "dryRunStat":  this.centerPanel?._cachedResults?.dryRunStat,
@@ -372,6 +380,8 @@ export class CompiledQueryPanel {
                         "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                         "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                        "testQuery": fileMetadata.queryMeta.testQuery,
+                        "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                         "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "currencySymbol": currencySymbol,
@@ -384,6 +394,7 @@ export class CompiledQueryPanel {
                         "dataformTags": dataformTags,
                         "selectedTag": selectedTag,
                         "modelType": fileMetadata.queryMeta.type,
+                        "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                     });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
@@ -422,6 +433,8 @@ export class CompiledQueryPanel {
                     "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                     "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                     "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                    "testQuery": fileMetadata.queryMeta.testQuery,
+                    "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                     "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                     "lineageMetadata": lineageMetadata,
                     "errorMessage": errorMessage,
@@ -432,6 +445,7 @@ export class CompiledQueryPanel {
                     "dependents": curFileMeta.dependents,
                     "dataformTags": dataformTags,
                     "modelType": fileMetadata.queryMeta.type,
+                    "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 });
                 return;
               case 'getWorkflowUrls':
@@ -543,6 +557,7 @@ export class CompiledQueryPanel {
                 "compilerOptions": compilerOptions,
                 "dataformCoreVersion": dataformCoreVersion,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
+                "workspaceFolder": workspaceFolder,
             });
         }
 
@@ -594,7 +609,8 @@ export class CompiledQueryPanel {
                 "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
@@ -621,7 +637,8 @@ export class CompiledQueryPanel {
                 "projectConfig": null,
                 "packageJsonContent": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -668,7 +685,8 @@ export class CompiledQueryPanel {
                 "projectConfig": null,
                 "packageJsonContent": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -697,7 +715,8 @@ export class CompiledQueryPanel {
                 "incrementalPreOpsQuery": null,
                 "incrementalQuery": null,
                 "nonIncrementalQuery": null,
-                "operationsQuery": null
+                "operationsQuery": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -722,7 +741,8 @@ export class CompiledQueryPanel {
                                 "errorType": null,
                                 "errorMessage": null,
                                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                                "isHelperFile": false
+                                "isHelperFile": false,
+                                "workspaceFolder": workspaceFolder,
                             });
                             return;
                         }
@@ -743,7 +763,8 @@ export class CompiledQueryPanel {
                         "incrementalPreOpsQuery": null,
                         "incrementalQuery": null,
                         "nonIncrementalQuery": null,
-                        "operationsQuery": null
+                        "operationsQuery": null,
+                        "workspaceFolder": workspaceFolder,
                     });
                     return;
                 }
@@ -763,7 +784,8 @@ export class CompiledQueryPanel {
                 "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -780,6 +802,8 @@ export class CompiledQueryPanel {
             "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
             "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+            "testQuery": fileMetadata.queryMeta.testQuery,
+            "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
             "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
@@ -788,6 +812,7 @@ export class CompiledQueryPanel {
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
+            "actionTypes": [...new Set((fm.tables || []).map((m: any) => m.type).filter(Boolean))],
             "models": fm.tables,
             "recompiling": false,
             "dryRunning": true,
@@ -798,7 +823,8 @@ export class CompiledQueryPanel {
             "errorMessage": null,
             "dataformCoreVersion": curFileMeta.dataformCoreVersion,
             "packageJsonContent": curFileMeta.packageJsonContent,
-            "isHelperFile": false
+            "isHelperFile": false,
+            "workspaceFolder": workspaceFolder,
     });
 
         if(diagnosticCollection){
@@ -807,15 +833,33 @@ export class CompiledQueryPanel {
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
-            //TODO: show some error message in this case
+            await webview.postMessage({
+                "recompiling": false,
+                "dryRunning": false,
+            });
             return;
         }
 
-        const [dryRunResults, modelsLastUpdateTimesMeta] = await Promise.all([
+        // Filter out test nodes as they don't have a table to check last modified time for
+        const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
+
+        const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
-            getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
+            tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([])
         ]);
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = dryRunResults;
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
+
+        const modelsLastUpdateTimesMeta: any[] = [];
+        let timeIndex = 0;
+        const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
+        for (const table of targetTablesOrViews) {
+            if (table.type !== "test") {
+                modelsLastUpdateTimesMeta.push(safeModelsLastUpdateTimesMeta[timeIndex]);
+                timeIndex++;
+            } else {
+                modelsLastUpdateTimesMeta.push(null);
+            }
+        }
 
 
         let currency = "USD" as SupportedCurrency;
@@ -844,7 +888,9 @@ export class CompiledQueryPanel {
             { result: incrementalPreOpsDryRunResult, label: "Incremental pre operations" },
             { result: incrementalDryRunResult, label: "Incremental" },
             { result: nonIncrementalDryRunResult, label: "Non incremental" },
-            { result: assertionDryRunResult, label: "Assertion" }
+            { result: assertionDryRunResult, label: "Assertion" },
+            { result: testDryRunResult, label: "Input Query" },
+            { result: expectedOutputDryRunResult, label: "Expected Output Query" }
         ];
 
         for (const { result, label } of dryRunResultsMeta) {
@@ -859,7 +905,9 @@ export class CompiledQueryPanel {
                             + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")
                             + (assertionDryRunResult?.error.message ? "(Assertion): " + assertionDryRunResult?.error.message + "<br>" : "")
                             + (incrementalDryRunResult?.error.message ? "(Incremental): " + incrementalDryRunResult?.error.message + "<br>" : "")
-                            + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "");
+                            + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "")
+                            + (testDryRunResult?.error.message ? "(Input Query): " + testDryRunResult?.error.message + "<br>" : "")
+                            + (expectedOutputDryRunResult?.error.message ? "(Expected Output Query): " + expectedOutputDryRunResult?.error.message + "<br>" : "");
         errorMessage = errorMessage.replace(/<br><br>/g, "<br>");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
@@ -941,11 +989,15 @@ export class CompiledQueryPanel {
                 "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
                 "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
+                "testQuery": fileMetadata.queryMeta.testQuery,
+                "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
+                "testDryRunResult": testDryRunResult,
+                "expectedOutputDryRunResult": expectedOutputDryRunResult,
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTablesOrViews": targetTablesOrViews,
@@ -953,6 +1005,7 @@ export class CompiledQueryPanel {
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
+                "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "recompiling": false,
                 "dryRunning": false,

@@ -119,6 +119,11 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
         addDependenciesToMap(notebook);
         addNodeToTargetNameMap(notebook);
     });
+
+    compiledJson.tests?.forEach(test => {
+        (test as any).type = 'test';
+        addNodeToFileMap(test as any);
+    });
     
     logger.debug(`Built indices: ${FILE_NODE_MAP.size} files, ${TARGET_DEPENDENTS_MAP.size} targets with dependents`);
 }
@@ -1288,6 +1293,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         postOpsQuery: "",
         assertionQuery: "",
         operationsQuery: "",
+        testQuery: "",
+        expectedOutputQuery: "",
         error: "",
     };
     let finalTables: any[] = [];
@@ -1446,6 +1453,33 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     }
                 });
              }
+        }
+
+        // 4. Tests
+        const testNodes = fileNodes.filter((n: any) => n.type === 'test') as any[];
+        if (testNodes.length > 0) {
+            if (queryMeta.type === "" || (queryMeta.type === "js" && finalTables.length === 0)) {
+                queryMeta.type = "test";
+            }
+
+            testNodes.forEach((test, index) => {
+                const testLabel = ` -- Test: [${index + 1}] ${test.name || ""} \n`;
+                if (test.testQuery) {
+                    queryMeta.testQuery += (queryMeta.testQuery ? "\n" : "") + testLabel + test.testQuery + "\n ;";
+                }
+                if (test.expectedOutputQuery) {
+                    queryMeta.expectedOutputQuery += (queryMeta.expectedOutputQuery ? "\n" : "") + testLabel + test.expectedOutputQuery + "\n ;";
+                }
+
+                finalTables.push({
+                    type: "test",
+                    name: test.name,
+                    fileName: relativeFilePath,
+                    testQuery: test.testQuery,
+                    expectedOutputQuery: test.expectedOutputQuery,
+                    target: test.target // dataset name
+                });
+            });
         }
     }
 
@@ -1835,7 +1869,8 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     let includedTargets: {database:string, schema: string, name:string}[] = [];
     fileMetadatas.forEach(fileMetadata => {
         if (fileMetadata) {
-            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+            fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; type?: string }) => {
+                if (table.type === 'test') { return; }
                 includedTargets.push({database: table.target.database, schema: table.target.schema, name: table.target.name});
             });
         }
@@ -1908,7 +1943,8 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         let actionsList: string[] = [];
         fileMetadatas.forEach(fileMetadata => {
             if (fileMetadata) {
-                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; type?: string }) => {
+                    if (table.type === 'test') { return; }
                     const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
                     actionsList.push(action);
                 });
@@ -2021,7 +2057,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = await Promise.all([
+    let dryRunResults = await Promise.all([
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
@@ -2033,7 +2069,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
+        (type === "test" && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
+        (type === "test" && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
     ]);
+
+    const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
 
     if (dryRunResult.schema || nonIncrementalDryRunResult.schema) {
         compiledQuerySchema = type === "incremental" ? nonIncrementalDryRunResult.schema : dryRunResult.schema;
@@ -2050,7 +2090,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     }
 
     // check if we need to handle errors from non incremental query here 
-    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError) {
+    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError || testDryRunResult.error.hasError || expectedOutputDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
         }
@@ -2077,10 +2117,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
                 incrementalError: incrementalDryRunResult.error,
                 incrementalPreOpsError: incrementalPreOpsDryRunResult.error,
                 assertionError: assertionDryRunResult.error,
+                testError: testDryRunResult.error,
+                expectedOutputError: expectedOutputDryRunResult.error,
             };
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
+        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -2091,7 +2133,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
+    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

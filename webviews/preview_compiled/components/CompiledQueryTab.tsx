@@ -20,6 +20,7 @@ import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import DOMPurify from "dompurify";
 
+
 interface CompiledQueryTabProps {
   state: WebviewState;
 }
@@ -140,6 +141,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const handleLint = () => {
     vscode.postMessage({ command: "lintCurrentFile", value: true });
   };
+  
+  const handleRunTest = () => {
+    if (state.workspaceFolder) {
+        vscode.postMessage({
+            command: "runTests",
+            value: {
+                workspaceFolder: state.workspaceFolder
+            }
+        });
+    }
+  };
 
   const handlePreviewResults = () => {
     vscode.postMessage({ command: "previewResults", value: true });
@@ -190,28 +202,40 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <BigQueryTableLink 
-                      id={target} 
-                      showIcon={true} 
-                      className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
-                      fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
-                    />
-                    <button
-                      onClick={() => {
-                        const text = `\`${target.database}.${target.schema}.${target.name}\``;
-                        navigator.clipboard.writeText(text);
-                        setCopiedIndex(index);
-                        setTimeout(() => setCopiedIndex(null), 2000);
-                      }}
-                      className="ml-2 p-1.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      title="Copy table ID with backticks"
-                    >
-                      {copiedIndex === index ? (
-                        <Check className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
+                    {model.type === 'test' ? (
+                      <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
+                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
+                         <span className="font-semibold">{model.name}</span>
+                         <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                             TEST
+                         </span>
+                      </div>
+                    ) : (
+                      <>
+                        <BigQueryTableLink 
+                          id={target} 
+                          showIcon={true} 
+                          className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
+                          fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
+                        />
+                        <button
+                          onClick={() => {
+                            const text = `\`${target.database}.${target.schema}.${target.name}\``;
+                            navigator.clipboard.writeText(text);
+                            setCopiedIndex(index);
+                            setTimeout(() => setCopiedIndex(null), 2000);
+                          }}
+                          className="ml-2 p-1.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          title="Copy table ID with backticks"
+                        >
+                          {copiedIndex === index ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -246,6 +270,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           })}
         </div>
       )}
+
 
       {/* Data Lineage Section */}
       <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
@@ -528,13 +553,22 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                <button onClick={handlePreviewResults} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Eye className="w-4 h-4 mr-1.5" /> Preview Data
                </button>
-               <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
-                   <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
-               </button>
-                <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
-                   <Play className="w-4 h-4 mr-1.5" /> Run (API)
-                   <span className="absolute -top-2 -right-2 bg-[var(--vscode-statusBarItem-warningBackground)] text-[var(--vscode-statusBarItem-warningForeground)] text-[10px] font-bold px-1.5 rounded-full">NEW</span>
-               </button>
+               {state.testQuery && (
+                   <button onClick={handleRunTest} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+                       <Play className="w-4 h-4 mr-1.5" /> Run Tests
+                   </button>
+               )}
+               {state.actionTypes?.some(t => t !== 'test') && (
+                   <>
+                       <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+                           <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
+                       </button>
+                        <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
+                           <Play className="w-4 h-4 mr-1.5" /> Run (API)
+                           <span className="absolute -top-2 -right-2 bg-[var(--vscode-statusBarItem-warningBackground)] text-[var(--vscode-statusBarItem-warningForeground)] text-[10px] font-bold px-1.5 rounded-full">NEW</span>
+                       </button>
+                   </>
+               )}
            </div>
       </div>
 
@@ -588,9 +622,19 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                  <CodeBlock code={state.operationsQuery} language="sql" />
              </div>
           )}
-      </div>
-    </div>
-  );
+          {state.testQuery && (
+             <div>
+                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Input Query</h3>
+                  <CodeBlock code={state.testQuery} language="sql" />
+             </div>
+          )}
+          {state.expectedOutputQuery && (
+             <div>
+                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Expected Output Query</h3>
+                  <CodeBlock code={state.expectedOutputQuery} language="sql" />
+             </div>
+           )}
+       </div>
+     </div>
+   );
 };
-
-

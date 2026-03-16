@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, MessageSquareWarning, Info, Settings  } from 'lucide-react';
+import { Loader2, MessageSquareWarning, Info, Settings, Tag  } from 'lucide-react';
+import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from './utils/constants';
 import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -193,20 +194,39 @@ function App() {
             </div>
         )}
 
-        {state.recompiling && !state.tableOrViewQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && (
+        {state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && (
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 
         {state.compilationTimeMs !== undefined && state.recompiling === false && (
-            <div className="mb-4 flex justify-start text-xs text-[var(--vscode-descriptionForeground)]">
-                <span>Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s</span>
+            <div className="mb-4 flex items-center gap-4 text-xs">
+                <span className="text-[var(--vscode-descriptionForeground)]">Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s</span>
+                
+                {state.actionTypes && state.actionTypes.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)]" />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {state.actionTypes.map((actionType) => {
+                        const style = ACTION_TYPE_BADGE_STYLES[actionType] || DEFAULT_BADGE_STYLE;
+                        return (
+                          <span
+                            key={actionType}
+                            className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}
+                          >
+                            {actionType}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
             </div>
         )}
 
         <CompilationError state={state} />
 
         {isConfigFile && <ProjectConfigTab state={state} />}
-        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.declarations && state.relativeFilePath?.endsWith('.js'))) && (
+        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && state.relativeFilePath?.endsWith('.js'))) && (
             <div>
                 <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
                     {state.relativeFilePath}
@@ -219,6 +239,8 @@ function App() {
           state.operationsQuery || 
           state.assertionQuery || 
           state.incrementalQuery || 
+          state.testQuery ||
+          state.expectedOutputQuery ||
           state.declarations
         ) && <CompiledQueryTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'schema' && <SchemaTab state={state} />}

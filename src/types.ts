@@ -41,6 +41,8 @@ export interface QueryMeta {
     postOpsQuery: string
     assertionQuery: string
     operationsQuery: string
+    testQuery: string
+    expectedOutputQuery: string
     error: string
 }
 
@@ -136,6 +138,13 @@ export type Notebook = {
     dependencyTargets: Target[]
 };
 
+export interface Test {
+    name: string;
+    testQuery: string;
+    expectedOutputQuery: string;
+    fileName: string;
+}
+
 export interface DataformCompiledJson {
     tables: Table[];
     assertions: Assertion[];
@@ -145,6 +154,7 @@ export interface DataformCompiledJson {
     projectConfig: ProjectConfig;
     graphErrors: GraphErrors;
     notebooks: Notebook[];
+    tests: Test[];
     dataformCoreVersion?: string;
 }
 
@@ -381,6 +391,9 @@ export interface WebviewMessage {
   incrementalQuery?: string;
   nonIncrementalQuery?: string;
   operationsQuery?: string;
+  testQuery?: string;
+  expectedOutputQuery?: string;
+  actionTypes?: string[];
   relativeFilePath?: string;
   errorMessage?: string;
   errorType?: CompilationErrorType;
