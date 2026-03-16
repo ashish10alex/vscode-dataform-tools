@@ -123,10 +123,6 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
     compiledJson.tests?.forEach(test => {
         (test as any).type = 'test';
         addNodeToFileMap(test as any);
-        // Tests don't have dependencyTargets in same way tables do for indices
-        if ((test as any).target) {
-            addNodeToTargetNameMap(test as any);
-        }
     });
     
     logger.debug(`Built indices: ${FILE_NODE_MAP.size} files, ${TARGET_DEPENDENTS_MAP.size} targets with dependents`);
