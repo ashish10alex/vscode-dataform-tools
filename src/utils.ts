@@ -1462,13 +1462,14 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         // 4. Tests
         const testNodes = fileNodes.filter((n: any) => n.type === 'test') as any[];
         if (testNodes.length > 0) {
-            if (queryMeta.type !== "js") {
+            if (queryMeta.type === "" || queryMeta.type === "js") {
                 queryMeta.type = "test";
             }
 
-            testNodes.forEach(test => {
-                queryMeta.testQuery += (queryMeta.testQuery ? "\n" : "") + test.testQuery;
-                queryMeta.expectedOutputQuery += (queryMeta.expectedOutputQuery ? "\n" : "") + test.expectedOutputQuery;
+            testNodes.forEach((test, index) => {
+                const testLabel = `\n -- Test: [${index + 1}] ${test.name || ""} \n`;
+                queryMeta.testQuery += testLabel + test.testQuery + "\n ;";
+                queryMeta.expectedOutputQuery += testLabel + test.expectedOutputQuery + "\n ;";
 
                 finalTables.push({
                     type: "test",

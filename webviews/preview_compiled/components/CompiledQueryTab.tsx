@@ -201,28 +201,40 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <BigQueryTableLink 
-                      id={target} 
-                      showIcon={true} 
-                      className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
-                      fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
-                    />
-                    <button
-                      onClick={() => {
-                        const text = `\`${target.database}.${target.schema}.${target.name}\``;
-                        navigator.clipboard.writeText(text);
-                        setCopiedIndex(index);
-                        setTimeout(() => setCopiedIndex(null), 2000);
-                      }}
-                      className="ml-2 p-1.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      title="Copy table ID with backticks"
-                    >
-                      {copiedIndex === index ? (
-                        <Check className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
+                    {model.type === 'test' ? (
+                      <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
+                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
+                         <span className="font-semibold">{model.name}</span>
+                         <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                             TEST
+                         </span>
+                      </div>
+                    ) : (
+                      <>
+                        <BigQueryTableLink 
+                          id={target} 
+                          showIcon={true} 
+                          className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
+                          fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
+                        />
+                        <button
+                          onClick={() => {
+                            const text = `\`${target.database}.${target.schema}.${target.name}\``;
+                            navigator.clipboard.writeText(text);
+                            setCopiedIndex(index);
+                            setTimeout(() => setCopiedIndex(null), 2000);
+                          }}
+                          className="ml-2 p-1.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          title="Copy table ID with backticks"
+                        >
+                          {copiedIndex === index ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
