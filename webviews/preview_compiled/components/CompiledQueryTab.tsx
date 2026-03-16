@@ -143,7 +143,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   };
   
   const handleRunTest = () => {
-    if (state.models && state.models.length > 0) {
+    if (state.workspaceFolder) {
         vscode.postMessage({
             command: "runTests",
             value: {
