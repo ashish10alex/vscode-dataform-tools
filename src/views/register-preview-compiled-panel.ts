@@ -555,6 +555,7 @@ export class CompiledQueryPanel {
                 "compilerOptions": compilerOptions,
                 "dataformCoreVersion": dataformCoreVersion,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
+                "workspaceFolder": workspaceFolder,
             });
         }
 
@@ -606,7 +607,8 @@ export class CompiledQueryPanel {
                 "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
@@ -633,7 +635,8 @@ export class CompiledQueryPanel {
                 "projectConfig": null,
                 "packageJsonContent": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -680,7 +683,8 @@ export class CompiledQueryPanel {
                 "projectConfig": null,
                 "packageJsonContent": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -709,7 +713,8 @@ export class CompiledQueryPanel {
                 "incrementalPreOpsQuery": null,
                 "incrementalQuery": null,
                 "nonIncrementalQuery": null,
-                "operationsQuery": null
+                "operationsQuery": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -734,7 +739,8 @@ export class CompiledQueryPanel {
                                 "errorType": null,
                                 "errorMessage": null,
                                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                                "isHelperFile": false
+                                "isHelperFile": false,
+                                "workspaceFolder": workspaceFolder,
                             });
                             return;
                         }
@@ -755,7 +761,8 @@ export class CompiledQueryPanel {
                         "incrementalPreOpsQuery": null,
                         "incrementalQuery": null,
                         "nonIncrementalQuery": null,
-                        "operationsQuery": null
+                        "operationsQuery": null,
+                        "workspaceFolder": workspaceFolder,
                     });
                     return;
                 }
@@ -775,7 +782,8 @@ export class CompiledQueryPanel {
                 "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
-                "dryRunStat": null
+                "dryRunStat": null,
+                "workspaceFolder": workspaceFolder,
             });
             return;
         }
@@ -812,7 +820,8 @@ export class CompiledQueryPanel {
             "errorMessage": null,
             "dataformCoreVersion": curFileMeta.dataformCoreVersion,
             "packageJsonContent": curFileMeta.packageJsonContent,
-            "isHelperFile": false
+            "isHelperFile": false,
+            "workspaceFolder": workspaceFolder,
     });
 
         if(diagnosticCollection){
