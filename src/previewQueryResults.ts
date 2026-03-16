@@ -25,6 +25,8 @@ export function getQueryStringForPreview(fileMetadata: TablesWtFullQuery, isIncr
         } else {
             query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery;
         }
+    } else if (fileMetadata.queryMeta.type === "test") {
+        query = fileMetadata.queryMeta.testQuery;
     }
     return query;
 }

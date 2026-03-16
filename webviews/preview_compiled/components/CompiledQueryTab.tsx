@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { WebviewState, BigQueryDryRunResponse } from "../types";
+import { WebviewState } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import {
