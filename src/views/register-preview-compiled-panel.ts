@@ -307,11 +307,11 @@ export class CompiledQueryPanel {
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 }
                 return;
-                return;
-              case 'runTests':
+              case 'runTests': {
                 const _workspaceFolder = message.value.workspaceFolder;
                 await runTests(_workspaceFolder);
                 return;
+              }
               case 'runModel':
                 const includeDependencies = message.value.includeDependencies;
                 const includeDependents = message.value.includeDependents;
