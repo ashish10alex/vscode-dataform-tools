@@ -822,15 +822,21 @@ export class CompiledQueryPanel {
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
-            //TODO: show some error message in this case
+            await webview.postMessage({
+                "recompiling": false,
+                "dryRunning": false,
+            });
             return;
         }
 
+        // Filter out test nodes as they don't have a table to check last modified time for
+        const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
+
         const [dryRunResults, modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
-            getModelLastModifiedTime(targetTablesOrViews.map((table) => table.target))
+            tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([])
         ]);
-        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = dryRunResults;
+        const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
 
 
         let currency = "USD" as SupportedCurrency;
@@ -859,7 +865,9 @@ export class CompiledQueryPanel {
             { result: incrementalPreOpsDryRunResult, label: "Incremental pre operations" },
             { result: incrementalDryRunResult, label: "Incremental" },
             { result: nonIncrementalDryRunResult, label: "Non incremental" },
-            { result: assertionDryRunResult, label: "Assertion" }
+            { result: assertionDryRunResult, label: "Assertion" },
+            { result: testDryRunResult, label: "Input Query" },
+            { result: expectedOutputDryRunResult, label: "Expected Output Query" }
         ];
 
         for (const { result, label } of dryRunResultsMeta) {
@@ -874,7 +882,9 @@ export class CompiledQueryPanel {
                             + (incrementalPreOpsDryRunResult?.error.message ? "(Incremental pre operations): " + incrementalPreOpsDryRunResult?.error.message + "<br>" : "")
                             + (assertionDryRunResult?.error.message ? "(Assertion): " + assertionDryRunResult?.error.message + "<br>" : "")
                             + (incrementalDryRunResult?.error.message ? "(Incremental): " + incrementalDryRunResult?.error.message + "<br>" : "")
-                            + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "");
+                            + (nonIncrementalDryRunResult?.error.message ? "(Non incremental): " + nonIncrementalDryRunResult?.error.message + "<br>" : "")
+                            + (testDryRunResult?.error.message ? "(Input Query): " + testDryRunResult?.error.message + "<br>" : "")
+                            + (expectedOutputDryRunResult?.error.message ? "(Expected Output Query): " + expectedOutputDryRunResult?.error.message + "<br>" : "");
         errorMessage = errorMessage.replace(/<br><br>/g, "<br>");
         const location = dryRunResult?.location?.toLowerCase();
         if(!errorMessage){
@@ -963,6 +973,8 @@ export class CompiledQueryPanel {
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
+                "testDryRunResult": testDryRunResult,
+                "expectedOutputDryRunResult": expectedOutputDryRunResult,
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "targetTablesOrViews": targetTablesOrViews,

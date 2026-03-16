@@ -16,8 +16,9 @@ export const useVSCodeMessage = () => {
       setState((prevState) => ({
         ...prevState,
         ...message,
-        // Unless the host explicitly says recompiling: true, clear it
+        // Unless the host explicitly says recompiling/dryRunning: true, clear it
         recompiling: message.recompiling === true ? true : false,
+        dryRunning: message.dryRunning === true ? true : false,
       }));
     };
 

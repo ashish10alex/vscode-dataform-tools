@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { WebviewState } from "../types";
+import { WebviewState, BigQueryDryRunResponse } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import {
@@ -23,6 +23,26 @@ import DOMPurify from "dompurify";
 interface CompiledQueryTabProps {
   state: WebviewState;
 }
+
+const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const DryRunStats: React.FC<{ result?: BigQueryDryRunResponse; currencySymbol: string }> = ({ result, currencySymbol }) => {
+    if (!result || !result.statistics || result.error.hasError) return null;
+    return (
+        <div className="text-xs text-[var(--vscode-descriptionForeground)] mt-1 flex items-center gap-1">
+            <span>Query will process: {formatBytes(result.statistics.totalBytesProcessed)}</span>
+            {result.statistics.cost && (
+                <span>({currencySymbol}{result.statistics.cost.value.toFixed(3)})</span>
+            )}
+        </div>
+    );
+};
 
 export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
@@ -607,19 +627,19 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           )}
           {state.testQuery && (
              <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Input Query</h3>
-                 <CodeBlock code={state.testQuery} language="sql" />
+                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Input Query</h3>
+                  <DryRunStats result={state.testDryRunResult} currencySymbol={state.currencySymbol || "$"} />
+                  <CodeBlock code={state.testQuery} language="sql" />
              </div>
           )}
           {state.expectedOutputQuery && (
              <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Expected Output Query</h3>
-                 <CodeBlock code={state.expectedOutputQuery} language="sql" />
+                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Expected Output Query</h3>
+                  <DryRunStats result={state.expectedOutputDryRunResult as BigQueryDryRunResponse} currencySymbol={state.currencySymbol || "$"} />
+                  <CodeBlock code={state.expectedOutputQuery} language="sql" />
              </div>
-          )}
-      </div>
-    </div>
-  );
+           )}
+       </div>
+     </div>
+   );
 };
-
-

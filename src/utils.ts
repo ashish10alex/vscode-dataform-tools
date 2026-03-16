@@ -2054,7 +2054,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    let [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult] = await Promise.all([
+    let dryRunResults = await Promise.all([
         queryDryRun(queryToDryRun),
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
@@ -2066,7 +2066,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
+        (type === "test" && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
+        (type === "test" && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
     ]);
+
+    const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
 
     if (dryRunResult.schema || nonIncrementalDryRunResult.schema) {
         compiledQuerySchema = type === "incremental" ? nonIncrementalDryRunResult.schema : dryRunResult.schema;
@@ -2083,7 +2087,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     }
 
     // check if we need to handle errors from non incremental query here 
-    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError) {
+    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError || testDryRunResult.error.hasError || expectedOutputDryRunResult.error.hasError) {
         if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
             vscode.window.showErrorMessage("Could not parse sqlx file");
         }
@@ -2110,10 +2114,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
                 incrementalError: incrementalDryRunResult.error,
                 incrementalPreOpsError: incrementalPreOpsDryRunResult.error,
                 assertionError: assertionDryRunResult.error,
+                testError: testDryRunResult.error,
+                expectedOutputError: expectedOutputDryRunResult.error,
             };
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
+        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult];
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -2124,7 +2130,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult];
+    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult];
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

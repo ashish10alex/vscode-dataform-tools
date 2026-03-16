@@ -1,7 +1,7 @@
 import { CompilationErrorType } from "../../src/types";
-import type { WorkflowUrlEntry, ProjectConfig } from "../../src/types";
+import type { WorkflowUrlEntry, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
 export { CompilationErrorType };
-export type { WorkflowUrlEntry, ProjectConfig };
+export type { WorkflowUrlEntry, ProjectConfig, BigQueryDryRunResponse };
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;
@@ -20,6 +20,8 @@ export interface WebviewState {
   operationsQuery?: string;
   testQuery?: string;
   expectedOutputQuery?: string;
+  testDryRunResult?: BigQueryDryRunResponse;
+  expectedOutputDryRunResult?: BigQueryDryRunResponse;
   relativeFilePath?: string;
   errorMessage?: string;
   errorType?: CompilationErrorType;
