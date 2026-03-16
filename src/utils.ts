@@ -1467,9 +1467,13 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
             }
 
             testNodes.forEach((test, index) => {
-                const testLabel = `\n -- Test: [${index + 1}] ${test.name || ""} \n`;
-                queryMeta.testQuery += testLabel + test.testQuery + "\n ;";
-                queryMeta.expectedOutputQuery += testLabel + test.expectedOutputQuery + "\n ;";
+                const testLabel = ` -- Test: [${index + 1}] ${test.name || ""} \n`;
+                if (test.testQuery) {
+                    queryMeta.testQuery += (queryMeta.testQuery ? "\n" : "") + testLabel + test.testQuery + "\n ;";
+                }
+                if (test.expectedOutputQuery) {
+                    queryMeta.expectedOutputQuery += (queryMeta.expectedOutputQuery ? "\n" : "") + testLabel + test.expectedOutputQuery + "\n ;";
+                }
 
                 finalTables.push({
                     type: "test",
