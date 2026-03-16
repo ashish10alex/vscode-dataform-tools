@@ -28,6 +28,7 @@ export interface WebviewState {
   workspaceFolder?: string;
   dryRunStat?: string;
   modelType?: string;
+  actionTypes?: string[];
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
   apiUrlLoading?: boolean;

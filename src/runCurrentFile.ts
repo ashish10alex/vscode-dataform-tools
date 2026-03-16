@@ -48,7 +48,9 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
     }
 
     if (executionMode === "cli") {
-        let actionsList: string[] = currFileMetadata.tables.map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
+        let actionsList: string[] = currFileMetadata.tables
+            .filter((table: any) => table.type !== 'test')
+            .map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
 
         let dataformActionCmd = "";
 
@@ -65,7 +67,10 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         }
 
         let actionsList: {database:string, schema: string, name:string}[] = [];
-        currFileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; }) => {
+        currFileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; type?: string }) => {
+            if (table.type === 'test') {
+                return;
+            }
             const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
             actionsList.push(action);
         });

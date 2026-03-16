@@ -394,6 +394,7 @@ export class CompiledQueryPanel {
                         "dataformTags": dataformTags,
                         "selectedTag": selectedTag,
                         "modelType": fileMetadata.queryMeta.type,
+                        "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                     });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
@@ -444,6 +445,7 @@ export class CompiledQueryPanel {
                     "dependents": curFileMeta.dependents,
                     "dataformTags": dataformTags,
                     "modelType": fileMetadata.queryMeta.type,
+                    "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 });
                 return;
               case 'getWorkflowUrls':
@@ -810,6 +812,7 @@ export class CompiledQueryPanel {
             "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
             "modelType": fileMetadata.queryMeta.type,
+            "actionTypes": [...new Set((fm.tables || []).map((m: any) => m.type).filter(Boolean))],
             "models": fm.tables,
             "recompiling": false,
             "dryRunning": true,
@@ -990,6 +993,7 @@ export class CompiledQueryPanel {
                 "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
+                "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "recompiling": false,
                 "dryRunning": false,

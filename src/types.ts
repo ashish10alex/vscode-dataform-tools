@@ -393,6 +393,7 @@ export interface WebviewMessage {
   operationsQuery?: string;
   testQuery?: string;
   expectedOutputQuery?: string;
+  actionTypes?: string[];
   relativeFilePath?: string;
   errorMessage?: string;
   errorType?: CompilationErrorType;

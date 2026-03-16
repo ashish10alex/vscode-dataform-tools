@@ -1462,7 +1462,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         // 4. Tests
         const testNodes = fileNodes.filter((n: any) => n.type === 'test') as any[];
         if (testNodes.length > 0) {
-            if (queryMeta.type === "" || queryMeta.type === "js") {
+            if (queryMeta.type === "" || (queryMeta.type === "js" && finalTables.length === 0)) {
                 queryMeta.type = "test";
             }
 
