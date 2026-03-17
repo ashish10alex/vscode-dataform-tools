@@ -59,8 +59,8 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
               `"${row.type || ''}"`,
               `"${row.statementType || ''}"`,
               `"${row.totalBytesProcessedAccuracy || ''}"`,
-              `"${row.totalGBProcessed || ''}"`,
-              `"${row.costOfRunningModel || ''}"`,
+              row.totalGBProcessed !== undefined && !isNaN(Number(row.totalGBProcessed)) ? Number(row.totalGBProcessed).toFixed(2) : '',
+              row.costOfRunningModel !== undefined && !isNaN(Number(row.costOfRunningModel)) ? Number(row.costOfRunningModel).toFixed(2) : '',
               `"${(row.error || '').replace(/"/g, '""')}"`
           ];
           csvRows.push(values.join(','));
