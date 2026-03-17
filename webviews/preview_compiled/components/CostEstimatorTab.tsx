@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { WebviewState } from '../types';
 import { vscode } from '../utils/vscode';
-import { Loader2, Info, AlertCircle } from 'lucide-react';
+import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -11,6 +11,7 @@ interface CostEstimatorTabProps {
 
 type CostEstimateRow = {
     targetName: string;
+    schema: string;
     type: string;
     statementType: string;
     totalBytesProcessedAccuracy: string;
@@ -21,6 +22,8 @@ type CostEstimateRow = {
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
   const [selectedTag, setSelectedTag] = useState<string>(state.selectedTag || "");
+  const [includeDependencies, setIncludeDependencies] = useState(false);
+  const [includeDependents, setIncludeDependents] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,8 +39,40 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
     setLoading(true);
     vscode.postMessage({
         command: 'costEstimator',
-        value: { selectedTag }
+        value: { selectedTag, includeDependencies, includeDependents }
     });
+  };
+
+  const handleExportCsv = () => {
+      if (!data || data.length === 0) {
+          return;
+      }
+      
+      const headers = ["Target", "Schema", "Type", "Statement type", "Accuracy", "GiB proc.", "Cost", "Error"];
+      
+      const csvRows = [headers.join(',')];
+      
+      for (const row of data) {
+          const values = [
+              `"${row.targetName || ''}"`,
+              `"${row.schema || ''}"`,
+              `"${row.type || ''}"`,
+              `"${row.statementType || ''}"`,
+              `"${row.totalBytesProcessedAccuracy || ''}"`,
+              row.totalGBProcessed !== undefined && !isNaN(Number(row.totalGBProcessed)) ? Number(row.totalGBProcessed).toFixed(2) : '',
+              row.costOfRunningModel !== undefined && !isNaN(Number(row.costOfRunningModel)) ? Number(row.costOfRunningModel).toFixed(2) : '',
+              `"${(row.error || '').replace(/"/g, '""')}"`
+          ];
+          csvRows.push(values.join(','));
+      }
+      
+      const csvString = csvRows.join('\n');
+      
+      vscode.postMessage({
+          command: 'exportCostEstimateCsv',
+          value: csvString,
+          filename: `cost_estimate_${selectedTag}.csv`
+      });
   };
 
   useEffect(() => {
@@ -68,6 +103,10 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       {
           accessorKey: "targetName",
           header: "Target",
+      },
+      {
+          accessorKey: "schema",
+          header: "Schema",
       },
       {
           accessorKey: "type",
@@ -166,6 +205,26 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Estimate Cost
                 </button>
+
+                <button 
+                    onClick={handleExportCsv} 
+                    disabled={!data || data.length === 0 || loading}
+                    className="bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors ml-2"
+                >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                </button>
+            </div>
+
+            <div className="flex flex-wrap gap-4 text-sm text-[var(--vscode-foreground)] mt-4">
+                <label className="flex items-center cursor-pointer space-x-2">
+                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
+                    <span>Include Dependencies</span>
+                </label>
+                <label className="flex items-center cursor-pointer space-x-2">
+                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
+                    <span>Include Dependents</span>
+                </label>
             </div>
 
             {(state.errorMessage || state.tagDryRunStatsMeta?.error) && (

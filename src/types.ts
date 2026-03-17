@@ -300,6 +300,7 @@ export type CurrentFileMetadata = {
 export type TagDryRunStats = {
     type: string;
     targetName: string;
+    schema: string;
     costOfRunningModel: number;
     currency: SupportedCurrency;
     totalGBProcessed: string;

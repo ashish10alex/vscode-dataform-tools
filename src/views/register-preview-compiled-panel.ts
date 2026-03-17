@@ -291,6 +291,20 @@ export class CompiledQueryPanel {
                     vscode.window.showInformationMessage('Schema exported successfully!');
                 }
                 return;
+              case 'exportCostEstimateCsv':
+                const csvData = message.value;
+                const defaultCsvFilename = message.filename || 'cost_estimate.csv';
+                const csvUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(defaultCsvFilename),
+                    filters: {
+                        'CSV': ['csv']
+                    }
+                });
+                if (csvUri) {
+                    await vscode.workspace.fs.writeFile(csvUri, Buffer.from(csvData, 'utf8'));
+                    vscode.window.showInformationMessage('Cost estimate exported successfully!');
+                }
+                return;
               case 'selectWorkspaceFolder':
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
@@ -357,9 +371,11 @@ export class CompiledQueryPanel {
               case 'costEstimator':
 
                 const selectedTag = message.value.selectedTag;
+                const includeDependenciesCost = message.value.includeDependencies;
+                const includeDependentsCost = message.value.includeDependents;
                 if(CACHED_COMPILED_DATAFORM_JSON){
                     logger.debug('Using cached compilation for tag cost estimation');
-                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
+                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag, includeDependenciesCost, includeDependentsCost);
                     let currency = "USD" as SupportedCurrency;
                     let currencySymbol = "$";
                     if(tagDryRunStatsMeta?.tagDryRunStatsList){
