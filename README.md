@@ -120,6 +120,10 @@
       <td><a href="#snippets">BigQuery snippets</a></td>
       <td>Code snippets for generic BigQuery functions taken from <a href="https://github.com/shinichi-takii/vscode-language-sql-bigquery">vscode-language-sql-bigquery</a> extension</td>
     </tr>
+    <tr>
+      <td><a href="#tests">Tests</a></td>
+      <td>Support to view and run tests. Running test is currently only supported via Dataform CLI.</td>
+    </tr>
   </tbody>
 </table>
 
