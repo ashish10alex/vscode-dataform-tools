@@ -68,7 +68,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     return results;
 }
 
-export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string): Promise<TagDryRunStatsMeta|undefined>  {
+export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string, includeDependencies: boolean = false, includeDependents: boolean = false): Promise<TagDryRunStatsMeta|undefined>  {
     try{
         const testQueryToCheckUserAccess = "SELECT 1;";
         const testDryRunOutput = await queryDryRun(testQueryToCheckUserAccess);
@@ -79,9 +79,75 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
             };
         }
 
-        const filteredTables = jsonData.tables.filter(table => table?.tags?.includes(selectedTag));
-        const filteredOperations = jsonData.operations.filter(operation => operation?.tags?.includes(selectedTag));
-        const filteredAssertions = jsonData.assertions.filter(assertion => assertion?.tags?.includes(selectedTag));
+        // Build target graph to support includes
+        const allModels = [...(jsonData.tables || []), ...(jsonData.operations || []), ...(jsonData.assertions || [])];
+        const targetToDependencies = new Map<string, string[]>();
+        const targetToDependents = new Map<string, string[]>();
+
+        allModels.forEach(model => {
+            if (model.target) {
+                const targetName = createFullTargetName(model.target);
+                const deps = model.dependencyTargets?.map(createFullTargetName) || [];
+                targetToDependencies.set(targetName, deps);
+                
+                deps.forEach(dep => {
+                    if (!targetToDependents.has(dep)) {
+                        targetToDependents.set(dep, []);
+                    }
+                    targetToDependents.get(dep)!.push(targetName);
+                });
+            }
+        });
+
+        // Initialize queue with tag models
+        const targetSet = new Set<string>();
+        const queueForDependencies: string[] = [];
+        const queueForDependents: string[] = [];
+
+        allModels.forEach(model => {
+            if (model?.tags?.includes(selectedTag) && model.target) {
+                const targetName = createFullTargetName(model.target);
+                targetSet.add(targetName);
+                if (includeDependencies) {
+                    queueForDependencies.push(targetName);
+                }
+                if (includeDependents) {
+                    queueForDependents.push(targetName);
+                }
+            }
+        });
+
+        if (includeDependencies) {
+            let i = 0;
+            while (i < queueForDependencies.length) {
+                const current = queueForDependencies[i++];
+                const deps = targetToDependencies.get(current) || [];
+                deps.forEach(dep => {
+                    if (!targetSet.has(dep)) {
+                        targetSet.add(dep);
+                        queueForDependencies.push(dep);
+                    }
+                });
+            }
+        }
+
+        if (includeDependents) {
+            let i = 0;
+            while (i < queueForDependents.length) {
+                const current = queueForDependents[i++];
+                const deps = targetToDependents.get(current) || [];
+                deps.forEach(dep => {
+                    if (!targetSet.has(dep)) {
+                        targetSet.add(dep);
+                        queueForDependents.push(dep);
+                    }
+                });
+            }
+        }
+
+        const filteredTables = jsonData.tables.filter(table => table.target && targetSet.has(createFullTargetName(table.target)));
+        const filteredOperations = jsonData.operations.filter(operation => operation.target && targetSet.has(createFullTargetName(operation.target)));
+        const filteredAssertions = jsonData.assertions.filter(assertion => assertion.target && targetSet.has(createFullTargetName(assertion.target)));
 
         let allResults = [];
 

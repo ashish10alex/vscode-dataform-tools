@@ -21,6 +21,8 @@ type CostEstimateRow = {
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
   const [selectedTag, setSelectedTag] = useState<string>(state.selectedTag || "");
+  const [includeDependencies, setIncludeDependencies] = useState(false);
+  const [includeDependents, setIncludeDependents] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
     setLoading(true);
     vscode.postMessage({
         command: 'costEstimator',
-        value: { selectedTag }
+        value: { selectedTag, includeDependencies, includeDependents }
     });
   };
 
@@ -166,6 +168,17 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Estimate Cost
                 </button>
+            </div>
+
+            <div className="flex flex-wrap gap-4 text-sm text-[var(--vscode-foreground)] mt-4">
+                <label className="flex items-center cursor-pointer space-x-2">
+                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
+                    <span>Include Dependencies</span>
+                </label>
+                <label className="flex items-center cursor-pointer space-x-2">
+                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
+                    <span>Include Dependents</span>
+                </label>
             </div>
 
             {(state.errorMessage || state.tagDryRunStatsMeta?.error) && (

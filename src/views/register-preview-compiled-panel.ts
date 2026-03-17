@@ -357,9 +357,11 @@ export class CompiledQueryPanel {
               case 'costEstimator':
 
                 const selectedTag = message.value.selectedTag;
+                const includeDependenciesCost = message.value.includeDependencies;
+                const includeDependentsCost = message.value.includeDependents;
                 if(CACHED_COMPILED_DATAFORM_JSON){
                     logger.debug('Using cached compilation for tag cost estimation');
-                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag);
+                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag, includeDependenciesCost, includeDependentsCost);
                     let currency = "USD" as SupportedCurrency;
                     let currencySymbol = "$";
                     if(tagDryRunStatsMeta?.tagDryRunStatsList){
