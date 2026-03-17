@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.3.0...v1.3.1) (2026-03-17)
+
+
+### Features
+
+* add ability to include dependencies / dependents when doing cost estimation of a tag ([#287](https://github.com/ashish10alex/vscode-dataform-tools/issues/287)) ([3fe5935](https://github.com/ashish10alex/vscode-dataform-tools/commit/3fe5935e7af575ff02d88f2d0fd67a12f7f9e135))
+
 ## [1.3.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.2.0...v1.3.0) (2026-03-16)
 
 
