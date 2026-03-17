@@ -225,6 +225,28 @@
 			"columns: {${1:}},"
 		],
 		"description": "Column descriptions for the active model"
+	},
+
+	"Config block test": {
+		"scope": "sqlx",
+		"prefix": "config block test [Dataform]",
+		"body": [
+			"config {",
+			"  type: 'test',",
+			"  dataset: '${1:action_name}' // Name of the model / action you are testing. NOT GCP dataset",
+			"}",
+			"",
+			"-- \\${ref(\"${2:DEPENDENCY_NAME}\")} in ${1:action_name}.sqlx gets substituted with this select statement",
+			"input \"${2:DEPENDENCY_NAME}\" {",
+			"  SELECT",
+			"      ${3:\"1\"} AS ${4:COLUMN_NAME}",
+			"}",
+			"",
+			"-- expected output from input",
+			"SELECT",
+			"      ${3:\"1\"} AS ${4:COLUMN_NAME}"
+		],
+		"description": "Generate test config for sqlx files"
 	}
 
 }
