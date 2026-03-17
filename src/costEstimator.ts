@@ -56,6 +56,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     return {
         type: curModel.type || type || "",
         targetName: createFullTargetName(curModel.target),
+        schema: curModel.target.schema,
         costOfRunningModel: costOfRunningModel,
         currency: dryRunOutput?.statistics?.cost?.currency as SupportedCurrency,
         totalGBProcessed: totalGBProcessed || "0.000",
