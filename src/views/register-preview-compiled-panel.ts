@@ -368,7 +368,7 @@ export class CompiledQueryPanel {
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
-              case 'costEstimator':
+              case 'costEstimator': {
 
                 const selectedTags: string[] = message.value.selectedTags;
                 const includeDependenciesCost = message.value.includeDependencies;
@@ -416,6 +416,7 @@ export class CompiledQueryPanel {
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
                 }
                 return;
+              }
               case 'formatCurrentFile':
                 const formattedText:any = await formatCurrentFile(diagnosticCollection);
                 const activeEditorFilePath = activeDocumentObj?.uri.fsPath;
