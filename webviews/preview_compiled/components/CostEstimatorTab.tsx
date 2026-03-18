@@ -4,6 +4,9 @@ import { vscode } from '../utils/vscode';
 import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
+import StyledMultiSelect from '../../dependancy_graph/components/StyledMultiSelect';
+import { OptionType } from '../../dependancy_graph/components/StyledSelect';
+import { MultiValue } from 'react-select';
 
 interface CostEstimatorTabProps {
   state: WebviewState;
@@ -32,11 +35,15 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
      }
   }, [state.selectedTags]);
 
-  const handleTagToggle = (tag: string) => {
-      setSelectedTags(prev =>
-          prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-      );
-  };
+  const tagOptions: OptionType[] = useMemo(() =>
+      (state.dataformTags || []).map(tag => ({ value: tag, label: tag })),
+      [state.dataformTags]
+  );
+
+  const selectedTagOptions: OptionType[] = useMemo(() =>
+      selectedTags.map(tag => ({ value: tag, label: tag })),
+      [selectedTags]
+  );
 
   const handleEstimate = () => {
     if (selectedTags.length === 0) {
@@ -194,19 +201,14 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
             {state.dataformTags && state.dataformTags.length > 0 && (
                 <div className="mb-3">
                     <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tags:</p>
-                    <div className="flex flex-wrap gap-2">
-                        {state.dataformTags.map(tag => (
-                            <label key={tag} className="flex items-center gap-1.5 cursor-pointer text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-2 py-1 hover:border-[var(--vscode-focusBorder)] transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedTags.includes(tag)}
-                                    onChange={() => handleTagToggle(tag)}
-                                    className="h-3.5 w-3.5"
-                                />
-                                <span className="text-[var(--vscode-input-foreground)]">{tag}</span>
-                            </label>
-                        ))}
-                    </div>
+                    <StyledMultiSelect
+                        options={tagOptions}
+                        value={selectedTagOptions}
+                        onChange={(opts: MultiValue<OptionType>) => setSelectedTags(opts.map(o => o.value))}
+                        placeholder="Search and select tags..."
+                        isSearchable
+                        closeMenuOnSelect={false}
+                    />
                 </div>
             )}
 
