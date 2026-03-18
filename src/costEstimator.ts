@@ -2,6 +2,8 @@ import { queryDryRun } from "./bigqueryDryRun";
 import * as vscode from 'vscode';
 import { Assertion, DataformCompiledJson, TagDryRunStats, TagDryRunStatsMeta, Operation, Table, Target, SupportedCurrency } from "./types";
 
+const MAX_DRY_RUN_CONCURRENCY = 10;
+
 const createFullTargetName = (target: Target) => {
     return `${target.database}.${target.schema}.${target.name}`;
 };
@@ -17,7 +19,7 @@ export function handleSemicolonInQuery(query: string){
 
 
 async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Assertion[], type:string|undefined): Promise<Array<TagDryRunStats>>{
-    const modelPromises = filteredModels.map(async (curModel) => {
+    const modelFns = filteredModels.map(curModel => async () => {
     let fullQuery = "";
     let preOpsQuery = curModel.preOps ? curModel.preOps.join("\n") : "";
     preOpsQuery = handleSemicolonInQuery(preOpsQuery);
@@ -65,11 +67,17 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
         error: error.message
     };
     });
-    const results = await Promise.all(modelPromises);
+
+    const results: TagDryRunStats[] = [];
+    for (let i = 0; i < modelFns.length; i += MAX_DRY_RUN_CONCURRENCY) {
+        const chunk = modelFns.slice(i, i + MAX_DRY_RUN_CONCURRENCY);
+        const chunkResults = await Promise.all(chunk.map(fn => fn()));
+        results.push(...chunkResults);
+    }
     return results;
 }
 
-export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string, includeDependencies: boolean = false, includeDependents: boolean = false): Promise<TagDryRunStatsMeta|undefined>  {
+export async function costEstimator(jsonData: DataformCompiledJson, selectedTags: string[], includeDependencies: boolean = false, includeDependents: boolean = false): Promise<TagDryRunStatsMeta|undefined>  {
     try{
         const testQueryToCheckUserAccess = "SELECT 1;";
         const testDryRunOutput = await queryDryRun(testQueryToCheckUserAccess);
@@ -106,7 +114,7 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
         const queueForDependents: string[] = [];
 
         allModels.forEach(model => {
-            if (model?.tags?.includes(selectedTag) && model.target) {
+            if (model?.tags?.some(tag => selectedTags.includes(tag)) && model.target) {
                 const targetName = createFullTargetName(model.target);
                 targetSet.add(targetName);
                 if (includeDependencies) {

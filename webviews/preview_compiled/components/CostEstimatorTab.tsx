@@ -4,6 +4,9 @@ import { vscode } from '../utils/vscode';
 import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
+import StyledMultiSelect from '../../dependancy_graph/components/StyledMultiSelect';
+import { OptionType } from '../../dependancy_graph/components/StyledSelect';
+import { MultiValue } from 'react-select';
 
 interface CostEstimatorTabProps {
   state: WebviewState;
@@ -21,25 +24,35 @@ type CostEstimateRow = {
 };
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
-  const [selectedTag, setSelectedTag] = useState<string>(state.selectedTag || "");
+  const [selectedTags, setSelectedTags] = useState<string[]>(state.selectedTags || []);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-     if (state.selectedTag) {
-         setSelectedTag(state.selectedTag);
+     if (state.selectedTags) {
+         setSelectedTags(state.selectedTags);
      }
-  }, [state.selectedTag]);
+  }, [state.selectedTags]);
+
+  const tagOptions: OptionType[] = useMemo(() =>
+      (state.dataformTags || []).map(tag => ({ value: tag, label: tag })),
+      [state.dataformTags]
+  );
+
+  const selectedTagOptions: OptionType[] = useMemo(() =>
+      selectedTags.map(tag => ({ value: tag, label: tag })),
+      [selectedTags]
+  );
 
   const handleEstimate = () => {
-    if (!selectedTag) {
+    if (selectedTags.length === 0) {
         return;
     }
     setLoading(true);
     vscode.postMessage({
         command: 'costEstimator',
-        value: { selectedTag, includeDependencies, includeDependents }
+        value: { selectedTags, includeDependencies, includeDependents }
     });
   };
 
@@ -71,7 +84,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       vscode.postMessage({
           command: 'exportCostEstimateCsv',
           value: csvString,
-          filename: `cost_estimate_${selectedTag}.csv`
+          filename: `cost_estimate_${selectedTags.join('_')}.csv`
       });
   };
 
@@ -185,21 +198,24 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </div>
             </details>
 
-            <div className="flex items-center gap-4">
-                <select 
-                    value={selectedTag} 
-                    onChange={(e) => setSelectedTag(e.target.value)}
-                    className="bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] text-sm rounded px-3 py-2 focus:ring-1 focus:ring-[var(--vscode-focusBorder)] outline-none min-w-[200px] transition-colors"
-                >
-                    <option value="" disabled className="bg-[var(--vscode-input-background)]">Select a tag</option>
-                    {state.dataformTags?.map(tag => (
-                        <option key={tag} value={tag} className="bg-[var(--vscode-input-background)]">{tag}</option>
-                    ))}
-                </select>
+            {state.dataformTags && state.dataformTags.length > 0 && (
+                <div className="mb-3">
+                    <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tags:</p>
+                    <StyledMultiSelect
+                        options={tagOptions}
+                        value={selectedTagOptions}
+                        onChange={(opts: MultiValue<OptionType>) => setSelectedTags(opts.map(o => o.value))}
+                        placeholder="Search and select tags..."
+                        isSearchable
+                        closeMenuOnSelect={false}
+                    />
+                </div>
+            )}
 
-                <button 
-                    onClick={handleEstimate} 
-                    disabled={!selectedTag || loading}
+            <div className="flex items-center gap-4">
+                <button
+                    onClick={handleEstimate}
+                    disabled={selectedTags.length === 0 || loading}
                     className="bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
                 >
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -246,7 +262,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
              ) : (
                 <div className="text-center text-[var(--vscode-descriptionForeground)] mt-8">
                      {!state.errorMessage && !state.tagDryRunStatsMeta?.error && (
-                         "Select a tag and click Estimate Cost to see results."
+                         "Select one or more tags and click Estimate Cost to see results."
                      )}
                  </div>
              )}

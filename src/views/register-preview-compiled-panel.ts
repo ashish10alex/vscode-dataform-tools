@@ -368,14 +368,14 @@ export class CompiledQueryPanel {
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
-              case 'costEstimator':
+              case 'costEstimator': {
 
-                const selectedTag = message.value.selectedTag;
+                const selectedTags: string[] = message.value.selectedTags;
                 const includeDependenciesCost = message.value.includeDependencies;
                 const includeDependentsCost = message.value.includeDependents;
                 if(CACHED_COMPILED_DATAFORM_JSON){
                     logger.debug('Using cached compilation for tag cost estimation');
-                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTag, includeDependenciesCost, includeDependentsCost);
+                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTags, includeDependenciesCost, includeDependentsCost);
                     let currency = "USD" as SupportedCurrency;
                     let currencySymbol = "$";
                     if(tagDryRunStatsMeta?.tagDryRunStatsList){
@@ -408,7 +408,7 @@ export class CompiledQueryPanel {
                         "models": curFileMeta.fileMetadata.tables,
                         "dependents": curFileMeta.dependents,
                         "dataformTags": dataformTags,
-                        "selectedTag": selectedTag,
+                        "selectedTags": selectedTags,
                         "modelType": fileMetadata.queryMeta.type,
                         "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                     });
@@ -416,6 +416,7 @@ export class CompiledQueryPanel {
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
                 }
                 return;
+              }
               case 'formatCurrentFile':
                 const formattedText:any = await formatCurrentFile(diagnosticCollection);
                 const activeEditorFilePath = activeDocumentObj?.uri.fsPath;
