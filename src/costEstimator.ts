@@ -69,7 +69,7 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     return results;
 }
 
-export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:string, includeDependencies: boolean = false, includeDependents: boolean = false): Promise<TagDryRunStatsMeta|undefined>  {
+export async function costEstimator(jsonData: DataformCompiledJson, selectedTags: string[], includeDependencies: boolean = false, includeDependents: boolean = false): Promise<TagDryRunStatsMeta|undefined>  {
     try{
         const testQueryToCheckUserAccess = "SELECT 1;";
         const testDryRunOutput = await queryDryRun(testQueryToCheckUserAccess);
@@ -106,7 +106,7 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTag:
         const queueForDependents: string[] = [];
 
         allModels.forEach(model => {
-            if (model?.tags?.includes(selectedTag) && model.target) {
+            if (model?.tags?.some(tag => selectedTags.includes(tag)) && model.target) {
                 const targetName = createFullTargetName(model.target);
                 targetSet.add(targetName);
                 if (includeDependencies) {

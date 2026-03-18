@@ -36,7 +36,7 @@ export interface WebviewState {
   dryRunning?: boolean;
   compilationTimeMs?: number;
   dataformTags?: string[];
-  selectedTag?: string;
+  selectedTags?: string[];
   currencySymbol?: string;
   dependents?: any[]; // Replace with specific type if available
   models?: any[]; // Replace with specific type

@@ -21,25 +21,31 @@ type CostEstimateRow = {
 };
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
-  const [selectedTag, setSelectedTag] = useState<string>(state.selectedTag || "");
+  const [selectedTags, setSelectedTags] = useState<string[]>(state.selectedTags || []);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-     if (state.selectedTag) {
-         setSelectedTag(state.selectedTag);
+     if (state.selectedTags) {
+         setSelectedTags(state.selectedTags);
      }
-  }, [state.selectedTag]);
+  }, [state.selectedTags]);
+
+  const handleTagToggle = (tag: string) => {
+      setSelectedTags(prev =>
+          prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+      );
+  };
 
   const handleEstimate = () => {
-    if (!selectedTag) {
+    if (selectedTags.length === 0) {
         return;
     }
     setLoading(true);
     vscode.postMessage({
         command: 'costEstimator',
-        value: { selectedTag, includeDependencies, includeDependents }
+        value: { selectedTags, includeDependencies, includeDependents }
     });
   };
 
@@ -71,7 +77,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       vscode.postMessage({
           command: 'exportCostEstimateCsv',
           value: csvString,
-          filename: `cost_estimate_${selectedTag}.csv`
+          filename: `cost_estimate_${selectedTags.join('_')}.csv`
       });
   };
 
@@ -185,21 +191,29 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </div>
             </details>
 
-            <div className="flex items-center gap-4">
-                <select 
-                    value={selectedTag} 
-                    onChange={(e) => setSelectedTag(e.target.value)}
-                    className="bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] text-sm rounded px-3 py-2 focus:ring-1 focus:ring-[var(--vscode-focusBorder)] outline-none min-w-[200px] transition-colors"
-                >
-                    <option value="" disabled className="bg-[var(--vscode-input-background)]">Select a tag</option>
-                    {state.dataformTags?.map(tag => (
-                        <option key={tag} value={tag} className="bg-[var(--vscode-input-background)]">{tag}</option>
-                    ))}
-                </select>
+            {state.dataformTags && state.dataformTags.length > 0 && (
+                <div className="mb-3">
+                    <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tags:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {state.dataformTags.map(tag => (
+                            <label key={tag} className="flex items-center gap-1.5 cursor-pointer text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-2 py-1 hover:border-[var(--vscode-focusBorder)] transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedTags.includes(tag)}
+                                    onChange={() => handleTagToggle(tag)}
+                                    className="h-3.5 w-3.5"
+                                />
+                                <span className="text-[var(--vscode-input-foreground)]">{tag}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-                <button 
-                    onClick={handleEstimate} 
-                    disabled={!selectedTag || loading}
+            <div className="flex items-center gap-4">
+                <button
+                    onClick={handleEstimate}
+                    disabled={selectedTags.length === 0 || loading}
                     className="bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors"
                 >
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -246,7 +260,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
              ) : (
                 <div className="text-center text-[var(--vscode-descriptionForeground)] mt-8">
                      {!state.errorMessage && !state.tagDryRunStatsMeta?.error && (
-                         "Select a tag and click Estimate Cost to see results."
+                         "Select one or more tags and click Estimate Cost to see results."
                      )}
                  </div>
              )}
