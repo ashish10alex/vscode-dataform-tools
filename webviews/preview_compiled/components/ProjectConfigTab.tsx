@@ -70,6 +70,9 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
     { label: 'Table Prefix', value: projectConfig.tablePrefix },
     { label: 'Default Location', value: projectConfig.defaultLocation },
     { label: 'Dataform Core Version', value: dataformCoreVersion || 'Not specified' },
+    { label: 'Database Suffix', value: projectConfig.databaseSuffix },
+    { label: 'Schema Suffix', value: projectConfig.schemaSuffix },
+    { label: 'Builtin Assertion Name Prefix', value: projectConfig.builtinAssertionNamePrefix },
   ];
 
   return (
@@ -122,6 +125,42 @@ export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => 
                     <td className="px-4 py-2 font-mono text-xs">{String(value)}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {projectConfig.defaultNotebookRuntimeOptions && (
+        projectConfig.defaultNotebookRuntimeOptions.aiPlatformNotebookRuntimeTemplate ||
+        projectConfig.defaultNotebookRuntimeOptions.outputBucket
+      ) && (
+        <div>
+          <h3 className="text-sm font-semibold mb-4 px-1 flex items-center">
+            <Settings className="w-4 h-4 mr-2" />
+            Notebook Runtime Options
+          </h3>
+          <div className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] rounded-md overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[var(--vscode-sideBar-background)] border-b border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]">
+                <tr>
+                  <th className="px-4 py-2 font-semibold w-1/3">Setting</th>
+                  <th className="px-4 py-2 font-semibold">Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--vscode-widget-border)]">
+                {projectConfig.defaultNotebookRuntimeOptions.aiPlatformNotebookRuntimeTemplate && (
+                  <tr className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
+                    <td className="px-4 py-2 text-[var(--vscode-descriptionForeground)]">AI Platform Notebook Runtime Template</td>
+                    <td className="px-4 py-2 font-mono text-xs">{projectConfig.defaultNotebookRuntimeOptions.aiPlatformNotebookRuntimeTemplate}</td>
+                  </tr>
+                )}
+                {projectConfig.defaultNotebookRuntimeOptions.outputBucket && (
+                  <tr className="hover:bg-[var(--vscode-list-hoverBackground)] transition-colors">
+                    <td className="px-4 py-2 text-[var(--vscode-descriptionForeground)]">Output Bucket</td>
+                    <td className="px-4 py-2 font-mono text-xs">{projectConfig.defaultNotebookRuntimeOptions.outputBucket}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

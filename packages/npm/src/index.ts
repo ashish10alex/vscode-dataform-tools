@@ -18,7 +18,10 @@ export type CodeCompilationConfig = {
     schemaSuffix: string,              
     defaultSchema: string,             
     defaultDatabase: string,           
-    defaultNotebookRuntimeOption:string
+    defaultNotebookRuntimeOptions?: {
+        aiPlatformNotebookRuntimeTemplate?: string;
+        outputBucket?: string;
+    }
 } | {};
 
 export type InvocationConfig = {
