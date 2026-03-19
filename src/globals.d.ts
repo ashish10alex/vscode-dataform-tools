@@ -119,7 +119,10 @@ declare global {
       schemaSuffix?: string,
       defaultSchema?: string,
       defaultDatabase?: string,
-      defaultNotebookRuntimeOption?: string,
+      defaultNotebookRuntimeOptions?: {
+         aiPlatformNotebookRuntimeTemplate?: string;
+         outputBucket?: string;
+     },
   };
 }
 
