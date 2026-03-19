@@ -102,6 +102,13 @@ export interface ProjectConfig {
     tablePrefix: string;
     defaultLocation: string;
     vars: { [key: string]: string };
+    databaseSuffix?: string;
+    schemaSuffix?: string;
+    builtinAssertionNamePrefix?: string;
+    defaultNotebookRuntimeOptions?: {
+        aiPlatformNotebookRuntimeTemplate?: string;
+        outputBucket?: string;
+    };
 }
 
 export interface Operation {
@@ -452,7 +459,10 @@ export type CodeCompilationConfig = {
     schemaSuffix: string,              
     defaultSchema: string,             
     defaultDatabase: string,           
-    defaultNotebookRuntimeOption:string
+    defaultNotebookRuntimeOptions?: {
+        aiPlatformNotebookRuntimeTemplate?: string;
+        outputBucket?: string;
+    }
 } | {};
 
 export type ICompilationResult  = protos.google.cloud.dataform.v1beta1.ICompilationResult;
