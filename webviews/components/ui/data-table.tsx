@@ -19,6 +19,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
   autoFocusColumnId?: string
   onRowClick?: (data: TData) => void
+  initialSorting?: SortingState
 }
 
 export function DataTable<TData, TValue>({
@@ -26,8 +27,9 @@ export function DataTable<TData, TValue>({
   data,
   autoFocusColumnId,
   onRowClick,
+  initialSorting = [],
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
 
