@@ -891,10 +891,16 @@ export class CompiledQueryPanel {
         let dryRunStat = "";
         const formatCost = (result: any, type: string) => {
             if(result?.statistics?.cost && result?.error?.hasError === false){
-                if (result.statistics.statementType === 'SCRIPT' && result.statistics.totalBytesProcessedAccuracy !== 'PRECISE') {
+                const isUpperBound = result.statistics.totalBytesProcessedAccuracy === 'UPPER_BOUND';
+                const prefix = isUpperBound ? "Up to " : "";
+
+                if (result.statistics.statementType === 'SCRIPT' && 
+                    result.statistics.totalBytesProcessedAccuracy !== 'PRECISE' && 
+                    result.statistics.totalBytesProcessedAccuracy !== 'UPPER_BOUND') {
                     return (type ? type + ": " : "") + "NOTE: Could not compute bytes processed estimate for script.";
                 }
-                return (type ? type + ": " : "") + "(" + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
+
+                return (type ? type + ": " : "") + "(" + prefix + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
             }
             return "";
         };

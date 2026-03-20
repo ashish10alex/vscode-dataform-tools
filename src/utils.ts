@@ -2022,6 +2022,10 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         return table.type === "operations";
     });
 
+    let isJsWithTests = type === "js" && fileMetadata.tables.some((table: any) => {
+        return table.type === "test";
+    });
+
     const skipPreOpsInDryRun = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
     logger.debug(`skipPreOpsInDryRun: ${skipPreOpsInDryRun}`);
 
@@ -2073,8 +2077,8 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryDryRun(incrementalQuery),
         queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
         queryDryRun(fileMetadata.queryMeta.assertionQuery),
-        (type === "test" && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
-        (type === "test" && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
+        ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
+        ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
     ]);
 
     const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
