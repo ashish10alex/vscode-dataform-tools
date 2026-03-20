@@ -13,7 +13,12 @@ interface AccordionSectionProps {
   count: number;
   isOpen: boolean;
   onToggle: () => void;
-  errors: Array<{ error: string; fileName: string }>;
+  errors: Array<{
+    error: string;
+    fileName: string;
+    lineNumber?: number;
+    sourceContext?: string;
+  }>;
 }
 
 const AccordionSection: React.FC<AccordionSectionProps> = ({
@@ -48,8 +53,15 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
             className="px-3 py-2 text-xs text-[var(--vscode-inputValidation-errorForeground)]"
           >
             <div className="font-medium opacity-90 leading-relaxed">{e.error}</div>
+            {e.sourceContext && (
+              <pre className="mt-2 mb-1 p-2 text-[11px] font-mono bg-[var(--vscode-editor-background)] opacity-80 rounded border border-[var(--vscode-inputValidation-errorBorder)] overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+                {e.sourceContext}
+              </pre>
+            )}
             {e.fileName && (
-              <div className="mt-1 font-mono opacity-50 text-[11px] break-all">{e.fileName}</div>
+              <div className="mt-1 font-mono opacity-50 text-[11px] break-all">
+                {e.lineNumber !== undefined ? `${e.fileName}:${e.lineNumber}` : e.fileName}
+              </div>
             )}
           </li>
         ))}

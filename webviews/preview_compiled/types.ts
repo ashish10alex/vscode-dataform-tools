@@ -25,7 +25,12 @@ export interface WebviewState {
   relativeFilePath?: string;
   errorMessage?: string | null;
   errorType?: CompilationErrorType;
-  compilationErrors?: Array<{ error: string; fileName: string }>;
+  compilationErrors?: Array<{
+    error: string;
+    fileName: string;
+    lineNumber?: number;
+    sourceContext?: string;
+  }>;
   possibleResolutions?: string[];
   workspaceFolder?: string;
   dryRunStat?: string;

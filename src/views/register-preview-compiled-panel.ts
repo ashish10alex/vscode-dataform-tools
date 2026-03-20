@@ -14,7 +14,7 @@ import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
 import { DataformTools } from "@ashishalex/dataform-tools";
-
+import { parseCompilationStack } from "../parseCompilationStack";
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions:{name:string, metadata: any}[] = [];
@@ -680,7 +680,10 @@ export class CompiledQueryPanel {
             }
 
             await webview.postMessage({
-                "compilationErrors": curFileMeta.errors.dataformCompilationErrors,
+                "compilationErrors": curFileMeta.errors.dataformCompilationErrors?.map((compilationError: { error: string; fileName: string; stack?: string }) => {
+                    const { lineNumber, sourceContext } = parseCompilationStack(compilationError.stack);
+                    return { error: compilationError.error, fileName: compilationError.fileName, lineNumber, sourceContext };
+                }),
                 "possibleResolutions": curFileMeta.possibleResolutions ?? [],
                 "errorMessage": null,
                 "recompiling": false,
