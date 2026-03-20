@@ -127,7 +127,7 @@ export class CompiledQueryPanel {
     public currentFileMetadata: any;
     private lastMessageTime = 0;
     private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, location: string|undefined, compilerOptions: string|undefined};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, dryRunStatByNodeType: Record<string, string>, location: string|undefined, compilerOptions: string|undefined};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
@@ -387,6 +387,7 @@ export class CompiledQueryPanel {
                     const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                     const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                     const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+                    const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
                     this.centerPanel?.webviewPanel.webview.postMessage({
                         "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
                         "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -403,6 +404,7 @@ export class CompiledQueryPanel {
                         "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
                         "dryRunStat":  dryRunStat,
+                        "dryRunStatByNodeType": dryRunStatByNodeType,
                         "compiledQuerySchema": compiledQuerySchema,
                         "targetTablesOrViews": targetTablesOrViews,
                         "models": curFileMeta.fileMetadata.tables,
@@ -437,6 +439,7 @@ export class CompiledQueryPanel {
                 const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                 const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                 const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
+                const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
                 const location = this.centerPanel?._cachedResults?.location || "eu"; // TODO: check if there is way to have a better default
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target, location);
@@ -456,6 +459,7 @@ export class CompiledQueryPanel {
                     "lineageMetadata": lineageMetadata,
                     "errorMessage": errorMessage,
                     "dryRunStat":  dryRunStat,
+                    "dryRunStatByNodeType": dryRunStatByNodeType,
                     "compiledQuerySchema": compiledQuerySchema,
                     "targetTablesOrViews": targetTablesOrViews,
                     "models": curFileMeta.fileMetadata.tables,
@@ -905,21 +909,55 @@ export class CompiledQueryPanel {
             return "";
         };
 
+        const nodeNamesOf = (nodeType: string) => fileMetadata.tables
+            .filter((t: any) => t.type === nodeType)
+            .map((t: any) => t.target?.name || t.name)
+            .join(", ");
+
+        const isJsFile = fileMetadata.queryMeta.type === "js";
+        const jsTableNames = isJsFile ? nodeNamesOf("table") || nodeNamesOf("view") : "";
+        const jsAssertionNames = isJsFile ? nodeNamesOf("assertion") : "";
+        const jsTestNames = isJsFile ? nodeNamesOf("test") : "";
+
         const dryRunResultsMeta: { result: BigQueryDryRunResponse, label: string }[] = [
-            { result: dryRunResult, label: "Main query" },
+            { result: dryRunResult, label: jsTableNames ? `Main query (${jsTableNames})` : "Main query" },
             { result: preOpsDryRunResult, label: fileMetadata.queryMeta.type === "incremental" ? "Non incremental pre operations" : "Pre operations" },
             { result: postOpsDryRunResult, label: "Post operations" },
             { result: incrementalPreOpsDryRunResult, label: "Incremental pre operations" },
             { result: incrementalDryRunResult, label: "Incremental" },
             { result: nonIncrementalDryRunResult, label: "Non incremental" },
-            { result: assertionDryRunResult, label: "Assertion" },
-            { result: testDryRunResult, label: "Input Query" },
-            { result: expectedOutputDryRunResult, label: "Expected Output Query" }
+            { result: assertionDryRunResult, label: jsAssertionNames ? `Assertion (${jsAssertionNames})` : "Assertion" },
+            { result: testDryRunResult, label: jsTestNames ? `Test: Input Query (${jsTestNames})` : "Test: Input Query" },
+            { result: expectedOutputDryRunResult, label: jsTestNames ? `Test: Expected Output (${jsTestNames})` : "Test: Expected Output" }
         ];
 
         for (const { result, label } of dryRunResultsMeta) {
             const cost = formatCost(result, label);
             dryRunStat += (cost ? cost + "<br>" : "");
+        }
+
+        const nodeType = fileMetadata.queryMeta.type;
+        const hasTableOrViewNodes = fileMetadata.tables.some((t: any) => t.type === "table" || t.type === "view");
+        const hasOperationsNodes = fileMetadata.tables.some((t: any) => t.type === "operations");
+        const dryRunStatByNodeType: Record<string, string> = {};
+        if (nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) {
+            const cost = formatCost(dryRunResult, "");
+            if (cost) { dryRunStatByNodeType["table"] = cost; dryRunStatByNodeType["view"] = cost; }
+        }
+        if (nodeType === "operations" || (isJsFile && hasOperationsNodes && !hasTableOrViewNodes)) {
+            const cost = formatCost(dryRunResult, "");
+            if (cost) { dryRunStatByNodeType["operations"] = cost; }
+        }
+        if (nodeType === "incremental") {
+            const parts = [formatCost(nonIncrementalDryRunResult, ""), formatCost(incrementalDryRunResult, "Incremental")].filter(Boolean);
+            if (parts.length) { dryRunStatByNodeType["incremental"] = parts.join("<br>"); }
+        }
+        { const cost = formatCost(assertionDryRunResult, ""); if (cost) { dryRunStatByNodeType["assertion"] = cost; } }
+        {
+            const testCost = formatCost(testDryRunResult, "");
+            const expectedCost = formatCost(expectedOutputDryRunResult, "Expected");
+            const parts = [testCost, expectedCost].filter(Boolean);
+            if (parts.length) { dryRunStatByNodeType["test"] = parts.join("<br>"); }
         }
 
 
@@ -1020,6 +1058,7 @@ export class CompiledQueryPanel {
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
+                "dryRunStatByNodeType": dryRunStatByNodeType,
                 "testDryRunResult": testDryRunResult,
                 "expectedOutputDryRunResult": expectedOutputDryRunResult,
                 "currencySymbol": currencySymbol,
@@ -1042,13 +1081,14 @@ export class CompiledQueryPanel {
                 "packageJsonContent": curFileMeta.packageJsonContent,
                 "isHelperFile": false
             });
-            this._cachedResults = { 
-                fileMetadata, 
-                curFileMeta, 
-                targetTablesOrViews, 
-                errorMessage, 
-                dryRunStat, 
-                location, 
+            this._cachedResults = {
+                fileMetadata,
+                curFileMeta,
+                targetTablesOrViews,
+                errorMessage,
+                dryRunStat,
+                dryRunStatByNodeType,
+                location,
                 compilerOptions
             };
             declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;

@@ -14,11 +14,9 @@ import {
   Check,
   Loader2,
   Clock,
-  CheckCircle2,
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
-import DOMPurify from "dompurify";
 
 
 interface CompiledQueryTabProps {
@@ -198,10 +196,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             return (
               <div
                 key={index}
-                className="bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
+                className="relative bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+                {state.dryRunStatByNodeType?.[model.type] && !state.dryRunning && (
+                  <div
+                    className="absolute top-2 right-2 text-xs font-mono text-[var(--vscode-extensionIcon-preReleaseForeground)] bg-[var(--vscode-diffEditor-insertedTextBackground)] px-2 py-0.5 rounded"
+                    // eslint-disable-next-line react/no-danger -- sanitized server-side via formatCost
+                    dangerouslySetInnerHTML={{__html: state.dryRunStatByNodeType[model.type]}}
+                  />
+                )}
+                {state.dryRunning && !state.recompiling && (
+                  <Loader2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
+                )}
+                <div className="flex items-center">
+                  <div className="flex items-center min-w-0">
                     {model.type === 'test' ? (
                       <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
@@ -402,26 +410,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         )}
       </div>
 
-      {/* Dry Run Stats */}
-       {state.dryRunning && !state.recompiling ? (
-         <div className="bg-[var(--vscode-inputValidation-warningBackground)] border-l-4 border-[var(--vscode-inputValidation-warningBorder)] p-4 rounded-r shadow-sm flex items-center">
-              <Loader2 className="w-5 h-5 text-[var(--vscode-inputValidation-warningForeground)] animate-spin mr-3 flex-shrink-0" />
-              <div className="text-[var(--vscode-foreground)] text-sm">
-                  <span className="font-semibold text-[var(--vscode-inputValidation-warningForeground)]">Performing dry run...</span>
-              </div>
-         </div>
-       ) : (
-         state.dryRunStat && (
-             <div className="bg-[var(--vscode-diffEditor-insertedTextBackground)] border border-[var(--vscode-widget-border)] border-l-4 border-l-[var(--vscode-extensionIcon-preReleaseForeground)] p-4 rounded shadow-sm flex items-start">
-                  <CheckCircle2 className="w-5 h-5 text-[var(--vscode-extensionIcon-preReleaseForeground)] mt-0.5 mr-2 flex-shrink-0" />
-                  <div className="text-[var(--vscode-foreground)] text-sm">
-                      <span className="font-semibold">Query will process:</span>
-                      {/* eslint-disable-next-line react/no-danger -- sanitized via DOMPurify */}
-                      <div className="font-mono mt-1 opacity-90" dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(state.dryRunStat)}} />
-                  </div>
-             </div>
-         )
-       )}
 
       {/* Toolbar */}
        <div className="flex flex-col gap-4 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)]">

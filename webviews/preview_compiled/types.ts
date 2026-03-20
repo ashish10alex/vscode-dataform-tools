@@ -34,6 +34,7 @@ export interface WebviewState {
   possibleResolutions?: string[] | null;
   workspaceFolder?: string;
   dryRunStat?: string;
+  dryRunStatByNodeType?: Record<string, string>;
   modelType?: string;
   actionTypes?: string[];
   workflowInvocationUrlGCP?: string;
