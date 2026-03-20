@@ -8,7 +8,7 @@ import { runTests } from "../runTests";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
-import { getModelLastModifiedTime } from "../bigqueryDryRun";
+import { getModelLastModifiedTime, queryDryRun } from "../bigqueryDryRun";
 import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
@@ -127,7 +127,7 @@ export class CompiledQueryPanel {
     public currentFileMetadata: any;
     private lastMessageTime = 0;
     private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, dryRunStatByNodeType: Record<string, string>, location: string|undefined, compilerOptions: string|undefined};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string, dryRunStat:any, dryRunStatByNodeType: Record<string, string>, dryRunStatByNodeName: Record<string, string>, location: string|undefined, compilerOptions: string|undefined};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
@@ -388,6 +388,7 @@ export class CompiledQueryPanel {
                     const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                     const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
                     const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
+                    const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
                     this.centerPanel?.webviewPanel.webview.postMessage({
                         "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
                         "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -405,6 +406,7 @@ export class CompiledQueryPanel {
                         "errorMessage": errorMessage,
                         "dryRunStat":  dryRunStat,
                         "dryRunStatByNodeType": dryRunStatByNodeType,
+                        "dryRunStatByNodeName": dryRunStatByNodeName,
                         "compiledQuerySchema": compiledQuerySchema,
                         "targetTablesOrViews": targetTablesOrViews,
                         "models": curFileMeta.fileMetadata.tables,
@@ -440,6 +442,7 @@ export class CompiledQueryPanel {
                 const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                 const dryRunStat  = this.centerPanel?._cachedResults?.dryRunStat;
                 const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
+                const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
                 const location = this.centerPanel?._cachedResults?.location || "eu"; // TODO: check if there is way to have a better default
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target, location);
@@ -460,6 +463,7 @@ export class CompiledQueryPanel {
                     "errorMessage": errorMessage,
                     "dryRunStat":  dryRunStat,
                     "dryRunStatByNodeType": dryRunStatByNodeType,
+                    "dryRunStatByNodeName": dryRunStatByNodeName,
                     "compiledQuerySchema": compiledQuerySchema,
                     "targetTablesOrViews": targetTablesOrViews,
                     "models": curFileMeta.fileMetadata.tables,
@@ -865,9 +869,11 @@ export class CompiledQueryPanel {
         // Filter out test nodes as they don't have a table to check last modified time for
         const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
 
-        const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
+        const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
+        const [dryRunResults, _modelsLastUpdateTimesMeta, perAssertionDryRunResults] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
-            tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([])
+            tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
+            Promise.all(assertionQueriesMeta.map(aq => queryDryRun(aq.query))),
         ]);
         const [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult] = dryRunResults;
 
@@ -953,6 +959,13 @@ export class CompiledQueryPanel {
             if (parts.length) { dryRunStatByNodeType["incremental"] = parts.join("<br>"); }
         }
         { const cost = formatCost(assertionDryRunResult, ""); if (cost) { dryRunStatByNodeType["assertion"] = cost; } }
+        const dryRunStatByNodeName: Record<string, string> = {};
+        (perAssertionDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            const cost = formatCost(result, "");
+            if (cost && assertionQueriesMeta[i]) {
+                dryRunStatByNodeName[assertionQueriesMeta[i].targetName] = cost;
+            }
+        });
         {
             const testCost = formatCost(testDryRunResult, "Input");
             const expectedCost = formatCost(expectedOutputDryRunResult, "Expected");
@@ -1059,6 +1072,7 @@ export class CompiledQueryPanel {
                 "errorMessage": errorMessage,
                 "dryRunStat":  dryRunStat,
                 "dryRunStatByNodeType": dryRunStatByNodeType,
+                "dryRunStatByNodeName": dryRunStatByNodeName,
                 "testDryRunResult": testDryRunResult,
                 "expectedOutputDryRunResult": expectedOutputDryRunResult,
                 "currencySymbol": currencySymbol,
@@ -1088,6 +1102,7 @@ export class CompiledQueryPanel {
                 errorMessage,
                 dryRunStat,
                 dryRunStatByNodeType,
+                dryRunStatByNodeName,
                 location,
                 compilerOptions
             };

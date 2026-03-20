@@ -40,6 +40,7 @@ export interface QueryMeta {
     preOpsQuery: string
     postOpsQuery: string
     assertionQuery: string
+    assertionQueries: { targetName: string; query: string }[]
     operationsQuery: string
     testQuery: string
     expectedOutputQuery: string

@@ -35,6 +35,7 @@ export interface WebviewState {
   workspaceFolder?: string;
   dryRunStat?: string;
   dryRunStatByNodeType?: Record<string, string>;
+  dryRunStatByNodeName?: Record<string, string>;
   modelType?: string;
   actionTypes?: string[];
   workflowInvocationUrlGCP?: string;

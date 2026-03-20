@@ -1292,6 +1292,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         preOpsQuery: "",
         postOpsQuery: "",
         assertionQuery: "",
+        assertionQueries: [] as { targetName: string; query: string }[],
         operationsQuery: "",
         testQuery: "",
         expectedOutputQuery: "",
@@ -1388,6 +1389,10 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     });
                     logger.debug(`Assertion found: ${assertion.fileName}`);
                     queryMeta.assertionQuery += `\n -- Assertions: [${index + 1}] \n${assertion.query.trimStart()}; \n`;
+                    queryMeta.assertionQueries.push({
+                        targetName: `${assertion.target.database}.${assertion.target.schema}.${assertion.target.name}`,
+                        query: assertion.query.trimStart(),
+                    });
                 } else {
                     let errorString = createQueryMetaErrorString(assertion, relativeFilePath, "assertions", isJsFile);
                     queryMeta.error += errorString;
@@ -2070,7 +2075,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
         queryDryRun(fileMetadata.queryMeta.preOpsQuery),
         // To enable to use of variables declared in preOps.
-        // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm 
+        // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm
         // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
         (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "") ? queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery) : Promise.resolve({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse),
         queryDryRun(nonIncrementalQuery),
