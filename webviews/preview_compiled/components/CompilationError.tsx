@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
 import { WebviewState, CompilationErrorType } from '../types';
@@ -8,15 +8,77 @@ interface CompilationErrorProps {
   state: WebviewState;
 }
 
+interface AccordionSectionProps {
+  label: string;
+  count: number;
+  isOpen: boolean;
+  onToggle: () => void;
+  errors: Array<{ error: string; fileName: string }>;
+}
+
+const AccordionSection: React.FC<AccordionSectionProps> = ({
+  label,
+  count,
+  isOpen,
+  onToggle,
+  errors,
+}) => (
+  <div className="mb-2 border border-[var(--vscode-inputValidation-errorBorder)] rounded overflow-hidden">
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between px-3 py-2 text-left text-sm font-medium text-[var(--vscode-inputValidation-errorForeground)] bg-[var(--vscode-editor-background)] hover:opacity-80 transition-opacity"
+    >
+      <span>{label}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-[var(--vscode-inputValidation-errorBorder)] text-[var(--vscode-inputValidation-errorForeground)] opacity-80">
+          {count}
+        </span>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4 flex-shrink-0" />
+        ) : (
+          <ChevronDown className="w-4 h-4 flex-shrink-0" />
+        )}
+      </div>
+    </button>
+    {isOpen && (
+      <ul className="list-none m-0 p-0 divide-y divide-[var(--vscode-inputValidation-errorBorder)]">
+        {errors.map((e, i) => (
+          <li
+            key={i}
+            className="px-3 py-2 text-xs text-[var(--vscode-inputValidation-errorForeground)]"
+          >
+            <div className="font-medium opacity-90 leading-relaxed">{e.error}</div>
+            {e.fileName && (
+              <div className="mt-1 font-mono opacity-50 text-[11px] break-all">{e.fileName}</div>
+            )}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
+
 export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => {
-  const { 
-    errorMessage, 
-    errorType, 
-    recompiling, 
-    missingExecutables, 
-    relativeFilePath, 
-    workspaceFolder 
+  const {
+    errorMessage,
+    errorType,
+    recompiling,
+    missingExecutables,
+    relativeFilePath,
+    workspaceFolder,
+    compilationErrors,
+    possibleResolutions,
   } = state;
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    root: true,
+    unresolved: false,
+    missing: false,
+  });
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   if (recompiling) {
     return null;
@@ -45,7 +107,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             <h3 className="mt-0 mb-2 text-lg font-semibold text-[var(--vscode-inputValidation-errorForeground)]">Missing Required {missingExecutables.length > 1 ? 'CLIs' : 'CLI'}</h3>
             <p className="mt-0 mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-90">The following mandatory {missingExecutables.length > 1 ? 'CLIs are' : 'CLI is'} not installed or not found in your system PATH: <b className="font-mono bg-[var(--vscode-editor-background)] opacity-50 px-1 rounded">{missingExecutables.join(', ')}</b></p>
             <p className="mt-0 mb-4 text-[var(--vscode-inputValidation-errorForeground)] opacity-90"><a href="https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#installation" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">Installation steps on GitHub</a></p>
-            
+
             <ol className="mt-0 list-decimal list-inside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-3">
               {missingExecutables.includes('dataform') && (
                 <li>
@@ -82,13 +144,13 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
           <div>
             {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
             <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto mb-3" dangerouslySetInnerHTML={{__html: sanitizedError}} />
-            
+
             <h4 className="mt-0 mb-2 text-md font-semibold text-[var(--vscode-inputValidation-errorForeground)]">Possible fix:</h4>
             <p className="mt-0 mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-90">
               <a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">Install gcloud cli</a>
             </p>
             <p className="mt-0 mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-90">After gcloud cli is installed run the following in the terminal in order:</p>
-            
+
             <ol className="mt-0 ml-5 list-decimal list-outside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-2">
               <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud init</code></li>
               <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud auth application-default login</code></li>
@@ -110,13 +172,13 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
               File <b className="font-mono bg-[var(--vscode-editor-background)] opacity-50 px-1 rounded">"{relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b className="font-mono bg-[var(--vscode-editor-background)] opacity-50 px-1 rounded">"{workspaceFolder}"</b>
             </p>
             <p className="mt-0 mb-3 opacity-90">Ignore the error if the file you are in is not expected to produce a sql output</p>
-            
+
             <h4 className="mt-0 mb-2 text-md font-semibold">Possible resolution/fix(s):</h4>
             <ol className="mt-0 ml-5 list-decimal list-outside opacity-90 space-y-2">
               <li>
                 If you are using multi-root workspace, select the correct workspace folder for the file by{' '}
-                <a 
-                  href="#" 
+                <a
+                  href="#"
                   onClick={(e) => {
                     e.preventDefault();
                     vscode.postMessage({ command: 'selectWorkspaceFolder' });
@@ -128,8 +190,8 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
               </li>
               <li>Check if running <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> throws an error</li>
               <li>
-                Check if case of the file has been changed and the case does not match what is being shown in the error message above, 
-                this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">#123660</a>. 
+                Check if case of the file has been changed and the case does not match what is being shown in the error message above,
+                this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">#123660</a>.
                 A workaround for this is:
                 <ol className="mt-2 ml-5 list-[lower-alpha] list-outside space-y-1">
                   <li>Change the filename to something arbitrary and save it</li>
@@ -140,6 +202,84 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             </ol>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Structured compilation errors (COMPILATION_ERROR with structured array)
+  if (errorType === CompilationErrorType.COMPILATION_ERROR && compilationErrors) {
+    const rootErrors = compilationErrors.filter(
+      (e) =>
+        !e.error.startsWith('Could not resolve') &&
+        !e.error.startsWith('Missing dependency detected')
+    );
+    const unresolvedRefErrors = compilationErrors.filter((e) =>
+      e.error.startsWith('Could not resolve')
+    );
+    const missingDepErrors = compilationErrors.filter((e) =>
+      e.error.startsWith('Missing dependency detected')
+    );
+
+    const groups = [
+      { key: 'root', label: 'Syntax / Root Errors', errors: rootErrors },
+      { key: 'unresolved', label: 'Unresolved References', errors: unresolvedRefErrors },
+      { key: 'missing', label: 'Missing Dependencies', errors: missingDepErrors },
+    ].filter((g) => g.errors.length > 0);
+
+    return (
+      <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+        <div className="flex items-center mb-3">
+          <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mr-2 flex-shrink-0" />
+          <h3 className="m-0 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
+            Error compiling Dataform
+          </h3>
+          <span className="ml-auto text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60">
+            {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          {groups.map((group) => (
+            <AccordionSection
+              key={group.key}
+              label={group.label}
+              count={group.errors.length}
+              isOpen={openSections[group.key]}
+              onToggle={() => toggleSection(group.key)}
+              errors={group.errors}
+            />
+          ))}
+        </div>
+
+        <p className="mt-3 mb-0 text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60 italic">
+          Run{' '}
+          <code className="px-1 py-0.5 bg-[var(--vscode-editor-background)] opacity-70 rounded font-mono border border-[var(--vscode-widget-border)]">
+            dataform compile
+          </code>{' '}
+          in the terminal for the full error output.
+        </p>
+
+        {possibleResolutions && possibleResolutions.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-[var(--vscode-inputValidation-errorBorder)]">
+            <h4 className="mt-0 mb-2 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
+              Possible fixes:
+            </h4>
+            <ol className="mt-0 ml-4 list-decimal list-outside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-1 text-sm">
+              {possibleResolutions.map((resolution, i) => (
+                <li
+                  key={i}
+                  // eslint-disable-next-line react/no-danger -- resolution strings are author-controlled (from extension source code), not user input; DOMPurify further restricts to b/code only
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(resolution, {
+                      ALLOWED_TAGS: ['b', 'code'],
+                      ALLOWED_ATTR: [],
+                    }),
+                  }}
+                />
+              ))}
+            </ol>
+          </div>
+        )}
       </div>
     );
   }

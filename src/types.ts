@@ -403,9 +403,11 @@ export interface WebviewMessage {
   expectedOutputQuery?: string;
   actionTypes?: string[];
   relativeFilePath?: string;
-  errorMessage?: string;
+  errorMessage?: string | null;
   errorType?: CompilationErrorType;
-  dryRunStat?: any; 
+  compilationErrors?: Array<{ error: string; fileName: string }>;
+  possibleResolutions?: string[];
+  dryRunStat?: any;
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;
   models?: any; 

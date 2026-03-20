@@ -660,8 +660,6 @@ export class CompiledQueryPanel {
             return;
         }
         if(curFileMeta.errors?.dataformCompilationErrors){
-            let errorString = "<h3>Error compiling Dataform:</h3><ul>";
-
             let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
                 await webview.postMessage({ "recompiling": false });
@@ -669,8 +667,6 @@ export class CompiledQueryPanel {
             }
 
             for (const { error, fileName } of curFileMeta?.errors?.dataformCompilationErrors) {
-                errorString += `<li>${error} at ${fileName}</li><br>`;
-
                 if (diagnosticCollection) {
                     const diagnostic = new vscode.Diagnostic(
                         new vscode.Range(0, 0, 0, 0),
@@ -683,17 +679,10 @@ export class CompiledQueryPanel {
                 }
             }
 
-            errorString += "</ul> Run `dataform compile` to see more details <br>";
-            if (curFileMeta?.possibleResolutions && curFileMeta?.possibleResolutions?.length > 0) {
-                errorString += "<h4>Possible fixes:</h4><ul>";
-                for (let i = 0; i < curFileMeta.possibleResolutions.length; i++) {
-                    errorString += `<li>${curFileMeta.possibleResolutions[i]}</li>`;
-                }
-                errorString += "</ul>";
-            }
-
             await webview.postMessage({
-                "errorMessage": errorString,
+                "compilationErrors": curFileMeta.errors.dataformCompilationErrors,
+                "possibleResolutions": curFileMeta.possibleResolutions ?? [],
+                "errorMessage": null,
                 "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
