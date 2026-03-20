@@ -194,7 +194,7 @@ function App() {
             </div>
         )}
 
-        {state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && (
+        {state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && !state.compilationErrors && (
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 

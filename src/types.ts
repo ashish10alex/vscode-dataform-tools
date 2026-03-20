@@ -221,6 +221,7 @@ export interface TableBigQueryConfig {
 export type GraphError = {
     error: string;
     fileName: string;
+    stack?: string;
 };
 
 interface ColumnMetadataCore {
@@ -403,9 +404,16 @@ export interface WebviewMessage {
   expectedOutputQuery?: string;
   actionTypes?: string[];
   relativeFilePath?: string;
-  errorMessage?: string;
+  errorMessage?: string | null;
   errorType?: CompilationErrorType;
-  dryRunStat?: any; 
+  compilationErrors?: Array<{
+    error: string;
+    fileName: string;
+    lineNumber?: number;
+    sourceContext?: string;
+  }> | null;
+  possibleResolutions?: string[] | null;
+  dryRunStat?: any;
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;
   models?: any; 

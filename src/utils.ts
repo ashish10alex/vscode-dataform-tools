@@ -1650,8 +1650,8 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     }
 
                     let errors: GraphError[] = [];
-                    graphErrors.forEach((graphError: { message: string, fileName: string }) => {
-                        errors.push({ error: graphError.message, fileName: graphError.fileName });
+                    graphErrors.forEach((graphError: { message: string, fileName: string, stack?: string }) => {
+                        errors.push({ error: graphError.message, fileName: graphError.fileName, stack: graphError.stack });
                     });
                     const endTime = performance.now();
                     resolve({ compiledString: undefined, errors: errors, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });

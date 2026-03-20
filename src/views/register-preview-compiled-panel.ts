@@ -14,7 +14,7 @@ import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
 import { DataformTools } from "@ashishalex/dataform-tools";
-
+import { parseCompilationStack } from "../parseCompilationStack";
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions:{name:string, metadata: any}[] = [];
@@ -660,8 +660,6 @@ export class CompiledQueryPanel {
             return;
         }
         if(curFileMeta.errors?.dataformCompilationErrors){
-            let errorString = "<h3>Error compiling Dataform:</h3><ul>";
-
             let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
                 await webview.postMessage({ "recompiling": false });
@@ -669,8 +667,6 @@ export class CompiledQueryPanel {
             }
 
             for (const { error, fileName } of curFileMeta?.errors?.dataformCompilationErrors) {
-                errorString += `<li>${error} at ${fileName}</li><br>`;
-
                 if (diagnosticCollection) {
                     const diagnostic = new vscode.Diagnostic(
                         new vscode.Range(0, 0, 0, 0),
@@ -683,22 +679,27 @@ export class CompiledQueryPanel {
                 }
             }
 
-            errorString += "</ul> Run `dataform compile` to see more details <br>";
-            if (curFileMeta?.possibleResolutions && curFileMeta?.possibleResolutions?.length > 0) {
-                errorString += "<h4>Possible fixes:</h4><ul>";
-                for (let i = 0; i < curFileMeta.possibleResolutions.length; i++) {
-                    errorString += `<li>${curFileMeta.possibleResolutions[i]}</li>`;
-                }
-                errorString += "</ul>";
-            }
-
             await webview.postMessage({
-                "errorMessage": errorString,
+                "compilationErrors": curFileMeta.errors.dataformCompilationErrors?.map((compilationError: { error: string; fileName: string; stack?: string }) => {
+                    const { lineNumber, sourceContext } = parseCompilationStack(compilationError.stack);
+                    return { error: compilationError.error, fileName: compilationError.fileName, lineNumber, sourceContext };
+                }),
+                "possibleResolutions": curFileMeta.possibleResolutions ?? [],
+                "errorMessage": null,
                 "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
                 "declarations": null,
                 "tableOrViewQuery": null,
+                "assertionQuery": null,
+                "preOperations": null,
+                "postOperations": null,
+                "incrementalPreOpsQuery": null,
+                "incrementalQuery": null,
+                "nonIncrementalQuery": null,
+                "operationsQuery": null,
+                "testQuery": null,
+                "expectedOutputQuery": null,
                 "projectConfig": null,
                 "packageJsonContent": null,
                 "compiledQuerySchema": null,

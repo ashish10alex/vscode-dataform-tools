@@ -23,8 +23,15 @@ export interface WebviewState {
   testDryRunResult?: BigQueryDryRunResponse;
   expectedOutputDryRunResult?: BigQueryDryRunResponse;
   relativeFilePath?: string;
-  errorMessage?: string;
+  errorMessage?: string | null;
   errorType?: CompilationErrorType;
+  compilationErrors?: Array<{
+    error: string;
+    fileName: string;
+    lineNumber?: number;
+    sourceContext?: string;
+  }> | null;
+  possibleResolutions?: string[] | null;
   workspaceFolder?: string;
   dryRunStat?: string;
   modelType?: string;
