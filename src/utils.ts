@@ -2014,9 +2014,13 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const type = curFileMeta.fileMetadata.queryMeta.type;
     const fileMetadata = curFileMeta.fileMetadata;
 
-    let isMultiModalJsType = type === "js" && fileMetadata.tables.map((table: any) => {
+    let isMultiModalJsType = type === "js" && fileMetadata.tables.some((table: any) => {
         return table.type === "table" || table.type === "view";
-    }).length >= 1;
+    });
+
+    let isJsWithOperations = type === "js" && fileMetadata.tables.some((table: any) => {
+        return table.type === "operations";
+    });
 
     const skipPreOpsInDryRun = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
     logger.debug(`skipPreOpsInDryRun: ${skipPreOpsInDryRun}`);
@@ -2031,7 +2035,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         queryToDryRun = preOpsQuery + fileMetadata.queryMeta.tableOrViewQuery;
     } else if (type === "assertion") {
         queryToDryRun = fileMetadata.queryMeta.assertionQuery;
-    } else if (type === "operations") {
+    } else if (type === "operations" || isJsWithOperations) {
         let preOpsQuery = fileMetadata.queryMeta.preOpsQuery;
         if (skipPreOpsInDryRun) {
             preOpsQuery = "";
