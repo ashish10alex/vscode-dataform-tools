@@ -954,7 +954,7 @@ export class CompiledQueryPanel {
         }
         { const cost = formatCost(assertionDryRunResult, ""); if (cost) { dryRunStatByNodeType["assertion"] = cost; } }
         {
-            const testCost = formatCost(testDryRunResult, "");
+            const testCost = formatCost(testDryRunResult, "Input");
             const expectedCost = formatCost(expectedOutputDryRunResult, "Expected");
             const parts = [testCost, expectedCost].filter(Boolean);
             if (parts.length) { dryRunStatByNodeType["test"] = parts.join("<br>"); }

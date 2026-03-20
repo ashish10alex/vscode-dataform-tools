@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
+import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
 
 interface CompiledQueryTabProps {
@@ -191,13 +192,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const target = model.target;
             const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
 
-            if (!target) { return null; }
+            if (!target && model.type !== 'test') { return null; }
+
+            const badgeStyle = ACTION_TYPE_BADGE_STYLES[model.type] || DEFAULT_BADGE_STYLE;
 
             return (
               <div
                 key={index}
-                className="relative bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
+                className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-8 pb-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
               >
+                <span className={`absolute top-2 left-2 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                  {model.type}
+                </span>
                 {state.dryRunStatByNodeType?.[model.type] && !state.dryRunning && (
                   <div
                     className="absolute top-2 right-2 text-xs font-mono text-[var(--vscode-extensionIcon-preReleaseForeground)] bg-[var(--vscode-diffEditor-insertedTextBackground)] px-2 py-0.5 rounded"
