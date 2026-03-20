@@ -411,8 +411,8 @@ export interface WebviewMessage {
     fileName: string;
     lineNumber?: number;
     sourceContext?: string;
-  }>;
-  possibleResolutions?: string[];
+  }> | null;
+  possibleResolutions?: string[] | null;
   dryRunStat?: any;
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;

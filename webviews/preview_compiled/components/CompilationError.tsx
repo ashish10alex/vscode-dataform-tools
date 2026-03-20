@@ -219,7 +219,11 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
   }
 
   // Structured compilation errors (COMPILATION_ERROR with structured array)
-  if (errorType === CompilationErrorType.COMPILATION_ERROR && compilationErrors) {
+  if (
+    errorType === CompilationErrorType.COMPILATION_ERROR &&
+    Array.isArray(compilationErrors) &&
+    compilationErrors.length > 0
+  ) {
     const rootErrors = compilationErrors.filter(
       (e) =>
         !e.error.startsWith('Could not resolve') &&
