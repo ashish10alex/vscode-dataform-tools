@@ -1285,9 +1285,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
     let queryMeta = {
         type: "",
-        tableOrViewQuery: "",
-        nonIncrementalQuery: "",
-        incrementalQuery: "",
         incrementalPreOpsQuery: "",
         preOpsQuery: "",
         postOpsQuery: "",
@@ -1334,7 +1331,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                             queryMeta.error += createQueryMetaErrorString(table, relativeFilePath, tableTypeToUse, isJsFile);
                         } else {
                             const curTableQuery  = (table.query.trimStart() !== "" ? table.query.trimStart() + "\n;" : "");
-                            queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + curTableQuery;
                             queryMeta.tableQueries.push({
                                 targetName: `${table.target.database}.${table.target.schema}.${table.target.name}`,
                                 query: curTableQuery,
@@ -1342,8 +1338,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         }
                         break;
                     case "incremental":
-                        queryMeta.nonIncrementalQuery += (queryMeta.nonIncrementalQuery ? "\n" : "") + table.query + ";";
-                        queryMeta.incrementalQuery += (queryMeta.incrementalQuery ? "\n" : "") + table.incrementalQuery + ";";
                         if (table.incrementalPreOps) {
                             queryMeta.incrementalPreOpsQuery += (queryMeta.incrementalPreOpsQuery ? "\n" : "") + table.incrementalPreOps.join("\n") + "\n";
                         }
@@ -1383,7 +1377,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         const assertionNodes = fileNodes.filter((n: any) => n.type === 'assertion') as Assertion[];
         if (assertionNodes.length > 0) {
             // Logic regarding type setting
-            if(queryMeta.type !== "js" && queryMeta.tableOrViewQuery === "" && queryMeta.incrementalQuery === "") {
+            if(queryMeta.type !== "js" && queryMeta.tableQueries.length === 0 && queryMeta.incrementalQueries.length === 0) {
                 queryMeta.type = "assertion";
             }
             
@@ -1531,7 +1525,6 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     finalTables.push(tableFound);
 
                     queryMeta.type = "notebook";
-                    queryMeta.tableOrViewQuery += `Open: ${notebook.fileName} \n`;
                 }
             }
       });
@@ -2057,7 +2050,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         } else if (preOpsQuery && preOpsQuery !== "") {
             preOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(preOpsQuery);
         }
-        queryToDryRun = preOpsQuery + fileMetadata.queryMeta.tableOrViewQuery;
+        queryToDryRun = preOpsQuery + fileMetadata.queryMeta.tableQueries.map((t: { query: string }) => t.query).join("\n");
     } else if (type === "assertion") {
         queryToDryRun = fileMetadata.queryMeta.assertionQuery;
     } else if (type === "operations" || isJsWithOperations) {
@@ -2081,8 +2074,8 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         if (nonIncrementalPreOpsQuery && nonIncrementalPreOpsQuery !== "") {
             nonIncrementalPreOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(nonIncrementalPreOpsQuery);
         }
-        incrementalQuery = incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQuery.trimStart();
-        nonIncrementalQuery = nonIncrementalPreOpsQuery + fileMetadata.queryMeta.nonIncrementalQuery.trimStart();
+        incrementalQuery = incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQueries.map((q: { incrementalQuery: string }) => q.incrementalQuery).join("\n").trimStart();
+        nonIncrementalQuery = nonIncrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQueries.map((q: { nonIncrementalQuery: string }) => q.nonIncrementalQuery).join("\n").trimStart();
     }
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`

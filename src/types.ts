@@ -33,9 +33,6 @@ export interface Column {
 
 export interface QueryMeta {
     type: string,
-    tableOrViewQuery: string
-    nonIncrementalQuery: string
-    incrementalQuery: string
     incrementalPreOpsQuery: string
     preOpsQuery: string
     postOpsQuery: string

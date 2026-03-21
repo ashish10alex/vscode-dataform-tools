@@ -338,13 +338,13 @@ export class CompiledQueryPanel {
                 const _fullRefresh = message.value.fullRefresh;
                 // FIXME: there must be a way to avoid double calls before and after function invocation ?
                 let messageDict: WebviewMessage = {
-                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableOrViewQuery,
+                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                     "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
                     "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
                     "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
                     "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
-                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQuery,
-                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.nonIncrementalQuery,
+                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
+                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
                     "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
                     "testQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.testQuery,
                     "expectedOutputQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.expectedOutputQuery,
@@ -394,13 +394,13 @@ export class CompiledQueryPanel {
                     const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
                     const dryRunErrorsByNodeName = this.centerPanel?._cachedResults?.dryRunErrorsByNodeName;
                     this.centerPanel?.webviewPanel.webview.postMessage({
-                        "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+                        "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                         "assertionQuery": fileMetadata.queryMeta.assertionQuery,
                         "preOperations": fileMetadata.queryMeta.preOpsQuery,
                         "postOperations": fileMetadata.queryMeta.postOpsQuery,
                         "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-                        "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
-                        "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+                        "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
+                        "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
                         "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                         "testQuery": fileMetadata.queryMeta.testQuery,
                         "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
@@ -456,13 +456,13 @@ export class CompiledQueryPanel {
                 const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target, location);
 
                 this.centerPanel?.webviewPanel.webview.postMessage({
-                    "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+                    "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                     "assertionQuery": fileMetadata.queryMeta.assertionQuery,
                     "preOperations": fileMetadata.queryMeta.preOpsQuery,
                     "postOperations": fileMetadata.queryMeta.postOpsQuery,
                     "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-                    "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
-                    "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+                    "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
+                    "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
                     "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                     "testQuery": fileMetadata.queryMeta.testQuery,
                     "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
@@ -831,13 +831,13 @@ export class CompiledQueryPanel {
         let targetTablesOrViews = fm.tables;
 
         await webview.postMessage({
-            "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+            "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
             "assertionQuery": fileMetadata.queryMeta.assertionQuery,
             "preOperations": fileMetadata.queryMeta.preOpsQuery,
             "postOperations": fileMetadata.queryMeta.postOpsQuery,
             "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-            "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
-            "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+            "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
+            "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
             "operationsQuery": fileMetadata.queryMeta.operationsQuery,
             "testQuery": fileMetadata.queryMeta.testQuery,
             "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
@@ -881,10 +881,16 @@ export class CompiledQueryPanel {
         const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
 
         const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
-        const [dryRunResults, _modelsLastUpdateTimesMeta, perAssertionDryRunResults] = await Promise.all([
+        const tableQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
+        const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
+        const operationQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
+        const [dryRunResults, _modelsLastUpdateTimesMeta, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
             Promise.all(assertionQueriesMeta.map(aq => queryDryRun(aq.query))),
+            Promise.all(tableQueriesMeta.map(tq => queryDryRun(tq.query))),
+            Promise.all(incrementalQueriesMeta.map(iq => queryDryRun(iq.nonIncrementalQuery))),
+            Promise.all(operationQueriesMeta.map(oq => queryDryRun(oq.query))),
         ]);
         const { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult } = dryRunResults;
 
@@ -979,6 +985,24 @@ export class CompiledQueryPanel {
                 dryRunStatByNodeName[assertionQueriesMeta[i].targetName] = cost;
             }
         });
+        (perTableDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            const cost = formatCost(result, "");
+            if (cost && tableQueriesMeta[i]) {
+                dryRunStatByNodeName[tableQueriesMeta[i].targetName] = cost;
+            }
+        });
+        (perIncrementalDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            const cost = formatCost(result, "");
+            if (cost && incrementalQueriesMeta[i]) {
+                dryRunStatByNodeName[incrementalQueriesMeta[i].targetName] = cost;
+            }
+        });
+        (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            const cost = formatCost(result, "");
+            if (cost && operationQueriesMeta[i]) {
+                dryRunStatByNodeName[operationQueriesMeta[i].targetName] = cost;
+            }
+        });
         {
             const testCost = formatCost(testDryRunResult, "Input");
             const expectedCost = formatCost(expectedOutputDryRunResult, "Expected");
@@ -1005,10 +1029,25 @@ export class CompiledQueryPanel {
             ].filter(Boolean);
             if (parts.length) { dryRunErrorsByNodeType["incremental"] = parts.join("\n"); }
         }
-        // Per-assertion errors by node name (most precise — takes priority over node-type fallback)
+        // Per-node errors by target name (most precise — takes priority over node-type fallback)
         (perAssertionDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             if (result?.error?.hasError && assertionQueriesMeta[i]) {
                 dryRunErrorsByNodeName[assertionQueriesMeta[i].targetName] = result.error.message;
+            }
+        });
+        (perTableDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            if (result?.error?.hasError && tableQueriesMeta[i]) {
+                dryRunErrorsByNodeName[tableQueriesMeta[i].targetName] = result.error.message;
+            }
+        });
+        (perIncrementalDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            if (result?.error?.hasError && incrementalQueriesMeta[i]) {
+                dryRunErrorsByNodeName[incrementalQueriesMeta[i].targetName] = result.error.message;
+            }
+        });
+        (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            if (result?.error?.hasError && operationQueriesMeta[i]) {
+                dryRunErrorsByNodeName[operationQueriesMeta[i].targetName] = result.error.message;
             }
         });
         // Fallback for assertion node type (e.g. when there's only one assertion and perAssertionDryRunResults is empty)
@@ -1090,13 +1129,13 @@ export class CompiledQueryPanel {
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await webview.postMessage({
-                "tableOrViewQuery": fileMetadata.queryMeta.tableOrViewQuery,
+                "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                 "assertionQuery": fileMetadata.queryMeta.assertionQuery,
                 "preOperations": fileMetadata.queryMeta.preOpsQuery,
                 "postOperations": fileMetadata.queryMeta.postOpsQuery,
                 "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-                "incrementalQuery": fileMetadata.queryMeta.incrementalQuery,
-                "nonIncrementalQuery": fileMetadata.queryMeta.nonIncrementalQuery,
+                "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
+                "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
                 "operationsQuery": fileMetadata.queryMeta.operationsQuery,
                 "testQuery": fileMetadata.queryMeta.testQuery,
                 "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
