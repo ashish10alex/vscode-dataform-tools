@@ -297,7 +297,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   return modelError ? (
                     <div className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                      <div className="overflow-auto">{modelError}</div>
+                      <div className="overflow-auto whitespace-pre-wrap">{modelError}</div>
                     </div>
                   ) : null;
                 })()}

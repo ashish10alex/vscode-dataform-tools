@@ -1054,8 +1054,12 @@ export class CompiledQueryPanel {
         if (assertionDryRunResult?.error?.hasError) {
             dryRunErrorsByNodeType["assertion"] = assertionDryRunResult.error.message;
         }
-        if (testDryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["test"] = testDryRunResult.error.message;
+        {
+            const parts = [
+                testDryRunResult?.error?.hasError ? `(Input): ${testDryRunResult.error.message}` : "",
+                expectedOutputDryRunResult?.error?.hasError ? `(Expected output): ${expectedOutputDryRunResult.error.message}` : "",
+            ].filter(Boolean);
+            if (parts.length) { dryRunErrorsByNodeType["test"] = parts.join("\n"); }
         }
 
         // errorMessage is now null for dry-run errors; BigQuery client auth errors arrive via a separate path
