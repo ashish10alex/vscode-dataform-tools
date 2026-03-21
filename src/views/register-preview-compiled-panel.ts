@@ -881,16 +881,22 @@ export class CompiledQueryPanel {
         const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
 
         const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
-        const tableQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
-        const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
-        const operationQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
+        const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
+        const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
+        const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
+        const skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
+        const withPreOps = (preOpsQuery: string, query: string) => {
+            if (skipPreOps || !preOpsQuery) { return query; }
+            const p = /;\s*$/.test(preOpsQuery) ? preOpsQuery : preOpsQuery + ";";
+            return p + "\n" + query;
+        };
         const [dryRunResults, _modelsLastUpdateTimesMeta, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
             Promise.all(assertionQueriesMeta.map(aq => queryDryRun(aq.query))),
-            Promise.all(tableQueriesMeta.map(tq => queryDryRun(tq.query))),
-            Promise.all(incrementalQueriesMeta.map(iq => queryDryRun(iq.nonIncrementalQuery))),
-            Promise.all(operationQueriesMeta.map(oq => queryDryRun(oq.query))),
+            Promise.all(tableQueriesMeta.map(tq => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
+            Promise.all(incrementalQueriesMeta.map(iq => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
+            Promise.all(operationQueriesMeta.map(oq => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
         ]);
         const { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult } = dryRunResults;
 

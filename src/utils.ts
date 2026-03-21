@@ -1290,9 +1290,9 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         postOpsQuery: "",
         assertionQuery: "",
         assertionQueries: [] as { targetName: string; query: string }[],
-        tableQueries: [] as { targetName: string; query: string }[],
-        incrementalQueries: [] as { targetName: string; incrementalQuery: string; nonIncrementalQuery: string }[],
-        operationQueries: [] as { targetName: string; query: string }[],
+        tableQueries: [] as { targetName: string; query: string; preOpsQuery: string }[],
+        incrementalQueries: [] as { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[],
+        operationQueries: [] as { targetName: string; query: string; preOpsQuery: string }[],
         operationsQuery: "",
         testQuery: "",
         expectedOutputQuery: "",
@@ -1334,6 +1334,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                             queryMeta.tableQueries.push({
                                 targetName: `${table.target.database}.${table.target.schema}.${table.target.name}`,
                                 query: curTableQuery,
+                                preOpsQuery: table.preOps?.join("\n") ?? "",
                             });
                         }
                         break;
@@ -1345,6 +1346,8 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                             targetName: `${table.target.database}.${table.target.schema}.${table.target.name}`,
                             incrementalQuery: table.incrementalQuery ?? "",
                             nonIncrementalQuery: table.query ?? "",
+                            preOpsQuery: table.preOps?.join("\n") ?? "",
+                            incrementalPreOpsQuery: table.incrementalPreOps?.join("\n") ?? "",
                         });
                         break;
                     default:
@@ -1439,6 +1442,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         queryMeta.operationQueries.push({
                             targetName: `${operation.target.database}.${operation.target.schema}.${operation.target.name}`,
                             query: finalOperationQuery,
+                            preOpsQuery: operation.preOps?.join("\n") ?? "",
                         });
 
                         finalTables.push({

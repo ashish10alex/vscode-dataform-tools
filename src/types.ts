@@ -38,9 +38,9 @@ export interface QueryMeta {
     postOpsQuery: string
     assertionQuery: string
     assertionQueries: { targetName: string; query: string }[]
-    tableQueries: { targetName: string; query: string }[]
-    incrementalQueries: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string }[]
-    operationQueries: { targetName: string; query: string }[]
+    tableQueries: { targetName: string; query: string; preOpsQuery: string }[]
+    incrementalQueries: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[]
+    operationQueries: { targetName: string; query: string; preOpsQuery: string }[]
     operationsQuery: string
     testQuery: string
     expectedOutputQuery: string
