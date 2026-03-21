@@ -10,6 +10,7 @@ import { WorkflowURLsTab } from './components/WorkflowURLsTab';
 import { DeclarationsView } from './components/DeclarationsView';
 import { ProjectConfigTab } from './components/ProjectConfigTab';
 import { CompilationError } from './components/CompilationError';
+import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
 
 function App() {
@@ -203,7 +204,11 @@ function App() {
             </div>
         )}
 
-        <CompilationError state={state} />
+        {(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
+          !state.models?.length ||
+          (state.missingExecutables && state.missingExecutables.length > 0)) && (
+          <CompilationError state={state} />
+        )}
 
         {isConfigFile && <ProjectConfigTab state={state} />}
         {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && state.relativeFilePath?.endsWith('.js'))) && (

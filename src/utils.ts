@@ -1293,6 +1293,9 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         postOpsQuery: "",
         assertionQuery: "",
         assertionQueries: [] as { targetName: string; query: string }[],
+        tableQueries: [] as { targetName: string; query: string }[],
+        incrementalQueries: [] as { targetName: string; incrementalQuery: string; nonIncrementalQuery: string }[],
+        operationQueries: [] as { targetName: string; query: string }[],
         operationsQuery: "",
         testQuery: "",
         expectedOutputQuery: "",
@@ -1332,6 +1335,10 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         } else {
                             const curTableQuery  = (table.query.trimStart() !== "" ? table.query.trimStart() + "\n;" : "");
                             queryMeta.tableOrViewQuery += (queryMeta.tableOrViewQuery ? "\n" : "") + curTableQuery;
+                            queryMeta.tableQueries.push({
+                                targetName: `${table.target.database}.${table.target.schema}.${table.target.name}`,
+                                query: curTableQuery,
+                            });
                         }
                         break;
                     case "incremental":
@@ -1340,6 +1347,11 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         if (table.incrementalPreOps) {
                             queryMeta.incrementalPreOpsQuery += (queryMeta.incrementalPreOpsQuery ? "\n" : "") + table.incrementalPreOps.join("\n") + "\n";
                         }
+                        queryMeta.incrementalQueries.push({
+                            targetName: `${table.target.database}.${table.target.schema}.${table.target.name}`,
+                            incrementalQuery: table.incrementalQuery ?? "",
+                            nonIncrementalQuery: table.query ?? "",
+                        });
                         break;
                     default:
                         logger.debug(`Unexpected table type: ${tableTypeToUse}`);
@@ -1430,6 +1442,10 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         }, "");
 
                         queryMeta.operationsQuery += finalOperationQuery;
+                        queryMeta.operationQueries.push({
+                            targetName: `${operation.target.database}.${operation.target.schema}.${operation.target.name}`,
+                            query: finalOperationQuery,
+                        });
 
                         finalTables.push({
                             type: "operations",
@@ -2135,7 +2151,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             };
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, nonIncrementalDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult];
+        return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult };
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -2146,7 +2162,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
     }
-    return [dryRunResult, preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, nonIncrementalDryRunResult, incrementalPreOpsDryRunResult, assertionDryRunResult, testDryRunResult, expectedOutputDryRunResult];
+    return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult };
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

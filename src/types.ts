@@ -41,6 +41,9 @@ export interface QueryMeta {
     postOpsQuery: string
     assertionQuery: string
     assertionQueries: { targetName: string; query: string }[]
+    tableQueries: { targetName: string; query: string }[]
+    incrementalQueries: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string }[]
+    operationQueries: { targetName: string; query: string }[]
     operationsQuery: string
     testQuery: string
     expectedOutputQuery: string
@@ -415,6 +418,8 @@ export interface WebviewMessage {
   }> | null;
   possibleResolutions?: string[] | null;
   dryRunStat?: any;
+  dryRunErrorsByNodeType?: Record<string, string>;
+  dryRunErrorsByNodeName?: Record<string, string>;
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;
   models?: any; 

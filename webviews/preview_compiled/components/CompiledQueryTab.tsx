@@ -14,10 +14,12 @@ import {
   Check,
   Loader2,
   Clock,
+  AlertCircle,
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
+
 
 
 interface CompiledQueryTabProps {
@@ -283,6 +285,19 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     )}
                   </div>
                 )}
+
+                {/* Inline dry-run error — looked up by node name (precise) then node type (fallback) */}
+                {(() => {
+                  const modelError = (nodeId && state.dryRunErrorsByNodeName?.[nodeId])
+                    || state.dryRunErrorsByNodeType?.[model.type]
+                    || '';
+                  return modelError ? (
+                    <div className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <div className="overflow-auto">{modelError}</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             );
           })}
