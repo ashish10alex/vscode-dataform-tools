@@ -8,7 +8,7 @@ import { runTests } from "../runTests";
 import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
-import { getModelLastModifiedTime, queryDryRun } from "../bigqueryDryRun";
+import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
@@ -872,21 +872,11 @@ export class CompiledQueryPanel {
         const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
         const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
         const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
-        const skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
-        const withPreOps = (preOpsQuery: string, query: string) => {
-            if (skipPreOps || !preOpsQuery) { return query; }
-            const p = /;\s*$/.test(preOpsQuery) ? preOpsQuery : preOpsQuery + ";";
-            return p + "\n" + query;
-        };
-        const [dryRunResults, _modelsLastUpdateTimesMeta, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults] = await Promise.all([
+        const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
-            Promise.all(assertionQueriesMeta.map(aq => queryDryRun(aq.query))),
-            Promise.all(tableQueriesMeta.map(tq => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
-            Promise.all(incrementalQueriesMeta.map(iq => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
-            Promise.all(operationQueriesMeta.map(oq => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
         ]);
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult } = dryRunResults;
+        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults } = dryRunResults;
 
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
