@@ -209,7 +209,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   {model.type}
                 </span>
                 {dryRunStat && !state.dryRunning && (
-                  <div className="absolute top-2 right-2 text-xs font-mono text-[var(--vscode-extensionIcon-preReleaseForeground)] bg-[var(--vscode-diffEditor-insertedTextBackground)] px-2 py-0.5 rounded">
+                  <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
                     {dryRunStat.split("<br>").map((line, i) => (
                       <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
                     ))}

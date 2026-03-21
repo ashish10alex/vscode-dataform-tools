@@ -912,7 +912,7 @@ export class CompiledQueryPanel {
                     return (type ? type + ": " : "") + "NOTE: Could not compute bytes processed estimate for script.";
                 }
 
-                return (type ? type + ": " : "") + "(" + prefix + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00") + ")";
+                return (type ? type + ": " : "") + prefix + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00");
             }
             return "";
         };
