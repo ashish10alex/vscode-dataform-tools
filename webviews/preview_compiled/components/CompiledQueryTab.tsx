@@ -232,12 +232,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       </div>
                     ) : (
                       <>
-                        <BigQueryTableLink 
-                          id={target} 
-                          showIcon={true} 
+                        <BigQueryTableLink
+                          id={target}
+                          showIcon={true}
                           className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
                           fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
                         />
+                        {model.type === 'notebook' && model.fileName && (
+                          <span className="ml-3 text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-80">{model.fileName}</span>
+                        )}
                         <button
                           onClick={() => {
                             const text = `\`${target.database}.${target.schema}.${target.name}\``;
