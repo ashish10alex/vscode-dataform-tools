@@ -414,7 +414,6 @@ export interface WebviewMessage {
     sourceContext?: string;
   }> | null;
   possibleResolutions?: string[] | null;
-  dryRunStat?: any;
   dryRunErrorsByNodeType?: Record<string, string>;
   dryRunErrorsByNodeName?: Record<string, string>;
   compiledQuerySchema?: any;
