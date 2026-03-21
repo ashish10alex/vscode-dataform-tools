@@ -435,7 +435,7 @@ export class CompiledQueryPanel {
               case 'lintCurrentFile':
                 await vscode.commands.executeCommand('vscode-dataform-tools.lintCurrentFile');
                 return;
-              case 'lineageMetadata':
+              case 'lineageMetadata': {
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
                 const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
@@ -473,6 +473,7 @@ export class CompiledQueryPanel {
                     "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 });
                 return;
+              }
               case 'getWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                 this.centerPanel?.webviewPanel.webview.postMessage({
@@ -902,7 +903,8 @@ export class CompiledQueryPanel {
         const formatCost = (result: any, type: string) => {
             if(result?.statistics?.cost && result?.error?.hasError === false){
                 const isUpperBound = result.statistics.totalBytesProcessedAccuracy === 'UPPER_BOUND';
-                const prefix = isUpperBound ? "Up to " : "";
+                const isLowerBound = result.statistics.totalBytesProcessedAccuracy === 'LOWER_BOUND';
+                const prefix = isUpperBound ? "Up to " : (isLowerBound ? "At least " : "");
 
                 if (result.statistics.statementType === 'SCRIPT' && 
                     result.statistics.totalBytesProcessedAccuracy !== 'PRECISE' && 
@@ -954,7 +956,8 @@ export class CompiledQueryPanel {
             const cost = formatCost(dryRunResult, "");
             if (cost) { dryRunStatByNodeType["operations"] = cost; }
         }
-        if (nodeType === "incremental") {
+        const hasIncrementalNodes = fileMetadata.tables.some((t: any) => t.type === "incremental");
+        if (nodeType === "incremental" || (isJsFile && hasIncrementalNodes)) {
             const parts = [formatCost(nonIncrementalDryRunResult, ""), formatCost(incrementalDryRunResult, "Incremental")].filter(Boolean);
             if (parts.length) { dryRunStatByNodeType["incremental"] = parts.join("<br>"); }
         }

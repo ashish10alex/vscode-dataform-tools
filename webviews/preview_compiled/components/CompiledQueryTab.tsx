@@ -209,11 +209,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   {model.type}
                 </span>
                 {dryRunStat && !state.dryRunning && (
-                  <div
-                    className="absolute top-2 right-2 text-xs font-mono text-[var(--vscode-extensionIcon-preReleaseForeground)] bg-[var(--vscode-diffEditor-insertedTextBackground)] px-2 py-0.5 rounded"
-                    // eslint-disable-next-line react/no-danger -- sanitized server-side via formatCost
-                    dangerouslySetInnerHTML={{__html: dryRunStat}}
-                  />
+                  <div className="absolute top-2 right-2 text-xs font-mono text-[var(--vscode-extensionIcon-preReleaseForeground)] bg-[var(--vscode-diffEditor-insertedTextBackground)] px-2 py-0.5 rounded">
+                    {dryRunStat.split("<br>").map((line, i) => (
+                      <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
+                    ))}
+                  </div>
                 )}
                 {state.dryRunning && !state.recompiling && (
                   <Loader2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
