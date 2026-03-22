@@ -205,7 +205,7 @@ function App() {
         )}
 
         {isConfigFile && <ProjectConfigTab state={state} />}
-        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && !state.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
+        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.operationsQuery && !state.assertionQuery && !state.incrementalQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && !state.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
             <div>
                 <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
                     {state.relativeFilePath}

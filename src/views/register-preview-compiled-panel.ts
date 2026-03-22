@@ -872,11 +872,12 @@ export class CompiledQueryPanel {
         const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
         const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
         const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
+        const testQueriesMeta: { name: string; testQuery: string; expectedOutputQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.testQueries ?? [];
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
         ]);
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults } = dryRunResults;
+        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults } = dryRunResults;
 
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
@@ -967,6 +968,12 @@ export class CompiledQueryPanel {
             const parts = [testCost, expectedCost].filter(Boolean);
             if (parts.length) { dryRunStatByNodeType["test"] = parts.join("<br>"); }
         }
+        (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            const cost = formatCost(result, "Input");
+            if (cost && testQueriesMeta[i]) {
+                dryRunStatByNodeName[testQueriesMeta[i].name] = cost;
+            }
+        });
 
 
         // Build structured error maps (keyed by node type and node name) instead of concatenated string
@@ -1020,6 +1027,11 @@ export class CompiledQueryPanel {
             ].filter(Boolean);
             if (parts.length) { dryRunErrorsByNodeType["test"] = parts.join("\n"); }
         }
+        (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            if (result?.error?.hasError && testQueriesMeta[i]) {
+                dryRunErrorsByNodeName[testQueriesMeta[i].name] = result.error.message;
+            }
+        });
 
         // errorMessage is now null for dry-run errors; BigQuery client auth errors arrive via a separate path
         const errorMessage = null;

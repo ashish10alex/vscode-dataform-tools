@@ -1296,6 +1296,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
         operationsQuery: "",
         testQuery: "",
         expectedOutputQuery: "",
+        testQueries: [] as { name: string; testQuery: string; expectedOutputQuery: string }[],
         error: "",
     };
     let finalTables: any[] = [];
@@ -1490,6 +1491,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     queryMeta.expectedOutputQuery += (queryMeta.expectedOutputQuery ? "\n" : "") + testLabel + test.expectedOutputQuery + "\n ;";
                 }
 
+                queryMeta.testQueries.push({ name: test.name, testQuery: test.testQuery, expectedOutputQuery: test.expectedOutputQuery });
                 finalTables.push({
                     type: "test",
                     name: test.name,
@@ -2056,15 +2058,18 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
     // Per-node dry runs run in parallel with the aggregate dry runs to avoid duplication
     const emptyDryRunResponse: BigQueryDryRunResponse = { error: { hasError: false, message: "" } } as BigQueryDryRunResponse;
+    const shouldSkipAggregatePreOps = !!skipPreOpsInDryRun && !!fileMetadata.queryMeta.preOpsQuery?.trim();
 
-    const [aggregateDryRunResults, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults] = await Promise.all([
+    const [aggregateDryRunResults, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults] = await Promise.all([
         Promise.all([
             //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
-            queryDryRun(fileMetadata.queryMeta.preOpsQuery),
+            shouldSkipAggregatePreOps ? Promise.resolve(emptyDryRunResponse) : queryDryRun(fileMetadata.queryMeta.preOpsQuery),
             // To enable to use of variables declared in preOps.
             // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm
             // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
-            (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "") ? queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery) : Promise.resolve(emptyDryRunResponse),
+            (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "")
+                ? (shouldSkipAggregatePreOps ? Promise.resolve(emptyDryRunResponse) : queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery))
+                : Promise.resolve(emptyDryRunResponse),
             queryDryRun(incrementalQuery),
             queryDryRun(fileMetadata.queryMeta.incrementalPreOpsQuery),
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve(emptyDryRunResponse),
@@ -2074,6 +2079,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         Promise.all((fileMetadata.queryMeta.tableQueries ?? []).map((tq: any) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
         Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
         Promise.all((fileMetadata.queryMeta.operationQueries ?? []).map((oq: any) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
+        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
     ]);
 
     const [preOpsDryRunResult, postOpsDryRunResult, incrementalDryRunResult, incrementalPreOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
@@ -2130,7 +2136,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             };
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
         }
-        return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults };
+        return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults };
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -2141,7 +2147,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
     }
-    return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults };
+    return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, incrementalPreOps: incrementalPreOpsDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults };
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

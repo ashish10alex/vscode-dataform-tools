@@ -44,6 +44,7 @@ export interface QueryMeta {
     operationsQuery: string
     testQuery: string
     expectedOutputQuery: string
+    testQueries: { name: string; testQuery: string; expectedOutputQuery: string }[]
     error: string
 }
 

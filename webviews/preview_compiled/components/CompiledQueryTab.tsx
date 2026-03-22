@@ -218,9 +218,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
             const badgeStyle = ACTION_TYPE_BADGE_STYLES[model.type] || DEFAULT_BADGE_STYLE;
             const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
-            const dryRunStat = model.type === 'assertion' && nodeId
-              ? state.dryRunStatByNodeName?.[nodeId]
-              : state.dryRunStatByNodeType?.[model.type];
+            const sameTypeCount = state.models?.filter((m: any) => m.type === model.type).length ?? 0;
+            const nodeNameKey = model.type === 'test' ? model.name : nodeId;
+            const dryRunStat =
+              (nodeNameKey ? state.dryRunStatByNodeName?.[nodeNameKey] : undefined) ??
+              (sameTypeCount === 1 ? state.dryRunStatByNodeType?.[model.type] : undefined);
 
             return (
               <div
@@ -311,9 +313,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
                 {/* Inline dry-run error — looked up by node name (precise) then node type (fallback) */}
                 {(() => {
-                  const modelError = (nodeId && state.dryRunErrorsByNodeName?.[nodeId])
-                    || state.dryRunErrorsByNodeType?.[model.type]
-                    || '';
+                  const modelError =
+                    (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
+                    (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined) ??
+                    '';
                   return modelError ? (
                     <div className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
