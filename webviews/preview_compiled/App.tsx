@@ -198,13 +198,7 @@ function App() {
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 
-        {state.compilationTimeMs !== undefined && state.recompiling === false && (
-            <div className="mb-4 flex items-center gap-4 text-xs">
-                <span className="text-[var(--vscode-descriptionForeground)]">Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s</span>
-            </div>
-        )}
-
-        {(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
+{(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
           !state.models?.length ||
           (state.missingExecutables && state.missingExecutables.length > 0)) && (
           <CompilationError state={state} />

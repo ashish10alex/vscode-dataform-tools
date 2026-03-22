@@ -186,6 +186,25 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Filename + Compile Time + Format/Lint */}
+      <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
+              {state.relativeFilePath || " "}
+          </span>
+          {state.compilationTimeMs !== undefined && state.recompiling === false && (
+              <span className="text-xs text-[var(--vscode-descriptionForeground)]">
+                  Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s
+              </span>
+          )}
+          <div className="flex-grow"></div>
+          <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+              <AlignLeft className="w-3 h-3 mr-1.5" /> Format
+          </button>
+          <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+              <Eye className="w-3 h-3 mr-1.5" /> Lint
+          </button>
+      </div>
+
       {/* Model Link */}
       {/* Model Links */}
       {state.models && state.models.length > 0 && (
@@ -441,19 +460,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
       {/* Toolbar */}
        <div className="flex flex-col gap-4 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)]">
-           <div className="flex flex-wrap items-center gap-2">
-               <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
-                   {state.relativeFilePath || " "}
-               </span>
-               <div className="flex-grow"></div>
-               <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-                   <AlignLeft className="w-3 h-3 mr-1.5" /> Format
-               </button>
-                <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-                   <Eye className="w-3 h-3 mr-1.5" /> Lint
-               </button>
-           </div>
-
+ 
           {/* Compiler Options Section */}
           <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
               <div 
