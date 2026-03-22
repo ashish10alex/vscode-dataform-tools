@@ -6,7 +6,8 @@ import {
   Play,
   Network,
   Eye,
-  AlignLeft,
+  ShieldCheck,
+  Wand2,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -198,10 +199,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           )}
           <div className="flex-grow"></div>
           <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-              <AlignLeft className="w-3 h-3 mr-1.5" /> Format
+              <Wand2 className="w-3 h-3 mr-1.5" /> Format
           </button>
           <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-              <Eye className="w-3 h-3 mr-1.5" /> Lint
+              <ShieldCheck className="w-3 h-3 mr-1.5" /> Lint
           </button>
       </div>
 

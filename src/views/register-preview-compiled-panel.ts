@@ -1008,8 +1008,9 @@ export class CompiledQueryPanel {
                 dryRunErrorsByNodeName[operationQueriesMeta[i].targetName] = result.error.message;
             }
         });
-        // Fallback for assertion node type (e.g. when there's only one assertion and perAssertionDryRunResults is empty)
-        if (assertionDryRunResult?.error?.hasError) {
+        // Fallback for assertion node type (only when perAssertionDryRunResults is unavailable,
+        // so we don't bleed one assertion's error onto all other assertions via the type-level key)
+        if (assertionDryRunResult?.error?.hasError && !(perAssertionDryRunResults?.length)) {
             dryRunErrorsByNodeType["assertion"] = assertionDryRunResult.error.message;
         }
         {
