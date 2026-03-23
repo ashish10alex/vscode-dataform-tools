@@ -11,9 +11,10 @@ interface CodeBlockProps {
   code: string;
   language: string;
   className?: string;
+  showLineNumbers?: boolean;
 }
 
-export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className }) => {
+export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className, showLineNumbers }) => {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -22,7 +23,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
       delete codeRef.current.dataset.highlighted;
       hljs.highlightElement(codeRef.current);
     }
-  }, [code, language]);
+  }, [code, language, showLineNumbers]);
 
   const handleCopy = async () => {
     try {
@@ -52,11 +53,27 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
             <Copy className="w-3.5 h-3.5" />
           )}
         </button>
-        <pre className="overflow-x-auto p-4 pt-10">
-          <code ref={codeRef} className={`language-${language}`}>
-            {code}
-          </code>
-        </pre>
+        {showLineNumbers ? (
+          <div className="overflow-x-auto p-4 pt-10 flex">
+            <pre
+              aria-hidden="true"
+              className="select-none text-right pr-4 text-[var(--vscode-editorLineNumber-foreground)] opacity-50 shrink-0 m-0 p-0 bg-transparent border-0"
+            >
+              {code.split('\n').map((_, i) => i + 1).join('\n')}
+            </pre>
+            <pre className="flex-1 min-w-0 m-0 p-0 bg-transparent border-0 overflow-visible">
+              <code ref={codeRef} className={`language-${language}`}>
+                {code}
+              </code>
+            </pre>
+          </div>
+        ) : (
+          <pre className="overflow-x-auto p-4 pt-10">
+            <code ref={codeRef} className={`language-${language}`}>
+              {code}
+            </code>
+          </pre>
+        )}
       </div>
     </div>
   );
