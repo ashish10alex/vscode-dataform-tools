@@ -640,10 +640,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             blocks.push({ key: `postOps_${modelId}`, label: 'Post Operations', code: model.postOps.join('\n') });
           }
           if (model.testQuery) {
-            blocks.push({ key: `testQ_${modelId}`, label: 'Input Query', code: model.testQuery });
+            blocks.push({ key: `testQ_${modelId}`, label: 'Test: Input Query', code: model.testQuery });
           }
           if (model.expectedOutputQuery) {
-            blocks.push({ key: `expQ_${modelId}`, label: 'Expected Output Query', code: model.expectedOutputQuery });
+            blocks.push({ key: `expQ_${modelId}`, label: 'Test: Expected Output Query', code: model.expectedOutputQuery });
           }
 
           return blocks.map(({ key, label, code }) => (
