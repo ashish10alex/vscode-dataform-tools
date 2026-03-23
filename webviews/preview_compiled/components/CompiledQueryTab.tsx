@@ -648,8 +648,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
           return blocks.map(({ key, label, code }) => (
             <div key={key} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
-              <div
-                className="flex items-center px-4 py-2.5 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
+              <button
+                type="button"
+                id={`query-button-${key}`}
+                aria-expanded={isQueryOpen(key)}
+                aria-controls={`query-panel-${key}`}
+                className="w-full flex items-center px-4 py-2.5 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors text-left"
                 onClick={() => toggleQuery(key)}
               >
                 {isQueryOpen(key) ? (
@@ -661,9 +665,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 {targetName && (
                   <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{targetName}</span>
                 )}
-              </div>
+              </button>
               {isQueryOpen(key) && (
-                <div className="border-t border-[var(--vscode-widget-border)]">
+                <div
+                  id={`query-panel-${key}`}
+                  role="region"
+                  aria-labelledby={`query-button-${key}`}
+                  className="border-t border-[var(--vscode-widget-border)]"
+                >
                   <CodeBlock code={code} language="sql" />
                 </div>
               )}
