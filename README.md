@@ -318,8 +318,6 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
 
 ## TODO
 
-* [ ] Add option to include dependents / dependencies when running cost estimator for tag
-* [ ] Add hover docs for config block elements. e.g. Assertions, type etc
 * [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 
 [^1]: [Link to confirmation of official recommendation by Google:](https://github.com/dataform-co/dataform/blob/main/vscode/README.md). Note that this is a community-led project and not an officially supported Google product.
