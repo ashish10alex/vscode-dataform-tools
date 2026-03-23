@@ -11,9 +11,10 @@ interface CodeBlockProps {
   code: string;
   language: string;
   className?: string;
+  showLineNumbers?: boolean;
 }
 
-export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className }) => {
+export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className, showLineNumbers }) => {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -53,9 +54,25 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className 
           )}
         </button>
         <pre className="overflow-x-auto p-4 pt-10">
-          <code ref={codeRef} className={`language-${language}`}>
-            {code}
-          </code>
+          {showLineNumbers ? (
+            <div className="flex">
+              <div
+                className="select-none text-right pr-4 text-[var(--vscode-editorLineNumber-foreground)] opacity-50 font-mono text-sm leading-relaxed shrink-0"
+                aria-hidden="true"
+              >
+                {code.split('\n').map((_, i) => (
+                  <div key={i}>{i + 1}</div>
+                ))}
+              </div>
+              <code ref={codeRef} className={`language-${language} flex-1 min-w-0`}>
+                {code}
+              </code>
+            </div>
+          ) : (
+            <code ref={codeRef} className={`language-${language}`}>
+              {code}
+            </code>
+          )}
         </pre>
       </div>
     </div>

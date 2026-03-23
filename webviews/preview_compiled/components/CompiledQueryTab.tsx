@@ -673,7 +673,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   aria-labelledby={`query-button-${key}`}
                   className="border-t border-[var(--vscode-widget-border)]"
                 >
-                  <CodeBlock code={code} language="sql" />
+                  <CodeBlock code={code} language="sql" showLineNumbers />
                 </div>
               )}
             </div>
