@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.5.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.4.0...v1.5.0) (2026-03-23)
+
+
+### Features
+
+* **cost:** allow user to estimate cost for multiple tags ([#288](https://github.com/ashish10alex/vscode-dataform-tools/issues/288)) ([e520068](https://github.com/ashish10alex/vscode-dataform-tools/commit/e520068d0e2eb8655021ff5f2a35410864d6c1f6))
+* improve dry run UI with targeted dry run stats and errors ([#292](https://github.com/ashish10alex/vscode-dataform-tools/issues/292)) ([d5d372b](https://github.com/ashish10alex/vscode-dataform-tools/commit/d5d372bb15cc5c0e9afda76b5a3041390441c766))
+* render structured Dataform compilation errors ([#291](https://github.com/ashish10alex/vscode-dataform-tools/issues/291)) ([1adb361](https://github.com/ashish10alex/vscode-dataform-tools/commit/1adb361023662277b8a08ad623321b332a06d9c8))
+* show declarations as searchable table ([#290](https://github.com/ashish10alex/vscode-dataform-tools/issues/290)) ([124aa6a](https://github.com/ashish10alex/vscode-dataform-tools/commit/124aa6a1ac26546baa1df7fec9c6936f86087cd6))
+* **ui:** show query per target node and make it collapsable ([#293](https://github.com/ashish10alex/vscode-dataform-tools/issues/293)) ([d2792f1](https://github.com/ashish10alex/vscode-dataform-tools/commit/d2792f153225af58d2699e00d649c9d3665a9a78))
+* **webview:** include notebook config in project config preview ([#289](https://github.com/ashish10alex/vscode-dataform-tools/issues/289)) ([f163d5d](https://github.com/ashish10alex/vscode-dataform-tools/commit/f163d5d55e3bedff0e1c101a7bd62a6dc6de3cb6))
+
 ## [1.4.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.3.1...v1.4.0) (2026-03-17)
 
 
