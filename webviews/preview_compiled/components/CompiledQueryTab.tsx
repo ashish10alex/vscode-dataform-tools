@@ -6,7 +6,8 @@ import {
   Play,
   Network,
   Eye,
-  AlignLeft,
+  ShieldCheck,
+  Wand2,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -14,11 +15,12 @@ import {
   Check,
   Loader2,
   Clock,
-  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
-import DOMPurify from "dompurify";
+import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
+
 
 
 interface CompiledQueryTabProps {
@@ -185,6 +187,25 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Filename + Compile Time + Format/Lint */}
+      <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
+              {state.relativeFilePath || " "}
+          </span>
+          {state.compilationTimeMs !== undefined && state.recompiling === false && (
+              <span className="text-xs text-[var(--vscode-descriptionForeground)]">
+                  Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s
+              </span>
+          )}
+          <div className="flex-grow"></div>
+          <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+              <Wand2 className="w-3 h-3 mr-1.5" /> Format
+          </button>
+          <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+              <ShieldCheck className="w-3 h-3 mr-1.5" /> Lint
+          </button>
+      </div>
+
       {/* Model Link */}
       {/* Model Links */}
       {state.models && state.models.length > 0 && (
@@ -193,15 +214,36 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const target = model.target;
             const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
 
-            if (!target) { return null; }
+            if (!target && model.type !== 'test') { return null; }
+
+            const badgeStyle = ACTION_TYPE_BADGE_STYLES[model.type] || DEFAULT_BADGE_STYLE;
+            const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
+            const sameTypeCount = state.models?.filter((m: any) => m.type === model.type).length ?? 0;
+            const nodeNameKey = model.type === 'test' ? model.name : nodeId;
+            const dryRunStat =
+              (nodeNameKey ? state.dryRunStatByNodeName?.[nodeNameKey] : undefined) ??
+              (sameTypeCount === 1 ? state.dryRunStatByNodeType?.[model.type] : undefined);
 
             return (
               <div
                 key={index}
-                className="bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
+                className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-8 pb-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+                <span className={`absolute top-2 left-2 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                  {model.type}
+                </span>
+                {dryRunStat && !state.dryRunning && (
+                  <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
+                    {dryRunStat.split("<br>").map((line, i) => (
+                      <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
+                    ))}
+                  </div>
+                )}
+                {state.dryRunning && !state.recompiling && (
+                  <Loader2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
+                )}
+                <div className="flex items-center">
+                  <div className="flex items-center min-w-0">
                     {model.type === 'test' ? (
                       <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
@@ -212,12 +254,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       </div>
                     ) : (
                       <>
-                        <BigQueryTableLink 
-                          id={target} 
-                          showIcon={true} 
+                        <BigQueryTableLink
+                          id={target}
+                          showIcon={true}
                           className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
                           fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
                         />
+                        {model.type === 'notebook' && model.fileName && (
+                          <span className="ml-3 text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-80">{model.fileName}</span>
+                        )}
                         <button
                           onClick={() => {
                             const text = `\`${target.database}.${target.schema}.${target.name}\``;
@@ -265,6 +310,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     )}
                   </div>
                 )}
+
+                {/* Inline dry-run error — looked up by node name (precise) then node type (fallback) */}
+                {(() => {
+                  const modelError =
+                    (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
+                    (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined) ??
+                    '';
+                  return modelError ? (
+                    <div className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <div className="overflow-auto whitespace-pre-wrap">{modelError}</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             );
           })}
@@ -402,42 +461,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         )}
       </div>
 
-      {/* Dry Run Stats */}
-       {state.dryRunning && !state.recompiling ? (
-         <div className="bg-[var(--vscode-inputValidation-warningBackground)] border-l-4 border-[var(--vscode-inputValidation-warningBorder)] p-4 rounded-r shadow-sm flex items-center">
-              <Loader2 className="w-5 h-5 text-[var(--vscode-inputValidation-warningForeground)] animate-spin mr-3 flex-shrink-0" />
-              <div className="text-[var(--vscode-foreground)] text-sm">
-                  <span className="font-semibold text-[var(--vscode-inputValidation-warningForeground)]">Performing dry run...</span>
-              </div>
-         </div>
-       ) : (
-         state.dryRunStat && (
-             <div className="bg-[var(--vscode-diffEditor-insertedTextBackground)] border border-[var(--vscode-widget-border)] border-l-4 border-l-[var(--vscode-extensionIcon-preReleaseForeground)] p-4 rounded shadow-sm flex items-start">
-                  <CheckCircle2 className="w-5 h-5 text-[var(--vscode-extensionIcon-preReleaseForeground)] mt-0.5 mr-2 flex-shrink-0" />
-                  <div className="text-[var(--vscode-foreground)] text-sm">
-                      <span className="font-semibold">Query will process:</span>
-                      {/* eslint-disable-next-line react/no-danger -- sanitized via DOMPurify */}
-                      <div className="font-mono mt-1 opacity-90" dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(state.dryRunStat)}} />
-                  </div>
-             </div>
-         )
-       )}
 
       {/* Toolbar */}
        <div className="flex flex-col gap-4 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)]">
-           <div className="flex flex-wrap items-center gap-2">
-               <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
-                   {state.relativeFilePath || " "}
-               </span>
-               <div className="flex-grow"></div>
-               <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-                   <AlignLeft className="w-3 h-3 mr-1.5" /> Format
-               </button>
-                <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-                   <Eye className="w-3 h-3 mr-1.5" /> Lint
-               </button>
-           </div>
-
+ 
           {/* Compiler Options Section */}
           <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
               <div 

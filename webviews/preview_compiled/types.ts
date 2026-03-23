@@ -33,7 +33,10 @@ export interface WebviewState {
   }> | null;
   possibleResolutions?: string[] | null;
   workspaceFolder?: string;
-  dryRunStat?: string;
+  dryRunStatByNodeType?: Record<string, string>;
+  dryRunStatByNodeName?: Record<string, string>;
+  dryRunErrorsByNodeType?: Record<string, string>;
+  dryRunErrorsByNodeName?: Record<string, string>;
   modelType?: string;
   actionTypes?: string[];
   workflowInvocationUrlGCP?: string;

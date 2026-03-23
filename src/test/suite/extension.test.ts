@@ -334,12 +334,11 @@ suite('getQueryMetaForCurrentFile', () => {
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "table");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
 
                     assert.notStrictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
+                    assert.ok(sqlxBlockMetadata.queryMeta.tableQueries[0]?.query);
                 } else {
                     throw new Error('Compilation failed');
                 }
@@ -405,11 +404,10 @@ suite('getQueryMetaForCurrentFile', () => {
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
 
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
+                    assert.ok(sqlxBlockMetadata.queryMeta.tableQueries[0]?.query);
                 } else {
                     throw new Error('Compilation failed');
                 }
@@ -440,10 +438,10 @@ suite('getQueryMetaForCurrentFile', () => {
                     assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "incremental");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
 
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
+                    assert.ok(sqlxBlockMetadata.queryMeta.incrementalQueries[0]?.nonIncrementalQuery);
+                    assert.ok(sqlxBlockMetadata.queryMeta.incrementalQueries[0]?.incrementalQuery);
                     assert.notStrictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
                     assert.notStrictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
@@ -479,9 +477,8 @@ suite('getQueryMetaForCurrentFile', () => {
                     assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "assertion");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
@@ -518,9 +515,8 @@ suite('getQueryMetaForCurrentFile', () => {
                     assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "operations");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableOrViewQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.nonIncrementalQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQuery, "");
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
+                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
                     assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");

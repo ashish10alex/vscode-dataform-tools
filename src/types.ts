@@ -33,16 +33,18 @@ export interface Column {
 
 export interface QueryMeta {
     type: string,
-    tableOrViewQuery: string
-    nonIncrementalQuery: string
-    incrementalQuery: string
     incrementalPreOpsQuery: string
     preOpsQuery: string
     postOpsQuery: string
     assertionQuery: string
+    assertionQueries: { targetName: string; query: string }[]
+    tableQueries: { targetName: string; query: string; preOpsQuery: string }[]
+    incrementalQueries: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[]
+    operationQueries: { targetName: string; query: string; preOpsQuery: string }[]
     operationsQuery: string
     testQuery: string
     expectedOutputQuery: string
+    testQueries: { name: string; testQuery: string; expectedOutputQuery: string }[]
     error: string
 }
 
@@ -413,7 +415,8 @@ export interface WebviewMessage {
     sourceContext?: string;
   }> | null;
   possibleResolutions?: string[] | null;
-  dryRunStat?: any;
+  dryRunErrorsByNodeType?: Record<string, string>;
+  dryRunErrorsByNodeName?: Record<string, string>;
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;
   models?: any; 
