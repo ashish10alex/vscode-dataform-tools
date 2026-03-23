@@ -94,6 +94,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [openQueries, setOpenQueries] = useState<Record<string, boolean>>({});
+  const isQueryOpen = (key: string) => openQueries[key] !== false;
+  const toggleQuery = (key: string) => setOpenQueries(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
 
   const localDependentIds = new Set(
     state.dependents?.map((d: any) =>
@@ -185,6 +188,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       }
   }, [state.lineageMetadata, state.errorMessage]);
 
+  const queryLabelByType = (type: string) => {
+    if (type === 'view') {return 'View';};
+    if (type === 'table') {return 'Table';};
+    if (type === 'assertion') {return 'Assertion';};
+    if (type === 'operations') {return 'Operations';};
+    return 'Query';
+  };
+
   return (
     <div className="space-y-6">
       {/* Filename + Compile Time + Format/Lint */}
@@ -248,9 +259,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
                          <span className="font-semibold">{model.name}</span>
-                         <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
-                             TEST
-                         </span>
                       </div>
                     ) : (
                       <>
@@ -599,69 +607,66 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
            </div>
       </div>
 
-      {/* Code Blocks */}
-      <div className="space-y-6 pb-20">
-          {state.preOperations && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Pre Operations</h3>
-                <CodeBlock code={state.preOperations} language="sql" />
-             </div>
-          )}
-          {state.postOperations && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Post Operations</h3>
-                <CodeBlock code={state.postOperations} language="sql" />
-             </div>
-          )}
-           {state.tableOrViewQuery && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Query</h3>
-                <CodeBlock code={state.tableOrViewQuery} language="sql" />
-             </div>
-          )}
-          {state.assertionQuery && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Assertion</h3>
-                <CodeBlock code={state.assertionQuery} language="sql" />
-             </div>
-          )}
-          {state.incrementalPreOpsQuery && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Incremental Pre Operations</h3>
-                <CodeBlock code={state.incrementalPreOpsQuery} language="sql" />
-             </div>
-          )}
-          {state.incrementalQuery && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Incremental Query</h3>
-                 <CodeBlock code={state.incrementalQuery} language="sql" />
-             </div>
-          )}
-          {state.nonIncrementalQuery && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Non Incremental Query</h3>
-                 <CodeBlock code={state.nonIncrementalQuery} language="sql" />
-             </div>
-          )}
-          {state.operationsQuery && (
-             <div>
-                <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Operations</h3>
-                 <CodeBlock code={state.operationsQuery} language="sql" />
-             </div>
-          )}
-          {state.testQuery && (
-             <div>
-                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Input Query</h3>
-                  <CodeBlock code={state.testQuery} language="sql" />
-             </div>
-          )}
-          {state.expectedOutputQuery && (
-             <div>
-                 <h3 className="text-[var(--vscode-descriptionForeground)] font-semibold mb-2">Expected Output Query</h3>
-                  <CodeBlock code={state.expectedOutputQuery} language="sql" />
-             </div>
-           )}
-       </div>
+      {/* Code Blocks — one accordion per target per query type */}
+      <div className="space-y-3 pb-20">
+        {state.models?.flatMap((model: any, i: number) => {
+          const targetName = model.type === 'test'
+            ? model.name
+            : model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : '';
+
+          const blocks: { key: string; label: string; code: string }[] = [];
+
+          if (model.preOps?.length) {
+            blocks.push({ key: `preOps_${i}`, label: 'Pre Operations', code: model.preOps.join('\n') });
+          }
+          if (model.type === 'incremental') {
+            if (model.incrementalPreOps?.length) {
+              blocks.push({ key: `incPreOps_${i}`, label: 'Incremental Pre Operations', code: model.incrementalPreOps.join('\n') });
+            }
+            if (model.incrementalQuery) {
+              blocks.push({ key: `incQ_${i}`, label: 'Incremental Query', code: model.incrementalQuery });
+            }
+            if (model.query) {
+              blocks.push({ key: `nonIncQ_${i}`, label: 'Non-Incremental Query', code: model.query });
+            }
+          } else if (model.query) {
+            blocks.push({ key: `query_${i}`, label: queryLabelByType(model.type), code: model.query });
+          }
+          if (model.postOps?.length) {
+            blocks.push({ key: `postOps_${i}`, label: 'Post Operations', code: model.postOps.join('\n') });
+          }
+          if (model.testQuery) {
+            blocks.push({ key: `testQ_${i}`, label: 'Input Query', code: model.testQuery });
+          }
+          if (model.expectedOutputQuery) {
+            blocks.push({ key: `expQ_${i}`, label: 'Expected Output Query', code: model.expectedOutputQuery });
+          }
+
+          return blocks.map(({ key, label, code }) => (
+            <div key={key} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+              <div
+                className="flex items-center px-4 py-2.5 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
+                onClick={() => toggleQuery(key)}
+              >
+                {isQueryOpen(key) ? (
+                  <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                )}
+                <span className="font-semibold text-[var(--vscode-foreground)] text-sm mr-3">{label}</span>
+                {targetName && (
+                  <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{targetName}</span>
+                )}
+              </div>
+              {isQueryOpen(key) && (
+                <div className="border-t border-[var(--vscode-widget-border)]">
+                  <CodeBlock code={code} language="sql" />
+                </div>
+              )}
+            </div>
+          ));
+        })}
+      </div>
      </div>
    );
 };

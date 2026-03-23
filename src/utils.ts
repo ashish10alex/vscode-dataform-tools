@@ -1367,6 +1367,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                     tags: table.tags,
                     fileName: relativeFilePath,
                     target: table.target,
+                    query: table.query ?? "",
                     preOps: table.preOps,
                     postOps: table.postOps,
                     dependencyTargets: table.dependencyTargets,
