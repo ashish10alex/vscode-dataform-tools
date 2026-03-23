@@ -609,37 +609,41 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
       {/* Code Blocks — one accordion per target per query type */}
       <div className="space-y-3 pb-20">
-        {state.models?.flatMap((model: any, i: number) => {
+        {state.models?.flatMap((model: any) => {
           const targetName = model.type === 'test'
             ? model.name
             : model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : '';
 
+          const modelId = model.type === 'test'
+            ? `test_${model.name}`
+            : `${model.type}_${model.target?.database}_${model.target?.schema}_${model.target?.name}`;
+
           const blocks: { key: string; label: string; code: string }[] = [];
 
           if (model.preOps?.length) {
-            blocks.push({ key: `preOps_${i}`, label: 'Pre Operations', code: model.preOps.join('\n') });
+            blocks.push({ key: `preOps_${modelId}`, label: 'Pre Operations', code: model.preOps.join('\n') });
           }
           if (model.type === 'incremental') {
             if (model.incrementalPreOps?.length) {
-              blocks.push({ key: `incPreOps_${i}`, label: 'Incremental Pre Operations', code: model.incrementalPreOps.join('\n') });
+              blocks.push({ key: `incPreOps_${modelId}`, label: 'Incremental Pre Operations', code: model.incrementalPreOps.join('\n') });
             }
             if (model.incrementalQuery) {
-              blocks.push({ key: `incQ_${i}`, label: 'Incremental Query', code: model.incrementalQuery });
+              blocks.push({ key: `incQ_${modelId}`, label: 'Incremental Query', code: model.incrementalQuery });
             }
             if (model.query) {
-              blocks.push({ key: `nonIncQ_${i}`, label: 'Non-Incremental Query', code: model.query });
+              blocks.push({ key: `nonIncQ_${modelId}`, label: 'Non-Incremental Query', code: model.query });
             }
           } else if (model.query) {
-            blocks.push({ key: `query_${i}`, label: queryLabelByType(model.type), code: model.query });
+            blocks.push({ key: `query_${modelId}`, label: queryLabelByType(model.type), code: model.query });
           }
           if (model.postOps?.length) {
-            blocks.push({ key: `postOps_${i}`, label: 'Post Operations', code: model.postOps.join('\n') });
+            blocks.push({ key: `postOps_${modelId}`, label: 'Post Operations', code: model.postOps.join('\n') });
           }
           if (model.testQuery) {
-            blocks.push({ key: `testQ_${i}`, label: 'Input Query', code: model.testQuery });
+            blocks.push({ key: `testQ_${modelId}`, label: 'Input Query', code: model.testQuery });
           }
           if (model.expectedOutputQuery) {
-            blocks.push({ key: `expQ_${i}`, label: 'Expected Output Query', code: model.expectedOutputQuery });
+            blocks.push({ key: `expQ_${modelId}`, label: 'Expected Output Query', code: model.expectedOutputQuery });
           }
 
           return blocks.map(({ key, label, code }) => (
