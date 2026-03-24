@@ -20,6 +20,7 @@ import {
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
+import * as RadixTabs from "@radix-ui/react-tabs";
 
 
 
@@ -97,6 +98,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [openQueries, setOpenQueries] = useState<Record<string, boolean>>({});
   const isQueryOpen = (key: string) => openQueries[key] !== false;
   const toggleQuery = (key: string) => setOpenQueries(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
+
+  const [collapsedModels, setCollapsedModels] = useState<Record<string, boolean>>({});
+  const isModelOpen = (key: string) => collapsedModels[key] !== false;
+  const toggleModel = (key: string) => setCollapsedModels(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
+
+  const [activeIncrementalTab, setActiveIncrementalTab] = useState<Record<string, string>>({});
 
   const localDependentIds = new Set(
     state.dependents?.map((d: any) =>
@@ -609,7 +616,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
       {/* Code Blocks — one accordion per target per query type */}
       <div className="space-y-3 pb-20">
-        {state.models?.flatMap((model: any) => {
+        {state.models?.flatMap((model: any): React.ReactElement[] => {
           const targetName = model.type === 'test'
             ? model.name
             : model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : '';
@@ -618,22 +625,122 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             ? `test_${model.name}`
             : `${model.type}_${model.target?.database}_${model.target?.schema}_${model.target?.name}`;
 
+          if (model.type === 'incremental') {
+            const incPreOps = (model.incrementalPreOps || []).join('\n\n');
+            const incTabCode = [incPreOps, incPreOps && model.incrementalQuery ? ';' : '', model.incrementalQuery].filter(Boolean).join('\n');
+            const nonIncTabCode = [...(model.preOps || []), model.query].filter(Boolean).join('\n\n');
+            const activeTab = activeIncrementalTab[modelId] || 'incremental';
+
+            const elements: React.ReactElement[] = [];
+
+            // Collapsible model header + tabbed queries
+            elements.push(
+              <div key={`inc_${modelId}`} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+                {/* Collapsible header */}
+                <button
+                  type="button"
+                  className="w-full flex items-center px-4 py-2.5 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors text-left"
+                  onClick={() => toggleModel(modelId)}
+                >
+                  {isModelOpen(modelId) ? (
+                    <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                  )}
+                  <span className="font-semibold text-[var(--vscode-foreground)] text-sm mr-3">Incremental</span>
+                  {targetName && (
+                    <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{targetName}</span>
+                  )}
+                </button>
+
+                {/* Tabbed content */}
+                {isModelOpen(modelId) && (
+                  <div className="border-t border-[var(--vscode-widget-border)]">
+                    <RadixTabs.Root
+                      value={activeTab}
+                      onValueChange={(val) => setActiveIncrementalTab(prev => ({ ...prev, [modelId]: val }))}
+                    >
+                      <RadixTabs.List className="flex border-b border-[var(--vscode-widget-border)] px-2 pt-1">
+                        <RadixTabs.Trigger
+                          value="incremental"
+                          className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px"
+                        >
+                          Incremental Query
+                        </RadixTabs.Trigger>
+                        <RadixTabs.Trigger
+                          value="non-incremental"
+                          className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px"
+                        >
+                          Non-Incremental Query
+                        </RadixTabs.Trigger>
+                      </RadixTabs.List>
+                      <RadixTabs.Content value="incremental">
+                        {incTabCode ? (
+                          <CodeBlock code={incTabCode} language="sql" showLineNumbers />
+                        ) : (
+                          <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No incremental query.</p>
+                        )}
+                      </RadixTabs.Content>
+                      <RadixTabs.Content value="non-incremental">
+                        {nonIncTabCode ? (
+                          <CodeBlock code={nonIncTabCode} language="sql" showLineNumbers />
+                        ) : (
+                          <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No non-incremental query.</p>
+                        )}
+                      </RadixTabs.Content>
+                    </RadixTabs.Root>
+                  </div>
+                )}
+              </div>
+            );
+
+            // Post-ops as a separate accordion below the tabs
+            if (model.postOps?.length) {
+              const key = `postOps_${modelId}`;
+              elements.push(
+                <div key={key} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+                  <button
+                    type="button"
+                    id={`query-button-${key}`}
+                    aria-expanded={isQueryOpen(key)}
+                    aria-controls={`query-panel-${key}`}
+                    className="w-full flex items-center px-4 py-2.5 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors text-left"
+                    onClick={() => toggleQuery(key)}
+                  >
+                    {isQueryOpen(key) ? (
+                      <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                    )}
+                    <span className="font-semibold text-[var(--vscode-foreground)] text-sm mr-3">Post Operations</span>
+                    {targetName && (
+                      <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{targetName}</span>
+                    )}
+                  </button>
+                  {isQueryOpen(key) && (
+                    <div
+                      id={`query-panel-${key}`}
+                      role="region"
+                      aria-labelledby={`query-button-${key}`}
+                      className="border-t border-[var(--vscode-widget-border)]"
+                    >
+                      <CodeBlock code={model.postOps.join('\n')} language="sql" showLineNumbers />
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return elements;
+          }
+
+          // Non-incremental models: existing accordion logic
           const blocks: { key: string; label: string; code: string }[] = [];
 
           if (model.preOps?.length) {
             blocks.push({ key: `preOps_${modelId}`, label: 'Pre Operations', code: model.preOps.join('\n') });
           }
-          if (model.type === 'incremental') {
-            if (model.incrementalPreOps?.length) {
-              blocks.push({ key: `incPreOps_${modelId}`, label: 'Incremental Pre Operations', code: model.incrementalPreOps.join('\n') });
-            }
-            if (model.incrementalQuery) {
-              blocks.push({ key: `incQ_${modelId}`, label: 'Incremental Query', code: model.incrementalQuery });
-            }
-            if (model.query) {
-              blocks.push({ key: `nonIncQ_${modelId}`, label: 'Non-Incremental Query', code: model.query });
-            }
-          } else if (model.query) {
+          if (model.query) {
             blocks.push({ key: `query_${modelId}`, label: queryLabelByType(model.type), code: model.query });
           }
           if (model.postOps?.length) {
