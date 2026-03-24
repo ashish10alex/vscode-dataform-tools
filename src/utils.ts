@@ -2085,7 +2085,10 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
         // Per-node incremental dry runs (opt-in): dry run each node's incremental (merge/insert) query individually
         showDetailedIncrementalDryRun
-            ? Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery))))
+            ? Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => {
+                const sanitizedPreOps = iq.incrementalPreOpsQuery ? replaceQueryLabelWtEmptyStringForDryRun(iq.incrementalPreOpsQuery) : "";
+                return queryDryRun(withPreOps(sanitizedPreOps, iq.incrementalQuery));
+            }))
             : Promise.resolve([]),
     ]);
 
