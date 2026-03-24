@@ -2076,7 +2076,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         Promise.all((fileMetadata.queryMeta.assertionQueries ?? []).map((aq: any) => queryDryRun(aq.query))),
         Promise.all((fileMetadata.queryMeta.tableQueries ?? []).map((tq: any) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
         Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => queryDryRun(withPreOps(iq.preOpsQuery, withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery))))),
+        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery)))),
         Promise.all((fileMetadata.queryMeta.operationQueries ?? []).map((oq: any) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
         Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
     ]);
@@ -2084,7 +2084,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const [preOpsDryRunResult, postOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
 
     // Derive results from per-node arrays instead of running separate aggregate queries
-    const dryRunResult = perTableDryRunResults[0] ?? perAssertionDryRunResults[0] ?? perOperationDryRunResults[0] ?? emptyDryRunResponse;
+    const dryRunResult = perTableDryRunResults[0] ?? perAssertionDryRunResults[0] ?? perOperationDryRunResults[0] ?? perIncrementalDryRunResults[0] ?? emptyDryRunResponse;
     const incrementalDryRunResult = perIncrementalDryRunResults[0] ?? emptyDryRunResponse;
     const nonIncrementalDryRunResult = perNonIncrementalDryRunResults[0] ?? emptyDryRunResponse;
     const assertionDryRunResult = perAssertionDryRunResults[0] ?? emptyDryRunResponse;
