@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.6.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.6.0...v1.6.1) (2026-03-24)
+
+
+### Features
+
+* show both incremental and non incremental dry run stats ([#296](https://github.com/ashish10alex/vscode-dataform-tools/issues/296)) ([a6ba35a](https://github.com/ashish10alex/vscode-dataform-tools/commit/a6ba35a38ea886efbde2c08769159ad439192bf0))
+* **ui:** show breakdown of `incremental` and `test` config types in tabs ([#298](https://github.com/ashish10alex/vscode-dataform-tools/issues/298)) ([ae717c7](https://github.com/ashish10alex/vscode-dataform-tools/commit/ae717c7c14563fca41ea6c5c38093cd1bcab95f1))
+
+
+### Bug Fixes
+
+* expected query dry run stat not showing for config type `test` ([#297](https://github.com/ashish10alex/vscode-dataform-tools/issues/297)) ([71c64a2](https://github.com/ashish10alex/vscode-dataform-tools/commit/71c64a2823168669747a087b268ff8643b26576c))
+
 ## [1.6.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.5.1...v1.6.0) (2026-03-23)
 
 ### [1.5.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.5.0...v1.5.1) (2026-03-23)
