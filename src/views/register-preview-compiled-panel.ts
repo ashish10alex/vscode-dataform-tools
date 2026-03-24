@@ -877,8 +877,7 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
         ]);
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults } = dryRunResults;
-
+        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults} = dryRunResults;
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
         const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
@@ -950,10 +949,13 @@ export class CompiledQueryPanel {
                 dryRunStatByNodeName[tableQueriesMeta[i].targetName] = cost;
             }
         });
-        (perIncrementalDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && incrementalQueriesMeta[i]) {
-                dryRunStatByNodeName[incrementalQueriesMeta[i].targetName] = cost;
+        (perNonIncrementalDryRunResults ?? []).forEach((nonIncResult: BigQueryDryRunResponse, i: number) => {
+            const incResult = (perIncrementalDryRunResults ?? [])[i];
+            const nonIncCost = formatCost(nonIncResult, "Non incremental");
+            const incCost = formatCost(incResult, "Incremental");
+            const parts = [nonIncCost, incCost].filter(Boolean);
+            if (parts.length > 0 && incrementalQueriesMeta[i]) {
+                dryRunStatByNodeName[incrementalQueriesMeta[i].targetName] = parts.join("<br>");
             }
         });
         (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
@@ -1008,9 +1010,14 @@ export class CompiledQueryPanel {
                 dryRunErrorsByNodeName[tableQueriesMeta[i].targetName] = result.error.message;
             }
         });
-        (perIncrementalDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            if (result?.error?.hasError && incrementalQueriesMeta[i]) {
-                dryRunErrorsByNodeName[incrementalQueriesMeta[i].targetName] = result.error.message;
+        (perNonIncrementalDryRunResults ?? []).forEach((nonIncResult: BigQueryDryRunResponse, i: number) => {
+            const incResult = (perIncrementalDryRunResults ?? [])[i];
+            const parts = [
+                incResult?.error?.hasError ? `(Incremental): ${incResult.error.message}` : "",
+                nonIncResult?.error?.hasError ? `(Non incremental): ${nonIncResult.error.message}` : "",
+            ].filter(Boolean);
+            if (parts.length > 0 && incrementalQueriesMeta[i]) {
+                dryRunErrorsByNodeName[incrementalQueriesMeta[i].targetName] = parts.join("\n");
             }
         });
         (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
