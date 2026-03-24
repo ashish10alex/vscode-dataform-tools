@@ -877,7 +877,7 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
         ]);
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults } = dryRunResults;
+        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults } = dryRunResults;
 
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
@@ -969,9 +969,12 @@ export class CompiledQueryPanel {
             if (parts.length) { dryRunStatByNodeType["test"] = parts.join("<br>"); }
         }
         (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "Input");
-            if (cost && testQueriesMeta[i]) {
-                dryRunStatByNodeName[testQueriesMeta[i].name] = cost;
+            const inputCost = formatCost(result, "Input");
+            const expectedCost = formatCost(perExpectedOutputDryRunResults?.[i], "Expected");
+            const parts = [inputCost, expectedCost].filter(Boolean);
+            const combined = parts.join("<br>");
+            if (combined && testQueriesMeta[i]) {
+                dryRunStatByNodeName[testQueriesMeta[i].name] = combined;
             }
         });
 
