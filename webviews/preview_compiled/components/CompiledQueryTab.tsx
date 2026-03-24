@@ -734,6 +734,70 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             return elements;
           }
 
+          // Test models: tabbed Input Query / Expected Output Query
+          if (model.type === 'test') {
+            const activeTab = activeIncrementalTab[modelId] || 'input';
+            return [
+              <div key={`test_${modelId}`} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+                {/* Collapsible header */}
+                <button
+                  type="button"
+                  className="w-full flex items-center px-4 py-2.5 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors text-left"
+                  onClick={() => toggleModel(modelId)}
+                >
+                  {isModelOpen(modelId) ? (
+                    <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />
+                  )}
+                  <span className="font-semibold text-[var(--vscode-foreground)] text-sm mr-3">Test</span>
+                  {targetName && (
+                    <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{targetName}</span>
+                  )}
+                </button>
+
+                {/* Tabbed content */}
+                {isModelOpen(modelId) && (
+                  <div className="border-t border-[var(--vscode-widget-border)]">
+                    <RadixTabs.Root
+                      value={activeTab}
+                      onValueChange={(val) => setActiveIncrementalTab(prev => ({ ...prev, [modelId]: val }))}
+                    >
+                      <RadixTabs.List className="flex border-b border-[var(--vscode-widget-border)] px-2 pt-1">
+                        <RadixTabs.Trigger
+                          value="input"
+                          className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px"
+                        >
+                          Input Query
+                        </RadixTabs.Trigger>
+                        <RadixTabs.Trigger
+                          value="expected"
+                          className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px"
+                        >
+                          Expected Output Query
+                        </RadixTabs.Trigger>
+                      </RadixTabs.List>
+                      <RadixTabs.Content value="input">
+                        {model.testQuery ? (
+                          <CodeBlock code={model.testQuery} language="sql" showLineNumbers />
+                        ) : (
+                          <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No input query.</p>
+                        )}
+                      </RadixTabs.Content>
+                      <RadixTabs.Content value="expected">
+                        {model.expectedOutputQuery ? (
+                          <CodeBlock code={model.expectedOutputQuery} language="sql" showLineNumbers />
+                        ) : (
+                          <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No expected output query.</p>
+                        )}
+                      </RadixTabs.Content>
+                    </RadixTabs.Root>
+                  </div>
+                )}
+              </div>
+            ];
+          }
+
           // Non-incremental models: existing accordion logic
           const blocks: { key: string; label: string; code: string }[] = [];
 
@@ -745,12 +809,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           }
           if (model.postOps?.length) {
             blocks.push({ key: `postOps_${modelId}`, label: 'Post Operations', code: model.postOps.join('\n') });
-          }
-          if (model.testQuery) {
-            blocks.push({ key: `testQ_${modelId}`, label: 'Test: Input Query', code: model.testQuery });
-          }
-          if (model.expectedOutputQuery) {
-            blocks.push({ key: `expQ_${modelId}`, label: 'Test: Expected Output Query', code: model.expectedOutputQuery });
           }
 
           return blocks.map(({ key, label, code }) => (
