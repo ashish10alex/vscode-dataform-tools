@@ -238,21 +238,24 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             return (
               <div
                 key={index}
-                className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-8 pb-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
+                className="relative bg-[var(--vscode-sideBar-background)] px-4 pb-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
               >
-                <span className={`absolute top-2 left-2 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
-                  {model.type}
-                </span>
-                {dryRunStat && !state.dryRunning && (
-                  <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
-                    {dryRunStat.split("<br>").map((line, i) => (
-                      <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
-                    ))}
-                  </div>
-                )}
-                {state.dryRunning && !state.recompiling && (
-                  <Loader2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
-                )}
+                {/* Header row: type badge + dry run stats */}
+                <div className="flex items-start justify-between gap-2 pt-2">
+                  <span className={`shrink-0 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                    {model.type}
+                  </span>
+                  {dryRunStat && !state.dryRunning && (
+                    <div className="text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded text-right">
+                      {dryRunStat.split("<br>").map((line, i) => (
+                        <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                  {state.dryRunning && !state.recompiling && (
+                    <Loader2 className="w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
+                  )}
+                </div>
                 <div className="flex items-center">
                   <div className="flex items-center min-w-0">
                     {model.type === 'test' ? (

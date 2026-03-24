@@ -392,6 +392,11 @@
                     "default": false,
                     "markdownDescription": "If enabled, pre-operations query will be excluded from the query used for dry run. By default, pre-operations are included. `::WARNING::` any variable used in pre-operations query will not be resolved and will result in an error"
                 },
+                "vscode-dataform-tools.showDetailedIncrementalDryRun": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Show separate dry run cost estimates for each incremental model's full-refresh and incremental queries individually. By default, incremental tables show a single combined estimate which BigQuery often reports as an imprecise 'Up to...' upper bound. Enable this to see per-node breakdowns instead."
+                },
                 "vscode-dataform-tools.formatOrdering": {
                     "type": "array",
                     "uniqueItems": true,
