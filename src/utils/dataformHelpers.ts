@@ -303,8 +303,9 @@ export async function getPostionOfVariableInJsFileOrBlock(document: vscode.TextD
     let line = null;
     let character = null;
 
-    const varRegex = new RegExp(`(var|let|const)\\s+${searchTerm}\\s*=`, 'i');
-    const funcRegex = new RegExp(`function\\s+${searchTerm}\\s*\\(`, 'i');
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const varRegex = new RegExp(`(var|let|const)\\s+${escapedSearchTerm}\\s*=`, 'i');
+    const funcRegex = new RegExp(`function\\s+${escapedSearchTerm}\\s*\\(`, 'i');
 
     for (let lineNum = startLine; lineNum < endLine; lineNum++) {
         const lineText = document.lineAt(lineNum).text;
