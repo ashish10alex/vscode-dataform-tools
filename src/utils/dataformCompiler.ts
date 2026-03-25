@@ -70,10 +70,11 @@ function parseMultipleJSON(str: string) {
 function extractDataformJsonFromMultipleJson(compiledString: string) {
     //NOTE: we do this because dataform cli v2.x returns multiple JSON objects in the same string. From observation, index 1 is the JSON object that has Dataform compilation metadata
     const parsedObjects = parseMultipleJSON(compiledString);
-    if (parsedObjects.length > 0) {
+    if (parsedObjects.length >= 2) {
         return parsedObjects[1] as DataformCompiledJson;
     } else {
-        throw new Error("Failed to parse JSON");
+        const snippet = compiledString.length > 100 ? compiledString.substring(0, 100) + '...' : compiledString;
+        throw new Error(`Failed to extract Dataform JSON: Expected at least 2 JSON objects, but found ${parsedObjects.length}. Context: ${snippet}`);
     }
 }
 
