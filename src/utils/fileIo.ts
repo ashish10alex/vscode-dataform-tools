@@ -22,7 +22,7 @@ export async function writeCompiledSqlToFile(compiledQuery: string, filePath: st
     fs.writeFileSync(filePath, compiledQuery, 'utf8');
 }
 
-export function checkIfFileExsists(filePath: string) {
+export function checkIfFileExists(filePath: string) {
     if (fs.existsSync(filePath)) {
         return true;
     }
@@ -58,7 +58,7 @@ export async function fetchGitHubFileContent(): Promise<string> {
 }
 
 export async function ensureSqlfluffConfigExists(sqlfluffConfigFilePath: string) {
-    if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
+    if (!checkIfFileExists(sqlfluffConfigFilePath)) {
         vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
         try {
             let sqlfluffConfigFileContents = await fetchGitHubFileContent();
