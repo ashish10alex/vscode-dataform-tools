@@ -120,7 +120,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
         let spawnedProcess;
         let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
         logger.debug(`customDataformCliPath: ${customDataformCliPath}`);
-        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions, "--json", "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions, "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
 
         let stdOut = '';
         let errorOutput = '';
