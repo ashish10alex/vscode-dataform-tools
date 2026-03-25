@@ -45,9 +45,7 @@ export async function gatherQueryAutoCompletionMeta() {
 
 }
 
-function replaceQueryLabelWtEmptyStringForDryRun(query: string) {
-    return query.replace(/SET\s+@@query_label\s*=\s*(['"]).*?\1\s*;/gi, '');
-}
+
 
 export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscode.TextDocument, diagnosticCollection: any, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
@@ -70,15 +68,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const skipPreOpsInDryRun = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
     logger.debug(`skipPreOpsInDryRun: ${skipPreOpsInDryRun}`);
 
-    if (type === "incremental") {
-        let incrementalPreOpsQuery = fileMetadata.queryMeta.incrementalPreOpsQuery.trimStart();
-        if (skipPreOpsInDryRun) {
-            incrementalPreOpsQuery = "";
-        } else if (incrementalPreOpsQuery) {
-            incrementalPreOpsQuery = replaceQueryLabelWtEmptyStringForDryRun(incrementalPreOpsQuery);
-        }
 
-    }
 
     const withPreOps = (preOpsQuery: string, query: string) => {
         if (skipPreOpsInDryRun || !preOpsQuery) { return query; }
