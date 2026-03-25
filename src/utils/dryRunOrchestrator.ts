@@ -199,7 +199,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     dataformTags = queryAutoCompMeta.dataformTags;
     declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
-    dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
+    await dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }
