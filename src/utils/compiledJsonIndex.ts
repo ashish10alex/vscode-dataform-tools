@@ -9,6 +9,7 @@ global.TARGET_DEPENDENTS_MAP = new Map<string, import('../types').Target[]>();
 global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 
 export function clearIndices() {
+    declarationsAndTargets = [];
     global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
     global.TARGET_DEPENDENTS_MAP = new Map<string, import('../types').Target[]>();
     global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
