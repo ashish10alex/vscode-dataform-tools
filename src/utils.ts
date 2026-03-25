@@ -17,6 +17,7 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { GitService } from './gitClient';
 import { load as loadYaml, YAMLException } from 'js-yaml';
+import { calculateIncrementalPreOpsOffset } from './offsetCalculations';
 
 let supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
@@ -2121,7 +2122,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
 
         if (sqlxBlockMetadata) {
             if (type === "incremental") {
-                // check if we need to handle errors from non incremental query here 
+                // check if we need to handle errors from non incremental query here
                 dryRunResult.error = incrementalDryRunResult.error;
             }
             let errorMeta = {
@@ -2134,7 +2135,18 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
                 testError: testDryRunResult.error,
                 expectedOutputError: expectedOutputDryRunResult.error,
             };
-            setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet);
+
+            let compiledPreOpsLineCount: number | undefined = undefined;
+            if (type === "incremental" && !skipPreOpsInDryRun) {
+                const iq = fileMetadata.queryMeta.incrementalQueries[0];
+                compiledPreOpsLineCount = calculateIncrementalPreOpsOffset(
+                    iq?.incrementalPreOpsQuery,
+                    iq?.incrementalQuery,
+                    offSet
+                );
+            }
+
+            setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount);
         }
         return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults};
     }
