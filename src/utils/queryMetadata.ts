@@ -7,7 +7,7 @@ function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, rel
     return isJsFile
         ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
         Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
-        <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the sytax used for publish, operate, assert in js file is correct here.</a> <br>
+        <a href="https://cloud.google.com/dataform/docs/javascript-in-dataform#set-object-properties">Check if the syntax used for publish, operate, assert in js file is correct here.</a> <br>
     `
         : ` Query could not be determined for  ${relativeFilePath} <br>.
         Canonical target: ${modelObj.canonicalTarget.database}.${modelObj.canonicalTarget.schema}.${modelObj.canonicalTarget.name} <br>
