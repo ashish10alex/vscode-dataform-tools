@@ -189,8 +189,8 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                         const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
                         if (_workspaceFolder) {
                             const filePath = path.join(_workspaceFolder, 'package.json');
-                            const packageJsonExsists = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-                            if (packageJsonExsists) {
+                            const packageJsonExists = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+                            if (packageJsonExists) {
                                 possibleResolutions.push("run `<b>dataform install</b>` in terminal");
                             }
                         }
