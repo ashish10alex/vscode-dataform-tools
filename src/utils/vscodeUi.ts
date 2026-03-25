@@ -80,7 +80,6 @@ export async function saveCsvFile(filename: string, data: Record<string, any>[])
     "Open folder"
 ).then(selection => {
     if (selection === "Open folder") {
-        vscode.commands.executeCommand('revealFileInOS', fileUri);
         if (vscode.env.remoteName === 'wsl') {
             vscode.commands.executeCommand('remote-wsl.revealInExplorer', fileUri);
         } else {
