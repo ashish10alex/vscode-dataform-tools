@@ -15,6 +15,11 @@ function stripQuotes(str:string) {
 function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
     // NOTE: we might need to add support for more code compilation config items from https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.icodecompilationconfig
     let compilerOptionsObject: { [key: string]: string } = {};
+    
+    if (!compilerOptions || compilerOptions.length === 0 || !compilerOptions[0] || typeof compilerOptions[0] !== 'string') {
+        return compilerOptionsObject;
+    }
+
     let compilerOptionsToApi = compilerOptions[0].split(" ");
 
     compilerOptionsToApi.forEach((opt: string) => {
