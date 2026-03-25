@@ -9,26 +9,28 @@ global.TARGET_DEPENDENTS_MAP = new Map<string, import('../types').Target[]>();
 global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 
 export function clearIndices() {
-    FILE_NODE_MAP.clear();
-    TARGET_DEPENDENTS_MAP.clear();
-    TARGET_NAME_MAP.clear();
+    global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+    global.TARGET_DEPENDENTS_MAP = new Map<string, import('../types').Target[]>();
+    global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 }
 
 export function buildIndices(compiledJson: DataformCompiledJson) {
-    clearIndices();
+    const newFileNodeMap = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+    const newTargetDependentsMap = new Map<string, import('../types').Target[]>();
+    const newTargetNameMap = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 
     const { tables, assertions, operations, notebooks } = compiledJson;
 
-    // Helper to add node to FILE_NODE_MAP
+    // Helper to add node to newFileNodeMap
     const addNodeToFileMap = (node: Table | Assertion | Operation | Notebook) => {
         const fileName = node.fileName;
-        if (!FILE_NODE_MAP.has(fileName)) {
-            FILE_NODE_MAP.set(fileName, []);
+        if (!newFileNodeMap.has(fileName)) {
+            newFileNodeMap.set(fileName, []);
         }
-        FILE_NODE_MAP.get(fileName)?.push(node);
+        newFileNodeMap.get(fileName)?.push(node);
     };
 
-    // Helper to add dependencies to TARGET_DEPENDENTS_MAP
+    // Helper to add dependencies to newTargetDependentsMap
     // We map: DependencyTarget -> [DependentNodes]
     // The 'node' depends on 'dependencyTarget'.
     // So 'node.target' is a dependent of 'dependencyTarget'.
@@ -36,24 +38,24 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
         if (node.dependencyTargets) {
             node.dependencyTargets.forEach(depTarget => {
                 const depKey = `${depTarget.database}.${depTarget.schema}.${depTarget.name}`;
-                if (!TARGET_DEPENDENTS_MAP.has(depKey)) {
-                    TARGET_DEPENDENTS_MAP.set(depKey, []);
+                if (!newTargetDependentsMap.has(depKey)) {
+                    newTargetDependentsMap.set(depKey, []);
                 }
                 // Avoid duplicates if possible, though strict set check might be overkill for now
                 // We push the *node's target* as the dependent
-                 TARGET_DEPENDENTS_MAP.get(depKey)?.push(node.target);
+                 newTargetDependentsMap.get(depKey)?.push(node.target);
             });
         }
     };
 
-    // Helper to add nodes to TARGET_NAME_MAP for text-based ref/hover resolution
+    // Helper to add nodes to newTargetNameMap for text-based ref/hover resolution
     const addNodeToTargetNameMap = (node: Table | Assertion | Operation | Notebook) => {
         if (node.target && node.target.name) {
             const tName = node.target.name;
-            if (!TARGET_NAME_MAP.has(tName)) {
-                TARGET_NAME_MAP.set(tName, []);
+            if (!newTargetNameMap.has(tName)) {
+                newTargetNameMap.set(tName, []);
             }
-            TARGET_NAME_MAP.get(tName)?.push(node);
+            newTargetNameMap.get(tName)?.push(node);
         }
     };
 
@@ -92,5 +94,10 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
         addNodeToFileMap(test as any);
     });
 
-    logger.debug(`Built indices: ${FILE_NODE_MAP.size} files, ${TARGET_DEPENDENTS_MAP.size} targets with dependents`);
+    // Atomic replacement of global cache maps
+    global.FILE_NODE_MAP = newFileNodeMap;
+    global.TARGET_DEPENDENTS_MAP = newTargetDependentsMap;
+    global.TARGET_NAME_MAP = newTargetNameMap;
+
+    logger.debug(`Built indices: ${global.FILE_NODE_MAP.size} files, ${global.TARGET_DEPENDENTS_MAP.size} targets with dependents`);
 }
