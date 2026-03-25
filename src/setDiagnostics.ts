@@ -75,6 +75,19 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             diagnostics.push(assertionDiagnostic);
         }
 
+        //TODO: Add support for test and expected output diagnostics
+        if (errorMeta?.testError?.hasError){
+            const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
+            const testDiagnostic = new vscode.Diagnostic(range, `(Test Query): ${errorMeta.testError.message}`, severity);
+            diagnostics.push(testDiagnostic);
+        }
+
+        if (errorMeta?.expectedOutputError?.hasError){
+            const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
+            const expectedOutputDiagnostic = new vscode.Diagnostic(range, `(Expected Output): ${errorMeta.expectedOutputError.message}`, severity);
+            diagnostics.push(expectedOutputDiagnostic);
+        }
+
         if (document !== undefined) {
             diagnosticCollection.set(document.uri, diagnostics);
         }
