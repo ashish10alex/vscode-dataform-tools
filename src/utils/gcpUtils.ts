@@ -76,14 +76,20 @@ export async function getGcpProjectIdDataform(compiledDataformJson:DataformCompi
 export async function getGcpProjectIds(){
     let gcpProjectIds = [];
 
-    //TODO: need to check what happens when there is an error ?
-    const client = new ProjectsClient();
-    const projects = client.searchProjectsAsync();
-    vscode.window.showInformationMessage("Loading available GCP projects...");
-    for await (const project of projects) {
-        if(project.projectId){
-            gcpProjectIds.push(project.projectId);
+    try {
+        const client = new ProjectsClient();
+        const projects = client.searchProjectsAsync();
+        vscode.window.showInformationMessage("Loading available GCP projects...");
+        for await (const project of projects) {
+            if(project.projectId){
+                gcpProjectIds.push(project.projectId);
+            }
         }
+    } catch(err) {
+        console.error("getGcpProjectIds failed:", err);
+        const e = err instanceof Error ? err : new Error(String(err));
+        vscode.window.showErrorMessage(`getGcpProjectIds failed: ${e.message}`);
+        return [];
     }
     return gcpProjectIds;
 }
