@@ -38,12 +38,9 @@ const ensureDirectoryExistence = (filePath: string) => {
     fs.mkdirSync(dirname, { recursive: true });
 };
 
-export function writeContentsToFile(filePath: string, content: string) {
+export async function writeContentsToFile(filePath: string, content: string): Promise<void> {
     ensureDirectoryExistence(filePath);
-    fs.writeFile(filePath, content, (err) => {
-        if (err) { throw err; };
-        return;
-    });
+    await fs.promises.writeFile(filePath, content);
 }
 
 export async function fetchGitHubFileContent(): Promise<string> {
@@ -63,8 +60,12 @@ export async function fetchGitHubFileContent(): Promise<string> {
 export async function ensureSqlfluffConfigExists(sqlfluffConfigFilePath: string) {
     if (!checkIfFileExsists(sqlfluffConfigFilePath)) {
         vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
-        let sqlfluffConfigFileContents = await fetchGitHubFileContent();
-        writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
-        vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
+        try {
+            let sqlfluffConfigFileContents = await fetchGitHubFileContent();
+            await writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
+            vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to fetch or write .sqlfluff file: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 }
