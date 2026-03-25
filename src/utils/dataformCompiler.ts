@@ -186,12 +186,13 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                     let possibleResolutions = [];
                     const dataformInstallHintv3 = "If using `package.json`, then run `dataform install`";
                     if (errorOutput.includes(dataformInstallHintv3)) {
-                        const _workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-                        if (_workspaceFolder) {
-                            const filePath = path.join(_workspaceFolder, 'package.json');
-                            const packageJsonExists = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-                            if (packageJsonExists) {
+                        if (workspaceFolder) {
+                            const filePath = path.join(workspaceFolder, 'package.json');
+                            try {
+                                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
                                 possibleResolutions.push("run `<b>dataform install</b>` in terminal");
+                            } catch (error) {
+                                vscode.window.showInformationMessage(`Error: ${error}`);
                             }
                         }
                     } else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)) {
