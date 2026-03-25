@@ -367,6 +367,8 @@ export type ErrorMeta = {
     nonIncrementalError?: DryRunError;
     incrementalError?: DryRunError;
     assertionError?: DryRunError;
+    testError?: DryRunError;
+    expectedOutputError?: DryRunError;
 };
 
 export type ExecutablePathInfo = {
