@@ -51,7 +51,7 @@ export function formatBytes(bytes: number) {
     return `${value} ${units[i]}`;
 }
 
-export function sendNotifactionToUserOnExtensionUpdate(context: vscode.ExtensionContext) {
+export function sendNotificationToUserOnExtensionUpdate(context: vscode.ExtensionContext) {
     const extensionPath = context.extensionPath;
     const packageJsonPath = path.join(extensionPath, 'package.json');
     const userConfigPath = path.join(extensionPath, 'user_config.json');
