@@ -45,7 +45,7 @@ export async function getGcpProjectLocationDataform(projectId:string, compiledDa
     if (compiledDataformJson?.projectConfig?.defaultLocation) {
         gcpProjectLocation = compiledDataformJson.projectConfig.defaultLocation;
     } else {
-        vscode.window.showWarningMessage(`Determing GCP compute location using API. Define it in Dataform config for faster invocation`);
+        vscode.window.showWarningMessage(`Determining GCP compute location using API. Define it in Dataform config for faster invocation`);
         gcpProjectLocation = await getLocationOfGcpProject(projectId);
     }
 
@@ -62,7 +62,7 @@ export async function getGcpProjectIdDataform(compiledDataformJson:DataformCompi
     if (compiledDataformJson?.projectConfig?.defaultDatabase) {
         gcpProjectId = compiledDataformJson.projectConfig.defaultDatabase;
     } else {
-        vscode.window.showWarningMessage(`Determing GCP project ID using API. Define it in Dataform config for faster invocation`);
+        vscode.window.showWarningMessage(`Determining GCP project ID using API. Define it in Dataform config for faster invocation`);
         gcpProjectId = await getCurrentGcpProjectId();
     }
 
