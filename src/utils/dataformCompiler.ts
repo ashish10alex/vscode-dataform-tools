@@ -23,6 +23,10 @@ function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
     let compilerOptionsToApi = compilerOptions[0].split(" ");
 
     compilerOptionsToApi.forEach((opt: string) => {
+        if (!opt.includes("=")) {
+            return;
+        }
+
         let value = opt.split("=")[1];
         value = stripQuotes(value);
 
