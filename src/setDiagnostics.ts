@@ -4,7 +4,7 @@ import {ErrorMeta, SqlxBlockMetadata} from './types';
 import {errorDenylist} from './constants';
 import { logger } from './logger';
 
-export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMeta, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number){
+export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMeta, diagnosticCollection: vscode.DiagnosticCollection, sqlxBlockMetadata: SqlxBlockMetadata, offSet:number, compiledPreOpsLineCount?: number){
 
         const diagnostics: vscode.Diagnostic[] = [];
         const severity = vscode.DiagnosticSeverity.Error;
@@ -25,7 +25,14 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             //TODO: This will not work if pre_operation block is placed after main sql query. unlikely that is coding pattern used ?
             let preOpsOffset = 0;
             if (sqlxBlockMetadata.preOpsBlock.preOpsList.length > 0){
-                preOpsOffset = (sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine - sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine) + 1;
+                if (compiledPreOpsLineCount !== undefined) {
+                    // compiledPreOpsLineCount is the actual number of lines in the compiled SQL sent to BigQuery.
+                    // +2 accounts for the `pre_operations {` and `}` wrapper lines in the .sqlx editor file
+                    // that are NOT present in the compiled SQL and do not shift BigQuery error line numbers.
+                    preOpsOffset = compiledPreOpsLineCount + 2;
+                } else {
+                    preOpsOffset = (sqlxBlockMetadata.preOpsBlock.preOpsList[0].endLine - sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine) + 1;
+                }
             }
             if(errLineNumber === 0 && sqlQueryStartLineNumber === 0){
                 errLineNumber = 0;

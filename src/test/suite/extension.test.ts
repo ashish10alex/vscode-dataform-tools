@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
-import { tableQueryOffset } from '../../constants';
+import { tableQueryOffset, incrementalTableOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
 import { getDocumentSymbols } from '../../documentSymbols';
 
@@ -269,6 +269,76 @@ suite("setDiagnostics", () => {
                 const expectedPostOpsLineNumber = 12;
                 assert.deepEqual(postOpsDiagnosticRange.start.line, expectedPostOpsLineNumber, `Expected diagnostic on line ${expectedPostOpsLineNumber}, got ${postOpsDiagnosticRange.start.line}`);
 
+
+                done();
+            } catch (error) {
+                console.error('Test failed:', error);
+                done(error);
+            }
+        })();
+    });
+});
+
+suite("setDiagnostics incremental", () => {
+    test("Places main query diagnostic at correct line for incremental model with pre_operations", function (done) {
+        this.timeout(9000);
+
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0300_INCREMENTAL.sqlx"));
+
+        (async () => {
+            try {
+                const document = await vscode.workspace.openTextDocument(uri);
+                assert.ok(document, 'Document should be opened');
+
+                // Simulated BigQuery error at compiled query line 11.
+                // The combined dry-run query is: withPreOps(incrementalPreOpsQuery, incrementalQuery)
+                // The incrementalPreOpsQuery for this model has 9 lines (including leading/trailing
+                // empty lines from Dataform's compiled output). With incrementalTableOffset=1 preamble:
+                //   Lines 1-9:  compiled pre-ops (DECLARE ... with surrounding whitespace)
+                //   Line 10:    blank separator line (trailing \n in pre-ops + \n from withPreOps)
+                //   Line 11:    ELECT   <- main SQL line 1, editor line 14 (0-indexed: 13)
+                const mockDryRunError = {
+                    hasError: true,
+                    message: "(incrementalQuery): Syntax error: Unexpected identifier \"ELECT\" at [11:1]",
+                    location: { line: 11, column: 1 }
+                };
+
+                // 0300_INCREMENTAL.sqlx block positions (1-indexed from parser):
+                //   config:    lines 1-3
+                //   pre_ops:   lines 5-11
+                //   sql block: starts at line 14
+                let mockSqlxBlockMetadata = {
+                    configBlock: { startLine: 1, endLine: 3, exists: true },
+                    preOpsBlock: { preOpsList: [{ startLine: 5, endLine: 11, exists: true }] },
+                    postOpsBlock: { postOpsList: [] },
+                    sqlBlock: { startLine: 14, endLine: 18, exists: true },
+                    jsBlock: { startLine: 0, endLine: 0, exists: false },
+                };
+
+                let errorMeta = {
+                    mainQueryError: mockDryRunError,
+                    preOpsError: { hasError: false, message: "", location: undefined },
+                    postOpsError: { hasError: false, message: "", location: undefined },
+                    nonIncrementalError: { hasError: false, message: "", location: undefined },
+                    incrementalError: { hasError: false, message: "", location: undefined },
+                    assertionError: { hasError: false, message: "", location: undefined },
+                };
+
+                let diagnosticCollection = vscode.languages.createDiagnosticCollection('incrementalDiagnostics');
+
+                // compiledPreOpsLineCount=9: the incremental pre_operations string has 9 lines
+                // (including leading/trailing empty lines from Dataform's compiled output).
+                // preOpsOffset = 9 + 2 = 11 (not 7 as the raw editor block count would suggest).
+                // Expected: errLineNumber = (14 + (11 - 1)) - 11 = 13 (0-indexed) = editor line 14 = ELECT
+                const compiledPreOpsLineCount = 9;
+                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, incrementalTableOffset, compiledPreOpsLineCount);
+
+                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+                assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
+
+                const expectedLineNumber = 13; // 0-indexed: editor line 14 = SELECT
+                assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
+                    `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
 
                 done();
             } catch (error) {
