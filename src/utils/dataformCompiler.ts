@@ -144,67 +144,72 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
         });
 
         spawnedProcess.on('close', async (code: number) => {
-            if (code === 0) {
-                if(compilerOptions.length>0){
-                    globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
-                }else{
-                    globalThis.compilerOptionsMap = {};
-                }
-
-                logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
-                const endTime = performance.now();
-                resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
-            } else {
-                if (stdOut !== '') {
-                    let compiledJson: DataformCompiledJson;
-                    try {
-                        compiledJson = JSON.parse(stdOut.toString());
-                    } catch (parseError) {
-                        compiledJson = extractDataformJsonFromMultipleJson(stdOut.toString());
+            try {
+                if (code === 0) {
+                    if(compilerOptions.length>0){
+                        globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
+                    }else{
+                        globalThis.compilerOptionsMap = {};
                     }
 
-                    let graphErrors = compiledJson?.graphErrors?.compilationErrors;
-                    if (!graphErrors) {
-                        const dataformPackageJsonMissingHint = "(missing dataform.json file)";
-                        const dataformInstallHintv2 = "Could not find a recent installed version of @dataform/core in the project";
-                        const possibleResolutions = [];
-                        if (errorOutput.includes(dataformPackageJsonMissingHint)) {
-                            possibleResolutions.push("Run `<b>dataform compile</b>` in terminal to get full error");
-                            possibleResolutions.push("Verify the dataform version of the project matches the version used in the project (<b>dataform --version</b> in terminal)");
-                            possibleResolutions.push("If your project is using dataform version 3.x run <b>npm i -g @dataform/cli</b> in terminal)");
-                        } else if (errorOutput.includes(dataformInstallHintv2)) {
-                            possibleResolutions.push("run `<b>dataform install</b>` in terminal followed by reload window and compile the file again");
+                    logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
+                    const endTime = performance.now();
+                    resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
+                } else {
+                    if (stdOut !== '') {
+                        let compiledJson: DataformCompiledJson;
+                        try {
+                            compiledJson = JSON.parse(stdOut.toString());
+                        } catch (parseError) {
+                            compiledJson = extractDataformJsonFromMultipleJson(stdOut.toString());
                         }
+
+                        let graphErrors = compiledJson?.graphErrors?.compilationErrors;
+                        if (!graphErrors) {
+                            const dataformPackageJsonMissingHint = "(missing dataform.json file)";
+                            const dataformInstallHintv2 = "Could not find a recent installed version of @dataform/core in the project";
+                            const possibleResolutions = [];
+                            if (errorOutput.includes(dataformPackageJsonMissingHint)) {
+                                possibleResolutions.push("Run `<b>dataform compile</b>` in terminal to get full error");
+                                possibleResolutions.push("Verify the dataform version of the project matches the version used in the project (<b>dataform --version</b> in terminal)");
+                                possibleResolutions.push("If your project is using dataform version 3.x run <b>npm i -g @dataform/cli</b> in terminal)");
+                            } else if (errorOutput.includes(dataformInstallHintv2)) {
+                                possibleResolutions.push("run `<b>dataform install</b>` in terminal followed by reload window and compile the file again");
+                            }
+                            const endTime = performance.now();
+                            resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions, compilationTimeMs: endTime - startTime });
+                            return;
+                        }
+
+                        let errors: GraphError[] = [];
+                        graphErrors.forEach((graphError: { message: string, fileName: string, stack?: string }) => {
+                            errors.push({ error: graphError.message, fileName: graphError.fileName, stack: graphError.stack });
+                        });
+                        const endTime = performance.now();
+                        resolve({ compiledString: undefined, errors: errors, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
+                    } else {
+                        let possibleResolutions = [];
+                        const dataformInstallHintv3 = "If using `package.json`, then run `dataform install`";
+                        if (errorOutput.includes(dataformInstallHintv3)) {
+                            if (workspaceFolder) {
+                                const filePath = path.join(workspaceFolder, 'package.json');
+                                try {
+                                    await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+                                    possibleResolutions.push("run `<b>dataform install</b>` in terminal");
+                                } catch (error) {
+                                    vscode.window.showInformationMessage(`Error: ${error}`);
+                                }
+                            }
+                        } else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)) {
+                            possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
+                        };
                         const endTime = performance.now();
                         resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions, compilationTimeMs: endTime - startTime });
-                        return;
                     }
-
-                    let errors: GraphError[] = [];
-                    graphErrors.forEach((graphError: { message: string, fileName: string, stack?: string }) => {
-                        errors.push({ error: graphError.message, fileName: graphError.fileName, stack: graphError.stack });
-                    });
-                    const endTime = performance.now();
-                    resolve({ compiledString: undefined, errors: errors, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
-                } else {
-                    let possibleResolutions = [];
-                    const dataformInstallHintv3 = "If using `package.json`, then run `dataform install`";
-                    if (errorOutput.includes(dataformInstallHintv3)) {
-                        if (workspaceFolder) {
-                            const filePath = path.join(workspaceFolder, 'package.json');
-                            try {
-                                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-                                possibleResolutions.push("run `<b>dataform install</b>` in terminal");
-                            } catch (error) {
-                                vscode.window.showInformationMessage(`Error: ${error}`);
-                            }
-                        }
-                    } else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)) {
-                        possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
-                    };
-                    const endTime = performance.now();
-                    resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions, compilationTimeMs: endTime - startTime });
                 }
+            } catch (err) {
+                logger.error(`Error in spawnedProcess close handler: ${err}`);
+                reject(err instanceof Error ? err : new Error(String(err)));
             }
         });
 
@@ -231,6 +236,7 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
         }
         return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
     } catch (error: any) {
+        logger.error(`runCompilation failed: ${error.message}`);
         return { dataformCompiledJson: undefined, errors: [{ error: `Error compiling Dataform: ${error.message}`, fileName: "" }], possibleResolutions: undefined, compilationTimeMs: undefined };
     }
 }
