@@ -245,7 +245,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             return (
               <div
                 key={index}
-                className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-8 pb-4 rounded-lg border border-[var(--vscode-widget-border)] flex flex-col space-y-2 group"
+                className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-7 pb-4 rounded-xl border border-[var(--vscode-widget-border)]/60 flex flex-col space-y-2 group"
               >
                 <span className={`absolute top-2 left-2 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
                   {model.type}
@@ -347,7 +347,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
 
       {/* Data Lineage Section */}
-      <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+      <div className="bg-[var(--vscode-sideBar-background)] rounded-xl border border-[var(--vscode-widget-border)]/60 overflow-hidden">
         <div
           className="flex items-center px-4 py-3 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
           onClick={() => setIsLineageOpen(!isLineageOpen)}
@@ -478,12 +478,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
 
       {/* Toolbar */}
-       <div className="flex flex-col gap-4 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)]">
- 
+       <div className="flex flex-col gap-4">
+
           {/* Compiler Options Section */}
-          <div className="bg-[var(--vscode-sideBar-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
-              <div 
-                  className="flex items-center px-4 py-3 cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors justify-between"
+          <div className="pb-4 border-b border-[var(--vscode-widget-border)]/40">
+              <div
+                  className="flex items-center py-2 cursor-pointer hover:opacity-80 transition-opacity justify-between"
                   onClick={() => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
               >
                   <div className="flex items-center">
@@ -506,7 +506,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               </div>
 
               {isCompilerOptionsOpen && (
-                  <div className="p-4 border-t border-[var(--vscode-widget-border)] space-y-3 bg-[var(--vscode-editor-background)]">
+                  <div className="pt-3 space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                               <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
@@ -588,7 +588,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 </label>
            </div>
 
-           <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--vscode-widget-border)]">
+           <div className="flex flex-wrap gap-2">
                <button onClick={handleDependencyGraph} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Network className="w-4 h-4 mr-1.5" /> Graph
                </button>
@@ -635,7 +635,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
             // Collapsible model header + tabbed queries
             elements.push(
-              <div key={`inc_${modelId}`} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+              <div key={`inc_${modelId}`} className="rounded-xl border border-[var(--vscode-widget-border)]/50 overflow-hidden">
                 {/* Collapsible header */}
                 <button
                   type="button"
@@ -698,7 +698,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             if (model.postOps?.length) {
               const key = `postOps_${modelId}`;
               elements.push(
-                <div key={key} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+                <div key={key} className="rounded-xl border border-[var(--vscode-widget-border)]/50 overflow-hidden">
                   <button
                     type="button"
                     id={`query-button-${key}`}
@@ -738,7 +738,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           if (model.type === 'test') {
             const activeTab = activeIncrementalTab[modelId] || 'input';
             return [
-              <div key={`test_${modelId}`} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+              <div key={`test_${modelId}`} className="rounded-xl border border-[var(--vscode-widget-border)]/50 overflow-hidden">
                 {/* Collapsible header */}
                 <button
                   type="button"
@@ -812,7 +812,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           }
 
           return blocks.map(({ key, label, code }) => (
-            <div key={key} className="rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden">
+            <div key={key} className="rounded-xl border border-[var(--vscode-widget-border)]/50 overflow-hidden">
               <button
                 type="button"
                 id={`query-button-${key}`}
