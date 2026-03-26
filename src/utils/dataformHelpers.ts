@@ -474,6 +474,11 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         }
     });
 
+    if (!dataformCompiledJson.dataformCompiledJson || (dataformCompiledJson.errors && dataformCompiledJson.errors.length > 0) || includedTargets.length === 0) {
+        vscode.window.showErrorMessage("Dataform execution aborted: Compilation failed or no valid targets found.");
+        return;
+    }
+
     const invocationConfig = {
         includedTargets: includedTargets,
         transitiveDependenciesIncluded: includeDependencies,
