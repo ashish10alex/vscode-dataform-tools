@@ -1,3 +1,26 @@
+/**
+ * When skipPreOpsInDryRun=true for incremental models, only `iq.incrementalQuery`
+ * is sent to BigQuery (no pre_ops prepended). The query may still have N_inc_preamble
+ * leading blank lines added by Dataform's compiler.
+ *
+ * setDiagnostics uses: preOpsOffset = compiledPreOpsLineCount + 2
+ * We need:             preOpsOffset = N_inc_preamble + 1
+ * So we return:        compiledPreOpsLineCount = N_inc_preamble - 1
+ */
+export function calculateIncrementalSkipPreOpsOffset(
+    incrementalQuery: string | undefined
+): number | undefined {
+    if (!incrementalQuery) {
+        return undefined;
+    }
+    const lines = incrementalQuery.split('\n');
+    let N_inc_preamble = 0;
+    for (const line of lines) {
+        if (line.trim() === '') { N_inc_preamble++; } else { break; }
+    }
+    return N_inc_preamble - 1;
+}
+
 export function calculateIncrementalPreOpsOffset(
     incrementalPreOpsQuery: string | undefined,
     incrementalQuery: string | undefined,

@@ -4,7 +4,7 @@ import { setDiagnostics } from '../setDiagnostics';
 import { getMetadataForSqlxFileBlocks } from '../sqlxFileParser';
 import { logger } from '../logger';
 import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '../constants';
-import { calculateIncrementalPreOpsOffset } from '../offsetCalculations';
+import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset } from '../offsetCalculations';
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
 import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse } from '../types';
@@ -157,18 +157,25 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             };
 
             let compiledPreOpsLineCount: number | undefined = undefined;
-            if (type === "incremental" && !skipPreOpsInDryRun) {
+            if (type === "incremental") {
                 const iq = fileMetadata.queryMeta.incrementalQueries[0];
-                compiledPreOpsLineCount = calculateIncrementalPreOpsOffset(
-                    iq?.incrementalPreOpsQuery,
-                    iq?.incrementalQuery,
-                    offSet
-                );
+                if (!skipPreOpsInDryRun) {
+                    compiledPreOpsLineCount = calculateIncrementalPreOpsOffset(
+                        iq?.incrementalPreOpsQuery,
+                        iq?.incrementalQuery,
+                        offSet
+                    );
+                } else {
+                    // When pre_ops are skipped, only iq.incrementalQuery is sent to BigQuery.
+                    // Compute compiledPreOpsLineCount from the preamble of incrementalQuery alone.
+                    compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset(iq?.incrementalQuery);
+                }
             }
 
             // When skipPreOpsInDryRun is true for table/view types, only tq.query is sent to BigQuery
             // (no pre_ops). preOpsSkippedInDryRun=true tells setDiagnostics to keep preOpsOffset=0
             // so the diagnostic maps correctly to the main SQL block.
+            // For incremental, the offset is computed via compiledPreOpsLineCount above instead.
             const preOpsSkippedInDryRun = shouldSkipAggregatePreOps && (type === "table" || type === "view");
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount, preOpsSkippedInDryRun);
         }

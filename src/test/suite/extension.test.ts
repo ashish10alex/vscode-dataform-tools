@@ -9,6 +9,7 @@ import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset, incrementalTableOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
+import { calculateIncrementalSkipPreOpsOffset } from '../../offsetCalculations';
 import { getDocumentSymbols } from '../../documentSymbols';
 
 /*
@@ -407,6 +408,80 @@ suite("setDiagnostics with skipPreOpsInDryRun", () => {
                 assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
 
                 const expectedLineNumber = 17; // 0-indexed: editor line 18 = SQL typo line
+                assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
+                    `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
+
+                done();
+            } catch (error) {
+                console.error('Test failed:', error);
+                done(error);
+            }
+        })();
+    });
+
+    test("calculateIncrementalSkipPreOpsOffset returns N_inc_preamble - 1", () => {
+        // 3 blank preamble lines → compiledPreOpsLineCount = 2 → preOpsOffset = 4
+        assert.strictEqual(calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *"), 2);
+        // 1 blank preamble line → compiledPreOpsLineCount = 0 → preOpsOffset = 2
+        assert.strictEqual(calculateIncrementalSkipPreOpsOffset("\nSELECT *"), 0);
+        // 0 blank preamble lines → compiledPreOpsLineCount = -1 → preOpsOffset = 1
+        assert.strictEqual(calculateIncrementalSkipPreOpsOffset("SELECT *"), -1);
+        // undefined input → undefined (no pre_ops block to check against)
+        assert.strictEqual(calculateIncrementalSkipPreOpsOffset(undefined), undefined);
+    });
+
+    test("Places main query diagnostic at correct line for incremental model when pre_ops are skipped in dry run", function (done) {
+        this.timeout(9000);
+
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0300_INCREMENTAL.sqlx"));
+
+        (async () => {
+            try {
+                const document = await vscode.workspace.openTextDocument(uri);
+                assert.ok(document, 'Document should be opened');
+
+                // Simulates an incremental model where iq.incrementalQuery has 3 blank
+                // preamble lines (N_inc_preamble=3) and the BQ error is at [25:3].
+                // calculateIncrementalSkipPreOpsOffset returns N_inc_preamble - 1 = 2.
+                // preOpsOffset = 2 + 2 = 4.
+                // sqlBlock.startLine = 17 (mock, matching the FACT_ALLOCATION_PLAN_ALL_SNAP scenario).
+                // Expected: (17 + (25 - 1)) - 4 = 37 (0-indexed) = editor line 38.
+                const mockDryRunError = {
+                    hasError: true,
+                    message: "Unrecognized name: DEF_SPEC_CODE_ALLO at [25:3]",
+                    location: { line: 25, column: 3 }
+                };
+
+                let mockSqlxBlockMetadata = {
+                    configBlock: { startLine: 1, endLine: 14, exists: true },
+                    preOpsBlock: { preOpsList: [{ startLine: 50, endLine: 62, exists: true }] },
+                    postOpsBlock: { postOpsList: [] },
+                    sqlBlock: { startLine: 17, endLine: 46, exists: true },
+                    jsBlock: { startLine: 0, endLine: 0, exists: false },
+                };
+
+                let errorMeta = {
+                    mainQueryError: mockDryRunError,
+                    preOpsError: { hasError: false, message: "", location: undefined },
+                    postOpsError: { hasError: false, message: "", location: undefined },
+                    nonIncrementalError: { hasError: false, message: "", location: undefined },
+                    incrementalError: { hasError: false, message: "", location: undefined },
+                    assertionError: { hasError: false, message: "", location: undefined },
+                    testError: { hasError: false, message: "", location: undefined },
+                    expectedOutputError: { hasError: false, message: "", location: undefined },
+                };
+
+                let diagnosticCollection = vscode.languages.createDiagnosticCollection('incrementalSkipPreOpsDiagnostics');
+
+                // compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *") = 2
+                // preOpsOffset = 2 + 2 = 4
+                const compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *");
+                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, incrementalTableOffset, compiledPreOpsLineCount);
+
+                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+                assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
+
+                const expectedLineNumber = 37; // 0-indexed: editor line 38 = DEF_SPEC_CODE_ALLO
                 assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
                     `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
 
