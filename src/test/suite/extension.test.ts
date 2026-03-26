@@ -349,6 +349,76 @@ suite("setDiagnostics incremental", () => {
     });
 });
 
+suite("setDiagnostics with skipPreOpsInDryRun", () => {
+    test("Places main query diagnostic at correct line for table model when pre_ops are skipped in dry run", function (done) {
+        this.timeout(9000);
+
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
+
+        (async () => {
+            try {
+                const document = await vscode.workspace.openTextDocument(uri);
+                assert.ok(document, 'Document should be opened');
+
+                // Simulated BigQuery error: "FRM" instead of "FROM" inside a CTE.
+                // When skipPreOpsInDryRun=true the query sent to BigQuery is just tq.query
+                // (no pre_ops). tq.query has tableQueryOffset=2 preamble blank lines, so
+                // BQ line 7 corresponds to the SQL content line that contains the typo.
+                //
+                // 0200_PLAYER_TRANSFERS.sqlx block positions (1-indexed from parser):
+                //   config:    lines 1-6
+                //   pre_ops:   lines 8-10  (startLine=8, endLine=10)
+                //   sql block: starts at line 12
+                //
+                // Expected: errLineNumber = (12 + (7 - 2)) - 0 = 17 (0-indexed)
+                //           = editor line 18 = the line with the SQL typo
+                const mockDryRunError = {
+                    hasError: true,
+                    message: "Syntax error: Expected \")\" but got identifier \"FRM\" at [7:3]",
+                    location: { line: 7, column: 3 }
+                };
+
+                let mockSqlxBlockMetadata = {
+                    configBlock: { startLine: 1, endLine: 6, exists: true },
+                    preOpsBlock: { preOpsList: [{ startLine: 8, endLine: 10, exists: true }] },
+                    postOpsBlock: { postOpsList: [] },
+                    sqlBlock: { startLine: 12, endLine: 32, exists: true },
+                    jsBlock: { startLine: 0, endLine: 0, exists: false },
+                };
+
+                let errorMeta = {
+                    mainQueryError: mockDryRunError,
+                    preOpsError: { hasError: false, message: "", location: undefined },
+                    postOpsError: { hasError: false, message: "", location: undefined },
+                    nonIncrementalError: { hasError: false, message: "", location: undefined },
+                    incrementalError: { hasError: false, message: "", location: undefined },
+                    assertionError: { hasError: false, message: "", location: undefined },
+                    testError: { hasError: false, message: "", location: undefined },
+                    expectedOutputError: { hasError: false, message: "", location: undefined },
+                };
+
+                let diagnosticCollection = vscode.languages.createDiagnosticCollection('skipPreOpsDiagnostics');
+
+                // preOpsSkippedInDryRun=true: pre_ops not included in the BQ query,
+                // so preOpsOffset must be 0 regardless of the pre_ops block size.
+                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset, undefined, true);
+
+                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+                assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
+
+                const expectedLineNumber = 17; // 0-indexed: editor line 18 = SQL typo line
+                assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
+                    `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
+
+                done();
+            } catch (error) {
+                console.error('Test failed:', error);
+                done(error);
+            }
+        })();
+    });
+});
+
 suite("getDocumentSymbols", () => {
     test("able to get document symbols", async function () {
         this.timeout(9000);

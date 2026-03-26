@@ -166,7 +166,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
                 );
             }
 
-            setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount);
+            // When skipPreOpsInDryRun is true for table/view types, only tq.query is sent to BigQuery
+            // (no pre_ops). preOpsSkippedInDryRun=true tells setDiagnostics to keep preOpsOffset=0
+            // so the diagnostic maps correctly to the main SQL block.
+            const preOpsSkippedInDryRun = shouldSkipAggregatePreOps && (type === "table" || type === "view");
+            setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount, preOpsSkippedInDryRun);
         }
         return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults};
     }
