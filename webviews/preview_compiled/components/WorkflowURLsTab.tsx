@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { WebviewState, CompilationErrorType } from '../types';
 import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { vscode } from '../utils/vscode';
@@ -33,6 +33,19 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
     };
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const autoRefreshTriggered = useRef(false);
+
+    const TERMINAL_STATES = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
+
+    useEffect(() => {
+        if (autoRefreshTriggered.current) { return; }
+        if (!state.workflowUrls || state.workflowUrls.length === 0) { return; }
+        autoRefreshTriggered.current = true;
+        const needsRefresh = state.workflowUrls.some((item) => !item.state || !TERMINAL_STATES.has(item.state));
+        if (needsRefresh) {
+            vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+        }
+    }, [state.workflowUrls]);
 
     const handleRefreshStatuses = () => {
         setIsRefreshing(true);
