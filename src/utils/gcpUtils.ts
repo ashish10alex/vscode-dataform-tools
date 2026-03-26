@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { GoogleAuth } from 'google-auth-library';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
-import { DataformCompiledJson } from '../types';
+import { DataformCompiledJson, SchemaMetadata } from '../types';
 import { createSelector } from './vscodeUi';
 import { gcloudComputeRegions } from '../constants';
 
@@ -94,7 +94,7 @@ export async function getGcpProjectIds(){
     return gcpProjectIds;
 }
 
-export async function getTableSchema(projectId: string, datasetId: string, tableId: string): Promise<{ name: string, metadata: { fullTableId: string } }[]> {
+export async function getTableSchema(projectId: string, datasetId: string, tableId: string): Promise<SchemaMetadata[]> {
     try {
         await checkAuthentication();
         const bigquery = getBigQueryClient();
