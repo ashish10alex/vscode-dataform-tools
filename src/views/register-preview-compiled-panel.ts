@@ -5,7 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { runTests } from "../runTests";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType  } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType, SchemaMetadata } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -17,7 +17,7 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { parseCompilationStack } from "../parseCompilationStack";
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
-    let allSchemaCompletions:{name:string, metadata: any}[] = [];
+    let allSchemaCompletions: SchemaMetadata[] = [];
 
     if (currentFileMetadata?.fileMetadata?.tables) {
         await Promise.all(currentFileMetadata.fileMetadata.tables.map(async (table:any) => {

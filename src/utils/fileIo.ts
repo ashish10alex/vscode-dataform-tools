@@ -1,0 +1,71 @@
+import fs from 'fs';
+import path from 'path';
+import * as vscode from 'vscode';
+import { GitHubContentResponse } from '../types';
+
+export function readFile(filePath: string) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
+export async function writeCompiledSqlToFile(compiledQuery: string, filePath: string) {
+    if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, '', 'utf8');
+    }
+    fs.writeFileSync(filePath, compiledQuery, 'utf8');
+}
+
+export function checkIfFileExists(filePath: string) {
+    if (fs.existsSync(filePath)) {
+        return true;
+    }
+    return false;
+}
+
+//@ts-ignore
+const ensureDirectoryExistence = (filePath: string) => {
+    const dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) {
+        return true;
+    }
+    fs.mkdirSync(dirname, { recursive: true });
+};
+
+export async function writeContentsToFile(filePath: string, content: string): Promise<void> {
+    ensureDirectoryExistence(filePath);
+    await fs.promises.writeFile(filePath, content);
+}
+
+export async function fetchGitHubFileContent(): Promise<string> {
+    //TODO: Should we move .sqlfluff to assets folder?
+    const repo = 'vscode-dataform-tools';
+    const filePath = 'src/test/test-workspace/.sqlfluff';
+    const response = await fetch(`https://api.github.com/repos/ashish10alex/${repo}/contents/${filePath}`);
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json() as GitHubContentResponse;
+    return Buffer.from(data.content, 'base64').toString('utf-8');
+}
+
+export async function ensureSqlfluffConfigExists(sqlfluffConfigFilePath: string) {
+    if (!checkIfFileExists(sqlfluffConfigFilePath)) {
+        vscode.window.showInformationMessage(`Trying to fetch .sqlfluff file compatable with .sqlx files`);
+        try {
+            let sqlfluffConfigFileContents = await fetchGitHubFileContent();
+            await writeContentsToFile(sqlfluffConfigFilePath, sqlfluffConfigFileContents);
+            vscode.window.showInformationMessage(`Created .sqlfluff file at ${sqlfluffConfigFilePath}`);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to fetch or write .sqlfluff file: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+}
