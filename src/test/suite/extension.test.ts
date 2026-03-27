@@ -148,275 +148,260 @@ suite('GetMetadataForSqlxFileBlocks', () => {
 });
 
 suite("setDiagnostics", () => {
-    test("Able to set multiple diagnostics at correct line numbers", function (done) {
+    test("Able to set multiple diagnostics at correct line numbers", async function () {
         this.timeout(9000);
 
         const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/099_MULTIPLE_ERRORS.sqlx"));
+        const diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
 
-        (async () => {
-            try {
-                const document = await vscode.workspace.openTextDocument(uri);
-                assert.ok(document, 'Document should be opened');
+        try {
+            const document = await vscode.workspace.openTextDocument(uri);
+            assert.ok(document, 'Document should be opened');
 
-                /**Error line number is the line number where the error is in the sql block.
-                 * The spaces in front of the sql block are trimmed out before sending it to BigQuery Api
-                 */
-                const mockDryRunError = {
-                    hasError: true,
-                    message: "(fullQuery): Query error: Function not found: URRENT_DATE; Did you mean current_date? at [8:5]",
-                    location: {
-                        line: 8,
-                        column: 5
-                    }
-                };
+            /**Error line number is the line number where the error is in the sql block.
+             * The spaces in front of the sql block are trimmed out before sending it to BigQuery Api
+             */
+            const mockDryRunError = {
+                hasError: true,
+                message: "(fullQuery): Query error: Function not found: URRENT_DATE; Did you mean current_date? at [8:5]",
+                location: {
+                    line: 8,
+                    column: 5
+                }
+            };
 
 
-                let mockPreOpsDryRunError = {
-                    hasError: true,
-                    message: "(preOps): Variable declarations are allowed only at the start of a block or script at [3:2]",
-                    location: {
-                        line: 3,
-                        column: 2
-                    }
-                };
+            let mockPreOpsDryRunError = {
+                hasError: true,
+                message: "(preOps): Variable declarations are allowed only at the start of a block or script at [3:2]",
+                location: {
+                    line: 3,
+                    column: 2
+                }
+            };
 
-                let mockPostOpsDryRunError = {
-                    hasError: true,
-                    message: "(postOps): Function not found: URRENT_TIMESTAMP; Did you mean current_timestamp? at [3:6]",
-                    location: {
-                        line: 3,
-                        column: 6
-                    }
-                };
+            let mockPostOpsDryRunError = {
+                hasError: true,
+                message: "(postOps): Function not found: URRENT_TIMESTAMP; Did you mean current_timestamp? at [3:6]",
+                location: {
+                    line: 3,
+                    column: 6
+                }
+            };
 
-                let configBlockMeta = {
-                    startLine: 1,
-                    endLine: 6,
+            let configBlockMeta = {
+                startLine: 1,
+                endLine: 6,
+                exists: true,
+            };
+
+            let sqlBlockMeta = {
+                startLine: 19,
+                endLine: 22,
+                exists: true,
+            };
+
+            let jsBlockMeta = {
+                startLine: 0,
+                endLine: 0,
+                exists: false,
+            };
+
+            let preOpsList = [
+                {
+                    startLine: 8,
+                    endLine: 11,
                     exists: true,
-                };
+                }
+            ];
 
-                let sqlBlockMeta = {
-                    startLine: 19,
-                    endLine: 22,
+            let postOpsList = [
+                {
+                    startLine: 13,
+                    endLine: 16,
                     exists: true,
-                };
+                }
+            ];
 
-                let jsBlockMeta = {
-                    startLine: 0,
-                    endLine: 0,
-                    exists: false,
-                };
+            let mockSqlxBlockMetadata = {
+                configBlock: configBlockMeta,
+                preOpsBlock: { preOpsList: preOpsList },
+                postOpsBlock: { postOpsList: postOpsList },
+                sqlBlock: sqlBlockMeta,
+                jsBlock: jsBlockMeta,
+            };
 
-                let preOpsList = [
-                    {
-                        startLine: 8,
-                        endLine: 11,
-                        exists: true,
-                    }
-                ];
+            let errorMeta = {
+                mainQueryError: mockDryRunError,
+                preOpsError: mockPreOpsDryRunError,
+                postOpsError: mockPostOpsDryRunError,
+                nonIncrementalError: {
+                    hasError: false,
+                    message: "",
+                    location: undefined,
+                },
+                incrementalError: {
+                    hasError: false,
+                    message: "",
+                    location: undefined,
+                },
+                assertionError: {
+                    hasError: false,
+                    message: "",
+                    location: undefined,
+                },
+            };
+            setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset);
+            let allDiagnostics = diagnosticCollection.get(document.uri) ?? [];
 
-                let postOpsList = [
-                    {
-                        startLine: 13,
-                        endLine: 16,
-                        exists: true,
-                    }
-                ];
+            const exppectedCountOfDiagnostics = 3;
+            assert.deepEqual(allDiagnostics.length, exppectedCountOfDiagnostics, `Expected ${exppectedCountOfDiagnostics} diagnostic, got ${allDiagnostics.length}`);
 
-                let mockSqlxBlockMetadata = {
-                    configBlock: configBlockMeta,
-                    preOpsBlock: { preOpsList: preOpsList },
-                    postOpsBlock: { postOpsList: postOpsList },
-                    sqlBlock: sqlBlockMeta,
-                    jsBlock: jsBlockMeta,
-                };
+            let fullQueryDiagnosticRange = allDiagnostics[0].range;
+            const expectedLineNumber = 21;
+            assert.deepEqual(fullQueryDiagnosticRange.start.line, expectedLineNumber, `Expected diagnostic on line ${expectedLineNumber}, got ${fullQueryDiagnosticRange.start.line}`);
 
-                let diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
-                let errorMeta = {
-                    mainQueryError: mockDryRunError,
-                    preOpsError: mockPreOpsDryRunError,
-                    postOpsError: mockPostOpsDryRunError,
-                    nonIncrementalError: {
-                        hasError: false,
-                        message: "",
-                        location: undefined,
-                    },
-                    incrementalError: {
-                        hasError: false,
-                        message: "",
-                        location: undefined,
-                    },
-                    assertionError: {
-                        hasError: false,
-                        message: "",
-                        location: undefined,
-                    },
-                };
-                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset);
-                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
+            let preOpsDiagnosticRange = allDiagnostics[1].range;
+            const expectedPreOpsLineNumber = 7;
+            assert.deepEqual(preOpsDiagnosticRange.start.line, expectedPreOpsLineNumber, `Expected diagnostic on line ${expectedPreOpsLineNumber}, got ${preOpsDiagnosticRange.start.line}`);
 
-                const exppectedCountOfDiagnostics = 3;
-                assert.deepEqual(allDiagnostics.length, exppectedCountOfDiagnostics, `Expected ${exppectedCountOfDiagnostics} diagnostic, got ${allDiagnostics.length}`);
+            let postOpsDiagnosticRange = allDiagnostics[2].range;
+            const expectedPostOpsLineNumber = 12;
+            assert.deepEqual(postOpsDiagnosticRange.start.line, expectedPostOpsLineNumber, `Expected diagnostic on line ${expectedPostOpsLineNumber}, got ${postOpsDiagnosticRange.start.line}`);
 
-                let fullQueryDiagnosticRange = allDiagnostics[0].range;
-                const expectedLineNumber = 21;
-                assert.deepEqual(fullQueryDiagnosticRange.start.line, expectedLineNumber, `Expected diagnostic on line ${expectedLineNumber}, got ${fullQueryDiagnosticRange.start.line}`);
-
-                let preOpsDiagnosticRange = allDiagnostics[1].range;
-                const expectedPreOpsLineNumber = 7;
-                assert.deepEqual(preOpsDiagnosticRange.start.line, expectedPreOpsLineNumber, `Expected diagnostic on line ${expectedPreOpsLineNumber}, got ${preOpsDiagnosticRange.start.line}`);
-
-                let postOpsDiagnosticRange = allDiagnostics[2].range;
-                const expectedPostOpsLineNumber = 12;
-                assert.deepEqual(postOpsDiagnosticRange.start.line, expectedPostOpsLineNumber, `Expected diagnostic on line ${expectedPostOpsLineNumber}, got ${postOpsDiagnosticRange.start.line}`);
-
-
-                done();
-            } catch (error) {
-                console.error('Test failed:', error);
-                done(error);
-            }
-        })();
+        } finally {
+            diagnosticCollection.dispose();
+        }
     });
 });
 
 suite("setDiagnostics incremental", () => {
-    test("Places main query diagnostic at correct line for incremental model with pre_operations", function (done) {
+    test("Places main query diagnostic at correct line for incremental model with pre_operations", async function () {
         this.timeout(9000);
 
         const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0300_INCREMENTAL.sqlx"));
+        const diagnosticCollection = vscode.languages.createDiagnosticCollection('incrementalDiagnostics');
 
-        (async () => {
-            try {
-                const document = await vscode.workspace.openTextDocument(uri);
-                assert.ok(document, 'Document should be opened');
+        try {
+            const document = await vscode.workspace.openTextDocument(uri);
+            assert.ok(document, 'Document should be opened');
 
-                // Simulated BigQuery error at compiled query line 11.
-                // The combined dry-run query is: withPreOps(incrementalPreOpsQuery, incrementalQuery)
-                // The incrementalPreOpsQuery for this model has 9 lines (including leading/trailing
-                // empty lines from Dataform's compiled output). With incrementalTableOffset=1 preamble:
-                //   Lines 1-9:  compiled pre-ops (DECLARE ... with surrounding whitespace)
-                //   Line 10:    blank separator line (trailing \n in pre-ops + \n from withPreOps)
-                //   Line 11:    ELECT   <- main SQL line 1, editor line 14 (0-indexed: 13)
-                const mockDryRunError = {
-                    hasError: true,
-                    message: "(incrementalQuery): Syntax error: Unexpected identifier \"ELECT\" at [11:1]",
-                    location: { line: 11, column: 1 }
-                };
+            // Simulated BigQuery error at compiled query line 11.
+            // The combined dry-run query is: withPreOps(incrementalPreOpsQuery, incrementalQuery)
+            // The incrementalPreOpsQuery for this model has 9 lines (including leading/trailing
+            // empty lines from Dataform's compiled output). With incrementalTableOffset=1 preamble:
+            //   Lines 1-9:  compiled pre-ops (DECLARE ... with surrounding whitespace)
+            //   Line 10:    blank separator line (trailing \n in pre-ops + \n from withPreOps)
+            //   Line 11:    ELECT   <- main SQL line 1, editor line 14 (0-indexed: 13)
+            const mockDryRunError = {
+                hasError: true,
+                message: "(incrementalQuery): Syntax error: Unexpected identifier \"ELECT\" at [11:1]",
+                location: { line: 11, column: 1 }
+            };
 
-                // 0300_INCREMENTAL.sqlx block positions (1-indexed from parser):
-                //   config:    lines 1-3
-                //   pre_ops:   lines 5-11
-                //   sql block: starts at line 14
-                let mockSqlxBlockMetadata = {
-                    configBlock: { startLine: 1, endLine: 3, exists: true },
-                    preOpsBlock: { preOpsList: [{ startLine: 5, endLine: 11, exists: true }] },
-                    postOpsBlock: { postOpsList: [] },
-                    sqlBlock: { startLine: 14, endLine: 18, exists: true },
-                    jsBlock: { startLine: 0, endLine: 0, exists: false },
-                };
+            // 0300_INCREMENTAL.sqlx block positions (1-indexed from parser):
+            //   config:    lines 1-3
+            //   pre_ops:   lines 5-11
+            //   sql block: starts at line 14
+            let mockSqlxBlockMetadata = {
+                configBlock: { startLine: 1, endLine: 3, exists: true },
+                preOpsBlock: { preOpsList: [{ startLine: 5, endLine: 11, exists: true }] },
+                postOpsBlock: { postOpsList: [] },
+                sqlBlock: { startLine: 14, endLine: 18, exists: true },
+                jsBlock: { startLine: 0, endLine: 0, exists: false },
+            };
 
-                let errorMeta = {
-                    mainQueryError: mockDryRunError,
-                    preOpsError: { hasError: false, message: "", location: undefined },
-                    postOpsError: { hasError: false, message: "", location: undefined },
-                    nonIncrementalError: { hasError: false, message: "", location: undefined },
-                    incrementalError: { hasError: false, message: "", location: undefined },
-                    assertionError: { hasError: false, message: "", location: undefined },
-                };
+            let errorMeta = {
+                mainQueryError: mockDryRunError,
+                preOpsError: { hasError: false, message: "", location: undefined },
+                postOpsError: { hasError: false, message: "", location: undefined },
+                nonIncrementalError: { hasError: false, message: "", location: undefined },
+                incrementalError: { hasError: false, message: "", location: undefined },
+                assertionError: { hasError: false, message: "", location: undefined },
+            };
 
-                let diagnosticCollection = vscode.languages.createDiagnosticCollection('incrementalDiagnostics');
+            // compiledPreOpsLineCount=9: the incremental pre_operations string has 9 lines
+            // (including leading/trailing empty lines from Dataform's compiled output).
+            // preOpsOffset = 9 + 2 = 11 (not 7 as the raw editor block count would suggest).
+            // Expected: errLineNumber = (14 + (11 - 1)) - 11 = 13 (0-indexed) = editor line 14 = ELECT
+            const compiledPreOpsLineCount = 9;
+            setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, incrementalTableOffset, compiledPreOpsLineCount);
 
-                // compiledPreOpsLineCount=9: the incremental pre_operations string has 9 lines
-                // (including leading/trailing empty lines from Dataform's compiled output).
-                // preOpsOffset = 9 + 2 = 11 (not 7 as the raw editor block count would suggest).
-                // Expected: errLineNumber = (14 + (11 - 1)) - 11 = 13 (0-indexed) = editor line 14 = ELECT
-                const compiledPreOpsLineCount = 9;
-                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, incrementalTableOffset, compiledPreOpsLineCount);
+            let allDiagnostics = diagnosticCollection.get(document.uri) ?? [];
+            assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
 
-                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
-                assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
+            const expectedLineNumber = 13; // 0-indexed: editor line 14 = SELECT
+            assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
+                `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
 
-                const expectedLineNumber = 13; // 0-indexed: editor line 14 = SELECT
-                assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
-                    `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
-
-                done();
-            } catch (error) {
-                console.error('Test failed:', error);
-                done(error);
-            }
-        })();
+        } finally {
+            diagnosticCollection.dispose();
+        }
     });
 });
 
 suite("setDiagnostics with skipPreOpsInDryRun", () => {
-    test("Places main query diagnostic at correct line for table model when pre_ops are skipped in dry run", function (done) {
+    test("Places main query diagnostic at correct line for table model when pre_ops are skipped in dry run", async function () {
         this.timeout(9000);
 
         const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0200_PLAYER_TRANSFERS.sqlx"));
+        const diagnosticCollection = vscode.languages.createDiagnosticCollection('skipPreOpsDiagnostics');
 
-        (async () => {
-            try {
-                const document = await vscode.workspace.openTextDocument(uri);
-                assert.ok(document, 'Document should be opened');
+        try {
+            const document = await vscode.workspace.openTextDocument(uri);
+            assert.ok(document, 'Document should be opened');
 
-                // Simulated BigQuery error: "FRM" instead of "FROM" inside a CTE.
-                // When skipPreOpsInDryRun=true the query sent to BigQuery is just tq.query
-                // (no pre_ops). tq.query has tableQueryOffset=2 preamble blank lines, so
-                // BQ line 7 corresponds to the SQL content line that contains the typo.
-                //
-                // 0200_PLAYER_TRANSFERS.sqlx block positions (1-indexed from parser):
-                //   config:    lines 1-6
-                //   pre_ops:   lines 8-10  (startLine=8, endLine=10)
-                //   sql block: starts at line 12
-                //
-                // Expected: errLineNumber = (12 + (7 - 2)) - 0 = 17 (0-indexed)
-                //           = editor line 18 = the line with the SQL typo
-                const mockDryRunError = {
-                    hasError: true,
-                    message: "Syntax error: Expected \")\" but got identifier \"FRM\" at [7:3]",
-                    location: { line: 7, column: 3 }
-                };
+            // Simulated BigQuery error: "FRM" instead of "FROM" inside a CTE.
+            // When skipPreOpsInDryRun=true the query sent to BigQuery is just tq.query
+            // (no pre_ops). tq.query has tableQueryOffset=2 preamble blank lines, so
+            // BQ line 7 corresponds to the SQL content line that contains the typo.
+            //
+            // 0200_PLAYER_TRANSFERS.sqlx block positions (1-indexed from parser):
+            //   config:    lines 1-6
+            //   pre_ops:   lines 8-10  (startLine=8, endLine=10)
+            //   sql block: starts at line 12
+            //
+            // Expected: errLineNumber = (12 + (7 - 2)) - 0 = 17 (0-indexed)
+            //           = editor line 18 = the line with the SQL typo
+            const mockDryRunError = {
+                hasError: true,
+                message: "Syntax error: Expected \")\" but got identifier \"FRM\" at [7:3]",
+                location: { line: 7, column: 3 }
+            };
 
-                let mockSqlxBlockMetadata = {
-                    configBlock: { startLine: 1, endLine: 6, exists: true },
-                    preOpsBlock: { preOpsList: [{ startLine: 8, endLine: 10, exists: true }] },
-                    postOpsBlock: { postOpsList: [] },
-                    sqlBlock: { startLine: 12, endLine: 32, exists: true },
-                    jsBlock: { startLine: 0, endLine: 0, exists: false },
-                };
+            let mockSqlxBlockMetadata = {
+                configBlock: { startLine: 1, endLine: 6, exists: true },
+                preOpsBlock: { preOpsList: [{ startLine: 8, endLine: 10, exists: true }] },
+                postOpsBlock: { postOpsList: [] },
+                sqlBlock: { startLine: 12, endLine: 32, exists: true },
+                jsBlock: { startLine: 0, endLine: 0, exists: false },
+            };
 
-                let errorMeta = {
-                    mainQueryError: mockDryRunError,
-                    preOpsError: { hasError: false, message: "", location: undefined },
-                    postOpsError: { hasError: false, message: "", location: undefined },
-                    nonIncrementalError: { hasError: false, message: "", location: undefined },
-                    incrementalError: { hasError: false, message: "", location: undefined },
-                    assertionError: { hasError: false, message: "", location: undefined },
-                    testError: { hasError: false, message: "", location: undefined },
-                    expectedOutputError: { hasError: false, message: "", location: undefined },
-                };
+            let errorMeta = {
+                mainQueryError: mockDryRunError,
+                preOpsError: { hasError: false, message: "", location: undefined },
+                postOpsError: { hasError: false, message: "", location: undefined },
+                nonIncrementalError: { hasError: false, message: "", location: undefined },
+                incrementalError: { hasError: false, message: "", location: undefined },
+                assertionError: { hasError: false, message: "", location: undefined },
+                testError: { hasError: false, message: "", location: undefined },
+                expectedOutputError: { hasError: false, message: "", location: undefined },
+            };
 
-                let diagnosticCollection = vscode.languages.createDiagnosticCollection('skipPreOpsDiagnostics');
+            // preOpsSkippedInDryRun=true: pre_ops not included in the BQ query,
+            // so preOpsOffset must be 0 regardless of the pre_ops block size.
+            setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset, undefined, true);
 
-                // preOpsSkippedInDryRun=true: pre_ops not included in the BQ query,
-                // so preOpsOffset must be 0 regardless of the pre_ops block size.
-                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, tableQueryOffset, undefined, true);
+            let allDiagnostics = diagnosticCollection.get(document.uri) ?? [];
+            assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
 
-                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
-                assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
+            const expectedLineNumber = 17; // 0-indexed: editor line 18 = SQL typo line
+            assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
+                `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
 
-                const expectedLineNumber = 17; // 0-indexed: editor line 18 = SQL typo line
-                assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
-                    `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
-
-                done();
-            } catch (error) {
-                console.error('Test failed:', error);
-                done(error);
-            }
-        })();
+        } finally {
+            diagnosticCollection.dispose();
+        }
     });
 
     test("calculateIncrementalSkipPreOpsOffset returns N_inc_preamble - 1", () => {
@@ -430,67 +415,62 @@ suite("setDiagnostics with skipPreOpsInDryRun", () => {
         assert.strictEqual(calculateIncrementalSkipPreOpsOffset(undefined), undefined);
     });
 
-    test("Places main query diagnostic at correct line for incremental model when pre_ops are skipped in dry run", function (done) {
+    test("Places main query diagnostic at correct line for incremental model when pre_ops are skipped in dry run", async function () {
         this.timeout(9000);
 
         const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/0300_INCREMENTAL.sqlx"));
+        const diagnosticCollection = vscode.languages.createDiagnosticCollection('incrementalSkipPreOpsDiagnostics');
 
-        (async () => {
-            try {
-                const document = await vscode.workspace.openTextDocument(uri);
-                assert.ok(document, 'Document should be opened');
+        try {
+            const document = await vscode.workspace.openTextDocument(uri);
+            assert.ok(document, 'Document should be opened');
 
-                // Simulates an incremental model where iq.incrementalQuery has 3 blank
-                // preamble lines (N_inc_preamble=3) and the BQ error is at [25:3].
-                // calculateIncrementalSkipPreOpsOffset returns N_inc_preamble - 1 = 2.
-                // preOpsOffset = 2 + 2 = 4.
-                // sqlBlock.startLine = 17 (mock, matching the FACT_ALLOCATION_PLAN_ALL_SNAP scenario).
-                // Expected: (17 + (25 - 1)) - 4 = 37 (0-indexed) = editor line 38.
-                const mockDryRunError = {
-                    hasError: true,
-                    message: "Unrecognized name: DEF_SPEC_CODE_ALLO at [25:3]",
-                    location: { line: 25, column: 3 }
-                };
+            // Simulates an incremental model where iq.incrementalQuery has 3 blank
+            // preamble lines (N_inc_preamble=3) and the BQ error is at [25:3].
+            // calculateIncrementalSkipPreOpsOffset returns N_inc_preamble - 1 = 2.
+            // preOpsOffset = 2 + 2 = 4.
+            // sqlBlock.startLine = 17 (mock, matching the FACT_ALLOCATION_PLAN_ALL_SNAP scenario).
+            // Expected: (17 + (25 - 1)) - 4 = 37 (0-indexed) = editor line 38.
+            const mockDryRunError = {
+                hasError: true,
+                message: "Unrecognized name: DEF_SPEC_CODE_ALLO at [25:3]",
+                location: { line: 25, column: 3 }
+            };
 
-                let mockSqlxBlockMetadata = {
-                    configBlock: { startLine: 1, endLine: 14, exists: true },
-                    preOpsBlock: { preOpsList: [{ startLine: 50, endLine: 62, exists: true }] },
-                    postOpsBlock: { postOpsList: [] },
-                    sqlBlock: { startLine: 17, endLine: 46, exists: true },
-                    jsBlock: { startLine: 0, endLine: 0, exists: false },
-                };
+            let mockSqlxBlockMetadata = {
+                configBlock: { startLine: 1, endLine: 14, exists: true },
+                preOpsBlock: { preOpsList: [{ startLine: 50, endLine: 62, exists: true }] },
+                postOpsBlock: { postOpsList: [] },
+                sqlBlock: { startLine: 17, endLine: 46, exists: true },
+                jsBlock: { startLine: 0, endLine: 0, exists: false },
+            };
 
-                let errorMeta = {
-                    mainQueryError: mockDryRunError,
-                    preOpsError: { hasError: false, message: "", location: undefined },
-                    postOpsError: { hasError: false, message: "", location: undefined },
-                    nonIncrementalError: { hasError: false, message: "", location: undefined },
-                    incrementalError: { hasError: false, message: "", location: undefined },
-                    assertionError: { hasError: false, message: "", location: undefined },
-                    testError: { hasError: false, message: "", location: undefined },
-                    expectedOutputError: { hasError: false, message: "", location: undefined },
-                };
+            let errorMeta = {
+                mainQueryError: mockDryRunError,
+                preOpsError: { hasError: false, message: "", location: undefined },
+                postOpsError: { hasError: false, message: "", location: undefined },
+                nonIncrementalError: { hasError: false, message: "", location: undefined },
+                incrementalError: { hasError: false, message: "", location: undefined },
+                assertionError: { hasError: false, message: "", location: undefined },
+                testError: { hasError: false, message: "", location: undefined },
+                expectedOutputError: { hasError: false, message: "", location: undefined },
+            };
 
-                let diagnosticCollection = vscode.languages.createDiagnosticCollection('incrementalSkipPreOpsDiagnostics');
+            // compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *") = 2
+            // preOpsOffset = 2 + 2 = 4
+            const compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *");
+            setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, incrementalTableOffset, compiledPreOpsLineCount);
 
-                // compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *") = 2
-                // preOpsOffset = 2 + 2 = 4
-                const compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset("\n\n\nSELECT *");
-                setDiagnostics(document, errorMeta, diagnosticCollection, mockSqlxBlockMetadata, incrementalTableOffset, compiledPreOpsLineCount);
+            let allDiagnostics = diagnosticCollection.get(document.uri) ?? [];
+            assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
 
-                let allDiagnostics = vscode.languages.getDiagnostics(document.uri);
-                assert.deepEqual(allDiagnostics.length, 1, `Expected 1 diagnostic, got ${allDiagnostics.length}`);
+            const expectedLineNumber = 37; // 0-indexed: editor line 38 = DEF_SPEC_CODE_ALLO
+            assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
+                `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
 
-                const expectedLineNumber = 37; // 0-indexed: editor line 38 = DEF_SPEC_CODE_ALLO
-                assert.deepEqual(allDiagnostics[0].range.start.line, expectedLineNumber,
-                    `Expected diagnostic on line ${expectedLineNumber}, got ${allDiagnostics[0].range.start.line}`);
-
-                done();
-            } catch (error) {
-                console.error('Test failed:', error);
-                done(error);
-            }
-        })();
+        } finally {
+            diagnosticCollection.dispose();
+        }
     });
 });
 
