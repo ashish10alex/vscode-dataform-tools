@@ -10,7 +10,7 @@
 export function calculateIncrementalSkipPreOpsOffset(
     incrementalQuery: string | undefined
 ): number | undefined {
-    if (!incrementalQuery) {
+    if (incrementalQuery === undefined) {
         return undefined;
     }
     const lines = incrementalQuery.split('\n');
