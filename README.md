@@ -3,7 +3,7 @@
   <h1>Dataform Tools</h1>
 </div>
 
-<b>Officially recommended VS Code extension for Dataform by Google[^1]</b> ✨. Supports [Dataform](https://github.com/dataform-co/dataform) versions 2.9.x and 3.x in all major operating systems. Works in: <a href="https://code.visualstudio.com/">VS Code</a>, <a href="https://cursor.com">Cursor</a>, <a href="https://antigravity.google/">Antigravity</a>.
+Officially recommended VS [Code extension for Dataform](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) by Google[^1] ✨. Supports [Dataform](https://github.com/dataform-co/dataform) versions 2.9.x and 3.x in all major operating systems. Works in: VS Code, Cursor, Antigravity.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
