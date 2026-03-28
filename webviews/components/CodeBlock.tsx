@@ -44,7 +44,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
         >
           {copied ? (
             <div className="flex items-center space-x-1 px-1">
-              <Check className="w-3.5 h-3.5 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-[var(--vscode-debugIcon-successForeground)]" />
               <span className="text-[10px]">Copied</span>
             </div>
           ) : (
@@ -81,7 +81,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
                       {showLineNumbers && (
                         <span 
                           className={`table-cell text-right pr-4 select-none w-8 ${
-                            hasError ? 'text-red-500 font-bold' : 'text-[var(--vscode-editorLineNumber-foreground)] opacity-50'
+                            hasError ? 'text-[var(--vscode-errorForeground)] font-bold' : 'text-[var(--vscode-editorLineNumber-foreground)] opacity-50'
                           }`}
                         >
                           {hasError ? '▶' : lineNum}
@@ -94,7 +94,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
                           <span key={key} {...getTokenProps({ token, key })} />
                         ))}
                         {errorMsg && (
-                          <span className="pl-6 text-red-500 opacity-80 select-none text-xs italic align-middle inline-block">
+                          <span className="pl-6 text-[var(--vscode-errorForeground)] opacity-80 select-none text-xs italic align-middle inline-block">
                             // {errorMsg}
                           </span>
                         )}
