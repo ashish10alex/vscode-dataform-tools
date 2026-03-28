@@ -486,9 +486,9 @@
         "@vscode/codicons": "^0.0.44",
         "comment-parser": "^1.4.1",
         "dompurify": "^3.3.1",
-        "highlight.js": "^11.11.1",
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
+        "prism-react-renderer": "^2.4.1",
         "tablemark": "^3.1.0",
         "typescript": "^5.7.3"
     }
