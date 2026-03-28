@@ -1031,6 +1031,8 @@ export class CompiledQueryPanel {
         const dryRunErrorsByNodeName: Record<string, ErrorAnnotation> = {};
         const dryRunIncrementalErrorsByNodeName: Record<string, ErrorAnnotation> = {};
         const dryRunIncrementalErrorsByNodeType: Record<string, ErrorAnnotation> = {};
+        const dryRunExpectedOutputErrorsByNodeName: Record<string, ErrorAnnotation> = {};
+        const dryRunExpectedOutputErrorsByNodeType: Record<string, ErrorAnnotation> = {};
 
         if ((nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
             dryRunErrorsByNodeType["table"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
@@ -1077,18 +1079,22 @@ export class CompiledQueryPanel {
         if (assertionDryRunResult?.error?.hasError && !(perAssertionDryRunResults?.length)) {
             dryRunErrorsByNodeType["assertion"] = { message: assertionDryRunResult.error.message, location: assertionDryRunResult.error.location };
         }
-        {
-            const parts = [
-                testDryRunResult?.error?.hasError ? `(Input): ${testDryRunResult.error.message}` : "",
-                expectedOutputDryRunResult?.error?.hasError ? `(Expected output): ${expectedOutputDryRunResult.error.message}` : "",
-            ].filter(Boolean);
-            if (parts.length) { dryRunErrorsByNodeType["test"] = { message: parts.join("\n") }; }
+        if (testDryRunResult?.error?.hasError && !(perTestDryRunResults?.length)) {
+            dryRunErrorsByNodeType["test"] = { message: testDryRunResult.error.message, location: testDryRunResult.error.location };
         }
         (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             if (result?.error?.hasError && testQueriesMeta[i]) {
                 dryRunErrorsByNodeName[testQueriesMeta[i].name] = { message: result.error.message, location: result.error.location };
             }
         });
+        (perExpectedOutputDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
+            if (result?.error?.hasError && testQueriesMeta[i]) {
+                dryRunExpectedOutputErrorsByNodeName[testQueriesMeta[i].name] = { message: result.error.message, location: result.error.location };
+            }
+        });
+        if (expectedOutputDryRunResult?.error?.hasError) {
+          dryRunExpectedOutputErrorsByNodeType["test"] = { message: expectedOutputDryRunResult.error.message, location: expectedOutputDryRunResult.error.location };
+        }
 
         // errorMessage is now null for dry-run errors; BigQuery client auth errors arrive via a separate path
         const errorMessage = null;
@@ -1178,6 +1184,8 @@ export class CompiledQueryPanel {
                 "dryRunErrorsByNodeName": dryRunErrorsByNodeName,
                 "dryRunIncrementalErrorsByNodeName": dryRunIncrementalErrorsByNodeName,
                 "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
+                "dryRunExpectedOutputErrorsByNodeName": dryRunExpectedOutputErrorsByNodeName,
+                "dryRunExpectedOutputErrorsByNodeType": dryRunExpectedOutputErrorsByNodeType,
                 "dryRunQueryByNodeName": dryRunQueryByNodeName,
                 "dryRunIncrementalQueryByNodeName": dryRunIncrementalQueryByNodeName,
                 "dryRunNonIncrementalQueryByNodeName": dryRunNonIncrementalQueryByNodeName,
@@ -1214,6 +1222,8 @@ export class CompiledQueryPanel {
                 dryRunErrorsByNodeName,
                 dryRunIncrementalErrorsByNodeName,
                 dryRunIncrementalErrorsByNodeType,
+                dryRunExpectedOutputErrorsByNodeName,
+                dryRunExpectedOutputErrorsByNodeType,
                 dryRunQueryByNodeName,
                 dryRunIncrementalQueryByNodeName,
                 dryRunNonIncrementalQueryByNodeName,

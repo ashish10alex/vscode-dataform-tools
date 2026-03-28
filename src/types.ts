@@ -421,6 +421,8 @@ export interface WebviewMessage {
   dryRunErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
   dryRunIncrementalErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
   dryRunIncrementalErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunExpectedOutputErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
   dryRunQueryByNodeName?: Record<string, string>;
   dryRunIncrementalQueryByNodeName?: Record<string, string>;
   dryRunNonIncrementalQueryByNodeName?: Record<string, string>;
@@ -518,6 +520,8 @@ export interface CachedResults {
     dryRunErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunIncrementalErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunExpectedOutputErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunExpectedOutputErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunQueryByNodeName: Record<string, string>;
     dryRunIncrementalQueryByNodeName: Record<string, string>;
     dryRunNonIncrementalQueryByNodeName: Record<string, string>;

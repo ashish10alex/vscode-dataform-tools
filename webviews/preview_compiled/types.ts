@@ -44,6 +44,8 @@ export interface WebviewState {
   dryRunErrorsByNodeName?: Record<string, DryRunErrorAnnotation>;
   dryRunIncrementalErrorsByNodeName?: Record<string, DryRunErrorAnnotation>;
   dryRunIncrementalErrorsByNodeType?: Record<string, DryRunErrorAnnotation>;
+  dryRunExpectedOutputErrorsByNodeName?: Record<string, DryRunErrorAnnotation>;
+  dryRunExpectedOutputErrorsByNodeType?: Record<string, DryRunErrorAnnotation>;
   dryRunQueryByNodeName?: Record<string, string>;
   dryRunIncrementalQueryByNodeName?: Record<string, string>;
   dryRunNonIncrementalQueryByNodeName?: Record<string, string>;
