@@ -41,7 +41,7 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             }
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            const regularBlockDiagnostic = new vscode.Diagnostic(range, `(Main Query): ${errorMeta.mainQueryError.message}`, severity);
+            const regularBlockDiagnostic = new vscode.Diagnostic(range, `${errorMeta.mainQueryError.message}`, severity);
             diagnostics.push(regularBlockDiagnostic);
         }
 
