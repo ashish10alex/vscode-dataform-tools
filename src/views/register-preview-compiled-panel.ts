@@ -127,7 +127,7 @@ export class CompiledQueryPanel {
     public currentFileMetadata: any;
     private lastMessageTime = 0;
     private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
-    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string | null, dryRunStatByNodeType: Record<string, string>, dryRunStatByNodeName: Record<string, string>, dryRunErrorsByNodeType: Record<string, string>, dryRunErrorsByNodeName: Record<string, string>, location: string|undefined, compilerOptions: string|undefined};
+    private _cachedResults?: {fileMetadata: any, curFileMeta:any, targetTablesOrViews:any, errorMessage: string | null, dryRunStatByNodeType: Record<string, string>, dryRunStatByNodeName: Record<string, string>, dryRunErrorsByNodeType: Record<string, { message: string; location?: { line: number; column: number } }>, dryRunErrorsByNodeName: Record<string, { message: string; location?: { line: number; column: number } }>, dryRunIncrementalErrorsByNodeName: Record<string, { message: string; location?: { line: number; column: number } }>, dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: { line: number; column: number } }>, dryRunQueryByNodeName: Record<string, string>, dryRunIncrementalQueryByNodeName: Record<string, string>, dryRunNonIncrementalQueryByNodeName: Record<string, string>, location: string|undefined, compilerOptions: string|undefined};
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
@@ -352,6 +352,11 @@ export class CompiledQueryPanel {
                     "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
                     "dryRunErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunErrorsByNodeType,
                     "dryRunErrorsByNodeName": this.centerPanel?._cachedResults?.dryRunErrorsByNodeName,
+                    "dryRunIncrementalErrorsByNodeName": this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeName,
+                    "dryRunIncrementalErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType,
+                    "dryRunQueryByNodeName": this.centerPanel?._cachedResults?.dryRunQueryByNodeName,
+                    "dryRunIncrementalQueryByNodeName": this.centerPanel?._cachedResults?.dryRunIncrementalQueryByNodeName,
+                    "dryRunNonIncrementalQueryByNodeName": this.centerPanel?._cachedResults?.dryRunNonIncrementalQueryByNodeName,
                     "compiledQuerySchema": compiledQuerySchema,
                     "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
                     "models": this.centerPanel?._cachedResults?.curFileMeta.fileMetadata.tables,
@@ -391,6 +396,8 @@ export class CompiledQueryPanel {
                     const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
                     const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
                     const dryRunErrorsByNodeName = this.centerPanel?._cachedResults?.dryRunErrorsByNodeName;
+                    const dryRunIncrementalErrorsByNodeName = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeName;
+                    const dryRunIncrementalErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
                     this.centerPanel?.webviewPanel.webview.postMessage({
                         "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                         "assertionQuery": fileMetadata.queryMeta.assertionQuery,
@@ -410,6 +417,11 @@ export class CompiledQueryPanel {
                         "dryRunStatByNodeName": dryRunStatByNodeName,
                         "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
                         "dryRunErrorsByNodeName": dryRunErrorsByNodeName,
+                        "dryRunIncrementalErrorsByNodeName": dryRunIncrementalErrorsByNodeName,
+                        "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
+                        "dryRunQueryByNodeName": this.centerPanel?._cachedResults?.dryRunQueryByNodeName,
+                        "dryRunIncrementalQueryByNodeName": this.centerPanel?._cachedResults?.dryRunIncrementalQueryByNodeName,
+                        "dryRunNonIncrementalQueryByNodeName": this.centerPanel?._cachedResults?.dryRunNonIncrementalQueryByNodeName,
                         "compiledQuerySchema": compiledQuerySchema,
                         "targetTablesOrViews": targetTablesOrViews,
                         "models": curFileMeta.fileMetadata.tables,
@@ -447,6 +459,8 @@ export class CompiledQueryPanel {
                 const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
                 const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
                 const dryRunErrorsByNodeName = this.centerPanel?._cachedResults?.dryRunErrorsByNodeName;
+                const dryRunIncrementalErrorsByNodeNameLineage = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeName;
+                const dryRunIncrementalErrorsByNodeTypeLineage = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
                 const location = this.centerPanel?._cachedResults?.location || "eu"; // TODO: check if there is way to have a better default
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata.tables[0].target, location);
@@ -469,6 +483,11 @@ export class CompiledQueryPanel {
                     "dryRunStatByNodeName": dryRunStatByNodeName,
                     "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
                     "dryRunErrorsByNodeName": dryRunErrorsByNodeName,
+                    "dryRunIncrementalErrorsByNodeName": dryRunIncrementalErrorsByNodeNameLineage,
+                    "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeTypeLineage,
+                    "dryRunQueryByNodeName": this.centerPanel?._cachedResults?.dryRunQueryByNodeName,
+                    "dryRunIncrementalQueryByNodeName": this.centerPanel?._cachedResults?.dryRunIncrementalQueryByNodeName,
+                    "dryRunNonIncrementalQueryByNodeName": this.centerPanel?._cachedResults?.dryRunNonIncrementalQueryByNodeName,
                     "compiledQuerySchema": compiledQuerySchema,
                     "targetTablesOrViews": targetTablesOrViews,
                     "models": curFileMeta.fileMetadata.tables,
@@ -873,6 +892,31 @@ export class CompiledQueryPanel {
         const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
         const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
         const testQueriesMeta: { name: string; testQuery: string; expectedOutputQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.testQueries ?? [];
+
+        // Build exact combined query strings (matching what dryRunOrchestrator sends to BigQuery)
+        const skipPreOpsInDryRun = !!vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
+        const withPreOpsLocal = (preOpsQuery: string, query: string) => {
+            if (skipPreOpsInDryRun || !preOpsQuery) { return query; }
+            const p = /;\s*$/.test(preOpsQuery) ? preOpsQuery : preOpsQuery + ";";
+            return p + "\n" + query;
+        };
+        const dryRunQueryByNodeName: Record<string, string> = {};
+        const dryRunIncrementalQueryByNodeName: Record<string, string> = {};
+        const dryRunNonIncrementalQueryByNodeName: Record<string, string> = {};
+        (tableQueriesMeta ?? []).forEach((tq) => {
+            dryRunQueryByNodeName[tq.targetName] = withPreOpsLocal(tq.preOpsQuery, tq.query);
+        });
+        (incrementalQueriesMeta ?? []).forEach((iq) => {
+            dryRunNonIncrementalQueryByNodeName[iq.targetName] = withPreOpsLocal(iq.preOpsQuery, iq.nonIncrementalQuery);
+            dryRunIncrementalQueryByNodeName[iq.targetName] = withPreOpsLocal(iq.incrementalPreOpsQuery, iq.incrementalQuery);
+        });
+        (operationQueriesMeta ?? []).forEach((oq) => {
+            dryRunQueryByNodeName[oq.targetName] = withPreOpsLocal(oq.preOpsQuery, oq.query);
+        });
+        (assertionQueriesMeta ?? []).forEach((aq) => {
+            dryRunQueryByNodeName[aq.targetName] = aq.query;
+        });
+
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
@@ -982,64 +1026,67 @@ export class CompiledQueryPanel {
 
 
         // Build structured error maps (keyed by node type and node name) instead of concatenated string
-        const dryRunErrorsByNodeType: Record<string, string> = {};
-        const dryRunErrorsByNodeName: Record<string, string> = {};
+        type ErrorAnnotation = { message: string; location?: { line: number; column: number } };
+        const dryRunErrorsByNodeType: Record<string, ErrorAnnotation> = {};
+        const dryRunErrorsByNodeName: Record<string, ErrorAnnotation> = {};
+        const dryRunIncrementalErrorsByNodeName: Record<string, ErrorAnnotation> = {};
+        const dryRunIncrementalErrorsByNodeType: Record<string, ErrorAnnotation> = {};
 
         if ((nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["table"] = dryRunResult.error.message;
-            dryRunErrorsByNodeType["view"] = dryRunResult.error.message;
+            dryRunErrorsByNodeType["table"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
+            dryRunErrorsByNodeType["view"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
         }
         if ((nodeType === "operations" || (isJsFile && hasOperationsNodes && !hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["operations"] = dryRunResult.error.message;
+            dryRunErrorsByNodeType["operations"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
         }
         if (nodeType === "incremental" || (isJsFile && hasIncrementalNodes)) {
-            const parts = [
-                incrementalDryRunResult?.error?.hasError ? `(Incremental): ${incrementalDryRunResult.error.message}` : "",
-                nonIncrementalDryRunResult?.error?.hasError ? `(Non incremental): ${nonIncrementalDryRunResult.error.message}` : "",
-            ].filter(Boolean);
-            if (parts.length) { dryRunErrorsByNodeType["incremental"] = parts.join("\n"); }
+            if (incrementalDryRunResult?.error?.hasError) {
+                dryRunIncrementalErrorsByNodeType["incremental"] = { message: incrementalDryRunResult.error.message, location: incrementalDryRunResult.error.location };
+            }
+            if (nonIncrementalDryRunResult?.error?.hasError) {
+                dryRunErrorsByNodeType["incremental"] = { message: nonIncrementalDryRunResult.error.message, location: nonIncrementalDryRunResult.error.location };
+            }
         }
         // Per-node errors by target name (most precise — takes priority over node-type fallback)
         (perAssertionDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             if (result?.error?.hasError && assertionQueriesMeta[i]) {
-                dryRunErrorsByNodeName[assertionQueriesMeta[i].targetName] = result.error.message;
+                dryRunErrorsByNodeName[assertionQueriesMeta[i].targetName] = { message: result.error.message, location: result.error.location };
             }
         });
         (perTableDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             if (result?.error?.hasError && tableQueriesMeta[i]) {
-                dryRunErrorsByNodeName[tableQueriesMeta[i].targetName] = result.error.message;
+                dryRunErrorsByNodeName[tableQueriesMeta[i].targetName] = { message: result.error.message, location: result.error.location };
             }
         });
         (perNonIncrementalDryRunResults ?? []).forEach((nonIncResult: BigQueryDryRunResponse, i: number) => {
             const incResult = (perIncrementalDryRunResults ?? [])[i];
-            const parts = [
-                incResult?.error?.hasError ? `(Incremental): ${incResult.error.message}` : "",
-                nonIncResult?.error?.hasError ? `(Non incremental): ${nonIncResult.error.message}` : "",
-            ].filter(Boolean);
-            if (parts.length > 0 && incrementalQueriesMeta[i]) {
-                dryRunErrorsByNodeName[incrementalQueriesMeta[i].targetName] = parts.join("\n");
+            if (nonIncResult?.error?.hasError && incrementalQueriesMeta[i]) {
+                dryRunErrorsByNodeName[incrementalQueriesMeta[i].targetName] = { message: nonIncResult.error.message, location: nonIncResult.error.location };
+            }
+            if (incResult?.error?.hasError && incrementalQueriesMeta[i]) {
+                dryRunIncrementalErrorsByNodeName[incrementalQueriesMeta[i].targetName] = { message: incResult.error.message, location: incResult.error.location };
             }
         });
         (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             if (result?.error?.hasError && operationQueriesMeta[i]) {
-                dryRunErrorsByNodeName[operationQueriesMeta[i].targetName] = result.error.message;
+                dryRunErrorsByNodeName[operationQueriesMeta[i].targetName] = { message: result.error.message, location: result.error.location };
             }
         });
         // Fallback for assertion node type (only when perAssertionDryRunResults is unavailable,
         // so we don't bleed one assertion's error onto all other assertions via the type-level key)
         if (assertionDryRunResult?.error?.hasError && !(perAssertionDryRunResults?.length)) {
-            dryRunErrorsByNodeType["assertion"] = assertionDryRunResult.error.message;
+            dryRunErrorsByNodeType["assertion"] = { message: assertionDryRunResult.error.message, location: assertionDryRunResult.error.location };
         }
         {
             const parts = [
                 testDryRunResult?.error?.hasError ? `(Input): ${testDryRunResult.error.message}` : "",
                 expectedOutputDryRunResult?.error?.hasError ? `(Expected output): ${expectedOutputDryRunResult.error.message}` : "",
             ].filter(Boolean);
-            if (parts.length) { dryRunErrorsByNodeType["test"] = parts.join("\n"); }
+            if (parts.length) { dryRunErrorsByNodeType["test"] = { message: parts.join("\n") }; }
         }
         (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             if (result?.error?.hasError && testQueriesMeta[i]) {
-                dryRunErrorsByNodeName[testQueriesMeta[i].name] = result.error.message;
+                dryRunErrorsByNodeName[testQueriesMeta[i].name] = { message: result.error.message, location: result.error.location };
             }
         });
 
@@ -1129,6 +1176,11 @@ export class CompiledQueryPanel {
                 "dryRunStatByNodeName": dryRunStatByNodeName,
                 "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
                 "dryRunErrorsByNodeName": dryRunErrorsByNodeName,
+                "dryRunIncrementalErrorsByNodeName": dryRunIncrementalErrorsByNodeName,
+                "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
+                "dryRunQueryByNodeName": dryRunQueryByNodeName,
+                "dryRunIncrementalQueryByNodeName": dryRunIncrementalQueryByNodeName,
+                "dryRunNonIncrementalQueryByNodeName": dryRunNonIncrementalQueryByNodeName,
                 "testDryRunResult": testDryRunResult,
                 "expectedOutputDryRunResult": expectedOutputDryRunResult,
                 "currencySymbol": currencySymbol,
@@ -1160,6 +1212,11 @@ export class CompiledQueryPanel {
                 dryRunStatByNodeName,
                 dryRunErrorsByNodeType,
                 dryRunErrorsByNodeName,
+                dryRunIncrementalErrorsByNodeName,
+                dryRunIncrementalErrorsByNodeType,
+                dryRunQueryByNodeName,
+                dryRunIncrementalQueryByNodeName,
+                dryRunNonIncrementalQueryByNodeName,
                 location,
                 compilerOptions
             };

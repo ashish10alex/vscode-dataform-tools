@@ -24,6 +24,7 @@ import * as RadixTabs from "@radix-ui/react-tabs";
 
 
 
+
 interface CompiledQueryTabProps {
   state: WebviewState;
 }
@@ -328,14 +329,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
                 {/* Inline dry-run error — looked up by node name (precise) then node type (fallback) */}
                 {(() => {
-                  const modelError =
+                  const nonIncError =
                     (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
-                    (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined) ??
-                    '';
-                  return modelError ? (
+                    (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined);
+                  const incError =
+                    (nodeNameKey ? state.dryRunIncrementalErrorsByNodeName?.[nodeNameKey] : undefined) ??
+                    (sameTypeCount === 1 ? state.dryRunIncrementalErrorsByNodeType?.[model.type] : undefined);
+                  const errorDisplay = [
+                    incError ? `(Incremental): ${incError.message}` : '',
+                    nonIncError ? (model.type === 'incremental' ? `(Non incremental): ${nonIncError.message}` : nonIncError.message) : '',
+                  ].filter(Boolean).join('\n');
+                  return errorDisplay ? (
                     <div className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                      <div className="overflow-auto whitespace-pre-wrap">{modelError}</div>
+                      <div className="overflow-auto whitespace-pre-wrap">{errorDisplay}</div>
                     </div>
                   ) : null;
                 })()}
@@ -625,10 +632,30 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             ? `test_${model.name}`
             : `${model.type}_${model.target?.database}_${model.target?.schema}_${model.target?.name}`;
 
+          const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
+          const sameTypeCount = state.models?.filter((m: any) => m.type === model.type).length ?? 0;
+          const nodeNameKey = model.type === 'test' ? model.name : nodeId;
+          const modelDryRunError =
+            (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
+            (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined);
+          const modelIncrementalDryRunError =
+            (nodeNameKey ? state.dryRunIncrementalErrorsByNodeName?.[nodeNameKey] : undefined) ??
+            (sameTypeCount === 1 ? state.dryRunIncrementalErrorsByNodeType?.[model.type] : undefined);
+          const errorAnnotations = modelDryRunError?.location?.line
+            ? [{ line: modelDryRunError.location.line, message: modelDryRunError.message }]
+            : undefined;
+          const incrementalErrorAnnotations = modelIncrementalDryRunError?.location?.line
+            ? [{ line: modelIncrementalDryRunError.location.line, message: modelIncrementalDryRunError.message }]
+            : undefined;
+
           if (model.type === 'incremental') {
             const incPreOps = (model.incrementalPreOps || []).join('\n\n');
-            const incTabCode = [incPreOps, incPreOps && model.incrementalQuery ? ';' : '', model.incrementalQuery].filter(Boolean).join('\n');
-            const nonIncTabCode = [...(model.preOps || []), model.query].filter(Boolean).join('\n\n');
+            const trimmedIncQuery = model.incrementalQuery?.trimStart() ?? '';
+            const incTabCodeFallback = [incPreOps, incPreOps && trimmedIncQuery ? ';' : '', trimmedIncQuery].filter(Boolean).join('\n');
+            const trimmedNonIncQuery = model.query?.trimStart() ?? '';
+            const nonIncTabCodeFallback = [...(model.preOps || []), trimmedNonIncQuery].filter(Boolean).join('\n\n');
+            const incTabCode = (nodeNameKey && state.dryRunIncrementalQueryByNodeName?.[nodeNameKey]) ?? incTabCodeFallback;
+            const nonIncTabCode = (nodeNameKey && state.dryRunNonIncrementalQueryByNodeName?.[nodeNameKey]) ?? nonIncTabCodeFallback;
             const activeTab = activeIncrementalTab[modelId] || 'incremental';
 
             const elements: React.ReactElement[] = [];
@@ -676,14 +703,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       </RadixTabs.List>
                       <RadixTabs.Content value="incremental">
                         {incTabCode ? (
-                          <CodeBlock code={incTabCode} language="sql" showLineNumbers />
+                          <CodeBlock code={incTabCode} language="sql" showLineNumbers errorAnnotations={incrementalErrorAnnotations} />
                         ) : (
                           <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No incremental query.</p>
                         )}
                       </RadixTabs.Content>
                       <RadixTabs.Content value="non-incremental">
                         {nonIncTabCode ? (
-                          <CodeBlock code={nonIncTabCode} language="sql" showLineNumbers />
+                          <CodeBlock code={nonIncTabCode} language="sql" showLineNumbers errorAnnotations={errorAnnotations} />
                         ) : (
                           <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No non-incremental query.</p>
                         )}
@@ -724,7 +751,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       aria-labelledby={`query-button-${key}`}
                       className="border-t border-[var(--vscode-widget-border)]"
                     >
-                      <CodeBlock code={model.postOps.join('\n')} language="sql" showLineNumbers />
+                      <CodeBlock code={model.postOps.join('\n').trimStart()} language="sql" showLineNumbers />
                     </div>
                   )}
                 </div>
@@ -779,14 +806,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       </RadixTabs.List>
                       <RadixTabs.Content value="input">
                         {model.testQuery ? (
-                          <CodeBlock code={model.testQuery} language="sql" showLineNumbers />
+                          <CodeBlock code={model.testQuery.trimStart()} language="sql" showLineNumbers errorAnnotations={errorAnnotations} />
                         ) : (
                           <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No input query.</p>
                         )}
                       </RadixTabs.Content>
                       <RadixTabs.Content value="expected">
                         {model.expectedOutputQuery ? (
-                          <CodeBlock code={model.expectedOutputQuery} language="sql" showLineNumbers />
+                          <CodeBlock code={model.expectedOutputQuery.trimStart()} language="sql" showLineNumbers />
                         ) : (
                           <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">No expected output query.</p>
                         )}
@@ -801,14 +828,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           // Non-incremental models: existing accordion logic
           const blocks: { key: string; label: string; code: string }[] = [];
 
+          const nodeDisplayQuery = (nodeNameKey && state.dryRunQueryByNodeName?.[nodeNameKey])
+            ?? model.query?.trimStart() ?? '';
+
           if (model.preOps?.length) {
-            blocks.push({ key: `preOps_${modelId}`, label: 'Pre Operations', code: model.preOps.join('\n') });
+            blocks.push({ key: `preOps_${modelId}`, label: 'Pre Operations', code: model.preOps.join('\n').trimStart() });
           }
           if (model.query) {
-            blocks.push({ key: `query_${modelId}`, label: queryLabelByType(model.type), code: model.query });
+            blocks.push({ key: `query_${modelId}`, label: queryLabelByType(model.type), code: nodeDisplayQuery });
           }
           if (model.postOps?.length) {
-            blocks.push({ key: `postOps_${modelId}`, label: 'Post Operations', code: model.postOps.join('\n') });
+            blocks.push({ key: `postOps_${modelId}`, label: 'Post Operations', code: model.postOps.join('\n').trimStart() });
           }
 
           return blocks.map(({ key, label, code }) => (
@@ -838,7 +868,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   aria-labelledby={`query-button-${key}`}
                   className="border-t border-[var(--vscode-widget-border)]"
                 >
-                  <CodeBlock code={code} language="sql" showLineNumbers />
+                  <CodeBlock code={code} language="sql" showLineNumbers errorAnnotations={key.startsWith('query_') ? errorAnnotations : undefined} />
                 </div>
               )}
             </div>

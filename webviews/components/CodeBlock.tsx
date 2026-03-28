@@ -12,11 +12,15 @@ interface CodeBlockProps {
   language: string;
   className?: string;
   showLineNumbers?: boolean;
+  errorAnnotations?: Array<{ line: number; message: string }>;
 }
 
-export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className, showLineNumbers }) => {
+export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className, showLineNumbers, errorAnnotations }) => {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
+
+  const errorLineSet = new Set((errorAnnotations ?? []).map(a => a.line));
+  const errorMessageMap = new Map((errorAnnotations ?? []).map(a => [a.line, a.message]));
 
   useEffect(() => {
     if (codeRef.current) {
@@ -57,15 +61,47 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, className,
           <div className="overflow-x-auto p-4 pt-10 flex">
             <pre
               aria-hidden="true"
-              className="select-none text-right pr-4 text-[var(--vscode-editorLineNumber-foreground)] opacity-50 shrink-0 m-0 p-0 bg-transparent border-0"
+              className="select-none text-right pr-4 shrink-0 m-0 p-0 bg-transparent border-0"
             >
-              {code.split('\n').map((_, i) => i + 1).join('\n')}
+              {code.split('\n').map((_, i) => {
+                const lineNum = i + 1;
+                const hasError = errorLineSet.has(lineNum);
+                return (
+                  <React.Fragment key={i}>
+                    <span className={hasError
+                      ? 'text-red-500 font-bold'
+                      : 'text-[var(--vscode-editorLineNumber-foreground)] opacity-50'
+                    }>
+                      {hasError ? '▶' : lineNum}
+                    </span>
+                    {'\n'}
+                  </React.Fragment>
+                );
+              })}
             </pre>
             <pre className="flex-1 min-w-0 m-0 p-0 bg-transparent border-0 overflow-visible">
               <code ref={codeRef} className={`language-${language}`}>
                 {code}
               </code>
             </pre>
+            {errorAnnotations && errorAnnotations.length > 0 && (
+              <pre
+                aria-hidden="true"
+                className="shrink-0 pl-6 text-red-500 opacity-80 m-0 p-0 bg-transparent border-0 select-none"
+              >
+                {code.split('\n').map((_, i) => {
+                  const lineNum = i + 1;
+                  const msg = errorMessageMap.get(lineNum);
+                  const truncated = msg && msg.length > 60 ? msg.slice(0, 60) + '…' : msg;
+                  return (
+                    <React.Fragment key={i}>
+                      <span title={msg || undefined}>{truncated ?? ''}</span>
+                      {'\n'}
+                    </React.Fragment>
+                  );
+                })}
+              </pre>
+            )}
           </div>
         ) : (
           <pre className="overflow-x-auto p-4 pt-10">

@@ -9,6 +9,11 @@ export interface LastModifiedTimeMetaItem {
   error: { message: string | undefined };
 }
 
+export interface DryRunErrorAnnotation {
+  message: string;
+  location?: { line: number; column: number };
+}
+
 export interface WebviewState {
   preOperations?: string;
   postOperations?: string;
@@ -35,8 +40,13 @@ export interface WebviewState {
   workspaceFolder?: string;
   dryRunStatByNodeType?: Record<string, string>;
   dryRunStatByNodeName?: Record<string, string>;
-  dryRunErrorsByNodeType?: Record<string, string>;
-  dryRunErrorsByNodeName?: Record<string, string>;
+  dryRunErrorsByNodeType?: Record<string, DryRunErrorAnnotation>;
+  dryRunErrorsByNodeName?: Record<string, DryRunErrorAnnotation>;
+  dryRunIncrementalErrorsByNodeName?: Record<string, DryRunErrorAnnotation>;
+  dryRunIncrementalErrorsByNodeType?: Record<string, DryRunErrorAnnotation>;
+  dryRunQueryByNodeName?: Record<string, string>;
+  dryRunIncrementalQueryByNodeName?: Record<string, string>;
+  dryRunNonIncrementalQueryByNodeName?: Record<string, string>;
   modelType?: string;
   actionTypes?: string[];
   workflowInvocationUrlGCP?: string;
