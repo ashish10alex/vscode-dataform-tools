@@ -55,7 +55,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
         {/* Code Rendering */}
         <Highlight
           theme={themes.vsDark} // Falls back beautifully into standard VS Code colors
-          code={code.trim()}
+          code={code}
           language={language as any}
         >
           {({ className, style, tokens, getLineProps, getTokenProps }) => (
