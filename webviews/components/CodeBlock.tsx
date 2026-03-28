@@ -93,18 +93,12 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
                         {line.map((token, key) => (
                           <span key={key} {...getTokenProps({ token, key })} />
                         ))}
+                        {errorMsg && (
+                          <span className="pl-6 text-red-500 opacity-80 select-none text-xs italic align-middle inline-block">
+                            // {errorMsg}
+                          </span>
+                        )}
                       </span>
-
-                      {/* Column 3: Error Annotations */}
-                      {errorAnnotations && errorAnnotations.length > 0 && (
-                        <span className="table-cell pl-6 text-red-500 opacity-80 select-none text-xs align-middle w-auto">
-                          {errorMsg ? (
-                            <span title={errorMsg} className="italic">
-                              // {errorMsg.length > 60 ? errorMsg.slice(0, 60) + '…' : errorMsg}
-                            </span>
-                          ) : null}
-                        </span>
-                      )}
                     </div>
                   );
                 })}
