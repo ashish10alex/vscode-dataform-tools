@@ -506,3 +506,21 @@ export interface GitFileChangeRaw {
 export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:string}, clientOptions:any};
 
 export type ExecutionMode = "cli" | "api" | "api_workspace";
+
+export interface CachedResults {
+    fileMetadata: any;
+    curFileMeta: any;
+    targetTablesOrViews: any;
+    errorMessage: string | null;
+    dryRunStatByNodeType: Record<string, string>;
+    dryRunStatByNodeName: Record<string, string>;
+    dryRunErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunIncrementalErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunQueryByNodeName: Record<string, string>;
+    dryRunIncrementalQueryByNodeName: Record<string, string>;
+    dryRunNonIncrementalQueryByNodeName: Record<string, string>;
+    location: string | undefined;
+    compilerOptions: string | undefined;
+}
