@@ -18,8 +18,14 @@ export const useVSCodeMessage = () => {
           ...prevState,
           ...message,
           // Unless the host explicitly says recompiling/dryRunning: true, clear it
-          recompiling: message.recompiling === true ? true : false,
-          dryRunning: message.dryRunning === true ? true : false,
+          recompiling:
+            typeof message.recompiling === "boolean"
+              ? message.recompiling
+              : (prevState.recompiling ?? false),
+          dryRunning:
+            typeof message.dryRunning === "boolean"
+              ? message.dryRunning
+              : (prevState.dryRunning ?? false),
         };
 
         // When starting a new compilation or dry run, clear old errors and stats 
