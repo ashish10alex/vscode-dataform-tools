@@ -652,13 +652,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             (nodeNameKey ? state.dryRunExpectedOutputErrorsByNodeName?.[nodeNameKey] : undefined) ??
             (sameTypeCount === 1 ? state.dryRunExpectedOutputErrorsByNodeType?.[model.type] : undefined);
 
-          const errorAnnotations = modelDryRunError?.location?.line
+          const errorAnnotations = modelDryRunError?.location?.line != null
             ? [{ line: modelDryRunError.location.line, message: modelDryRunError.message }]
             : undefined;
-          const incrementalErrorAnnotations = modelIncrementalDryRunError?.location?.line
+          const incrementalErrorAnnotations = modelIncrementalDryRunError?.location?.line != null
             ? [{ line: modelIncrementalDryRunError.location.line, message: modelIncrementalDryRunError.message }]
             : undefined;
-          const expectedOutputErrorAnnotations = modelExpectedOutputError?.location?.line
+          const expectedOutputErrorAnnotations = modelExpectedOutputError?.location?.line != null
             ? [{ line: modelExpectedOutputError.location.line, message: modelExpectedOutputError.message }]
             : undefined;
 
