@@ -461,7 +461,14 @@ export class CompiledQueryPanel {
                 const dryRunErrorsByNodeName = this.centerPanel?._cachedResults?.dryRunErrorsByNodeName;
                 const dryRunIncrementalErrorsByNodeNameLineage = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeName;
                 const dryRunIncrementalErrorsByNodeTypeLineage = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
-                const locationLineage = this.centerPanel?._cachedResults?.location || "eu"; // TODO: check if there is way to have a better default
+                const locationLineage = this.centerPanel?._cachedResults?.location || 
+                    curFileMeta?.projectConfig?.defaultLocation || 
+                    CACHED_COMPILED_DATAFORM_JSON?.projectConfig?.defaultLocation;
+
+                if (!locationLineage) {
+                    vscode.window.showErrorMessage("Location for lineage metadata not found. Please set 'defaultLocation' in your Dataform configuration.");
+                    return;
+                }
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata?.tables?.[0]?.target, locationLineage);
 
