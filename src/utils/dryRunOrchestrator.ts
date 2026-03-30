@@ -7,7 +7,8 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '
 import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset } from '../offsetCalculations';
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
-import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse } from '../types';
+import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
+import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 
 export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
     const preOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.preOpsQuery);
@@ -98,35 +99,44 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve(emptyDryRunResponse),
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse),
         ]),
-        Promise.all((fileMetadata.queryMeta.assertionQueries ?? []).map((aq: any) => {
-            dryRunQueryByNodeName[aq.targetName] = aq.query;
-            return queryDryRun(aq.query);
-        })),
-        Promise.all((fileMetadata.queryMeta.tableQueries ?? []).map((tq: any) => {
-            const query = withPreOps(tq.preOpsQuery, tq.query);
-            dryRunQueryByNodeName[tq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => {
-            const query = withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery);
-            dryRunNonIncrementalQueryByNodeName[iq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => {
-            const query = withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery);
-            dryRunIncrementalQueryByNodeName[iq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.operationQueries ?? []).map((oq: any) => {
-            const query = withPreOps(oq.preOpsQuery, oq.query);
-            dryRunQueryByNodeName[oq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
-        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
+        Promise.all((fileMetadata.queryMeta.assertionQueries ?? []).map((aq: AssertionQueryEntry) => queryDryRun(aq.query))),
+        Promise.all((fileMetadata.queryMeta.tableQueries ?? []).map((tq: TableQueryEntry) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
+        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
+        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery)))),
+        Promise.all((fileMetadata.queryMeta.operationQueries ?? []).map((oq: OperationQueryEntry) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
+        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: TestQueryEntry) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
+        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: TestQueryEntry) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
     ]);
 
     const [preOpsDryRunResult, postOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
+
+    // Enrich each query entry with the result of its dry run so callers
+    // can access query + error as one cohesive object instead of separate maps.
+    const toAnnotation = (r: BigQueryDryRunResponse): DryRunAnnotation | undefined =>
+        r?.error?.hasError ? { message: r.error.message, location: r.error.location } : undefined;
+
+    (fileMetadata.queryMeta.assertionQueries ?? []).forEach((aq: AssertionQueryEntry, i: number) => {
+        aq.dryRunQuery = aq.query;
+        aq.error = toAnnotation(perAssertionDryRunResults[i]);
+    });
+    (fileMetadata.queryMeta.tableQueries ?? []).forEach((tq: TableQueryEntry, i: number) => {
+        tq.dryRunQuery = withPreOps(tq.preOpsQuery, tq.query);
+        tq.error = toAnnotation(perTableDryRunResults[i]);
+    });
+    (fileMetadata.queryMeta.incrementalQueries ?? []).forEach((iq: IncrementalQueryEntry, i: number) => {
+        iq.dryRunNonIncrementalQuery = withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery);
+        iq.dryRunIncrementalQuery = withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery);
+        iq.nonIncrementalError = toAnnotation(perNonIncrementalDryRunResults[i]);
+        iq.incrementalError = toAnnotation(perIncrementalDryRunResults[i]);
+    });
+    (fileMetadata.queryMeta.operationQueries ?? []).forEach((oq: OperationQueryEntry, i: number) => {
+        oq.dryRunQuery = withPreOps(oq.preOpsQuery, oq.query);
+        oq.error = toAnnotation(perOperationDryRunResults[i]);
+    });
+    (fileMetadata.queryMeta.testQueries ?? []).forEach((tq: TestQueryEntry, i: number) => {
+        tq.testError = toAnnotation(perTestDryRunResults[i]);
+        tq.expectedOutputError = toAnnotation(perExpectedOutputDryRunResults[i]);
+    });
 
     // Derive results from per-node arrays instead of running separate aggregate queries
     const dryRunResult = perTableDryRunResults[0] ?? perAssertionDryRunResults[0] ?? perOperationDryRunResults[0] ?? perIncrementalDryRunResults[0] ?? emptyDryRunResponse;
