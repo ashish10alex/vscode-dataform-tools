@@ -900,35 +900,14 @@ export class CompiledQueryPanel {
         const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
         const testQueriesMeta: { name: string; testQuery: string; expectedOutputQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.testQueries ?? [];
 
-        // Build exact combined query strings (matching what dryRunOrchestrator sends to BigQuery)
-        const skipPreOpsInDryRun = !!vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
-        const withPreOpsLocal = (preOpsQuery: string, query: string) => {
-            if (skipPreOpsInDryRun || !preOpsQuery) { return query; }
-            const p = /;\s*$/.test(preOpsQuery) ? preOpsQuery : preOpsQuery + ";";
-            return p + "\n" + query;
-        };
-        const dryRunQueryByNodeName: Record<string, string> = {};
-        const dryRunIncrementalQueryByNodeName: Record<string, string> = {};
-        const dryRunNonIncrementalQueryByNodeName: Record<string, string> = {};
-        (tableQueriesMeta ?? []).forEach((tq) => {
-            dryRunQueryByNodeName[tq.targetName] = withPreOpsLocal(tq.preOpsQuery, tq.query);
-        });
-        (incrementalQueriesMeta ?? []).forEach((iq) => {
-            dryRunNonIncrementalQueryByNodeName[iq.targetName] = withPreOpsLocal(iq.preOpsQuery, iq.nonIncrementalQuery);
-            dryRunIncrementalQueryByNodeName[iq.targetName] = withPreOpsLocal(iq.incrementalPreOpsQuery, iq.incrementalQuery);
-        });
-        (operationQueriesMeta ?? []).forEach((oq) => {
-            dryRunQueryByNodeName[oq.targetName] = withPreOpsLocal(oq.preOpsQuery, oq.query);
-        });
-        (assertionQueriesMeta ?? []).forEach((aq) => {
-            dryRunQueryByNodeName[aq.targetName] = aq.query;
-        });
-
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
         ]);
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults} = dryRunResults;
+        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, dryRunQueryStrings } = dryRunResults;
+        const dryRunQueryByNodeName = dryRunQueryStrings?.dryRunQueryByNodeName || {};
+        const dryRunIncrementalQueryByNodeName = dryRunQueryStrings?.dryRunIncrementalQueryByNodeName || {};
+        const dryRunNonIncrementalQueryByNodeName = dryRunQueryStrings?.dryRunNonIncrementalQueryByNodeName || {};
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
         const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
