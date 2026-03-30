@@ -205,6 +205,19 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
                     // Compute compiledPreOpsLineCount from the preamble of incrementalQuery alone.
                     compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset(iq?.incrementalQuery);
                 }
+                // When there are no pre_ops in the .sqlx file, preOpsOffset stays 0 and
+                // compiledPreOpsLineCount has no effect on the diagnostic line mapping.
+                // Adjust offSet directly to subtract the preamble blank lines Dataform adds
+                // to the compiled incrementalQuery, which shift BigQuery error line numbers
+                // but are absent from the .sqlx editor file.
+                if (sqlxBlockMetadata.preOpsBlock.preOpsList.length === 0) {
+                    const incLines = (iq?.incrementalQuery || '').split('\n');
+                    let N_inc_preamble = 0;
+                    for (const line of incLines) {
+                        if (line.trim() === '') { N_inc_preamble++; } else { break; }
+                    }
+                    offSet = N_inc_preamble + 2;
+                }
             }
 
             // When skipPreOpsInDryRun is true for table/view types, only tq.query is sent to BigQuery
