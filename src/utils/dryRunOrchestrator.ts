@@ -82,6 +82,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const emptyDryRunResponse: BigQueryDryRunResponse = { error: { hasError: false, message: "" } } as BigQueryDryRunResponse;
     const shouldSkipAggregatePreOps = !!skipPreOpsInDryRun && !!fileMetadata.queryMeta.preOpsQuery?.trim();
 
+    const assertionQueries: AssertionQueryEntry[] = fileMetadata.queryMeta.assertionQueries ?? [];
+    const tableQueries: TableQueryEntry[] = fileMetadata.queryMeta.tableQueries ?? [];
+    const incrementalQueries: IncrementalQueryEntry[] = fileMetadata.queryMeta.incrementalQueries ?? [];
+    const operationQueries: OperationQueryEntry[] = fileMetadata.queryMeta.operationQueries ?? [];
+    const testQueries: TestQueryEntry[] = fileMetadata.queryMeta.testQueries ?? [];
+
     const [aggregateDryRunResults, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults] = await Promise.all([
         Promise.all([
             //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
@@ -95,13 +101,13 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve(emptyDryRunResponse),
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse),
         ]),
-        Promise.all((fileMetadata.queryMeta.assertionQueries ?? []).map((aq: AssertionQueryEntry) => queryDryRun(aq.query))),
-        Promise.all((fileMetadata.queryMeta.tableQueries ?? []).map((tq: TableQueryEntry) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery)))),
-        Promise.all((fileMetadata.queryMeta.operationQueries ?? []).map((oq: OperationQueryEntry) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
-        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: TestQueryEntry) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
-        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: TestQueryEntry) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
+        Promise.all(assertionQueries.map((aq: AssertionQueryEntry) => queryDryRun(aq.query))),
+        Promise.all(tableQueries.map((tq: TableQueryEntry) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
+        Promise.all(incrementalQueries.map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
+        Promise.all(incrementalQueries.map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery)))),
+        Promise.all(operationQueries.map((oq: OperationQueryEntry) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
+        Promise.all(testQueries.map((tq: TestQueryEntry) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
+        Promise.all(testQueries.map((tq: TestQueryEntry) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
     ]);
 
     const [preOpsDryRunResult, postOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
@@ -111,25 +117,25 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const toAnnotation = (r: BigQueryDryRunResponse): DryRunAnnotation | undefined =>
         r?.error?.hasError ? { message: r.error.message, location: r.error.location } : undefined;
 
-    (fileMetadata.queryMeta.assertionQueries ?? []).forEach((aq: AssertionQueryEntry, i: number) => {
+    assertionQueries.forEach((aq: AssertionQueryEntry, i: number) => {
         aq.dryRunQuery = aq.query;
         aq.error = toAnnotation(perAssertionDryRunResults[i]);
     });
-    (fileMetadata.queryMeta.tableQueries ?? []).forEach((tq: TableQueryEntry, i: number) => {
+    tableQueries.forEach((tq: TableQueryEntry, i: number) => {
         tq.dryRunQuery = withPreOps(tq.preOpsQuery, tq.query);
         tq.error = toAnnotation(perTableDryRunResults[i]);
     });
-    (fileMetadata.queryMeta.incrementalQueries ?? []).forEach((iq: IncrementalQueryEntry, i: number) => {
+    incrementalQueries.forEach((iq: IncrementalQueryEntry, i: number) => {
         iq.dryRunNonIncrementalQuery = withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery);
         iq.dryRunIncrementalQuery = withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery);
         iq.nonIncrementalError = toAnnotation(perNonIncrementalDryRunResults[i]);
         iq.incrementalError = toAnnotation(perIncrementalDryRunResults[i]);
     });
-    (fileMetadata.queryMeta.operationQueries ?? []).forEach((oq: OperationQueryEntry, i: number) => {
+    operationQueries.forEach((oq: OperationQueryEntry, i: number) => {
         oq.dryRunQuery = withPreOps(oq.preOpsQuery, oq.query);
         oq.error = toAnnotation(perOperationDryRunResults[i]);
     });
-    (fileMetadata.queryMeta.testQueries ?? []).forEach((tq: TestQueryEntry, i: number) => {
+    testQueries.forEach((tq: TestQueryEntry, i: number) => {
         tq.testError = toAnnotation(perTestDryRunResults[i]);
         tq.expectedOutputError = toAnnotation(perExpectedOutputDryRunResults[i]);
     });
