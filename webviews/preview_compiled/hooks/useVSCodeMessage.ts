@@ -13,13 +13,44 @@ export const useVSCodeMessage = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
-      setState((prevState) => ({
-        ...prevState,
-        ...message,
-        // Unless the host explicitly says recompiling/dryRunning: true, clear it
-        recompiling: message.recompiling === true ? true : false,
-        dryRunning: message.dryRunning === true ? true : false,
-      }));
+      setState((prevState) => {
+        const nextState = {
+          ...prevState,
+          ...message,
+          // Unless the host explicitly says recompiling/dryRunning: true, clear it
+          recompiling:
+            typeof message.recompiling === "boolean"
+              ? message.recompiling
+              : (prevState.recompiling ?? false),
+          dryRunning:
+            typeof message.dryRunning === "boolean"
+              ? message.dryRunning
+              : (prevState.dryRunning ?? false),
+        };
+
+        // When starting a new compilation or dry run, clear old errors and stats 
+        // to prevent stale data from persisting until new results arrive.
+        if (message.recompiling === true || message.dryRunning === true) {
+          nextState.errorMessage = message.errorMessage || null;
+          nextState.compilationErrors = message.compilationErrors || null;
+          
+          nextState.dryRunStatByNodeType = message.dryRunStatByNodeType || {};
+          nextState.dryRunStatByNodeName = message.dryRunStatByNodeName || {};
+          nextState.dryRunErrorsByNodeType = message.dryRunErrorsByNodeType || {};
+          nextState.dryRunErrorsByNodeName = message.dryRunErrorsByNodeName || {};
+          nextState.dryRunIncrementalErrorsByNodeName = message.dryRunIncrementalErrorsByNodeName || {};
+          nextState.dryRunIncrementalErrorsByNodeType = message.dryRunIncrementalErrorsByNodeType || {};
+          nextState.dryRunExpectedOutputErrorsByNodeName = message.dryRunExpectedOutputErrorsByNodeName || {};
+          nextState.dryRunExpectedOutputErrorsByNodeType = message.dryRunExpectedOutputErrorsByNodeType || {};
+          
+          if (message.recompiling === true) {
+            nextState.compilationTimeMs = undefined;
+            nextState.modelsLastUpdateTimesMeta = [];
+          }
+        }
+
+        return nextState;
+      });
     };
 
     window.addEventListener("message", handleMessage);

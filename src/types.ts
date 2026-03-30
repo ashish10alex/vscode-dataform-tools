@@ -417,8 +417,15 @@ export interface WebviewMessage {
     sourceContext?: string;
   }> | null;
   possibleResolutions?: string[] | null;
-  dryRunErrorsByNodeType?: Record<string, string>;
-  dryRunErrorsByNodeName?: Record<string, string>;
+  dryRunErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunIncrementalErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunIncrementalErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunExpectedOutputErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
+  dryRunQueryByNodeName?: Record<string, string>;
+  dryRunIncrementalQueryByNodeName?: Record<string, string>;
+  dryRunNonIncrementalQueryByNodeName?: Record<string, string>;
   compiledQuerySchema?: any;
   targetTablesOrViews?: any;
   models?: any; 
@@ -501,3 +508,23 @@ export interface GitFileChangeRaw {
 export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:string}, clientOptions:any};
 
 export type ExecutionMode = "cli" | "api" | "api_workspace";
+
+export interface CachedResults {
+    fileMetadata: any;
+    curFileMeta: any;
+    targetTablesOrViews: any;
+    errorMessage: string | null;
+    dryRunStatByNodeType: Record<string, string>;
+    dryRunStatByNodeName: Record<string, string>;
+    dryRunErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunIncrementalErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunExpectedOutputErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunExpectedOutputErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunQueryByNodeName: Record<string, string>;
+    dryRunIncrementalQueryByNodeName: Record<string, string>;
+    dryRunNonIncrementalQueryByNodeName: Record<string, string>;
+    location: string | undefined;
+    compilerOptions: string | undefined;
+}

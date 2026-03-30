@@ -37,16 +37,16 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
             if(errLineNumber === 0 && sqlQueryStartLineNumber === 0){
                 errLineNumber = 0;
             } else {
-                errLineNumber = (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset;
+                errLineNumber = Math.max(0, (sqlQueryStartLineNumber + (errLineNumber - offSet)) - preOpsOffset);
             }
 
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
-            const regularBlockDiagnostic = new vscode.Diagnostic(range, `(Main Query): ${errorMeta.mainQueryError.message}`, severity);
+            const regularBlockDiagnostic = new vscode.Diagnostic(range, `${errorMeta.mainQueryError.message}`, severity);
             diagnostics.push(regularBlockDiagnostic);
         }
 
         if(errorMeta?.preOpsError?.hasError){
-            errLineNumber = sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1;
+            errLineNumber = Math.max(0, sqlxBlockMetadata.preOpsBlock.preOpsList[0].startLine - 1);
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
 
             errorDenylist.some((errorMessage: string) => {
@@ -62,7 +62,7 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
         if(errorMeta?.postOpsError?.hasError){
             let errLineNumber = 0;
             if(sqlxBlockMetadata.postOpsBlock.postOpsList.length > 0){
-                errLineNumber = sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1;
+                errLineNumber = Math.max(0, sqlxBlockMetadata.postOpsBlock.postOpsList[0].startLine - 1);
             }
             const range = new vscode.Range(new vscode.Position(errLineNumber, errColumnNumber), new vscode.Position(errLineNumber, errColumnNumber + 5));
             const postOpsDiagnostic = new vscode.Diagnostic(range, `(Post-Ops): ${errorMeta.postOpsError.message}`, severity);
@@ -76,18 +76,6 @@ export function setDiagnostics(document: vscode.TextDocument, errorMeta: ErrorMe
         }
 
         //TODO: Add support for test and expected output diagnostics
-        if (errorMeta?.testError?.hasError){
-            const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
-            const testDiagnostic = new vscode.Diagnostic(range, `(Test Query): ${errorMeta.testError.message}`, severity);
-            diagnostics.push(testDiagnostic);
-        }
-
-        if (errorMeta?.expectedOutputError?.hasError){
-            const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
-            const expectedOutputDiagnostic = new vscode.Diagnostic(range, `(Expected Output): ${errorMeta.expectedOutputError.message}`, severity);
-            diagnostics.push(expectedOutputDiagnostic);
-        }
-
         if (document !== undefined) {
             diagnosticCollection.set(document.uri, diagnostics);
         }
