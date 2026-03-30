@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.7.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.6.1...v1.7.0) (2026-03-30)
+
+
+### Features
+
+* show diagnostics in the code block of compiled query web view.  ([#304](https://github.com/ashish10alex/vscode-dataform-tools/issues/304)) ([5057c88](https://github.com/ashish10alex/vscode-dataform-tools/commit/5057c88370e63f2e825fada2838e93955c01b208))
+
+
+### Bug Fixes
+
+* diagnostics placed at the wrong line in incremental tables ([#301](https://github.com/ashish10alex/vscode-dataform-tools/issues/301)) ([edb567a](https://github.com/ashish10alex/vscode-dataform-tools/commit/edb567a633ff5015bb843faa810cadba81c578f9))
+* placement of diagnostics in incremental table  ([#299](https://github.com/ashish10alex/vscode-dataform-tools/issues/299)) ([382b8b0](https://github.com/ashish10alex/vscode-dataform-tools/commit/382b8b098a917a60199693b8539435d333143008))
+* stale workflow status ([#303](https://github.com/ashish10alex/vscode-dataform-tools/issues/303)) ([b550ab0](https://github.com/ashish10alex/vscode-dataform-tools/commit/b550ab0fea0b3b7bc78d21c2c5ed4e4c4ead6db0))
+
+
+### Styling
+
+* subtle ui changes to compiled query web view ([#302](https://github.com/ashish10alex/vscode-dataform-tools/issues/302)) ([d474241](https://github.com/ashish10alex/vscode-dataform-tools/commit/d474241af5ac0bade7148f07f879e5375e4c5359))
+
+
+### Refactors
+
+* consolidate types such that a targets metadata is easily accesible ([#305](https://github.com/ashish10alex/vscode-dataform-tools/issues/305)) ([323546f](https://github.com/ashish10alex/vscode-dataform-tools/commit/323546f7717b67fd7dd548616d289557f5526845))
+* move functions to their functional files to optimize for context window ([#300](https://github.com/ashish10alex/vscode-dataform-tools/issues/300)) ([9e38d96](https://github.com/ashish10alex/vscode-dataform-tools/commit/9e38d96e942ac9ea4885de30595a45284e6dcea6))
+
 ### [1.6.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.6.0...v1.6.1) (2026-03-24)
 
 
