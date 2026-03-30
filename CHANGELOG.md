@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.7.0...v1.7.1) (2026-03-30)
+
+
+### Bug Fixes
+
+* diagnsotics showing on the wrong line in incremental model when there is no pre-ops ([e77c7d4](https://github.com/ashish10alex/vscode-dataform-tools/commit/e77c7d40a428337180d23ec72696bdf89e85276f))
+
 ## [1.7.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.6.1...v1.7.0) (2026-03-30)
 
 
