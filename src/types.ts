@@ -571,6 +571,7 @@ export interface CachedResults {
     dryRunErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunExpectedOutputErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
+    dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: ErrorLocation }>;
     location: string | undefined;
     compilerOptions: string | undefined;
 }
