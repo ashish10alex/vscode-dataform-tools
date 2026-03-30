@@ -7,7 +7,8 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '
 import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset } from '../offsetCalculations';
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
-import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse } from '../types';
+import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
+import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 
 export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
     const preOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.preOpsQuery);
@@ -81,9 +82,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const emptyDryRunResponse: BigQueryDryRunResponse = { error: { hasError: false, message: "" } } as BigQueryDryRunResponse;
     const shouldSkipAggregatePreOps = !!skipPreOpsInDryRun && !!fileMetadata.queryMeta.preOpsQuery?.trim();
 
-    const dryRunQueryByNodeName: Record<string, string> = {};
-    const dryRunIncrementalQueryByNodeName: Record<string, string> = {};
-    const dryRunNonIncrementalQueryByNodeName: Record<string, string> = {};
+    const assertionQueries: AssertionQueryEntry[] = fileMetadata.queryMeta.assertionQueries ?? [];
+    const tableQueries: TableQueryEntry[] = fileMetadata.queryMeta.tableQueries ?? [];
+    const incrementalQueries: IncrementalQueryEntry[] = fileMetadata.queryMeta.incrementalQueries ?? [];
+    const operationQueries: OperationQueryEntry[] = fileMetadata.queryMeta.operationQueries ?? [];
+    const testQueries: TestQueryEntry[] = fileMetadata.queryMeta.testQueries ?? [];
 
     const [aggregateDryRunResults, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults] = await Promise.all([
         Promise.all([
@@ -98,35 +101,44 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve(emptyDryRunResponse),
             ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse),
         ]),
-        Promise.all((fileMetadata.queryMeta.assertionQueries ?? []).map((aq: any) => {
-            dryRunQueryByNodeName[aq.targetName] = aq.query;
-            return queryDryRun(aq.query);
-        })),
-        Promise.all((fileMetadata.queryMeta.tableQueries ?? []).map((tq: any) => {
-            const query = withPreOps(tq.preOpsQuery, tq.query);
-            dryRunQueryByNodeName[tq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => {
-            const query = withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery);
-            dryRunNonIncrementalQueryByNodeName[iq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.incrementalQueries ?? []).map((iq: any) => {
-            const query = withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery);
-            dryRunIncrementalQueryByNodeName[iq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.operationQueries ?? []).map((oq: any) => {
-            const query = withPreOps(oq.preOpsQuery, oq.query);
-            dryRunQueryByNodeName[oq.targetName] = query;
-            return queryDryRun(query);
-        })),
-        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
-        Promise.all((fileMetadata.queryMeta.testQueries ?? []).map((tq: any) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
+        Promise.all(assertionQueries.map((aq: AssertionQueryEntry) => queryDryRun(aq.query))),
+        Promise.all(tableQueries.map((tq: TableQueryEntry) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
+        Promise.all(incrementalQueries.map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
+        Promise.all(incrementalQueries.map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery)))),
+        Promise.all(operationQueries.map((oq: OperationQueryEntry) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
+        Promise.all(testQueries.map((tq: TestQueryEntry) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
+        Promise.all(testQueries.map((tq: TestQueryEntry) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
     ]);
 
     const [preOpsDryRunResult, postOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
+
+    // Enrich each query entry with the result of its dry run so callers
+    // can access query + error as one cohesive object instead of separate maps.
+    const toAnnotation = (r: BigQueryDryRunResponse): DryRunAnnotation | undefined =>
+        r?.error?.hasError ? { message: r.error.message, location: r.error.location } : undefined;
+
+    assertionQueries.forEach((aq: AssertionQueryEntry, i: number) => {
+        aq.dryRunQuery = aq.query;
+        aq.error = toAnnotation(perAssertionDryRunResults[i]);
+    });
+    tableQueries.forEach((tq: TableQueryEntry, i: number) => {
+        tq.dryRunQuery = withPreOps(tq.preOpsQuery, tq.query);
+        tq.error = toAnnotation(perTableDryRunResults[i]);
+    });
+    incrementalQueries.forEach((iq: IncrementalQueryEntry, i: number) => {
+        iq.dryRunNonIncrementalQuery = withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery);
+        iq.dryRunIncrementalQuery = withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery);
+        iq.nonIncrementalError = toAnnotation(perNonIncrementalDryRunResults[i]);
+        iq.incrementalError = toAnnotation(perIncrementalDryRunResults[i]);
+    });
+    operationQueries.forEach((oq: OperationQueryEntry, i: number) => {
+        oq.dryRunQuery = withPreOps(oq.preOpsQuery, oq.query);
+        oq.error = toAnnotation(perOperationDryRunResults[i]);
+    });
+    testQueries.forEach((tq: TestQueryEntry, i: number) => {
+        tq.testError = toAnnotation(perTestDryRunResults[i]);
+        tq.expectedOutputError = toAnnotation(perExpectedOutputDryRunResults[i]);
+    });
 
     // Derive results from per-node arrays instead of running separate aggregate queries
     const dryRunResult = perTableDryRunResults[0] ?? perAssertionDryRunResults[0] ?? perOperationDryRunResults[0] ?? perIncrementalDryRunResults[0] ?? emptyDryRunResponse;
@@ -202,7 +214,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             const preOpsSkippedInDryRun = shouldSkipAggregatePreOps && (type === "table" || type === "view");
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount, preOpsSkippedInDryRun);
         }
-        return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, dryRunQueryStrings: { dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName }};
+        return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults };
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -213,7 +225,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         });
         vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
     }
-    return { mainQuery: dryRunResult, preOps: preOpsDryRunResult, postOps: postOpsDryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, dryRunQueryStrings: { dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName }};
+    return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults };
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {

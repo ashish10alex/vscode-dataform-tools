@@ -37,14 +37,14 @@ export interface QueryMeta {
     preOpsQuery: string
     postOpsQuery: string
     assertionQuery: string
-    assertionQueries: { targetName: string; query: string }[]
-    tableQueries: { targetName: string; query: string; preOpsQuery: string }[]
-    incrementalQueries: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[]
-    operationQueries: { targetName: string; query: string; preOpsQuery: string }[]
+    assertionQueries: AssertionQueryEntry[]
+    tableQueries: TableQueryEntry[]
+    incrementalQueries: IncrementalQueryEntry[]
+    operationQueries: OperationQueryEntry[]
     operationsQuery: string
     testQuery: string
     expectedOutputQuery: string
-    testQueries: { name: string; testQuery: string; expectedOutputQuery: string }[]
+    testQueries: TestQueryEntry[]
     error: string
 }
 
@@ -174,6 +174,58 @@ export interface DryRunError {
         line: number;
         column: number;
     };
+}
+
+/** Slim error annotation stored on each query entry after dry runs complete. */
+export interface DryRunAnnotation {
+    message: string;
+    location?: {
+        line: number;
+        column: number;
+    };
+}
+
+export interface TableQueryEntry {
+    targetName: string;
+    query: string;
+    preOpsQuery: string;
+    dryRunQuery?: string;
+    error?: DryRunAnnotation;
+}
+
+export interface IncrementalQueryEntry {
+    targetName: string;
+    incrementalQuery: string;
+    nonIncrementalQuery: string;
+    preOpsQuery: string;
+    incrementalPreOpsQuery: string;
+    dryRunIncrementalQuery?: string;
+    dryRunNonIncrementalQuery?: string;
+    incrementalError?: DryRunAnnotation;
+    nonIncrementalError?: DryRunAnnotation;
+}
+
+export interface AssertionQueryEntry {
+    targetName: string;
+    query: string;
+    dryRunQuery?: string;
+    error?: DryRunAnnotation;
+}
+
+export interface OperationQueryEntry {
+    targetName: string;
+    query: string;
+    preOpsQuery: string;
+    dryRunQuery?: string;
+    error?: DryRunAnnotation;
+}
+
+export interface TestQueryEntry {
+    name: string;
+    testQuery: string;
+    expectedOutputQuery: string;
+    testError?: DryRunAnnotation;
+    expectedOutputError?: DryRunAnnotation;
 }
 
 export interface ConfigBlockMetadata {
@@ -517,14 +569,9 @@ export interface CachedResults {
     dryRunStatByNodeType: Record<string, string>;
     dryRunStatByNodeName: Record<string, string>;
     dryRunErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunIncrementalErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunExpectedOutputErrorsByNodeName: Record<string, { message: string; location?: ErrorLocation }>;
     dryRunExpectedOutputErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunQueryByNodeName: Record<string, string>;
-    dryRunIncrementalQueryByNodeName: Record<string, string>;
-    dryRunNonIncrementalQueryByNodeName: Record<string, string>;
+    dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: ErrorLocation }>;
     location: string | undefined;
     compilerOptions: string | undefined;
 }
