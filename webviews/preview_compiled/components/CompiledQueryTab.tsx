@@ -621,7 +621,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                        </button>
                         <button onClick={() => handleRunModel(true)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
                            <Play className="w-4 h-4 mr-1.5" /> Run (API)
-                           <span className="absolute -top-2 -right-2 bg-[var(--vscode-statusBarItem-warningBackground)] text-[var(--vscode-statusBarItem-warningForeground)] text-[10px] font-bold px-1.5 rounded-full">NEW</span>
                        </button>
                    </>
                )}
