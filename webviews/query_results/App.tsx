@@ -3,6 +3,7 @@ import { vscode } from './vscode';
 import { DataTable } from '../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { CodeBlock } from '../components/CodeBlock';
+import { FindWidget } from '../components/FindWidget';
 
 function escapeRegex(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -458,53 +459,21 @@ export default function App() {
 
       {/* Find widget */}
       {showSearch && activeTab === 'results' && (
-        <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded shadow-md">
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setShowSearch(false);
-                setSearchTerm('');
-                setCurrentMatchIndex(0);
-                setMatchCount(0);
-              } else if (e.key === 'Enter') {
-                e.shiftKey ? goToPrevMatch() : goToNextMatch();
-              }
-            }}
-            placeholder="Find in results..."
-            className="flex-1 bg-transparent text-sm outline-none text-[var(--vscode-editor-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)] min-w-0"
-          />
-          {searchTerm && (
-            <span className="text-xs text-[var(--vscode-descriptionForeground)] whitespace-nowrap">
-              {matchCount === 0 ? 'No results' : `${((currentMatchIndex % matchCount) + matchCount) % matchCount + 1} of ${matchCount}`}
-            </span>
-          )}
-          <button
-            onClick={goToPrevMatch}
-            disabled={matchCount === 0}
-            title="Previous match (Shift+Enter)"
-            className="text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] disabled:opacity-30 text-sm px-1 leading-none"
-          >
-            ↑
-          </button>
-          <button
-            onClick={goToNextMatch}
-            disabled={matchCount === 0}
-            title="Next match (Enter)"
-            className="text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] disabled:opacity-30 text-sm px-1 leading-none"
-          >
-            ↓
-          </button>
-          <button
-            onClick={() => { setShowSearch(false); setSearchTerm(''); setCurrentMatchIndex(0); setMatchCount(0); }}
-            className="text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] text-xs px-1"
-          >
-            ✕
-          </button>
-        </div>
+        <FindWidget
+          searchInputRef={searchInputRef}
+          searchTerm={searchTerm}
+          matchCount={matchCount}
+          currentMatchIndex={currentMatchIndex}
+          onSearchTermChange={setSearchTerm}
+          onClose={() => {
+            setShowSearch(false);
+            setSearchTerm('');
+            setCurrentMatchIndex(0);
+            setMatchCount(0);
+          }}
+          onNextMatch={goToNextMatch}
+          onPrevMatch={goToPrevMatch}
+        />
       )}
 
       <div className="flex-1 overflow-hidden relative">
