@@ -36,10 +36,14 @@ export function FindWidget({
           }
         }}
         placeholder="Find in results..."
+        aria-label="Find in results"
         className="flex-1 bg-transparent text-sm outline-none text-[var(--vscode-editor-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)] min-w-0"
       />
+      <span className="sr-only" role="status" aria-live="polite">
+        {searchTerm ? (matchCount === 0 ? 'No results found' : `${((currentMatchIndex % matchCount) + matchCount) % matchCount + 1} of ${matchCount} matches found`) : ''}
+      </span>
       {searchTerm && (
-        <span className="text-xs text-[var(--vscode-descriptionForeground)] whitespace-nowrap">
+        <span aria-hidden="true" className="text-xs text-[var(--vscode-descriptionForeground)] whitespace-nowrap">
           {matchCount === 0 ? 'No results' : `${((currentMatchIndex % matchCount) + matchCount) % matchCount + 1} of ${matchCount}`}
         </span>
       )}
@@ -47,23 +51,27 @@ export function FindWidget({
         onClick={onPrevMatch}
         disabled={matchCount === 0}
         title="Previous match (Shift+Enter)"
+        aria-label="Previous match"
         className="text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] disabled:opacity-30 text-sm px-1 leading-none"
       >
-        ↑
+        <span aria-hidden="true">↑</span>
       </button>
       <button
         onClick={onNextMatch}
         disabled={matchCount === 0}
         title="Next match (Enter)"
+        aria-label="Next match"
         className="text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] disabled:opacity-30 text-sm px-1 leading-none"
       >
-        ↓
+        <span aria-hidden="true">↓</span>
       </button>
       <button
         onClick={onClose}
+        title="Close"
+        aria-label="Close"
         className="text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] text-xs px-1"
       >
-        ✕
+        <span aria-hidden="true">✕</span>
       </button>
     </div>
   );
