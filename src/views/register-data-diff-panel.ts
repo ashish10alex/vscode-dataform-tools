@@ -53,16 +53,6 @@ export class DataDiffPanel {
                         }
                         break;
                     }
-                    case 'runDataDiff':
-                        logger.info(`Running data diff: ${JSON.stringify(message.data)}`);
-                        orchestrateDataDiff(
-                            message.data.sourceBranch,
-                            message.data.targetBranch,
-                            message.data.tablePrefix,
-                            message.data.primaryKeysMap || {},
-                            this._panel
-                        );
-                        break;
                     case 'runSingleModelDiff':
                         logger.info(`Running single model diff for: ${message.data.file}`);
                         orchestrateDataDiff(
@@ -70,6 +60,8 @@ export class DataDiffPanel {
                             message.data.targetBranch,
                             message.data.tablePrefix,
                             { [message.data.file]: message.data.primaryKeys || '' },
+                            { [message.data.file]: message.data.filterCondition || '' },
+                            { [message.data.file]: message.data.excludeColumns || '' },
                             this._panel,
                             [message.data.file]
                         );

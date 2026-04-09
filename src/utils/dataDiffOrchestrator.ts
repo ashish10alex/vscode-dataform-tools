@@ -8,6 +8,8 @@ export async function orchestrateDataDiff(
     targetBranch: string,
     tablePrefix: string,
     primaryKeysMap: Record<string, string>,
+    filterConditionsMap: Record<string, string>,
+    excludeColumnsMap: Record<string, string>,
     panel: vscode.WebviewPanel,
     targetFiles?: string[]
 ) {
@@ -129,11 +131,13 @@ export async function orchestrateDataDiff(
                 continue;
             }
 
-            // Union all unique column names
+            const excludeCols = (excludeColumnsMap[file] || '').split(',').map((k: string) => k.trim()).filter(Boolean);
+
+            // Union all unique column names (minus excluded)
             const allColNames = Array.from(new Set([
                 ...targetSchemaCols.map(c => c.column_name),
                 ...sourceSchemaCols.map(c => c.column_name)
-            ]));
+            ])).filter((c: string) => !excludeCols.includes(c));
 
             // Build select lists padding missing columns with NULL
             const buildSelectList = (tableCols: any[], isTarget: boolean) => {
@@ -165,7 +169,7 @@ export async function orchestrateDataDiff(
             const sourceSelectList = buildSelectList(sourceSchemaCols, false);
             const targetSelectList = buildSelectList(targetSchemaCols, true);
 
-            const commonColNames = targetSchemaCols.map(c => c.column_name).filter(c => sourceSchemaCols.find(s => s.column_name === c));
+            const commonColNames = targetSchemaCols.map(c => c.column_name).filter(c => sourceSchemaCols.find(s => s.column_name === c) && !excludeCols.includes(c));
             
             const orderableColNames = targetSchemaCols.filter(c => !c.data_type.match(/^(STRUCT|ARRAY)/i) && sourceSchemaCols.find(s => s.column_name === c.column_name)).map(c => c.column_name);
             const orderByCols = orderableColNames.length > 0 ? orderableColNames.map(c => `\`${c}\``).join(', ') : '1';
@@ -176,10 +180,13 @@ export async function orchestrateDataDiff(
             const pks = primaryKeys ? primaryKeys.split(',').map((k: string) => k.trim()) : ((matchingTable as any).uniqueKey || []);
             const pkCols: string[] = Array.isArray(pks) ? pks : (typeof pks === 'string' ? [pks] : []);
 
+            const filterCondition = filterConditionsMap[file] || '';
+            const whereClause = filterCondition ? ` WHERE ${filterCondition}` : '';
+
             if (commonColNames.length === 0) {
                  comparisonQuery = `
-                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`),
-                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`),
+                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
+                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause}),
                  added AS (SELECT 'Added' as _diff_status, * FROM tbl_feat EXCEPT DISTINCT SELECT 'Added', * FROM tbl_tgt),
                  removed AS (SELECT 'Removed' as _diff_status, * FROM tbl_tgt EXCEPT DISTINCT SELECT 'Removed', * FROM tbl_feat)
                  SELECT * FROM added UNION ALL SELECT * FROM removed
@@ -188,11 +195,11 @@ export async function orchestrateDataDiff(
             } else if (pkCols.length === 0) {
                  // Fall back to EXCEPT DISTINCT without primary keys
                  const structFieldsSource = commonColNames.map(c => `\`${c}\``).join(', ');
-                 
+
                  comparisonQuery = `
-                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`),
-                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`),
-                 
+                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
+                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause}),
+
                  diff_feat AS (SELECT * FROM tbl_feat EXCEPT DISTINCT SELECT * FROM tbl_tgt),
                  diff_tgt AS (SELECT * FROM tbl_tgt EXCEPT DISTINCT SELECT * FROM tbl_feat),
 
@@ -245,8 +252,8 @@ export async function orchestrateDataDiff(
                  const selectColumns = commonColNames.map(c => `tbl_tgt.\`${c}\` as \`base_${c}\`, tbl_feat.\`${c}\` as \`feat_${c}\``).join(', ');
 
                  comparisonQuery = `
-                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`),
-                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`)
+                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
+                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause})
                  
                  SELECT 
                     ${pkOrderStr} as _pk,
@@ -334,6 +341,7 @@ export async function orchestrateDataDiff(
                      featTableFullName: `${targetDatabase}.${targetSchema}.${featTableName}`,
                      baseLastModified,
                      featLastModified,
+                     filterCondition: filterCondition || null,
                      pkCols,
                      commonColNames,
                      isPairedDiff: pkCols.length > 0
@@ -393,6 +401,8 @@ export async function previewDiffModels(
             return;
         }
 
+        const bqClient = getBigQueryClient();
+
         const previewResults = [];
         for (const file of modifiedFiles) {
             const matchingTable = dataformCompiledJson.tables.find((t: any) => file.endsWith(t.fileName));
@@ -401,7 +411,7 @@ export async function previewDiffModels(
             const workspacePrefix = (dataformCompiledJson.projectConfig as any)?.tablePrefix || (dataformCompiledJson.projectConfig as any)?.defaultTablePrefix;
             const targetNameSource = matchingTable.target.name;
             let rawTableName = targetNameSource;
-            
+
             if (workspacePrefix && typeof workspacePrefix === 'string') {
                 if (rawTableName.startsWith(`${workspacePrefix}_`)) {
                     rawTableName = rawTableName.slice(workspacePrefix.length + 1);
@@ -410,13 +420,31 @@ export async function previewDiffModels(
                 }
             }
 
+            const targetSchema = matchingTable.target.schema;
             const baseTableName = rawTableName;
             const featTableName = tablePrefix ? `${tablePrefix}${tablePrefix.endsWith('_') ? '' : '_'}${rawTableName}` : rawTableName;
+
+            let columns: string[] = [];
+            let baseExists = false;
+            let featExists = false;
+            if (bqClient) {
+                const [meta, baseEx, featEx] = await Promise.all([
+                    bqClient.dataset(targetSchema).table(baseTableName).getMetadata().then(([m]: any) => m).catch(() => null),
+                    bqClient.dataset(targetSchema).table(baseTableName).exists().then(([e]: any) => e).catch(() => false),
+                    bqClient.dataset(targetSchema).table(featTableName).exists().then(([e]: any) => e).catch(() => false),
+                ]);
+                columns = meta?.schema?.fields?.map((f: any) => f.name) ?? [];
+                baseExists = baseEx;
+                featExists = featEx;
+            }
 
             previewResults.push({
                 file,
                 baseTableName: `${matchingTable.target.database}.${matchingTable.target.schema}.${baseTableName}`,
-                featTableName: `${matchingTable.target.database}.${matchingTable.target.schema}.${featTableName}`
+                featTableName: `${matchingTable.target.database}.${matchingTable.target.schema}.${featTableName}`,
+                columns,
+                baseExists,
+                featExists,
             });
         }
 
