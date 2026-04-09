@@ -3,7 +3,7 @@ import { getNonce } from '../utils';
 import { logger } from '../logger';
 
 import { GitService } from '../gitClient';
-import { orchestrateDataDiff } from '../utils/dataDiffOrchestrator';
+import { orchestrateDataDiff, previewDiffModels } from '../utils/dataDiffOrchestrator';
 
 export class DataDiffPanel {
     public static currentPanel: DataDiffPanel | undefined;
@@ -59,7 +59,27 @@ export class DataDiffPanel {
                             message.data.sourceBranch,
                             message.data.targetBranch,
                             message.data.tablePrefix,
-                            message.data.primaryKeys,
+                            message.data.primaryKeysMap || {},
+                            this._panel
+                        );
+                        break;
+                    case 'runSingleModelDiff':
+                        logger.info(`Running single model diff for: ${message.data.file}`);
+                        orchestrateDataDiff(
+                            message.data.sourceBranch,
+                            message.data.targetBranch,
+                            message.data.tablePrefix,
+                            { [message.data.file]: message.data.primaryKeys || '' },
+                            this._panel,
+                            [message.data.file]
+                        );
+                        break;
+                    case 'previewAffectedModels':
+                        logger.info(`Previewing data diff models for target: ${message.data.targetBranch}`);
+                        previewDiffModels(
+                            message.data.sourceBranch,
+                            message.data.targetBranch,
+                            message.data.tablePrefix,
                             this._panel
                         );
                         break;
