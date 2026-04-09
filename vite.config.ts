@@ -11,7 +11,8 @@ export default defineConfig({
       input: {
         dependancy_graph: './webviews/dependancy_graph/index.tsx',
         preview_compiled: './webviews/preview_compiled/index.tsx',
-        query_results: './webviews/query_results/index.tsx'
+        query_results: './webviews/query_results/index.tsx',
+        data_diff: './webviews/data_diff/index.tsx'
       },
       output: {
         entryFileNames: '[name].js',

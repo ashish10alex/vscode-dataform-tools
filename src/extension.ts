@@ -23,6 +23,7 @@ import { runTag } from './runTag';
 import { runTests } from './runTests';
 import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import { DataDiffPanel } from './views/register-data-diff-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
@@ -98,6 +99,12 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async () => {
             logger.info('Running query command');
             await previewQueryResults(queryResultsViewProvider);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.dataDiff', () => {
+            DataDiffPanel.createOrShow(context.extensionUri);
         })
     );
 

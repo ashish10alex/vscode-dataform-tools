@@ -202,6 +202,48 @@ export class GitService {
         }
     }
 
+    public async getAllBranches(): Promise<string[]> {
+        try {
+            // Get all local and remote branches
+            const stdout = await this.execCmd("git branch -a --format='%(refname:short)'");
+            let branches = stdout.split("\n")
+                .map(line => line.trim().replace(/^'|'$/g, ''))
+                .filter(line => line && !line.includes("->"));
+            
+            // Deduplicate branches (e.g. main and origin/main -> main)
+            const uniqueBranches = Array.from(new Set(branches.map(b => b.replace(/^origin\//, ''))));
+            // Return only valid branch names
+            return uniqueBranches.filter(b => b.length > 0);
+        } catch (error) {
+            logger.error(`Error fetching branches: ${error}`);
+            return [];
+        }
+    }
+
+    public async getModifiedFilesBetweenBranches(sourceBranch: string, targetBranch: string): Promise<string[]> {
+        // Find merge base first to handle branch comparisons reliably
+        try {
+            const mergeBaseCmd = await this.execCmd(`git merge-base ${targetBranch} ${sourceBranch}`);
+            const mergeBase = mergeBaseCmd.trim();
+            const gitCommand = `git diff --name-only ${mergeBase} ${sourceBranch}`;
+            const stdout = await this.execCmd(gitCommand);
+            const files = stdout.split("\n").map(l => l.trim()).filter(l => l);
+            return files.filter(file => file.endsWith('.sqlx') || file.endsWith('.js'));
+        } catch (error: any) {
+            logger.error(`Error running git diff between ${sourceBranch} and ${targetBranch}: ${error.message}`);
+            // Fallback for some git versions if merge-base fails
+            try {
+                const gitCommand = `git diff --name-only ${targetBranch}...${sourceBranch}`;
+                const stdout = await this.execCmd(gitCommand);
+                const files = stdout.split("\n").map(l => l.trim()).filter(l => l);
+                return files.filter(file => file.endsWith('.sqlx') || file.endsWith('.js'));
+            } catch (fallbackError: any) {
+                 logger.error(`Fallback diff also failed: ${fallbackError.message}`);
+                 throw fallbackError;
+            }
+        }
+    }
+
     private gitStatusToHumanReadable(statusCode: GitStatusCode): GitStatusCodeHumanReadable {
         switch (statusCode) {
             case "M": return "MODIFIED";
