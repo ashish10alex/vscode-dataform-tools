@@ -8,7 +8,8 @@ export async function orchestrateDataDiff(
     targetBranch: string,
     tablePrefix: string,
     primaryKeysMap: Record<string, string>,
-    filterConditionsMap: Record<string, string>,
+    targetFilterMap: Record<string, string>,
+    sourceFilterMap: Record<string, string>,
     excludeColumnsMap: Record<string, string>,
     panel: vscode.WebviewPanel,
     targetFiles?: string[]
@@ -180,13 +181,15 @@ export async function orchestrateDataDiff(
             const pks = primaryKeys ? primaryKeys.split(',').map((k: string) => k.trim()) : ((matchingTable as any).uniqueKey || []);
             const pkCols: string[] = Array.isArray(pks) ? pks : (typeof pks === 'string' ? [pks] : []);
 
-            const filterCondition = filterConditionsMap[file] || '';
-            const whereClause = filterCondition ? ` WHERE ${filterCondition}` : '';
+            const targetFilter = targetFilterMap[file] || '';
+            const sourceFilter = sourceFilterMap[file] || '';
+            const targetWhereClause = targetFilter ? ` WHERE ${targetFilter}` : '';
+            const sourceWhereClause = sourceFilter ? ` WHERE ${sourceFilter}` : '';
 
             if (commonColNames.length === 0) {
                  comparisonQuery = `
-                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
-                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause}),
+                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${sourceWhereClause}),
+                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${targetWhereClause}),
                  added AS (SELECT 'Added' as _diff_status, * FROM tbl_feat EXCEPT DISTINCT SELECT 'Added', * FROM tbl_tgt),
                  removed AS (SELECT 'Removed' as _diff_status, * FROM tbl_tgt EXCEPT DISTINCT SELECT 'Removed', * FROM tbl_feat)
                  SELECT * FROM added UNION ALL SELECT * FROM removed
@@ -197,8 +200,8 @@ export async function orchestrateDataDiff(
                  const structFieldsSource = commonColNames.map(c => `\`${c}\``).join(', ');
 
                  comparisonQuery = `
-                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
-                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause}),
+                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${sourceWhereClause}),
+                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${targetWhereClause}),
 
                  diff_feat AS (SELECT * FROM tbl_feat EXCEPT DISTINCT SELECT * FROM tbl_tgt),
                  diff_tgt AS (SELECT * FROM tbl_tgt EXCEPT DISTINCT SELECT * FROM tbl_feat),
@@ -266,8 +269,8 @@ export async function orchestrateDataDiff(
                      : `CAST(NULL AS STRING)`;
 
                  comparisonQuery = `
-                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
-                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause})
+                 WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${sourceWhereClause}),
+                 tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${targetWhereClause})
 
                  SELECT
                     ${pkOrderStr} as _pk,
@@ -356,7 +359,8 @@ export async function orchestrateDataDiff(
                      featTableFullName: `${targetDatabase}.${targetSchema}.${featTableName}`,
                      baseLastModified,
                      featLastModified,
-                     filterCondition: filterCondition || null,
+                     targetFilter: targetFilter || null,
+                     sourceFilter: sourceFilter || null,
                      pkCols,
                      commonColNames,
                      isPairedDiff: pkCols.length > 0

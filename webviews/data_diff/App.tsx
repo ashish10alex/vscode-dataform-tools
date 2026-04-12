@@ -23,7 +23,8 @@ export default function App() {
   const [allBranches, setAllBranches] = useState<string[]>([]);
   const [tablePrefix, setTablePrefix] = useState("");
   const [primaryKeysMap, setPrimaryKeysMap] = useState<Record<string, string>>({});
-  const [filterConditionsMap, setFilterConditionsMap] = useState<Record<string, string>>({});
+  const [targetFilterMap, setTargetFilterMap] = useState<Record<string, string>>({});
+  const [sourceFilterMap, setSourceFilterMap] = useState<Record<string, string>>({});
   const [excludeColumnsMap, setExcludeColumnsMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [diffResults, setDiffResults] = useState<any[]>([]);
@@ -72,7 +73,7 @@ export default function App() {
     setDiffError(null);
     vscode.postMessage({
       command: "runSingleModelDiff",
-      data: { sourceBranch, targetBranch, tablePrefix, file, primaryKeys: primaryKeysMap[file] || '', filterCondition: filterConditionsMap[file] || '', excludeColumns: excludeColumnsMap[file] || '' },
+      data: { sourceBranch, targetBranch, tablePrefix, file, primaryKeys: primaryKeysMap[file] || '', targetFilter: targetFilterMap[file] || '', sourceFilter: sourceFilterMap[file] || '', excludeColumns: excludeColumnsMap[file] || '' },
     });
   };
 
@@ -157,7 +158,8 @@ export default function App() {
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Source (B)</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Primary Keys</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Exclude Columns</th>
-                    <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Filter Condition</th>
+                    <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Target Filter</th>
+                    <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Source Filter</th>
                     <th className="px-3 py-2"></th>
                   </tr>
                 </thead>
@@ -193,7 +195,10 @@ export default function App() {
                           )}
                         </td>
                         <td className="px-3 py-2 min-w-[180px]">
-                          <input className={inputCls} type="text" value={filterConditionsMap[model.file] || ''} onChange={(e) => setFilterConditionsMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. date = '2026-01-01'" />
+                          <input className={inputCls} type="text" value={targetFilterMap[model.file] || ''} onChange={(e) => setTargetFilterMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. date = '2026-01-01'" />
+                        </td>
+                        <td className="px-3 py-2 min-w-[180px]">
+                          <input className={inputCls} type="text" value={sourceFilterMap[model.file] || ''} onChange={(e) => setSourceFilterMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. date = '2026-01-01'" />
                         </td>
                         <td className="px-3 py-2">
                           <button
@@ -289,10 +294,20 @@ export default function App() {
                             </tbody>
                           </table>
 
-                          {result.filterCondition && (
-                            <div className="mb-3 flex items-center gap-2 text-xs text-[var(--vscode-descriptionForeground)]">
-                              <span className="shrink-0">Filter:</span>
-                              <code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded">{result.filterCondition}</code>
+                          {(result.targetFilter || result.sourceFilter) && (
+                            <div className="mb-3 flex flex-col gap-1 text-xs text-[var(--vscode-descriptionForeground)]">
+                              {result.targetFilter && (
+                                <div className="flex items-center gap-2">
+                                  <span className="shrink-0 w-20">Target filter:</span>
+                                  <code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded">{result.targetFilter}</code>
+                                </div>
+                              )}
+                              {result.sourceFilter && (
+                                <div className="flex items-center gap-2">
+                                  <span className="shrink-0 w-20">Source filter:</span>
+                                  <code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded">{result.sourceFilter}</code>
+                                </div>
+                              )}
                             </div>
                           )}
 

@@ -49,7 +49,8 @@ export class DataDiffPanel {
                             message.data.targetBranch,
                             message.data.tablePrefix,
                             { [message.data.file]: message.data.primaryKeys || '' },
-                            { [message.data.file]: message.data.filterCondition || '' },
+                            { [message.data.file]: message.data.targetFilter || '' },
+                            { [message.data.file]: message.data.sourceFilter || '' },
                             { [message.data.file]: message.data.excludeColumns || '' },
                             this._panel,
                             [message.data.file]
