@@ -366,7 +366,8 @@ export async function orchestrateDataDiff(
                  logger.error(`Error executing diff query: ${errMsg}`);
                  diffResults.push({
                      file,
-                     error: `Error diffing table data: ${errMsg}`
+                     error: `Error diffing table data: ${errMsg}`,
+                     comparisonQuery,
                  });
             }
         }

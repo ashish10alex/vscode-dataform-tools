@@ -103,13 +103,20 @@ export default function App() {
 
           <label className="flex flex-col gap-1 min-w-[200px]">
             <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Target Branch</span>
-            <select
-              className="px-2 py-1.5 border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] text-sm rounded"
-              value={targetBranch} onChange={(e) => setTargetBranch(e.target.value)}
-            >
-              <option value="" disabled>Select target branch</option>
-              {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
+            <Select
+              options={allBranches.map(b => ({ value: b, label: b }))}
+              value={targetBranch ? { value: targetBranch, label: targetBranch } : null}
+              onChange={(opt) => setTargetBranch(opt?.value ?? '')}
+              placeholder="Select target branch…"
+              styles={{
+                control: (base) => ({ ...base, backgroundColor: 'var(--vscode-input-background)', borderColor: 'var(--vscode-input-border)', fontSize: '13px', minHeight: '32px', boxShadow: 'none' }),
+                menu: (base) => ({ ...base, backgroundColor: 'var(--vscode-dropdown-background)', border: '1px solid var(--vscode-dropdown-border)', zIndex: 9999 }),
+                option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-dropdown-background)', color: state.isFocused ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-dropdown-foreground)', padding: '6px 10px', cursor: 'pointer' }),
+                singleValue: (base) => ({ ...base, color: 'var(--vscode-input-foreground)' }),
+                input: (base) => ({ ...base, color: 'var(--vscode-input-foreground)' }),
+                placeholder: (base) => ({ ...base, color: 'var(--vscode-input-placeholderForeground)' }),
+              }}
+            />
           </label>
 
           <label className="flex flex-col gap-1 min-w-[160px]">
@@ -225,7 +232,19 @@ export default function App() {
                   </div>
                   <div className="p-4">
                     {result.error ? (
-                      <p className="text-xs text-[var(--vscode-inputValidation-errorForeground)]">{result.error}</p>
+                      <div className="flex flex-col gap-3">
+                        <div className="px-3 py-2 border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] text-[var(--vscode-inputValidation-errorForeground)] rounded text-xs font-mono">
+                          {result.error}
+                        </div>
+                        {result.comparisonQuery && (
+                          <div>
+                            <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-1">Query used:</p>
+                            <div className="w-full overflow-hidden">
+                              <CodeBlock code={result.comparisonQuery} language="sql" showLineNumbers />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <RadixTabs.Root defaultValue="summary" className="w-full">
                         <RadixTabs.List className="flex border-b border-[var(--vscode-widget-border)] mb-4">
