@@ -251,21 +251,36 @@ export async function orchestrateDataDiff(
 
                  const selectColumns = commonColNames.map(c => `tbl_tgt.\`${c}\` as \`base_${c}\`, tbl_feat.\`${c}\` as \`feat_${c}\``).join(', ');
 
+                 // Build _changed_columns: comma-separated list of column names that differ on each row
+                 const nonPkCols = commonColNames.filter(c => !pkCols.includes(c));
+                 const changedColsIfs = nonPkCols.map(c => {
+                     const tType = targetSchemaCols.find((t: any) => t.column_name === c)?.data_type || '';
+                     const sType = sourceSchemaCols.find((s: any) => s.column_name === c)?.data_type || '';
+                     const isComplex = tType.match(/^(STRUCT|ARRAY)/i) || sType.match(/^(STRUCT|ARRAY)/i);
+                     const castFunc = isComplex ? 'TO_JSON_STRING' : 'CAST';
+                     const asString = isComplex ? '' : ' AS STRING';
+                     return `IF(IFNULL(${castFunc}(tbl_tgt.\`${c}\`${asString}), '<null>') != IFNULL(${castFunc}(tbl_feat.\`${c}\`${asString}), '<null>'), '${c}', NULL)`;
+                 });
+                 const changedColumnsExpr = changedColsIfs.length > 0
+                     ? `(SELECT STRING_AGG(col, ', ' ORDER BY col) FROM UNNEST([${changedColsIfs.join(', ')}]) AS col WHERE col IS NOT NULL)`
+                     : `CAST(NULL AS STRING)`;
+
                  comparisonQuery = `
                  WITH tbl_feat AS (SELECT ${sourceSelectList} FROM \`${targetDatabase}.${targetSchema}.${featTableName}\`${whereClause}),
                  tbl_tgt AS (SELECT ${targetSelectList} FROM \`${targetDatabase}.${targetSchema}.${baseTableName}\`${whereClause})
-                 
-                 SELECT 
+
+                 SELECT
                     ${pkOrderStr} as _pk,
-                    CASE 
+                    CASE
                         WHEN tbl_tgt.\`${pkCols[0]}\` IS NULL THEN 'Added'
                         WHEN tbl_feat.\`${pkCols[0]}\` IS NULL THEN 'Removed'
                         ELSE 'Modified'
                     END as _diff_status,
+                    ${changedColumnsExpr} AS _changed_columns,
                     ${selectColumns}
                  FROM tbl_tgt
                  FULL OUTER JOIN tbl_feat ON ${pkJoinCondition}
-                 WHERE 
+                 WHERE
                     (tbl_tgt.\`${pkCols[0]}\` IS NULL OR tbl_feat.\`${pkCols[0]}\` IS NULL)
                     OR
                     (${finalDiffCondition})

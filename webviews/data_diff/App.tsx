@@ -68,6 +68,7 @@ export default function App() {
 
   const handleRunSingleDiff = (file: string) => {
     setDiffingFiles(prev => new Set(prev).add(file));
+    setDiffResults(prev => prev.filter(r => r.file !== file));
     setDiffError(null);
     vscode.postMessage({
       command: "runSingleModelDiff",
@@ -237,18 +238,37 @@ export default function App() {
                         </RadixTabs.List>
 
                         <RadixTabs.Content value="summary">
-                          <div className="mb-3 flex flex-col gap-1.5">
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                              <span className="text-xs text-[var(--vscode-descriptionForeground)] shrink-0">Target:</span>
-                              <code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded text-xs break-all">{result.baseTableFullName || result.baseTableName}</code>
-                              {result.baseLastModified && <span className="text-xs text-[var(--vscode-descriptionForeground)] shrink-0">updated {new Date(result.baseLastModified).toLocaleString()}</span>}
-                            </div>
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                              <span className="text-xs text-[var(--vscode-descriptionForeground)] shrink-0">Source:</span>
-                              <code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded text-xs break-all">{result.featTableFullName || result.featTableName}</code>
-                              {result.featLastModified && <span className="text-xs text-[var(--vscode-descriptionForeground)] shrink-0">updated {new Date(result.featLastModified).toLocaleString()}</span>}
-                            </div>
-                          </div>
+                          {(() => {
+                            const baseDay = result.baseLastModified ? new Date(result.baseLastModified).toDateString() : null;
+                            const featDay = result.featLastModified ? new Date(result.featLastModified).toDateString() : null;
+                            return baseDay && featDay && baseDay !== featDay ? (
+                              <div className="mb-2 flex items-center gap-1.5 text-xs text-[var(--vscode-inputValidation-warningForeground)]">
+                                <span>⚠</span>
+                                <span>Target and source were last updated on different days.</span>
+                              </div>
+                            ) : null;
+                          })()}
+                          <table className="mb-3 text-xs border-collapse w-full">
+                            <thead>
+                              <tr className="border-b border-[var(--vscode-widget-border)]">
+                                <th className="text-left py-1 pr-4 font-semibold text-[var(--vscode-descriptionForeground)] w-14"></th>
+                                <th className="text-left py-1 pr-4 font-semibold text-[var(--vscode-descriptionForeground)]">Table</th>
+                                <th className="text-left py-1 font-semibold text-[var(--vscode-descriptionForeground)] whitespace-nowrap">Last Updated</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="border-b border-[var(--vscode-widget-border)]/40">
+                                <td className="py-1.5 pr-4 text-[var(--vscode-descriptionForeground)] font-medium">Target</td>
+                                <td className="py-1.5 pr-4"><code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded break-all">{result.baseTableFullName || result.baseTableName}</code></td>
+                                <td className="py-1.5 text-[var(--vscode-descriptionForeground)] whitespace-nowrap">{result.baseLastModified ? new Date(result.baseLastModified).toLocaleString() : '—'}</td>
+                              </tr>
+                              <tr>
+                                <td className="py-1.5 pr-4 text-[var(--vscode-descriptionForeground)] font-medium">Source</td>
+                                <td className="py-1.5 pr-4"><code className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-1.5 py-0.5 rounded break-all">{result.featTableFullName || result.featTableName}</code></td>
+                                <td className="py-1.5 text-[var(--vscode-descriptionForeground)] whitespace-nowrap">{result.featLastModified ? new Date(result.featLastModified).toLocaleString() : '—'}</td>
+                              </tr>
+                            </tbody>
+                          </table>
 
                           {result.filterCondition && (
                             <div className="mb-3 flex items-center gap-2 text-xs text-[var(--vscode-descriptionForeground)]">
