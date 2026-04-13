@@ -172,9 +172,6 @@ export async function orchestrateDataDiff(
 
             const commonColNames = targetSchemaCols.map(c => c.column_name).filter(c => sourceSchemaCols.find(s => s.column_name === c) && !excludeCols.includes(c));
             
-            const orderableColNames = targetSchemaCols.filter(c => !c.data_type.match(/^(STRUCT|ARRAY)/i) && sourceSchemaCols.find(s => s.column_name === c.column_name)).map(c => c.column_name);
-            const orderByCols = orderableColNames.length > 0 ? orderableColNames.map(c => `\`${c}\``).join(', ') : '1';
-            
             let comparisonQuery = '';
 
             const primaryKeys = primaryKeysMap[file] || '';
@@ -193,7 +190,6 @@ export async function orchestrateDataDiff(
                  added AS (SELECT 'Added' as _diff_status, * FROM tbl_feat EXCEPT DISTINCT SELECT 'Added', * FROM tbl_tgt),
                  removed AS (SELECT 'Removed' as _diff_status, * FROM tbl_tgt EXCEPT DISTINCT SELECT 'Removed', * FROM tbl_feat)
                  SELECT * FROM added UNION ALL SELECT * FROM removed
-                 ORDER BY 1, _diff_status
                  `;
             } else if (pkCols.length === 0) {
                  // Fall back to EXCEPT DISTINCT without primary keys
@@ -227,7 +223,6 @@ export async function orchestrateDataDiff(
                  UNION ALL SELECT * FROM true_removed
                  UNION ALL SELECT * FROM modified_old
                  UNION ALL SELECT * FROM modified_new
-                 ORDER BY ${orderByCols}, _diff_status DESC
                  `;
             } else {
                  // FULL OUTER JOIN on Primary Keys
@@ -287,7 +282,6 @@ export async function orchestrateDataDiff(
                     (tbl_tgt.\`${pkCols[0]}\` IS NULL OR tbl_feat.\`${pkCols[0]}\` IS NULL)
                     OR
                     (${finalDiffCondition})
-                 ORDER BY _pk, _diff_status DESC
                  `;
             }
 
