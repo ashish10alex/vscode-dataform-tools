@@ -28,7 +28,7 @@ export class DataDiffPanel {
                     case 'webviewReady': {
                         try {
                             const gitService = new GitService();
-                            const branchInfo = gitService.getGitBranchAndRepoName();
+                            const branchInfo = await gitService.getGitBranchAndRepoName();
                             const allBranches = await gitService.getAllBranches();
                             const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions') || '';
                             const tablePrefixOpt = compilerOptions.split(' ').find(opt => opt.startsWith('--table-prefix'));
