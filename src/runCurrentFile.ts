@@ -97,7 +97,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
 
             const gitClient = new GitService();
-            const gitInfo = gitClient.getGitBranchAndRepoName();
+            const gitInfo = await gitClient.getGitBranchAndRepoName();
             if(!gitInfo || !gitInfo?.gitBranch || !gitInfo.gitRepoName){
                 throw new Error("Error determining git repository and or branch name");
             } 

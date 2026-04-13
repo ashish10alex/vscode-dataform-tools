@@ -42,6 +42,7 @@ export const useVSCodeMessage = () => {
           nextState.dryRunIncrementalErrorsByNodeType = message.dryRunIncrementalErrorsByNodeType || {};
           nextState.dryRunExpectedOutputErrorsByNodeName = message.dryRunExpectedOutputErrorsByNodeName || {};
           nextState.dryRunExpectedOutputErrorsByNodeType = message.dryRunExpectedOutputErrorsByNodeType || {};
+          nextState.dataformCoreVersion = message.dataformCoreVersion;
           
           if (message.recompiling === true) {
             nextState.compilationTimeMs = undefined;
