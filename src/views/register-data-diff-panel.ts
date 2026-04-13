@@ -3,15 +3,17 @@ import { getNonce } from '../utils';
 import { logger } from '../logger';
 
 import { GitService } from '../gitClient';
-import { orchestrateDataDiff, previewDiffModels, dryRunSingleModel } from '../utils/dataDiffOrchestrator';
+import { orchestrateDataDiff, previewDiffModels, dryRunSingleModel, orchestrateTablePairDiff, dryRunTablePairDiff, fetchTablePairSchema } from '../utils/dataDiffOrchestrator';
 
 export class DataDiffPanel {
     public static currentPanel: DataDiffPanel | undefined;
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
+    private readonly _initialMode: 'branch' | 'table';
     private _disposables: vscode.Disposable[] = [];
 
-    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, initialMode: 'branch' | 'table' = 'branch') {
+        this._initialMode = initialMode;
         this._panel = panel;
         this._extensionUri = extensionUri;
 
@@ -39,6 +41,7 @@ export class DataDiffPanel {
                                     currentBranch: branchInfo ? branchInfo.gitBranch : "",
                                     branches: allBranches,
                                     tablePrefix,
+                                    initialMode: this._initialMode,
                                 }
                             });
                         } catch(e) {
@@ -70,6 +73,35 @@ export class DataDiffPanel {
                             this._panel
                         );
                         break;
+                    case 'fetchTablePairSchema':
+                        fetchTablePairSchema(message.data.tableA, message.data.tableB, this._panel);
+                        break;
+                    case 'runTablePairDiff':
+                        logger.info(`Running table pair diff: ${message.data.tableA} vs ${message.data.tableB}`);
+                        orchestrateTablePairDiff(
+                            message.data.tableA,
+                            message.data.tableB,
+                            message.data.targetPrimaryKeys || '',
+                            message.data.sourcePrimaryKeys || '',
+                            message.data.targetFilter || '',
+                            message.data.sourceFilter || '',
+                            message.data.excludeColumns || '',
+                            this._panel
+                        );
+                        break;
+                    case 'dryRunTablePairDiff':
+                        logger.info(`Dry running table pair diff: ${message.data.tableA} vs ${message.data.tableB}`);
+                        dryRunTablePairDiff(
+                            message.data.tableA,
+                            message.data.tableB,
+                            message.data.targetPrimaryKeys || '',
+                            message.data.sourcePrimaryKeys || '',
+                            message.data.targetFilter || '',
+                            message.data.sourceFilter || '',
+                            message.data.excludeColumns || '',
+                            this._panel
+                        );
+                        break;
                     case 'dryRunModelDiff':
                         logger.info(`Dry running diff for: ${message.data.file}`);
                         dryRunSingleModel(
@@ -92,14 +124,16 @@ export class DataDiffPanel {
         );
     }
 
-    public static createOrShow(extensionUri: vscode.Uri) {
+    public static createOrShow(extensionUri: vscode.Uri, initialMode: 'branch' | 'table' = 'branch') {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
 
-        // If we already have a panel, show it.
+        // If we already have a panel, show it (switching tabs is handled by the webview).
         if (DataDiffPanel.currentPanel) {
             DataDiffPanel.currentPanel._panel.reveal(column);
+            // Notify the webview to switch to the requested mode.
+            DataDiffPanel.currentPanel._panel.webview.postMessage({ command: 'switchMode', data: initialMode });
             return;
         }
 
@@ -118,7 +152,7 @@ export class DataDiffPanel {
             }
         );
 
-        DataDiffPanel.currentPanel = new DataDiffPanel(panel, extensionUri);
+        DataDiffPanel.currentPanel = new DataDiffPanel(panel, extensionUri, initialMode);
     }
 
     private _update() {

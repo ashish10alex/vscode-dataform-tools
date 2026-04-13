@@ -726,3 +726,352 @@ export async function dryRunSingleModel(
         panel.webview.postMessage({ command: 'dryRunError', data: { file: files[0], error: e.message } });
     }
 }
+
+export async function fetchTablePairSchema(
+    tableA: string,
+    tableB: string,
+    panel: vscode.WebviewPanel
+) {
+    try {
+        const bqClient = getBigQueryClient();
+        if (!bqClient) {
+            panel.webview.postMessage({ command: 'tablePairSchema', data: { tableA, error: 'BigQuery client is not initialized.' } });
+            return;
+        }
+        const tgt = parseFullTableName(tableA);
+        const src = parseFullTableName(tableB);
+        const [baseMeta, featMeta] = await Promise.all([
+            bqClient.dataset(tgt.schema, { projectId: tgt.database }).table(tgt.name).getMetadata().then(([m]: any) => m).catch(() => null),
+            bqClient.dataset(src.schema, { projectId: src.database }).table(src.name).getMetadata().then(([m]: any) => m).catch(() => null),
+        ]);
+        const targetCols: string[] = baseMeta?.schema?.fields?.map((f: any) => f.name) ?? [];
+        const sourceCols: string[] = featMeta?.schema?.fields?.map((f: any) => f.name) ?? [];
+        const commonCols = targetCols.filter(c => sourceCols.includes(c));
+        panel.webview.postMessage({ command: 'tablePairSchema', data: { tableA, targetCols, sourceCols, commonCols } });
+    } catch (e: any) {
+        logger.error(`Error fetching table pair schema: ${e.message}`);
+        panel.webview.postMessage({ command: 'tablePairSchema', data: { tableA, error: e.message } });
+    }
+}
+
+function parseFullTableName(full: string): { database: string; schema: string; name: string } {
+    const parts = full.replace(/`/g, '').trim().split('.');
+    if (parts.length !== 3) {
+        throw new Error(`Expected project.dataset.table, got: "${full}"`);
+    }
+    return { database: parts[0], schema: parts[1], name: parts[2] };
+}
+
+async function buildTablePairDiff(
+    tableA: string,
+    tableB: string,
+    targetPrimaryKeys: string,
+    sourcePrimaryKeys: string,
+    targetFilter: string,
+    sourceFilter: string,
+    excludeColumns: string,
+    bqClient: any
+): Promise<{ comparisonQuery: string; summaryQuery: string; targetSchemaCols: any[]; sourceSchemaCols: any[]; targetDatabase: string; targetSchema: string; baseTableName: string; featTableName: string; baseLastModified: string | null; featLastModified: string | null; pkCols: string[]; commonColNames: string[] }> {
+    const tgt = parseFullTableName(tableA);
+    const src = parseFullTableName(tableB);
+
+    const targetDatabase = tgt.database;
+    const targetSchema = tgt.schema;
+    const baseTableName = tgt.name;
+    const featDatabase = src.database;
+    const featSchema = src.schema;
+    const featTableName = src.name;
+
+    const [targetExists] = await bqClient.dataset(targetSchema, { projectId: targetDatabase }).table(baseTableName).exists();
+    const [sourceExists] = await bqClient.dataset(featSchema, { projectId: featDatabase }).table(featTableName).exists();
+
+    if (!targetExists || !sourceExists) {
+        throw new Error(`Tables not materialized. Target (\`${tableA}\`) exists: ${targetExists}, Source (\`${tableB}\`) exists: ${sourceExists}`);
+    }
+
+    const targetSchemaQuery = `SELECT column_name, data_type FROM \`${targetDatabase}.${targetSchema}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name = '${baseTableName}'`;
+    const sourceSchemaQuery = `SELECT column_name, data_type FROM \`${featDatabase}.${featSchema}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name = '${featTableName}'`;
+    const [targetCols, sourceCols, baseMeta, featMeta] = await Promise.all([
+        bqClient.query(targetSchemaQuery).then(([r]: any) => r),
+        bqClient.query(sourceSchemaQuery).then(([r]: any) => r),
+        bqClient.dataset(targetSchema, { projectId: targetDatabase }).table(baseTableName).getMetadata().then(([m]: any) => m).catch(() => null),
+        bqClient.dataset(featSchema, { projectId: featDatabase }).table(featTableName).getMetadata().then(([m]: any) => m).catch(() => null),
+    ]);
+
+    const targetSchemaCols: any[] = targetCols;
+    const sourceSchemaCols: any[] = sourceCols;
+    const baseLastModified = baseMeta?.lastModifiedTime ? new Date(parseInt(baseMeta.lastModifiedTime)).toISOString() : null;
+    const featLastModified = featMeta?.lastModifiedTime ? new Date(parseInt(featMeta.lastModifiedTime)).toISOString() : null;
+
+    const excludeCols = excludeColumns.split(',').map((k: string) => k.trim()).filter(Boolean);
+    const allColNames = Array.from(new Set([
+        ...targetSchemaCols.map(c => c.column_name),
+        ...sourceSchemaCols.map(c => c.column_name)
+    ])).filter((c: string) => !excludeCols.includes(c));
+
+    const buildSelectList = (tableCols: any[], isTarget: boolean) => {
+        const colNames = tableCols.map(c => c.column_name);
+        return allColNames.map(col => {
+            const tCol = targetSchemaCols.find(c => c.column_name === col);
+            const sCol = sourceSchemaCols.find(c => c.column_name === col);
+            const type = (isTarget ? tCol : sCol)?.data_type || tCol?.data_type || sCol?.data_type || 'STRING';
+            const isComplex = type.match(/^(STRUCT|ARRAY)/i);
+            if (colNames.includes(col)) {
+                if (isComplex) { return `TO_JSON_STRING(\`${col}\`) AS \`${col}\``; }
+                if (tCol && sCol && tCol.data_type !== sCol.data_type) { return `CAST(\`${col}\` AS STRING) AS \`${col}\``; }
+                return `\`${col}\``;
+            }
+            if (isComplex || (tCol && sCol && tCol.data_type !== sCol.data_type)) { return `CAST(NULL AS STRING) AS \`${col}\``; }
+            return `CAST(NULL as ${type}) AS \`${col}\``;
+        }).join(', ');
+    };
+
+    const sourceSelectList = buildSelectList(sourceSchemaCols, false);
+    const targetSelectList = buildSelectList(targetSchemaCols, true);
+    const commonColNames = targetSchemaCols.map(c => c.column_name).filter(c => sourceSchemaCols.find(s => s.column_name === c) && !excludeCols.includes(c));
+
+    const defaultPks: string[] = [];
+    const targetPkCols: string[] = targetPrimaryKeys ? targetPrimaryKeys.split(',').map((k: string) => k.trim()).filter(Boolean) : defaultPks;
+    const sourcePkCols: string[] = sourcePrimaryKeys ? sourcePrimaryKeys.split(',').map((k: string) => k.trim()).filter(Boolean) : targetPkCols;
+    const pkCols: string[] = targetPkCols;
+
+    const targetWhereClause = targetFilter ? ` WHERE ${targetFilter}` : '';
+    const sourceWhereClause = sourceFilter ? ` WHERE ${sourceFilter}` : '';
+
+    // Use full qualified names for the table pair diff
+    const tgtFull = `\`${targetDatabase}.${targetSchema}.${baseTableName}\``;
+    const srcFull = `\`${featDatabase}.${featSchema}.${featTableName}\``;
+
+    let comparisonQuery = '';
+
+    if (commonColNames.length === 0) {
+        comparisonQuery = `
+        WITH tbl_feat AS (SELECT ${sourceSelectList} FROM ${srcFull}${sourceWhereClause}),
+        tbl_tgt AS (SELECT ${targetSelectList} FROM ${tgtFull}${targetWhereClause}),
+        added AS (SELECT 'Added' as _diff_status, * FROM tbl_feat EXCEPT DISTINCT SELECT 'Added', * FROM tbl_tgt),
+        removed AS (SELECT 'Removed' as _diff_status, * FROM tbl_tgt EXCEPT DISTINCT SELECT 'Removed', * FROM tbl_feat)
+        SELECT * FROM added UNION ALL SELECT * FROM removed
+        `;
+    } else if (pkCols.length === 0) {
+        const structFieldsSource = commonColNames.map(c => `\`${c}\``).join(', ');
+        comparisonQuery = `
+        WITH tbl_feat AS (SELECT ${sourceSelectList} FROM ${srcFull}${sourceWhereClause}),
+        tbl_tgt AS (SELECT ${targetSelectList} FROM ${tgtFull}${targetWhereClause}),
+        diff_feat AS (SELECT * FROM tbl_feat EXCEPT DISTINCT SELECT * FROM tbl_tgt),
+        diff_tgt AS (SELECT * FROM tbl_tgt EXCEPT DISTINCT SELECT * FROM tbl_feat),
+        true_added AS (
+           SELECT 'Added' as _diff_status, f.* FROM diff_feat f
+           WHERE TO_JSON_STRING(STRUCT(${structFieldsSource})) NOT IN (SELECT TO_JSON_STRING(STRUCT(${structFieldsSource})) FROM diff_tgt)
+        ),
+        true_removed AS (
+           SELECT 'Removed' as _diff_status, t.* FROM diff_tgt t
+           WHERE TO_JSON_STRING(STRUCT(${structFieldsSource})) NOT IN (SELECT TO_JSON_STRING(STRUCT(${structFieldsSource})) FROM diff_feat)
+        ),
+        modified_old AS (
+           SELECT 'Modified (-)' as _diff_status, t.* FROM diff_tgt t
+           WHERE TO_JSON_STRING(STRUCT(${structFieldsSource})) IN (SELECT TO_JSON_STRING(STRUCT(${structFieldsSource})) FROM diff_feat)
+        ),
+        modified_new AS (
+           SELECT 'Modified (+)' as _diff_status, f.* FROM diff_feat f
+           WHERE TO_JSON_STRING(STRUCT(${structFieldsSource})) IN (SELECT TO_JSON_STRING(STRUCT(${structFieldsSource})) FROM diff_tgt)
+        )
+        SELECT * FROM true_added
+        UNION ALL SELECT * FROM true_removed
+        UNION ALL SELECT * FROM modified_old
+        UNION ALL SELECT * FROM modified_new
+        `;
+    } else {
+        const pkJoinCondition = targetPkCols.map((pk, i) => `tbl_tgt.\`${pk}\` = tbl_feat.\`${sourcePkCols[i] ?? pk}\``).join(' AND ');
+        const pkCoalesceParts = targetPkCols.map((pk, i) => {
+            const sPk = sourcePkCols[i] ?? pk;
+            const isComplex = targetSchemaCols.find(t => t.column_name === pk)?.data_type.match(/^(STRUCT|ARRAY)/i);
+            const castFunc = isComplex ? 'TO_JSON_STRING' : 'CAST';
+            const asString = isComplex ? '' : ' AS STRING';
+            return `COALESCE(${castFunc}(tbl_tgt.\`${pk}\`${asString}), ${castFunc}(tbl_feat.\`${sPk}\`${asString}))`;
+        });
+        const pkOrderStr = pkCoalesceParts.length > 1 ? `CONCAT(${pkCoalesceParts.join(", '-', ")})` : pkCoalesceParts[0];
+        const diffConditionParts = commonColNames.filter(c => !pkCols.includes(c)).map(c => {
+            const tType = targetSchemaCols.find(t => t.column_name === c)?.data_type || '';
+            const sType = sourceSchemaCols.find(s => s.column_name === c)?.data_type || '';
+            const isComplex = tType.match(/^(STRUCT|ARRAY)/i) || sType.match(/^(STRUCT|ARRAY)/i);
+            const castFunc = isComplex ? 'TO_JSON_STRING' : 'CAST';
+            const asString = isComplex ? '' : ' AS STRING';
+            return `IFNULL(${castFunc}(tbl_tgt.\`${c}\`${asString}), '<null>') != IFNULL(${castFunc}(tbl_feat.\`${c}\`${asString}), '<null>')`;
+        });
+        const finalDiffCondition = diffConditionParts.length > 0 ? `(${diffConditionParts.join(' OR ')})` : 'FALSE';
+        const selectColumns = commonColNames.map(c => `tbl_tgt.\`${c}\` as \`base_${c}\`, tbl_feat.\`${c}\` as \`feat_${c}\``).join(', ');
+        const nonPkCols = commonColNames.filter(c => !pkCols.includes(c));
+        const changedColsIfs = nonPkCols.map(c => {
+            const tType = targetSchemaCols.find((t: any) => t.column_name === c)?.data_type || '';
+            const sType = sourceSchemaCols.find((s: any) => s.column_name === c)?.data_type || '';
+            const isComplex = tType.match(/^(STRUCT|ARRAY)/i) || sType.match(/^(STRUCT|ARRAY)/i);
+            const castFunc = isComplex ? 'TO_JSON_STRING' : 'CAST';
+            const asString = isComplex ? '' : ' AS STRING';
+            return `IF(IFNULL(${castFunc}(tbl_tgt.\`${c}\`${asString}), '<null>') != IFNULL(${castFunc}(tbl_feat.\`${c}\`${asString}), '<null>'), '${c}', NULL)`;
+        });
+        const changedColumnsExpr = changedColsIfs.length > 0
+            ? `(SELECT STRING_AGG(col, ', ' ORDER BY col) FROM UNNEST([${changedColsIfs.join(', ')}]) AS col WHERE col IS NOT NULL)`
+            : `CAST(NULL AS STRING)`;
+        comparisonQuery = `
+        WITH tbl_feat AS (SELECT ${sourceSelectList} FROM ${srcFull}${sourceWhereClause}),
+        tbl_tgt AS (SELECT ${targetSelectList} FROM ${tgtFull}${targetWhereClause})
+        SELECT
+           ${pkOrderStr} as _pk,
+           CASE
+               WHEN tbl_tgt.\`${targetPkCols[0]}\` IS NULL THEN 'Added'
+               WHEN tbl_feat.\`${sourcePkCols[0] ?? targetPkCols[0]}\` IS NULL THEN 'Removed'
+               ELSE 'Modified'
+           END as _diff_status,
+           ${changedColumnsExpr} AS _changed_columns,
+           ${selectColumns}
+        FROM tbl_tgt
+        FULL OUTER JOIN tbl_feat ON ${pkJoinCondition}
+        WHERE
+           (tbl_tgt.\`${targetPkCols[0]}\` IS NULL OR tbl_feat.\`${sourcePkCols[0] ?? targetPkCols[0]}\` IS NULL)
+           OR
+           (${finalDiffCondition})
+        `;
+    }
+
+    comparisonQuery = formatSqlQuery(comparisonQuery);
+
+    const diffColsSelects = pkCols.length > 0
+        ? commonColNames.filter((c: string) => !pkCols.includes(c)).map((c: string) => {
+            const tType = targetSchemaCols.find((t: any) => t.column_name === c)?.data_type || '';
+            const sType = sourceSchemaCols.find((s: any) => s.column_name === c)?.data_type || '';
+            const isComplex = tType.match(/^(STRUCT|ARRAY)/i) || sType.match(/^(STRUCT|ARRAY)/i);
+            const castFunc = isComplex ? 'TO_JSON_STRING' : 'CAST';
+            const asString = isComplex ? '' : ' AS STRING';
+            return `COUNTIF(IFNULL(${castFunc}(\`base_${c}\`${asString}), '<null>') != IFNULL(${castFunc}(\`feat_${c}\`${asString}), '<null>')) as \`diff_${c}\``;
+        }).join(', ')
+        : '';
+
+    const summaryQuery = pkCols.length > 0 && diffColsSelects ? `
+    SELECT _diff_status, COUNT(*) as row_count,
+    ${diffColsSelects}
+    FROM (${comparisonQuery})
+    GROUP BY _diff_status
+    ` : `
+    SELECT _diff_status, COUNT(*) as row_count
+    FROM (${comparisonQuery})
+    GROUP BY _diff_status
+    `;
+
+    return { comparisonQuery, summaryQuery, targetSchemaCols, sourceSchemaCols, targetDatabase, targetSchema, baseTableName, featTableName: `${featDatabase}.${featSchema}.${featTableName}`, baseLastModified, featLastModified, pkCols, commonColNames };
+}
+
+export async function orchestrateTablePairDiff(
+    tableA: string,
+    tableB: string,
+    targetPrimaryKeys: string,
+    sourcePrimaryKeys: string,
+    targetFilter: string,
+    sourceFilter: string,
+    excludeColumns: string,
+    panel: vscode.WebviewPanel
+) {
+    try {
+        const bqClient = getBigQueryClient();
+        if (!bqClient) {
+            panel.webview.postMessage({ command: 'diffError', data: 'BigQuery client is not initialized.' });
+            return;
+        }
+
+        const { comparisonQuery, summaryQuery, targetSchemaCols, sourceSchemaCols, baseLastModified, featLastModified, pkCols, commonColNames } = await buildTablePairDiff(
+            tableA, tableB, targetPrimaryKeys, sourcePrimaryKeys, targetFilter, sourceFilter, excludeColumns, bqClient
+        );
+
+        logger.info(`Executing table pair diff query for ${tableA} vs ${tableB}`);
+        const [rows] = await bqClient.query(summaryQuery);
+
+        let addedCount = 0;
+        let removedCount = 0;
+        let modifiedCount = 0;
+        const changedColumns: Record<string, number> = {};
+
+        rows.forEach((r: any) => {
+            const count = Number(r.row_count || 0);
+            if (r._diff_status === 'Added') { addedCount += count; }
+            if (r._diff_status === 'Removed') { removedCount += count; }
+            if (r._diff_status === 'Modified' || r._diff_status === 'Modified (+)') {
+                modifiedCount += count;
+                if (pkCols.length > 0) {
+                    commonColNames.filter((c: string) => !pkCols.includes(c)).forEach((c: string) => {
+                        const diffCountForCol = Number(r[`diff_${c}`] || 0);
+                        if (diffCountForCol > 0) { changedColumns[c] = diffCountForCol; }
+                    });
+                }
+            }
+        });
+
+        const schemaAddedCols = sourceSchemaCols.map((c: any) => c.column_name).filter((c: string) => !targetSchemaCols.find((t: any) => t.column_name === c));
+        const schemaRemovedCols = targetSchemaCols.map((c: any) => c.column_name).filter((c: string) => !sourceSchemaCols.find((s: any) => s.column_name === c));
+
+        panel.webview.postMessage({
+            command: 'diffComplete',
+            data: {
+                results: [{
+                    file: tableA,
+                    addedCount, removedCount, modifiedCount, changedColumns,
+                    schemaAddedCols, schemaRemovedCols,
+                    comparisonQuery, rows: [],
+                    baseTableName: tableA,
+                    featTableName: tableB,
+                    baseTableFullName: tableA,
+                    featTableFullName: tableB,
+                    baseLastModified, featLastModified,
+                    targetFilter: targetFilter || null,
+                    sourceFilter: sourceFilter || null,
+                    pkCols, commonColNames,
+                    isPairedDiff: pkCols.length > 0
+                }]
+            }
+        });
+    } catch (e: any) {
+        logger.error(`Error in table pair diff: ${e.message}`);
+        panel.webview.postMessage({ command: 'diffError', data: e.message });
+    }
+}
+
+export async function dryRunTablePairDiff(
+    tableA: string,
+    tableB: string,
+    targetPrimaryKeys: string,
+    sourcePrimaryKeys: string,
+    targetFilter: string,
+    sourceFilter: string,
+    excludeColumns: string,
+    panel: vscode.WebviewPanel
+) {
+    try {
+        const bqClient = getBigQueryClient();
+        if (!bqClient) {
+            panel.webview.postMessage({ command: 'dryRunError', data: { file: tableA, error: 'BigQuery client is not initialized.' } });
+            return;
+        }
+
+        const { comparisonQuery } = await buildTablePairDiff(
+            tableA, tableB, targetPrimaryKeys, sourcePrimaryKeys, targetFilter, sourceFilter, excludeColumns, bqClient
+        );
+
+        logger.info(`Dry running table pair diff for ${tableA} vs ${tableB}`);
+        const dryRunResponse = await queryDryRun(comparisonQuery);
+
+        if (dryRunResponse.error.hasError) {
+            panel.webview.postMessage({ command: 'dryRunError', data: { file: tableA, error: dryRunResponse.error.message } });
+        } else {
+            panel.webview.postMessage({
+                command: 'dryRunResult',
+                data: {
+                    file: tableA,
+                    query: comparisonQuery,
+                    bytesProcessed: dryRunResponse.statistics?.totalBytesProcessed ?? 0,
+                    cost: dryRunResponse.statistics?.cost,
+                }
+            });
+        }
+    } catch (e: any) {
+        logger.error(`Error in table pair dry run: ${e.message}`);
+        panel.webview.postMessage({ command: 'dryRunError', data: { file: tableA, error: e.message } });
+    }
+}

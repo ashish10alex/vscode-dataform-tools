@@ -104,7 +104,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.dataDiff', () => {
-            DataDiffPanel.createOrShow(context.extensionUri);
+            DataDiffPanel.createOrShow(context.extensionUri, 'branch');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.tableDiff', () => {
+            DataDiffPanel.createOrShow(context.extensionUri, 'table');
         })
     );
 

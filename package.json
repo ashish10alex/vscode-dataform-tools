@@ -185,6 +185,11 @@
                 "title": "Data Diff with Target Branch"
             },
             {
+                "command": "vscode-dataform-tools.tableDiff",
+                "category": "Dataform",
+                "title": "Table Pair Diff"
+            },
+            {
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
                 "category": "Dataform",
                 "title": "Show dependency graph"

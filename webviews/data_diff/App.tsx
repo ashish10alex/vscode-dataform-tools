@@ -33,6 +33,9 @@ function upsertResult(prev: any[], entry: any): any[] {
 }
 
 export default function App() {
+  const [mode, setMode] = useState<'branch' | 'table'>('branch');
+
+  // Branch diff state
   const [sourceBranch, setSourceBranch] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
   const [allBranches, setAllBranches] = useState<string[]>([]);
@@ -42,12 +45,27 @@ export default function App() {
   const [targetFilterMap, setTargetFilterMap] = useState<Record<string, string>>({});
   const [sourceFilterMap, setSourceFilterMap] = useState<Record<string, string>>({});
   const [excludeColumnsMap, setExcludeColumnsMap] = useState<Record<string, string>>({});
+  const [previewModels, setPreviewModels] = useState<any[] | null>(null);
+
+  // Table pair diff state
+  const [tableA, setTableA] = useState("");
+  const [tableB, setTableB] = useState("");
+  const [tablePKsA, setTablePKsA] = useState("");
+  const [tablePKsB, setTablePKsB] = useState("");
+  const [tableTargetFilter, setTableTargetFilter] = useState("");
+  const [tableSourceFilter, setTableSourceFilter] = useState("");
+  const [tableExcludeCols, setTableExcludeCols] = useState("");
+  const [tableDiffing, setTableDiffing] = useState(false);
+  const [tableDryRunning, setTableDryRunning] = useState(false);
+  const [tableCols, setTableCols] = useState<{ target: string[], source: string[], common: string[] } | null>(null);
+  const [tableColsLoading, setTableColsLoading] = useState(false);
+
+  // Shared state
   const [isLoading, setIsLoading] = useState(true);
   const [diffResults, setDiffResults] = useState<any[]>([]);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffingFiles, setDiffingFiles] = useState<Set<string>>(new Set());
   const [dryRunningFiles, setDryRunningFiles] = useState<Set<string>>(new Set());
-  const [previewModels, setPreviewModels] = useState<any[] | null>(null);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -56,11 +74,15 @@ export default function App() {
         setSourceBranch(message.data.currentBranch);
         setAllBranches(message.data.branches);
         if (message.data.tablePrefix) { setTablePrefix(message.data.tablePrefix); }
+        if (message.data.initialMode) { setMode(message.data.initialMode); }
         setIsLoading(false);
+      } else if (message.command === "switchMode") {
+        setMode(message.data);
       } else if (message.command === "diffComplete") {
         const newResult = message.data.results[0];
         setDiffResults(prev => upsertResult(prev, newResult));
         setDiffingFiles(prev => { const next = new Set(prev); next.delete(newResult.file); return next; });
+        setTableDiffing(false);
         setDiffError(null);
       } else if (message.command === "diffError") {
         setDiffError(message.data);
@@ -71,10 +93,17 @@ export default function App() {
         const { file, query, bytesProcessed, cost } = message.data;
         setDiffResults(prev => upsertResult(prev, { file, dryRunOnly: true, query, bytesProcessed, cost }));
         setDryRunningFiles(prev => { const next = new Set(prev); next.delete(file); return next; });
+        setTableDryRunning(false);
       } else if (message.command === "dryRunError") {
         const { file, error } = message.data;
         setDiffResults(prev => upsertResult(prev, { file, dryRunOnly: true, error }));
         setDryRunningFiles(prev => { const next = new Set(prev); next.delete(file); return next; });
+        setTableDryRunning(false);
+      } else if (message.command === "tablePairSchema") {
+        setTableColsLoading(false);
+        if (!message.data.error) {
+          setTableCols({ target: message.data.targetCols, source: message.data.sourceCols, common: message.data.commonCols });
+        }
       }
     };
     window.addEventListener("message", handleMessage);
@@ -89,6 +118,18 @@ export default function App() {
     }
   }, [sourceBranch, targetBranch, tablePrefix]);
 
+  const isValidFullTableName = (s: string) => s.split('.').length === 3 && !s.includes(' ') && s.trim().length > 0;
+
+  useEffect(() => {
+    if (isValidFullTableName(tableA) && isValidFullTableName(tableB)) {
+      setTableCols(null);
+      setTableColsLoading(true);
+      vscode.postMessage({ command: "fetchTablePairSchema", data: { tableA, tableB } });
+    } else {
+      setTableCols(null);
+    }
+  }, [tableA, tableB]);
+
   // Remove a stale dry-run-only result when the user edits params for that model.
   const clearDryRunForFile = (file: string) => {
     setDiffResults(prev => prev.filter(r => !(r.file === file && r.dryRunOnly)));
@@ -102,6 +143,20 @@ export default function App() {
       command: "dryRunModelDiff",
       data: { sourceBranch, targetBranch, tablePrefix, file, targetPrimaryKeys: targetPrimaryKeysMap[file] || '', sourcePrimaryKeys: sourcePrimaryKeysMap[file] || '', targetFilter: targetFilterMap[file] || '', sourceFilter: sourceFilterMap[file] || '', excludeColumns: excludeColumnsMap[file] || '' },
     });
+  };
+
+  const handleTableDryRun = () => {
+    if (!tableA || !tableB) { return; }
+    setTableDryRunning(true);
+    setDiffResults(prev => prev.filter(r => !(r.file === tableA && r.dryRunOnly)));
+    vscode.postMessage({ command: "dryRunTablePairDiff", data: { tableA, tableB, targetPrimaryKeys: tablePKsA, sourcePrimaryKeys: tablePKsB, targetFilter: tableTargetFilter, sourceFilter: tableSourceFilter, excludeColumns: tableExcludeCols } });
+  };
+
+  const handleTableDiff = () => {
+    if (!tableA || !tableB) { return; }
+    setTableDiffing(true);
+    setDiffError(null);
+    vscode.postMessage({ command: "runTablePairDiff", data: { tableA, tableB, targetPrimaryKeys: tablePKsA, sourcePrimaryKeys: tablePKsB, targetFilter: tableTargetFilter, sourceFilter: tableSourceFilter, excludeColumns: tableExcludeCols } });
   };
 
   const handleRunSingleDiff = (file: string) => {
@@ -122,15 +177,115 @@ export default function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)]">
-      {/* Header */}
-      <div className="flex items-center px-4 py-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
-        <h1 className="text-sm font-semibold">Branch Data Diff</h1>
+      {/* Header + mode tabs */}
+      <div className="border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
+        <div className="flex items-center px-4 pt-3 pb-0 gap-6">
+          {(['branch', 'table'] as const).map(m => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`pb-2 text-xs font-semibold uppercase tracking-wide border-b-2 transition-colors ${mode === m ? 'border-[var(--vscode-button-background)] text-[var(--vscode-editor-foreground)]' : 'border-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]'}`}
+            >
+              {m === 'branch' ? 'Branch Diff' : 'Table Diff'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4">
-        {/* Config inputs */}
-        <div className="flex flex-wrap gap-4 mb-6">
+        {/* Table Diff inputs */}
+        {mode === 'table' && (
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-4 mb-4">
+              <label className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Table A — Target</span>
+                <input
+                  className="px-2 py-1.5 border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] text-sm rounded"
+                  type="text" value={tableA}
+                  onChange={(e) => { setTableA(e.target.value); clearDryRunForFile(tableA); }}
+                  placeholder="project.dataset.table"
+                />
+              </label>
+              <label className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Table B — Source</span>
+                <input
+                  className="px-2 py-1.5 border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] text-sm rounded"
+                  type="text" value={tableB}
+                  onChange={(e) => { setTableB(e.target.value); clearDryRunForFile(tableA); }}
+                  placeholder="project.dataset.table"
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-3 mb-4">
+              <label className="flex flex-col gap-1 min-w-[150px] flex-1">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">
+                  Target PKs{tableColsLoading && <span className="ml-1 opacity-50 normal-case font-normal">loading…</span>}
+                </span>
+                {tableCols?.target.length ? (
+                  <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
+                    options={tableCols.target.map(c => ({ value: c, label: c }))}
+                    value={tablePKsA.split(',').filter(Boolean).map(k => ({ value: k.trim(), label: k.trim() }))}
+                    onChange={(s: MultiValue<{ value: string; label: string }>) => { setTablePKsA(s.map(x => x.value).join(',')); clearDryRunForFile(tableA); }}
+                    placeholder="Select PKs…" styles={selectStyles} />
+                ) : (
+                  <input className={inputCls} type="text" value={tablePKsA} onChange={(e) => { setTablePKsA(e.target.value); clearDryRunForFile(tableA); }} placeholder="e.g. id,org_id" />
+                )}
+              </label>
+              <label className="flex flex-col gap-1 min-w-[150px] flex-1">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Source PKs</span>
+                {tableCols?.source.length ? (
+                  <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
+                    options={tableCols.source.map(c => ({ value: c, label: c }))}
+                    value={tablePKsB.split(',').filter(Boolean).map(k => ({ value: k.trim(), label: k.trim() }))}
+                    onChange={(s: MultiValue<{ value: string; label: string }>) => { setTablePKsB(s.map(x => x.value).join(',')); clearDryRunForFile(tableA); }}
+                    placeholder="Select PKs…" styles={selectStyles} />
+                ) : (
+                  <input className={inputCls} type="text" value={tablePKsB} onChange={(e) => { setTablePKsB(e.target.value); clearDryRunForFile(tableA); }} placeholder="e.g. id,org_id" />
+                )}
+              </label>
+              <label className="flex flex-col gap-1 min-w-[150px] flex-1">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Exclude Columns</span>
+                {tableCols?.common.length ? (
+                  <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
+                    options={tableCols.common.map(c => ({ value: c, label: c }))}
+                    value={tableExcludeCols.split(',').filter(Boolean).map(k => ({ value: k.trim(), label: k.trim() }))}
+                    onChange={(s: MultiValue<{ value: string; label: string }>) => { setTableExcludeCols(s.map(x => x.value).join(',')); clearDryRunForFile(tableA); }}
+                    placeholder="Exclude columns…" styles={selectStyles} />
+                ) : (
+                  <input className={inputCls} type="text" value={tableExcludeCols} onChange={(e) => { setTableExcludeCols(e.target.value); clearDryRunForFile(tableA); }} placeholder="e.g. updated_at" />
+                )}
+              </label>
+              <label className="flex flex-col gap-1 min-w-[160px] flex-1">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Target Filter</span>
+                <input className={inputCls} type="text" value={tableTargetFilter} onChange={(e) => { setTableTargetFilter(e.target.value); clearDryRunForFile(tableA); }} placeholder="e.g. date = '2026-01-01'" />
+              </label>
+              <label className="flex flex-col gap-1 min-w-[160px] flex-1">
+                <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Source Filter</span>
+                <input className={inputCls} type="text" value={tableSourceFilter} onChange={(e) => { setTableSourceFilter(e.target.value); clearDryRunForFile(tableA); }} placeholder="e.g. date = '2026-01-01'" />
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="px-4 py-1.5 rounded text-xs font-medium bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-40 transition-colors"
+                disabled={tableDiffing || !tableA || !tableB}
+                onClick={handleTableDiff}
+              >
+                {tableDiffing ? "Running…" : "Diff"}
+              </button>
+              <button
+                className="px-4 py-1.5 rounded text-xs font-medium border border-[var(--vscode-button-background)] text-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-background)]/10 disabled:opacity-40 transition-colors"
+                disabled={tableDryRunning || !tableA || !tableB}
+                onClick={handleTableDryRun}
+              >
+                {tableDryRunning ? "Estimating…" : "Dry Run"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Branch Diff config inputs + models preview */}
+        {mode === 'branch' && <><div className="flex flex-wrap gap-4 mb-6">
           <label className="flex flex-col gap-1 min-w-[160px]">
             <span className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">Source Branch</span>
             <input
@@ -278,6 +433,8 @@ export default function App() {
             </div>
           </div>
         )}
+
+        </>}
 
         {/* Diff Results */}
         <div className="border-t border-[var(--vscode-widget-border)] pt-4">
