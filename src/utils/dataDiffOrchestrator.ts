@@ -7,7 +7,8 @@ export async function orchestrateDataDiff(
     sourceBranch: string,
     targetBranch: string,
     tablePrefix: string,
-    primaryKeysMap: Record<string, string>,
+    targetPrimaryKeysMap: Record<string, string>,
+    sourcePrimaryKeysMap: Record<string, string>,
     targetFilterMap: Record<string, string>,
     sourceFilterMap: Record<string, string>,
     excludeColumnsMap: Record<string, string>,
@@ -174,9 +175,12 @@ export async function orchestrateDataDiff(
             
             let comparisonQuery = '';
 
-            const primaryKeys = primaryKeysMap[file] || '';
-            const pks = primaryKeys ? primaryKeys.split(',').map((k: string) => k.trim()) : ((matchingTable as any).uniqueKey || []);
-            const pkCols: string[] = Array.isArray(pks) ? pks : (typeof pks === 'string' ? [pks] : []);
+            const targetPrimaryKeys = targetPrimaryKeysMap[file] || '';
+            const sourcePrimaryKeys = sourcePrimaryKeysMap[file] || '';
+            const defaultPks: string[] = (matchingTable as any).uniqueKey || [];
+            const targetPkCols: string[] = targetPrimaryKeys ? targetPrimaryKeys.split(',').map((k: string) => k.trim()).filter(Boolean) : defaultPks;
+            const sourcePkCols: string[] = sourcePrimaryKeys ? sourcePrimaryKeys.split(',').map((k: string) => k.trim()).filter(Boolean) : (targetPrimaryKeys ? targetPkCols : defaultPks);
+            const pkCols: string[] = targetPkCols; // used for diff column exclusion / summary
 
             const targetFilter = targetFilterMap[file] || '';
             const sourceFilter = sourceFilterMap[file] || '';
@@ -225,14 +229,15 @@ export async function orchestrateDataDiff(
                  UNION ALL SELECT * FROM modified_new
                  `;
             } else {
-                 // FULL OUTER JOIN on Primary Keys
-                 const pkJoinCondition = pkCols.map(pk => `tbl_tgt.\`${pk}\` = tbl_feat.\`${pk}\``).join(' AND ');
-                 
-                 const pkCoalesceParts = pkCols.map(pk => {
+                 // FULL OUTER JOIN on Primary Keys (target and source PKs paired positionally)
+                 const pkJoinCondition = targetPkCols.map((pk, i) => `tbl_tgt.\`${pk}\` = tbl_feat.\`${sourcePkCols[i] ?? pk}\``).join(' AND ');
+
+                 const pkCoalesceParts = targetPkCols.map((pk, i) => {
+                     const sPk = sourcePkCols[i] ?? pk;
                      const isComplex = targetSchemaCols.find(t => t.column_name === pk)?.data_type.match(/^(STRUCT|ARRAY)/i);
                      const castFunc = isComplex ? 'TO_JSON_STRING' : 'CAST';
                      const asString = isComplex ? '' : ' AS STRING';
-                     return `COALESCE(${castFunc}(tbl_tgt.\`${pk}\`${asString}), ${castFunc}(tbl_feat.\`${pk}\`${asString}))`;
+                     return `COALESCE(${castFunc}(tbl_tgt.\`${pk}\`${asString}), ${castFunc}(tbl_feat.\`${sPk}\`${asString}))`;
                  });
                  const pkOrderStr = pkCoalesceParts.length > 1 ? `CONCAT(${pkCoalesceParts.join(", '-', ")})` : pkCoalesceParts[0];
 
@@ -270,8 +275,8 @@ export async function orchestrateDataDiff(
                  SELECT
                     ${pkOrderStr} as _pk,
                     CASE
-                        WHEN tbl_tgt.\`${pkCols[0]}\` IS NULL THEN 'Added'
-                        WHEN tbl_feat.\`${pkCols[0]}\` IS NULL THEN 'Removed'
+                        WHEN tbl_tgt.\`${targetPkCols[0]}\` IS NULL THEN 'Added'
+                        WHEN tbl_feat.\`${sourcePkCols[0] ?? targetPkCols[0]}\` IS NULL THEN 'Removed'
                         ELSE 'Modified'
                     END as _diff_status,
                     ${changedColumnsExpr} AS _changed_columns,
@@ -279,7 +284,7 @@ export async function orchestrateDataDiff(
                  FROM tbl_tgt
                  FULL OUTER JOIN tbl_feat ON ${pkJoinCondition}
                  WHERE
-                    (tbl_tgt.\`${pkCols[0]}\` IS NULL OR tbl_feat.\`${pkCols[0]}\` IS NULL)
+                    (tbl_tgt.\`${targetPkCols[0]}\` IS NULL OR tbl_feat.\`${sourcePkCols[0] ?? targetPkCols[0]}\` IS NULL)
                     OR
                     (${finalDiffCondition})
                  `;
@@ -438,16 +443,19 @@ export async function previewDiffModels(
             const baseTableName = rawTableName;
             const featTableName = tablePrefix ? `${tablePrefix}${tablePrefix.endsWith('_') ? '' : '_'}${rawTableName}` : rawTableName;
 
-            let columns: string[] = [];
+            let targetColumns: string[] = [];
+            let sourceColumns: string[] = [];
             let baseExists = false;
             let featExists = false;
             if (bqClient) {
-                const [meta, baseEx, featEx] = await Promise.all([
+                const [baseMeta, featMeta, baseEx, featEx] = await Promise.all([
                     bqClient.dataset(targetSchema).table(baseTableName).getMetadata().then(([m]: any) => m).catch(() => null),
+                    bqClient.dataset(targetSchema).table(featTableName).getMetadata().then(([m]: any) => m).catch(() => null),
                     bqClient.dataset(targetSchema).table(baseTableName).exists().then(([e]: any) => e).catch(() => false),
                     bqClient.dataset(targetSchema).table(featTableName).exists().then(([e]: any) => e).catch(() => false),
                 ]);
-                columns = meta?.schema?.fields?.map((f: any) => f.name) ?? [];
+                targetColumns = baseMeta?.schema?.fields?.map((f: any) => f.name) ?? [];
+                sourceColumns = featMeta?.schema?.fields?.map((f: any) => f.name) ?? [];
                 baseExists = baseEx;
                 featExists = featEx;
             }
@@ -456,7 +464,9 @@ export async function previewDiffModels(
                 file,
                 baseTableName: `${matchingTable.target.database}.${matchingTable.target.schema}.${baseTableName}`,
                 featTableName: `${matchingTable.target.database}.${matchingTable.target.schema}.${featTableName}`,
-                columns,
+                columns: Array.from(new Set([...targetColumns, ...sourceColumns])),
+                targetColumns,
+                sourceColumns,
                 baseExists,
                 featExists,
             });

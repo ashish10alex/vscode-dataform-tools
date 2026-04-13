@@ -22,7 +22,8 @@ export default function App() {
   const [targetBranch, setTargetBranch] = useState("");
   const [allBranches, setAllBranches] = useState<string[]>([]);
   const [tablePrefix, setTablePrefix] = useState("");
-  const [primaryKeysMap, setPrimaryKeysMap] = useState<Record<string, string>>({});
+  const [targetPrimaryKeysMap, setTargetPrimaryKeysMap] = useState<Record<string, string>>({});
+  const [sourcePrimaryKeysMap, setSourcePrimaryKeysMap] = useState<Record<string, string>>({});
   const [targetFilterMap, setTargetFilterMap] = useState<Record<string, string>>({});
   const [sourceFilterMap, setSourceFilterMap] = useState<Record<string, string>>({});
   const [excludeColumnsMap, setExcludeColumnsMap] = useState<Record<string, string>>({});
@@ -76,7 +77,7 @@ export default function App() {
     setDiffError(null);
     vscode.postMessage({
       command: "runSingleModelDiff",
-      data: { sourceBranch, targetBranch, tablePrefix, file, primaryKeys: primaryKeysMap[file] || '', targetFilter: targetFilterMap[file] || '', sourceFilter: sourceFilterMap[file] || '', excludeColumns: excludeColumnsMap[file] || '' },
+      data: { sourceBranch, targetBranch, tablePrefix, file, targetPrimaryKeys: targetPrimaryKeysMap[file] || '', sourcePrimaryKeys: sourcePrimaryKeysMap[file] || '', targetFilter: targetFilterMap[file] || '', sourceFilter: sourceFilterMap[file] || '', excludeColumns: excludeColumnsMap[file] || '' },
     });
   };
 
@@ -159,7 +160,8 @@ export default function App() {
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">File</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Target (A)</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Source (B)</th>
-                    <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Primary Keys</th>
+                    <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Target PKs</th>
+                    <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Source PKs</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Exclude Columns</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Target Filter</th>
                     <th className="text-left px-3 py-2 font-semibold text-[var(--vscode-descriptionForeground)]">Source Filter</th>
@@ -176,14 +178,25 @@ export default function App() {
                         <td className="px-3 py-2 font-mono text-[var(--vscode-descriptionForeground)] break-all max-w-[160px]">{model.baseTableName.split('.').pop()}</td>
                         <td className="px-3 py-2 font-mono text-[var(--vscode-descriptionForeground)] break-all max-w-[160px]">{model.featTableName.split('.').pop()}</td>
                         <td className="px-3 py-2 min-w-[160px]">
-                          {model.columns?.length > 0 ? (
+                          {model.targetColumns?.length > 0 ? (
                             <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
-                              options={model.columns.map((c: string) => ({ value: c, label: c }))}
-                              value={(primaryKeysMap[model.file] || '').split(',').filter(Boolean).map(k => ({ value: k.trim(), label: k.trim() }))}
-                              onChange={(s: MultiValue<{ value: string; label: string }>) => setPrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') }))}
+                              options={model.targetColumns.map((c: string) => ({ value: c, label: c }))}
+                              value={(targetPrimaryKeysMap[model.file] || '').split(',').filter(Boolean).map((k: string) => ({ value: k.trim(), label: k.trim() }))}
+                              onChange={(s: MultiValue<{ value: string; label: string }>) => setTargetPrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') }))}
                               placeholder="Select PKs…" styles={selectStyles} />
                           ) : (
-                            <input className={inputCls} type="text" value={primaryKeysMap[model.file] || ''} onChange={(e) => setPrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. ORG_ID" />
+                            <input className={inputCls} type="text" value={targetPrimaryKeysMap[model.file] || ''} onChange={(e) => setTargetPrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. ORG_ID" />
+                          )}
+                        </td>
+                        <td className="px-3 py-2 min-w-[160px]">
+                          {model.sourceColumns?.length > 0 ? (
+                            <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
+                              options={model.sourceColumns.map((c: string) => ({ value: c, label: c }))}
+                              value={(sourcePrimaryKeysMap[model.file] || '').split(',').filter(Boolean).map((k: string) => ({ value: k.trim(), label: k.trim() }))}
+                              onChange={(s: MultiValue<{ value: string; label: string }>) => setSourcePrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') }))}
+                              placeholder="Select PKs…" styles={selectStyles} />
+                          ) : (
+                            <input className={inputCls} type="text" value={sourcePrimaryKeysMap[model.file] || ''} onChange={(e) => setSourcePrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. ORG_ID" />
                           )}
                         </td>
                         <td className="px-3 py-2 min-w-[160px]">
