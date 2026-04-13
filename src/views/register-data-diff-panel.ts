@@ -30,11 +30,15 @@ export class DataDiffPanel {
                             const gitService = new GitService();
                             const branchInfo = gitService.getGitBranchAndRepoName();
                             const allBranches = await gitService.getAllBranches();
+                            const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions') || '';
+                            const tablePrefixOpt = compilerOptions.split(' ').find(opt => opt.startsWith('--table-prefix'));
+                            const tablePrefix = tablePrefixOpt ? (tablePrefixOpt.split('=')[1] || '').replace(/['"]/g, '') : '';
                             this._panel.webview.postMessage({
                                 command: 'init',
                                 data: {
                                     currentBranch: branchInfo ? branchInfo.gitBranch : "",
-                                    branches: allBranches
+                                    branches: allBranches,
+                                    tablePrefix,
                                 }
                             });
                         } catch(e) {

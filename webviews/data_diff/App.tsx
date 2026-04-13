@@ -38,6 +38,9 @@ export default function App() {
       if (message.command === "init") {
         setSourceBranch(message.data.currentBranch);
         setAllBranches(message.data.branches);
+        if (message.data.tablePrefix) {
+          setTablePrefix(message.data.tablePrefix);
+        }
         setIsLoading(false);
       } else if (message.command === "diffComplete") {
         const newResult = message.data.results[0];
@@ -266,8 +269,8 @@ export default function App() {
                             const baseDay = result.baseLastModified ? new Date(result.baseLastModified).toDateString() : null;
                             const featDay = result.featLastModified ? new Date(result.featLastModified).toDateString() : null;
                             return baseDay && featDay && baseDay !== featDay ? (
-                              <div className="mb-2 flex items-center gap-1.5 text-xs text-[var(--vscode-inputValidation-warningForeground)]">
-                                <span>⚠</span>
+                              <div className="mb-3 flex items-center gap-2 text-xs px-3 py-2 rounded border border-[var(--vscode-inputValidation-warningBorder)] bg-[var(--vscode-inputValidation-warningBackground)] text-[var(--vscode-inputValidation-warningForeground)]">
+                                <span className="text-sm">⚠</span>
                                 <span>Target and source were last updated on different days.</span>
                               </div>
                             ) : null;
