@@ -3,7 +3,7 @@ import { getNonce } from '../utils';
 import { logger } from '../logger';
 
 import { GitService } from '../gitClient';
-import { orchestrateDataDiff, previewDiffModels } from '../utils/dataDiffOrchestrator';
+import { orchestrateDataDiff, previewDiffModels, dryRunSingleModel } from '../utils/dataDiffOrchestrator';
 
 export class DataDiffPanel {
     public static currentPanel: DataDiffPanel | undefined;
@@ -68,6 +68,21 @@ export class DataDiffPanel {
                             message.data.targetBranch,
                             message.data.tablePrefix,
                             this._panel
+                        );
+                        break;
+                    case 'dryRunModelDiff':
+                        logger.info(`Dry running diff for: ${message.data.file}`);
+                        dryRunSingleModel(
+                            message.data.sourceBranch,
+                            message.data.targetBranch,
+                            message.data.tablePrefix,
+                            { [message.data.file]: message.data.targetPrimaryKeys || '' },
+                            { [message.data.file]: message.data.sourcePrimaryKeys || '' },
+                            { [message.data.file]: message.data.targetFilter || '' },
+                            { [message.data.file]: message.data.sourceFilter || '' },
+                            { [message.data.file]: message.data.excludeColumns || '' },
+                            this._panel,
+                            [message.data.file]
                         );
                         break;
                 }

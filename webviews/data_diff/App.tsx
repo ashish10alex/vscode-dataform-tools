@@ -17,6 +17,21 @@ const selectStyles = {
   indicatorsContainer: (base: any) => ({ ...base, '& > div': { padding: '2px' } }),
 };
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+}
+
+/** Upsert a result entry keyed by file. */
+function upsertResult(prev: any[], entry: any): any[] {
+  const idx = prev.findIndex(r => r.file === entry.file);
+  if (idx >= 0) { const next = [...prev]; next[idx] = entry; return next; }
+  return [...prev, entry];
+}
+
 export default function App() {
   const [sourceBranch, setSourceBranch] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
@@ -31,6 +46,7 @@ export default function App() {
   const [diffResults, setDiffResults] = useState<any[]>([]);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffingFiles, setDiffingFiles] = useState<Set<string>>(new Set());
+  const [dryRunningFiles, setDryRunningFiles] = useState<Set<string>>(new Set());
   const [previewModels, setPreviewModels] = useState<any[] | null>(null);
 
   useEffect(() => {
@@ -39,17 +55,11 @@ export default function App() {
       if (message.command === "init") {
         setSourceBranch(message.data.currentBranch);
         setAllBranches(message.data.branches);
-        if (message.data.tablePrefix) {
-          setTablePrefix(message.data.tablePrefix);
-        }
+        if (message.data.tablePrefix) { setTablePrefix(message.data.tablePrefix); }
         setIsLoading(false);
       } else if (message.command === "diffComplete") {
         const newResult = message.data.results[0];
-        setDiffResults(prev => {
-          const idx = prev.findIndex(r => r.file === newResult.file);
-          if (idx >= 0) { const next = [...prev]; next[idx] = newResult; return next; }
-          return [...prev, newResult];
-        });
+        setDiffResults(prev => upsertResult(prev, newResult));
         setDiffingFiles(prev => { const next = new Set(prev); next.delete(newResult.file); return next; });
         setDiffError(null);
       } else if (message.command === "diffError") {
@@ -57,6 +67,14 @@ export default function App() {
         setDiffingFiles(new Set());
       } else if (message.command === "diffModelsPreview") {
         setPreviewModels(message.data);
+      } else if (message.command === "dryRunResult") {
+        const { file, query, bytesProcessed, cost } = message.data;
+        setDiffResults(prev => upsertResult(prev, { file, dryRunOnly: true, query, bytesProcessed, cost }));
+        setDryRunningFiles(prev => { const next = new Set(prev); next.delete(file); return next; });
+      } else if (message.command === "dryRunError") {
+        const { file, error } = message.data;
+        setDiffResults(prev => upsertResult(prev, { file, dryRunOnly: true, error }));
+        setDryRunningFiles(prev => { const next = new Set(prev); next.delete(file); return next; });
       }
     };
     window.addEventListener("message", handleMessage);
@@ -71,9 +89,24 @@ export default function App() {
     }
   }, [sourceBranch, targetBranch, tablePrefix]);
 
+  // Remove a stale dry-run-only result when the user edits params for that model.
+  const clearDryRunForFile = (file: string) => {
+    setDiffResults(prev => prev.filter(r => !(r.file === file && r.dryRunOnly)));
+  };
+
+  const handleDryRun = (file: string) => {
+    setDryRunningFiles(prev => new Set(prev).add(file));
+    // Remove any existing dry-run-only entry so the new one appears fresh
+    setDiffResults(prev => prev.filter(r => !(r.file === file && r.dryRunOnly)));
+    vscode.postMessage({
+      command: "dryRunModelDiff",
+      data: { sourceBranch, targetBranch, tablePrefix, file, targetPrimaryKeys: targetPrimaryKeysMap[file] || '', sourcePrimaryKeys: sourcePrimaryKeysMap[file] || '', targetFilter: targetFilterMap[file] || '', sourceFilter: sourceFilterMap[file] || '', excludeColumns: excludeColumnsMap[file] || '' },
+    });
+  };
+
   const handleRunSingleDiff = (file: string) => {
     setDiffingFiles(prev => new Set(prev).add(file));
-    setDiffResults(prev => prev.filter(r => r.file !== file));
+    // Keep any existing result visible while the diff is running; diffComplete will replace it.
     setDiffError(null);
     vscode.postMessage({
       command: "runSingleModelDiff",
@@ -171,6 +204,7 @@ export default function App() {
                 <tbody>
                   {previewModels.map((model) => {
                     const isFileDiffing = diffingFiles.has(model.file);
+                    const isDryRunning = dryRunningFiles.has(model.file);
                     const bothMissing = !model.baseExists && !model.featExists;
                     return (
                       <tr key={model.file} className="border-b border-[var(--vscode-widget-border)]/40 last:border-0 hover:bg-[var(--vscode-list-hoverBackground)]">
@@ -182,10 +216,10 @@ export default function App() {
                             <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
                               options={model.targetColumns.map((c: string) => ({ value: c, label: c }))}
                               value={(targetPrimaryKeysMap[model.file] || '').split(',').filter(Boolean).map((k: string) => ({ value: k.trim(), label: k.trim() }))}
-                              onChange={(s: MultiValue<{ value: string; label: string }>) => setTargetPrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') }))}
+                              onChange={(s: MultiValue<{ value: string; label: string }>) => { setTargetPrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') })); clearDryRunForFile(model.file); }}
                               placeholder="Select PKs…" styles={selectStyles} />
                           ) : (
-                            <input className={inputCls} type="text" value={targetPrimaryKeysMap[model.file] || ''} onChange={(e) => setTargetPrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. ORG_ID" />
+                            <input className={inputCls} type="text" value={targetPrimaryKeysMap[model.file] || ''} onChange={(e) => { setTargetPrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value })); clearDryRunForFile(model.file); }} placeholder="e.g. ORG_ID" />
                           )}
                         </td>
                         <td className="px-3 py-2 min-w-[160px]">
@@ -193,10 +227,10 @@ export default function App() {
                             <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
                               options={model.sourceColumns.map((c: string) => ({ value: c, label: c }))}
                               value={(sourcePrimaryKeysMap[model.file] || '').split(',').filter(Boolean).map((k: string) => ({ value: k.trim(), label: k.trim() }))}
-                              onChange={(s: MultiValue<{ value: string; label: string }>) => setSourcePrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') }))}
+                              onChange={(s: MultiValue<{ value: string; label: string }>) => { setSourcePrimaryKeysMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') })); clearDryRunForFile(model.file); }}
                               placeholder="Select PKs…" styles={selectStyles} />
                           ) : (
-                            <input className={inputCls} type="text" value={sourcePrimaryKeysMap[model.file] || ''} onChange={(e) => setSourcePrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. ORG_ID" />
+                            <input className={inputCls} type="text" value={sourcePrimaryKeysMap[model.file] || ''} onChange={(e) => { setSourcePrimaryKeysMap(prev => ({ ...prev, [model.file]: e.target.value })); clearDryRunForFile(model.file); }} placeholder="e.g. ORG_ID" />
                           )}
                         </td>
                         <td className="px-3 py-2 min-w-[160px]">
@@ -204,27 +238,37 @@ export default function App() {
                             <Select isMulti menuPortalTarget={document.body} menuPosition="fixed"
                               options={model.columns.map((c: string) => ({ value: c, label: c }))}
                               value={(excludeColumnsMap[model.file] || '').split(',').filter(Boolean).map(k => ({ value: k.trim(), label: k.trim() }))}
-                              onChange={(s: MultiValue<{ value: string; label: string }>) => setExcludeColumnsMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') }))}
+                              onChange={(s: MultiValue<{ value: string; label: string }>) => { setExcludeColumnsMap(prev => ({ ...prev, [model.file]: s.map(x => x.value).join(',') })); clearDryRunForFile(model.file); }}
                               placeholder="Exclude columns…" styles={selectStyles} />
                           ) : (
-                            <input className={inputCls} type="text" value={excludeColumnsMap[model.file] || ''} onChange={(e) => setExcludeColumnsMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. UPDATED_AT" />
+                            <input className={inputCls} type="text" value={excludeColumnsMap[model.file] || ''} onChange={(e) => { setExcludeColumnsMap(prev => ({ ...prev, [model.file]: e.target.value })); clearDryRunForFile(model.file); }} placeholder="e.g. UPDATED_AT" />
                           )}
                         </td>
                         <td className="px-3 py-2 min-w-[180px]">
-                          <input className={inputCls} type="text" value={targetFilterMap[model.file] || ''} onChange={(e) => setTargetFilterMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. date = '2026-01-01'" />
+                          <input className={inputCls} type="text" value={targetFilterMap[model.file] || ''} onChange={(e) => { setTargetFilterMap(prev => ({ ...prev, [model.file]: e.target.value })); clearDryRunForFile(model.file); }} placeholder="e.g. date = '2026-01-01'" />
                         </td>
                         <td className="px-3 py-2 min-w-[180px]">
-                          <input className={inputCls} type="text" value={sourceFilterMap[model.file] || ''} onChange={(e) => setSourceFilterMap(prev => ({ ...prev, [model.file]: e.target.value }))} placeholder="e.g. date = '2026-01-01'" />
+                          <input className={inputCls} type="text" value={sourceFilterMap[model.file] || ''} onChange={(e) => { setSourceFilterMap(prev => ({ ...prev, [model.file]: e.target.value })); clearDryRunForFile(model.file); }} placeholder="e.g. date = '2026-01-01'" />
                         </td>
                         <td className="px-3 py-2">
-                          <button
-                            className="px-3 py-1 rounded text-xs font-medium bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-40 whitespace-nowrap transition-colors"
-                            disabled={isFileDiffing || bothMissing}
-                            title={bothMissing ? 'Neither table is materialized' : undefined}
-                            onClick={() => handleRunSingleDiff(model.file)}
-                          >
-                            {isFileDiffing ? "Running…" : "Diff"}
-                          </button>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              className="px-3 py-1 rounded text-xs font-medium bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-40 whitespace-nowrap transition-colors"
+                              disabled={isFileDiffing || bothMissing}
+                              title={bothMissing ? 'Neither table is materialized' : undefined}
+                              onClick={() => handleRunSingleDiff(model.file)}
+                            >
+                              {isFileDiffing ? "Running…" : "Diff"}
+                            </button>
+                            <button
+                              className="px-3 py-1 rounded text-xs font-medium border border-[var(--vscode-button-background)] text-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-background)]/10 disabled:opacity-40 whitespace-nowrap transition-colors"
+                              disabled={isDryRunning || bothMissing}
+                              title={bothMissing ? 'Neither table is materialized' : 'Estimate query cost without running'}
+                              onClick={() => handleDryRun(model.file)}
+                            >
+                              {isDryRunning ? "Estimating…" : "Dry Run"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -246,13 +290,60 @@ export default function App() {
 
           {diffResults.length > 0 ? (
             <div className="flex flex-col gap-4">
-              {diffResults.map((result, idx) => (
-                <div key={idx} className="border border-[var(--vscode-widget-border)] rounded overflow-hidden">
-                  <div className="px-4 py-2 bg-[var(--vscode-sideBar-background)] border-b border-[var(--vscode-widget-border)]">
+              {diffResults.map((result) => (
+                <div key={result.file + (result.dryRunOnly ? '-dry' : '-full')} className="border border-[var(--vscode-widget-border)] rounded overflow-hidden">
+                  <div className="px-4 py-2 bg-[var(--vscode-sideBar-background)] border-b border-[var(--vscode-widget-border)] flex items-center gap-2">
                     <span className="text-xs font-mono break-all text-[var(--vscode-editor-foreground)]">{result.file}</span>
+                    {result.dryRunOnly && (
+                      <span className="ml-auto shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">
+                        Dry Run
+                      </span>
+                    )}
+                    {diffingFiles.has(result.file) && (
+                      <span className="ml-auto shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)] uppercase tracking-wide">
+                        Running…
+                      </span>
+                    )}
                   </div>
                   <div className="p-4">
-                    {result.error ? (
+                    {result.dryRunOnly ? (
+                      /* ── Dry-run-only card ── */
+                      result.error ? (
+                        <div className="px-3 py-2 border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] text-[var(--vscode-inputValidation-errorForeground)] rounded text-xs font-mono">
+                          {result.error}
+                        </div>
+                      ) : (
+                        <RadixTabs.Root defaultValue="estimate" className="w-full">
+                          <RadixTabs.List className="flex border-b border-[var(--vscode-widget-border)] mb-4">
+                            <RadixTabs.Trigger value="estimate" className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px">
+                              Estimate
+                            </RadixTabs.Trigger>
+                            <RadixTabs.Trigger value="query" className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px">
+                              Comparison Query
+                            </RadixTabs.Trigger>
+                          </RadixTabs.List>
+                          <RadixTabs.Content value="estimate">
+                            <div className="flex items-center gap-3 flex-wrap mb-3">
+                              <span className="bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] px-2 py-0.5 rounded text-xs font-mono">
+                                {formatBytes(result.bytesProcessed)} processed
+                              </span>
+                              {result.cost && (
+                                <span className="bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] px-2 py-0.5 rounded text-xs font-mono">
+                                  ~{result.cost.currency} {result.cost.value.toFixed(4)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[var(--vscode-descriptionForeground)] italic">Run Diff to see row-level results.</p>
+                          </RadixTabs.Content>
+                          <RadixTabs.Content value="query">
+                            <div className="mt-2 w-full overflow-hidden">
+                              <CodeBlock code={result.query || 'No query generated.'} language="sql" showLineNumbers />
+                            </div>
+                          </RadixTabs.Content>
+                        </RadixTabs.Root>
+                      )
+                    ) : result.error ? (
+                      /* ── Full diff error card ── */
                       <div className="flex flex-col gap-3">
                         <div className="px-3 py-2 border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] text-[var(--vscode-inputValidation-errorForeground)] rounded text-xs font-mono">
                           {result.error}
@@ -267,6 +358,7 @@ export default function App() {
                         )}
                       </div>
                     ) : (
+                      /* ── Full diff result card ── */
                       <RadixTabs.Root defaultValue="summary" className="w-full">
                         <RadixTabs.List className="flex border-b border-[var(--vscode-widget-border)] mb-4">
                           <RadixTabs.Trigger value="summary" className="px-4 py-2 text-sm font-medium text-[var(--vscode-foreground)] opacity-60 border-b-2 border-transparent data-[state=active]:opacity-100 data-[state=active]:border-[var(--vscode-button-background)] transition-colors -mb-px">
@@ -327,7 +419,7 @@ export default function App() {
                             </div>
                           )}
 
-                          <div className="flex gap-3 mb-4">
+                          <div className="flex gap-3 mb-4 flex-wrap">
                             <span className="bg-green-900/30 text-green-400 border border-green-900/50 px-3 py-1 rounded text-xs">Added: {result.addedCount}</span>
                             <span className="bg-red-900/30 text-red-400 border border-red-900/50 px-3 py-1 rounded text-xs">Removed: {result.removedCount}</span>
                             {result.modifiedCount !== undefined && (
