@@ -4,7 +4,6 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import util from 'util';
 import { GitFileChange, GitFileChangeRaw, GitStatusCode, GitStatusCodeHumanReadable } from './types';
-import { GitExtension } from './api/git';
 import { logger } from "./logger";
 
 const execPromise = util.promisify(exec);
@@ -33,26 +32,44 @@ export class GitService {
         }
     }
 
-    public getGitBranchAndRepoName() {
-        const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
-        if (!gitExtension) {
-            vscode.window.showErrorMessage('Git extension not found.');
-            return;
+    public async getGitBranchAndRepoName() {
+        try {
+            // git rev-parse --abbrev-ref HEAD works correctly in worktrees
+            const gitBranch = await this.execCmd('git rev-parse --abbrev-ref HEAD') || undefined;
+
+            let gitRepoName: string | undefined;
+            try {
+                const remoteUrl = await this.execCmd('git config --get remote.origin.url');
+                if (remoteUrl) {
+                    const match = remoteUrl.trim().match(/([^\/:]+?)(?:\.git)?$/);
+                    if (match) {
+                        gitRepoName = match[1];
+                    }
+                }
+            } catch (e:any) {
+                vscode.window.showErrorMessage(e.message);
+            }
+
+            if (!gitRepoName) {
+                try {
+                    // git rev-parse --git-common-dir returns the main repo's .git dir.
+                    const gitCommonDir = await this.execCmd('git rev-parse --git-common-dir');
+                    const absoluteGitCommonDir = path.resolve(this.projectRoot, gitCommonDir);
+                    const mainRepoPath = path.resolve(absoluteGitCommonDir, '..');
+                    gitRepoName = path.basename(mainRepoPath);
+                } catch (e) {
+                    gitRepoName = path.basename(this.projectRoot);
+                }
+            }
+
+            logger.info(`Git branch: ${gitBranch}`);
+            logger.info(`Git repo name: ${gitRepoName}`);
+
+            return { gitBranch, gitRepoName };
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Error getting git info: ${error.message}`);
+            return undefined;
         }
-
-        const git = gitExtension.getAPI(1);
-        if (!git.repositories.length) {
-            vscode.window.showErrorMessage('No Git repositories found.');
-            return;
-        }
-
-        const repo = git.repositories[0];
-        const gitBranch = repo.state.HEAD?.name ?? undefined;
-        const gitRepoName = this.getActualRepoName(repo.rootUri.fsPath);
-        logger.info(`Git branch: ${gitBranch}`);
-        logger.info(`Git repo name: ${gitRepoName}`);
-
-        return { gitBranch, gitRepoName };
     }
 
     public async triggerGitPull(gitBranchName: string): Promise<void> {
@@ -209,38 +226,6 @@ export class GitService {
             case "??": return "ADDED";
             case "D": return "DELETED";
             default: return "MODIFIED"; 
-        }
-    }
-
-    private getActualRepoName(repoPath: string): string {
-        try {
-            const gitDirPath = path.join(repoPath, '.git');
-
-            // Check if .git is a file (worktree) or directory (main repo)
-            if (fs.existsSync(gitDirPath)) {
-                const stats = fs.statSync(gitDirPath);
-
-                if (stats.isFile()) {
-                    const gitFileContent = fs.readFileSync(gitDirPath, 'utf8');
-                    const match = gitFileContent.match(/gitdir:\s*(.+)/);
-
-                    if (match) {
-                        const worktreeGitDir = match[1].trim();
-                        // Remove 'worktrees' and branch name to get to main repo
-                        const mainRepoGitDir = worktreeGitDir.split(path.sep)
-                            .slice(0, -2)
-                            .join(path.sep);
-
-                        const mainRepoPath = path.dirname(mainRepoGitDir);
-                        return path.basename(mainRepoPath);
-                    }
-                }
-            }
-            // Fallback
-            return path.basename(repoPath);
-        } catch (error) {
-            console.error('Error getting repository name:', error);
-            return path.basename(repoPath);
         }
     }
 }
