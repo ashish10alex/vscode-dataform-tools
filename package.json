@@ -180,6 +180,16 @@
                 "title": "Show compiled Query in web view"
             },
             {
+                "command": "vscode-dataform-tools.dataDiff",
+                "category": "Dataform",
+                "title": "Data Diff with Target Branch"
+            },
+            {
+                "command": "vscode-dataform-tools.tableDiff",
+                "category": "Dataform",
+                "title": "Table Pair Diff"
+            },
+            {
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
                 "category": "Dataform",
                 "title": "Show dependency graph"
@@ -446,6 +456,8 @@
     "devDependencies": {
         "@tanstack/react-table": "^8.21.3",
         "@types/dagre": "^0.7.52",
+        "@types/diff": "^7.0.2",
+        "@types/diff-match-patch": "^1.0.36",
         "@types/dompurify": "^3.0.5",
         "@types/highlight.js": "^9.12.4",
         "@types/jest": "^29.5.14",
@@ -490,10 +502,13 @@
         "@radix-ui/react-tabs": "^1.1.13",
         "@vscode/codicons": "^0.0.44",
         "comment-parser": "^1.4.1",
+        "diff": "^8.0.4",
+        "diff-match-patch": "^1.0.5",
         "dompurify": "^3.3.1",
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
         "prism-react-renderer": "^2.4.1",
+        "sql-formatter": "^15.7.3",
         "tablemark": "^3.1.0",
         "typescript": "^5.7.3"
     }

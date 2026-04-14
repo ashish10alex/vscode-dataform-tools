@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme-aware Syntax Highlighting (Highlight.js) */
+:root {
+    --hljs-bg: var(--vscode-editor-background);
+    --hljs-color: var(--vscode-editor-foreground);
+    --hljs-comment: var(--vscode-descriptionForeground);
+    --hljs-keyword: var(--vscode-symbolIcon-keywordForeground);
+    --hljs-string: var(--vscode-symbolIcon-stringForeground);
+    --hljs-attr: var(--vscode-symbolIcon-propertyForeground);
+    --hljs-literal: var(--vscode-symbolIcon-numberForeground);
+    --hljs-number: var(--vscode-symbolIcon-numberForeground);
+    --hljs-type: var(--vscode-symbolIcon-keywordForeground);
+    --hljs-built_in: var(--vscode-symbolIcon-functionForeground);
+}
+
+.dark {
+    --hljs-bg: var(--vscode-editor-background);
+    --hljs-color: var(--vscode-editor-foreground);
+    --hljs-comment: var(--vscode-descriptionForeground);
+    --hljs-keyword: var(--vscode-symbolIcon-keywordForeground);
+    --hljs-string: var(--vscode-symbolIcon-stringForeground);
+    --hljs-attr: var(--vscode-symbolIcon-propertyForeground);
+    --hljs-literal: var(--vscode-symbolIcon-numberForeground);
+    --hljs-number: var(--vscode-symbolIcon-numberForeground);
+    --hljs-type: var(--vscode-symbolIcon-keywordForeground);
+    --hljs-built_in: var(--vscode-symbolIcon-functionForeground);
+}
+
+.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+    background: var(--hljs-bg);
+    color: var(--hljs-color);
+}
+
+.hljs-comment,
+.hljs-quote {
+    color: var(--hljs-comment);
+    font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+    color: var(--hljs-keyword);
+    font-weight: bold;
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-type,
+.hljs-regexp,
+.hljs-addition {
+    color: var(--hljs-string);
+}
+
+.hljs-number,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params {
+    color: var(--hljs-number);
+}
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-attr,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-attribute {
+    color: var(--hljs-attr);
+}
+
+.hljs-section,
+.hljs-title {
+    color: var(--hljs-attr);
+    font-weight: bold;
+}
+
+.hljs-built_in,
+.hljs-bullet,
+.hljs-symbol,
+.hljs-link {
+    color: var(--hljs-built_in);
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
+}
+
+/* data_diff specific styles to prevent Vite Rollup deduplication */
+.data-diff-container {
+    display: block;
+}
