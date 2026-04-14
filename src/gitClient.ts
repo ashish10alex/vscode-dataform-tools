@@ -37,7 +37,10 @@ export class GitService {
             // git rev-parse --abbrev-ref HEAD works correctly in worktrees
             const gitBranch = await this.execCmd('git rev-parse --abbrev-ref HEAD') || undefined;
 
-            const overrideRepoName = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('gitRepoName');
+            const overrideRepoName = vscode.workspace
+                .getConfiguration('vscode-dataform-tools')
+                .get<string>('gitRepoName')
+                ?.trim();
             if (overrideRepoName) {
                 logger.info(`Git branch: ${gitBranch}`);
                 logger.info(`Git repo name (override): ${overrideRepoName}`);
