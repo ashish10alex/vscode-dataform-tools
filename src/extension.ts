@@ -25,6 +25,7 @@ import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
+import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 
@@ -103,6 +104,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.dependencyGraphPanel', async () => {
         createDependencyGraphPanel(context, vscode.ViewColumn.One);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.dependencyInspector', () => {
+        const activeFilePath = vscode.window.activeTextEditor?.document?.uri?.fsPath;
+        createDependencyInspectorPanel(context, activeFilePath);
     }));
 
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
