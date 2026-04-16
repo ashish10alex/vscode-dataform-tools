@@ -13,6 +13,20 @@ import { CompilationError } from './components/CompilationError';
 import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
 
+function HeaderRightActions() {
+  return (
+    <a
+      href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
+    >
+      Report an issue
+      <MessageSquareWarning className="w-3 h-3 ml-1" />
+    </a>
+  );
+}
+
 function App() {
   const state = useVSCodeMessage();
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
@@ -138,15 +152,7 @@ function App() {
             
             <div className="flex-grow"></div>
 
-            <a
-              href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-            >
-              Report an issue
-              <MessageSquareWarning className="w-3 h-3 ml-1" />
-            </a>
+            <HeaderRightActions />
           </div>
         )}
 
@@ -158,15 +164,7 @@ function App() {
             </h2>
             <div className="flex-grow"></div>
 
-            <a
-              href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-            >
-              Report an issue
-              <MessageSquareWarning className="w-3 h-3 ml-1" />
-            </a>
+            <HeaderRightActions />
           </div>
         )}
       </div>
