@@ -69,6 +69,31 @@ function StatusBadge({ status }: { status: ModelResult['status'] }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Filter persistence
+// ─────────────────────────────────────────────────────────────
+
+interface SavedFilterState {
+    globalFilter: string;
+    applyToAll: boolean;
+    deps: Record<string, { enabled: boolean; filterCondition: string }>;
+}
+
+const STORAGE_PREFIX = 'dataform-dep-inspector:';
+
+function loadSavedFilters(modelFullId: string): SavedFilterState | null {
+    try {
+        const raw = localStorage.getItem(STORAGE_PREFIX + modelFullId);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function saveFilters(modelFullId: string, state: SavedFilterState) {
+    try {
+        localStorage.setItem(STORAGE_PREFIX + modelFullId, JSON.stringify(state));
+    } catch { /* quota exceeded — silently skip */ }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Main App
 // ─────────────────────────────────────────────────────────────
 
@@ -86,6 +111,7 @@ export default function App() {
     const [compiling, setCompiling] = useState(false);
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<'table' | 'graph'>('table');
+    const [filtersRestored, setFiltersRestored] = useState(false);
 
     // Find-in-page
     const [showSearch, setShowSearch] = useState(false);
@@ -104,6 +130,8 @@ export default function App() {
     // Keep refs so stale closures in message handlers always read latest values
     const dependenciesRef = useRef<DependencyRow[]>([]);
     dependenciesRef.current = dependencies;
+    const selectedOptionRef = useRef<OptionType | null>(null);
+    selectedOptionRef.current = selectedOption;
     const globalFilterRef = useRef('');
     globalFilterRef.current = globalFilter;
     const applyToAllRef = useRef(true);
@@ -222,6 +250,25 @@ export default function App() {
                             depth: 0,
                         });
                     }
+                    // Restore saved filter state for this model (if any)
+                    const modelId = selectedOptionRef.current?.value;
+                    const saved = modelId ? loadSavedFilters(modelId) : null;
+                    if (saved) {
+                        setGlobalFilter(saved.globalFilter);
+                        setApplyToAll(saved.applyToAll);
+                        depRows.forEach(row => {
+                            const s = saved.deps[row.id];
+                            if (s) {
+                                row.filterCondition = s.filterCondition;
+                                row.enabled = s.enabled;
+                            } else {
+                                // dep not in saved state: apply globalFilter if applyToAll
+                                row.filterCondition = saved.applyToAll ? saved.globalFilter : '';
+                            }
+                        });
+                        setFiltersRestored(true);
+                        setTimeout(() => setFiltersRestored(false), 3000);
+                    }
                     setDependencies(depRows);
                     setGraphEdges(msg.edges ?? []);
                     setResults({});
@@ -276,7 +323,6 @@ export default function App() {
         window.addEventListener('message', handler);
         vscode.postMessage({ command: 'appLoaded' });
         return () => window.removeEventListener('message', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Sync globalFilter → all rows when applyToAll is on
@@ -284,8 +330,22 @@ export default function App() {
         if (applyToAll && dependencies.length > 0) {
             setDependencies(deps => deps.map(d => ({ ...d, filterCondition: globalFilter })));
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [globalFilter, applyToAll]);
+
+    // Auto-save filter state per model (debounced 500ms)
+    useEffect(() => {
+        if (!selectedOption?.value || dependencies.length === 0) { return; }
+        const modelId = selectedOption.value;
+        const state: SavedFilterState = {
+            globalFilter,
+            applyToAll,
+            deps: Object.fromEntries(
+                dependencies.map(d => [d.id, { enabled: d.enabled, filterCondition: d.filterCondition }])
+            ),
+        };
+        const id = setTimeout(() => saveFilters(modelId, state), 500);
+        return () => clearTimeout(id);
+    }, [dependencies, globalFilter, applyToAll, selectedOption]);
 
     const modelOptions = useMemo<OptionType[]>(
         () => models.map(m => ({
@@ -372,7 +432,7 @@ export default function App() {
                 size: 60,
                 cell: ({ row }: any) => (
                     <span className="text-[var(--vscode-descriptionForeground)] font-mono text-xs">
-                        {row.depth > 0 ? '' : Number(row.id) + 1}
+                        {row.index + 1}
                     </span>
                 ),
             },
@@ -494,6 +554,13 @@ export default function App() {
                     />
                 </div>
             </div>
+
+            {/* ── Filters restored toast ── */}
+            {filtersRestored && (
+                <div className="flex items-center gap-1.5 text-xs text-[var(--vscode-descriptionForeground)] animate-pulse">
+                    <span>✓ Saved filters applied</span>
+                </div>
+            )}
 
             {/* ── Graph tab ── */}
             {activeTab === 'graph' && dependencies.length > 0 && (
