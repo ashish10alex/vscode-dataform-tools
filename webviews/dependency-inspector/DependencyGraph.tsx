@@ -154,10 +154,10 @@ function DepNode({ id, data }: NodeProps) {
         >
             <Handle
                 type="target"
-                position={Position.Left}
+                position={Position.Right}
                 style={{
                     background: isRoot ? 'var(--vscode-button-foreground)' : leftBarColor,
-                    width: 10, height: 10, left: -5,
+                    width: 10, height: 10, right: -5,
                     border: '2px solid var(--vscode-editor-background)',
                 }}
             />
@@ -315,10 +315,10 @@ function DepNode({ id, data }: NodeProps) {
 
             <Handle
                 type="source"
-                position={Position.Right}
+                position={Position.Left}
                 style={{
                     background: isRoot ? 'var(--vscode-button-foreground)' : leftBarColor,
-                    width: 10, height: 10, right: -5,
+                    width: 10, height: 10, left: -5,
                     border: '2px solid var(--vscode-editor-background)',
                 }}
             />
@@ -334,7 +334,7 @@ const nodeTypes = { depNode: DepNode };
 function layoutGraph(nodes: Node[], edges: Edge[]): Node[] {
     const g = new dagre.graphlib.Graph();
     g.setDefaultEdgeLabel(() => ({}));
-    g.setGraph({ rankdir: 'LR', nodesep: 70, ranksep: 160 });
+    g.setGraph({ rankdir: 'RL', nodesep: 70, ranksep: 160 });
     nodes.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
     edges.forEach(e => {
         if (g.hasNode(e.source) && g.hasNode(e.target)) {
