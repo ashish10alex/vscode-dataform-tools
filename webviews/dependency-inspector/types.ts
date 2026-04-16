@@ -4,12 +4,20 @@ export interface ModelInfo {
     type: string;
 }
 
+export interface DependencyInfo {
+    fullId: string;
+    name: string;
+    type: string;
+    depth: number;  // 1 = direct dependency, 2 = dep-of-dep, etc.
+}
+
 export interface DependencyRow {
     id: string;           // same as fullTableId, used as React key
     fullTableId: string;
     filterCondition: string;
     enabled: boolean;           // whether this row is included in bulk runs
     isSelectedModel?: boolean;  // true for the model itself (first row)
+    depth: number;              // 0 for selected model, 1+ for dependencies
 }
 
 export type ResultStatus =

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { vscode } from './vscode';
-import { ModelInfo, DependencyRow, ModelResult } from './types';
+import { ModelInfo, DependencyRow, DependencyInfo, ModelResult } from './types';
 import { DataTable } from '../components/ui/data-table';
 import StyledSelect, { OptionType } from '../dependancy_graph/components/StyledSelect';
 import { FindWidget } from '../components/FindWidget';
@@ -69,6 +69,7 @@ export default function App() {
     const [results, setResults] = useState<Record<string, ModelResult>>({});
     const [globalFilter, setGlobalFilter] = useState('');
     const [applyToAll, setApplyToAll] = useState(true);
+    const [depth, setDepth] = useState(5);
     const [initError, setInitError] = useState<string | null>(null);
     const [compiling, setCompiling] = useState(false);
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
@@ -94,6 +95,8 @@ export default function App() {
     globalFilterRef.current = globalFilter;
     const applyToAllRef = useRef(true);
     applyToAllRef.current = applyToAll;
+    const depthRef = useRef(5);
+    depthRef.current = depth;
 
     // Dark mode observer (consistent with other webviews)
     useEffect(() => {
@@ -178,7 +181,7 @@ export default function App() {
                             setResults({});
                             vscode.postMessage({
                                 command: 'fetchDependencies',
-                                value: { modelFullId: matched.fullId, includeModel: true },
+                                value: { modelFullId: matched.fullId, depth: depthRef.current },
                             });
                         }
                     }
@@ -188,11 +191,12 @@ export default function App() {
                 case 'dependencies': {
                     setFetchingDeps(false);
                     const currentFilter = globalFilterRef.current;
-                    const depRows: DependencyRow[] = (msg.value ?? []).map((m: ModelInfo) => ({
+                    const depRows: DependencyRow[] = (msg.value ?? []).map((m: DependencyInfo) => ({
                         id: m.fullId,
                         fullTableId: m.fullId,
                         filterCondition: currentFilter,
                         enabled: true,
+                        depth: m.depth,
                     }));
                     // Prepend the selected model itself as the first row
                     if (msg.selectedModelId) {
@@ -202,7 +206,8 @@ export default function App() {
                             filterCondition: currentFilter,
                             enabled: true,
                             isSelectedModel: true,
-                        } as DependencyRow);
+                            depth: 0,
+                        });
                     }
                     setDependencies(depRows);
                     setResults({});
@@ -285,7 +290,7 @@ export default function App() {
         setResults({});
         vscode.postMessage({
             command: 'fetchDependencies',
-            value: { modelFullId: selectedOption.value, includeModel: true },
+            value: { modelFullId: selectedOption.value, depth },
         });
     };
 
@@ -409,6 +414,18 @@ export default function App() {
                         width="w-full"
                     />
                 </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <label className="text-xs text-[var(--vscode-foreground)] whitespace-nowrap">Depth</label>
+                    <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={depth}
+                        onChange={e => setDepth(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                        className="w-14 px-2 py-1.5 text-sm text-center bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)]"
+                        title="Maximum number of dependency levels to load recursively (1–20)"
+                    />
+                </div>
                 <button
                     onClick={handleFetchDependencies}
                     disabled={!selectedOption || fetchingDeps}
@@ -491,13 +508,16 @@ export default function App() {
                                             title="Select / deselect all"
                                         />
                                     </th>
-                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[35%]">
+                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[30%]">
                                         Full Table ID
                                     </th>
-                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[35%]">
+                                    <th className="px-3 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[6%] text-center">
+                                        Depth
+                                    </th>
+                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[30%]">
                                         Filter Condition
                                     </th>
-                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[20%]">
+                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[24%]">
                                         Actions
                                     </th>
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[10%]">
@@ -527,14 +547,20 @@ export default function App() {
 
                                             {/* Full Table ID */}
                                             <td className="px-4 py-2 align-middle">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono text-xs break-all">{hl(row.fullTableId, searchTerm)}</span>
-                                                    {row.isSelectedModel && (
-                                                        <span className="shrink-0 px-1.5 py-0.5 text-[10px] rounded font-medium bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]">
-                                                            model
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <span className="font-mono text-xs break-all">{hl(row.fullTableId, searchTerm)}</span>
+                                            </td>
+
+                                            {/* Depth */}
+                                            <td className="px-3 py-2 align-middle text-center">
+                                                {row.isSelectedModel ? (
+                                                    <span className="px-1.5 py-0.5 text-[10px] rounded font-medium bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]">
+                                                        model
+                                                    </span>
+                                                ) : (
+                                                    <span className="font-mono text-xs text-[var(--vscode-descriptionForeground)]">
+                                                        {row.depth}
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* Filter Condition */}
@@ -729,7 +755,7 @@ export default function App() {
                                         )}
 
                                         {res.status === 'query-success' && (!res.results || res.results.length === 0) && !res.error && (
-                                            <p className="text-xs text-[var(--vscode-extensionIcon-preReleaseForeground)] font-medium">
+                                            <p className="text-xs text-[var(--vscode-descriptionForeground)]">
                                                 No rows returned — condition not matched in this table.
                                             </p>
                                         )}

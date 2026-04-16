@@ -78,6 +78,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
 
             case 'fetchDependencies': {
                 const modelFullId: string = message.value?.modelFullId ?? '';
+                const maxDepth: number = Math.max(1, Math.min(message.value?.depth ?? 5, 20));
                 const compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
                 if (!compiledJson) {
                     panel.webview.postMessage({
@@ -86,16 +87,43 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     });
                     return;
                 }
-                const node = getAllNodes(compiledJson).find(n => getFullTableId(n.target) === modelFullId);
-                if (!node) {
-                    panel.webview.postMessage({ type: 'dependencies', value: [] });
-                    return;
+
+                // Build a fast lookup map: fullId → node, and a set of assertion IDs to exclude
+                const allNodes = getAllNodes(compiledJson);
+                const assertionIds = new Set<string>(
+                    (compiledJson.assertions ?? []).map(a => getFullTableId(a.target))
+                );
+                const nodeMap = new Map<string, Table | Assertion | Operation>();
+                for (const n of allNodes) {
+                    nodeMap.set(getFullTableId(n.target), n);
                 }
-                const deps = (node.dependencyTargets ?? []).map(t => ({
-                    fullId: getFullTableId(t),
-                    name: t.name,
-                    type: 'table',
-                }));
+
+                // BFS up to maxDepth levels, deduplicating by fullId, skipping assertions
+                const visited = new Set<string>([modelFullId]);
+                const deps: { fullId: string; name: string; type: string; depth: number }[] = [];
+                const queue: { fullId: string; depth: number }[] = [{ fullId: modelFullId, depth: 0 }];
+
+                while (queue.length > 0) {
+                    const { fullId, depth } = queue.shift()!;
+                    if (depth >= maxDepth) { continue; }
+                    const node = nodeMap.get(fullId);
+                    if (!node) { continue; }
+
+                    for (const depTarget of node.dependencyTargets ?? []) {
+                        const depFullId = getFullTableId(depTarget);
+                        if (visited.has(depFullId) || assertionIds.has(depFullId)) { continue; }
+                        visited.add(depFullId);
+                        const depNode = nodeMap.get(depFullId);
+                        deps.push({
+                            fullId: depFullId,
+                            name: depTarget.name,
+                            type: (depNode as any)?.type ?? 'table',
+                            depth: depth + 1,
+                        });
+                        queue.push({ fullId: depFullId, depth: depth + 1 });
+                    }
+                }
+
                 panel.webview.postMessage({
                     type: 'dependencies',
                     value: deps,
