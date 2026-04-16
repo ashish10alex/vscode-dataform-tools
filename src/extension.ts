@@ -29,6 +29,8 @@ import { createDependencyInspectorPanel } from './views/dependency-inspector-pan
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 
+let lastDataformFilePath: string | undefined;
+
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -108,10 +110,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.dependencyInspector', () => {
         const activeFilePath = vscode.window.activeTextEditor?.document?.uri?.fsPath;
-        createDependencyInspectorPanel(context, activeFilePath);
+        createDependencyInspectorPanel(context, activeFilePath ?? lastDataformFilePath);
     }));
 
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
+        const ext = editor?.document?.uri?.fsPath?.split('.').pop();
+        if (ext === 'sqlx' || ext === 'js') {
+            lastDataformFilePath = editor!.document.uri.fsPath;
+        }
         if (editor && queryResultsViewProvider._view?.visible) {
             let curFileMeta = await getCurrentFileMetadata(false);
             if (curFileMeta?.fileMetadata) {
