@@ -147,7 +147,7 @@ function DepNode({ id, data }: NodeProps) {
                     : isZeroRows
                         ? '0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px var(--vscode-inputValidation-warningBorder)'
                     : '0 2px 8px rgba(0,0,0,0.25)',
-                opacity: enabled ? 1 : 0.4,
+                opacity: enabled ? 1 : 0.65,
                 transition: 'opacity 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease',
             }}
         >

@@ -6,6 +6,7 @@ import { DataTable } from '../components/ui/data-table';
 import StyledSelect, { OptionType } from '../dependancy_graph/components/StyledSelect';
 import { FindWidget } from '../components/FindWidget';
 import DependencyGraph from './DependencyGraph';
+import { BigQueryTableLink } from '../components/BigQueryTableLink';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -574,7 +575,7 @@ export default function App() {
                                     return (
                                         <tr
                                             key={row.id}
-                                            className={`hover:bg-[var(--vscode-list-hoverBackground)] transition-opacity ${!row.enabled ? 'opacity-40' : ''} ${row.isSelectedModel ? 'bg-[var(--vscode-textBlockQuote-background)]' : 'bg-[var(--vscode-editor-background)]'}`}
+                                            className={`hover:bg-[var(--vscode-list-hoverBackground)] transition-opacity ${!row.enabled ? 'opacity-65' : ''} ${row.isSelectedModel ? 'bg-[var(--vscode-textBlockQuote-background)]' : 'bg-[var(--vscode-editor-background)]'}`}
                                         >
                                             {/* Checkbox */}
                                             <td className="px-3 py-2 align-middle">
@@ -588,7 +589,14 @@ export default function App() {
 
                                             {/* Full Table ID */}
                                             <td className="px-4 py-2 align-middle">
-                                                <span className="font-mono text-xs break-all">{hl(row.fullTableId, searchTerm)}</span>
+                                                {searchTerm ? (
+                                                    <span className="font-mono text-xs break-all text-[var(--vscode-textLink-foreground)]">{hl(row.fullTableId, searchTerm)}</span>
+                                                ) : (
+                                                    <BigQueryTableLink
+                                                        id={row.fullTableId}
+                                                        className="font-mono text-xs break-all text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline transition-colors"
+                                                    />
+                                                )}
                                             </td>
 
                                             {/* Depth */}
