@@ -5,6 +5,7 @@ import { vscode } from "../utils/vscode";
 import {
   Play,
   Network,
+  ListTree,
   Eye,
   ShieldCheck,
   Wand2,
@@ -613,7 +614,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                        <Network className="w-4 h-4 mr-1.5" /> Graph
                    </button>
                    <button onClick={handleDependencyInspector} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
-                       <Network className="w-4 h-4 mr-1.5" /> Inspector
+                       <ListTree className="w-4 h-4 mr-1.5" /> Inspector
                    </button>
                </div>
 

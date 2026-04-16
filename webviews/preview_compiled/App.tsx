@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, MessageSquareWarning, Info, Settings, Network } from 'lucide-react';
+import { Loader2, MessageSquareWarning, Info, Settings } from 'lucide-react';
 import clsx from 'clsx';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -12,7 +12,6 @@ import { ProjectConfigTab } from './components/ProjectConfigTab';
 import { CompilationError } from './components/CompilationError';
 import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
-import { vscode } from './utils/vscode';
 
 function App() {
   const state = useVSCodeMessage();
@@ -139,25 +138,15 @@ function App() {
             
             <div className="flex-grow"></div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => vscode.postMessage({ command: 'dependencyInspector' })}
-                className="flex items-center text-xs text-[var(--vscode-foreground)] opacity-60 hover:opacity-100 transition-opacity"
-                title="Open Dependency Inspector"
-              >
-                <Network className="w-4 h-4 mr-1" />
-                Dependency Inspector
-              </button>
-              <a
-                href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-              >
-                Report an issue
-                <MessageSquareWarning className="w-3 h-3 ml-1" />
-              </a>
-            </div>
+            <a
+              href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
+            >
+              Report an issue
+              <MessageSquareWarning className="w-3 h-3 ml-1" />
+            </a>
           </div>
         )}
 
@@ -169,25 +158,15 @@ function App() {
             </h2>
             <div className="flex-grow"></div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => vscode.postMessage({ command: 'dependencyInspector' })}
-                className="flex items-center text-xs text-[var(--vscode-foreground)] opacity-60 hover:opacity-100 transition-opacity"
-                title="Open Dependency Inspector"
-              >
-                <Network className="w-4 h-4 mr-1" />
-                Dependency Inspector
-              </button>
-              <a
-                href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-              >
-                Report an issue
-                <MessageSquareWarning className="w-3 h-3 ml-1" />
-              </a>
-            </div>
+            <a
+              href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
+            >
+              Report an issue
+              <MessageSquareWarning className="w-3 h-3 ml-1" />
+            </a>
           </div>
         )}
       </div>
