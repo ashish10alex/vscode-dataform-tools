@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { vscode } from './vscode';
-import { ModelInfo, DependencyRow, DependencyInfo, ModelResult } from './types';
+import { ModelInfo, DependencyRow, DependencyInfo, ModelResult, GraphEdge } from './types';
 import { DataTable } from '../components/ui/data-table';
 import StyledSelect, { OptionType } from '../dependancy_graph/components/StyledSelect';
 import { FindWidget } from '../components/FindWidget';
+import DependencyGraph from './DependencyGraph';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -27,6 +28,15 @@ function hl(text: string, search: string): React.ReactNode {
             )}
         </>
     );
+}
+
+function buildBqLink(jobId: string | undefined): string | undefined {
+    if (!jobId) { return undefined; }
+    const parts = jobId.split(':');
+    if (parts.length < 2) { return undefined; }
+    const projectId = parts[0];
+    const restId = parts[1].replace('.', ':');
+    return `https://console.cloud.google.com/bigquery?project=${projectId}&j=bq:${restId}&page=queryresults`;
 }
 
 function StatusBadge({ status }: { status: ModelResult['status'] }) {
@@ -66,13 +76,15 @@ export default function App() {
     const [selectedOption, setSelectedOption] = useState<OptionType | null>(null);
     const [fetchingDeps, setFetchingDeps] = useState(false);
     const [dependencies, setDependencies] = useState<DependencyRow[]>([]);
+    const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
     const [results, setResults] = useState<Record<string, ModelResult>>({});
     const [globalFilter, setGlobalFilter] = useState('');
     const [applyToAll, setApplyToAll] = useState(true);
-    const [depth, setDepth] = useState(5);
+    const [depth, setDepth] = useState(3);
     const [initError, setInitError] = useState<string | null>(null);
     const [compiling, setCompiling] = useState(false);
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState<'table' | 'graph'>('table');
 
     // Find-in-page
     const [showSearch, setShowSearch] = useState(false);
@@ -95,7 +107,7 @@ export default function App() {
     globalFilterRef.current = globalFilter;
     const applyToAllRef = useRef(true);
     applyToAllRef.current = applyToAll;
-    const depthRef = useRef(5);
+    const depthRef = useRef(3);
     depthRef.current = depth;
 
     // Dark mode observer (consistent with other webviews)
@@ -210,6 +222,7 @@ export default function App() {
                         });
                     }
                     setDependencies(depRows);
+                    setGraphEdges(msg.edges ?? []);
                     setResults({});
                     break;
                 }
@@ -226,7 +239,6 @@ export default function App() {
                             error,
                         },
                     }));
-                    setExpandedCards(prev => new Set(prev).add(tableId));
                     break;
                 }
 
@@ -252,7 +264,6 @@ export default function App() {
                             error: errorMessage || error,
                         },
                     }));
-                    setExpandedCards(prev => new Set(prev).add(tableId));
                     break;
                 }
 
@@ -371,8 +382,30 @@ export default function App() {
     return (
         <div className="flex flex-col min-h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] p-4 font-sans gap-4">
 
-            {/* ── Title ── */}
-            <h1 className="text-lg font-semibold text-[var(--vscode-foreground)]">Dependency Inspector</h1>
+            {/* ── Title + Tab Toggle ── */}
+            <div className="flex items-center justify-between gap-4">
+                <h1 className="text-lg font-semibold text-[var(--vscode-foreground)]">Dependency Inspector</h1>
+                {dependencies.length > 0 && (
+                    <div className="flex rounded border border-[var(--vscode-widget-border)] overflow-hidden text-xs font-medium shrink-0">
+                        <button
+                            onClick={() => setActiveTab('table')}
+                            className={`px-3 py-1.5 transition-colors ${activeTab === 'table'
+                                ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
+                                : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]'}`}
+                        >
+                            Table
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('graph')}
+                            className={`px-3 py-1.5 transition-colors border-l border-[var(--vscode-widget-border)] ${activeTab === 'graph'
+                                ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
+                                : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]'}`}
+                        >
+                            Graph
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {showSearch && (
                 <FindWidget
@@ -461,8 +494,13 @@ export default function App() {
                 </div>
             </div>
 
+            {/* ── Graph tab ── */}
+            {activeTab === 'graph' && dependencies.length > 0 && (
+                <DependencyGraph dependencies={dependencies} graphEdges={graphEdges} onToggleNode={toggleRow} results={results} />
+            )}
+
             {/* ── Dependencies table ── */}
-            {dependencies.length > 0 && (
+            {activeTab === 'table' && dependencies.length > 0 && (
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <h2 className="text-sm font-semibold text-[var(--vscode-foreground)]">
@@ -520,8 +558,11 @@ export default function App() {
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[24%]">
                                         Actions
                                     </th>
-                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[10%]">
+                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[8%]">
                                         Status
+                                    </th>
+                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[6%]">
+                                        Job
                                     </th>
                                 </tr>
                             </thead>
@@ -610,6 +651,22 @@ export default function App() {
                                             <td className="px-4 py-2 align-middle">
                                                 {res && <StatusBadge status={res.status} />}
                                             </td>
+
+                                            {/* BQ Job link */}
+                                            <td className="px-4 py-2 align-middle">
+                                                {(() => {
+                                                    const link = buildBqLink(res?.jobStats?.bigQueryJobId);
+                                                    return link ? (
+                                                        <button
+                                                            onClick={() => vscode.postMessage({ command: 'openExternal', value: link })}
+                                                            className="text-xs text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline bg-transparent border-none p-0 cursor-pointer whitespace-nowrap"
+                                                            title="View job in BigQuery"
+                                                        >
+                                                            View ↗
+                                                        </button>
+                                                    ) : null;
+                                                })()}
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -636,17 +693,8 @@ export default function App() {
 
                         const isCollapsed = !expandedCards.has(dep.id);
 
-                        // Compute BQ link once so it's available in both header and body
                         const jobId: string | undefined = res.jobStats?.bigQueryJobId;
-                        let bqLink: string | undefined;
-                        if (jobId) {
-                            const parts = jobId.split(':');
-                            if (parts.length >= 2) {
-                                const projectId = parts[0];
-                                const restId = parts[1].replace('.', ':');
-                                bqLink = `https://console.cloud.google.com/bigquery?project=${projectId}&j=bq:${restId}&page=queryresults`;
-                            }
-                        }
+                        const bqLink = buildBqLink(jobId);
 
                         return (
                             <div

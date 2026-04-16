@@ -11,6 +11,11 @@ export interface DependencyInfo {
     depth: number;  // 1 = direct dependency, 2 = dep-of-dep, etc.
 }
 
+export interface GraphEdge {
+    source: string;  // parent fullId
+    target: string;  // dependency fullId
+}
+
 export interface DependencyRow {
     id: string;           // same as fullTableId, used as React key
     fullTableId: string;

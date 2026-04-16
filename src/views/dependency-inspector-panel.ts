@@ -101,6 +101,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 // BFS up to maxDepth levels, deduplicating by fullId, skipping assertions
                 const visited = new Set<string>([modelFullId]);
                 const deps: { fullId: string; name: string; type: string; depth: number }[] = [];
+                const edges: { source: string; target: string }[] = [];
                 const queue: { fullId: string; depth: number }[] = [{ fullId: modelFullId, depth: 0 }];
 
                 while (queue.length > 0) {
@@ -111,7 +112,10 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
 
                     for (const depTarget of node.dependencyTargets ?? []) {
                         const depFullId = getFullTableId(depTarget);
-                        if (visited.has(depFullId) || assertionIds.has(depFullId)) { continue; }
+                        if (assertionIds.has(depFullId)) { continue; }
+                        // Always record the edge even if we've visited the node
+                        edges.push({ source: fullId, target: depFullId });
+                        if (visited.has(depFullId)) { continue; }
                         visited.add(depFullId);
                         const depNode = nodeMap.get(depFullId);
                         deps.push({
@@ -127,6 +131,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 panel.webview.postMessage({
                     type: 'dependencies',
                     value: deps,
+                    edges,
                     selectedModelId: modelFullId,
                 });
                 return;
@@ -203,6 +208,8 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
 function getHtmlForWebview(webview: vscode.Webview, context: vscode.ExtensionContext): string {
     const scriptUri = webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'dist', 'dependency-inspector.js'));
     const styleUri = webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'dist', 'dependency-inspector.css'));
+    // StyledSelect.css is a shared Vite chunk that contains @xyflow/react styles
+    const sharedStyleUri = webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'dist', 'StyledSelect.css'));
     const nonce = getNonce();
 
     return /*html*/ `
@@ -212,6 +219,7 @@ function getHtmlForWebview(webview: vscode.Webview, context: vscode.ExtensionCon
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource} https:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; font-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:;">
+            <link href="${sharedStyleUri}" rel="stylesheet">
             <link href="${styleUri}" rel="stylesheet">
             <title>Dependency Inspector</title>
         </head>
