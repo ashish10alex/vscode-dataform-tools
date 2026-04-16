@@ -562,6 +562,9 @@ export default function App() {
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[8%]">
                                         Status
                                     </th>
+                                    <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[5%] text-center">
+                                        Rows
+                                    </th>
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[6%]">
                                         Job
                                     </th>
@@ -658,6 +661,19 @@ export default function App() {
                                             {/* Status */}
                                             <td className="px-4 py-2 align-middle">
                                                 {res && <StatusBadge status={res.status} />}
+                                            </td>
+
+                                            {/* Row count */}
+                                            <td className="px-4 py-2 align-middle text-center">
+                                                {res?.status === 'query-success' && (
+                                                    <span className={`font-mono text-xs font-semibold ${
+                                                        !res.results || res.results.length === 0
+                                                            ? 'text-[var(--vscode-inputValidation-warningForeground)]'
+                                                            : 'text-[var(--vscode-foreground)]'
+                                                    }`}>
+                                                        {res.results?.length ?? 0}
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* BQ Job link */}

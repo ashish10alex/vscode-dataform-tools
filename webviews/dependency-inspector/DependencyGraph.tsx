@@ -87,6 +87,7 @@ type DepNodeData = {
     errorMessage?: string;
     bqLink?: string;
     isZeroRows?: boolean;
+    rowCount?: number;
 };
 
 function DepNode({ id, data }: NodeProps) {
@@ -268,6 +269,7 @@ function DepNode({ id, data }: NodeProps) {
                         minWidth: 0,
                     }}>
                         {isZeroRows ? 'No rows returned' : statusLabel(resultStatus)}
+                        {d.rowCount !== undefined ? ` · ${d.rowCount} row${d.rowCount !== 1 ? 's' : ''}` : ''}
                         {isSucc && d.bytes ? ` · ${d.bytes}` : ''}
                         {isSucc && d.cost  ? ` · ${d.cost}`  : ''}
                         {isErr && d.errorMessage
@@ -398,6 +400,7 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
                 errorMessage: res?.error,
                 bqLink: buildBqLink(res?.jobStats?.bigQueryJobId),
                 isZeroRows: res?.status === 'query-success' && (!res.results || res.results.length === 0),
+                rowCount: res?.status === 'query-success' ? (res.results?.length ?? 0) : undefined,
             };
         };
 
@@ -443,13 +446,15 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
                 const nextStatus = res?.status;
                 const nextBqLink = buildBqLink(res?.jobStats?.bigQueryJobId);
                 const nextIsZeroRows = res?.status === 'query-success' && (!res.results || res.results.length === 0);
+                const nextRowCount = res?.status === 'query-success' ? (res.results?.length ?? 0) : undefined;
                 // Skip update if nothing changed
                 if (cur.resultStatus === nextStatus
                     && cur.bytes === res?.bytes
                     && cur.cost === res?.cost
                     && cur.errorMessage === res?.error
                     && cur.bqLink === nextBqLink
-                    && cur.isZeroRows === nextIsZeroRows) {
+                    && cur.isZeroRows === nextIsZeroRows
+                    && cur.rowCount === nextRowCount) {
                     return n;
                 }
                 return {
@@ -462,6 +467,7 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
                         errorMessage: res?.error,
                         bqLink: nextBqLink,
                         isZeroRows: nextIsZeroRows,
+                        rowCount: nextRowCount,
                     },
                 };
             });
