@@ -174,9 +174,12 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
         return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
     }
 
+    // Capture job in a local variable so concurrent calls don't overwrite each other's reference
+    let localJob: typeof bigQueryJob;
     try {
-        [bigQueryJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs() });
-        _bigQueryJobId = bigQueryJob?.id;
+        [localJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs() });
+        bigQueryJob = localJob;  // keep global updated for cancellation
+        _bigQueryJobId = localJob?.id;
     } catch (error: any) {
         try {
             await handleBigQueryError(error);
@@ -201,21 +204,21 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
     let rows;
     try {
-        [rows] = await bigQueryJob.getQueryResults(options);
+        [rows] = await localJob!.getQueryResults(options);
     } catch (error: any) {
         // vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
         return { rows: undefined, jobStats: undefined, errorMessage: error.message };
     }
 
-    let totalBytesBilled;
-    let bigQueryJobId;
-    let bigQueryJobEndTime;
+    let totalBytesBilled: string | undefined;
+    let bigQueryJobId: string | undefined;
+    let bigQueryJobEndTime: Date | undefined;
 
-    if (bigQueryJob) {
-        let jobMetadata = await bigQueryJob.getMetadata();
-        let jobStats = jobMetadata[0].statistics.query;
-        bigQueryJobId = jobMetadata[0].id;
-        totalBytesBilled = jobStats.totalBytesBilled;
+    if (localJob) {
+        const jobMetadata = await localJob.getMetadata();
+        const queryStats = jobMetadata[0]?.statistics?.query;
+        bigQueryJobId = jobMetadata[0]?.id;
+        totalBytesBilled = queryStats?.totalBytesBilled;
         try {
             const jobEndTime = parseInt(jobMetadata[0].statistics.endTime, 10);
             bigQueryJobEndTime = new Date(jobEndTime);
@@ -224,7 +227,13 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
         }
         bigQueryJob = undefined;
     }
-    return { rows: rows, jobStats: { bigQueryJobEndTime: bigQueryJobEndTime, bigQueryJobId: bigQueryJobId, jobCostMeta: formatBytes(Number(totalBytesBilled))}, errorMessage: undefined };
+
+    const bytesBilled = Number(totalBytesBilled);
+    const jobCostMeta = totalBytesBilled !== undefined && !isNaN(bytesBilled)
+        ? formatBytes(bytesBilled)
+        : undefined;
+
+    return { rows: rows, jobStats: { bigQueryJobEndTime, bigQueryJobId, jobCostMeta }, errorMessage: undefined };
 }
 
 export function processQueryResults(rows: any[]): { results: any[], columns: any[] } {

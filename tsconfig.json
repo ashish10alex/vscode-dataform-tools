@@ -27,6 +27,7 @@
 		"src",
 		"webviews/dependancy_graph/**/*",
 		"webviews/preview_compiled/**/*",
+		"webviews/dependency-inspector/**/*",
 		"src/globals.d.ts"
 	],
 	"exclude": [

@@ -1,4 +1,4 @@
-import React, { RefObject } from 'react';
+import React from 'react';
 
 export interface FindWidgetProps {
   searchInputRef: React.RefObject<HTMLInputElement | null>;

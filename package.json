@@ -185,6 +185,11 @@
                 "title": "Show dependency graph"
             },
             {
+                "command": "vscode-dataform-tools.dependencyInspector",
+                "category": "Dataform",
+                "title": "Open Dependency Inspector"
+            },
+            {
                 "command": "vscode-dataform-tools.formatDocument",
                 "category": "Dataform",
                 "title": "Format Document",

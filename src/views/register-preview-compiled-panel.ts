@@ -316,6 +316,9 @@ export class CompiledQueryPanel {
               case 'dependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
+              case 'dependencyInspector':
+                await vscode.commands.executeCommand("vscode-dataform-tools.dependencyInspector");
+                return;
               case 'previewResults':
                 if(message.value){
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
