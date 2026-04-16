@@ -104,56 +104,55 @@ function App() {
       <div className="flex items-center w-full p-4 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] z-10">
         {/* Tab Navigation */}
         {!isConfigFile && (
-          <div className="flex items-center space-x-2 flex-grow overflow-x-auto scrollbar-thin">
-            <button
-              onClick={() => setActiveTab('compilation')}
-              className={clsx(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                activeTab === 'compilation' 
-                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-              )}
-            >
-              Compiled Query
-            </button>
-            <button
-              onClick={() => setActiveTab('schema')}
-              className={clsx(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                activeTab === 'schema' 
-                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-              )}
-            >
-              Schema
-            </button>
-            <button
-              onClick={() => setActiveTab('cost')}
-              className={clsx(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                activeTab === 'cost' 
-                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-              )}
-            >
-              Cost Estimator
-            </button>
-            <button
-              onClick={() => setActiveTab('workflow_urls')}
-              className={clsx(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                activeTab === 'workflow_urls' 
-                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]" 
-                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-              )}
-            >
-              Workflow Executions
-            </button>
-            
-            <div className="flex-grow"></div>
-
+          <>
+            <div className="flex items-center space-x-2 flex-1 min-w-0 overflow-x-auto scrollbar-thin">
+              <button
+                onClick={() => setActiveTab('compilation')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                  activeTab === 'compilation'
+                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
+                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+                )}
+              >
+                Compiled Query
+              </button>
+              <button
+                onClick={() => setActiveTab('schema')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                  activeTab === 'schema'
+                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
+                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+                )}
+              >
+                Schema
+              </button>
+              <button
+                onClick={() => setActiveTab('cost')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                  activeTab === 'cost'
+                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
+                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+                )}
+              >
+                Cost Estimator
+              </button>
+              <button
+                onClick={() => setActiveTab('workflow_urls')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                  activeTab === 'workflow_urls'
+                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
+                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+                )}
+              >
+                Workflow Executions
+              </button>
+            </div>
             <HeaderRightActions />
-          </div>
+          </>
         )}
 
         {isConfigFile && (
