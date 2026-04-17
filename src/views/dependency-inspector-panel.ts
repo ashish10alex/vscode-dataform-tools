@@ -21,7 +21,8 @@ function getAllNodes(compiledJson: DataformCompiledJson) {
 function getModelIdForFile(filePath: string, compiledJson: DataformCompiledJson): string | undefined {
     const nodes = getAllNodes(compiledJson);
     // FILE_NODE_MAP keys use the relative path stored in node.fileName
-    const match = nodes.find(n => n.fileName && filePath.endsWith(n.fileName.replace(/^\//, '')));
+    const normalizedFilePath = filePath.replace(/\\/g, '/');
+    const match = nodes.find(n => n.fileName && normalizedFilePath.endsWith(n.fileName.replace(/\\/g, '/').replace(/^\//, '')));
     return match ? getFullTableId(match.target) : undefined;
 }
 
