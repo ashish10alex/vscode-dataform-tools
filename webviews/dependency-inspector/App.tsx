@@ -75,7 +75,9 @@ function StatusBadge({ status }: { status: ModelResult['status'] }) {
 interface SavedFilterState {
     globalFilter: string;
     applyToAll: boolean;
-    deps: Record<string, { enabled: boolean; filterCondition: string }>;
+    globalSelect: string;
+    applySelectToAll: boolean;
+    deps: Record<string, { enabled: boolean; filterCondition: string; selectClause: string }>;
 }
 
 const STORAGE_PREFIX = 'dataform-dep-inspector:';
@@ -106,6 +108,8 @@ export default function App() {
     const [results, setResults] = useState<Record<string, ModelResult>>({});
     const [globalFilter, setGlobalFilter] = useState('');
     const [applyToAll, setApplyToAll] = useState(true);
+    const [globalSelect, setGlobalSelect] = useState('');
+    const [applySelectToAll, setApplySelectToAll] = useState(true);
     const [depth, setDepth] = useState(3);
     const [initError, setInitError] = useState<string | null>(null);
     const [compiling, setCompiling] = useState(false);
@@ -136,6 +140,10 @@ export default function App() {
     globalFilterRef.current = globalFilter;
     const applyToAllRef = useRef(true);
     applyToAllRef.current = applyToAll;
+    const globalSelectRef = useRef('');
+    globalSelectRef.current = globalSelect;
+    const applySelectToAllRef = useRef(true);
+    applySelectToAllRef.current = applySelectToAll;
     const depthRef = useRef(3);
     depthRef.current = depth;
 
@@ -232,10 +240,12 @@ export default function App() {
                 case 'dependencies': {
                     setFetchingDeps(false);
                     const currentFilter = globalFilterRef.current;
+                    const currentSelect = globalSelectRef.current;
                     const depRows: DependencyRow[] = (msg.value ?? []).map((m: DependencyInfo) => ({
                         id: m.fullId,
                         fullTableId: m.fullId,
                         filterCondition: currentFilter,
+                        selectClause: currentSelect,
                         enabled: true,
                         depth: m.depth,
                     }));
@@ -245,6 +255,7 @@ export default function App() {
                             id: msg.selectedModelId,
                             fullTableId: msg.selectedModelId,
                             filterCondition: currentFilter,
+                            selectClause: currentSelect,
                             enabled: true,
                             isSelectedModel: true,
                             depth: 0,
@@ -256,14 +267,17 @@ export default function App() {
                     if (saved) {
                         setGlobalFilter(saved.globalFilter);
                         setApplyToAll(saved.applyToAll);
+                        setGlobalSelect(saved.globalSelect ?? '');
+                        setApplySelectToAll(saved.applySelectToAll ?? true);
                         depRows.forEach(row => {
                             const s = saved.deps[row.id];
                             if (s) {
                                 row.filterCondition = s.filterCondition;
+                                row.selectClause = s.selectClause ?? '';
                                 row.enabled = s.enabled;
                             } else {
-                                // dep not in saved state: apply globalFilter if applyToAll
                                 row.filterCondition = saved.applyToAll ? saved.globalFilter : '';
+                                row.selectClause = (saved.applySelectToAll ?? true) ? (saved.globalSelect ?? '') : '';
                             }
                         });
                         setFiltersRestored(true);
@@ -332,6 +346,13 @@ export default function App() {
         }
     }, [globalFilter, applyToAll]);
 
+    // Sync globalSelect → all rows when applySelectToAll is on
+    useEffect(() => {
+        if (applySelectToAll && dependencies.length > 0) {
+            setDependencies(deps => deps.map(d => ({ ...d, selectClause: globalSelect })));
+        }
+    }, [globalSelect, applySelectToAll]);
+
     // Auto-save filter state per model (debounced 500ms)
     useEffect(() => {
         if (!selectedOption?.value || dependencies.length === 0) { return; }
@@ -339,13 +360,15 @@ export default function App() {
         const state: SavedFilterState = {
             globalFilter,
             applyToAll,
+            globalSelect,
+            applySelectToAll,
             deps: Object.fromEntries(
-                dependencies.map(d => [d.id, { enabled: d.enabled, filterCondition: d.filterCondition }])
+                dependencies.map(d => [d.id, { enabled: d.enabled, filterCondition: d.filterCondition, selectClause: d.selectClause }])
             ),
         };
         const id = setTimeout(() => saveFilters(modelId, state), 500);
         return () => clearTimeout(id);
-    }, [dependencies, globalFilter, applyToAll, selectedOption]);
+    }, [dependencies, globalFilter, applyToAll, globalSelect, applySelectToAll, selectedOption]);
 
     const modelOptions = useMemo<OptionType[]>(
         () => models.map(m => ({
@@ -369,15 +392,17 @@ export default function App() {
     const handleDryRun = (tableId: string) => {
         const row = dependenciesRef.current.find(d => d.id === tableId);
         const filter = row?.filterCondition ?? '';
+        const select = row?.selectClause ?? '';
         setResults(prev => ({ ...prev, [tableId]: { status: 'dry-run-loading' } }));
-        vscode.postMessage({ command: 'dryRun', value: { tableId, filter } });
+        vscode.postMessage({ command: 'dryRun', value: { tableId, filter, select } });
     };
 
     const handleRunQuery = (tableId: string) => {
         const row = dependenciesRef.current.find(d => d.id === tableId);
         const filter = row?.filterCondition ?? '';
+        const select = row?.selectClause ?? '';
         setResults(prev => ({ ...prev, [tableId]: { ...prev[tableId], status: 'query-loading' } }));
-        vscode.postMessage({ command: 'runQuery', value: { tableId, filter } });
+        vscode.postMessage({ command: 'runQuery', value: { tableId, filter, select } });
     };
 
     const handleDryRunAll = () => {
@@ -405,6 +430,12 @@ export default function App() {
     const updateFilterForRow = (id: string, value: string) => {
         setDependencies(deps =>
             deps.map(d => d.id === id ? { ...d, filterCondition: value } : d)
+        );
+    };
+
+    const updateSelectForRow = (id: string, value: string) => {
+        setDependencies(deps =>
+            deps.map(d => d.id === id ? { ...d, selectClause: value } : d)
         );
     };
 
@@ -529,7 +560,7 @@ export default function App() {
                 </button>
             </div>
 
-            {/* ── Global filter ── */}
+            {/* ── Global filter + select ── */}
             <div className="rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] p-3 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                     <input
@@ -552,6 +583,30 @@ export default function App() {
                         placeholder='e.g. id = "xx" or created_date >= "2024-01-01"'
                         className="flex-1 px-3 py-1.5 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] font-mono"
                     />
+                </div>
+                <div className="border-t border-[var(--vscode-widget-border)] pt-2 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                        <input
+                            id="applySelectToAll"
+                            type="checkbox"
+                            checked={applySelectToAll}
+                            onChange={e => setApplySelectToAll(e.target.checked)}
+                            className="accent-[var(--vscode-checkbox-background)]"
+                        />
+                        <label htmlFor="applySelectToAll" className="text-sm cursor-pointer select-none">
+                            Apply select to all dependencies
+                        </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-[var(--vscode-foreground)] whitespace-nowrap">Select columns</span>
+                        <input
+                            type="text"
+                            value={globalSelect}
+                            onChange={e => setGlobalSelect(e.target.value)}
+                            placeholder='e.g. id, name, created_date (blank = SELECT *)'
+                            className="flex-1 px-3 py-1.5 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] font-mono"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -621,7 +676,7 @@ export default function App() {
                                         Depth
                                     </th>
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[30%]">
-                                        Filter Condition
+                                        Filter / Select
                                     </th>
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[24%]">
                                         Actions
@@ -682,19 +737,38 @@ export default function App() {
                                                 )}
                                             </td>
 
-                                            {/* Filter Condition */}
+                                            {/* Filter / Select */}
                                             <td className="px-4 py-2 align-middle">
-                                                <input
-                                                    type="text"
-                                                    value={row.filterCondition}
-                                                    onChange={e => {
-                                                        if (applyToAll) { return; }
-                                                        updateFilterForRow(row.id, e.target.value);
-                                                    }}
-                                                    readOnly={applyToAll}
-                                                    placeholder="no filter (full table scan)"
-                                                    className={`w-full px-2 py-1 text-xs font-mono bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] ${applyToAll ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                                />
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[10px] uppercase font-medium text-[var(--vscode-descriptionForeground)] w-10 shrink-0">WHERE</span>
+                                                        <input
+                                                            type="text"
+                                                            value={row.filterCondition}
+                                                            onChange={e => {
+                                                                if (applyToAll) { return; }
+                                                                updateFilterForRow(row.id, e.target.value);
+                                                            }}
+                                                            readOnly={applyToAll}
+                                                            placeholder="no filter (full table scan)"
+                                                            className={`flex-1 px-2 py-1 text-xs font-mono bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] ${applyToAll ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[10px] uppercase font-medium text-[var(--vscode-descriptionForeground)] w-10 shrink-0">SELECT</span>
+                                                        <input
+                                                            type="text"
+                                                            value={row.selectClause}
+                                                            onChange={e => {
+                                                                if (applySelectToAll) { return; }
+                                                                updateSelectForRow(row.id, e.target.value);
+                                                            }}
+                                                            readOnly={applySelectToAll}
+                                                            placeholder="* (all columns)"
+                                                            className={`flex-1 px-2 py-1 text-xs font-mono bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] ${applySelectToAll ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                        />
+                                                    </div>
+                                                </div>
                                             </td>
 
                                             {/* Actions */}

@@ -20,6 +20,7 @@ export interface DependencyRow {
     id: string;           // same as fullTableId, used as React key
     fullTableId: string;
     filterCondition: string;
+    selectClause: string;
     enabled: boolean;           // whether this row is included in bulk runs
     isSelectedModel?: boolean;  // true for the model itself (first row)
     depth: number;              // 0 for selected model, 1+ for dependencies

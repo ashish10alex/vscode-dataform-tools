@@ -138,11 +138,12 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
             }
 
             case 'dryRun': {
-                const { tableId, filter }: { tableId: string; filter: string } = message.value ?? {};
+                const { tableId, filter, select }: { tableId: string; filter: string; select: string } = message.value ?? {};
                 if (!tableId) { return; }
+                const cols = select?.trim() || '*';
                 const query = filter?.trim()
-                    ? `SELECT * FROM \`${tableId}\` WHERE ${filter}`
-                    : `SELECT * FROM \`${tableId}\``;
+                    ? `SELECT ${cols} FROM \`${tableId}\` WHERE ${filter}`
+                    : `SELECT ${cols} FROM \`${tableId}\``;
                 try {
                     const result = await queryDryRun(query);
                     if (result.error.hasError) {
@@ -170,11 +171,12 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
             }
 
             case 'runQuery': {
-                const { tableId, filter }: { tableId: string; filter: string } = message.value ?? {};
+                const { tableId, filter, select }: { tableId: string; filter: string; select: string } = message.value ?? {};
                 if (!tableId) { return; }
+                const cols = select?.trim() || '*';
                 const query = filter?.trim()
-                    ? `SELECT * FROM \`${tableId}\` WHERE ${filter}`
-                    : `SELECT * FROM \`${tableId}\``;
+                    ? `SELECT ${cols} FROM \`${tableId}\` WHERE ${filter}`
+                    : `SELECT ${cols} FROM \`${tableId}\``;
                 // Notify webview that loading has started
                 panel.webview.postMessage({ type: 'queryLoading', value: { tableId } });
                 try {
