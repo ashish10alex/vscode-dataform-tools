@@ -370,6 +370,7 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
     onToggleRef.current = onToggleNode;
 
     const prevNodeIdsRef = useRef('');
+    const prevEdgesSigRef = useRef('');
 
     // ── Structural rebuild (new dep set or graphEdges change) ──────────────────
     useEffect(() => {
@@ -381,8 +382,10 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
         }
 
         const newIds = dependencies.map(d => d.id).join('\0');
-        const isStructural = newIds !== prevNodeIdsRef.current;
+        const newEdgesSig = graphEdges.map(e => `${e.source}->${e.target}`).join('\0');
+        const isStructural = newIds !== prevNodeIdsRef.current || newEdgesSig !== prevEdgesSigRef.current;
         prevNodeIdsRef.current = newIds;
+        prevEdgesSigRef.current = newEdgesSig;
 
         const stableToggle = (nodeId: string) => onToggleRef.current(nodeId);
 
@@ -433,7 +436,6 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
                 return { ...n, data: buildData(dep) };
             }));
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dependencies, graphEdges, setNodes, setEdges]);
 
     // ── Results update (dry-run / query results arrive) ────────────────────────
