@@ -545,12 +545,23 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-[var(--vscode-foreground)] whitespace-nowrap">Filter condition</span>
-                    <input
-                        type="text"
+                    <textarea
                         value={globalFilter}
                         onChange={e => setGlobalFilter(e.target.value)}
+                        onInput={e => {
+                            const t = e.currentTarget;
+                            t.style.height = 'auto';
+                            t.style.height = `${t.scrollHeight}px`;
+                        }}
+                        ref={el => {
+                            if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = `${el.scrollHeight}px`;
+                            }
+                        }}
+                        rows={1}
                         placeholder='e.g. id = "xx" or created_date >= "2024-01-01"'
-                        className="flex-1 px-3 py-1.5 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] font-mono"
+                        className="flex-1 px-3 py-1.5 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] font-mono resize-none whitespace-pre-wrap break-all overflow-hidden"
                     />
                 </div>
             </div>
@@ -684,16 +695,27 @@ export default function App() {
 
                                             {/* Filter Condition */}
                                             <td className="px-4 py-2 align-middle">
-                                                <input
-                                                    type="text"
+                                                <textarea
                                                     value={row.filterCondition}
                                                     onChange={e => {
                                                         if (applyToAll) { return; }
                                                         updateFilterForRow(row.id, e.target.value);
                                                     }}
+                                                    onInput={e => {
+                                                        const t = e.currentTarget;
+                                                        t.style.height = 'auto';
+                                                        t.style.height = `${t.scrollHeight}px`;
+                                                    }}
+                                                    ref={el => {
+                                                        if (el) {
+                                                            el.style.height = 'auto';
+                                                            el.style.height = `${el.scrollHeight}px`;
+                                                        }
+                                                    }}
                                                     readOnly={applyToAll}
+                                                    rows={1}
                                                     placeholder="no filter (full table scan)"
-                                                    className={`w-full px-2 py-1 text-xs font-mono bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] ${applyToAll ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                    className={`w-full px-2 py-1 text-xs font-mono bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] resize-none whitespace-pre-wrap break-all overflow-hidden ${applyToAll ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                 />
                                             </td>
 
