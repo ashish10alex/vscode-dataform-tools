@@ -154,9 +154,22 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTags
             }
         }
 
-        const filteredTables = jsonData.tables.filter(table => table.target && targetSet.has(createFullTargetName(table.target)));
-        const filteredOperations = jsonData.operations.filter(operation => operation.target && targetSet.has(createFullTargetName(operation.target)));
-        const filteredAssertions = jsonData.assertions.filter(assertion => assertion.target && targetSet.has(createFullTargetName(assertion.target)));
+        const filteredTables = (jsonData?.tables ?? []).filter(
+        ({ target }) =>
+            target && targetSet.has(createFullTargetName(target))
+        );
+
+        const filteredOperations = (jsonData?.operations ?? []).filter(
+        operation =>
+            operation.target &&
+            targetSet.has(createFullTargetName(operation.target))
+        );
+
+        const filteredAssertions = (jsonData?.assertions ?? []).filter(
+        assertion =>
+            assertion.target &&
+            targetSet.has(createFullTargetName(assertion.target))
+        );
 
         let allResults = [];
 
