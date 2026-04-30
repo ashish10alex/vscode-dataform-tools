@@ -549,6 +549,32 @@ export default function App() {
         ];
     };
 
+    const bulkActions = dependencies.length > 0 ? (
+        <div className="flex gap-2 justify-end">
+            <button
+                onClick={handleDryRunAll}
+                className="px-3 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded font-medium transition-colors"
+            >
+                Dry Run All
+            </button>
+            <button
+                onClick={handleRunAll}
+                disabled={dependencies.filter(d => d.enabled).some(d => !d.filterCondition.trim())}
+                title={dependencies.filter(d => d.enabled).some(d => !d.filterCondition.trim()) ? 'Add a filter condition to all enabled rows before running queries' : undefined}
+                className="px-3 py-1 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+                Run All
+            </button>
+            <button
+                onClick={() => setResults({})}
+                disabled={Object.keys(results).length === 0}
+                className="px-3 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded font-medium transition-colors disabled:opacity-40"
+            >
+                Clear Results
+            </button>
+        </div>
+    ) : null;
+
     const schemaAside = schemaPanelOpen ? (
         <aside className="w-[480px] shrink-0 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] flex flex-col h-[70vh]">
             <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] shrink-0">
@@ -722,17 +748,25 @@ export default function App() {
 
             {/* ── Graph tab ── */}
             {activeTab === 'graph' && dependencies.length > 0 && (
-                <div className="flex gap-3 items-start">
-                    <div className="flex-1 min-w-0">
-                        <DependencyGraph
-                            dependencies={dependencies}
-                            graphEdges={graphEdges}
-                            onToggleNode={toggleRow}
-                            onViewSchema={handleViewSchema}
-                            results={results}
-                        />
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-semibold text-[var(--vscode-foreground)]">
+                            Model + Dependencies ({dependencies.length})
+                        </h2>
+                        {bulkActions}
                     </div>
-                    {schemaAside}
+                    <div className="flex gap-3 items-start">
+                        <div className="flex-1 min-w-0">
+                            <DependencyGraph
+                                dependencies={dependencies}
+                                graphEdges={graphEdges}
+                                onToggleNode={toggleRow}
+                                onViewSchema={handleViewSchema}
+                                results={results}
+                            />
+                        </div>
+                        {schemaAside}
+                    </div>
                 </div>
             )}
 
@@ -743,29 +777,7 @@ export default function App() {
                         <h2 className="text-sm font-semibold text-[var(--vscode-foreground)]">
                             Model + Dependencies ({dependencies.length})
                         </h2>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleDryRunAll}
-                                className="px-3 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded font-medium transition-colors"
-                            >
-                                Dry Run All
-                            </button>
-                            <button
-                                onClick={handleRunAll}
-                                disabled={dependencies.filter(d => d.enabled).some(d => !d.filterCondition.trim())}
-                                title={dependencies.filter(d => d.enabled).some(d => !d.filterCondition.trim()) ? 'Add a filter condition to all enabled rows before running queries' : undefined}
-                                className="px-3 py-1 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                Run All
-                            </button>
-                            <button
-                                onClick={() => setResults({})}
-                                disabled={Object.keys(results).length === 0}
-                                className="px-3 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded font-medium transition-colors disabled:opacity-40"
-                            >
-                                Clear Results
-                            </button>
-                        </div>
+                        {bulkActions}
                     </div>
 
                     {/* Custom table — needs editable inputs + action buttons per row */}
