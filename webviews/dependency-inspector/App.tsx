@@ -126,6 +126,9 @@ export default function App() {
     const [activeTab, setActiveTab] = useState<'table' | 'graph'>('table');
     const [filtersRestored, setFiltersRestored] = useState(false);
 
+    // Full Table ID column filter
+    const [tableIdFilter, setTableIdFilter] = useState('');
+
     // Schema side panel
     const [schemaPanelOpen, setSchemaPanelOpen] = useState(false);
     const [schemaActiveTableId, setSchemaActiveTableId] = useState<string | null>(null);
@@ -483,6 +486,12 @@ export default function App() {
         [dependencies, results]
     );
 
+    const visibleDependencies = useMemo(() => {
+        const q = tableIdFilter.trim().toLowerCase();
+        if (!q) { return dependencies; }
+        return dependencies.filter(d => d.fullTableId.toLowerCase().includes(q));
+    }, [dependencies, tableIdFilter]);
+
     const schemaRows = useMemo(
         () => (schemaFields ? flattenSchemaFields(schemaFields) : []),
         [schemaFields]
@@ -776,7 +785,17 @@ export default function App() {
                                         />
                                     </th>
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[30%]">
-                                        Full Table ID
+                                        <div className="flex flex-col gap-1.5">
+                                            <span>Full Table ID</span>
+                                            <input
+                                                type="text"
+                                                value={tableIdFilter}
+                                                onChange={e => setTableIdFilter(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Escape') { setTableIdFilter(''); (e.currentTarget as HTMLInputElement).blur(); } }}
+                                                placeholder="Filter…"
+                                                className="w-full px-2 py-1 text-xs font-normal normal-case bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)]"
+                                            />
+                                        </div>
                                     </th>
                                     <th className="px-2 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[4%] text-center">
                                         Schema
@@ -802,7 +821,14 @@ export default function App() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--vscode-widget-border)]">
-                                {dependencies.map(row => {
+                                {visibleDependencies.length === 0 && tableIdFilter.trim() && (
+                                    <tr>
+                                        <td colSpan={9} className="px-4 py-6 text-center text-xs text-[var(--vscode-descriptionForeground)]">
+                                            No rows match "{tableIdFilter}".
+                                        </td>
+                                    </tr>
+                                )}
+                                {visibleDependencies.map(row => {
                                     const res = results[row.id];
                                     const isLoading =
                                         res?.status === 'dry-run-loading' || res?.status === 'query-loading';
