@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { vscode } from './vscode';
-import { ModelInfo, DependencyRow, DependencyInfo, ModelResult, GraphEdge } from './types';
+import { ModelInfo, DependencyRow, DependencyInfo, ModelResult, GraphEdge, SchemaField } from './types';
 import { DataTable } from '../components/ui/data-table';
 import StyledSelect, { OptionType } from '../dependancy_graph/components/StyledSelect';
 import { FindWidget } from '../components/FindWidget';
@@ -30,6 +30,18 @@ function hl(text: string, search: string): React.ReactNode {
             )}
         </>
     );
+}
+
+function flattenSchemaFields(fields: SchemaField[], prefix = ''): SchemaField[] {
+    const out: SchemaField[] = [];
+    for (const f of fields) {
+        const name = prefix ? `${prefix}.${f.name}` : f.name;
+        out.push({ name, type: f.type, mode: f.mode, description: f.description });
+        if (f.fields && f.fields.length > 0) {
+            out.push(...flattenSchemaFields(f.fields, name));
+        }
+    }
+    return out;
 }
 
 function buildBqLink(jobId: string | undefined): string | undefined {
@@ -113,6 +125,14 @@ export default function App() {
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<'table' | 'graph'>('table');
     const [filtersRestored, setFiltersRestored] = useState(false);
+
+    // Schema side panel
+    const [schemaPanelOpen, setSchemaPanelOpen] = useState(false);
+    const [schemaActiveTableId, setSchemaActiveTableId] = useState<string | null>(null);
+    const [schemaLoading, setSchemaLoading] = useState(false);
+    const [schemaError, setSchemaError] = useState<string | null>(null);
+    const [schemaFields, setSchemaFields] = useState<SchemaField[] | null>(null);
+    const [schemaCache, setSchemaCache] = useState<Record<string, SchemaField[]>>({});
 
     // Find-in-page
     const [showSearch, setShowSearch] = useState(false);
@@ -316,6 +336,34 @@ export default function App() {
                     break;
                 }
 
+                case 'schema': {
+                    const { fullTableId, fields } = msg.value ?? {};
+                    if (!fullTableId) { break; }
+                    setSchemaCache(prev => ({ ...prev, [fullTableId]: fields }));
+                    setSchemaActiveTableId(prevActive => {
+                        if (prevActive === fullTableId) {
+                            setSchemaFields(fields);
+                            setSchemaLoading(false);
+                            setSchemaError(null);
+                        }
+                        return prevActive;
+                    });
+                    break;
+                }
+
+                case 'schemaError': {
+                    const { fullTableId, error } = msg.value ?? {};
+                    setSchemaActiveTableId(prevActive => {
+                        if (prevActive === fullTableId) {
+                            setSchemaFields(null);
+                            setSchemaLoading(false);
+                            setSchemaError(error || 'Failed to fetch schema');
+                        }
+                        return prevActive;
+                    });
+                    break;
+                }
+
                 case 'error':
                     setInitError(msg.value);
                     break;
@@ -403,6 +451,26 @@ export default function App() {
         setDependencies(deps => deps.map(d => ({ ...d, enabled: next })));
     };
 
+    const handleViewSchema = (fullTableId: string) => {
+        if (!fullTableId) { return; }
+        setSchemaPanelOpen(true);
+        setSchemaActiveTableId(fullTableId);
+        setSchemaError(null);
+        const cached = schemaCache[fullTableId];
+        if (cached) {
+            setSchemaFields(cached);
+            setSchemaLoading(false);
+            return;
+        }
+        setSchemaFields(null);
+        setSchemaLoading(true);
+        vscode.postMessage({ command: 'getTableSchema', value: { fullTableId } });
+    };
+
+    const handleCloseSchema = () => {
+        setSchemaPanelOpen(false);
+    };
+
     const updateFilterForRow = (id: string, value: string) => {
         setDependencies(deps =>
             deps.map(d => d.id === id ? { ...d, filterCondition: value } : d)
@@ -414,6 +482,37 @@ export default function App() {
         () => dependencies.filter(d => results[d.id] && results[d.id].status !== 'idle'),
         [dependencies, results]
     );
+
+    const schemaRows = useMemo(
+        () => (schemaFields ? flattenSchemaFields(schemaFields) : []),
+        [schemaFields]
+    );
+
+    const schemaColumns = useMemo<ColumnDef<SchemaField, any>[]>(() => [
+        {
+            accessorKey: 'name',
+            header: 'Name',
+            size: 200,
+            cell: ({ row }) => (
+                <span
+                    className="font-mono text-xs break-all text-[var(--vscode-foreground)]"
+                    title={(row.original as SchemaField).description || undefined}
+                >
+                    {row.original.name}
+                </span>
+            ),
+        },
+        {
+            accessorKey: 'type',
+            header: 'Type',
+            size: 110,
+            cell: ({ row }) => (
+                <span className="font-mono text-xs text-[var(--vscode-descriptionForeground)] whitespace-nowrap">
+                    {row.original.type}
+                </span>
+            ),
+        },
+    ], []);
 
     // DataTable columns for query results
     const buildResultColumns = (columns: any[]): ColumnDef<any, any>[] => {
@@ -440,6 +539,55 @@ export default function App() {
             ...base,
         ];
     };
+
+    const schemaAside = schemaPanelOpen ? (
+        <aside className="w-[480px] shrink-0 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] flex flex-col h-[70vh]">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] shrink-0">
+                <div className="min-w-0 flex flex-col">
+                    <span className="text-[10px] uppercase tracking-wide text-[var(--vscode-descriptionForeground)]">Schema</span>
+                    <span
+                        className="font-mono text-xs break-all whitespace-normal text-[var(--vscode-foreground)]"
+                        title={schemaActiveTableId ?? ''}
+                    >
+                        {schemaActiveTableId ?? ''}
+                    </span>
+                </div>
+                <button
+                    onClick={handleCloseSchema}
+                    aria-label="Close schema panel"
+                    title="Close"
+                    className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                </button>
+            </div>
+            <div className="flex-1 min-h-0 p-2 flex flex-col">
+                {schemaLoading && (
+                    <p className="text-xs text-[var(--vscode-descriptionForeground)] animate-pulse px-1 py-2">
+                        Fetching schema…
+                    </p>
+                )}
+                {schemaError && (
+                    <div className="rounded border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] px-2 py-1.5">
+                        <p className="text-xs font-mono text-[var(--vscode-inputValidation-errorForeground)] whitespace-pre-wrap break-all">
+                            {schemaError}
+                        </p>
+                    </div>
+                )}
+                {!schemaLoading && !schemaError && schemaFields && schemaFields.length === 0 && (
+                    <p className="text-xs text-[var(--vscode-descriptionForeground)] px-1 py-2">
+                        No fields in this table.
+                    </p>
+                )}
+                {!schemaLoading && !schemaError && schemaFields && schemaFields.length > 0 && (
+                    <DataTable columns={schemaColumns} data={schemaRows} />
+                )}
+            </div>
+        </aside>
+    ) : null;
 
     return (
         <div className="flex flex-col min-h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] p-4 font-sans gap-4">
@@ -565,7 +713,18 @@ export default function App() {
 
             {/* ── Graph tab ── */}
             {activeTab === 'graph' && dependencies.length > 0 && (
-                <DependencyGraph dependencies={dependencies} graphEdges={graphEdges} onToggleNode={toggleRow} results={results} />
+                <div className="flex gap-3 items-start">
+                    <div className="flex-1 min-w-0">
+                        <DependencyGraph
+                            dependencies={dependencies}
+                            graphEdges={graphEdges}
+                            onToggleNode={toggleRow}
+                            onViewSchema={handleViewSchema}
+                            results={results}
+                        />
+                    </div>
+                    {schemaAside}
+                </div>
             )}
 
             {/* ── Dependencies table ── */}
@@ -601,7 +760,8 @@ export default function App() {
                     </div>
 
                     {/* Custom table — needs editable inputs + action buttons per row */}
-                    <div className="rounded border border-[var(--vscode-widget-border)] overflow-x-auto">
+                    <div className="flex gap-3 items-start">
+                    <div className="flex-1 min-w-0 rounded border border-[var(--vscode-widget-border)] overflow-x-auto">
                         <table className="w-full text-sm text-left text-[var(--vscode-foreground)] border-separate border-spacing-0">
                             <thead className="text-xs uppercase bg-[var(--vscode-sideBarSectionHeader-background)]">
                                 <tr>
@@ -617,6 +777,9 @@ export default function App() {
                                     </th>
                                     <th className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[30%]">
                                         Full Table ID
+                                    </th>
+                                    <th className="px-2 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[4%] text-center">
+                                        Schema
                                     </th>
                                     <th className="px-3 py-3 font-medium border-b border-[var(--vscode-widget-border)] w-[6%] text-center">
                                         Depth
@@ -668,6 +831,22 @@ export default function App() {
                                                         className="font-mono text-xs break-all text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline transition-colors"
                                                     />
                                                 )}
+                                            </td>
+
+                                            {/* Schema */}
+                                            <td className="px-2 py-2 align-middle text-center">
+                                                <button
+                                                    onClick={() => handleViewSchema(row.fullTableId)}
+                                                    title={`View schema for ${row.fullTableId}`}
+                                                    aria-label="View schema"
+                                                    className={`inline-flex items-center justify-center p-1 rounded text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors ${schemaPanelOpen && schemaActiveTableId === row.fullTableId ? 'bg-[var(--vscode-toolbar-activeBackground)]' : ''}`}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                        <rect x="1.5" y="2.5" width="13" height="11" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                                                        <line x1="1.5" y1="6" x2="14.5" y2="6" stroke="currentColor" strokeWidth="1.2" />
+                                                        <line x1="6" y1="6" x2="6" y2="13.5" stroke="currentColor" strokeWidth="1.2" />
+                                                    </svg>
+                                                </button>
                                             </td>
 
                                             {/* Depth */}
@@ -764,6 +943,9 @@ export default function App() {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+
+                    {schemaAside}
                     </div>
                 </div>
             )}

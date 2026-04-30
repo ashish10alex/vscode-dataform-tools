@@ -46,3 +46,11 @@ export interface ModelResult {
     jobStats?: any;
     error?: string;
 }
+
+export interface SchemaField {
+    name: string;
+    type: string;
+    mode?: string;
+    description?: string;
+    fields?: SchemaField[];
+}

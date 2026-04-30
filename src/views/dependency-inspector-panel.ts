@@ -3,6 +3,7 @@ import { Uri } from 'vscode';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
 import { queryDryRun } from '../bigqueryDryRun';
 import { queryBigQuery } from '../bigqueryRunQuery';
+import { getTableMetadata } from '../hoverProvider';
 import { DataformCompiledJson, Target, Table, Assertion, Operation } from '../types';
 
 function getFullTableId(target: Target): string {
@@ -188,6 +189,40 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     panel.webview.postMessage({
                         type: 'queryResult',
                         value: { tableId, query, error: err?.message ?? 'Unknown error' },
+                    });
+                }
+                return;
+            }
+
+            case 'getTableSchema': {
+                const fullTableId: string = message.value?.fullTableId ?? '';
+                const parts = fullTableId.split('.');
+                if (parts.length !== 3) {
+                    panel.webview.postMessage({
+                        type: 'schemaError',
+                        value: { fullTableId, error: `Invalid table id: ${fullTableId}` },
+                    });
+                    return;
+                }
+                const [projectId, datasetId, tableId] = parts;
+                try {
+                    const metadata = await getTableMetadata(projectId, datasetId, tableId);
+                    const fields = metadata?.schema?.fields ?? null;
+                    if (!fields) {
+                        panel.webview.postMessage({
+                            type: 'schemaError',
+                            value: { fullTableId, error: 'Schema not available for this table.' },
+                        });
+                        return;
+                    }
+                    panel.webview.postMessage({
+                        type: 'schema',
+                        value: { fullTableId, fields },
+                    });
+                } catch (err: any) {
+                    panel.webview.postMessage({
+                        type: 'schemaError',
+                        value: { fullTableId, error: err?.message ?? 'Unknown error' },
                     });
                 }
                 return;

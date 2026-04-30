@@ -81,6 +81,7 @@ type DepNodeData = {
     isRoot: boolean;
     enabled: boolean;
     onToggle: (id: string) => void;
+    onViewSchema: (fullTableId: string) => void;
     resultStatus?: RS;
     bytes?: string;
     cost?: string;
@@ -198,6 +199,38 @@ function DepNode({ id, data }: NodeProps) {
                         />
                     </svg>
                 )}
+            </button>
+
+            {/* View schema icon — top-right inside node */}
+            <button
+                title={`View schema for ${d.fullTableId}`}
+                aria-label="View schema"
+                onClick={(e) => { e.stopPropagation(); d.onViewSchema(d.fullTableId); }}
+                style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    width: 18,
+                    height: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: 3,
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: isRoot ? 'var(--vscode-button-foreground)' : 'var(--vscode-foreground)',
+                    opacity: 0.85,
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-toolbar-hoverBackground)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+            >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect x="1.5" y="2.5" width="13" height="11" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                    <line x1="1.5" y1="6" x2="14.5" y2="6" stroke="currentColor" strokeWidth="1.2" />
+                    <line x1="6" y1="6" x2="6" y2="13.5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
             </button>
 
             {/* Depth / root badge */}
@@ -358,16 +391,20 @@ interface Props {
     dependencies: DependencyRow[];
     graphEdges: GraphEdge[];
     onToggleNode: (id: string) => void;
+    onViewSchema: (fullTableId: string) => void;
     results: Record<string, ModelResult>;
 }
 
-function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) {
+function GraphInner({ dependencies, graphEdges, onToggleNode, onViewSchema, results }: Props) {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const rfInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
 
     const onToggleRef = useRef(onToggleNode);
     onToggleRef.current = onToggleNode;
+
+    const onViewSchemaRef = useRef(onViewSchema);
+    onViewSchemaRef.current = onViewSchema;
 
     const prevNodeIdsRef = useRef('');
     const prevEdgesSigRef = useRef('');
@@ -388,6 +425,7 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
         prevEdgesSigRef.current = newEdgesSig;
 
         const stableToggle = (nodeId: string) => onToggleRef.current(nodeId);
+        const stableViewSchema = (fullTableId: string) => onViewSchemaRef.current(fullTableId);
 
         const buildData = (dep: DependencyRow): DepNodeData => {
             const res = results[dep.id];
@@ -397,6 +435,7 @@ function GraphInner({ dependencies, graphEdges, onToggleNode, results }: Props) 
                 isRoot: dep.isSelectedModel ?? false,
                 enabled: dep.enabled,
                 onToggle: stableToggle,
+                onViewSchema: stableViewSchema,
                 resultStatus: res?.status,
                 bytes: res?.bytes,
                 cost: res?.cost,

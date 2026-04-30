@@ -155,7 +155,7 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
    return visit(sourceFile);
 }
 
-async function getTableMetadata(projectId: string, datasetId:string, tableId:string) {
+export async function getTableMetadata(projectId: string, datasetId:string, tableId:string) {
   try {
     const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
     let options = {projectId};
