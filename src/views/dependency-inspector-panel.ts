@@ -3,7 +3,7 @@ import { Uri } from 'vscode';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
 import { queryDryRun } from '../bigqueryDryRun';
 import { queryBigQuery } from '../bigqueryRunQuery';
-import { getTableMetadata } from '../hoverProvider';
+import { fetchTableMetadata } from '../hoverProvider';
 import { DataformCompiledJson, Target, Table, Assertion, Operation } from '../types';
 
 function getFullTableId(target: Target): string {
@@ -206,7 +206,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 }
                 const [projectId, datasetId, tableId] = parts;
                 try {
-                    const metadata = await getTableMetadata(projectId, datasetId, tableId);
+                    const metadata = await fetchTableMetadata(projectId, datasetId, tableId);
                     const fields = metadata?.schema?.fields ?? null;
                     if (!fields) {
                         panel.webview.postMessage({
@@ -220,9 +220,10 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         value: { fullTableId, fields },
                     });
                 } catch (err: any) {
+                    const detail = err?.message ?? String(err ?? 'Unknown error');
                     panel.webview.postMessage({
                         type: 'schemaError',
-                        value: { fullTableId, error: err?.message ?? 'Unknown error' },
+                        value: { fullTableId, error: `Failed to fetch table metadata: ${detail}` },
                     });
                 }
                 return;

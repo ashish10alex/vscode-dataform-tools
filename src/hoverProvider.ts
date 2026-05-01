@@ -155,23 +155,27 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
    return visit(sourceFile);
 }
 
+/**
+ * Fetches BigQuery table metadata, propagating any underlying error.
+ * Use this when the caller wants to surface real auth/permission/network
+ * failures to the user. Prefer {@link getTableMetadata} for callers that
+ * just want best-effort metadata (e.g. hover providers).
+ */
+export async function fetchTableMetadata(projectId: string, datasetId: string, tableId: string) {
+  const serviceAccountJsonPath = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+  let options: { projectId: string; keyFilename?: string } = { projectId };
+  if (serviceAccountJsonPath) {
+    options = { ...options, keyFilename: serviceAccountJsonPath as string };
+  }
+  const bigqueryClient = new BigQuery(options);
+  const table = bigqueryClient.dataset(datasetId).table(tableId);
+  const [metadata] = await table.getMetadata();
+  return metadata;
+}
+
 export async function getTableMetadata(projectId: string, datasetId:string, tableId:string) {
   try {
-    const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
-    let options = {projectId};
-    if(serviceAccountJsonPath){
-    // @ts-ignore 
-        options = {... options , keyFilename: serviceAccountJsonPath};
-    }
-    const bigqueryClient = new BigQuery(options);
-
-    if(bigqueryClient){
-
-    const table = bigqueryClient.dataset(datasetId).table(tableId);
-
-    const [metadata] = await table.getMetadata();
-    return metadata;
-    }
+    return await fetchTableMetadata(projectId, datasetId, tableId);
   } catch (err) {
     console.error('Error:', err);
   }
