@@ -128,6 +128,7 @@ export default function App() {
 
     // Full Table ID column filter
     const [tableIdFilter, setTableIdFilter] = useState('');
+    const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
 
     // Schema side panel
     const [schemaPanelOpen, setSchemaPanelOpen] = useState(false);
@@ -488,9 +489,12 @@ export default function App() {
 
     const visibleDependencies = useMemo(() => {
         const q = tableIdFilter.trim().toLowerCase();
-        if (!q) { return dependencies; }
-        return dependencies.filter(d => d.fullTableId.toLowerCase().includes(q));
-    }, [dependencies, tableIdFilter]);
+        return dependencies.filter(d => {
+            if (showOnlyEnabled && !d.enabled) { return false; }
+            if (q && !d.fullTableId.toLowerCase().includes(q)) { return false; }
+            return true;
+        });
+    }, [dependencies, tableIdFilter, showOnlyEnabled]);
 
     const schemaRows = useMemo(
         () => (schemaFields ? flattenSchemaFields(schemaFields) : []),
@@ -773,11 +777,22 @@ export default function App() {
             {/* ── Dependencies table ── */}
             {activeTab === 'table' && dependencies.length > 0 && (
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                         <h2 className="text-sm font-semibold text-[var(--vscode-foreground)]">
                             Model + Dependencies ({dependencies.length})
                         </h2>
-                        {bulkActions}
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 text-xs text-[var(--vscode-foreground)] cursor-pointer select-none whitespace-nowrap">
+                                <input
+                                    type="checkbox"
+                                    checked={showOnlyEnabled}
+                                    onChange={e => setShowOnlyEnabled(e.target.checked)}
+                                    className="accent-[var(--vscode-checkbox-background)]"
+                                />
+                                Show only checked
+                            </label>
+                            {bulkActions}
+                        </div>
                     </div>
 
                     {/* Custom table — needs editable inputs + action buttons per row */}
@@ -833,10 +848,12 @@ export default function App() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--vscode-widget-border)]">
-                                {visibleDependencies.length === 0 && tableIdFilter.trim() && (
+                                {visibleDependencies.length === 0 && (tableIdFilter.trim() || showOnlyEnabled) && (
                                     <tr>
                                         <td colSpan={9} className="px-4 py-6 text-center text-xs text-[var(--vscode-descriptionForeground)]">
-                                            No rows match "{tableIdFilter}".
+                                            {tableIdFilter.trim()
+                                                ? `No rows match "${tableIdFilter}".`
+                                                : 'No checked rows.'}
                                         </td>
                                     </tr>
                                 )}
