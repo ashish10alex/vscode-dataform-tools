@@ -125,6 +125,9 @@ export default function App() {
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<'table' | 'graph'>('table');
     const [filtersRestored, setFiltersRestored] = useState(false);
+    const [workspaceFilterStatus, setWorkspaceFilterStatus] = useState<{ kind: 'success' | 'error' | 'info'; message: string } | null>(null);
+    const [workspaceFilterDescription, setWorkspaceFilterDescription] = useState('');
+    const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
     // Full Table ID column filter
     const [tableIdFilter, setTableIdFilter] = useState('');
@@ -217,6 +220,11 @@ export default function App() {
     }, [searchTerm, currentMatchIndex, dependencies, results]);
 
     useEffect(() => { setCurrentMatchIndex(0); }, [searchTerm]);
+
+    useEffect(() => {
+        setWorkspaceFilterDescription('');
+        setActivePresetId(null);
+    }, [selectedOption?.value]);
 
     // Message handler from extension host
     useEffect(() => {
@@ -368,6 +376,69 @@ export default function App() {
                     break;
                 }
 
+                case 'filtersSavedToWorkspace': {
+                    const { ok, error, path, presetId, overwrote } = msg.value ?? {};
+                    if (ok) {
+                        if (presetId) { setActivePresetId(presetId); }
+                        setWorkspaceFilterStatus({
+                            kind: 'success',
+                            message: `${overwrote ? 'Updated' : 'Saved new'} preset in ${path}`,
+                        });
+                    } else {
+                        setWorkspaceFilterStatus({ kind: 'error', message: `Failed to save filters: ${error ?? 'unknown error'}` });
+                    }
+                    setTimeout(() => setWorkspaceFilterStatus(null), 4000);
+                    break;
+                }
+
+                case 'filterPresetDeleted': {
+                    const { modelFullId, presetId } = msg.value ?? {};
+                    if (selectedOptionRef.current?.value === modelFullId && presetId) {
+                        setActivePresetId(prev => (prev === presetId ? null : prev));
+                        setWorkspaceFilterStatus({ kind: 'info', message: 'Preset deleted.' });
+                        setTimeout(() => setWorkspaceFilterStatus(null), 3000);
+                    }
+                    break;
+                }
+
+                case 'filtersLoadedFromWorkspace': {
+                    const { modelFullId, state, description, error, missing, presetId } = msg.value ?? {};
+                    const currentModelId = selectedOptionRef.current?.value;
+                    if (!currentModelId || currentModelId !== modelFullId) { break; }
+                    if (error) {
+                        setWorkspaceFilterStatus({ kind: 'error', message: error });
+                        setTimeout(() => setWorkspaceFilterStatus(null), 4000);
+                        break;
+                    }
+                    if (!state) {
+                        setWorkspaceFilterStatus({
+                            kind: 'info',
+                            message: missing ? 'No saved filters file in workspace.' : 'No saved filters for this model in workspace.',
+                        });
+                        setTimeout(() => setWorkspaceFilterStatus(null), 4000);
+                        break;
+                    }
+                    setGlobalFilter(state.globalFilter ?? '');
+                    setApplyToAll(state.applyToAll ?? true);
+                    setDependencies(deps => deps.map(d => {
+                        const s = state.deps?.[d.id];
+                        if (s) {
+                            return { ...d, enabled: s.enabled, filterCondition: s.filterCondition };
+                        }
+                        return { ...d, filterCondition: state.applyToAll ? (state.globalFilter ?? '') : '' };
+                    }));
+                    setWorkspaceFilterDescription(typeof description === 'string' ? description : '');
+                    setActivePresetId(typeof presetId === 'string' ? presetId : null);
+                    setWorkspaceFilterStatus({
+                        kind: 'success',
+                        message: description
+                            ? `Loaded preset — ${description}`
+                            : 'Loaded preset from workspace.',
+                    });
+                    setTimeout(() => setWorkspaceFilterStatus(null), 4000);
+                    break;
+                }
+
                 case 'error':
                     setInitError(msg.value);
                     break;
@@ -473,6 +544,36 @@ export default function App() {
 
     const handleCloseSchema = () => {
         setSchemaPanelOpen(false);
+    };
+
+    const handleSaveFiltersToWorkspace = (mode: 'new' | 'overwrite') => {
+        if (!selectedOption?.value || dependencies.length === 0) { return; }
+        if (mode === 'overwrite' && !activePresetId) { return; }
+        const filterState: SavedFilterState = {
+            globalFilter,
+            applyToAll,
+            deps: Object.fromEntries(
+                dependencies.map(d => [d.id, { enabled: d.enabled, filterCondition: d.filterCondition }])
+            ),
+        };
+        const description = workspaceFilterDescription.trim();
+        vscode.postMessage({
+            command: 'saveFiltersToWorkspace',
+            value: {
+                modelFullId: selectedOption.value,
+                filterState,
+                description: description || undefined,
+                presetId: mode === 'overwrite' ? activePresetId : undefined,
+            },
+        });
+    };
+
+    const handleLoadFiltersFromWorkspace = () => {
+        if (!selectedOption?.value) { return; }
+        vscode.postMessage({
+            command: 'loadFiltersFromWorkspace',
+            value: { modelFullId: selectedOption.value },
+        });
     };
 
     const updateFilterForRow = (id: string, value: string) => {
@@ -730,6 +831,42 @@ export default function App() {
                     <label htmlFor="applyToAll" className="text-sm cursor-pointer select-none">
                         Apply filter to all dependencies
                     </label>
+                    <div className="ml-auto flex items-center gap-2">
+                        {activePresetId && (
+                            <span
+                                className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]"
+                                title={`Editing preset ${activePresetId}`}
+                            >
+                                editing #{activePresetId.slice(0, 8)}
+                            </span>
+                        )}
+                        <button
+                            onClick={handleLoadFiltersFromWorkspace}
+                            disabled={!selectedOption?.value}
+                            title="Load a saved preset for this model (also lets you delete presets)"
+                            className="px-2.5 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Load preset…
+                        </button>
+                        <button
+                            onClick={() => handleSaveFiltersToWorkspace('overwrite')}
+                            disabled={!selectedOption?.value || dependencies.length === 0 || !activePresetId}
+                            title={activePresetId
+                                ? `Overwrite the loaded preset (${activePresetId.slice(0, 8)})`
+                                : 'Load a preset first to overwrite it'}
+                            className="px-2.5 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Save (overwrite)
+                        </button>
+                        <button
+                            onClick={() => handleSaveFiltersToWorkspace('new')}
+                            disabled={!selectedOption?.value || dependencies.length === 0}
+                            title="Save current filters as a new preset"
+                            className="px-2.5 py-1 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Save as new
+                        </button>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-[var(--vscode-foreground)] whitespace-nowrap">Filter condition</span>
@@ -741,12 +878,34 @@ export default function App() {
                         className="flex-1 px-3 py-1.5 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)] font-mono resize-none whitespace-pre-wrap break-all overflow-hidden"
                     />
                 </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-[var(--vscode-foreground)] whitespace-nowrap">Description</span>
+                    <input
+                        type="text"
+                        value={workspaceFilterDescription}
+                        onChange={e => setWorkspaceFilterDescription(e.target.value)}
+                        placeholder="optional — saved alongside workspace filters (e.g. 'QA debug for incident #123')"
+                        className="flex-1 px-3 py-1.5 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] placeholder:text-[var(--vscode-input-placeholderForeground)]"
+                    />
+                </div>
             </div>
 
             {/* ── Filters restored toast ── */}
             {filtersRestored && (
                 <div className="flex items-center gap-1.5 text-xs text-[var(--vscode-descriptionForeground)] animate-pulse">
                     <span>✓ Saved filters applied</span>
+                </div>
+            )}
+
+            {workspaceFilterStatus && (
+                <div className={`text-xs px-2 py-1 rounded border ${
+                    workspaceFilterStatus.kind === 'success'
+                        ? 'border-[var(--vscode-testing-iconPassed)] text-[var(--vscode-testing-iconPassed)]'
+                        : workspaceFilterStatus.kind === 'error'
+                            ? 'border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] text-[var(--vscode-inputValidation-errorForeground)]'
+                            : 'border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]'
+                }`}>
+                    {workspaceFilterStatus.message}
                 </div>
             )}
 

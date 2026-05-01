@@ -1,10 +1,60 @@
 import * as vscode from 'vscode';
 import { Uri } from 'vscode';
+import { randomUUID } from 'crypto';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
 import { queryDryRun } from '../bigqueryDryRun';
 import { queryBigQuery } from '../bigqueryRunQuery';
 import { fetchTableMetadata } from '../hoverProvider';
 import { DataformCompiledJson, Target, Table, Assertion, Operation } from '../types';
+
+type FilterPreset = {
+    id: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+    globalFilter: string;
+    applyToAll: boolean;
+    deps: Record<string, { enabled: boolean; filterCondition: string }>;
+};
+
+type FilterFile = { version: 2; filters: Record<string, FilterPreset[]> };
+
+function migrateToV2(parsed: any): FilterFile {
+    if (parsed && parsed.version === 2 && parsed.filters && typeof parsed.filters === 'object') {
+        return parsed as FilterFile;
+    }
+    const out: FilterFile = { version: 2, filters: {} };
+    const oldFilters = parsed?.filters && typeof parsed.filters === 'object' ? parsed.filters : {};
+    const now = new Date().toISOString();
+    for (const [modelId, entry] of Object.entries(oldFilters)) {
+        if (!entry || typeof entry !== 'object') { continue; }
+        const e = entry as any;
+        out.filters[modelId] = [{
+            id: randomUUID(),
+            description: typeof e.description === 'string' ? e.description : undefined,
+            createdAt: now,
+            updatedAt: now,
+            globalFilter: typeof e.globalFilter === 'string' ? e.globalFilter : '',
+            applyToAll: !!e.applyToAll,
+            deps: e.deps && typeof e.deps === 'object' ? e.deps : {},
+        }];
+    }
+    return out;
+}
+
+async function readFilterFile(file: vscode.Uri): Promise<FilterFile> {
+    try {
+        const buf = await vscode.workspace.fs.readFile(file);
+        return migrateToV2(JSON.parse(Buffer.from(buf).toString('utf8')));
+    } catch {
+        return { version: 2, filters: {} };
+    }
+}
+
+async function writeFilterFile(file: vscode.Uri, data: FilterFile): Promise<void> {
+    const out = Buffer.from(JSON.stringify(data, null, 2), 'utf8');
+    await vscode.workspace.fs.writeFile(file, out);
+}
 
 function getFullTableId(target: Target): string {
     return `${target.database}.${target.schema}.${target.name}`;
@@ -234,6 +284,135 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 if (url.startsWith('https://') || url.startsWith('http://')) {
                     vscode.env.openExternal(vscode.Uri.parse(url));
                 }
+                return;
+            }
+
+            case 'saveFiltersToWorkspace': {
+                const { modelFullId, filterState, description, presetId } = message.value ?? {};
+                if (!modelFullId || !filterState) { return; }
+                const ws = await getWorkspaceFolder();
+                if (!ws) {
+                    panel.webview.postMessage({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: 'No Dataform workspace open' } });
+                    return;
+                }
+                const dir = vscode.Uri.joinPath(vscode.Uri.file(ws), '.vscode-dataform-tools');
+                const file = vscode.Uri.joinPath(dir, 'dependency-inspector-filters.json');
+                try {
+                    await vscode.workspace.fs.createDirectory(dir);
+                    const data = await readFilterFile(file);
+                    const list = data.filters[modelFullId] ?? [];
+                    const now = new Date().toISOString();
+                    const trimmedDescription = typeof description === 'string' && description.trim() ? description.trim() : undefined;
+                    const idx = presetId ? list.findIndex(p => p.id === presetId) : -1;
+                    let savedPreset: FilterPreset;
+                    if (idx >= 0) {
+                        savedPreset = {
+                            ...list[idx],
+                            description: trimmedDescription,
+                            updatedAt: now,
+                            globalFilter: filterState.globalFilter ?? '',
+                            applyToAll: !!filterState.applyToAll,
+                            deps: filterState.deps ?? {},
+                        };
+                        list[idx] = savedPreset;
+                    } else {
+                        savedPreset = {
+                            id: randomUUID(),
+                            description: trimmedDescription,
+                            createdAt: now,
+                            updatedAt: now,
+                            globalFilter: filterState.globalFilter ?? '',
+                            applyToAll: !!filterState.applyToAll,
+                            deps: filterState.deps ?? {},
+                        };
+                        list.push(savedPreset);
+                    }
+                    data.filters[modelFullId] = list;
+                    await writeFilterFile(file, data);
+                    panel.webview.postMessage({
+                        type: 'filtersSavedToWorkspace',
+                        value: { modelFullId, ok: true, presetId: savedPreset.id, overwrote: idx >= 0, path: file.fsPath },
+                    });
+                } catch (e: any) {
+                    panel.webview.postMessage({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: e?.message ?? String(e) } });
+                }
+                return;
+            }
+
+            case 'loadFiltersFromWorkspace': {
+                const { modelFullId } = message.value ?? {};
+                if (!modelFullId) { return; }
+                const ws = await getWorkspaceFolder();
+                if (!ws) {
+                    panel.webview.postMessage({ type: 'filtersLoadedFromWorkspace', value: { modelFullId, state: null, error: 'No Dataform workspace open' } });
+                    return;
+                }
+                const file = vscode.Uri.joinPath(vscode.Uri.file(ws), '.vscode-dataform-tools', 'dependency-inspector-filters.json');
+                const data = await readFilterFile(file);
+                let list = data.filters[modelFullId] ?? [];
+                if (list.length === 0) {
+                    panel.webview.postMessage({ type: 'filtersLoadedFromWorkspace', value: { modelFullId, state: null, missing: true } });
+                    return;
+                }
+
+                type Item = vscode.QuickPickItem & { presetId: string };
+                const buildItems = (l: FilterPreset[]): Item[] =>
+                    l.map(p => ({
+                        label: p.description || `Filter ${p.id.slice(0, 8)}`,
+                        description: new Date(p.updatedAt).toLocaleString(),
+                        detail: p.globalFilter ? p.globalFilter.slice(0, 200) : '(no global filter)',
+                        presetId: p.id,
+                        buttons: [{ iconPath: new vscode.ThemeIcon('trash'), tooltip: 'Delete preset' }],
+                    }));
+
+                const qp = vscode.window.createQuickPick<Item>();
+                qp.title = `Saved filters for ${modelFullId}`;
+                qp.placeholder = 'Select a filter to apply (click trash icon to delete)';
+                qp.items = buildItems(list);
+
+                qp.onDidTriggerItemButton(async e => {
+                    try {
+                        const fresh = await readFilterFile(file);
+                        const updated = (fresh.filters[modelFullId] ?? []).filter(p => p.id !== e.item.presetId);
+                        fresh.filters[modelFullId] = updated;
+                        await writeFilterFile(file, fresh);
+                        list = updated;
+                        panel.webview.postMessage({ type: 'filterPresetDeleted', value: { modelFullId, presetId: e.item.presetId } });
+                        if (list.length === 0) {
+                            qp.hide();
+                            return;
+                        }
+                        qp.items = buildItems(list);
+                    } catch (err: any) {
+                        vscode.window.showErrorMessage(`Failed to delete preset: ${err?.message ?? err}`);
+                    }
+                });
+
+                qp.onDidAccept(() => {
+                    const sel = qp.selectedItems[0];
+                    if (sel) {
+                        const preset = list.find(p => p.id === sel.presetId);
+                        if (preset) {
+                            panel.webview.postMessage({
+                                type: 'filtersLoadedFromWorkspace',
+                                value: {
+                                    modelFullId,
+                                    state: {
+                                        globalFilter: preset.globalFilter,
+                                        applyToAll: preset.applyToAll,
+                                        deps: preset.deps,
+                                    },
+                                    description: preset.description,
+                                    presetId: preset.id,
+                                },
+                            });
+                        }
+                    }
+                    qp.hide();
+                });
+
+                qp.onDidHide(() => qp.dispose());
+                qp.show();
                 return;
             }
         }
