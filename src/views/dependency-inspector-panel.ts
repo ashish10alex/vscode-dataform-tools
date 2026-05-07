@@ -339,6 +339,35 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 return;
             }
 
+            case 'getLatestFilterPreset': {
+                const { modelFullId } = message.value ?? {};
+                if (!modelFullId) { return; }
+                const ws = await getWorkspaceFolder();
+                if (!ws) { return; }
+                const file = vscode.Uri.joinPath(vscode.Uri.file(ws), '.vscode-dataform-tools', 'dependency-inspector-filters.json');
+                const data = await readFilterFile(file);
+                const list = data.filters[modelFullId] ?? [];
+                if (list.length === 0) { return; }
+                const latest = list.reduce((a, b) =>
+                    new Date(b.createdAt).getTime() > new Date(a.createdAt).getTime() ? b : a
+                );
+                panel.webview.postMessage({
+                    type: 'filtersLoadedFromWorkspace',
+                    value: {
+                        modelFullId,
+                        state: {
+                            globalFilter: latest.globalFilter,
+                            applyToAll: latest.applyToAll,
+                            deps: latest.deps,
+                        },
+                        description: latest.description,
+                        presetId: latest.id,
+                        auto: true,
+                    },
+                });
+                return;
+            }
+
             case 'loadFiltersFromWorkspace': {
                 const { modelFullId } = message.value ?? {};
                 if (!modelFullId) { return; }

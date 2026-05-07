@@ -305,6 +305,14 @@ export default function App() {
                     setDependencies(depRows);
                     setGraphEdges(msg.edges ?? []);
                     setResults({});
+                    // Auto-load the most recent workspace preset for this model (if any).
+                    // Extension will silently ignore if no presets exist or no workspace.
+                    if (modelId) {
+                        vscode.postMessage({
+                            command: 'getLatestFilterPreset',
+                            value: { modelFullId: modelId },
+                        });
+                    }
                     break;
                 }
 
@@ -402,7 +410,7 @@ export default function App() {
                 }
 
                 case 'filtersLoadedFromWorkspace': {
-                    const { modelFullId, state, description, error, missing, presetId } = msg.value ?? {};
+                    const { modelFullId, state, description, error, missing, presetId, auto } = msg.value ?? {};
                     const currentModelId = selectedOptionRef.current?.value;
                     if (!currentModelId || currentModelId !== modelFullId) { break; }
                     if (error) {
@@ -411,6 +419,8 @@ export default function App() {
                         break;
                     }
                     if (!state) {
+                        // Auto-load probe found nothing — stay quiet.
+                        if (auto) { break; }
                         setWorkspaceFilterStatus({
                             kind: 'info',
                             message: missing ? 'No saved filters file in workspace.' : 'No saved filters for this model in workspace.',
@@ -429,11 +439,10 @@ export default function App() {
                     }));
                     setWorkspaceFilterDescription(typeof description === 'string' ? description : '');
                     setActivePresetId(typeof presetId === 'string' ? presetId : null);
+                    const verb = auto ? 'Auto-loaded latest preset' : 'Loaded preset';
                     setWorkspaceFilterStatus({
                         kind: 'success',
-                        message: description
-                            ? `Loaded preset — ${description}`
-                            : 'Loaded preset from workspace.',
+                        message: description ? `${verb} — ${description}` : `${verb} from workspace.`,
                     });
                     setTimeout(() => setWorkspaceFilterStatus(null), 4000);
                     break;
