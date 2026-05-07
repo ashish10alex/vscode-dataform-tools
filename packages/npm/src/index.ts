@@ -275,6 +275,29 @@ export class DataformTools {
     }
 
     /**
+     * Lists workflow invocations within a specific repository.
+     * @param repositoryName - Name of the Dataform repository
+     * @param options - Optional parameters for the request like pageSize, pageToken, orderBy. See {@link https://docs.cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.ilistworkflowinvocationsrequest|IListWorkflowInvocationsRequest}
+     * @returns A promise that resolves to an array of workflow invocation objects. {@link protos.google.cloud.dataform.v1beta1.WorkflowInvocation|WorkflowInvocation}
+     */
+    async listWorkflowInvocations(repositoryName: string, options?: Omit<protos.google.cloud.dataform.v1beta1.IListWorkflowInvocationsRequest, 'parent'>) {
+        if (!repositoryName) {
+            throw new Error("repositoryName must be provided.");
+        }
+
+        const parent = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}`;
+        
+        // If pageSize is provided, we likely want to limit the results. We turn off auto-pagination.
+        const callOptions = options?.pageSize ? { autoPaginate: false } : undefined;
+        
+        const [workflowInvocations] = await this.client.listWorkflowInvocations({
+            parent: parent,
+            ...options
+        }, callOptions);
+        return workflowInvocations;
+    }
+
+    /**
      * Create workflow invocation using compilation result
      * @param repositoryName - Name of the Dataform repository
      * @param workspaceName - Name of the Dataform workspace

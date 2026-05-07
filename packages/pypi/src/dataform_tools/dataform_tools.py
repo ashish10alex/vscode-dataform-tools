@@ -254,6 +254,37 @@ class DataformTools():
         created_workflow_invocation = self.client.create_workflow_invocation(request)
         return created_workflow_invocation
 
+    def get_workflow_invocation(self, repository_name: str, workflow_invocation_id: str) -> WorkflowInvocation:
+        """Gets a workflow invocation in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workflow_invocation_id (str): The ID of the workflow invocation.
+        Returns:
+            WorkflowInvocation: The workflow invocation.
+        """
+        workflow_invocation_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workflowInvocations/{workflow_invocation_id}"
+        request = dataform_v1beta1.GetWorkflowInvocationRequest(
+            name=workflow_invocation_path
+        )
+        workflow_invocation = self.client.get_workflow_invocation(request)
+        return workflow_invocation
+
+    def list_workflow_invocations(self, repository_name: str, **kwargs):
+        """Lists workflow invocations in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            **kwargs: Optional parameters for the request like page_size, page_token, order_by.
+        Returns:
+            The workflow invocations.
+        """
+        parent = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}"
+        request = dataform_v1beta1.ListWorkflowInvocationsRequest(
+            parent=parent,
+            **kwargs
+        )
+        workflow_invocations = self.client.list_workflow_invocations(request)
+        return workflow_invocations
+
 
     def write_file(self, repository_name:str, workspace_name:str, relative_path:str, contents:str|bytes)-> None:
         """Writes a file to a workspace in Dataform.

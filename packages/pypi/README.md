@@ -165,8 +165,8 @@ client.get_workspace_git_state("repository-name", "workspace-name")
 ```py
 from dataform_tools import DataformTools
 client = DataformTools("your-gcp-project-id", "europe-west2")
-const paths = [];  # array of file paths to reset. If empty, all changes will be reset.
-const clean = true; # If true, untracked files will be removed. Defaults to true.
+paths = []  # array of file paths to reset. If empty, all changes will be reset.
+clean = True # If True, untracked files will be removed. Defaults to True.
 client.reset_workspace_changes("repository-name", "workspace-name", paths, clean)
 ```
 
@@ -184,4 +184,26 @@ client.fetch_git_ahead_behind("repository-name", "workspace-name", "remote-git-b
 from dataform_tools import DataformTools
 client = DataformTools("your-gcp-project-id", "europe-west2")
 client.push_workspace_commits("repository-name", "my-worksapce", "remote_git_branch") 
+```
+
+### List Workflow Invocations
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+
+# Fetch the latest 5 workflow invocations
+invocations = client.list_workflow_invocations(
+    repository_name="repository-name",
+    page_size=5,
+    order_by="name desc"
+)
+
+# Extract and print invocation details
+for invocation in invocations:
+    invocation_id = invocation.name.split("/")[-1]
+    url = client.get_workflow_invocation_url("repository-name", invocation_id)
+    print(f"ID: {invocation_id}")
+    print(f"URL: {url}")
+    break # Remove or change logic to iterate through all results
 ```
