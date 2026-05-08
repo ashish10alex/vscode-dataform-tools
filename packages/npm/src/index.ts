@@ -287,8 +287,8 @@ export class DataformTools {
 
         const parent = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}`;
         
-        // If pageSize is provided, we likely want to limit the results. We turn off auto-pagination.
-        const callOptions = options?.pageSize ? { autoPaginate: false } : undefined;
+        // If pageSize or pageToken is provided, the caller wants a single page. Turn off auto-pagination.
+        const callOptions = (options?.pageSize || options?.pageToken) ? { autoPaginate: false } : undefined;
         
         const [workflowInvocations] = await this.client.listWorkflowInvocations({
             parent: parent,
