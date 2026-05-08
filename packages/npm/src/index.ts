@@ -298,6 +298,19 @@ export class DataformTools {
     }
 
     /**
+     * Gets the most recent workflow invocation for a repository.
+     * @param repositoryName - Name of the Dataform repository
+     * @returns A promise that resolves to the most recent workflow invocation, or null if there are no invocations.
+     */
+    async getLatestWorkflowInvocation(repositoryName: string) {
+        const invocations = await this.listWorkflowInvocations(repositoryName, {
+            orderBy: "create_time desc",
+            pageSize: 1,
+        });
+        return invocations?.[0] ?? null;
+    }
+
+    /**
      * Create workflow invocation using compilation result
      * @param repositoryName - Name of the Dataform repository
      * @param workspaceName - Name of the Dataform workspace

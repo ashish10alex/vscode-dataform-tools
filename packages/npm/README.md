@@ -216,3 +216,18 @@ const options = { pageSize: 5, orderBy: "name desc" }
 const invocations = await client.listWorkflowInvocations("repository-name", options)
 console.log(invocations)
 ```
+
+### Get Latest Workflow Invocation
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+const latest = await client.getLatestWorkflowInvocation("repository-name")
+if (latest) {
+    const invocationId = latest.name.split("/").pop()
+    console.log(`ID: ${invocationId}`)
+    console.log(`State: ${latest.state}`)
+    console.log(`URL: ${client.getWorkflowInvocationUrl("repository-name", invocationId)}`)
+}
+```
