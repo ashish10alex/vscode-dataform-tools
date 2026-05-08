@@ -285,6 +285,19 @@ class DataformTools():
         workflow_invocations = self.client.list_workflow_invocations(request)
         return workflow_invocations
 
+    def get_latest_workflow_invocation(self, repository_name: str):
+        """Gets the most recent workflow invocation for a repository.
+        Args:
+            repository_name (str): The name of the repository.
+        Returns:
+            The most recent WorkflowInvocation, or None if there are no invocations.
+        """
+        invocations = self.list_workflow_invocations(
+            repository_name,
+            order_by="create_time desc",
+            page_size=1,
+        )
+        return next(iter(invocations), None)
 
     def write_file(self, repository_name:str, workspace_name:str, relative_path:str, contents:str|bytes)-> None:
         """Writes a file to a workspace in Dataform.

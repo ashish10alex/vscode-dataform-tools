@@ -207,3 +207,18 @@ for invocation in invocations:
     print(f"URL: {url}")
     break # Remove or change logic to iterate through all results
 ```
+
+### Get Latest Workflow Invocation
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+
+latest = client.get_latest_workflow_invocation("repository-name")
+if latest is not None:
+    invocation_id = latest.name.split("/")[-1]
+    url = client.get_workflow_invocation_url("repository-name", invocation_id)
+    print(f"ID: {invocation_id}")
+    print(f"State: {latest.state}")
+    print(f"URL: {url}")
+```
