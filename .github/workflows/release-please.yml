@@ -1,0 +1,39 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      npm_released: ${{ steps.release.outputs['packages/npm--release_created'] }}
+      pypi_released: ${{ steps.release.outputs['packages/pypi--release_created'] }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-npm:
+    needs: release-please
+    if: needs.release-please.outputs.npm_released == 'true'
+    uses: ./.github/workflows/publish-npm.yml
+    permissions:
+      id-token: write
+      contents: read
+
+  publish-pypi:
+    needs: release-please
+    if: needs.release-please.outputs.pypi_released == 'true'
+    uses: ./.github/workflows/publish-pypi.yml
+    permissions:
+      id-token: write
+      contents: read
