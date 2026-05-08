@@ -275,6 +275,42 @@ export class DataformTools {
     }
 
     /**
+     * Lists workflow invocations within a specific repository.
+     * @param repositoryName - Name of the Dataform repository
+     * @param options - Optional parameters for the request like pageSize, pageToken, orderBy. See {@link https://docs.cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.ilistworkflowinvocationsrequest|IListWorkflowInvocationsRequest}
+     * @returns A promise that resolves to an array of workflow invocation objects. {@link protos.google.cloud.dataform.v1beta1.WorkflowInvocation|WorkflowInvocation}
+     */
+    async listWorkflowInvocations(repositoryName: string, options?: Omit<protos.google.cloud.dataform.v1beta1.IListWorkflowInvocationsRequest, 'parent'>) {
+        if (!repositoryName) {
+            throw new Error("repositoryName must be provided.");
+        }
+
+        const parent = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}`;
+        
+        // If pageSize or pageToken is provided, the caller wants a single page. Turn off auto-pagination.
+        const callOptions = (options?.pageSize || options?.pageToken) ? { autoPaginate: false } : undefined;
+        
+        const [workflowInvocations] = await this.client.listWorkflowInvocations({
+            parent: parent,
+            ...options
+        }, callOptions);
+        return workflowInvocations;
+    }
+
+    /**
+     * Gets the most recent workflow invocation for a repository.
+     * @param repositoryName - Name of the Dataform repository
+     * @returns A promise that resolves to the most recent workflow invocation, or null if there are no invocations.
+     */
+    async getLatestWorkflowInvocation(repositoryName: string) {
+        const invocations = await this.listWorkflowInvocations(repositoryName, {
+            orderBy: "create_time desc",
+            pageSize: 1,
+        });
+        return invocations?.[0] ?? null;
+    }
+
+    /**
      * Create workflow invocation using compilation result
      * @param repositoryName - Name of the Dataform repository
      * @param workspaceName - Name of the Dataform workspace
