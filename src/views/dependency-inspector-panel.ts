@@ -42,6 +42,21 @@ function migrateToV2(parsed: any): FilterFile {
     return out;
 }
 
+const filterFileLocks = new Map<string, Promise<unknown>>();
+
+function withFilterFileLock<T>(file: vscode.Uri, fn: () => Promise<T>): Promise<T> {
+    const key = file.toString();
+    const prev = filterFileLocks.get(key) ?? Promise.resolve();
+    const next = prev.catch(() => undefined).then(fn);
+    filterFileLocks.set(key, next);
+    next.finally(() => {
+        if (filterFileLocks.get(key) === next) {
+            filterFileLocks.delete(key);
+        }
+    });
+    return next;
+}
+
 async function readFilterFile(file: vscode.Uri): Promise<FilterFile> {
     let buf: Uint8Array;
     try {
@@ -302,40 +317,43 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 const dir = vscode.Uri.joinPath(vscode.Uri.file(ws), '.vscode-dataform-tools');
                 const file = vscode.Uri.joinPath(dir, 'dependency-inspector-filters.json');
                 try {
-                    await vscode.workspace.fs.createDirectory(dir);
-                    const data = await readFilterFile(file);
-                    const list = data.filters[modelFullId] ?? [];
-                    const now = new Date().toISOString();
-                    const trimmedDescription = typeof description === 'string' && description.trim() ? description.trim() : undefined;
-                    const idx = presetId ? list.findIndex(p => p.id === presetId) : -1;
-                    let savedPreset: FilterPreset;
-                    if (idx >= 0) {
-                        savedPreset = {
-                            ...list[idx],
-                            description: trimmedDescription,
-                            updatedAt: now,
-                            globalFilter: filterState.globalFilter ?? '',
-                            applyToAll: !!filterState.applyToAll,
-                            deps: filterState.deps ?? {},
-                        };
-                        list[idx] = savedPreset;
-                    } else {
-                        savedPreset = {
-                            id: randomUUID(),
-                            description: trimmedDescription,
-                            createdAt: now,
-                            updatedAt: now,
-                            globalFilter: filterState.globalFilter ?? '',
-                            applyToAll: !!filterState.applyToAll,
-                            deps: filterState.deps ?? {},
-                        };
-                        list.push(savedPreset);
-                    }
-                    data.filters[modelFullId] = list;
-                    await writeFilterFile(file, data);
+                    const result = await withFilterFileLock(file, async () => {
+                        await vscode.workspace.fs.createDirectory(dir);
+                        const data = await readFilterFile(file);
+                        const list = data.filters[modelFullId] ?? [];
+                        const now = new Date().toISOString();
+                        const trimmedDescription = typeof description === 'string' && description.trim() ? description.trim() : undefined;
+                        const idx = presetId ? list.findIndex(p => p.id === presetId) : -1;
+                        let savedPreset: FilterPreset;
+                        if (idx >= 0) {
+                            savedPreset = {
+                                ...list[idx],
+                                description: trimmedDescription,
+                                updatedAt: now,
+                                globalFilter: filterState.globalFilter ?? '',
+                                applyToAll: !!filterState.applyToAll,
+                                deps: filterState.deps ?? {},
+                            };
+                            list[idx] = savedPreset;
+                        } else {
+                            savedPreset = {
+                                id: randomUUID(),
+                                description: trimmedDescription,
+                                createdAt: now,
+                                updatedAt: now,
+                                globalFilter: filterState.globalFilter ?? '',
+                                applyToAll: !!filterState.applyToAll,
+                                deps: filterState.deps ?? {},
+                            };
+                            list.push(savedPreset);
+                        }
+                        data.filters[modelFullId] = list;
+                        await writeFilterFile(file, data);
+                        return { savedPreset, overwrote: idx >= 0 };
+                    });
                     panel.webview.postMessage({
                         type: 'filtersSavedToWorkspace',
-                        value: { modelFullId, ok: true, presetId: savedPreset.id, overwrote: idx >= 0, path: file.fsPath },
+                        value: { modelFullId, ok: true, presetId: result.savedPreset.id, overwrote: result.overwrote, path: file.fsPath },
                     });
                 } catch (e: any) {
                     panel.webview.postMessage({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: e?.message ?? String(e) } });
@@ -405,10 +423,13 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
 
                 qp.onDidTriggerItemButton(async e => {
                     try {
-                        const fresh = await readFilterFile(file);
-                        const updated = (fresh.filters[modelFullId] ?? []).filter(p => p.id !== e.item.presetId);
-                        fresh.filters[modelFullId] = updated;
-                        await writeFilterFile(file, fresh);
+                        const updated = await withFilterFileLock(file, async () => {
+                            const fresh = await readFilterFile(file);
+                            const next = (fresh.filters[modelFullId] ?? []).filter(p => p.id !== e.item.presetId);
+                            fresh.filters[modelFullId] = next;
+                            await writeFilterFile(file, fresh);
+                            return next;
+                        });
                         list = updated;
                         panel.webview.postMessage({ type: 'filterPresetDeleted', value: { modelFullId, presetId: e.item.presetId } });
                         if (list.length === 0) {
