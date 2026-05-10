@@ -43,12 +43,16 @@ function migrateToV2(parsed: any): FilterFile {
 }
 
 async function readFilterFile(file: vscode.Uri): Promise<FilterFile> {
+    let buf: Uint8Array;
     try {
-        const buf = await vscode.workspace.fs.readFile(file);
-        return migrateToV2(JSON.parse(Buffer.from(buf).toString('utf8')));
-    } catch {
-        return { version: 2, filters: {} };
+        buf = await vscode.workspace.fs.readFile(file);
+    } catch (e: any) {
+        if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
+            return { version: 2, filters: {} };
+        }
+        throw e;
     }
+    return migrateToV2(JSON.parse(Buffer.from(buf).toString('utf8')));
 }
 
 async function writeFilterFile(file: vscode.Uri, data: FilterFile): Promise<void> {
