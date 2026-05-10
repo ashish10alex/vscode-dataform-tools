@@ -24,8 +24,8 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      npm_released: ${{ steps.release.outputs['packages/npm--release_created'] }}
-      pypi_released: ${{ steps.release.outputs['packages/pypi--release_created'] }}
+      npm_released: ${{ steps.release.outputs['packages/npm--tag_name'] }}
+      pypi_released: ${{ steps.release.outputs['packages/pypi--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -36,7 +36,7 @@ jobs:
   publish-npm:
     needs: release-please
     if: |
-      needs.release-please.outputs.npm_released == 'true' ||
+      needs.release-please.outputs.npm_released != '' ||
       (github.event_name == 'workflow_dispatch' && inputs.publish_npm)
     runs-on: ubuntu-latest
     permissions:
@@ -67,7 +67,7 @@ jobs:
   publish-pypi:
     needs: release-please
     if: |
-      needs.release-please.outputs.pypi_released == 'true' ||
+      needs.release-please.outputs.pypi_released != '' ||
       (github.event_name == 'workflow_dispatch' && inputs.publish_pypi)
     runs-on: ubuntu-latest
     permissions:
