@@ -371,7 +371,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 const list = data.filters[modelFullId] ?? [];
                 if (list.length === 0) { return; }
                 const latest = list.reduce((a, b) =>
-                    new Date(b.createdAt).getTime() > new Date(a.createdAt).getTime() ? b : a
+                    new Date(b.updatedAt).getTime() > new Date(a.updatedAt).getTime() ? b : a
                 );
                 panel.webview.postMessage({
                     type: 'filtersLoadedFromWorkspace',
