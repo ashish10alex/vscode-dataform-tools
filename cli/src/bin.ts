@@ -5,12 +5,14 @@ import type { DataformCompiledJson } from "../../src/types";
 import { buildDependencyGraph } from "../../src/shared/buildDependencyGraph";
 import { runDataformCompile } from "./compile";
 import { openInBrowser } from "./openBrowser";
-import { pickModel } from "./picker";
+import { pickModel, pickTag } from "./picker";
 import { GraphPayload, startServer } from "./server";
 
 interface CliOptions {
-    // commander returns `true` when `--focus` is supplied with no value, `string` when supplied with a value.
-    focus?: string | boolean;
+    // commander returns `true` for an option with optional arg when supplied with no value,
+    // `string` when supplied with a value, `undefined` when not supplied.
+    model?: string | boolean;
+    tag?: string | boolean;
     input?: string;
     cwd?: string;
     dataformBin?: string;
@@ -45,6 +47,15 @@ async function loadCompiled(opts: CliOptions): Promise<DataformCompiledJson> {
     return (await runDataformCompile({ cwd, bin })) as DataformCompiledJson;
 }
 
+function requireTty(flag: string): void {
+    if (!process.stdin.isTTY) {
+        throw new Error(
+            `Interactive ${flag} requires an interactive terminal. ` +
+                `Pass a value (e.g. ${flag} my_value) or omit the flag.`
+        );
+    }
+}
+
 async function main() {
     const program = new Command();
     program
@@ -54,11 +65,17 @@ async function main() {
                 "By default runs `dataform compile --json` in the current directory."
         )
         .option(
-            "-f, --focus [model]",
-            "Focus the initial view on a specific model. " +
+            "-m, --model [model]",
+            "Filter the initial view to a specific model. " +
                 "Matches against the file name, fully-qualified `database.schema.name`, or short `target.name`. " +
                 "If no match is found, the full graph is shown and a warning is printed. " +
-                "Pass --focus with no value to pick a model interactively."
+                "Pass --model with no value to pick interactively (file → model)."
+        )
+        .option(
+            "-t, --tag [tag]",
+            "Filter the initial view to a specific tag (shows all models carrying it plus their immediate upstream sources). " +
+                "If no match is found, the full graph is shown and a warning is printed. " +
+                "Pass --tag with no value to pick a tag interactively."
         )
         .option(
             "-i, --input <path>",
@@ -80,36 +97,63 @@ async function main() {
 
     const opts = program.opts<CliOptions>();
 
+    // Filters are mutually exclusive (the UI treats them mutually exclusive too).
+    if (opts.model !== undefined && opts.tag !== undefined) {
+        throw new Error("--model and --tag are mutually exclusive; pick one filter.");
+    }
+
     const compiled = await loadCompiled(opts);
 
-    // A bare `--focus` (no value) triggers the interactive picker; a string value
-    // goes through the same matching path as before; absent means no focus.
-    const interactive = opts.focus === true;
-    const focusString = typeof opts.focus === "string" ? opts.focus : undefined;
+    // --model: bare (true) → interactive; string → match identifier; undefined → no focus.
+    const modelInteractive = opts.model === true;
+    const modelString = typeof opts.model === "string" ? opts.model : undefined;
 
     const { nodes, edges, datasetColorMap, focusNodeId } = buildDependencyGraph(compiled, {
-        focusIdentifier: focusString,
+        focusIdentifier: modelString,
     });
 
     let resolvedFocusId: string | null = focusNodeId;
 
-    if (interactive) {
-        if (!process.stdin.isTTY) {
-            throw new Error(
-                "Interactive --focus requires an interactive terminal. " +
-                    "Pass a value (e.g. --focus my_model) or run without --focus."
-            );
-        }
+    if (modelInteractive) {
+        requireTty("--model");
         const picked = await pickModel(nodes);
         if (picked === null) {
             process.stderr.write("Cancelled.\n");
             process.exit(130);
         }
         resolvedFocusId = picked;
-    } else if (focusString && !focusNodeId) {
+    } else if (modelString && !focusNodeId) {
         process.stderr.write(
-            `[warn] --focus "${focusString}" matched no model — showing full graph.\n`
+            `[warn] --model "${modelString}" matched no model — showing full graph.\n`
         );
+    }
+
+    // --tag: bare → interactive picker; string → validate and apply; undefined → no tag filter.
+    let initialTag: string | undefined;
+    if (opts.tag !== undefined) {
+        // Collect tags actually present on any node.
+        const allTags = Array.from(
+            new Set(nodes.flatMap((n) => (n.data.tags as string[] | undefined) ?? []))
+        ).sort();
+
+        if (typeof opts.tag === "string") {
+            if (allTags.includes(opts.tag)) {
+                initialTag = opts.tag;
+            } else {
+                process.stderr.write(
+                    `[warn] --tag "${opts.tag}" matched no tag — showing full graph.\n`
+                );
+            }
+        } else {
+            // bare `--tag` (commander gives `true`) → interactive picker
+            requireTty("--tag");
+            const picked = await pickTag(allTags);
+            if (picked === null) {
+                process.stderr.write("Cancelled.\n");
+                process.exit(130);
+            }
+            initialTag = picked;
+        }
     }
 
     const payload: GraphPayload = {
@@ -117,6 +161,7 @@ async function main() {
         initialEdgesStatic: edges,
         datasetColorMap: Object.fromEntries(datasetColorMap),
         currentActiveEditorIdx: resolvedFocusId ?? "",
+        initialTag,
     };
 
     const webviewDir = path.resolve(__dirname, "..", "webview-dist");

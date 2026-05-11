@@ -97,18 +97,36 @@ const Flow: React.FC = () => {
           setMessage(message.value);
           break;
         case 'nodeMetadata':
-          const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx } = message.value;
+          const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx, initialTag } = message.value;
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
           const uniqueTags: string[] = Array.from(new Set(initialNodesStatic.flatMap((node: Node) => node.data.tags as string[])));
           setUniqueTags(uniqueTags);
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
 
-          // Focus the initial view if the host pointed at a real node; otherwise show the full graph.
-          const hasFocus = !!currentActiveEditorIdx && initialNodesStatic.some((n: Node) => n.id === currentActiveEditorIdx);
+          // Three possible initial states, in priority order:
+          //   1. initialTag — host requested a tag-filtered view (CLI --tag).
+          //   2. currentActiveEditorIdx — host pointed at a specific node (extension active editor / CLI --model).
+          //   3. neither — show the full graph.
+          const hasTag = !!initialTag && uniqueTags.includes(initialTag);
+          const hasFocus = !hasTag && !!currentActiveEditorIdx && initialNodesStatic.some((n: Node) => n.id === currentActiveEditorIdx);
           let initialNodes: Node[];
           let initialEdges: Edge[];
-          if (hasFocus) {
+          let initialTableOpts = initialNodesStatic;
+
+          if (hasTag) {
+            const tagEdges = initialEdgesStatic.filter((edge: Edge) =>
+              Array.isArray((edge as any).tags) && (edge as any).tags.includes(initialTag)
+            );
+            const includedIds = new Set<string>();
+            for (const e of tagEdges) { includedIds.add(e.source as string); includedIds.add(e.target as string); }
+            for (const n of initialNodesStatic) {
+              if (((n.data?.tags as string[] | undefined) ?? []).includes(initialTag)) { includedIds.add(n.id); }
+            }
+            initialNodes = initialNodesStatic.filter((n: Node) => includedIds.has(n.id));
+            initialEdges = tagEdges;
+            initialTableOpts = initialNodes;
+          } else if (hasFocus) {
             initialEdges = initialEdgesStatic.filter((edge: Edge) =>
               edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
             );
@@ -119,6 +137,7 @@ const Flow: React.FC = () => {
             initialEdges = initialEdgesStatic;
             initialNodes = initialNodesStatic;
           }
+
           const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
             initialNodes,
             initialEdges,
@@ -129,8 +148,11 @@ const Flow: React.FC = () => {
           if (hasFocus) {
             setRootNodeId(currentActiveEditorIdx);
           }
+          if (hasTag) {
+            setSelectedTag({ value: initialTag, label: initialTag });
+          }
 
-          // Initial fitView 
+          // Initial fitView
           setTimeout(() => {
             if (reactFlowInstance.current) {
               reactFlowInstance.current.fitView({
@@ -139,7 +161,7 @@ const Flow: React.FC = () => {
             }
           }, 100);
 
-          setTableOptions(initialNodesStatic.map((node: any) => ({
+          setTableOptions(initialTableOpts.map((node: any) => ({
             value: node.id,
             label: node.data.modelName as string
           })));
@@ -147,9 +169,7 @@ const Flow: React.FC = () => {
           setTagOptions(uniqueTags.map((tag) => ({
             value: tag,
             label: tag
-          }))
-        
-        );
+          })));
           break;
         // Add more message types as needed
       }

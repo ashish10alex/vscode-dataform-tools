@@ -8,6 +8,8 @@ export interface GraphPayload {
     initialEdgesStatic: unknown[];
     datasetColorMap: Record<string, string>;
     currentActiveEditorIdx: string;
+    /** When set, the webview pre-applies this tag filter on first render. */
+    initialTag?: string;
 }
 
 export interface ServerOptions {

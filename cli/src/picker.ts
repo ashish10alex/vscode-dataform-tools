@@ -81,6 +81,35 @@ function isUserCancellation(err: unknown): boolean {
  *
  * Returns the chosen node id, or null if the user cancels at any step.
  */
+/**
+ * Interactive filterable picker over a list of tag names.
+ * Returns the chosen tag, or null if the user cancels.
+ */
+export async function pickTag(tags: string[]): Promise<string | null> {
+    if (tags.length === 0) {
+        throw new Error("No tags found in the compiled graph — nothing to filter by.");
+    }
+
+    const sorted = [...tags].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const restoreKeys = installVimKeyBindings();
+    try {
+        const chosen = await search<string>({
+            message: `Select a tag (${tags.length} total):`,
+            source: (input) => {
+                const q = (input ?? "").trim().toLowerCase();
+                const filtered = q ? sorted.filter((t) => t.toLowerCase().includes(q)) : sorted;
+                return filtered.slice(0, 100).map((t) => ({ name: t, value: t }));
+            },
+        });
+        return chosen;
+    } catch (err) {
+        if (isUserCancellation(err)) {return null;}
+        throw err;
+    } finally {
+        restoreKeys();
+    }
+}
+
 export async function pickModel(nodes: DependancyModelMetadata[]): Promise<string | null> {
     if (nodes.length === 0) {
         throw new Error("No models found in the compiled graph — nothing to focus on.");
