@@ -7,6 +7,7 @@ import { runDataformCompile } from "./compile";
 import { openInBrowser } from "./openBrowser";
 import { pickModel, pickTag } from "./picker";
 import { GraphPayload, startServer } from "./server";
+import { startSpinner } from "./spinner";
 
 interface CliOptions {
     // commander returns `true` for an option with optional arg when supplied with no value,
@@ -44,7 +45,18 @@ async function loadCompiled(opts: CliOptions): Promise<DataformCompiledJson> {
         throw new Error(`--cwd directory does not exist: ${cwd}`);
     }
     const bin = opts.dataformBin ?? process.env.DATAFORM_BIN ?? "dataform";
-    return (await runDataformCompile({ cwd, bin })) as DataformCompiledJson;
+
+    const stop = startSpinner("Compiling dataform project");
+    try {
+        const result = await runDataformCompile({ cwd, bin });
+        stop({ success: true, successMessage: "Compiled dataform project" });
+        return result as DataformCompiledJson;
+    } catch (err) {
+        // Clear the spinner without a success line so the error printed by the
+        // top-level catch isn't obscured by leftover spinner characters.
+        stop();
+        throw err;
+    }
 }
 
 function requireTty(flag: string): void {
