@@ -214,30 +214,40 @@ const Flow: React.FC = () => {
     setEdges([]);
 
     setTimeout(() => {
-      const filteredEdges = fullEdges.filter((edge: any) =>  {
-        if(edge?.tags) {
-          return edge.tags.includes(option.value);
+      // Edges carry the downstream model's tags, so an edge with the tag
+      // means the consumer has it.
+      const tagEdges = fullEdges.filter((edge: any) =>
+        Array.isArray(edge?.tags) && edge.tags.includes(option.value)
+      );
+
+      // Include every node that either (a) has the tag itself, or (b) sits on
+      // a tag-tagged edge (covers upstream sources feeding a tagged model).
+      const includedIds = new Set<string>();
+      for (const e of tagEdges) {
+        includedIds.add(e.source as string);
+        includedIds.add(e.target as string);
+      }
+      for (const n of fullNodes) {
+        const nodeTags = (n.data?.tags as string[] | undefined) ?? [];
+        if (nodeTags.includes(option.value)) {
+          includedIds.add(n.id);
         }
-        return false;
-      });
-      const filteredNodes = fullNodes.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
+      }
+      const filteredNodes = fullNodes.filter((n: Node) => includedIds.has(n.id));
 
       setTableOptions(filteredNodes.map((node: any) => ({
         value: node.id,
         label: node.data.modelName as string
-      }))); 
-
-      // select one of the nodes from the selected tag
-      const selectedNode = filteredNodes[0];
-      const filteredEdgesFromSelectedNode = filteredEdges.filter((edge: any) => edge.source === selectedNode.id || edge.target === selectedNode.id);
-      const filteredNodesFromSelectedNode = filteredNodes.filter((node: any) => filteredEdgesFromSelectedNode.some((edge: any) => edge.source === node.id || edge.target === node.id));
+      })));
 
       const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-        filteredNodesFromSelectedNode,
-        filteredEdgesFromSelectedNode,
+        filteredNodes,
+        tagEdges,
       );
       setNodes(positionedNodes);
       setEdges(positionedEdges);
+      // Tag view has no single root, so Expand-left/right buttons are inapplicable.
+      setRootNodeId(null);
 
       if (reactFlowInstance.current) {
         reactFlowInstance.current?.fitView({
@@ -246,7 +256,7 @@ const Flow: React.FC = () => {
         });
       }
     }, 50);
-    
+
   };
 
   // Add this new handler for node clicks
