@@ -1,0 +1,16 @@
+{
+    "name": "dataform-graph",
+    "version": "0.0.1",
+    "description": "Serve the dataform-tools dependency graph in your browser.",
+    "private": true,
+    "bin": {
+        "dataform-graph": "./dist/bin.js"
+    },
+    "files": [
+        "dist",
+        "webview-dist"
+    ],
+    "engines": {
+        "node": ">=18"
+    }
+}

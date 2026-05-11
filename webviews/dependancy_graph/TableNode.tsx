@@ -1,6 +1,6 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { getVsCodeApi } from './vscode';
+import { getTransport } from './transport';
 import { getUrlToNavigateToTableInBigQuery } from '../utils/bigquery';
 
 interface NodeData {
@@ -94,7 +94,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       <button
         onClick={(e) => {
           e.stopPropagation();
-          getVsCodeApi().postMessage({
+          getTransport().postMessage({
             type: 'nodeFileName',
             value: {
               modelName: modelName,
@@ -115,7 +115,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       <button
         onClick={(e) => {
           e.stopPropagation();
-          getVsCodeApi().postMessage({
+          getTransport().postMessage({
             type: 'goToBigQuery',
             value: {
               url: getUrlToNavigateToTableInBigQuery(projectId, datasetId, modelName)

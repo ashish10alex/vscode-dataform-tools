@@ -21,7 +21,7 @@ import { DataTable } from '../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
-import { getVsCodeApi } from './vscode';
+import { getTransport } from './transport';
 import StyledSelect, { OptionType } from './components/StyledSelect';
 import DownloadButton from './DownloadButton';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
@@ -30,9 +30,7 @@ const nodeTypes = {
   tableNode: TableNode,
 };
 
-// Get vscode API
-// @ts-ignore
-const vscode = getVsCodeApi();
+const transport = getTransport();
 
 interface ModelData {
   id: string;
@@ -86,14 +84,12 @@ const Flow: React.FC = () => {
     // Small delay to ensure React has fully rendered
     setTimeout(() => {
       setIsReady(true);
-      vscode.postMessage({ type: 'webviewReady' });
+      transport.postMessage({ type: 'webviewReady' });
     }, 50);
   }, []);
 
   useEffect(() => {
-    const messageHandler = (event: MessageEvent) => {
-      const message = event.data;
-      
+    const messageHandler = (message: any) => {
       switch (message.type) {
         case 'testMessage':
           setMessage(message.value);
@@ -105,20 +101,30 @@ const Flow: React.FC = () => {
           const uniqueTags: string[] = Array.from(new Set(initialNodesStatic.flatMap((node: Node) => node.data.tags as string[])));
           setUniqueTags(uniqueTags);
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
-          const filteredEdges = initialEdgesStatic.filter((edge: Edge) => 
-            edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
-          );
-          const filteredNodes = initialNodesStatic.filter((node: Node) => 
-            filteredEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
-          );
+
+          // Focus the initial view if the host pointed at a real node; otherwise show the full graph.
+          const hasFocus = !!currentActiveEditorIdx && initialNodesStatic.some((n: Node) => n.id === currentActiveEditorIdx);
+          let initialNodes: Node[];
+          let initialEdges: Edge[];
+          if (hasFocus) {
+            initialEdges = initialEdgesStatic.filter((edge: Edge) =>
+              edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
+            );
+            initialNodes = initialNodesStatic.filter((node: Node) =>
+              initialEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
+            );
+          } else {
+            initialEdges = initialEdgesStatic;
+            initialNodes = initialNodesStatic;
+          }
           const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-            filteredNodes,
-            filteredEdges,
+            initialNodes,
+            initialEdges,
           );
           setNodes(positionedNodes);
           setEdges(positionedEdges);
 
-          if (currentActiveEditorIdx) {
+          if (hasFocus) {
             setRootNodeId(currentActiveEditorIdx);
           }
 
@@ -147,10 +153,10 @@ const Flow: React.FC = () => {
       }
     };
 
-    window.addEventListener('message', messageHandler);
+    const unsubscribe = transport.onMessage(messageHandler);
 
     return () => {
-      window.removeEventListener('message', messageHandler);
+      unsubscribe();
     };
   }, []);
 
@@ -432,7 +438,7 @@ const Flow: React.FC = () => {
           return !exclusionClasses.some(className => node.classList?.contains(className));
         },
       }).then((dataUrl) => {
-        vscode.postMessage({
+        transport.postMessage({
           type: 'saveGraphImage',
           value: {
             dataUrl,
