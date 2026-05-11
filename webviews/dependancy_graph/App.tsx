@@ -75,6 +75,8 @@ const Flow: React.FC = () => {
   const [_, setIsReady] = useState<boolean>(false);
   const [tableOptions, setTableOptions] = useState<OptionType[]>([]);
   const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
+  const [selectedTable, setSelectedTable] = useState<OptionType | null>(null);
+  const [selectedTag, setSelectedTag] = useState<OptionType | null>(null);
   const [rootNodeId, setRootNodeId] = useState<string | null>(null);
   const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
@@ -166,6 +168,13 @@ const Flow: React.FC = () => {
   );
 
   const handleTableSelect = (option: OptionType | null) => {
+    // Picking (or clearing) a table is mutually exclusive with the tag filter —
+    // clear the tag chip so the UI only advertises one active filter at a time.
+    setSelectedTable(option);
+    setSelectedTag(null);
+    // Restore the full table options too, in case they were narrowed by a tag filter.
+    setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
+
     // clear the nodes and edges in the existing graph
     setNodes([]);
     setEdges([]);
@@ -206,7 +215,14 @@ const Flow: React.FC = () => {
   };
 
   const handleTagSelect = (option: OptionType | null) => {
+    setSelectedTag(option);
+    // Picking (or clearing) a tag is mutually exclusive with the table filter.
+    setSelectedTable(null);
+
     if (!option) {
+      // When the tag is cleared, restore the full table-dropdown options so it
+      // doesn't stay scoped to the just-cleared tag.
+      setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
       return;
     }
 
@@ -382,6 +398,10 @@ const Flow: React.FC = () => {
     setNodes(positionedNodes);
     setEdges(positionedEdges);
     setRootNodeId(null);
+    // Reset both filter chips and the table-dropdown options to their full state.
+    setSelectedTag(null);
+    setSelectedTable(null);
+    setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
 
     if (reactFlowInstance.current) {
       reactFlowInstance.current.fitView({
@@ -532,6 +552,7 @@ const Flow: React.FC = () => {
         <div className="flex gap-4 items-center">
           <StyledSelect
             options={tagOptions}
+            value={selectedTag}
             onChange={handleTagSelect}
             isClearable
             placeholder="Search for a tag..."
@@ -540,6 +561,7 @@ const Flow: React.FC = () => {
 
           <StyledSelect
             options={tableOptions}
+            value={selectedTable}
             onChange={handleTableSelect}
             isClearable
             placeholder="Search for a table..."

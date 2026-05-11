@@ -3,6 +3,13 @@ import { Handle, Position } from '@xyflow/react';
 import { getTransport } from './transport';
 import { getUrlToNavigateToTableInBigQuery } from '../utils/bigquery';
 
+// "Open in editor" only makes sense when the webview is hosted by VS Code.
+// Computed once at module load so we can also shift the other buttons rightward
+// in CLI mode to avoid leaving a visible gap.
+const HOST_MODE = getTransport().mode;
+const SHOW_OPEN_IN_EDITOR = HOST_MODE === 'vscode';
+const BIGQUERY_BTN_RIGHT = SHOW_OPEN_IN_EDITOR ? 'right-20' : 'right-10';
+const COPY_BTN_RIGHT = SHOW_OPEN_IN_EDITOR ? 'right-10' : 'right-1';
 interface NodeData {
   modelName: string;
   datasetId: string;
@@ -28,7 +35,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
   };
 
 
-  const handleCopy = (e:any) => {
+  const handleCopy = (e: any) => {
     e.stopPropagation();
     navigator.clipboard.writeText(fullTableName).then(() => {
       setShowNotification(true);
@@ -64,7 +71,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       style={{ ...nodeStyle, ...arrowColors }}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
-      
+
       <div className="text-xs font-bold text-gray-800 mb-1">
         {modelName}
       </div>
@@ -84,33 +91,35 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       </div>
 
       {isHovered && (
-        <div 
+        <div
           className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10"
         >
           {fullTableName}
         </div>
       )}
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          getTransport().postMessage({
-            type: 'nodeFileName',
-            value: {
-              modelName: modelName,
-              filePath: fileName,
-              type: type,
-            }
-          });
-        }}
-        className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
-        title="Open model in editor"
-      >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M14 2H6C5.44772 2 5 2.44772 5 3V21C5 21.5523 5.44772 22 6 22H18C18.5523 22 19 21.5523 19 21V8L14 2Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M14 2V8H19" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      </button>
+      {SHOW_OPEN_IN_EDITOR && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            getTransport().postMessage({
+              type: 'nodeFileName',
+              value: {
+                modelName: modelName,
+                filePath: fileName,
+                type: type,
+              }
+            });
+          }}
+          className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
+          title="Open model in editor"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6C5.44772 2 5 2.44772 5 3V21C5 21.5523 5.44772 22 6 22H18C18.5523 22 19 21.5523 19 21V8L14 2Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M14 2V8H19" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      )}
 
       <button
         onClick={(e) => {
@@ -122,29 +131,29 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
             }
           });
         }}
-        className="absolute bottom-1 right-20 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
+        className={`absolute bottom-1 ${BIGQUERY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
         title="Open in BigQuery"
       >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10 13a5.001 5.001 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 13a5.001 5.001 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
       </button>
 
 
       <button
         onClick={handleCopy}
-        className="absolute bottom-1 right-10 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
+        className={`absolute bottom-1 ${COPY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
         title="Copy table name"
       >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 4H16C17.1 4 18 4.9 18 6V14C18 15.1 17.1 16 16 16H8C6.9 16 6 15.1 6 14V6C6 4.9 6.9 4 8 4Z" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M16 16V18C16 19.1 15.1 20 14 20H6C4.9 20 4 19.1 4 18V10C4 8.9 4.9 8 6 8H8" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 4H16C17.1 4 18 4.9 18 6V14C18 15.1 17.1 16 16 16H8C6.9 16 6 15.1 6 14V6C6 4.9 6.9 4 8 4Z" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16 16V18C16 19.1 15.1 20 14 20H6C4.9 20 4 19.1 4 18V10C4 8.9 4.9 8 6 8H8" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
       </button>
 
-      { showNotification && (
-        <div 
+      {showNotification && (
+        <div
           className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-green-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10"
         >
           Copied {fullTableName} to clipboard
