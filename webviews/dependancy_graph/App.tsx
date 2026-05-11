@@ -359,6 +359,22 @@ const Flow: React.FC = () => {
     }
   };
 
+  const showFullGraph = () => {
+    if (fullNodes.length === 0) {return;}
+
+    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(fullNodes, fullEdges);
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
+    setRootNodeId(null);
+
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        duration: 800,
+        padding: 0.2,
+      });
+    }
+  };
+
   const handleDownload = () => {
     if (nodes.length === 0) {return;}
     setIsDownloading(true);
@@ -528,6 +544,13 @@ const Flow: React.FC = () => {
               className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
               Expand to right
+            </button>
+            <button
+              onClick={showFullGraph}
+              disabled={fullNodes.length === 0}
+              className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+            >
+              Show full graph
             </button>
             <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
           </div>
