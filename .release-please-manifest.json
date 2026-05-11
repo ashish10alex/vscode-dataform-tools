@@ -1,4 +1,5 @@
 {
   "packages/npm": "1.1.0",
-  "packages/pypi": "1.1.0"
+  "packages/pypi": "1.1.0",
+  "packages/dataform-graph-cli": "0.1.0"
 }

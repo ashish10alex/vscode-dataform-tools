@@ -1,5 +1,5 @@
 import { search } from "@inquirer/prompts";
-import type { DependancyModelMetadata } from "../../src/types";
+import type { DependancyModelMetadata } from "../../../src/types";
 
 /**
  * Translate Ctrl+N / Ctrl+J → ↓, Ctrl+P / Ctrl+K → ↑ for the duration of an

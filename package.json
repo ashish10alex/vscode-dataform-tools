@@ -438,7 +438,7 @@
         "compile": "npm run clean && npm run check-types && npm run build:webviews && npm run esbuild",
         "watch": "npm run clean && concurrently --raw \"npm run check-types -- --watch\" \"npm run esbuild-watch\" \"npm run webviews:watch\"",
         "build:webviews": "vite build",
-        "build:cli": "npm run build:webviews && node cli/build.js",
+        "build:cli": "npm run build:webviews && node packages/dataform-graph-cli/build.js",
         "webviews:watch": "vite build --watch",
         "esbuild": "node esbuild.js",
         "esbuild-watch": "node esbuild.js --watch",

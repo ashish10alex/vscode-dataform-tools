@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Command } from "commander";
-import type { DataformCompiledJson } from "../../src/types";
-import { buildDependencyGraph } from "../../src/shared/buildDependencyGraph";
+import type { DataformCompiledJson } from "../../../src/types";
+import { buildDependencyGraph } from "../../../src/shared/buildDependencyGraph";
 import { runDataformCompile } from "./compile";
 import { openInBrowser } from "./openBrowser";
 import { pickModel, pickTag } from "./picker";

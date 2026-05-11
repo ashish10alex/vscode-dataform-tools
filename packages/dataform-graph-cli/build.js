@@ -3,7 +3,8 @@ const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
+// Two levels up from packages/dataform-graph-cli/.
+const ROOT = path.resolve(__dirname, '..', '..');
 const DIST_WEBVIEW = path.join(ROOT, 'dist');
 const CLI_DIR = __dirname;
 const CLI_DIST = path.join(CLI_DIR, 'dist');

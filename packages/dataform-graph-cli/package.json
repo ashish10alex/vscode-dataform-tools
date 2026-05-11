@@ -1,14 +1,36 @@
 {
-    "name": "dataform-graph",
-    "version": "0.0.1",
-    "description": "Serve the dataform-tools dependency graph in your browser.",
-    "private": true,
+    "name": "@ashishalex/dataform-graph",
+    "version": "0.1.0",
+    "description": "CLI that serves the dataform-tools dependency graph in your browser. Wraps `dataform compile --json` and renders the same React graph used by the VS Code extension.",
+    "homepage": "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/dataform-graph-cli",
+    "bugs": {
+        "url": "https://github.com/ashish10alex/vscode-dataform-tools/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ashish10alex/vscode-dataform-tools.git",
+        "directory": "packages/dataform-graph-cli"
+    },
+    "license": "MIT",
+    "author": "Ashish Alex (https://github.com/ashish10alex)",
+    "funding": "https://buymeacoffee.com/ashishalexj",
+    "keywords": [
+        "dataform",
+        "bigquery",
+        "etl",
+        "dependency-graph",
+        "lineage",
+        "cli",
+        "visualization"
+    ],
     "bin": {
         "dataform-graph": "./dist/bin.js"
     },
     "files": [
         "dist",
-        "webview-dist"
+        "webview-dist",
+        "README.md",
+        "CHANGELOG.md"
     ],
     "engines": {
         "node": ">=18"
