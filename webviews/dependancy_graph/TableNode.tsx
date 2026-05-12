@@ -17,7 +17,7 @@ interface NodeData {
   tags: string[];
   fileName: string;
   datasetColor: string;
-  type: 'view' | 'table' | 'operation' | 'source' | 'assertions';
+  type: 'view' | 'table' | 'operation' | 'operations' | 'source' | 'assertions';
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
   fullTableName: string;
@@ -44,12 +44,26 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
   };
 
 
+  // Lifted above the bottom schema strip so the icons aren't clipped.
+  const iconBtnBottom = 'bottom-7';
+
   const nodeStyle = {
     background: isExternalSource ? datasetColor : '#ffffff',
     border: `1px solid ${datasetColor}`,
     borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
     position: 'relative' as const,
-    height: 80
+    // Extra height accommodates the bottom "schema" strip without crowding
+    // the existing icon buttons in the lower-right corner.
+    height: 100
+  };
+
+  const handleShowSchema = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(
+      new CustomEvent('dataform-graph:show-schema', {
+        detail: { projectId, datasetId, tableId: modelName, fullTableName },
+      })
+    );
   };
 
   const typeStyle = {
@@ -111,7 +125,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
               }
             });
           }}
-          className="absolute bottom-1 right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group"
+          className={`absolute ${iconBtnBottom} right-1 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
           title="Open model in editor"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -131,7 +145,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
             }
           });
         }}
-        className={`absolute bottom-1 ${BIGQUERY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
+        className={`absolute ${iconBtnBottom} ${BIGQUERY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
         title="Open in BigQuery"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -143,7 +157,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
 
       <button
         onClick={handleCopy}
-        className={`absolute bottom-1 ${COPY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
+        className={`absolute ${iconBtnBottom} ${COPY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
         title="Copy table name"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -161,6 +175,19 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
       )}
 
 
+
+      <button
+        onClick={handleShowSchema}
+        className="absolute left-0 right-0 bottom-0 px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-50 hover:bg-gray-200 border-t border-gray-200 rounded-b-md transition-colors duration-150 flex items-center justify-center gap-1"
+        title="Show schema (BigQuery)"
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="12" cy="5" rx="8" ry="3" stroke="#000" strokeWidth="2" />
+          <path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span>schema</span>
+      </button>
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
 

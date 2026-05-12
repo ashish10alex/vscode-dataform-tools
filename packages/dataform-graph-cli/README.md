@@ -18,6 +18,11 @@ npx @ashishalex/dataform-graph
 
 - Node.js ≥ 18
 - The [`dataform` CLI](https://www.npmjs.com/package/@dataform/cli) on your `PATH`, or pointed at via `--dataform-bin` / `$DATAFORM_BIN`
+- For the **Show schema** button on each node: Google Cloud Application Default Credentials with permission to read the underlying BigQuery tables. Authenticate once with:
+  ```bash
+  gcloud auth application-default login
+  ```
+  Or point at a service-account key via `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json`.
 
 ## Usage
 

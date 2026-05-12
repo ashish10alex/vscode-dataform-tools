@@ -18,7 +18,15 @@ export interface Transport {
     readonly mode: HostMode;
     onMessage(handler: (msg: any) => void): () => void;
     postMessage(msg: any): void;
+    /**
+     * Round-trip request. Posts `{ type, requestId, value }` and resolves with
+     * the host's matching `{ type: "response", requestId, ok, value | error }`.
+     * Rejects on `ok: false`, on transport error, or after `timeoutMs` (default 30s).
+     */
+    request<T = any>(type: string, value?: any, timeoutMs?: number): Promise<T>;
 }
+
+let nextRequestId = 0;
 
 class VsCodeTransport implements Transport {
     readonly mode: HostMode = "vscode";
@@ -36,6 +44,10 @@ class VsCodeTransport implements Transport {
 
     postMessage(msg: any): void {
         this.vscode.postMessage(msg);
+    }
+
+    request<T>(type: string, value?: any, timeoutMs = 30000): Promise<T> {
+        return requestVia(this, type, value, timeoutMs);
     }
 }
 
@@ -73,11 +85,84 @@ class CliTransport implements Transport {
                     window.open(msg.value.url, "_blank", "noopener,noreferrer");
                 }
                 return;
+            case "getSchema": {
+                const v = msg.value ?? {};
+                const qs = new URLSearchParams({
+                    project: String(v.projectId ?? ""),
+                    dataset: String(v.datasetId ?? ""),
+                    table: String(v.tableId ?? ""),
+                });
+                fetch(`/api/schema?${qs.toString()}`)
+                    .then(async (r) => {
+                        const body = await r.json().catch(() => ({}));
+                        if (!r.ok) {
+                            const errMessage = (body && body.error) || `HTTP ${r.status}`;
+                            this.emit({ type: "response", requestId: msg.requestId, ok: false, error: errMessage });
+                            return;
+                        }
+                        this.emit({ type: "response", requestId: msg.requestId, ok: true, value: body });
+                    })
+                    .catch((err) => {
+                        // A rejected fetch (vs. an HTTP error) means the server is unreachable —
+                        // typically because the user shut the dataform-graph CLI down. Browsers
+                        // surface this as "TypeError: Failed to fetch" / "NetworkError ..." which
+                        // is too cryptic to show as-is.
+                        const raw = err?.message ?? String(err);
+                        const looksLikeNetworkError =
+                            err instanceof TypeError ||
+                            /failed to fetch|networkerror|load failed/i.test(raw);
+                        const message = looksLikeNetworkError
+                            ? "Could not reach the dataform-graph server (was it stopped?). " +
+                              "Restart it with `dataform-graph` and reload this page."
+                            : raw;
+                        this.emit({
+                            type: "response",
+                            requestId: msg.requestId,
+                            ok: false,
+                            error: message,
+                        });
+                    });
+                return;
+            }
             // saveGraphImage and nodeFileName have no meaningful behavior in CLI mode (v1).
             default:
                 return;
         }
     }
+
+    request<T>(type: string, value?: any, timeoutMs = 30000): Promise<T> {
+        return requestVia(this, type, value, timeoutMs);
+    }
+}
+
+function requestVia<T>(transport: Transport, type: string, value: any, timeoutMs: number): Promise<T> {
+    const requestId = String(++nextRequestId);
+    return new Promise<T>((resolve, reject) => {
+        let settled = false;
+        const finish = (fn: () => void) => {
+            if (settled) {return;}
+            settled = true;
+            unsubscribe();
+            clearTimeout(timer);
+            fn();
+        };
+        const unsubscribe = transport.onMessage((msg) => {
+            if (!msg || msg.type !== "response" || msg.requestId !== requestId) {return;}
+            if (msg.ok) {
+                finish(() => resolve(msg.value as T));
+            } else {
+                finish(() => reject(new Error(msg.error ?? "request failed")));
+            }
+        });
+        const timer = setTimeout(() => {
+            finish(() => reject(new Error(`request "${type}" timed out after ${timeoutMs}ms`)));
+        }, timeoutMs);
+        try {
+            transport.postMessage({ type, requestId, value });
+        } catch (err) {
+            finish(() => reject(err as Error));
+        }
+    });
 }
 
 let cached: Transport | null = null;

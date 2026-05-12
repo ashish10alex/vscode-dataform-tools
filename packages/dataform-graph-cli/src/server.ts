@@ -12,11 +12,25 @@ export interface GraphPayload {
     initialTag?: string;
 }
 
+export interface SchemaField {
+    name: string;
+    type: string;
+    mode?: string;
+    description?: string;
+    fields?: SchemaField[];
+}
+
+export interface SchemaResult {
+    fields: SchemaField[];
+}
+
 export interface ServerOptions {
     port: number;
     host?: string;
     webviewDir: string;
     getGraph: () => GraphPayload;
+    /** Optional BigQuery schema fetcher. If absent, /api/schema returns 501. */
+    getSchema?: (project: string, dataset: string, table: string) => Promise<SchemaResult>;
 }
 
 const mimeTypes: Record<string, string> = {
@@ -54,8 +68,15 @@ function serveAsset(webviewDir: string, urlPath: string, res: http.ServerRespons
     });
 }
 
+function writeJson(res: http.ServerResponse, status: number, body: unknown): void {
+    res.statusCode = status;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.end(JSON.stringify(body));
+}
+
 export function createServer(options: ServerOptions): http.Server {
-    const { webviewDir, getGraph } = options;
+    const { webviewDir, getGraph, getSchema } = options;
 
     return http.createServer((req, res) => {
         const url = req.url || "/";
@@ -69,10 +90,26 @@ export function createServer(options: ServerOptions): http.Server {
         }
 
         if (url === "/api/graph") {
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.setHeader("Cache-Control", "no-store");
-            res.end(JSON.stringify(getGraph()));
+            writeJson(res, 200, getGraph());
+            return;
+        }
+
+        if (url.startsWith("/api/schema")) {
+            if (!getSchema) {
+                writeJson(res, 501, { error: "schema lookup not configured on this server" });
+                return;
+            }
+            const parsed = new URL(url, "http://localhost");
+            const project = parsed.searchParams.get("project");
+            const dataset = parsed.searchParams.get("dataset");
+            const table = parsed.searchParams.get("table");
+            if (!project || !dataset || !table) {
+                writeJson(res, 400, { error: "project, dataset, and table query params required" });
+                return;
+            }
+            getSchema(project, dataset, table)
+                .then((result) => writeJson(res, 200, result))
+                .catch((err: Error) => writeJson(res, 500, { error: err.message ?? String(err) }));
             return;
         }
 

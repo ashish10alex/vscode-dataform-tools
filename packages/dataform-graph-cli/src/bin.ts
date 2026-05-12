@@ -6,8 +6,10 @@ import { buildDependencyGraph } from "../../../src/shared/buildDependencyGraph";
 import { runDataformCompile } from "./compile";
 import { openInBrowser } from "./openBrowser";
 import { pickModel, pickTag } from "./picker";
-import { GraphPayload, startServer } from "./server";
+import { GraphPayload, SchemaField, SchemaResult, startServer } from "./server";
 import { startSpinner } from "./spinner";
+// Pulled in lazily inside fetchSchema so cold-start isn't impacted by the client's auth init.
+type BigQueryCtor = typeof import("@google-cloud/bigquery").BigQuery;
 
 interface CliOptions {
     // commander returns `true` for an option with optional arg when supplied with no value,
@@ -57,6 +59,96 @@ async function loadCompiled(opts: CliOptions): Promise<DataformCompiledJson> {
         stop();
         throw err;
     }
+}
+
+/**
+ * Lazy-loaded BigQuery client cache, keyed by projectId. Application Default
+ * Credentials only (v1) — `gcloud auth application-default login` or
+ * `$GOOGLE_APPLICATION_CREDENTIALS` are honored automatically by the client.
+ */
+const bqClients = new Map<string, InstanceType<BigQueryCtor>>();
+const schemaCache = new Map<string, Promise<SchemaResult>>();
+let BigQueryCtorCached: BigQueryCtor | null = null;
+
+async function loadBigQueryCtor(): Promise<BigQueryCtor> {
+    if (BigQueryCtorCached) {return BigQueryCtorCached;}
+    const mod = await import("@google-cloud/bigquery");
+    BigQueryCtorCached = mod.BigQuery;
+    return BigQueryCtorCached;
+}
+
+function normalizeSchemaFields(raw: any[]): SchemaField[] {
+    if (!Array.isArray(raw)) {return [];}
+    return raw.map((f) => ({
+        name: String(f?.name ?? ""),
+        type: String(f?.type ?? ""),
+        mode: f?.mode ? String(f.mode) : undefined,
+        description: f?.description ? String(f.description) : undefined,
+        fields: Array.isArray(f?.fields) ? normalizeSchemaFields(f.fields) : undefined,
+    }));
+}
+
+/** Extract the most informative message we can from a thrown BigQuery / gax error. */
+function describeBqError(err: any): string {
+    if (!err) {return "unknown error";}
+    const parts: string[] = [];
+    if (typeof err.code === "number" || typeof err.code === "string") {
+        parts.push(`[${err.code}]`);
+    }
+    if (typeof err.message === "string" && err.message) {
+        parts.push(err.message);
+    }
+    // BigQuery REST errors often carry an `errors` array with finer-grained reasons.
+    if (Array.isArray(err.errors) && err.errors.length > 0) {
+        const details = err.errors
+            .map((e: any) => {
+                const segs: string[] = [];
+                if (e?.reason) {segs.push(String(e.reason));}
+                if (e?.message) {segs.push(String(e.message));}
+                if (e?.location) {segs.push(`(${e.location})`);}
+                return segs.join(" ");
+            })
+            .filter(Boolean)
+            .join("; ");
+        if (details) {parts.push(`— ${details}`);}
+    }
+    if (parts.length === 0) {
+        try {
+            return JSON.stringify(err);
+        } catch {
+            return String(err);
+        }
+    }
+    return parts.join(" ");
+}
+
+async function fetchSchema(projectId: string, datasetId: string, tableId: string): Promise<SchemaResult> {
+    const cacheKey = `${projectId}.${datasetId}.${tableId}`;
+    const cached = schemaCache.get(cacheKey);
+    if (cached) {return cached;}
+
+    const promise = (async (): Promise<SchemaResult> => {
+        const BigQuery = await loadBigQueryCtor();
+        let client = bqClients.get(projectId);
+        if (!client) {
+            client = new BigQuery({ projectId });
+            bqClients.set(projectId, client);
+        }
+        try {
+            const [metadata] = await client.dataset(datasetId, { projectId }).table(tableId).getMetadata();
+            return { fields: normalizeSchemaFields(metadata?.schema?.fields ?? []) };
+        } catch (err: any) {
+            // Print the raw error so the user can see the full stack in their terminal,
+            // then re-throw with a clean message that surfaces all useful fields to the UI.
+            process.stderr.write(`schema lookup failed for ${projectId}.${datasetId}.${tableId}:\n${err?.stack ?? err}\n`);
+            throw new Error(describeBqError(err));
+        }
+    })();
+
+    schemaCache.set(cacheKey, promise);
+    // Don't poison the cache on failure — let the user retry.
+    promise.catch(() => schemaCache.delete(cacheKey));
+    return promise;
 }
 
 function requireTty(flag: string): void {
@@ -182,6 +274,7 @@ async function main() {
         host: opts.host,
         webviewDir,
         getGraph: () => payload,
+        getSchema: fetchSchema,
     });
 
     const url = `http://${opts.host}:${port}`;

@@ -24,6 +24,7 @@ import { nodePositioning } from './nodePositioning';
 import { getTransport } from './transport';
 import StyledSelect, { OptionType } from './components/StyledSelect';
 import DownloadButton from './DownloadButton';
+import SchemaModal, { SchemaModalState } from './SchemaModal';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const nodeTypes = {
@@ -83,6 +84,7 @@ const Flow: React.FC = () => {
   const [rootNodeId, setRootNodeId] = useState<string | null>(null);
   const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [schemaModal, setSchemaModal] = useState<SchemaModalState | null>(null);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -92,6 +94,56 @@ const Flow: React.FC = () => {
       transport.postMessage({ type: 'webviewReady' });
     }, 50);
   }, []);
+
+  // Listen for "show schema" requests dispatched by node buttons. We fetch via
+  // the transport and update modal state by `fullTableName` so a quick second
+  // click on another node doesn't get clobbered by a stale response.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        projectId: string;
+        datasetId: string;
+        tableId: string;
+        fullTableName: string;
+      };
+      setSchemaModal({ status: 'loading', ...detail });
+      transport
+        .request<{ fields: any[] }>('getSchema', {
+          projectId: detail.projectId,
+          datasetId: detail.datasetId,
+          tableId: detail.tableId,
+        })
+        .then((result) => {
+          setSchemaModal((prev) =>
+            prev && prev.fullTableName === detail.fullTableName
+              ? { status: 'loaded', ...detail, fields: result.fields ?? [] }
+              : prev
+          );
+        })
+        .catch((err: any) => {
+          const message =
+            (err && typeof err.message === 'string' && err.message) ||
+            (err && typeof err === 'object' ? JSON.stringify(err) : String(err));
+          setSchemaModal((prev) =>
+            prev && prev.fullTableName === detail.fullTableName
+              ? { status: 'error', ...detail, error: message }
+              : prev
+          );
+        });
+    };
+    window.addEventListener('dataform-graph:show-schema', handler as EventListener);
+    return () => window.removeEventListener('dataform-graph:show-schema', handler as EventListener);
+  }, []);
+
+  // Esc closes the schema modal.
+  useEffect(() => {
+    if (!schemaModal) {return;}
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {setSchemaModal(null);}
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [schemaModal]);
 
   useEffect(() => {
     const messageHandler = (message: any) => {
@@ -685,9 +737,9 @@ const Flow: React.FC = () => {
             </div>
             {!isTableCollapsed && (
               <div className="flex-1 overflow-hidden p-2">
-                <DataTable 
-                  columns={columns} 
-                  data={tableData} 
+                <DataTable
+                  columns={columns}
+                  data={tableData}
                   searchPlaceholder="Filter models..."
                   onRowClick={handleRowClick}
                 />
@@ -696,6 +748,8 @@ const Flow: React.FC = () => {
           </div>
         )}
       </div>
+
+      {schemaModal && <SchemaModal state={schemaModal} onClose={() => setSchemaModal(null)} />}
     </div>
   );
 };
