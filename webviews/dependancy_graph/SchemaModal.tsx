@@ -93,6 +93,9 @@ const SchemaModal: React.FC<Props> = ({ state, onClose }) => {
             onClick={onClose}
         >
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="schema-modal-title"
                 className="w-[720px] max-w-[90vw] h-[70vh] max-h-[80vh] flex flex-col rounded-md shadow-xl border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -101,7 +104,10 @@ const SchemaModal: React.FC<Props> = ({ state, onClose }) => {
                         <div className="text-xs uppercase tracking-wider text-[var(--vscode-disabledForeground)]">
                             Schema
                         </div>
-                        <div className="text-sm font-semibold text-[var(--vscode-foreground)] truncate">
+                        <div
+                            id="schema-modal-title"
+                            className="text-sm font-semibold text-[var(--vscode-foreground)] truncate"
+                        >
                             {state.fullTableName}
                         </div>
                     </div>
