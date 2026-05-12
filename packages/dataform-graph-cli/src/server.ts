@@ -90,7 +90,13 @@ export function createServer(options: ServerOptions): http.Server {
         }
 
         if (url === "/api/graph") {
-            writeJson(res, 200, getGraph());
+            try {
+                writeJson(res, 200, getGraph());
+            } catch (err) {
+                const details = err instanceof Error ? err.message : String(err);
+                process.stderr.write(`/api/graph failed: ${details}\n`);
+                writeJson(res, 500, { error: "Failed to generate graph", details });
+            }
             return;
         }
 
