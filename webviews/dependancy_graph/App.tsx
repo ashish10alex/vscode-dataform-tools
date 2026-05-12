@@ -31,6 +31,9 @@ const nodeTypes = {
 };
 
 const transport = getTransport();
+// PNG export round-trips through the VS Code host's "Save As" dialog; outside
+// the extension (CLI / standalone browser) there's nothing on the other end.
+const SHOW_EXPORT_BUTTON = transport.mode === 'vscode';
 
 interface ModelData {
   id: string;
@@ -610,7 +613,9 @@ const Flow: React.FC = () => {
             >
               Show full graph
             </button>
-            <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
+            {SHOW_EXPORT_BUTTON && (
+              <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
+            )}
           </div>
         </div>
       </div>
