@@ -91,10 +91,52 @@ export function extractCompileJson(stdout: string): unknown {
     throw new Error("no compile result found in stdout");
 }
 
+/**
+ * Subset of `dataform compile` flags we pass through. Each is wired 1:1 to
+ * the underlying CLI flag (kebab-case on the command line). Absent values are
+ * not forwarded — the dataform CLI falls back to workflow_settings.yaml.
+ */
+export interface CompileOverrides {
+    databaseSuffix?: string;
+    schemaSuffix?: string;
+    tablePrefix?: string;
+    defaultDatabase?: string;
+    defaultSchema?: string;
+    defaultLocation?: string;
+    assertionSchema?: string;
+    vars?: string;
+}
+
 export interface CompileOptions {
     cwd: string;
     /** Override the binary (default: "dataform"). Useful for tests. */
     bin?: string;
+    overrides?: CompileOverrides;
+}
+
+const OVERRIDE_FLAG_NAMES: Array<[keyof CompileOverrides, string]> = [
+    ["databaseSuffix", "--database-suffix"],
+    ["schemaSuffix", "--schema-suffix"],
+    ["tablePrefix", "--table-prefix"],
+    ["defaultDatabase", "--default-database"],
+    ["defaultSchema", "--default-schema"],
+    ["defaultLocation", "--default-location"],
+    ["assertionSchema", "--assertion-schema"],
+    ["vars", "--vars"],
+];
+
+function buildOverrideArgs(overrides: CompileOverrides | undefined): string[] {
+    if (!overrides) {return [];}
+    const args: string[] = [];
+    for (const [key, flag] of OVERRIDE_FLAG_NAMES) {
+        const value = overrides[key];
+        if (typeof value === "string" && value.length > 0) {
+            // Use `--flag=value` form so values that look like flags (e.g. starting
+            // with `-`) aren't accidentally parsed as the next option.
+            args.push(`${flag}=${value}`);
+        }
+    }
+    return args;
 }
 
 /**
@@ -105,8 +147,10 @@ export interface CompileOptions {
 export function runDataformCompile(options: CompileOptions): Promise<unknown> {
     const bin = options.bin ?? "dataform";
 
+    const args = ["compile", "--json", ...buildOverrideArgs(options.overrides)];
+
     return new Promise((resolve, reject) => {
-        const child = spawn(bin, ["compile", "--json"], {
+        const child = spawn(bin, args, {
             cwd: options.cwd,
             stdio: ["ignore", "pipe", "pipe"],
             // Windows resolves `.cmd` shims through the shell.

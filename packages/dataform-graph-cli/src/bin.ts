@@ -24,7 +24,27 @@ interface CliOptions {
     port?: number;
     host: string;
     open: boolean;
+    // Pass-through overrides for `dataform compile`.
+    databaseSuffix?: string;
+    schemaSuffix?: string;
+    tablePrefix?: string;
+    defaultDatabase?: string;
+    defaultSchema?: string;
+    defaultLocation?: string;
+    assertionSchema?: string;
+    vars?: string;
 }
+
+const OVERRIDE_OPT_KEYS = [
+    "databaseSuffix",
+    "schemaSuffix",
+    "tablePrefix",
+    "defaultDatabase",
+    "defaultSchema",
+    "defaultLocation",
+    "assertionSchema",
+    "vars",
+] as const;
 
 function parsePort(raw: string): number {
     const n = Number(raw);
@@ -35,7 +55,16 @@ function parsePort(raw: string): number {
 }
 
 async function loadCompiled(opts: CliOptions): Promise<DataformCompiledJson> {
+    const activeOverrides = OVERRIDE_OPT_KEYS.filter((k) => typeof opts[k] === "string");
+
     if (opts.input) {
+        if (activeOverrides.length > 0) {
+            process.stderr.write(
+                `[warn] --input bypasses compilation, so ${activeOverrides
+                    .map((k) => `--${k.replace(/([A-Z])/g, "-$1").toLowerCase()}`)
+                    .join(", ")} ` + "will be ignored.\n"
+            );
+        }
         const abs = path.resolve(opts.input);
         const raw = await fs.promises.readFile(abs, "utf8");
         try {
@@ -50,9 +79,20 @@ async function loadCompiled(opts: CliOptions): Promise<DataformCompiledJson> {
     }
     const bin = opts.dataformBin ?? process.env.DATAFORM_BIN ?? "dataform";
 
+    const overrides = {
+        databaseSuffix: opts.databaseSuffix,
+        schemaSuffix: opts.schemaSuffix,
+        tablePrefix: opts.tablePrefix,
+        defaultDatabase: opts.defaultDatabase,
+        defaultSchema: opts.defaultSchema,
+        defaultLocation: opts.defaultLocation,
+        assertionSchema: opts.assertionSchema,
+        vars: opts.vars,
+    };
+
     const stop = startSpinner("Compiling dataform project");
     try {
-        const result = await runDataformCompile({ cwd, bin });
+        const result = await runDataformCompile({ cwd, bin, overrides });
         stop({ success: true, successMessage: "Compiled dataform project" });
         return result as DataformCompiledJson;
     } catch (err) {
@@ -195,6 +235,19 @@ async function main() {
         .option(
             "--dataform-bin <path>",
             "Path or name of the dataform binary to invoke (default: `dataform` on PATH, or $DATAFORM_BIN if set)."
+        )
+        // Pass-through overrides for `dataform compile`. Each is forwarded as
+        // --<flag>=<value> when set; otherwise the value from workflow_settings.yaml wins.
+        .option("--database-suffix <suffix>", "Suffix appended to the default database.")
+        .option("--schema-suffix <suffix>", "Suffix appended to output schema names.")
+        .option("--table-prefix <prefix>", "Prefix prepended to all table names.")
+        .option("--default-database <project>", "Default database (Google Cloud project ID).")
+        .option("--default-schema <schema>", "Default schema name.")
+        .option("--default-location <location>", "Default BigQuery location.")
+        .option("--assertion-schema <schema>", "Default assertion schema.")
+        .option(
+            "--vars <pairs>",
+            "Variables for the compile, e.g. --vars=someKey=someValue,a=b (referenced as dataform.projectConfig.vars.someKey)."
         )
         .option("-p, --port <n>", "Port to listen on (default: random ephemeral).", parsePort)
         .option("-H, --host <host>", "Host interface to bind to.", "127.0.0.1")

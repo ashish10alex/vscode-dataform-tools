@@ -23,7 +23,10 @@ export function startSpinner(message: string): (opts?: StopOptions) => void {
 
     if (!isTty) {
         process.stderr.write(`${message}\n`);
+        let stopped = false;
         return (opts) => {
+            if (stopped) {return;}
+            stopped = true;
             if (opts?.success) {
                 const ms = Date.now() - startedAt;
                 process.stderr.write(`done in ${(ms / 1000).toFixed(1)}s\n`);
