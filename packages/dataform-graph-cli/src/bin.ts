@@ -8,6 +8,8 @@ import { openInBrowser } from "./openBrowser";
 import { pickModel, pickTag } from "./picker";
 import { GraphPayload, SchemaField, SchemaResult, startServer } from "./server";
 import { startSpinner } from "./spinner";
+// `version` is inlined at build time by esbuild from the package manifest.
+import pkg from "../package.json";
 // Pulled in lazily inside fetchSchema so cold-start isn't impacted by the client's auth init.
 type BigQueryCtor = typeof import("@google-cloud/bigquery").BigQuery;
 
@@ -164,6 +166,7 @@ async function main() {
     const program = new Command();
     program
         .name("dataform-graph")
+        .version(pkg.version, "-v, --version", "Output the current version.")
         .description(
             "Serve the dataform-tools dependency graph in your browser. " +
                 "By default runs `dataform compile --json` in the current directory."
