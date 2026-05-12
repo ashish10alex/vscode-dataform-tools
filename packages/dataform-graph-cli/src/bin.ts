@@ -280,7 +280,15 @@ async function main() {
         getSchema: fetchSchema,
     });
 
-    const url = `http://${opts.host}:${port}`;
+    // Listen host (e.g. "0.0.0.0", "::") isn't necessarily a valid *client* host.
+    // Wildcards become "localhost"; bare IPv6 literals need bracketing.
+    const clientHost = (() => {
+        const h = opts.host;
+        if (h === "0.0.0.0" || h === "::") {return "localhost";}
+        if (h.includes(":")) {return `[${h}]`;}
+        return h;
+    })();
+    const url = `http://${clientHost}:${port}`;
     process.stdout.write(`dataform-graph → ${url}  (${nodes.length} nodes, ${edges.length} edges)\n`);
     process.stdout.write("Press Ctrl+C to stop.\n");
 
