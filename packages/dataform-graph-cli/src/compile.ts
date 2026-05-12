@@ -46,6 +46,9 @@ function* iterTopLevelObjects(s: string): Generator<string> {
             if (depth === 0) {start = i;}
             depth++;
         } else if (c === "}") {
+            // Ignore stray closers so they can't push depth negative and desync
+            // the next top-level object's start position.
+            if (depth === 0) {continue;}
             depth--;
             if (depth === 0 && start !== -1) {
                 yield s.slice(start, i + 1);
