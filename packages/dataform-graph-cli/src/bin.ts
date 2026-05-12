@@ -178,7 +178,12 @@ async function fetchSchema(projectId: string, datasetId: string, tableId: string
         }
         try {
             const [metadata] = await client.dataset(datasetId, { projectId }).table(tableId).getMetadata();
-            return { fields: normalizeSchemaFields(metadata?.schema?.fields ?? []) };
+            const lastModifiedTime =
+                typeof metadata?.lastModifiedTime === "string" ? metadata.lastModifiedTime : undefined;
+            return {
+                fields: normalizeSchemaFields(metadata?.schema?.fields ?? []),
+                lastModifiedTime,
+            };
         } catch (err: any) {
             // Print the raw error so the user can see the full stack in their terminal,
             // then re-throw with a clean message that surfaces all useful fields to the UI.

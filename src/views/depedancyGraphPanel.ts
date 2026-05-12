@@ -157,11 +157,16 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                     }
                     try {
                         const metadata = await fetchTableMetadata(projectId, datasetId, tableId);
+                        const lastModifiedTime =
+                            typeof metadata?.lastModifiedTime === 'string' ? metadata.lastModifiedTime : undefined;
                         panel.webview.postMessage({
                             type: 'response',
                             requestId,
                             ok: true,
-                            value: { fields: normalizeSchemaFields(metadata?.schema?.fields ?? []) },
+                            value: {
+                                fields: normalizeSchemaFields(metadata?.schema?.fields ?? []),
+                                lastModifiedTime,
+                            },
                         });
                     } catch (e: any) {
                         logger.error(`Schema lookup failed for ${projectId}.${datasetId}.${tableId}: ${e?.stack ?? e}`);

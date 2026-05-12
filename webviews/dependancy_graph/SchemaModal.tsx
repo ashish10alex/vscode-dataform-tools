@@ -13,8 +13,34 @@ export interface SchemaField {
 
 export type SchemaModalState =
     | { status: 'loading'; fullTableName: string; projectId: string; datasetId: string; tableId: string }
-    | { status: 'loaded'; fullTableName: string; projectId: string; datasetId: string; tableId: string; fields: SchemaField[] }
+    | {
+          status: 'loaded';
+          fullTableName: string;
+          projectId: string;
+          datasetId: string;
+          tableId: string;
+          fields: SchemaField[];
+          /** BigQuery returns lastModifiedTime as epoch ms in a string. */
+          lastModifiedTime?: string;
+      }
     | { status: 'error'; fullTableName: string; projectId: string; datasetId: string; tableId: string; error: string };
+
+/** Render the BigQuery lastModifiedTime (epoch ms string) as a human date. */
+function formatLastModified(raw: string | undefined): string | null {
+    if (!raw) {return null;}
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) {return null;}
+    const d = new Date(n);
+    if (Number.isNaN(d.getTime())) {return null;}
+    // Use the browser/host locale; include date + time, drop seconds.
+    return d.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 
 interface FlatRow {
     name: string;
@@ -100,16 +126,21 @@ const SchemaModal: React.FC<Props> = ({ state, onClose }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-start justify-between gap-2 px-4 py-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)]">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                         <div className="text-xs uppercase tracking-wider text-[var(--vscode-disabledForeground)]">
                             Schema
                         </div>
                         <div
                             id="schema-modal-title"
-                            className="text-sm font-semibold text-[var(--vscode-foreground)] truncate"
+                            className="text-sm font-semibold text-[var(--vscode-foreground)] font-mono break-all"
                         >
                             {state.fullTableName}
                         </div>
+                        {state.status === 'loaded' && formatLastModified(state.lastModifiedTime) && (
+                            <div className="mt-1 text-[11px] text-[var(--vscode-disabledForeground)]">
+                                Last updated: {formatLastModified(state.lastModifiedTime)}
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={onClose}

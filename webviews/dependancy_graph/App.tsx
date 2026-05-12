@@ -108,7 +108,7 @@ const Flow: React.FC = () => {
       };
       setSchemaModal({ status: 'loading', ...detail });
       transport
-        .request<{ fields: any[] }>('getSchema', {
+        .request<{ fields: any[]; lastModifiedTime?: string }>('getSchema', {
           projectId: detail.projectId,
           datasetId: detail.datasetId,
           tableId: detail.tableId,
@@ -116,7 +116,12 @@ const Flow: React.FC = () => {
         .then((result) => {
           setSchemaModal((prev) =>
             prev && prev.fullTableName === detail.fullTableName
-              ? { status: 'loaded', ...detail, fields: result.fields ?? [] }
+              ? {
+                  status: 'loaded',
+                  ...detail,
+                  fields: result.fields ?? [],
+                  lastModifiedTime: result.lastModifiedTime,
+                }
               : prev
           );
         })

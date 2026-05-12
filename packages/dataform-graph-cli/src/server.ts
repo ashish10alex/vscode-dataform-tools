@@ -22,6 +22,8 @@ export interface SchemaField {
 
 export interface SchemaResult {
     fields: SchemaField[];
+    /** Epoch milliseconds (as a string, matching BigQuery's REST payload). */
+    lastModifiedTime?: string;
 }
 
 export interface ServerOptions {
