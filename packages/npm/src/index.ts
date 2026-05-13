@@ -311,6 +311,32 @@ export class DataformTools {
     }
 
     /**
+     * Lists workflow invocation actions within a specific workflow invocation.
+     * @param repositoryName - Name of the Dataform repository
+     * @param workflowInvocationId - ID of the workflow invocation
+     * @param options - Optional parameters for the request like pageSize, pageToken. See {@link https://docs.cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.iqueryworkflowinvocationactionsrequest|IQueryWorkflowInvocationActionsRequest}
+     * @returns A promise that resolves to an array of workflow invocation actions {@link protos.google.cloud.dataform.v1beta1.IWorkflowInvocationAction|IWorkflowInvocationAction[]}.
+     */
+    async queryWorkflowInvocationActions(repositoryName: string, workflowInvocationId: string, options?: Omit<protos.google.cloud.dataform.v1beta1.IQueryWorkflowInvocationActionsRequest, 'name'>) {
+        if (!repositoryName) {
+            throw new Error("repositoryName must be provided.");
+        } else if (!workflowInvocationId) {
+            throw new Error("workflowInvocationId must be provided.");
+        }
+
+        const workflowInvocationPath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workflowInvocations/${workflowInvocationId}`;
+        
+        // If pageSize or pageToken is provided, the caller wants a single page. Turn off auto-pagination.
+        const callOptions = (options?.pageSize || options?.pageToken) ? { autoPaginate: false } : undefined;
+        
+        const [actions] = await this.client.queryWorkflowInvocationActions({
+            name: workflowInvocationPath,
+            ...options
+        }, callOptions);
+        return actions;
+    }
+
+    /**
      * Create workflow invocation using compilation result
      * @param repositoryName - Name of the Dataform repository
      * @param workspaceName - Name of the Dataform workspace
