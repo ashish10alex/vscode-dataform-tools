@@ -444,6 +444,8 @@ export interface WorkflowUrlEntry {
     repositoryName?: string;
     state?: string;
     failedActions?: FailedAction[];
+    actions?: WorkflowAction[];
+    actionCounts?: ActionCounts;
     includedTags?: string[];
     includedTargets?: Target[];
 }
@@ -451,6 +453,22 @@ export interface WorkflowUrlEntry {
 export interface FailedAction {
     target: string;
     failureReason: string;
+}
+
+export interface WorkflowAction {
+    target: string;
+    state: string;
+    failureReason?: string;
+}
+
+export interface ActionCounts {
+    total: number;
+    pending: number;
+    running: number;
+    succeeded: number;
+    failed: number;
+    cancelled: number;
+    skipped: number;
 }
 
 export interface WebviewMessage {

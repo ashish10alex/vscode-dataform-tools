@@ -5,7 +5,7 @@ import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { runTests } from "../runTests";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
+import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -533,19 +533,45 @@ export class CompiledQueryPanel {
 
                 if (urlsToRefresh.length > 0) {
                     const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
+                        const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
                         const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
-                        if ((item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' || needsActionBackfill) && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
+                        const needsCountsBackfill = !item.actionCounts;
+                        const needsActionsBackfill = !item.actions;
+                        if ((isNonTerminal || needsActionBackfill || needsCountsBackfill || needsActionsBackfill) && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
                             try {
                                 const dataformClient = new DataformTools(item.projectId, item.location);
                                 const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
                                 if (invocation && invocation.state) {
                                   item.state = invocation.state as string;
                                 }
-                                if (item.state === 'FAILED') {
-                                    try {
-                                        const actions = await dataformClient.queryWorkflowInvocationActions(item.repositoryName, item.workflowInvocationId);
-                                        logger.debug(`queryWorkflowInvocationActions returned ${actions?.length ?? 0} actions for ${item.workflowInvocationId}`);
-                                        const failedActions = (actions || [])
+                                try {
+                                    const actions = await dataformClient.queryWorkflowInvocationActions(item.repositoryName, item.workflowInvocationId);
+                                    const list = (actions || []) as any[];
+                                    const counts: ActionCounts = { total: list.length, pending: 0, running: 0, succeeded: 0, failed: 0, cancelled: 0, skipped: 0 };
+                                    const actionInfos: WorkflowAction[] = [];
+                                    for (const a of list) {
+                                        const s = a?.state;
+                                        if (s === 'PENDING') { counts.pending++; }
+                                        else if (s === 'RUNNING') { counts.running++; }
+                                        else if (s === 'SUCCEEDED') { counts.succeeded++; }
+                                        else if (s === 'FAILED') { counts.failed++; }
+                                        else if (s === 'CANCELLED') { counts.cancelled++; }
+                                        else if (s === 'SKIPPED' || s === 'DISABLED') { counts.skipped++; }
+
+                                        const tgt = a?.canonicalTarget || a?.target || {};
+                                        const parts = [tgt.database, tgt.schema, tgt.name].filter(Boolean);
+                                        const target = parts.join('.') || '(unknown)';
+                                        actionInfos.push({
+                                            target,
+                                            state: typeof s === 'string' ? s : 'UNKNOWN',
+                                            failureReason: a?.failureReason || undefined,
+                                        });
+                                    }
+                                    item.actionCounts = counts;
+                                    item.actions = actionInfos;
+
+                                    if (item.state === 'FAILED') {
+                                        const failedActions = list
                                             .filter((a: any) => !!a?.failureReason)
                                             .map((a: any) => {
                                                 const tgt = a.canonicalTarget || a.target || {};
@@ -553,23 +579,21 @@ export class CompiledQueryPanel {
                                                 const target = parts.join('.') || '(unknown)';
                                                 return { target, failureReason: a.failureReason as string };
                                             });
-                                        if (failedActions.length > 0) {
-                                            item.failedActions = failedActions;
-                                        } else {
-                                            item.failedActions = [{
-                                                target: '(workflow)',
-                                                failureReason: `Workflow invocation reported FAILED but the Dataform API returned no per-action failure reasons (${actions?.length ?? 0} action(s) inspected). This usually means the failure happened before any action ran (e.g. compilation or workspace sync). Open in GCP for full logs.`,
-                                            }];
-                                        }
-                                    } catch (e: any) {
-                                        logger.error(`Error fetching workflow invocation actions: ${e.message}`);
+                                        item.failedActions = failedActions.length > 0 ? failedActions : [{
+                                            target: '(workflow)',
+                                            failureReason: `Workflow invocation reported FAILED but the Dataform API returned no per-action failure reasons (${list.length} action(s) inspected). This usually means the failure happened before any action ran (e.g. compilation or workspace sync). Open in GCP for full logs.`,
+                                        }];
+                                    } else {
+                                        item.failedActions = undefined;
+                                    }
+                                } catch (e: any) {
+                                    logger.error(`Error fetching workflow invocation actions: ${e.message}`);
+                                    if (item.state === 'FAILED') {
                                         item.failedActions = [{
                                             target: '(error)',
                                             failureReason: `Unable to fetch failure details from the Dataform API: ${e.message}`,
                                         }];
                                     }
-                                } else {
-                                    item.failedActions = undefined;
                                 }
                             } catch (e: any) {
                                 logger.error(`Error fetching workflow invocation status: ${e.message}`);

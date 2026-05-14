@@ -1,10 +1,12 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { WebviewState, CompilationErrorType } from '../types';
 import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { vscode } from '../utils/vscode';
+import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 
 interface WorkflowURLsTabProps {
     state: WebviewState;
+    isPolling?: boolean;
 }
 
 const isBlockingError = (errorType?: CompilationErrorType) => {
@@ -13,7 +15,7 @@ const isBlockingError = (errorType?: CompilationErrorType) => {
            errorType === CompilationErrorType.NOT_A_DATAFORM_WORKSPACE;
 };
 
-export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
+export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabProps) {
     useEffect(() => {
         vscode.postMessage({ command: 'getWorkflowUrls' });
     }, []);
@@ -34,7 +36,6 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-    const autoRefreshTriggered = useRef(false);
 
     const toggleRow = (timestamp: number) => {
         setExpandedRows(prev => {
@@ -43,22 +44,6 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
             return next;
         });
     };
-
-    const TERMINAL_STATES = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
-
-    useEffect(() => {
-        if (autoRefreshTriggered.current) { return; }
-        if (!state.workflowUrls || state.workflowUrls.length === 0) { return; }
-        autoRefreshTriggered.current = true;
-        const needsRefresh = state.workflowUrls.some((item) =>
-            !item.state
-            || !TERMINAL_STATES.has(item.state)
-            || (item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0))
-        );
-        if (needsRefresh) {
-            vscode.postMessage({ command: 'refreshWorkflowStatuses' });
-        }
-    }, [state.workflowUrls]);
 
     const handleRefreshStatuses = () => {
         setIsRefreshing(true);
@@ -126,6 +111,69 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                             </p>
                         </div>
                     </div>
+
+                    {(() => {
+                        const latest = (state.workflowUrls || []).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
+                        if (!latest) { return null; }
+                        const isTerminal = !!latest.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
+                        const elapsedSec = Math.max(0, Math.floor((Date.now() - latest.timestamp) / 1000));
+                        const hasFailures = !!latest.failedActions && latest.failedActions.length > 0;
+                        const showExpanded = expandedRows.has(latest.timestamp);
+                        return (
+                            <div className="mt-3 flex flex-col gap-2 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background)] p-2.5">
+                                <div className="flex items-center gap-2 text-xs">
+                                    {hasFailures ? (
+                                        <button
+                                            onClick={() => toggleRow(latest.timestamp)}
+                                            className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-foreground)]"
+                                            aria-expanded={showExpanded}
+                                            aria-label={showExpanded ? 'Hide failure details' : 'Show failure details'}
+                                            title={showExpanded ? 'Hide failure details' : 'Show failure details'}
+                                        >
+                                            {showExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                                        </button>
+                                    ) : (
+                                        <span className="w-[18px]" aria-hidden />
+                                    )}
+                                    {getStatusIcon(latest.state)}
+                                    <span className="font-mono text-[var(--vscode-foreground)]">
+                                        Latest run: {latest.workspace || '(unknown workspace)'} · {getStatusLabel(latest.state)}
+                                    </span>
+                                    {!isTerminal && (
+                                        <span className="text-[var(--vscode-descriptionForeground)]">· {elapsedSec}s elapsed</span>
+                                    )}
+                                    <button
+                                        onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
+                                        className="ml-auto text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                                        title="Open in GCP"
+                                        aria-label="Open in GCP"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                                {hasFailures && showExpanded && (
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full text-xs border border-[var(--vscode-widget-border)] rounded">
+                                            <thead>
+                                                <tr className="bg-[var(--vscode-sideBar-background)]">
+                                                    <th className="px-3 py-1.5 text-left font-medium text-[var(--vscode-descriptionForeground)]">Target</th>
+                                                    <th className="px-3 py-1.5 text-left font-medium text-[var(--vscode-descriptionForeground)]">Failure Reason</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {latest.failedActions!.map((fa, i) => (
+                                                    <tr key={i} className="border-t border-[var(--vscode-widget-border)] align-top">
+                                                        <td className="px-3 py-1.5 font-mono text-[var(--vscode-foreground)] break-all">{fa.target}</td>
+                                                        <td className="px-3 py-1.5 text-[var(--vscode-errorForeground)] whitespace-pre-wrap break-words">{fa.failureReason}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 
@@ -139,7 +187,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                 className="flex items-center space-x-1 px-2 py-1 text-xs text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors"
                                 title="Refresh execution statuses"
                             >
-                                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing || isPolling ? 'animate-spin' : ''}`} />
                                 <span>Refresh Status</span>
                             </button>
                             <button

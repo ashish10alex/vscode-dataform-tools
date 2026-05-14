@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
 import { Loader2, MessageSquareWarning, Info, Settings } from 'lucide-react';
 import clsx from 'clsx';
+import { vscode } from './utils/vscode';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
 import { CostEstimatorTab } from './components/CostEstimatorTab';
 import { WorkflowURLsTab } from './components/WorkflowURLsTab';
+import {
+  TERMINAL_WORKFLOW_STATES,
+  POLL_FAST_MS,
+  POLL_SLOW_MS,
+  POLL_FAST_DURATION_MS,
+  POLL_TIMEOUT_MS,
+} from './utils/workflowPolling';
 
 import { DeclarationsView } from './components/DeclarationsView';
 import { ProjectConfigTab } from './components/ProjectConfigTab';
@@ -30,6 +38,50 @@ function HeaderRightActions() {
 function App() {
   const state = useVSCodeMessage();
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
+  const [isPolling, setIsPolling] = useState(false);
+  const pollStartedAtRef = useRef<number | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const items = state.workflowUrls || [];
+    const hasNonTerminal = items.some(i => !i.state || !TERMINAL_WORKFLOW_STATES.has(i.state));
+    const hasFailedMissingActions = items.some(i =>
+      i.state === 'FAILED' && (!i.failedActions || i.failedActions.length === 0)
+    );
+    const shouldPoll = hasNonTerminal || hasFailedMissingActions;
+
+    if (!shouldPoll) {
+      if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
+      pollStartedAtRef.current = null;
+      setIsPolling(false);
+      return;
+    }
+
+    const justStarted = pollStartedAtRef.current === null;
+    if (justStarted) { pollStartedAtRef.current = Date.now(); }
+    setIsPolling(true);
+
+    const elapsed = Date.now() - pollStartedAtRef.current!;
+    if (elapsed >= POLL_TIMEOUT_MS) {
+      if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
+      setIsPolling(false);
+      return;
+    }
+
+    if (justStarted) {
+      vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+      return;
+    }
+
+    const delay = elapsed < POLL_FAST_DURATION_MS ? POLL_FAST_MS : POLL_SLOW_MS;
+    pollTimerRef.current = setTimeout(() => {
+      vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+    }, delay);
+
+    return () => {
+      if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
+    };
+  }, [state.workflowUrls]);
 
   const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
@@ -223,7 +275,7 @@ function App() {
         ) && <CompiledQueryTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'schema' && <SchemaTab state={state} />}
         {!isConfigFile && !state.isHelperFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
 
       </div>
     </div>
