@@ -1,7 +1,7 @@
 import { CompilationErrorType } from "../../src/types";
-import type { WorkflowUrlEntry, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
+import type { WorkflowUrlEntry, FailedAction, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
 export { CompilationErrorType };
-export type { WorkflowUrlEntry, ProjectConfig, BigQueryDryRunResponse };
+export type { WorkflowUrlEntry, FailedAction, ProjectConfig, BigQueryDryRunResponse };
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;

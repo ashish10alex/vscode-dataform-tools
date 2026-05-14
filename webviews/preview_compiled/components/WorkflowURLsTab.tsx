@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { WebviewState, CompilationErrorType } from '../types';
-import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 
 interface WorkflowURLsTabProps {
@@ -33,7 +33,16 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
     };
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
     const autoRefreshTriggered = useRef(false);
+
+    const toggleRow = (timestamp: number) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(timestamp)) { next.delete(timestamp); } else { next.add(timestamp); }
+            return next;
+        });
+    };
 
     const TERMINAL_STATES = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
 
@@ -41,7 +50,11 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
         if (autoRefreshTriggered.current) { return; }
         if (!state.workflowUrls || state.workflowUrls.length === 0) { return; }
         autoRefreshTriggered.current = true;
-        const needsRefresh = state.workflowUrls.some((item) => !item.state || !TERMINAL_STATES.has(item.state));
+        const needsRefresh = state.workflowUrls.some((item) =>
+            !item.state
+            || !TERMINAL_STATES.has(item.state)
+            || (item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0))
+        );
         if (needsRefresh) {
             vscode.postMessage({ command: 'refreshWorkflowStatuses' });
         }
@@ -152,6 +165,7 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                     <table className="min-w-full text-sm">
                         <thead>
                             <tr className="bg-[var(--vscode-sideBar-background)] border-b border-[var(--vscode-widget-border)]">
+                                <th className="px-2 py-2 w-8" aria-label="Expand row" />
                                 <th className="px-4 py-2 text-left font-medium text-[var(--vscode-descriptionForeground)] w-1/4">Time</th>
                                 <th className="px-4 py-2 text-left font-medium text-[var(--vscode-descriptionForeground)]">Target Workspace</th>
                                 <th className="px-4 py-2 text-left font-medium text-[var(--vscode-descriptionForeground)]">Action</th>
@@ -163,8 +177,26 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                         </thead>
                         <tbody>
                             {urls.slice().reverse().map((item) => {
+                                const isExpanded = expandedRows.has(item.timestamp);
+                                const hasFailures = !!item.failedActions && item.failedActions.length > 0;
                                 return (
-                                <tr key={item.timestamp} className="border-b border-[var(--vscode-widget-border)] last:border-0 hover:bg-[var(--vscode-toolbar-hoverBackground)]">
+                                <Fragment key={item.timestamp}>
+                                <tr className="border-b border-[var(--vscode-widget-border)] last:border-0 hover:bg-[var(--vscode-toolbar-hoverBackground)]">
+                                    <td className="px-2 py-2 w-8 align-middle">
+                                        {hasFailures && (
+                                            <button
+                                                onClick={() => toggleRow(item.timestamp)}
+                                                className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-foreground)]"
+                                                title={isExpanded ? 'Hide failed models' : 'Show failed models'}
+                                                aria-expanded={isExpanded}
+                                                aria-label={isExpanded ? 'Hide failed models' : 'Show failed models'}
+                                            >
+                                                {isExpanded
+                                                    ? <ChevronDown className="w-3.5 h-3.5" />
+                                                    : <ChevronRight className="w-3.5 h-3.5" />}
+                                            </button>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-2 text-[var(--vscode-descriptionForeground)] whitespace-nowrap text-xs">
                                         {new Date(item.timestamp).toLocaleString()}
                                     </td>
@@ -266,6 +298,35 @@ export function WorkflowURLsTab({ state }: WorkflowURLsTabProps) {
                                         </button>
                                     </td>
                                 </tr>
+                                {hasFailures && isExpanded && (
+                                    <tr className="bg-[var(--vscode-editorWidget-background)] border-b border-[var(--vscode-widget-border)]">
+                                        <td />
+                                        <td colSpan={7} className="px-4 py-3">
+                                            <div className="text-xs font-medium text-[var(--vscode-foreground)] mb-2">
+                                                Failed models ({item.failedActions!.length})
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="min-w-full text-xs border border-[var(--vscode-widget-border)] rounded">
+                                                    <thead>
+                                                        <tr className="bg-[var(--vscode-sideBar-background)]">
+                                                            <th className="px-3 py-1.5 text-left font-medium text-[var(--vscode-descriptionForeground)]">Target</th>
+                                                            <th className="px-3 py-1.5 text-left font-medium text-[var(--vscode-descriptionForeground)]">Failure Reason</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {item.failedActions!.map((fa, i) => (
+                                                            <tr key={i} className="border-t border-[var(--vscode-widget-border)] align-top">
+                                                                <td className="px-3 py-1.5 font-mono text-[var(--vscode-foreground)] break-all">{fa.target}</td>
+                                                                <td className="px-3 py-1.5 text-[var(--vscode-errorForeground)] whitespace-pre-wrap break-words">{fa.failureReason}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                                </Fragment>
                                 );
                             })}
                         </tbody>

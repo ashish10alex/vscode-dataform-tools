@@ -443,8 +443,14 @@ export interface WorkflowUrlEntry {
     location?: string;
     repositoryName?: string;
     state?: string;
+    failedActions?: FailedAction[];
     includedTags?: string[];
     includedTargets?: Target[];
+}
+
+export interface FailedAction {
+    target: string;
+    failureReason: string;
 }
 
 export interface WebviewMessage {

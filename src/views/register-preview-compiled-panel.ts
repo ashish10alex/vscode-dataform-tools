@@ -533,12 +533,43 @@ export class CompiledQueryPanel {
 
                 if (urlsToRefresh.length > 0) {
                     const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
-                        if (item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
+                        const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
+                        if ((item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED' || needsActionBackfill) && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
                             try {
                                 const dataformClient = new DataformTools(item.projectId, item.location);
                                 const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
                                 if (invocation && invocation.state) {
                                   item.state = invocation.state as string;
+                                }
+                                if (item.state === 'FAILED') {
+                                    try {
+                                        const actions = await dataformClient.queryWorkflowInvocationActions(item.repositoryName, item.workflowInvocationId);
+                                        logger.debug(`queryWorkflowInvocationActions returned ${actions?.length ?? 0} actions for ${item.workflowInvocationId}`);
+                                        const failedActions = (actions || [])
+                                            .filter((a: any) => !!a?.failureReason)
+                                            .map((a: any) => {
+                                                const tgt = a.canonicalTarget || a.target || {};
+                                                const parts = [tgt.database, tgt.schema, tgt.name].filter(Boolean);
+                                                const target = parts.join('.') || '(unknown)';
+                                                return { target, failureReason: a.failureReason as string };
+                                            });
+                                        if (failedActions.length > 0) {
+                                            item.failedActions = failedActions;
+                                        } else {
+                                            item.failedActions = [{
+                                                target: '(workflow)',
+                                                failureReason: `Workflow invocation reported FAILED but the Dataform API returned no per-action failure reasons (${actions?.length ?? 0} action(s) inspected). This usually means the failure happened before any action ran (e.g. compilation or workspace sync). Open in GCP for full logs.`,
+                                            }];
+                                        }
+                                    } catch (e: any) {
+                                        logger.error(`Error fetching workflow invocation actions: ${e.message}`);
+                                        item.failedActions = [{
+                                            target: '(error)',
+                                            failureReason: `Unable to fetch failure details from the Dataform API: ${e.message}`,
+                                        }];
+                                    }
+                                } else {
+                                    item.failedActions = undefined;
                                 }
                             } catch (e: any) {
                                 logger.error(`Error fetching workflow invocation status: ${e.message}`);
