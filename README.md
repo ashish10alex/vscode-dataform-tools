@@ -275,13 +275,15 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
 <table>
   <thead>
     <tr>
+      <th>Name</th>
       <th>Registry</th>
-      <th>Badge </th>
+      <th>Badge</th>
       <th>Description</th>
     </tr>
   </thead>
   <tbody>
     <tr>
+      <td rowspan="2">Dataform Tools</td>
       <td><a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">VS Code marketplace</a></td>
       <td>
         <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">
@@ -289,7 +291,7 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
           <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads">
         </a>
       </td>
-      <td>Marketplace for VS Code editor</td>
+      <td rowspan="2">VS Code extension — dependency graph, compiled query preview, dry-run stats, inline diagnostics, go-to-definition, autocomplete, formatting, and more. Same build is published to both the VS Code marketplace and Open VSX (for forks such as <a href="https://cursor.com">Cursor</a> and <a href="https://antigravity.google/">Antigravity</a>).</td>
     </tr>
     <tr>
       <td><a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">Open VSX marketplace</a></td>
@@ -299,25 +301,37 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
           <img src="https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
         </a>
       </td>
-      <td>Marketplace for VS Code forks such as <a href="https://cursor.com">Cursor</a> and <a href="https://antigravity.google/">Antigravity</a></td>
     </tr>
     <tr>
-      <td> <a href="https://pypi.org/project/dataform-tools/">PyPi</a></td>
+      <td><code>@ashishalex/dataform-graph</code></td>
+      <td><a href="https://www.npmjs.com/package/@ashishalex/dataform-graph">npm</a></td>
       <td>
-        <a href="https://pypi.org/project/dataform-tools/">
-          <img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version">
+        <a href="https://www.npmjs.com/package/@ashishalex/dataform-graph">
+          <img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-graph" alt="NPM Version">
+          <img src="https://img.shields.io/npm/dm/%40ashishalex%2Fdataform-graph" alt="NPM Downloads">
         </a>
       </td>
-      <td>wrapper for google-cloud-dataform python package</td>
+      <td><code>dataform-graph</code> CLI — serves the dependency graph in your browser; no VS Code required (<a href="./packages/dataform-graph-cli/README.md">readme</a>).</td>
     </tr>
     <tr>
-      <td> <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
+      <td><code>@ashishalex/dataform-tools</code></td>
+      <td><a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
       <td>
         <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">
           <img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools" alt="NPM Version">
         </a>
       </td>
-      <td>wrapper for google-cloud/dataform npm package </td>
+      <td>Programmatic wrapper around the <code>@google-cloud/dataform</code> npm package.</td>
+    </tr>
+    <tr>
+      <td><code>dataform-tools</code></td>
+      <td><a href="https://pypi.org/project/dataform-tools/">PyPI</a></td>
+      <td>
+        <a href="https://pypi.org/project/dataform-tools/">
+          <img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version">
+        </a>
+      </td>
+      <td>Programmatic wrapper around the <code>google-cloud-dataform</code> Python package.</td>
     </tr>
   </tbody>
 </table>
