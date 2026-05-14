@@ -18,6 +18,14 @@
       "bootstrap-sha": "f1915ed2d1d200c7904066a1de87bf19f23842df",
       "changelog-path": "CHANGELOG.md",
       "skip-github-release": true
+    },
+    "packages/dataform-graph-cli": {
+      "release-type": "node",
+      "package-name": "@ashishalex/dataform-graph",
+      "component": "dataform-graph-cli",
+      "bootstrap-sha": "aba54617edd6e083ccb517c021c8ea27c99cd70a",
+      "changelog-path": "CHANGELOG.md",
+      "skip-github-release": true
     }
   }
 }

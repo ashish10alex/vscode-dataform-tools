@@ -2,7 +2,48 @@ import * as vscode from 'vscode';
 import { logger } from '../logger';
 import { getNonce, getPostionOfSourceDeclaration, getWorkspaceFolder } from '../utils';
 import { generateDependancyTreeMetadata } from '../dependancyTreeNodeMeta';
+import { fetchTableMetadata } from '../hoverProvider';
 import path from 'path';
+
+function normalizeSchemaFields(raw: any[]): Array<{ name: string; type: string; mode?: string; description?: string; fields?: any[] }> {
+    if (!Array.isArray(raw)) {return [];}
+    return raw.map((f) => ({
+        name: String(f?.name ?? ''),
+        type: String(f?.type ?? ''),
+        mode: f?.mode ? String(f.mode) : undefined,
+        description: f?.description ? String(f.description) : undefined,
+        fields: Array.isArray(f?.fields) ? normalizeSchemaFields(f.fields) : undefined,
+    }));
+}
+
+/** Build the most informative message we can from a thrown BigQuery / gax error. */
+function describeBqError(err: any): string {
+    if (!err) {return 'unknown error';}
+    const parts: string[] = [];
+    if (typeof err.code === 'number' || typeof err.code === 'string') {
+        parts.push(`[${err.code}]`);
+    }
+    if (typeof err.message === 'string' && err.message) {
+        parts.push(err.message);
+    }
+    if (Array.isArray(err.errors) && err.errors.length > 0) {
+        const details = err.errors
+            .map((e: any) => {
+                const segs: string[] = [];
+                if (e?.reason) {segs.push(String(e.reason));}
+                if (e?.message) {segs.push(String(e.message));}
+                if (e?.location) {segs.push(`(${e.location})`);}
+                return segs.join(' ');
+            })
+            .filter(Boolean)
+            .join('; ');
+        if (details) {parts.push(`— ${details}`);}
+    }
+    if (parts.length === 0) {
+        try { return JSON.stringify(err); } catch { return String(err); }
+    }
+    return parts.join(' ');
+}
 
 export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview: vscode.Webview) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'dependancy_graph.js'));
@@ -102,6 +143,42 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                         }
                     }
                     return;
+                case 'getSchema': {
+                    const requestId = message.requestId;
+                    const { projectId, datasetId, tableId } = message.value ?? {};
+                    if (!projectId || !datasetId || !tableId) {
+                        panel.webview.postMessage({
+                            type: 'response',
+                            requestId,
+                            ok: false,
+                            error: 'projectId, datasetId, and tableId are required',
+                        });
+                        return;
+                    }
+                    try {
+                        const metadata = await fetchTableMetadata(projectId, datasetId, tableId);
+                        const lastModifiedTime =
+                            typeof metadata?.lastModifiedTime === 'string' ? metadata.lastModifiedTime : undefined;
+                        panel.webview.postMessage({
+                            type: 'response',
+                            requestId,
+                            ok: true,
+                            value: {
+                                fields: normalizeSchemaFields(metadata?.schema?.fields ?? []),
+                                lastModifiedTime,
+                            },
+                        });
+                    } catch (e: any) {
+                        logger.error(`Schema lookup failed for ${projectId}.${datasetId}.${tableId}: ${e?.stack ?? e}`);
+                        panel.webview.postMessage({
+                            type: 'response',
+                            requestId,
+                            ok: false,
+                            error: describeBqError(e),
+                        });
+                    }
+                    return;
+                }
                 case 'saveGraphImage': {
                     const dataUrl = message.value.dataUrl;
                     const format = message.value.format;

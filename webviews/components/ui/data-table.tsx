@@ -20,6 +20,8 @@ interface DataTableProps<TData, TValue> {
   autoFocusColumnId?: string
   onRowClick?: (data: TData) => void
   initialSorting?: SortingState
+  /** Render with pagination controls + page-size dropdown. Defaults to true. */
+  paginated?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -28,6 +30,7 @@ export function DataTable<TData, TValue>({
   autoFocusColumnId,
   onRowClick,
   initialSorting = [],
+  paginated = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -37,7 +40,9 @@ export function DataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // Skip the pagination row model entirely when disabled so the table just
+    // renders the filtered rows in full.
+    ...(paginated ? { getPaginationRowModel: getPaginationRowModel() } : {}),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
@@ -180,7 +185,7 @@ export function DataTable<TData, TValue>({
       </div>
 
        {/* Pagination */}
-       {table.getPageCount() > 1 && (
+       {paginated && table.getPageCount() > 1 && (
         <div className="flex items-center justify-between px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] text-xs text-[var(--vscode-foreground)]">
              <div className="flex items-center space-x-2">
                 <span className="flex items-center gap-1">

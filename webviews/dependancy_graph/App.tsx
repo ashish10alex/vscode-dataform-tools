@@ -21,18 +21,20 @@ import { DataTable } from '../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import TableNode from './TableNode';
 import { nodePositioning } from './nodePositioning';
-import { getVsCodeApi } from './vscode';
+import { getTransport } from './transport';
 import StyledSelect, { OptionType } from './components/StyledSelect';
 import DownloadButton from './DownloadButton';
+import SchemaModal, { SchemaModalState } from './SchemaModal';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const nodeTypes = {
   tableNode: TableNode,
 };
 
-// Get vscode API
-// @ts-ignore
-const vscode = getVsCodeApi();
+const transport = getTransport();
+// PNG export round-trips through the VS Code host's "Save As" dialog; outside
+// the extension (CLI / standalone browser) there's nothing on the other end.
+const SHOW_EXPORT_BUTTON = transport.mode === 'vscode';
 
 interface ModelData {
   id: string;
@@ -77,52 +79,140 @@ const Flow: React.FC = () => {
   const [_, setIsReady] = useState<boolean>(false);
   const [tableOptions, setTableOptions] = useState<OptionType[]>([]);
   const [tagOptions, setTagOptions] = useState<OptionType[]>([]);
+  const [selectedTable, setSelectedTable] = useState<OptionType | null>(null);
+  const [selectedTag, setSelectedTag] = useState<OptionType | null>(null);
   const [rootNodeId, setRootNodeId] = useState<string | null>(null);
   const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [schemaModal, setSchemaModal] = useState<SchemaModalState | null>(null);
 
   // Send ready message when component mounts
   useEffect(() => {
     // Small delay to ensure React has fully rendered
     setTimeout(() => {
       setIsReady(true);
-      vscode.postMessage({ type: 'webviewReady' });
+      transport.postMessage({ type: 'webviewReady' });
     }, 50);
   }, []);
 
+  // Listen for "show schema" requests dispatched by node buttons. We fetch via
+  // the transport and update modal state by `fullTableName` so a quick second
+  // click on another node doesn't get clobbered by a stale response.
   useEffect(() => {
-    const messageHandler = (event: MessageEvent) => {
-      const message = event.data;
-      
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        projectId: string;
+        datasetId: string;
+        tableId: string;
+        fullTableName: string;
+      };
+      setSchemaModal({ status: 'loading', ...detail });
+      transport
+        .request<{ fields: any[]; lastModifiedTime?: string }>('getSchema', {
+          projectId: detail.projectId,
+          datasetId: detail.datasetId,
+          tableId: detail.tableId,
+        })
+        .then((result) => {
+          setSchemaModal((prev) =>
+            prev && prev.fullTableName === detail.fullTableName
+              ? {
+                  status: 'loaded',
+                  ...detail,
+                  fields: result.fields ?? [],
+                  lastModifiedTime: result.lastModifiedTime,
+                }
+              : prev
+          );
+        })
+        .catch((err: any) => {
+          const message =
+            (err && typeof err.message === 'string' && err.message) ||
+            (err && typeof err === 'object' ? JSON.stringify(err) : String(err));
+          setSchemaModal((prev) =>
+            prev && prev.fullTableName === detail.fullTableName
+              ? { status: 'error', ...detail, error: message }
+              : prev
+          );
+        });
+    };
+    window.addEventListener('dataform-graph:show-schema', handler as EventListener);
+    return () => window.removeEventListener('dataform-graph:show-schema', handler as EventListener);
+  }, []);
+
+  // Esc closes the schema modal.
+  useEffect(() => {
+    if (!schemaModal) {return;}
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {setSchemaModal(null);}
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [schemaModal]);
+
+  useEffect(() => {
+    const messageHandler = (message: any) => {
       switch (message.type) {
         case 'testMessage':
           setMessage(message.value);
           break;
         case 'nodeMetadata':
-          const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx } = message.value;
+          const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx, initialTag } = message.value;
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
           const uniqueTags: string[] = Array.from(new Set(initialNodesStatic.flatMap((node: Node) => node.data.tags as string[])));
           setUniqueTags(uniqueTags);
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
-          const filteredEdges = initialEdgesStatic.filter((edge: Edge) => 
-            edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
-          );
-          const filteredNodes = initialNodesStatic.filter((node: Node) => 
-            filteredEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
-          );
+
+          // Three possible initial states, in priority order:
+          //   1. initialTag — host requested a tag-filtered view (CLI --tag).
+          //   2. currentActiveEditorIdx — host pointed at a specific node (extension active editor / CLI --model).
+          //   3. neither — show the full graph.
+          const hasTag = !!initialTag && uniqueTags.includes(initialTag);
+          const hasFocus = !hasTag && !!currentActiveEditorIdx && initialNodesStatic.some((n: Node) => n.id === currentActiveEditorIdx);
+          let initialNodes: Node[];
+          let initialEdges: Edge[];
+          let initialTableOpts = initialNodesStatic;
+
+          if (hasTag) {
+            const tagEdges = initialEdgesStatic.filter((edge: Edge) =>
+              Array.isArray((edge as any).tags) && (edge as any).tags.includes(initialTag)
+            );
+            const includedIds = new Set<string>();
+            for (const e of tagEdges) { includedIds.add(e.source as string); includedIds.add(e.target as string); }
+            for (const n of initialNodesStatic) {
+              if (((n.data?.tags as string[] | undefined) ?? []).includes(initialTag)) { includedIds.add(n.id); }
+            }
+            initialNodes = initialNodesStatic.filter((n: Node) => includedIds.has(n.id));
+            initialEdges = tagEdges;
+            initialTableOpts = initialNodes;
+          } else if (hasFocus) {
+            initialEdges = initialEdgesStatic.filter((edge: Edge) =>
+              edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
+            );
+            initialNodes = initialNodesStatic.filter((node: Node) =>
+              initialEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
+            );
+          } else {
+            initialEdges = initialEdgesStatic;
+            initialNodes = initialNodesStatic;
+          }
+
           const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-            filteredNodes,
-            filteredEdges,
+            initialNodes,
+            initialEdges,
           );
           setNodes(positionedNodes);
           setEdges(positionedEdges);
 
-          if (currentActiveEditorIdx) {
+          if (hasFocus) {
             setRootNodeId(currentActiveEditorIdx);
           }
+          if (hasTag) {
+            setSelectedTag({ value: initialTag, label: initialTag });
+          }
 
-          // Initial fitView 
+          // Initial fitView
           setTimeout(() => {
             if (reactFlowInstance.current) {
               reactFlowInstance.current.fitView({
@@ -131,7 +221,7 @@ const Flow: React.FC = () => {
             }
           }, 100);
 
-          setTableOptions(initialNodesStatic.map((node: any) => ({
+          setTableOptions(initialTableOpts.map((node: any) => ({
             value: node.id,
             label: node.data.modelName as string
           })));
@@ -139,18 +229,16 @@ const Flow: React.FC = () => {
           setTagOptions(uniqueTags.map((tag) => ({
             value: tag,
             label: tag
-          }))
-        
-        );
+          })));
           break;
         // Add more message types as needed
       }
     };
 
-    window.addEventListener('message', messageHandler);
+    const unsubscribe = transport.onMessage(messageHandler);
 
     return () => {
-      window.removeEventListener('message', messageHandler);
+      unsubscribe();
     };
   }, []);
 
@@ -160,6 +248,13 @@ const Flow: React.FC = () => {
   );
 
   const handleTableSelect = (option: OptionType | null) => {
+    // Picking (or clearing) a table is mutually exclusive with the tag filter —
+    // clear the tag chip so the UI only advertises one active filter at a time.
+    setSelectedTable(option);
+    setSelectedTag(null);
+    // Restore the full table options too, in case they were narrowed by a tag filter.
+    setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
+
     // clear the nodes and edges in the existing graph
     setNodes([]);
     setEdges([]);
@@ -200,7 +295,14 @@ const Flow: React.FC = () => {
   };
 
   const handleTagSelect = (option: OptionType | null) => {
+    setSelectedTag(option);
+    // Picking (or clearing) a tag is mutually exclusive with the table filter.
+    setSelectedTable(null);
+
     if (!option) {
+      // When the tag is cleared, restore the full table-dropdown options so it
+      // doesn't stay scoped to the just-cleared tag.
+      setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
       return;
     }
 
@@ -208,30 +310,40 @@ const Flow: React.FC = () => {
     setEdges([]);
 
     setTimeout(() => {
-      const filteredEdges = fullEdges.filter((edge: any) =>  {
-        if(edge?.tags) {
-          return edge.tags.includes(option.value);
+      // Edges carry the downstream model's tags, so an edge with the tag
+      // means the consumer has it.
+      const tagEdges = fullEdges.filter((edge: any) =>
+        Array.isArray(edge?.tags) && edge.tags.includes(option.value)
+      );
+
+      // Include every node that either (a) has the tag itself, or (b) sits on
+      // a tag-tagged edge (covers upstream sources feeding a tagged model).
+      const includedIds = new Set<string>();
+      for (const e of tagEdges) {
+        includedIds.add(e.source as string);
+        includedIds.add(e.target as string);
+      }
+      for (const n of fullNodes) {
+        const nodeTags = (n.data?.tags as string[] | undefined) ?? [];
+        if (nodeTags.includes(option.value)) {
+          includedIds.add(n.id);
         }
-        return false;
-      });
-      const filteredNodes = fullNodes.filter((node: any) => filteredEdges.some((edge: any) => edge.source === node.id || edge.target === node.id));
+      }
+      const filteredNodes = fullNodes.filter((n: Node) => includedIds.has(n.id));
 
       setTableOptions(filteredNodes.map((node: any) => ({
         value: node.id,
         label: node.data.modelName as string
-      }))); 
-
-      // select one of the nodes from the selected tag
-      const selectedNode = filteredNodes[0];
-      const filteredEdgesFromSelectedNode = filteredEdges.filter((edge: any) => edge.source === selectedNode.id || edge.target === selectedNode.id);
-      const filteredNodesFromSelectedNode = filteredNodes.filter((node: any) => filteredEdgesFromSelectedNode.some((edge: any) => edge.source === node.id || edge.target === node.id));
+      })));
 
       const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-        filteredNodesFromSelectedNode,
-        filteredEdgesFromSelectedNode,
+        filteredNodes,
+        tagEdges,
       );
       setNodes(positionedNodes);
       setEdges(positionedEdges);
+      // Tag view has no single root, so Expand-left/right buttons are inapplicable.
+      setRootNodeId(null);
 
       if (reactFlowInstance.current) {
         reactFlowInstance.current?.fitView({
@@ -240,7 +352,7 @@ const Flow: React.FC = () => {
         });
       }
     }, 50);
-    
+
   };
 
   // Add this new handler for node clicks
@@ -366,6 +478,10 @@ const Flow: React.FC = () => {
     setNodes(positionedNodes);
     setEdges(positionedEdges);
     setRootNodeId(null);
+    // Reset both filter chips and the table-dropdown options to their full state.
+    setSelectedTag(null);
+    setSelectedTable(null);
+    setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
 
     if (reactFlowInstance.current) {
       reactFlowInstance.current.fitView({
@@ -432,7 +548,7 @@ const Flow: React.FC = () => {
           return !exclusionClasses.some(className => node.classList?.contains(className));
         },
       }).then((dataUrl) => {
-        vscode.postMessage({
+        transport.postMessage({
           type: 'saveGraphImage',
           value: {
             dataUrl,
@@ -516,6 +632,7 @@ const Flow: React.FC = () => {
         <div className="flex gap-4 items-center">
           <StyledSelect
             options={tagOptions}
+            value={selectedTag}
             onChange={handleTagSelect}
             isClearable
             placeholder="Search for a tag..."
@@ -524,6 +641,7 @@ const Flow: React.FC = () => {
 
           <StyledSelect
             options={tableOptions}
+            value={selectedTable}
             onChange={handleTableSelect}
             isClearable
             placeholder="Search for a table..."
@@ -552,7 +670,9 @@ const Flow: React.FC = () => {
             >
               Show full graph
             </button>
-            <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
+            {SHOW_EXPORT_BUTTON && (
+              <DownloadButton onClick={handleDownload} disabled={nodes.length === 0} isLoading={isDownloading} />
+            )}
           </div>
         </div>
       </div>
@@ -622,9 +742,9 @@ const Flow: React.FC = () => {
             </div>
             {!isTableCollapsed && (
               <div className="flex-1 overflow-hidden p-2">
-                <DataTable 
-                  columns={columns} 
-                  data={tableData} 
+                <DataTable
+                  columns={columns}
+                  data={tableData}
                   searchPlaceholder="Filter models..."
                   onRowClick={handleRowClick}
                 />
@@ -633,6 +753,8 @@ const Flow: React.FC = () => {
           </div>
         )}
       </div>
+
+      {schemaModal && <SchemaModal state={schemaModal} onClose={() => setSchemaModal(null)} />}
     </div>
   );
 };

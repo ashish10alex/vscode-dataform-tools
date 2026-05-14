@@ -14,6 +14,10 @@ on:
         description: "Force-publish the PyPI package at its current manifest version"
         type: boolean
         default: false
+      publish_dataform_graph_cli:
+        description: "Force-publish the dataform-graph CLI at its current manifest version"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -26,6 +30,7 @@ jobs:
     outputs:
       npm_released: ${{ steps.release.outputs['packages/npm--tag_name'] }}
       pypi_released: ${{ steps.release.outputs['packages/pypi--tag_name'] }}
+      dataform_graph_cli_released: ${{ steps.release.outputs['packages/dataform-graph-cli--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -93,3 +98,34 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/pypi/dist
+
+  publish-dataform-graph-cli:
+    needs: release-please
+    if: |
+      needs.release-please.outputs.dataform_graph_cli_released != '' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_dataform_graph_cli)
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm (>=11.5.1 required for Trusted Publishing)
+        run: npm install -g npm@latest
+
+      - name: Install root dependencies (needed for vite/esbuild build)
+        run: npm ci
+
+      - name: Build webviews + bundle CLI
+        run: npm run build:cli
+
+      - name: Publish to npm
+        run: npm publish --access public
+        working-directory: packages/dataform-graph-cli

@@ -438,6 +438,7 @@
         "compile": "npm run clean && npm run check-types && npm run build:webviews && npm run esbuild",
         "watch": "npm run clean && concurrently --raw \"npm run check-types -- --watch\" \"npm run esbuild-watch\" \"npm run webviews:watch\"",
         "build:webviews": "vite build",
+        "build:cli": "npm run build:webviews && node packages/dataform-graph-cli/build.js",
         "webviews:watch": "vite build --watch",
         "esbuild": "node esbuild.js",
         "esbuild-watch": "node esbuild.js --watch",
@@ -449,6 +450,7 @@
         "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {
+        "@inquirer/prompts": "^7.10.1",
         "@tanstack/react-table": "^8.21.3",
         "@types/dagre": "^0.7.52",
         "@types/dompurify": "^3.0.5",
@@ -470,6 +472,7 @@
         "@xyflow/react": "^12.4.3",
         "autoprefixer": "^10.4.24",
         "clsx": "^2.1.1",
+        "commander": "^10.0.1",
         "concurrently": "^9.1.2",
         "dagre": "^0.8.5",
         "esbuild": "^0.27.3",
