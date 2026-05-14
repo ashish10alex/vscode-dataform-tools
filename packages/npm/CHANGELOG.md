@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/npm-package-v1.1.0...npm-package-v1.2.0) (2026-05-14)
+
+
+### Features
+
+* query actions in a workflow invocation ([#324](https://github.com/ashish10alex/vscode-dataform-tools/issues/324)) ([8a1c6ff](https://github.com/ashish10alex/vscode-dataform-tools/commit/8a1c6ff4d519d8f48a9c71eea02c91b0cf49b02e))
+
 ## [1.1.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/npm-package-v1.0.10...npm-package-v1.1.0) (2026-05-08)
 
 
