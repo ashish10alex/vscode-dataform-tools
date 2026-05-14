@@ -231,3 +231,22 @@ if (latest) {
     console.log(`URL: ${client.getWorkflowInvocationUrl("repository-name", invocationId)}`)
 }
 ```
+
+### Query Workflow Invocation Actions
+
+Lists the actions (tables, assertions, operations, etc.) executed by a specific workflow invocation, along with their state.
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+const latest = await client.getLatestWorkflowInvocation("repository-name")
+if (latest?.name) {
+    const invocationId = latest.name.split("/").pop()
+    // Optional: pass pageSize / pageToken for a single page
+    const actions = await client.queryWorkflowInvocationActions("repository-name", invocationId, { pageSize: 50 })
+    for (const action of actions) {
+        console.log(`${action.target?.name}: ${action.state}`)
+    }
+}
+```

@@ -222,3 +222,24 @@ if latest is not None:
     print(f"State: {latest.state}")
     print(f"URL: {url}")
 ```
+
+### Query Workflow Invocation Actions
+
+Lists the actions (tables, assertions, operations, etc.) executed by a specific workflow invocation, along with their state.
+
+```py
+from dataform_tools import DataformTools
+client = DataformTools("your-gcp-project-id", "europe-west2")
+
+latest = client.get_latest_workflow_invocation("repository-name")
+if latest is not None:
+    invocation_id = latest.name.split("/")[-1]
+    # Optional: pass page_size / page_token for a single page
+    actions = client.query_workflow_invocation_actions(
+        "repository-name",
+        invocation_id,
+        page_size=50,
+    )
+    for action in actions:
+        print(f"{action.target.name}: {action.state}")
+```
