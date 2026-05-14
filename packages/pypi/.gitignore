@@ -72,3 +72,4 @@ Thumbs.db
 
 # Local scratch / test scripts
 tmp/
+test.py

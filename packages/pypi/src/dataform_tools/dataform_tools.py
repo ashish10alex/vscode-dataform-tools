@@ -299,6 +299,28 @@ class DataformTools():
         )
         return next(iter(invocations), None)
 
+    def query_workflow_invocation_actions(self, repository_name: str, workflow_invocation_id: str, **kwargs):
+        """Queries workflow invocation actions in Dataform.
+        Args:
+            repository_name (str): The name of the repository.
+            workflow_invocation_id (str): The ID of the workflow invocation.
+            **kwargs: Optional parameters for the request like page_size, page_token.
+        Returns:
+            The workflow invocation actions.
+        """
+        if not repository_name:
+            raise ValueError("repository_name must be provided.")
+        if not workflow_invocation_id:
+            raise ValueError("workflow_invocation_id must be provided.")
+
+        workflow_invocation_path = f"projects/{self.gcp_project_id}/locations/{self.gcp_location}/repositories/{repository_name}/workflowInvocations/{workflow_invocation_id}"
+        request = dataform_v1beta1.QueryWorkflowInvocationActionsRequest(
+            name=workflow_invocation_path,
+            **kwargs
+        )
+        workflow_invocation_actions = self.client.query_workflow_invocation_actions(request)
+        return workflow_invocation_actions
+
     def write_file(self, repository_name:str, workspace_name:str, relative_path:str, contents:str|bytes)-> None:
         """Writes a file to a workspace in Dataform.
         Args:
