@@ -1,6 +1,6 @@
 {
     "name": "@ashishalex/dataform-graph",
-    "version": "0.3.0",
+    "version": "0.2.0",
     "description": "CLI that serves the dataform-tools dependency graph in your browser. Wraps `dataform compile --json` and renders the same React graph used by the VS Code extension.",
     "homepage": "https://github.com/ashish10alex/vscode-dataform-tools/tree/main/packages/dataform-graph-cli",
     "bugs": {
