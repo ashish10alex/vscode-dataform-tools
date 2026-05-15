@@ -33,9 +33,9 @@ jobs:
     # matching the canonical commit subject produced by release-please:
     #   chore(main): release <component> <version>
     outputs:
-      npm_released: ${{ contains(github.event.head_commit.message, 'chore(main): release npm-package') }}
-      pypi_released: ${{ contains(github.event.head_commit.message, 'chore(main): release pypi-package') }}
-      dataform_graph_cli_released: ${{ contains(github.event.head_commit.message, 'chore(main): release dataform-graph-cli') }}
+      npm_released: "${{ contains(github.event.head_commit.message, 'chore(main): release npm-package') }}"
+      pypi_released: "${{ contains(github.event.head_commit.message, 'chore(main): release pypi-package') }}"
+      dataform_graph_cli_released: "${{ contains(github.event.head_commit.message, 'chore(main): release dataform-graph-cli') }}"
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
