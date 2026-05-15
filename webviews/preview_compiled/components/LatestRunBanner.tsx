@@ -226,7 +226,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                             <div className="text-xs font-medium text-[var(--vscode-foreground)]">
                                 Actions ({actionRows.length})
                             </div>
-                            <div className="max-h-96 overflow-hidden">
+                            <div className="max-h-[28rem] overflow-auto">
                                 <DataTable
                                     columns={actionColumns}
                                     data={actionRows}
