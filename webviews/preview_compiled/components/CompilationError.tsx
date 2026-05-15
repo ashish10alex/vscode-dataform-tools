@@ -3,6 +3,7 @@ import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
 import { WebviewState, CompilationErrorType } from '../types';
+import { CompilerOverrides } from './CompilerOverrides';
 
 interface CompilationErrorProps {
   state: WebviewState;
@@ -243,72 +244,78 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
     ].filter((g) => g.errors.length > 0);
 
     return (
-      <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
-        <div className="flex items-center mb-3">
-          <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mr-2 flex-shrink-0" />
-          <h3 className="m-0 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
-            Error compiling Dataform
-          </h3>
-          <span className="ml-auto text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60">
-            {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        <div className="space-y-1">
-          {groups.map((group) => (
-            <AccordionSection
-              key={group.key}
-              label={group.label}
-              count={group.errors.length}
-              isOpen={openSections[group.key]}
-              onToggle={() => toggleSection(group.key)}
-              errors={group.errors}
-            />
-          ))}
-        </div>
-
-        <p className="mt-3 mb-0 text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60 italic">
-          Run{' '}
-          <code className="px-1 py-0.5 bg-[var(--vscode-editor-background)] opacity-70 rounded font-mono border border-[var(--vscode-widget-border)]">
-            dataform compile
-          </code>{' '}
-          in the terminal for the full error output.
-        </p>
-
-        {possibleResolutions && possibleResolutions.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-[var(--vscode-inputValidation-errorBorder)]">
-            <h4 className="mt-0 mb-2 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
-              Possible fixes:
-            </h4>
-            <ol className="mt-0 ml-4 list-decimal list-outside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-1 text-sm">
-              {possibleResolutions.map((resolution, i) => (
-                <li
-                  key={i}
-                  // eslint-disable-next-line react/no-danger -- resolution strings are author-controlled (from extension source code), not user input; DOMPurify further restricts to b/code only
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(resolution, {
-                      ALLOWED_TAGS: ['b', 'code'],
-                      ALLOWED_ATTR: [],
-                    }),
-                  }}
-                />
-              ))}
-            </ol>
+      <>
+        <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+          <div className="flex items-center mb-3">
+            <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mr-2 flex-shrink-0" />
+            <h3 className="m-0 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
+              Error compiling Dataform
+            </h3>
+            <span className="ml-auto text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60">
+              {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
+            </span>
           </div>
-        )}
-      </div>
+
+          <div className="space-y-1">
+            {groups.map((group) => (
+              <AccordionSection
+                key={group.key}
+                label={group.label}
+                count={group.errors.length}
+                isOpen={openSections[group.key]}
+                onToggle={() => toggleSection(group.key)}
+                errors={group.errors}
+              />
+            ))}
+          </div>
+
+          <p className="mt-3 mb-0 text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60 italic">
+            Run{' '}
+            <code className="px-1 py-0.5 bg-[var(--vscode-editor-background)] opacity-70 rounded font-mono border border-[var(--vscode-widget-border)]">
+              dataform compile
+            </code>{' '}
+            in the terminal for the full error output.
+          </p>
+
+          {possibleResolutions && possibleResolutions.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[var(--vscode-inputValidation-errorBorder)]">
+              <h4 className="mt-0 mb-2 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
+                Possible fixes:
+              </h4>
+              <ol className="mt-0 ml-4 list-decimal list-outside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-1 text-sm">
+                {possibleResolutions.map((resolution, i) => (
+                  <li
+                    key={i}
+                    // eslint-disable-next-line react/no-danger -- resolution strings are author-controlled (from extension source code), not user input; DOMPurify further restricts to b/code only
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(resolution, {
+                        ALLOWED_TAGS: ['b', 'code'],
+                        ALLOWED_ATTR: [],
+                      }),
+                    }}
+                  />
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+        <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+      </>
     );
   }
 
   if (errorMessage) {
     return (
-      <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
-        <div className="flex items-start">
-          <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-2 flex-shrink-0" />
-          {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
-          <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
+      <>
+        <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-2 flex-shrink-0" />
+            {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
+            <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
+          </div>
         </div>
-      </div>
+        <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+      </>
     );
   }
 

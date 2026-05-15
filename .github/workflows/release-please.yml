@@ -27,10 +27,15 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # Note: per-package `skip-github-release: true` in release-please-config.json
+    # means release-please-action never emits the `<path>--tag_name` outputs that
+    # would otherwise gate the publish jobs. Instead, detect a release-PR merge by
+    # matching the canonical commit subject produced by release-please:
+    #   chore(main): release <component> <version>
     outputs:
-      npm_released: ${{ steps.release.outputs['packages/npm--tag_name'] }}
-      pypi_released: ${{ steps.release.outputs['packages/pypi--tag_name'] }}
-      dataform_graph_cli_released: ${{ steps.release.outputs['packages/dataform-graph-cli--tag_name'] }}
+      npm_released: "${{ contains(github.event.head_commit.message, 'chore(main): release npm-package') }}"
+      pypi_released: "${{ contains(github.event.head_commit.message, 'chore(main): release pypi-package') }}"
+      dataform_graph_cli_released: "${{ contains(github.event.head_commit.message, 'chore(main): release dataform-graph-cli') }}"
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -41,7 +46,7 @@ jobs:
   publish-npm:
     needs: release-please
     if: |
-      needs.release-please.outputs.npm_released != '' ||
+      needs.release-please.outputs.npm_released == 'true' ||
       (github.event_name == 'workflow_dispatch' && inputs.publish_npm)
     runs-on: ubuntu-latest
     permissions:
@@ -72,7 +77,7 @@ jobs:
   publish-pypi:
     needs: release-please
     if: |
-      needs.release-please.outputs.pypi_released != '' ||
+      needs.release-please.outputs.pypi_released == 'true' ||
       (github.event_name == 'workflow_dispatch' && inputs.publish_pypi)
     runs-on: ubuntu-latest
     permissions:
@@ -102,7 +107,7 @@ jobs:
   publish-dataform-graph-cli:
     needs: release-please
     if: |
-      needs.release-please.outputs.dataform_graph_cli_released != '' ||
+      needs.release-please.outputs.dataform_graph_cli_released == 'true' ||
       (github.event_name == 'workflow_dispatch' && inputs.publish_dataform_graph_cli)
     runs-on: ubuntu-latest
     permissions:
