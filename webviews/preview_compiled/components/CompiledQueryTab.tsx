@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { WebviewState } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
@@ -22,6 +22,7 @@ import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import * as RadixTabs from "@radix-ui/react-tabs";
+import { CompilerOverrides } from "./CompilerOverrides";
 
 
 
@@ -33,62 +34,6 @@ interface CompiledQueryTabProps {
 export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
 }) => {
-  const [compilerOptions, setCompilerOptions] = useState("");
-  const [isCompilerOptionsOpen, setIsCompilerOptionsOpen] = useState(false);
-  const [tablePrefix, setTablePrefix] = useState("");
-  const [schemaSuffix, setSchemaSuffix] = useState("");
-  const [databaseSuffix, setDatabaseSuffix] = useState("");
-  const [otherOptions, setOtherOptions] = useState("");
-
-  // Parse initial compiler options
-  useEffect(() => {
-    // Initialize from prop if available and local state is empty (initial load)
-    if (state.compilerOptions && !tablePrefix && !schemaSuffix && !databaseSuffix && !otherOptions) {
-        setCompilerOptions(state.compilerOptions);
-        setIsCompilerOptionsOpen(true);
-        
-        const parts = state.compilerOptions.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-        let tp = "", ss = "", ds = "", other = [];
-        
-        for (const part of parts) {
-            if (part.startsWith("--table-prefix=")) {
-                tp = part.split('=')[1].replace(/"/g, '');
-            } else if (part.startsWith("--schema-suffix=")) {
-                ss = part.split('=')[1].replace(/"/g, '');
-            } else if (part.startsWith("--database-suffix=")) {
-                ds = part.split('=')[1].replace(/"/g, '');
-            } else {
-                other.push(part);
-            }
-        }
-        setTablePrefix(tp);
-        setSchemaSuffix(ss);
-        setDatabaseSuffix(ds);
-        setOtherOptions(other.join(" "));
-    }
-  }, [state.compilerOptions]); // Run when state.compilerOptions is received
-
-  // Reconstruct compiler options string when individual fields change
-  useEffect(() => {
-      const parts = [];
-      if (tablePrefix) {
-          parts.push(`--table-prefix="${tablePrefix}"`);
-      }
-      if (schemaSuffix) {
-          parts.push(`--schema-suffix="${schemaSuffix}"`);
-      }
-      if (databaseSuffix) {
-          parts.push(`--database-suffix="${databaseSuffix}"`);
-      }
-      if (otherOptions) {
-          parts.push(otherOptions);
-      }
-      
-      const newOptions = parts.join(" ");
-      if (newOptions !== compilerOptions) {
-          setCompilerOptions(newOptions);
-      }
-  }, [tablePrefix, schemaSuffix, databaseSuffix, otherOptions]);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [fullRefresh, setFullRefresh] = useState(false);
@@ -112,25 +57,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       typeof d === "string" ? d : `${d.database}.${d.schema}.${d.name}`
     ) || []
   );
-
-  const isInitialMount = useRef(true);
-
-  // Debounced compiler options update
-  useEffect(() => {
-    if (isInitialMount.current && !compilerOptions) {
-      isInitialMount.current = false;
-      return;
-    }
-    isInitialMount.current = false;
-
-    const timer = setTimeout(() => {
-      vscode.postMessage({
-        command: "updateCompilerOptions",
-        value: compilerOptions,
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [compilerOptions]);
 
   const handleRunModel = (api: boolean) => {
     setRunningModel(true);
@@ -499,98 +425,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       {/* Toolbar */}
        <div className="flex flex-col gap-4">
 
-          {/* Compiler Options Section */}
-          <div className="pb-4 border-b border-[var(--vscode-widget-border)]/40">
-              <div
-                  className="flex items-center py-2 cursor-pointer hover:opacity-80 transition-opacity justify-between"
-                  onClick={() => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
-              >
-                  <div className="flex items-center">
-                      {isCompilerOptionsOpen ? (
-                          <ChevronDown className="w-4 h-4 mr-2 text-zinc-400" />
-                      ) : (
-                          <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
-                      )}
-                      <span className="font-semibold text-zinc-700 dark:text-zinc-200">Compiler Overrides</span>
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        vscode.postMessage({ command: 'openExternal', url: 'https://dataformtools.com/blog/compiler-options' });
-                    }}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
-                  >
-                    Docs <ExternalLink className="w-3 h-3 ml-1" />
-                  </button>
-              </div>
-
-              {isCompilerOptionsOpen && (
-                  <div className="pt-3 space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
-                                  Table Prefix
-                              </label>
-                              <input 
-                                  type="text" 
-                                  value={tablePrefix}
-                                  onChange={(e) => setTablePrefix(e.target.value)}
-                                  placeholder='e.g. AA'
-                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
-                              />
-                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Prefixes all table names (e.g. <code>AA_table</code>)</p>
-                          </div>
-                          <div>
-                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
-                                  Schema Suffix
-                              </label>
-                              <input 
-                                  type="text" 
-                                  value={schemaSuffix}
-                                  onChange={(e) => setSchemaSuffix(e.target.value)}
-                                  placeholder='e.g. dev'
-                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
-                              />
-                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Suffixes dataset names (e.g. <code>dataset_dev</code>)</p>
-                          </div>
-                          <div>
-                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
-                                  Database Suffix
-                              </label>
-                              <input 
-                                  type="text" 
-                                  value={databaseSuffix}
-                                  onChange={(e) => setDatabaseSuffix(e.target.value)}
-                                  placeholder='e.g. dev'
-                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
-                              />
-                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Suffixes project ID (e.g. <code>project_dev</code>)</p>
-                          </div>
-                           <div>
-                              <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
-                                  Other Options
-                              </label>
-                              <input 
-                                  type="text" 
-                                  value={otherOptions}
-                                  onChange={(e) => setOtherOptions(e.target.value)}
-                                  placeholder='e.g. --vars=key=value'
-                                  className="w-full bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] rounded px-3 py-1.5 text-sm text-[var(--vscode-input-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] transition-colors placeholder:text-[var(--vscode-input-placeholderForeground)]"
-                              />
-                              <p className="mt-1 text-[10px] text-[var(--vscode-descriptionForeground)] opacity-70">Additional CLI flags</p>
-                          </div>
-                      </div>
-                      
-                      {compilerOptions && (
-                          <div className="mt-2 pt-2 border-t border-[var(--vscode-widget-border)]">
-                              <span className="text-[10px] font-mono text-[var(--vscode-descriptionForeground)] opacity-70 select-all">
-                                  Generated: {compilerOptions}
-                              </span>
-                          </div>
-                      )}
-                  </div>
-              )}
-          </div>
+          <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
 
            <div className="flex flex-wrap gap-4 text-sm text-[var(--vscode-foreground)]">
                 <label className="flex items-center cursor-pointer space-x-2">
