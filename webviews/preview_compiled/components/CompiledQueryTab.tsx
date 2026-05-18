@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { WebviewState } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
@@ -18,12 +18,20 @@ import {
   Loader2,
   Clock,
   AlertCircle,
+  Tag,
 } from "lucide-react";
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { CompilerOverrides } from "./CompilerOverrides";
+import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
+import { OptionType } from "../../dependancy_graph/components/StyledSelect";
+import { MultiValue } from "react-select";
+
+const ACCENT_EXPLORE = "inset 2px 0 0 var(--vscode-charts-green)";
+const ACCENT_PREVIEW = "inset 2px 0 0 var(--vscode-charts-blue)";
+const ACCENT_RUN = "inset 2px 0 0 var(--vscode-charts-purple)";
 
 
 
@@ -51,6 +59,40 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   }, [state.workflowUrls, submittingSince]);
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
+  const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.selectedTags || []);
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const tagPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (state.selectedTags) { setSelectedTagsForRun(state.selectedTags); }
+  }, [state.selectedTags]);
+
+  useEffect(() => {
+    if (!tagPopoverOpen) { return; }
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (tagPopoverRef.current && !tagPopoverRef.current.contains(e.target as Node)) {
+        setTagPopoverOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setTagPopoverOpen(false); }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [tagPopoverOpen]);
+
+  const tagOptions: OptionType[] = useMemo(
+    () => (state.dataformTags || []).map(tag => ({ value: tag, label: tag })),
+    [state.dataformTags]
+  );
+  const selectedTagRunOptions: OptionType[] = useMemo(
+    () => selectedTagsForRun.map(tag => ({ value: tag, label: tag })),
+    [selectedTagsForRun]
+  );
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [openQueries, setOpenQueries] = useState<Record<string, boolean>>({});
   const isQueryOpen = (key: string) => openQueries[key] !== false;
@@ -80,6 +122,22 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       },
     });
     setTimeout(() => setRunningModel(false), api ? 3000 : 10000);
+  };
+
+  const handleRunTagApi = () => {
+    if (selectedTagsForRun.length === 0) { return; }
+    setRunningModel(true);
+    setSubmittingSince(Date.now());
+    vscode.postMessage({
+      command: "runTagApi",
+      value: {
+        selectedTags: selectedTagsForRun,
+        includeDependencies,
+        includeDependents,
+        fullRefresh,
+      },
+    });
+    setTimeout(() => setRunningModel(false), 3000);
   };
 
   const handleFormat = () => {
@@ -453,12 +511,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
            </div>
 
            <div className="flex flex-wrap items-center gap-1">
-               {/* Graph group */}
+               {/* Explore group */}
                <div className="flex items-center gap-1">
-                   <button onClick={handleDependencyGraph} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
+                   <button onClick={handleDependencyGraph} disabled={state.recompiling} style={{ boxShadow: ACCENT_EXPLORE }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
                        <Network className="w-4 h-4 mr-1.5" /> Graph
                    </button>
-                   <button onClick={handleDependencyInspector} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
+                   <button onClick={handleDependencyInspector} disabled={state.recompiling} style={{ boxShadow: ACCENT_EXPLORE }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
                        <ListTree className="w-4 h-4 mr-1.5" /> Inspector
                    </button>
                </div>
@@ -466,28 +524,77 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                <div className="w-px h-5 bg-[var(--vscode-widget-border)] mx-1" />
 
                {/* Preview group */}
-               <button onClick={handlePreviewResults} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+               <button onClick={handlePreviewResults} disabled={state.recompiling} style={{ boxShadow: ACCENT_PREVIEW }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                    <Eye className="w-4 h-4 mr-1.5" /> Preview Data
                </button>
 
-               {(state.testQuery || state.actionTypes?.some(t => t !== 'test')) && (
+               {(state.testQuery || state.actionTypes?.some(t => t !== 'test') || (state.dataformTags && state.dataformTags.length > 0)) && (
                    <div className="w-px h-5 bg-[var(--vscode-widget-border)] mx-1" />
                )}
 
                {/* Run group */}
                {state.testQuery && (
-                   <button onClick={handleRunTest} disabled={state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+                   <button onClick={handleRunTest} disabled={state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                        <Play className="w-4 h-4 mr-1.5" /> Run Tests
                    </button>
                )}
                {state.actionTypes?.some(t => t !== 'test') && (
                    <div className="flex items-center gap-1">
-                       <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
+                       <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                            <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
                        </button>
-                       <button onClick={() => { setSubmittingSince(Date.now()); handleRunModel(true); }} disabled={runningModel || state.recompiling} className="px-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
+                       <button onClick={() => { setSubmittingSince(Date.now()); handleRunModel(true); }} disabled={runningModel || state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
                            <Play className="w-4 h-4 mr-1.5" /> Run (API)
                        </button>
+                   </div>
+               )}
+               {state.dataformTags && state.dataformTags.length > 0 && (
+                   <div ref={tagPopoverRef} className="relative ml-1">
+                       <button
+                           onClick={() => setTagPopoverOpen(o => !o)}
+                           disabled={runningModel || state.recompiling}
+                           style={{ boxShadow: ACCENT_RUN }}
+                           className="pl-4 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50"
+                           title="Run by tag via Dataform API"
+                           aria-haspopup="dialog"
+                           aria-expanded={tagPopoverOpen}
+                       >
+                           <Tag className="w-4 h-4 mr-1.5" /> Run Tag (API)
+                           <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />
+                       </button>
+                       {tagPopoverOpen && (
+                           <div
+                               role="dialog"
+                               className="absolute top-full right-0 mt-1 z-20 w-[320px] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
+                           >
+                               <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run:</p>
+                               <StyledMultiSelect
+                                   options={tagOptions}
+                                   value={selectedTagRunOptions}
+                                   onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
+                                   placeholder="Search and select tags..."
+                                   isSearchable
+                                   closeMenuOnSelect={false}
+                                   autoFocus
+                               />
+                               <div className="flex justify-end gap-2 mt-3">
+                                   <button
+                                       onClick={() => setTagPopoverOpen(false)}
+                                       className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
+                                   >
+                                       Cancel
+                                   </button>
+                                   <button
+                                       onClick={() => { handleRunTagApi(); setTagPopoverOpen(false); }}
+                                       disabled={selectedTagsForRun.length === 0}
+                                       style={{ boxShadow: ACCENT_RUN }}
+                                       className="pl-4 pr-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                                   >
+                                       <Play className="w-3.5 h-3.5 mr-1.5" /> Run
+                                   </button>
+                               </div>
+                           </div>
+                       )}
                    </div>
                )}
            </div>
