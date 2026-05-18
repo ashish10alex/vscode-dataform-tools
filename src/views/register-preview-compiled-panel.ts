@@ -381,14 +381,19 @@ export class CompiledQueryPanel {
                 this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
                 return;
               case 'runTagApi': {
-                const tagsToRun: string[] = message.value.selectedTags || [];
+                const tagsToRun: string[] = Array.isArray(message.value.selectedTags)
+                    ? message.value.selectedTags.filter((t: unknown): t is string => typeof t === 'string' && t.trim() !== '')
+                    : [];
                 if (tagsToRun.length === 0) { return; }
+                const includeDependencies = !!message.value.includeDependencies;
+                const includeDependents = !!message.value.includeDependents;
+                const fullRefresh = !!message.value.fullRefresh;
                 await runTagWtApi(
                     extensionContext,
                     tagsToRun,
-                    message.value.includeDependencies,
-                    message.value.includeDependents,
-                    message.value.fullRefresh,
+                    includeDependencies,
+                    includeDependents,
+                    fullRefresh,
                     'api',
                 );
                 return;
