@@ -64,8 +64,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const tagPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (state.selectedTags) { setSelectedTagsForRun(state.selectedTags); }
-  }, [state.selectedTags]);
+    const available = state.dataformTags ?? [];
+    const incoming = state.selectedTags ?? [];
+    setSelectedTagsForRun(incoming.filter(t => available.includes(t)));
+  }, [state.selectedTags, state.dataformTags]);
 
   useEffect(() => {
     if (!tagPopoverOpen) { return; }
