@@ -315,13 +315,13 @@
                     "type": "string",
                     "default": ".vscode-dataform-tools/.sqlfluff",
                     "description": "Path to sqlfluff config file. Please make sure your .sqlfluff is compatible with .sqlx files",
-                    "pattern": ".*\\/\\.sqlfluff$"
+                    "pattern": "^$|.*\\/\\.sqlfluff$"
                 },
                 "vscode-dataform-tools.sqlfluffExecutablePath": {
                     "type": "string",
                     "default": "sqlfluff",
                     "description": "Path to sqlfluff executable",
-                    "pattern": "^.*sqlfluff(?:\\.exe)?$"
+                    "pattern": "^$|^.*sqlfluff(?:\\.exe)?$"
                 },
                 "vscode-dataform-tools.sourceAutoCompletionPreference": {
                     "type": "string",
@@ -346,13 +346,13 @@
                     "type": "string",
                     "default": null,
                     "markdownDescription": "**Override path to dataform executable**\n\n⚠️ **Only use this if the extension cannot find dataform automatically**\n\nThe extension automatically searches:\n- System PATH\n- Common tool managers (mise, asdf, nvm, etc.)\n- Standard installation locations\n\nUse this setting for:\n- **Specific versions** for testing: `/path/to/dataform-v3.0.25`\n- **Company-approved versions**: `/opt/company-tools/dataform`\n- **Non-standard locations**: Custom installation paths\n\n**Example**: `/usr/local/bin/dataform` or `${HOME}/.local/share/mise/installs/npm-dataform-cli/3.0.26/bin/dataform`",
-                    "pattern": "^.*dataform(?:\\.cmd|\\.exe)?$"
+                    "pattern": "^$|^.*dataform(?:\\.cmd|\\.exe)?$"
                 },
                 "vscode-dataform-tools.gcloudExecutablePath": {
                     "type": "string",
                     "default": null,
                     "markdownDescription": "**Override path to gcloud executable**\n\n⚠️ **Only use this if the extension cannot find gcloud automatically**\n\nThe extension automatically searches:\n- System PATH\n- Common tool managers (mise, asdf, etc.)\n- Standard gcloud installation locations\n\nUse this setting for:\n- **Specific versions** for testing: `/path/to/gcloud-v530.0.0`\n- **Company-approved versions**: `/opt/company-tools/gcloud`\n- **Non-standard locations**: Custom installation paths\n\n**Example**: `/usr/local/bin/gcloud` or `${HOME}/google-cloud-sdk/bin/gcloud`",
-                    "pattern": "^.*gcloud(?:\\.cmd|\\.exe)?$"
+                    "pattern": "^$|^.*gcloud(?:\\.cmd|\\.exe)?$"
                 },
                 "vscode-dataform-tools.compileAndDryRunBeforeFormatting": {
                     "type": "boolean",
@@ -385,7 +385,7 @@
                     "type": "string",
                     "default": null,
                     "markdownDescription": "GCP project ID to use for BigQuery queries. When not provided, the project ID will be inferred from your enviroment typically same as `gcloud config list project`",
-                    "pattern": "^[a-z0-9-]+$"
+                    "pattern": "^$|^[a-z0-9-]+$"
                 },
                 "vscode-dataform-tools.gcpLocation": {
                     "type": "string",
