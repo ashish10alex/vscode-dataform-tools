@@ -309,10 +309,22 @@ export class CompiledQueryPanel {
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
                 return;
-              case 'updateCompilerOptions':
+              case 'updateCompilerOptions': {
                 const compilerOptions = message.value;
-                vscode.workspace.getConfiguration('vscode-dataform-tools').update('compilerOptions', compilerOptions);
+                const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+                // Respect where the user has already configured `compilerOptions`.
+                // VS Code's `update()` default writes to Workspace settings, which
+                // leaks team-shared `.vscode/settings.json` when the user
+                // configured the value at the User level. Inspect existing scope
+                // and write back to the same place; fall back to Workspace for
+                // first-time use to preserve previous behavior.
+                const inspect = config.inspect('compilerOptions');
+                const target = inspect?.workspaceValue === undefined && inspect?.globalValue !== undefined
+                  ? vscode.ConfigurationTarget.Global
+                  : vscode.ConfigurationTarget.Workspace;
+                config.update('compilerOptions', compilerOptions, target);
                 return;
+              }
               case 'dependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
