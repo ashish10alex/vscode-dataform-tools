@@ -11,6 +11,7 @@ import { tableQueryOffset, incrementalTableOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
 import { calculateIncrementalSkipPreOpsOffset } from '../../offsetCalculations';
 import { getDocumentSymbols } from '../../documentSymbols';
+import { getQueryStringForPreview } from '../../previewQueryResults';
 
 /*
 WARN: The test would not be able to run if your project path is very long this is a known issue reported in https://github.com/microsoft/vscode-test/issues/232
@@ -859,6 +860,78 @@ suite('handleSemicolonPrePostOps', () => {
 `);
         assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, result.queryMeta.incrementalPreOpsQuery);
         assert.strictEqual(result.queryMeta.postOpsQuery, result.queryMeta.postOpsQuery);
+    });
+
+});
+
+suite("getQueryStringForPreview skipPreOps", () => {
+    const PRE_OPS = "DELETE FROM `proj.ds.tbl` WHERE date = '2024-01-01';";
+    const INC_PRE_OPS = "DELETE FROM `proj.ds.tbl` WHERE date BETWEEN start AND end;";
+    const SELECT = "SELECT date, COUNT(*) AS events FROM `proj.ds.src` GROUP BY date";
+
+    const buildFileMetadata = (type: string) => ({
+        tables: [],
+        queryMeta: {
+            type,
+            preOpsQuery: PRE_OPS,
+            incrementalPreOpsQuery: INC_PRE_OPS,
+            postOpsQuery: "",
+            assertionQuery: "",
+            assertionQueries: [],
+            tableQueries: [{ targetName: "t", query: SELECT, preOpsQuery: PRE_OPS }],
+            incrementalQueries: [{
+                targetName: "t",
+                incrementalQuery: SELECT,
+                nonIncrementalQuery: SELECT,
+                preOpsQuery: PRE_OPS,
+                incrementalPreOpsQuery: INC_PRE_OPS,
+            }],
+            operationQueries: [],
+            operationsQuery: SELECT,
+            testQuery: "",
+            expectedOutputQuery: "",
+            testQueries: [],
+            error: "",
+        }
+    });
+
+    test("table: includes pre-ops when skipPreOps is false", () => {
+        const query = getQueryStringForPreview(buildFileMetadata("table") as any, false, false);
+        assert.ok(query.includes(PRE_OPS), "expected pre-ops to be included");
+        assert.ok(query.includes(SELECT), "expected select to be included");
+    });
+
+    test("table: excludes pre-ops when skipPreOps is true", () => {
+        const query = getQueryStringForPreview(buildFileMetadata("table") as any, false, true);
+        assert.ok(!query.includes(PRE_OPS), "expected pre-ops to be excluded");
+        assert.strictEqual(query, SELECT);
+    });
+
+    test("view: excludes pre-ops when skipPreOps is true", () => {
+        const query = getQueryStringForPreview(buildFileMetadata("view") as any, false, true);
+        assert.strictEqual(query, SELECT);
+    });
+
+    test("operations: excludes pre-ops when skipPreOps is true", () => {
+        const withPreOps = getQueryStringForPreview(buildFileMetadata("operations") as any, false, false);
+        assert.ok(withPreOps.includes(PRE_OPS));
+        const skipped = getQueryStringForPreview(buildFileMetadata("operations") as any, false, true);
+        assert.strictEqual(skipped, SELECT);
+    });
+
+    test("incremental (isIncremental=true): excludes incremental pre-ops when skipPreOps is true", () => {
+        const withPreOps = getQueryStringForPreview(buildFileMetadata("incremental") as any, true, false);
+        assert.ok(withPreOps.includes(INC_PRE_OPS));
+        const skipped = getQueryStringForPreview(buildFileMetadata("incremental") as any, true, true);
+        assert.ok(!skipped.includes(INC_PRE_OPS), "expected incremental pre-ops to be excluded");
+        assert.strictEqual(skipped, SELECT);
+    });
+
+    test("incremental (isIncremental=false): excludes pre-ops when skipPreOps is true", () => {
+        const withPreOps = getQueryStringForPreview(buildFileMetadata("incremental") as any, false, false);
+        assert.ok(withPreOps.includes(PRE_OPS));
+        const skipped = getQueryStringForPreview(buildFileMetadata("incremental") as any, false, true);
+        assert.strictEqual(skipped, SELECT);
     });
 
 });

@@ -402,6 +402,11 @@
                     "default": false,
                     "markdownDescription": "If enabled, pre-operations query will be excluded from the query used for dry run. By default, pre-operations are included. `::WARNING::` any variable used in pre-operations query will not be resolved and will result in an error"
                 },
+                "vscode-dataform-tools.skipPreOpsInPreviewQuery": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "If enabled, the pre-operations (and incremental pre-operations) block is excluded from the query run by `Preview Data` / `Run`. Useful to preview a model's output without executing side effects such as `DELETE`/`MERGE` in `pre_operations`. By default, pre-operations are included."
+                },
                 "vscode-dataform-tools.formatOrdering": {
                     "type": "array",
                     "uniqueItems": true,

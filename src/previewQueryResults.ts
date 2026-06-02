@@ -11,19 +11,25 @@ export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsView
     }
 }
 
-export function getQueryStringForPreview(fileMetadata: TablesWtFullQuery, isIncremental: boolean): string {
+export function getQueryStringForPreview(fileMetadata: TablesWtFullQuery, isIncremental: boolean, skipPreOps?: boolean): string {
+    if (skipPreOps === undefined) {
+        skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInPreviewQuery') ?? false;
+    }
+    const preOpsQuery = skipPreOps ? "" : fileMetadata.queryMeta.preOpsQuery;
+    const incrementalPreOpsQuery = skipPreOps ? "" : fileMetadata.queryMeta.incrementalPreOpsQuery;
+
     let query = "";
     if (fileMetadata.queryMeta.type === "assertion") {
         query = fileMetadata.queryMeta.assertionQuery;
     } else if (fileMetadata.queryMeta.type === "table" || fileMetadata.queryMeta.type === "view") {
-        query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.tableQueries.map((t: { query: string }) => t.query).join("\n");
+        query = preOpsQuery + fileMetadata.queryMeta.tableQueries.map((t: { query: string }) => t.query).join("\n");
     } else if (fileMetadata.queryMeta.type === "operations") {
-        query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.operationsQuery;
+        query = preOpsQuery + fileMetadata.queryMeta.operationsQuery;
     } else if (fileMetadata.queryMeta.type === "incremental") {
         if (isIncremental === true){
-            query = fileMetadata.queryMeta.incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQueries.map((q: { incrementalQuery: string }) => q.incrementalQuery).join("\n");
+            query = incrementalPreOpsQuery + fileMetadata.queryMeta.incrementalQueries.map((q: { incrementalQuery: string }) => q.incrementalQuery).join("\n");
         } else {
-            query = fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.incrementalQueries.map((q: { nonIncrementalQuery: string }) => q.nonIncrementalQuery).join("\n");
+            query = preOpsQuery + fileMetadata.queryMeta.incrementalQueries.map((q: { nonIncrementalQuery: string }) => q.nonIncrementalQuery).join("\n");
         }
     } else if (fileMetadata.queryMeta.type === "test") {
         query = fileMetadata.queryMeta.testQuery;
