@@ -61,6 +61,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [loadingLineage, setLoadingLineage] = useState(false);
   const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.selectedTags || []);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const tagPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -140,6 +141,23 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       },
     });
     setTimeout(() => setRunningModel(false), 3000);
+  };
+
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+  const runTagShortcutHint = isMac ? "⌘↵" : "Ctrl+↵";
+  const runTagLabel = selectedTagsForRun.length === 0
+    ? "Run"
+    : `Run ${selectedTagsForRun.length} tag${selectedTagsForRun.length === 1 ? "" : "s"}`;
+
+  const handleTagPopoverKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" || selectedTagsForRun.length === 0) { return; }
+    // Cmd/Ctrl+Enter always runs. Plain Enter runs only when the react-select
+    // menu is closed, otherwise react-select owns Enter to toggle the focused option.
+    if (e.metaKey || e.ctrlKey || !tagMenuOpen) {
+      e.preventDefault();
+      handleRunTagApi();
+      setTagPopoverOpen(false);
+    }
   };
 
   const handleFormat = () => {
@@ -562,11 +580,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                            aria-expanded={tagPopoverOpen}
                        >
                            <Tag className="w-4 h-4 mr-1.5" /> Run Tag (API)
+                           {selectedTagsForRun.length > 0 && (
+                               <span
+                                   className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full"
+                                   style={{ background: "rgba(255,255,255,0.22)" }}
+                               >
+                                   {selectedTagsForRun.length}
+                               </span>
+                           )}
                            <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />
                        </button>
                        {tagPopoverOpen && (
                            <div
                                role="dialog"
+                               onKeyDown={handleTagPopoverKeyDown}
                                className="absolute top-full right-0 mt-1 z-20 w-[320px] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
                            >
                                <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run:</p>
@@ -574,12 +601,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                    options={tagOptions}
                                    value={selectedTagRunOptions}
                                    onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
+                                   onMenuOpen={() => setTagMenuOpen(true)}
+                                   onMenuClose={() => setTagMenuOpen(false)}
                                    placeholder="Search and select tags..."
                                    isSearchable
-                                   closeMenuOnSelect={false}
+                                   closeMenuOnSelect
+                                   blurInputOnSelect={false}
                                    autoFocus
                                />
-                               <div className="flex justify-end gap-2 mt-3">
+                               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
                                    <button
                                        onClick={() => setTagPopoverOpen(false)}
                                        className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
@@ -590,9 +620,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                        onClick={() => { handleRunTagApi(); setTagPopoverOpen(false); }}
                                        disabled={selectedTagsForRun.length === 0}
                                        style={{ boxShadow: ACCENT_RUN }}
-                                       className="pl-4 pr-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                                       className="flex-1 justify-center pl-4 pr-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
                                    >
-                                       <Play className="w-3.5 h-3.5 mr-1.5" /> Run
+                                       <Play className="w-3.5 h-3.5 mr-1.5" /> {runTagLabel}
+                                       <span className="ml-2 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
                                    </button>
                                </div>
                            </div>
