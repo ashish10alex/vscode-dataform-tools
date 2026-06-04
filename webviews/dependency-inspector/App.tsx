@@ -128,6 +128,7 @@ export default function App() {
     const [workspaceFilterStatus, setWorkspaceFilterStatus] = useState<{ kind: 'success' | 'error' | 'info'; message: string } | null>(null);
     const [workspaceFilterDescription, setWorkspaceFilterDescription] = useState('');
     const [activePresetId, setActivePresetId] = useState<string | null>(null);
+    const [ignoreCompilationOverrides, setIgnoreCompilationOverrides] = useState(false);
 
     // Full Table ID column filter
     const [tableIdFilter, setTableIdFilter] = useState('');
@@ -166,6 +167,8 @@ export default function App() {
     applyToAllRef.current = applyToAll;
     const depthRef = useRef(3);
     depthRef.current = depth;
+    const ignoreOverridesRef = useRef(false);
+    ignoreOverridesRef.current = ignoreCompilationOverrides;
 
     // Dark mode observer (consistent with other webviews)
     useEffect(() => {
@@ -238,6 +241,9 @@ export default function App() {
                 case 'models': {
                     const modelList: ModelInfo[] = msg.value ?? [];
                     setModels(modelList);
+                    if (typeof msg.ignoreCompilationOverrides === 'boolean') {
+                        setIgnoreCompilationOverrides(msg.ignoreCompilationOverrides);
+                    }
                     setInitError(null);
                     setCompiling(false);
                     // Auto-select the model the panel was opened from
@@ -255,7 +261,7 @@ export default function App() {
                             setResults({});
                             vscode.postMessage({
                                 command: 'fetchDependencies',
-                                value: { modelFullId: matched.fullId, depth: depthRef.current },
+                                value: { modelFullId: matched.fullId, depth: depthRef.current, ignoreCompilationOverrides: !!msg.ignoreCompilationOverrides },
                             });
                         }
                     }
@@ -454,7 +460,7 @@ export default function App() {
             }
         };
         window.addEventListener('message', handler);
-        vscode.postMessage({ command: 'appLoaded' });
+        vscode.postMessage({ command: 'appLoaded', value: { ignoreCompilationOverrides } });
         return () => window.removeEventListener('message', handler);
     }, []);
 
@@ -495,7 +501,7 @@ export default function App() {
         setResults({});
         vscode.postMessage({
             command: 'fetchDependencies',
-            value: { modelFullId: selectedOption.value, depth },
+            value: { modelFullId: selectedOption.value, depth, ignoreCompilationOverrides: ignoreOverridesRef.current },
         });
     };
 
@@ -817,6 +823,34 @@ export default function App() {
                         className="w-14 px-2 py-1.5 text-sm text-center bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] rounded outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)]"
                         title="Maximum number of dependency levels to load recursively (1–20)"
                     />
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 pl-1 border-l border-[var(--vscode-widget-border)]">
+                    <input
+                        id="ignoreOverrides"
+                        type="checkbox"
+                        checked={ignoreCompilationOverrides}
+                        onChange={e => {
+                            const val = e.target.checked;
+                            setIgnoreCompilationOverrides(val);
+                            // Reset selection and current data; load models under the new compilation mode (defaults vs overrides)
+                            setSelectedOption(null);
+                            setDependencies([]);
+                            setGraphEdges([]);
+                            setResults({});
+                            setActivePresetId(null);
+                            setWorkspaceFilterStatus(null);
+                            setWorkspaceFilterDescription('');
+                            vscode.postMessage({ command: 'getModels', value: { ignoreCompilationOverrides: val } });
+                        }}
+                        className="accent-[var(--vscode-checkbox-background)]"
+                    />
+                    <label
+                        htmlFor="ignoreOverrides"
+                        className="text-xs text-[var(--vscode-foreground)] whitespace-nowrap cursor-pointer select-none"
+                        title="When checked, models are loaded from a compilation that ignores compilerOptions / workspace overrides (e.g. --table-prefix, --schema-suffix). This makes the 'default' full table IDs match those stored in your dependency-inspector-filters.json presets, so presets load easily without name mismatches."
+                    >
+                        Ignore compilation overrides
+                    </label>
                 </div>
                 <button
                     onClick={handleFetchDependencies}

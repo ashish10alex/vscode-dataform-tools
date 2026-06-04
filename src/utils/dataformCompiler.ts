@@ -117,14 +117,14 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     return resolvedPath;
 }
 
-export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
+export function compileDataform(workspaceFolder: string, opts: { ignoreCompilationOverrides?: boolean } = {}): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-    let dataformCompilerOptions = getDataformCompilerOptions();
+    let dataformCompilerOptions = opts.ignoreCompilationOverrides ? "" : getDataformCompilerOptions();
     let compilerOptions: string[] = [];
     if (dataformCompilerOptions !== "") {
         compilerOptions.push(dataformCompilerOptions);
     }
-    logger.debug(`compilerOptions: ${compilerOptions}`);
+    logger.debug(`compilerOptions: ${compilerOptions}${opts.ignoreCompilationOverrides ? ' (ignored per flag)' : ''}`);
     return new Promise((resolve, reject) => {
         const startTime = performance.now();
         let spawnedProcess;
@@ -146,7 +146,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
         spawnedProcess.on('close', async (code: number) => {
             try {
                 if (code === 0) {
-                    if(compilerOptions.length>0){
+                    if(compilerOptions.length>0 && !opts.ignoreCompilationOverrides){
                         globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
                     }else{
                         globalThis.compilerOptionsMap = {};
@@ -219,9 +219,9 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
     });
 }
 
-export async function runCompilation(workspaceFolder: string): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
+export async function runCompilation(workspaceFolder: string, opts: { ignoreCompilationOverrides?: boolean } = {}): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     try {
-        let { compiledString, errors, possibleResolutions, compilationTimeMs } = await compileDataform(workspaceFolder);
+        let { compiledString, errors, possibleResolutions, compilationTimeMs } = await compileDataform(workspaceFolder, opts);
         if (compiledString) {
             let dataformCompiledJson: DataformCompiledJson;
             try {
@@ -229,9 +229,14 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
             } catch (parseError) {
                 dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
             }
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            buildIndices(dataformCompiledJson);
-            logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
+            if (opts.ignoreCompilationOverrides) {
+                globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+                logger.debug(`Successfully cached DEFAULT (no overrides) compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
+            } else {
+                globalThis.CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+                buildIndices(dataformCompiledJson);
+                logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
+            }
             return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
         }
         return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
@@ -242,16 +247,19 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
 }
 
 export async function getOrCompileDataformJson(
-    workspaceFolder: string
+    workspaceFolder: string,
+    opts: { ignoreCompilationOverrides?: boolean } = {}
 ): Promise<DataformCompiledJson | undefined> {
-    if (CACHED_COMPILED_DATAFORM_JSON) {
-        logger.debug('Returning cached compiled dataform JSON');
-        return CACHED_COMPILED_DATAFORM_JSON;
+    const ignore = !!opts.ignoreCompilationOverrides;
+    const cached = ignore ? globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON : globalThis.CACHED_COMPILED_DATAFORM_JSON;
+    if (cached) {
+        logger.debug(`Returning cached ${ignore ? 'default (no overrides) ' : ''}compiled dataform JSON`);
+        return cached;
     }
-    logger.debug('No cached compilation found, compiling dataform project...');
+    logger.debug(`No cached compilation found${ignore ? ' (ignoring overrides)' : ''}, compiling dataform project...`);
     vscode.window.showWarningMessage(
         "Compiling Dataform project, this may take a moment..."
     );
-    const { dataformCompiledJson } = await runCompilation(workspaceFolder);
+    const { dataformCompiledJson } = await runCompilation(workspaceFolder, opts);
     return dataformCompiledJson;
 }

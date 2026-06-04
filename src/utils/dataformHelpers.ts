@@ -204,6 +204,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         }
         else if (errors?.length !== 0) {
             CACHED_COMPILED_DATAFORM_JSON = undefined;
+            globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON = undefined;
             clearIndices();
             logger.debug('Clearing compilation cache due to errors');
             logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);

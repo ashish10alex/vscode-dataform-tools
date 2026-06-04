@@ -114,7 +114,16 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
         switch (message.command) {
             case 'appLoaded':
             case 'getModels': {
-                let compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
+                let ignoreCompilationOverrides: boolean = !!message.value?.ignoreCompilationOverrides;
+                if (message.command === 'appLoaded') {
+                    // On initial load, the setting controls the default state of the "ignore overrides" checkbox
+                    // (so that default presets can be loaded easily). Manual toggles via 'getModels' always respect the UI value.
+                    const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+                    ignoreCompilationOverrides = config.get<boolean>('dependencyInspector.ignoreCompilationOverrides', false);
+                }
+                let compiledJson: DataformCompiledJson | undefined = ignoreCompilationOverrides
+                    ? globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON
+                    : globalThis.CACHED_COMPILED_DATAFORM_JSON;
                 if (!compiledJson) {
                     panel.webview.postMessage({ type: 'compiling', value: true });
                     const workspaceFolder = await getWorkspaceFolder();
@@ -125,7 +134,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         });
                         return;
                     }
-                    compiledJson = await getOrCompileDataformJson(workspaceFolder);
+                    compiledJson = await getOrCompileDataformJson(workspaceFolder, { ignoreCompilationOverrides });
                     if (!compiledJson) {
                         panel.webview.postMessage({
                             type: 'error',
@@ -143,14 +152,17 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 const initialModelId = initialFilePath
                     ? getModelIdForFile(initialFilePath, compiledJson)
                     : undefined;
-                panel.webview.postMessage({ type: 'models', value: models, initialModelId });
+                panel.webview.postMessage({ type: 'models', value: models, initialModelId, ignoreCompilationOverrides });
                 return;
             }
 
             case 'fetchDependencies': {
                 const modelFullId: string = message.value?.modelFullId ?? '';
                 const maxDepth: number = Math.max(1, Math.min(message.value?.depth ?? 5, 20));
-                const compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
+                const ignoreCompilationOverrides: boolean = !!message.value?.ignoreCompilationOverrides;
+                const compiledJson: DataformCompiledJson | undefined = ignoreCompilationOverrides
+                    ? globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON
+                    : globalThis.CACHED_COMPILED_DATAFORM_JSON;
                 if (!compiledJson) {
                     panel.webview.postMessage({
                         type: 'error',

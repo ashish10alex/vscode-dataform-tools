@@ -46,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
+    globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
     logger.debug('Extension activated - initialized global cache (CACHED_COMPILED_DATAFORM_JSON = undefined)');
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
@@ -227,6 +228,8 @@ export async function activate(context: vscode.ExtensionContext) {
             context.globalState.update(key, undefined);
             logger.info(`Cleared cached data for key: ${key}`);
         });
+        globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined;
+        globalThis.CACHED_DEFAULT_COMPILED_DATAFORM_JSON = undefined;
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
     }));
 

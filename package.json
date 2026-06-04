@@ -272,6 +272,11 @@
                     "default": "",
                     "markdownDescription": "Addition compiler options to pass to dataform cli commands e.g. --vars=someKey=someValue,a=b"
                 },
+                "vscode-dataform-tools.dependencyInspector.ignoreCompilationOverrides": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "When enabled, the 'Ignore compilation overrides' checkbox in the Dependency Inspector will be checked automatically when the panel loads. This causes models to be compiled without compiler options (such as table prefixes/suffixes), making it easier to load default presets stored in `.vscode-dataform-tools/dependency-inspector-filters.json` that were saved against the un-overridden table IDs."
+                },
                 "vscode-dataform-tools.currencyFoDryRunCost": {
                     "type": "string",
                     "enum": [

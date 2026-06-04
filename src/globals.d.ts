@@ -11,6 +11,10 @@ declare global {
 }
 
 declare global {
+  var CACHED_DEFAULT_COMPILED_DATAFORM_JSON: DataformCompiledJson | undefined;
+}
+
+declare global {
   var FILE_NODE_MAP: Map<string, (Table | Assertion | Operation | Notebook)[]>;
 }
 
