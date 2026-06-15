@@ -669,7 +669,7 @@ export class CompiledQueryPanel {
         const missingExecutables: string[] = [];
         for (let i = 0; i < executablesToCheck.length; i++) {
             let executable = executablesToCheck[i];
-            if (!executableIsAvailable(executable, false)) {
+            if (!executableIsAvailable(executable, false, workspaceFolder)) {
                 missingExecutables.push(executable);
             }
         }
