@@ -57,6 +57,11 @@ export const getMetadataForSqlxFileBlocks = (document: vscode.TextDocument): Sql
                 startOfConfigBlock = i + 1;
                 inMajorBlock = true;
                 
+                // Reset SQL block if we found one before config (likely comments)
+                startOfSqlBlock = 0;
+                endOfSqlBlock = 0;
+                sqlBlockExsists = false;
+                
                 // Single-line block check
                 if (braceDepth === 0) {
                     endOfConfigBlock = i + 1;
