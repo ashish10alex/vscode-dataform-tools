@@ -118,7 +118,9 @@ function populate(type: StructType, structs: AnyStruct[], state: PopulateState, 
                 modelName: struct.target.name,
                 datasetId: struct.target.schema,
                 projectId: struct.target.database,
-                type: (struct as Table | Assertion | Operation).type || type,
+                type: type === "assertions"
+                    ? "assertion"
+                    : (struct as Table | Assertion | Operation).type || type,
                 tags: struct.tags,
                 datasetColor: state.datasetColorMap.get(dataset) || "grey",
                 fileName: struct.fileName,
