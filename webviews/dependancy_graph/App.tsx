@@ -26,6 +26,7 @@ import StyledSelect, { OptionType } from './components/StyledSelect';
 import DownloadButton from './DownloadButton';
 import SchemaModal, { SchemaModalState } from './SchemaModal';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { filterGraphByAssertionVisibility } from './graphVisibility';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -35,6 +36,13 @@ const transport = getTransport();
 // PNG export round-trips through the VS Code host's "Save As" dialog; outside
 // the extension (CLI / standalone browser) there's nothing on the other end.
 const SHOW_EXPORT_BUTTON = transport.mode === 'vscode';
+
+interface DependencyGraphWebviewState {
+  showAssertions?: boolean;
+}
+
+const storedWebviewState = transport.getState<DependencyGraphWebviewState>();
+const initialShowAssertions = storedWebviewState?.showAssertions ?? true;
 
 interface ModelData {
   id: string;
@@ -72,8 +80,8 @@ const Flow: React.FC = () => {
   const [fullEdges, setFullEdges] = useState<Edge[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [__, setUniqueTags] = useState<string[]>([]);
   const reactFlowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
+  const showAssertionsRef = useRef(initialShowAssertions);
   const [message, setMessage] = useState<string>('');
   const [datasetColorMap, setDatasetColorMap] = useState<Map<string, string>>(new Map());
   const [_, setIsReady] = useState<boolean>(false);
@@ -85,6 +93,25 @@ const Flow: React.FC = () => {
   const [isTableCollapsed, setIsTableCollapsed] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [schemaModal, setSchemaModal] = useState<SchemaModalState | null>(null);
+  const [showAssertions, setShowAssertions] = useState<boolean>(initialShowAssertions);
+
+  const visibleFullGraph = useMemo(
+    () => filterGraphByAssertionVisibility(fullNodes, fullEdges, showAssertions),
+    [fullNodes, fullEdges, showAssertions]
+  );
+  const visibleFullNodes = visibleFullGraph.nodes;
+  const visibleFullEdges = visibleFullGraph.edges;
+
+  const renderPositionedGraph = useCallback((candidateNodes: Node[], candidateEdges: Edge[]) => {
+    const visibleGraph = filterGraphByAssertionVisibility(
+      candidateNodes,
+      candidateEdges,
+      showAssertionsRef.current
+    );
+    const positionedGraph = nodePositioning(visibleGraph.nodes, visibleGraph.edges);
+    setNodes(positionedGraph.nodes);
+    setEdges(positionedGraph.edges);
+  }, [setNodes, setEdges]);
 
   // Send ready message when component mounts
   useEffect(() => {
@@ -160,8 +187,14 @@ const Flow: React.FC = () => {
           const { initialNodesStatic, initialEdgesStatic, datasetColorMap, currentActiveEditorIdx, initialTag } = message.value;
           setFullNodes(initialNodesStatic);
           setFullEdges(initialEdgesStatic);
-          const uniqueTags: string[] = Array.from(new Set(initialNodesStatic.flatMap((node: Node) => node.data.tags as string[])));
-          setUniqueTags(uniqueTags);
+          const visibleGraph = filterGraphByAssertionVisibility<Node, Edge>(
+            initialNodesStatic,
+            initialEdgesStatic,
+            showAssertionsRef.current
+          );
+          const availableNodes = visibleGraph.nodes;
+          const availableEdges = visibleGraph.edges;
+          const uniqueTags: string[] = Array.from(new Set(availableNodes.flatMap((node: Node) => node.data.tags as string[])));
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
 
           // Three possible initial states, in priority order:
@@ -169,33 +202,34 @@ const Flow: React.FC = () => {
           //   2. currentActiveEditorIdx — host pointed at a specific node (extension active editor / CLI --model).
           //   3. neither — show the full graph.
           const hasTag = !!initialTag && uniqueTags.includes(initialTag);
-          const hasFocus = !hasTag && !!currentActiveEditorIdx && initialNodesStatic.some((n: Node) => n.id === currentActiveEditorIdx);
+          const hasFocus = !hasTag && !!currentActiveEditorIdx && availableNodes.some((n: Node) => n.id === currentActiveEditorIdx);
           let initialNodes: Node[];
           let initialEdges: Edge[];
-          let initialTableOpts = initialNodesStatic;
+          let initialTableOpts = availableNodes;
 
           if (hasTag) {
-            const tagEdges = initialEdgesStatic.filter((edge: Edge) =>
+            const tagEdges = availableEdges.filter((edge: Edge) =>
               Array.isArray((edge as any).tags) && (edge as any).tags.includes(initialTag)
             );
             const includedIds = new Set<string>();
             for (const e of tagEdges) { includedIds.add(e.source as string); includedIds.add(e.target as string); }
-            for (const n of initialNodesStatic) {
+            for (const n of availableNodes) {
               if (((n.data?.tags as string[] | undefined) ?? []).includes(initialTag)) { includedIds.add(n.id); }
             }
-            initialNodes = initialNodesStatic.filter((n: Node) => includedIds.has(n.id));
+            initialNodes = availableNodes.filter((n: Node) => includedIds.has(n.id));
             initialEdges = tagEdges;
             initialTableOpts = initialNodes;
           } else if (hasFocus) {
-            initialEdges = initialEdgesStatic.filter((edge: Edge) =>
+            initialEdges = availableEdges.filter((edge: Edge) =>
               edge.source === currentActiveEditorIdx || edge.target === currentActiveEditorIdx
             );
-            initialNodes = initialNodesStatic.filter((node: Node) =>
+            initialNodes = availableNodes.filter((node: Node) =>
+              node.id === currentActiveEditorIdx ||
               initialEdges.some((edge: Edge) => edge.source === node.id || edge.target === node.id)
             );
           } else {
-            initialEdges = initialEdgesStatic;
-            initialNodes = initialNodesStatic;
+            initialEdges = availableEdges;
+            initialNodes = availableNodes;
           }
 
           const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
@@ -253,7 +287,7 @@ const Flow: React.FC = () => {
     setSelectedTable(option);
     setSelectedTag(null);
     // Restore the full table options too, in case they were narrowed by a tag filter.
-    setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
+    setTableOptions(visibleFullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
 
     // clear the nodes and edges in the existing graph
     setNodes([]);
@@ -265,24 +299,17 @@ const Flow: React.FC = () => {
     
     // Small delay to ensure the clear operation is complete before adding new nodes
     setTimeout(() => {
-        const filteredEdges = fullEdges.filter((edge: Edge) => 
+        const filteredEdges = visibleFullEdges.filter((edge: Edge) =>
             edge.source === option.value || edge.target === option.value
         );
-        const filteredNodes = fullNodes.filter((node: Node) => 
+        const filteredNodes = visibleFullNodes.filter((node: Node) =>
             node.id === option.value || // Include selected node
             filteredEdges.some((edge: Edge) => 
                 edge.source === node.id || edge.target === node.id
             )
         );
         
-        // Compute new positions for the filtered nodes
-        const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-            filteredNodes,
-            filteredEdges,
-        );
-
-        setNodes(positionedNodes);
-        setEdges(positionedEdges);
+        renderPositionedGraph(filteredNodes, filteredEdges);
         setRootNodeId(option.value);
 
         if (reactFlowInstance.current) {
@@ -302,7 +329,7 @@ const Flow: React.FC = () => {
     if (!option) {
       // When the tag is cleared, restore the full table-dropdown options so it
       // doesn't stay scoped to the just-cleared tag.
-      setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
+      setTableOptions(visibleFullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
       return;
     }
 
@@ -312,7 +339,7 @@ const Flow: React.FC = () => {
     setTimeout(() => {
       // Edges carry the downstream model's tags, so an edge with the tag
       // means the consumer has it.
-      const tagEdges = fullEdges.filter((edge: any) =>
+      const tagEdges = visibleFullEdges.filter((edge: any) =>
         Array.isArray(edge?.tags) && edge.tags.includes(option.value)
       );
 
@@ -323,25 +350,20 @@ const Flow: React.FC = () => {
         includedIds.add(e.source as string);
         includedIds.add(e.target as string);
       }
-      for (const n of fullNodes) {
+      for (const n of visibleFullNodes) {
         const nodeTags = (n.data?.tags as string[] | undefined) ?? [];
         if (nodeTags.includes(option.value)) {
           includedIds.add(n.id);
         }
       }
-      const filteredNodes = fullNodes.filter((n: Node) => includedIds.has(n.id));
+      const filteredNodes = visibleFullNodes.filter((n: Node) => includedIds.has(n.id));
 
       setTableOptions(filteredNodes.map((node: any) => ({
         value: node.id,
         label: node.data.modelName as string
       })));
 
-      const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(
-        filteredNodes,
-        tagEdges,
-      );
-      setNodes(positionedNodes);
-      setEdges(positionedEdges);
+      renderPositionedGraph(filteredNodes, tagEdges);
       // Tag view has no single root, so Expand-left/right buttons are inapplicable.
       setRootNodeId(null);
 
@@ -358,8 +380,8 @@ const Flow: React.FC = () => {
   // Add this new handler for node clicks
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     // get the dependent and dependecies of the clicked node
-    const filteredEdges = fullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);
-    const filteredNodes = fullNodes.filter((n: Node) => filteredEdges.some((edge: Edge) => edge.source === n.id || edge.target === n.id));
+    const filteredEdges = visibleFullEdges.filter((edge: Edge) => edge.source === node.id || edge.target === node.id);
+    const filteredNodes = visibleFullNodes.filter((n: Node) => filteredEdges.some((edge: Edge) => edge.source === n.id || edge.target === n.id));
     
     // add to the current nodes and edges the filtered nodes and edges, preventing duplicates
     const combinedNodes = [...nodes];
@@ -376,13 +398,7 @@ const Flow: React.FC = () => {
       }
     });
 
-    // recompute the positions of the nodes
-    const filteredNodesWithPosition = nodePositioning(
-      combinedNodes,
-      combinedEdges,
-    );
-    setNodes(filteredNodesWithPosition.nodes);
-    setEdges(filteredNodesWithPosition.edges);
+    renderPositionedGraph(combinedNodes, combinedEdges);
     setRootNodeId(node.id);
 
     if (reactFlowInstance.current) {
@@ -393,7 +409,7 @@ const Flow: React.FC = () => {
         padding: 0.2,
       });
     }
-  }, [fullNodes, fullEdges, nodes, edges, setNodes, setEdges]);
+  }, [visibleFullNodes, visibleFullEdges, nodes, edges, renderPositionedGraph]);
 
   const expandToLeft = () => {
     if (!rootNodeId) {return;}
@@ -407,7 +423,7 @@ const Flow: React.FC = () => {
       if (visitedNodes.has(currentNodeId)) {continue;}
       visitedNodes.add(currentNodeId);
 
-      const upstreamEdges = fullEdges.filter(edge => edge.target === currentNodeId);
+      const upstreamEdges = visibleFullEdges.filter(edge => edge.target === currentNodeId);
       upstreamEdges.forEach(edge => {
         if (!visitedEdges.has(edge.id)) {
           visitedEdges.add(edge.id);
@@ -416,12 +432,10 @@ const Flow: React.FC = () => {
       });
     }
 
-    const filteredNodes = fullNodes.filter(node => visitedNodes.has(node.id));
-    const filteredEdges = fullEdges.filter(edge => visitedEdges.has(edge.id));
+    const filteredNodes = visibleFullNodes.filter(node => visitedNodes.has(node.id));
+    const filteredEdges = visibleFullEdges.filter(edge => visitedEdges.has(edge.id));
 
-    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
-    setNodes(positionedNodes);
-    setEdges(positionedEdges);
+    renderPositionedGraph(filteredNodes, filteredEdges);
 
     if (reactFlowInstance.current) {
       reactFlowInstance.current.fitView({
@@ -445,7 +459,7 @@ const Flow: React.FC = () => {
       if (visitedNodes.has(currentNodeId)) {continue;}
       visitedNodes.add(currentNodeId);
 
-      const downstreamEdges = fullEdges.filter(edge => edge.source === currentNodeId);
+      const downstreamEdges = visibleFullEdges.filter(edge => edge.source === currentNodeId);
       downstreamEdges.forEach(edge => {
         if (!visitedEdges.has(edge.id)) {
           visitedEdges.add(edge.id);
@@ -454,12 +468,10 @@ const Flow: React.FC = () => {
       });
     }
 
-    const filteredNodes = fullNodes.filter(node => visitedNodes.has(node.id));
-    const filteredEdges = fullEdges.filter(edge => visitedEdges.has(edge.id));
+    const filteredNodes = visibleFullNodes.filter(node => visitedNodes.has(node.id));
+    const filteredEdges = visibleFullEdges.filter(edge => visitedEdges.has(edge.id));
 
-    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(filteredNodes, filteredEdges);
-    setNodes(positionedNodes);
-    setEdges(positionedEdges);
+    renderPositionedGraph(filteredNodes, filteredEdges);
 
     if (reactFlowInstance.current) {
       reactFlowInstance.current.fitView({
@@ -472,16 +484,14 @@ const Flow: React.FC = () => {
   };
 
   const showFullGraph = () => {
-    if (fullNodes.length === 0) {return;}
+    if (visibleFullNodes.length === 0) {return;}
 
-    const { nodes: positionedNodes, edges: positionedEdges } = nodePositioning(fullNodes, fullEdges);
-    setNodes(positionedNodes);
-    setEdges(positionedEdges);
+    renderPositionedGraph(visibleFullNodes, visibleFullEdges);
     setRootNodeId(null);
     // Reset both filter chips and the table-dropdown options to their full state.
     setSelectedTag(null);
     setSelectedTable(null);
-    setTableOptions(fullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
+    setTableOptions(visibleFullNodes.map((n) => ({ value: n.id, label: n.data.modelName as string })));
 
     if (reactFlowInstance.current) {
       reactFlowInstance.current.fitView({
@@ -489,6 +499,46 @@ const Flow: React.FC = () => {
         padding: 0.2,
       });
     }
+  };
+
+  const handleAssertionVisibilityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextShowAssertions = event.target.checked;
+    showAssertionsRef.current = nextShowAssertions;
+    setShowAssertions(nextShowAssertions);
+
+    const currentState = transport.getState<Record<string, unknown>>();
+    transport.setState({
+      ...(currentState && typeof currentState === 'object' ? currentState : {}),
+      showAssertions: nextShowAssertions,
+    });
+
+    const nextVisibleGraph = filterGraphByAssertionVisibility(
+      fullNodes,
+      fullEdges,
+      nextShowAssertions
+    );
+    renderPositionedGraph(nextVisibleGraph.nodes, nextVisibleGraph.edges);
+    setRootNodeId(null);
+    setSelectedTag(null);
+    setSelectedTable(null);
+    setTableOptions(nextVisibleGraph.nodes.map((node) => ({
+      value: node.id,
+      label: node.data.modelName as string,
+    })));
+
+    const visibleTags = Array.from(new Set(
+      nextVisibleGraph.nodes.flatMap((node) => (node.data.tags as string[] | undefined) ?? [])
+    ));
+    setTagOptions(visibleTags.map((tag) => ({ value: tag, label: tag })));
+
+    setTimeout(() => {
+      if (reactFlowInstance.current && nextVisibleGraph.nodes.length > 0) {
+        reactFlowInstance.current.fitView({
+          duration: 800,
+          padding: 0.2,
+        });
+      }
+    }, 50);
   };
 
   const handleDownload = () => {
@@ -648,6 +698,16 @@ const Flow: React.FC = () => {
             width="w-1/3"
           />
 
+          <label className="flex items-center gap-2 whitespace-nowrap text-sm font-medium text-[var(--vscode-foreground)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showAssertions}
+              onChange={handleAssertionVisibilityChange}
+              className="h-4 w-4 cursor-pointer"
+            />
+            <span>Show assertions</span>
+          </label>
+
           <div className="flex gap-2">
             <button
               onClick={expandToLeft}
@@ -665,7 +725,7 @@ const Flow: React.FC = () => {
             </button>
             <button
               onClick={showFullGraph}
-              disabled={fullNodes.length === 0}
+              disabled={visibleFullNodes.length === 0}
               className="px-4 py-2 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
               Show full graph
