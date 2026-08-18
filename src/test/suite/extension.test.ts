@@ -4,7 +4,7 @@ globalThis.errorInPreOpsDenyList = false;
 globalThis.compilerOptionsMap = {};
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices } from '../../utils';
+import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices, getDataformTags } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset, incrementalTableOffset } from '../../constants';
@@ -932,6 +932,40 @@ suite("getQueryStringForPreview skipPreOps", () => {
         assert.ok(withPreOps.includes(PRE_OPS));
         const skipped = getQueryStringForPreview(buildFileMetadata("incremental") as any, false, true);
         assert.strictEqual(skipped, SELECT);
+    });
+
+});
+
+suite('getDataformTags', () => {
+
+    test("tags are collected from tables, assertions, operations and notebooks", async function () {
+        this.timeout(9000);
+        try {
+            let { compiledString, errors } = await compileDataform(workspaceFolder);
+            if (compiledString) {
+                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+                if (dataformCompiledJson) {
+                    let dataformTags = await getDataformTags(dataformCompiledJson);
+
+                    // FOOTY is on multiple tables, so this also asserts that tags are de-duplicated
+                    assert.deepStrictEqual(dataformTags, ["FOOTY", "OPS_TAG", "new_tag", "tag2"]);
+                } else {
+                    throw new Error('Compilation failed');
+                }
+            }
+            if (errors) {
+                throw new Error(JSON.stringify(errors, null, 2));
+            }
+        } catch (error: any) {
+            console.error('Test failed:', error);
+            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
+            throw error;
+        }
+    });
+
+    test("no tags are returned when the compiled json has no actions", async function () {
+        let dataformTags = await getDataformTags({} as DataformCompiledJson);
+        assert.deepStrictEqual(dataformTags, []);
     });
 
 });
