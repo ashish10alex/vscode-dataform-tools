@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.5...v1.12.6) (2026-08-18)
+
+
+### Bug Fixes
+
+* tags in operation type was not being picked up ([#346](https://github.com/ashish10alex/vscode-dataform-tools/issues/346)) ([1b50b9f](https://github.com/ashish10alex/vscode-dataform-tools/commit/1b50b9fd92f837240cfccf74ab2792ab638ce05d))
+
 ### [1.12.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.4...v1.12.5) (2026-06-03)
 
 
