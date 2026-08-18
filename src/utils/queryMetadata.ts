@@ -339,28 +339,19 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 }
 
 export async function getDataformTags(compiledJson: DataformCompiledJson) {
-    let dataformTags: string[] = [];
-    let tables = compiledJson?.tables;
-    if (tables) {
-        tables.forEach((table) => {
-            table?.tags?.forEach((tag) => {
-                if (dataformTags.includes(tag) === false) {
-                    dataformTags.push(tag);
-                }
-            });
+    let dataformTags = new Set<string>();
+    let taggedActions = [
+        ...(compiledJson?.tables ?? []),
+        ...(compiledJson?.assertions ?? []),
+        ...(compiledJson?.operations ?? []),
+        ...(compiledJson?.notebooks ?? []),
+    ];
+    taggedActions.forEach((action) => {
+        action?.tags?.forEach((tag) => {
+            dataformTags.add(tag);
         });
-    };
-    let assertions = compiledJson?.assertions;
-    if (assertions) {
-        assertions.forEach((assertion) => {
-            assertion?.tags?.forEach((tag) => {
-                if (dataformTags.includes(tag) === false) {
-                    dataformTags.push(tag);
-                }
-            });
-        });
-    }
-    return dataformTags.sort();
+    });
+    return Array.from(dataformTags).sort();
 }
 
 export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {

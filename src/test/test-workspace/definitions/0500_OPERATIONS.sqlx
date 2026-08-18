@@ -1,6 +1,7 @@
 config {
   type: 'operations',
-  hasOutput: true
+  hasOutput: true,
+  tags: ["OPS_TAG"]
 }
 
 DROP TABLE IF EXISTS
