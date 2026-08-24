@@ -18,6 +18,8 @@ export interface Transport {
     readonly mode: HostMode;
     onMessage(handler: (msg: any) => void): () => void;
     postMessage(msg: any): void;
+    getState<T = unknown>(): T | undefined;
+    setState(state: unknown): void;
     /**
      * Round-trip request. Posts `{ type, requestId, value }` and resolves with
      * the host's matching `{ type: "response", requestId, ok, value | error }`.
@@ -46,6 +48,14 @@ class VsCodeTransport implements Transport {
         this.vscode.postMessage(msg);
     }
 
+    getState<T>(): T | undefined {
+        return this.vscode.getState() as T | undefined;
+    }
+
+    setState(state: unknown): void {
+        this.vscode.setState(state);
+    }
+
     request<T>(type: string, value?: any, timeoutMs = 30000): Promise<T> {
         return requestVia(this, type, value, timeoutMs);
     }
@@ -54,6 +64,7 @@ class VsCodeTransport implements Transport {
 class CliTransport implements Transport {
     readonly mode: HostMode = "cli";
     private handlers: Array<(msg: any) => void> = [];
+    private readonly stateStorageKey = "dataform-dependency-graph-state";
 
     onMessage(handler: (msg: any) => void): () => void {
         this.handlers.push(handler);
@@ -127,6 +138,23 @@ class CliTransport implements Transport {
             // saveGraphImage and nodeFileName have no meaningful behavior in CLI mode (v1).
             default:
                 return;
+        }
+    }
+
+    getState<T>(): T | undefined {
+        try {
+            const state = window.localStorage.getItem(this.stateStorageKey);
+            return state ? JSON.parse(state) as T : undefined;
+        } catch {
+            return undefined;
+        }
+    }
+
+    setState(state: unknown): void {
+        try {
+            window.localStorage.setItem(this.stateStorageKey, JSON.stringify(state));
+        } catch {
+            // Storage may be unavailable in privacy-restricted browser contexts.
         }
     }
 
