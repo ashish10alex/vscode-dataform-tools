@@ -75,10 +75,11 @@ export async function activate(context: vscode.ExtensionContext) {
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
     globalThis.bigQuerySnippetMetadata = JSON.parse(snippetsContent)[".source.sql-bigquery"];
 
+    const activationWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
         logger.debug(`Checking executable availability: ${executable}`);
-        executableIsAvailable(executable, true); // Show error if not found
+        executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
     }
 
     // Clean up on deactivation

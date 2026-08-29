@@ -8,8 +8,14 @@ import { ExecutablePathCache, ExecutablePathInfo } from '../types';
 
 const executablePathCache: ExecutablePathCache = new Map<string, ExecutablePathInfo>();
 
-export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false): boolean {
-    const foundPath = findExecutableInPaths(name);
+export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false, workspaceFolder?: string): boolean {
+    let foundPath: string | null;
+    if (name === 'dataform' && workspaceFolder) {
+        const resolved = getDataformCliCmdBasedOnScope(workspaceFolder);
+        foundPath = isValidExecutablePath(resolved) ? resolved : null;
+    } else {
+        foundPath = findExecutableInPaths(name);
+    }
 
     if (!foundPath && showErrorOnNotFound) {
         vscode.window.showErrorMessage(`${name} cli not found`, "Installation Guide").then(selection => {
@@ -20,6 +26,25 @@ export function executableIsAvailable(name: string, showErrorOnNotFound: boolean
     }
 
     return !!foundPath;
+}
+
+// Resolve the dataform CLI path the extension should invoke for a given workspace,
+// honoring the `dataformCliScope` setting. Returns the local node_modules path when
+// scope is `local`, otherwise resolves via PATH / common locations.
+export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
+    const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
+    const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
+
+    if (dataformCliScope === 'local') {
+        const fullLocalPath = path.join(workspaceFolder, 'node_modules', '.bin', dataformCliBase);
+        logger.debug(`Using local dataform CLI: ${fullLocalPath}`);
+        return fullLocalPath;
+    }
+
+    const resolvedPath = findExecutableInPaths('dataform') || dataformCliBase;
+    logger.debug(`Using global dataform CLI: ${resolvedPath}`);
+    return resolvedPath;
 }
 
 // Find executable using built-in detection + user overrides
