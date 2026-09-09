@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -10,6 +10,7 @@ import {
   useReactTable,
   SortingState,
   ColumnFiltersState,
+  Column,
 } from '@tanstack/react-table';
 import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
@@ -22,6 +23,36 @@ interface DataTableProps<TData, TValue> {
   initialSorting?: SortingState
   /** Render with pagination controls + page-size dropdown. Defaults to true. */
   paginated?: boolean
+}
+
+function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, unknown>; shouldAutoFocus: boolean }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Only take focus when the webview already has it. The panel is opened with
+    // preserveFocus, so grabbing focus on mount would pull the cursor out of the
+    // editor whenever the active file changes.
+    if (shouldAutoFocus && document.hasFocus()) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={(column.getFilterValue() ?? '') as string}
+      onChange={(e) => column.setFilterValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.currentTarget.blur();
+        }
+      }}
+      placeholder={`Filter...`}
+      className="w-full px-2 py-1 text-xs border rounded bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] text-[var(--vscode-input-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)]"
+      onClick={(e) => e.stopPropagation()} // Prevent sorting when clicking input
+    />
+  );
 }
 
 export function DataTable<TData, TValue>({
@@ -101,19 +132,9 @@ export function DataTable<TData, TValue>({
                             {/* Column Filter Input */}
                             {header.column.getCanFilter() ? (
                                 <div>
-                                    <input
-                                        type="text"
-                                        autoFocus={header.column.id === autoFocusColumnId}
-                                        value={(header.column.getFilterValue() ?? '') as string}
-                                        onChange={(e) => header.column.setFilterValue(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Escape') {
-                                                e.currentTarget.blur();
-                                            }
-                                        }}
-                                        placeholder={`Filter...`}
-                                        className="w-full px-2 py-1 text-xs border rounded bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] text-[var(--vscode-input-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)]"
-                                        onClick={(e) => e.stopPropagation()} // Prevent sorting when clicking input
+                                    <ColumnFilterInput
+                                        column={header.column}
+                                        shouldAutoFocus={header.column.id === autoFocusColumnId}
                                     />
                                 </div>
                             ) : null}
