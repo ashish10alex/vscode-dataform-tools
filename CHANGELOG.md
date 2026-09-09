@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.6...v1.12.7) (2026-09-09)
+
+
+### Bug Fixes
+
+* webview table filter no longer steals focus from the editor ([bfc44ed](https://github.com/ashish10alex/vscode-dataform-tools/commit/bfc44ed14cf9d5403a6aea26412483d8ef753d5b))
+
 ### [1.12.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.5...v1.12.6) (2026-08-18)
 
 
