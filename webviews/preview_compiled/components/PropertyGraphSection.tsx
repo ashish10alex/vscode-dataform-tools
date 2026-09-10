@@ -22,6 +22,7 @@ import {
   elementImportsAllColumns,
   fullTargetName,
   knownPropertyNames,
+  type GqlQuerySpec,
   type GqlSelection,
 } from "../../../src/shared/propertyGraph";
 import { PropertyGraphDiagram, PropertyList, type GraphElementView } from "./PropertyGraphDiagram";
@@ -214,6 +215,99 @@ const RelationshipCard: React.FC<{
   </div>
 );
 
+/**
+ * A reader who has never used a graph database can follow the diagram but not the query, and
+ * GQL syntax gives no clue which bracket means what. This explains the generated query in
+ * terms of their own entity and relationship names, and ends on the join it is equivalent to,
+ * which is the bridge for someone who already thinks in SQL.
+ */
+const StarterQueryExplainer: React.FC<{
+  graph: PropertyGraph;
+  spec: GqlQuerySpec;
+  relationship: PropertyGraphRelationship | undefined;
+}> = ({ graph, spec, relationship }) => {
+  const [open, setOpen] = useState(false);
+
+  const joinPairs = (end: PropertyGraphRelationship["source"] | undefined, entityName: string) =>
+    (end?.relationshipColumns ?? []).map((column, index) => (
+      `${spec.relationshipName}.${column} = ${entityName}.${end?.entityColumns?.[index] ?? "?"}`
+    ));
+
+  const joins = [
+    ...joinPairs(relationship?.source, spec.sourceEntityName),
+    ...joinPairs(relationship?.destination, spec.destinationEntityName),
+  ];
+
+  const clauses: { code: string; text: string }[] = [
+    {
+      code: "GRAPH_TABLE( … )",
+      text: `Runs a pattern against ${graph.target.name} and hands the matches back as an ordinary table, so everything outside the brackets is normal SQL.`,
+    },
+    {
+      code: `MATCH (${spec.aliases.source}:${spec.sourceEntityName})-[${spec.aliases.edge}:${spec.relationshipName}]->(${spec.aliases.destination}:${spec.destinationEntityName})`,
+      text: `The shape to look for. Round brackets are entities, square brackets are the relationship joining them, and the arrow is its direction. ${spec.aliases.source}, ${spec.aliases.edge} and ${spec.aliases.destination} are short names you pick so the RETURN line can refer to each part.`,
+    },
+    {
+      code: "RETURN …",
+      text: "Which properties to pull out of each match. Tick properties on the diagram above to change this line.",
+    },
+    {
+      code: "LIMIT 100",
+      text: "Caps how many matches come back.",
+    },
+  ];
+
+  return (
+    <div className="rounded-lg border border-[var(--vscode-widget-border)]/60 px-3 py-2">
+      <p className="text-[11px] text-[var(--vscode-foreground)] opacity-90 m-0">
+        This finds every <span className="font-mono">{spec.sourceEntityName}</span> linked to a{" "}
+        <span className="font-mono">{spec.destinationEntityName}</span> by a{" "}
+        <span className="font-mono">{spec.relationshipName}</span>, and returns one row per link.
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="mt-1.5 flex items-center text-[11px] text-[var(--vscode-textLink-foreground)] hover:underline"
+      >
+        {open ? <ChevronDown className="w-3 h-3 mr-1" /> : <ChevronRight className="w-3 h-3 mr-1" />}
+        {open ? "Hide" : "What each line does"}
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-2">
+          {clauses.map((clause) => (
+            <div key={clause.code}>
+              <code className="text-[11px] font-mono text-[var(--vscode-textPreformat-foreground)] break-all">
+                {clause.code}
+              </code>
+              <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0 mt-0.5">{clause.text}</p>
+            </div>
+          ))}
+
+          {joins.length > 0 && (
+            <div className="pt-1 border-t border-[var(--vscode-widget-border)]/60">
+              <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0 mt-1.5">
+                In plain SQL this is a join of the three tables on the keys declared in the yaml:
+              </p>
+              <ul className="list-none p-0 m-0 mt-1">
+                {joins.map((join) => (
+                  <li key={join} className="text-[11px] font-mono text-[var(--vscode-foreground)] opacity-80">
+                    {join}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0 mt-1">
+                Writing it as a path pays off once you follow several hops, or a number of hops
+                you do not know up front — those are awkward to express as joins.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }> = ({ graph, state }) => {
   const graphKey = fullTargetName(graph.target);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -317,6 +411,9 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
   );
 
   const activeSpec = specs[Math.min(activeSpecIndex, Math.max(specs.length - 1, 0))];
+  const activeRelationship = (graph.relationships ?? []).find(
+    (relationship) => relationship.name === activeSpec?.relationshipName,
+  );
   const starterQuery = activeSpec ? buildGqlQuery(graph, activeSpec, selection) : "";
   const validation = state.propertyGraphValidations?.find((item) => item.targetName === graphKey);
   const bodyErrorAnnotations = validation?.graphBodyLine !== undefined && validation.message
@@ -431,6 +528,9 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
             </button>
           </div>
           <CodeBlock code={starterQuery} language="sql" />
+          {activeSpec && (
+            <StarterQueryExplainer graph={graph} spec={activeSpec} relationship={activeRelationship} />
+          )}
           <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0">
             GRAPH_TABLE reads the graph from BigQuery, so this needs the graph to have been
             created (Run graph) and a BigQuery Enterprise or Enterprise Plus reservation.
