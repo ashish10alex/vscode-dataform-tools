@@ -1,4 +1,4 @@
-import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
+import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress } from "./utils";
 import * as vscode from 'vscode';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
@@ -25,6 +25,10 @@ export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] 
     let dataformCompilerOptions = getDataformCompilerOptions();
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
     let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
+    const dataformExecutionTimeoutVal = getDataformExecutionTimeoutFromConfig();
+    if (dataformExecutionTimeoutVal) {
+        cmd += ` --execution-timeout=${dataformExecutionTimeoutVal}`;
+    }
     if (typeof tags === "object") {
         for (let tag of tags) {
             cmd += ` --tags=${tag}`;

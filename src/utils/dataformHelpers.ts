@@ -8,7 +8,7 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
 import { CurrentFileMetadata, Target, Table, Operation, Assertion, Declarations, ExecutionMode } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
-import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformCliCmdBasedOnScope } from './dataformCompiler';
+import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getDataformCliCmdBasedOnScope } from './dataformCompiler';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
@@ -399,6 +399,10 @@ export function getDataformActionCmdFromActionList(actionsList: string[], worksp
     let dataformCompilerOptions = getDataformCompilerOptions();
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
     let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
+    const dataformExecutionTimeoutVal = getDataformExecutionTimeoutFromConfig();
+    if (dataformExecutionTimeoutVal) {
+        cmd += ` --execution-timeout=${dataformExecutionTimeoutVal}`;
+    }
     for (let i = 0; i < actionsList.length; i++) {
         let fullTableName = actionsList[i];
         if (i === 0) {
