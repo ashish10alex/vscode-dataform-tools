@@ -17,7 +17,7 @@ interface NodeData {
   tags: string[];
   fileName: string;
   datasetColor: string;
-  type: 'view' | 'table' | 'operation' | 'operations' | 'source' | 'assertions';
+  type: 'view' | 'table' | 'operation' | 'operations' | 'source' | 'assertions' | 'propertyGraphs';
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
   fullTableName: string;

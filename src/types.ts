@@ -96,6 +96,22 @@ export interface Declarations {
     fileName: string;
 }
 
+/**
+ * PropertyGraph action, added to the compiled graph in @dataform/core 3.0.65.
+ * Has no `type` field and no queries: it declares entities and relationships
+ * over existing tables rather than producing a query of its own.
+ */
+export interface PropertyGraph {
+    target: Target;
+    canonicalTarget: Target;
+    dependencyTargets: Target[];
+    fileName: string;
+    tags: string[];
+    description?: string;
+    graphBody?: string;
+    disabled?: boolean;
+}
+
 export interface ProjectConfig {
     warehouse: string;
     defaultSchema: string;
@@ -164,6 +180,8 @@ export interface DataformCompiledJson {
     graphErrors: GraphErrors;
     notebooks: Notebook[];
     tests: Test[];
+    /** Requires @dataform/core 3.0.65 or later, so absent on older compiled output. */
+    propertyGraphs?: PropertyGraph[];
     dataformCoreVersion?: string;
 }
 
