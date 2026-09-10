@@ -35,19 +35,67 @@ jobs:
              echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
+      # Package once up front so each registry publishes the same artifact and
+      # neither depends on the other having run.
+      - name: Package extension
+        id: package
+        run: |
+          VSIX="${GITHUB_WORKSPACE}/extension.vsix"
+          if [ "${{ steps.check_prerelease.outputs.is_prerelease }}" = "true" ]; then
+            npx --yes @vscode/vsce@3 package --pre-release --out "$VSIX"
+          else
+            npx --yes @vscode/vsce@3 package --out "$VSIX"
+          fi
+          echo "vsix=$VSIX" >> $GITHUB_OUTPUT
+
+      # Both publish steps use continue-on-error so one registry being down
+      # cannot skip the other. The gate step below still fails the job.
       - name: Publish to Visual Studio Marketplace
-        uses: HaaLeo/publish-vscode-extension@v2
         id: publishToVSMarketplace
+        continue-on-error: true
+        uses: HaaLeo/publish-vscode-extension@v2
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
+          extensionFile: ${{ steps.package.outputs.vsix }}
           preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
           dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
       - name: Publish to Open VSX Registry
+        id: publishToOpenVSX
+        continue-on-error: true
         uses: HaaLeo/publish-vscode-extension@v2
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
           registryUrl: https://open-vsx.org
-          extensionFile: ${{ steps.publishToVSMarketplace.outputs.vsixPath }}
+          extensionFile: ${{ steps.package.outputs.vsix }}
           preRelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
           dryRun: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+      # Keep the built VSIX so a registry outage can be worked around by
+      # uploading it by hand, without rebuilding locally.
+      - name: Upload VSIX artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-vsix
+          path: ${{ steps.package.outputs.vsix }}
+          if-no-files-found: warn
+
+      - name: Report publish results
+        if: always()
+        run: |
+          MARKETPLACE="${{ steps.publishToVSMarketplace.outcome }}"
+          OPENVSX="${{ steps.publishToOpenVSX.outcome }}"
+          {
+            echo "| Registry | Result |"
+            echo "| --- | --- |"
+            echo "| Visual Studio Marketplace | $MARKETPLACE |"
+            echo "| Open VSX | $OPENVSX |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Visual Studio Marketplace: $MARKETPLACE"
+          echo "Open VSX: $OPENVSX"
+          if [ "$MARKETPLACE" != "success" ] || [ "$OPENVSX" != "success" ]; then
+            echo "::error::At least one registry failed to publish. Re-run the failed job once the registry recovers; publishing is idempotent per version."
+            exit 1
+          fi
