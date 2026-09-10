@@ -1,4 +1,4 @@
-import { Assertion, DataformCompiledJson, Declarations, DependancyModelMetadata, Operation, Table } from "../types";
+import { Assertion, DataformCompiledJson, Declarations, DependancyModelMetadata, Operation, PropertyGraph, Table } from "../types";
 
 export interface GraphEdge {
     id: string;
@@ -47,8 +47,8 @@ const datasetColors = [
     "#38BDF8"  // Light Sky Blue
 ];
 
-type StructType = "tables" | "assertions" | "operations" | "declarations";
-type AnyStruct = Table | Operation | Assertion | Declarations;
+type StructType = "tables" | "assertions" | "operations" | "declarations" | "propertyGraphs";
+type AnyStruct = Table | Operation | Assertion | Declarations | PropertyGraph;
 
 interface PopulateState {
     nodes: DependancyModelMetadata[];
@@ -154,6 +154,7 @@ export function buildDependencyGraph(
     if (compiled.assertions) { populate("assertions", compiled.assertions, state, focusIdentifier); }
     if (compiled.operations) { populate("operations", compiled.operations, state, focusIdentifier); }
     if (compiled.declarations) { populate("declarations", compiled.declarations, state, focusIdentifier); }
+    if (compiled.propertyGraphs) { populate("propertyGraphs", compiled.propertyGraphs, state, focusIdentifier); }
 
     return {
         nodes: state.nodes,
