@@ -90,6 +90,19 @@ export function getDataformCompilationTimeoutFromConfig() {
     return "5m";
 }
 
+/**
+ * Wall-clock deadline for an entire `dataform run`, passed as `--execution-timeout`.
+ * Unset by default, matching the Dataform CLI, where the deadline is off unless asked for.
+ * Note that `--timeout` only bounds the compilation step of a run.
+ */
+export function getDataformExecutionTimeoutFromConfig(): string | undefined {
+    let dataformExecutionTimeoutVal: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('executionTimeout');
+    if (dataformExecutionTimeoutVal) {
+        return dataformExecutionTimeoutVal;
+    }
+    return undefined;
+}
+
 export function getDataformCompilerOptions() {
     let dataformCompilerOptions: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
     if (dataformCompilerOptions) {
