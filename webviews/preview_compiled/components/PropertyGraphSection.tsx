@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -161,8 +161,9 @@ const RelationshipCard: React.FC<{
   isExpanded: boolean;
   onToggleExpand: (elementName: string) => void;
   onToggleProperty: (elementName: string, property: string) => void;
-}> = ({ relationship, view, selected, isExpanded, onToggleExpand, onToggleProperty }) => (
-  <div className="rounded-lg border border-[var(--vscode-widget-border)]/60 overflow-hidden">
+  cardRef: (element: HTMLDivElement | null) => void;
+}> = ({ relationship, view, selected, isExpanded, onToggleExpand, onToggleProperty, cardRef }) => (
+  <div ref={cardRef} className="rounded-lg border border-[var(--vscode-widget-border)]/60 overflow-hidden">
     <button
       type="button"
       onClick={() => onToggleExpand(view.name)}
@@ -219,6 +220,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
   const [requestedSchemas, setRequestedSchemas] = useState<Record<string, boolean>>({});
   const [activeSpecIndex, setActiveSpecIndex] = useState(0);
   const [showBody, setShowBody] = useState(false);
+  const relationshipCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const specs = useMemo(() => buildGqlQuerySpecs(graph), [graph]);
 
@@ -254,11 +256,10 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
     return map;
   }, [graph.entities, graph.relationships]);
 
-  const handleToggleExpand = useCallback((elementName: string) => {
-    const isOpening = expanded[elementName] !== true;
-    setExpanded((previous) => ({ ...previous, [elementName]: isOpening }));
+  const setElementExpanded = useCallback((elementName: string, open: boolean) => {
+    setExpanded((previous) => ({ ...previous, [elementName]: open }));
 
-    if (!isOpening) {
+    if (!open) {
       return;
     }
 
@@ -277,7 +278,22 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
         value: { elementName: schemaKey, target: element.dataSource },
       });
     }
-  }, [expanded, elementByName, schemaKeyFor, requestedSchemas, state.propertyGraphElementSchemas]);
+  }, [elementByName, schemaKeyFor, requestedSchemas, state.propertyGraphElementSchemas]);
+
+  const handleToggleExpand = useCallback((elementName: string) => {
+    setElementExpanded(elementName, expanded[elementName] !== true);
+  }, [expanded, setElementExpanded]);
+
+  // An edge has nowhere to expand into, so clicking one opens its card and scrolls to it.
+  const handleSelectRelationship = useCallback((relationshipName: string) => {
+    setElementExpanded(relationshipName, true);
+    requestAnimationFrame(() => {
+      relationshipCardRefs.current[relationshipName]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }, [setElementExpanded]);
 
   const handleToggleProperty = useCallback((elementName: string, property: string) => {
     setSelection((previous) => {
@@ -359,9 +375,12 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
         selection={selection}
         onToggleExpand={handleToggleExpand}
         onToggleProperty={handleToggleProperty}
+        onSelectRelationship={handleSelectRelationship}
       />
       <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0">
-        Click an entity to see its properties and choose which ones the starter query returns.
+        Entities are boxes and relationships are arrows, so a relationship's table is named on
+        the arrow rather than in a box of its own. Click either to see its properties and choose
+        which ones the starter query returns.
       </p>
 
       {relationshipViews.length > 0 && (
@@ -376,6 +395,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
               isExpanded={expanded[relationship.name] === true}
               onToggleExpand={handleToggleExpand}
               onToggleProperty={handleToggleProperty}
+              cardRef={(element) => { relationshipCardRefs.current[relationship.name] = element; }}
             />
           ))}
         </div>
