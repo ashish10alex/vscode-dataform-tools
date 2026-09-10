@@ -165,6 +165,9 @@ export function knownPropertyNames(
     return (label?.fields ?? []).map((field) => field.name);
 }
 
+/** Row cap on generated starter queries; shared so the query and its explanation agree. */
+export const DEFAULT_GQL_ROW_LIMIT = 100;
+
 export interface GqlAliasMap {
     source: string;
     edge: string;
@@ -237,7 +240,7 @@ export function buildGqlQuery(
     graph: PropertyGraph,
     spec: GqlQuerySpec,
     selection: GqlSelection,
-    rowLimit = 100,
+    rowLimit = DEFAULT_GQL_ROW_LIMIT,
 ): string {
     const graphName = fullTargetName(graph.target);
     const pattern =
@@ -245,15 +248,14 @@ export function buildGqlQuery(
         + `-[${spec.aliases.edge}:${spec.relationshipName}]->`
         + `(${spec.aliases.destination}:${spec.destinationEntityName})`;
 
-    const aliasByElement: Record<string, string> = {
-        [spec.sourceEntityName]: spec.aliases.source,
-        [spec.relationshipName]: spec.aliases.edge,
-        [spec.destinationEntityName]: spec.aliases.destination,
-    };
+    const parts: { elementName: string; alias: string }[] = [
+        { elementName: spec.sourceEntityName, alias: spec.aliases.source },
+        { elementName: spec.relationshipName, alias: spec.aliases.edge },
+        { elementName: spec.destinationEntityName, alias: spec.aliases.destination },
+    ];
 
     const returnItems: string[] = [];
-    for (const elementName of [spec.sourceEntityName, spec.relationshipName, spec.destinationEntityName]) {
-        const alias = aliasByElement[elementName];
+    for (const { elementName, alias } of parts) {
         for (const property of selection[elementName] ?? []) {
             const item = `${alias}.${property}`;
             if (!returnItems.includes(item)) {

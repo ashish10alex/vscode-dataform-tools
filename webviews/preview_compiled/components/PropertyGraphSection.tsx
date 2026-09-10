@@ -16,6 +16,7 @@ import { vscode } from "../utils/vscode";
 import type { PropertyGraph, PropertyGraphValidation, WebviewState } from "../types";
 import type { PropertyGraphEntity, PropertyGraphRelationship } from "../../../src/types";
 import {
+  DEFAULT_GQL_ROW_LIMIT,
   buildGqlQuery,
   buildGqlQuerySpecs,
   defaultLabelOf,
@@ -238,6 +239,21 @@ const StarterQueryExplainer: React.FC<{
     ...joinPairs(relationship?.destination, spec.destinationEntityName),
   ];
 
+  // A relationship can loop back to the entity it started from, in which case the pattern spans
+  // two tables rather than three.
+  const tableCount = new Set([spec.sourceEntityName, spec.destinationEntityName]).size + 1;
+
+  // The only real semantics here come from the descriptions the author wrote in the yaml.
+  // Everything else this panel says is about GQL syntax, not about what the data means.
+  const describedElements = [
+    graph.entities?.find((entity) => entity.name === spec.sourceEntityName),
+    relationship,
+    graph.entities?.find((entity) => entity.name === spec.destinationEntityName),
+  ]
+    .filter((element, index, all) => element !== undefined && all.indexOf(element) === index)
+    .map((element) => ({ name: element!.name, description: defaultLabelOf(element!)?.description }))
+    .filter((element) => !!element.description);
+
   const clauses: { code: string; text: string }[] = [
     {
       code: "GRAPH_TABLE( … )",
@@ -252,7 +268,7 @@ const StarterQueryExplainer: React.FC<{
       text: "Which properties to pull out of each match. Tick properties on the diagram above to change this line.",
     },
     {
-      code: "LIMIT 100",
+      code: `LIMIT ${DEFAULT_GQL_ROW_LIMIT}`,
       text: "Caps how many matches come back.",
     },
   ];
@@ -284,10 +300,26 @@ const StarterQueryExplainer: React.FC<{
             </div>
           ))}
 
+          {describedElements.length > 0 && (
+            <div className="pt-1 border-t border-[var(--vscode-widget-border)]/60">
+              <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0 mt-1.5">
+                What those names mean, from the descriptions in the yaml:
+              </p>
+              <ul className="list-none p-0 m-0 mt-1 space-y-0.5">
+                {describedElements.map((element) => (
+                  <li key={element.name} className="text-[11px] text-[var(--vscode-foreground)] opacity-80">
+                    <span className="font-mono">{element.name}</span>
+                    <span className="opacity-70"> — {element.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {joins.length > 0 && (
             <div className="pt-1 border-t border-[var(--vscode-widget-border)]/60">
               <p className="text-[11px] text-[var(--vscode-descriptionForeground)] m-0 mt-1.5">
-                In plain SQL this is a join of the three tables on the keys declared in the yaml:
+                In plain SQL this is a join of the {tableCount} tables on the keys declared in the yaml:
               </p>
               <ul className="list-none p-0 m-0 mt-1">
                 {joins.map((join) => (

@@ -182,6 +182,7 @@ const ElementNode: React.FC<NodeProps> = ({ data }) => {
 
 const EDGE_LABEL_WIDTH = 220;
 const EDGE_LABEL_HEIGHT = 64;
+const SELF_LOOP_HEIGHT = 110;
 
 type RelationshipEdgeData = { name: string };
 
@@ -191,14 +192,25 @@ type RelationshipEdgeData = { name: string };
  * table became the arrow — which is the one idea the whole property graph model rests on.
  */
 const RelationshipEdge: React.FC<EdgeProps> = ({
-  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data,
+  id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data,
 }) => {
   const { name } = data as unknown as RelationshipEdgeData;
   const { relationshipByName, selection, onSelectRelationship } = useDiagramContext();
   const relationship = relationshipByName[name];
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+
+  // A relationship may start and end at the same entity. The built in path helpers collapse to
+  // nothing in that case, which would drop the relationship from the diagram entirely, so a
+  // loop is drawn over the node instead.
+  const isSelfLoop = source === target;
+  const loopApexY = sourceY - SELF_LOOP_HEIGHT;
+  const [smoothPath, smoothLabelX, smoothLabelY] = getSmoothStepPath({
     sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 8,
   });
+  const edgePath = isSelfLoop
+    ? `M ${sourceX},${sourceY} C ${sourceX + 70},${loopApexY} ${targetX - 70},${loopApexY} ${targetX},${targetY}`
+    : smoothPath;
+  const labelX = isSelfLoop ? (sourceX + targetX) / 2 : smoothLabelX;
+  const labelY = isSelfLoop ? loopApexY + SELF_LOOP_HEIGHT / 3 : smoothLabelY;
 
   return (
     <>
