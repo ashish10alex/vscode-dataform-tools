@@ -346,6 +346,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
         ...(compiledJson?.operations ?? []),
         ...(compiledJson?.notebooks ?? []),
         ...(compiledJson?.propertyGraphs ?? []),
+        ...(compiledJson?.declarations ?? []),
     ];
     taggedActions.forEach((action) => {
         action?.tags?.forEach((tag) => {

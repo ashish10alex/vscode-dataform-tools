@@ -90,7 +90,7 @@ export interface Target {
 
 export interface Declarations {
     target: Target;
-    tags: string[]; // WARN: This is not a valid object for Declarations adding this to avoid type errors when using abstractions
+    tags: string[]; // Declarations gained tag support in @dataform/core 3.0.52, so this is absent on older compiled output
     canonicalTarget: Target;
     dependencyTargets: Target[]; // WARN: This is not a valid object for Declarations adding this to avoid type errors when using abstractions
     fileName: string;
