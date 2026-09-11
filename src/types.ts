@@ -333,6 +333,12 @@ export interface BigQueryDryRunResponse {
         };
         statementType?: string;
         totalBytesProcessedAccuracy?: string;
+        /**
+         * BigQuery could not compute bytes statically (totalBytesProcessedAccuracy === "UNKNOWN"),
+         * so it reports totalBytesProcessed as 0. The query still scans data when executed, so
+         * treat 0 bytes / 0 cost as "no estimate available" rather than as a real zero.
+         */
+        bytesEstimateUnknown?: boolean;
     };
     error: DryRunErorr
 }
@@ -381,11 +387,14 @@ export type TagDryRunStats = {
     type: string;
     targetName: string;
     schema: string;
-    costOfRunningModel: number;
+    /** undefined when BigQuery could not estimate bytes (accuracy UNKNOWN). */
+    costOfRunningModel: number | undefined;
     currency: SupportedCurrency;
-    totalGBProcessed: string;
+    /** undefined when BigQuery could not estimate bytes (accuracy UNKNOWN). */
+    totalGBProcessed: string | undefined;
     totalBytesProcessedAccuracy: string | undefined;
     statementType: string | undefined;
+    bytesEstimateUnknown?: boolean;
     error: string
 };
 

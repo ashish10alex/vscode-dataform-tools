@@ -8,6 +8,7 @@ import { FindWidget } from '../components/FindWidget';
 import DependencyGraph from './DependencyGraph';
 import { BigQueryTableLink } from '../components/BigQueryTableLink';
 import { AutoGrowingTextarea } from '../components/AutoGrowingTextarea';
+import { UNKNOWN_ACCURACY_TOOLTIP } from '../utils/dryRunAccuracy';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -317,7 +318,7 @@ export default function App() {
                 }
 
                 case 'dryRunResult': {
-                    const { tableId, bytes, cost, error, query } = msg.value;
+                    const { tableId, bytes, cost, error, query, bytesEstimateUnknown } = msg.value;
                     setResults(prev => ({
                         ...prev,
                         [tableId]: {
@@ -325,6 +326,7 @@ export default function App() {
                             query,
                             bytes,
                             cost,
+                            bytesEstimateUnknown,
                             error,
                         },
                     }));
@@ -1276,12 +1278,28 @@ export default function App() {
                                                     <span>
                                                         <span className="text-[var(--vscode-descriptionForeground)]">Bytes processed: </span>
                                                         <span className="font-mono font-semibold">{res.bytes}</span>
+                                                        {res.bytesEstimateUnknown && (
+                                                            <span
+                                                                className="ml-1 text-[var(--vscode-editorWarning-foreground)]"
+                                                                title={UNKNOWN_ACCURACY_TOOLTIP}
+                                                            >
+                                                                ⚠
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 )}
                                                 {res.cost && (
                                                     <span>
                                                         <span className="text-[var(--vscode-descriptionForeground)]">Estimated cost: </span>
                                                         <span className="font-mono font-semibold">{res.cost}</span>
+                                                        {res.bytesEstimateUnknown && (
+                                                            <span
+                                                                className="ml-1 text-[var(--vscode-editorWarning-foreground)]"
+                                                                title={UNKNOWN_ACCURACY_TOOLTIP}
+                                                            >
+                                                                ⚠
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 )}
                                             </div>

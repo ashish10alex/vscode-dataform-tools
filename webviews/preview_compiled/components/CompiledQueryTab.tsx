@@ -28,6 +28,7 @@ import { CompilerOverrides } from "./CompilerOverrides";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
+import { UNKNOWN_ACCURACY_MARKER, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 
 const ACCENT_EXPLORE = "inset 2px 0 0 var(--vscode-charts-green)";
 const ACCENT_PREVIEW = "inset 2px 0 0 var(--vscode-charts-blue)";
@@ -35,6 +36,23 @@ const ACCENT_RUN = "inset 2px 0 0 var(--vscode-charts-purple)";
 
 
 
+
+/**
+ * Dry run stat lines carrying UNKNOWN_ACCURACY_MARKER report 0 bytes only because BigQuery
+ * could not compute them statically. Render the warning glyph so it is visually distinct
+ * from the number and hangs a tooltip explaining what the 0 means.
+ */
+const renderDryRunStatLine = (line: string) => {
+  if (!line.endsWith(UNKNOWN_ACCURACY_MARKER)) {
+    return line;
+  }
+  return (
+    <span title={UNKNOWN_ACCURACY_TOOLTIP}>
+      {line.slice(0, -UNKNOWN_ACCURACY_MARKER.length)}
+      <span className="ml-1 text-[var(--vscode-editorWarning-foreground)]">⚠</span>
+    </span>
+  );
+};
 
 interface CompiledQueryTabProps {
   state: WebviewState;
@@ -273,7 +291,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 {dryRunStat && !state.dryRunning && (
                   <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
                     {dryRunStat.split("<br>").map((line, i) => (
-                      <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
+                      <React.Fragment key={i}>{i > 0 && <br />}{renderDryRunStatLine(line)}</React.Fragment>
                     ))}
                   </div>
                 )}

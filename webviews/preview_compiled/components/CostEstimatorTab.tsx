@@ -3,10 +3,11 @@ import { WebviewState } from '../types';
 import { vscode } from '../utils/vscode';
 import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Row } from '@tanstack/react-table';
 import StyledMultiSelect from '../../dependancy_graph/components/StyledMultiSelect';
 import { OptionType } from '../../dependancy_graph/components/StyledSelect';
 import { MultiValue } from 'react-select';
+import { UNKNOWN_ACCURACY_TOOLTIP } from '../../utils/dryRunAccuracy';
 
 interface CostEstimatorTabProps {
   state: WebviewState;
@@ -18,9 +19,53 @@ type CostEstimateRow = {
     type: string;
     statementType: string;
     totalBytesProcessedAccuracy: string;
-    totalGBProcessed: string; // or number? <b>parseFloat</b> was used in previous implementation
-    costOfRunningModel: string;
+    // undefined when BigQuery could not estimate the bytes (accuracy UNKNOWN)
+    totalGBProcessed?: string; // or number? <b>parseFloat</b> was used in previous implementation
+    costOfRunningModel?: string;
+    bytesEstimateUnknown?: boolean;
     error?: string;
+};
+
+const UNKNOWN_CELL = (
+    <span
+        className="text-[var(--vscode-editorWarning-foreground)]"
+        title={UNKNOWN_ACCURACY_TOOLTIP}
+    >
+        unknown
+    </span>
+);
+
+/**
+ * Sums a numeric column, skipping models BigQuery could not estimate. Those rows report 0
+ * bytes, so including them would silently understate the total; the count is surfaced instead.
+ */
+const renderTotal = (
+    rows: Row<CostEstimateRow>[],
+    columnId: "totalGBProcessed" | "costOfRunningModel",
+    format: (total: number) => string,
+) => {
+    let notEstimated = 0;
+    const total = rows.reduce((sum, row) => {
+        if (row.original.bytesEstimateUnknown) {
+            notEstimated += 1;
+            return sum;
+        }
+        const val = parseFloat(row.getValue(columnId));
+        return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    if (notEstimated === 0) {
+        return format(total);
+    }
+
+    return (
+        <span title={UNKNOWN_ACCURACY_TOOLTIP}>
+            {format(total)}
+            <span className="ml-1 font-normal text-[var(--vscode-editorWarning-foreground)]">
+                ({notEstimated} model{notEstimated === 1 ? "" : "s"} not estimated)
+            </span>
+        </span>
+    );
 };
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
@@ -72,8 +117,8 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
               `"${row.type || ''}"`,
               `"${row.statementType || ''}"`,
               `"${row.totalBytesProcessedAccuracy || ''}"`,
-              row.totalGBProcessed !== undefined && !isNaN(Number(row.totalGBProcessed)) ? Number(row.totalGBProcessed).toFixed(2) : '',
-              row.costOfRunningModel !== undefined && !isNaN(Number(row.costOfRunningModel)) ? Number(row.costOfRunningModel).toFixed(2) : '',
+              row.bytesEstimateUnknown ? 'unknown' : (row.totalGBProcessed !== undefined && !isNaN(Number(row.totalGBProcessed)) ? Number(row.totalGBProcessed).toFixed(2) : ''),
+              row.bytesEstimateUnknown ? 'unknown' : (row.costOfRunningModel !== undefined && !isNaN(Number(row.costOfRunningModel)) ? Number(row.costOfRunningModel).toFixed(2) : ''),
               `"${(row.error || '').replace(/"/g, '""')}"`
           ];
           csvRows.push(values.join(','));
@@ -132,36 +177,37 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       {
           accessorKey: "totalBytesProcessedAccuracy",
           header: "Accuracy",
+          cell: ({ getValue }) => {
+              const accuracy = getValue() as string;
+              if (accuracy !== "UNKNOWN") {
+                  return accuracy ?? null;
+              }
+              return (
+                  <span className="text-[var(--vscode-editorWarning-foreground)]" title={UNKNOWN_ACCURACY_TOOLTIP}>
+                      {accuracy}
+                  </span>
+              );
+          },
       },
       {
           accessorKey: "totalGBProcessed",
           header: "GiB proc.",
-          cell: ({ getValue }) => {
+          cell: ({ row, getValue }) => {
+              if (row.original.bytesEstimateUnknown) { return UNKNOWN_CELL; }
               const val = parseFloat(getValue() as string);
               return isNaN(val) ? "" : val.toFixed(2);
           },
-          footer: (info) => {
-              const total = info.table.getFilteredRowModel().rows.reduce((sum, row) => {
-                  const val = parseFloat(row.getValue("totalGBProcessed"));
-                  return sum + (isNaN(val) ? 0 : val);
-              }, 0);
-              return total.toFixed(2);
-          }
+          footer: (info) => renderTotal(info.table.getFilteredRowModel().rows, "totalGBProcessed", (total) => total.toFixed(2)),
       },
       {
           accessorKey: "costOfRunningModel",
           header: "Cost",
-          cell: ({ getValue }) => {
+          cell: ({ row, getValue }) => {
+              if (row.original.bytesEstimateUnknown) { return UNKNOWN_CELL; }
               const val = parseFloat(getValue() as string);
               return isNaN(val) ? "" : `${currencySymbol}${val.toFixed(2)}`;
           },
-          footer: (info) => {
-               const total = info.table.getFilteredRowModel().rows.reduce((sum, row) => {
-                  const val = parseFloat(row.getValue("costOfRunningModel"));
-                  return sum + (isNaN(val) ? 0 : val);
-              }, 0);
-              return `${currencySymbol}${total.toFixed(2)}`;
-          }
+          footer: (info) => renderTotal(info.table.getFilteredRowModel().rows, "costOfRunningModel", (total) => `${currencySymbol}${total.toFixed(2)}`),
       },
       {
         accessorKey: "error",

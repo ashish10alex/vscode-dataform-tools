@@ -61,7 +61,13 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
             dryRun: true
         });
 
-        const totalBytesProcessed = Number(parseFloat(job.metadata.statistics.totalBytesProcessed));
+        const totalBytesProcessedAccuracy = job.metadata.statistics.query?.totalBytesProcessedAccuracy;
+        const rawBytesProcessed = parseFloat(job.metadata.statistics.totalBytesProcessed);
+        const totalBytesProcessed = Number.isFinite(rawBytesProcessed) ? rawBytesProcessed : 0;
+        // When BigQuery cannot compute bytes statically it reports accuracy UNKNOWN and 0 bytes,
+        // even though the query will scan real data when executed. Flag it so consumers do not
+        // present the 0 as a genuine estimate.
+        const bytesEstimateUnknown = totalBytesProcessedAccuracy === 'UNKNOWN';
         // 1024 bytes ** 3 = 1GiB
         const cost = Number((totalBytesProcessed) / (1024 ** 3)) * bigQueryDryRunCostOneGiBByCurrency[currencyFoDryRunCost];
 
@@ -75,7 +81,8 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
                     value: cost
                 },
                 statementType: job.metadata.statistics.query.statementType,
-                totalBytesProcessedAccuracy: job.metadata.statistics.query.totalBytesProcessedAccuracy
+                totalBytesProcessedAccuracy: totalBytesProcessedAccuracy,
+                bytesEstimateUnknown: bytesEstimateUnknown
             },
             error: { hasError: false, message: "" }
         };

@@ -4,7 +4,7 @@ globalThis.errorInPreOpsDenyList = false;
 globalThis.compilerOptionsMap = {};
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices, getDataformTags } from '../../utils';
+import { compileDataform, formatBytes, formatDryRunCostSummary, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices, getDataformTags } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset, incrementalTableOffset } from '../../constants';
@@ -818,6 +818,75 @@ suite('format bytes from dry run in human readable format', () => {
         assert.strictEqual(formatBytes(500), '500.00 B');
         assert.strictEqual(formatBytes(1500), '1.46 KiB');
         assert.strictEqual(formatBytes(1024 * 1024 * 1.5), '1.50 MiB');
+    });
+});
+
+suite('formatDryRunCostSummary', () => {
+    const oneGiB = 1024 ** 3;
+    const buildResult = (statistics: any, hasError = false): any => ({
+        statistics,
+        error: { hasError, message: hasError ? 'boom' : '' }
+    });
+
+    test('formats a precise estimate', () => {
+        const result = buildResult({
+            totalBytesProcessed: oneGiB,
+            cost: { currency: 'USD', value: 0.00625 },
+            totalBytesProcessedAccuracy: 'PRECISE'
+        });
+        assert.strictEqual(formatDryRunCostSummary(result, '', '$'), '1.00 GiB $0.006');
+    });
+
+    test('prefixes bound estimates and prepends the label', () => {
+        const upperBound = buildResult({
+            totalBytesProcessed: oneGiB,
+            cost: { currency: 'USD', value: 0.00625 },
+            totalBytesProcessedAccuracy: 'UPPER_BOUND'
+        });
+        assert.strictEqual(formatDryRunCostSummary(upperBound, 'Incremental', '$'), 'Incremental: Up to 1.00 GiB $0.006');
+
+        const lowerBound = buildResult({
+            totalBytesProcessed: oneGiB,
+            cost: { currency: 'USD', value: 0.00625 },
+            totalBytesProcessedAccuracy: 'LOWER_BOUND'
+        });
+        assert.strictEqual(formatDryRunCostSummary(lowerBound, '', '$'), 'At least 1.00 GiB $0.006');
+    });
+
+    test('marks UNKNOWN accuracy so 0 bytes is not read as free', () => {
+        // BigQuery reports totalBytesProcessed "0" whenever accuracy is UNKNOWN
+        const result = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 },
+            statementType: 'SELECT',
+            totalBytesProcessedAccuracy: 'UNKNOWN',
+            bytesEstimateUnknown: true
+        });
+        assert.strictEqual(formatDryRunCostSummary(result, '', '$'), '0 B $0.000 \u26a0');
+    });
+
+    test('marks scripts whose bytes could not be computed', () => {
+        const result = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 },
+            statementType: 'SCRIPT',
+            totalBytesProcessedAccuracy: 'UNKNOWN',
+            bytesEstimateUnknown: true
+        });
+        assert.strictEqual(
+            formatDryRunCostSummary(result, '', '$'),
+            'NOTE: Could not compute bytes processed estimate for script. \u26a0'
+        );
+    });
+
+    test('returns an empty string when there is nothing to show', () => {
+        assert.strictEqual(formatDryRunCostSummary(undefined, '', '$'), '');
+        assert.strictEqual(formatDryRunCostSummary(buildResult({ totalBytesProcessed: 0 }), '', '$'), '');
+        const erroredResult = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 }
+        }, true);
+        assert.strictEqual(formatDryRunCostSummary(erroredResult, '', '$'), '');
     });
 });
 

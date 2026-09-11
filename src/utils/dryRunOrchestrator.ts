@@ -236,7 +236,11 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             let targetTableId = ` ${table.target.database}.${table.target.schema}.${table.target.name} ; `;
             combinedTableIds += targetTableId;
         });
-        vscode.window.showInformationMessage(`GB: ${dryRunResult.statistics?.totalBytesProcessed || 0} - ${combinedTableIds}`);
+        // 0 bytes with UNKNOWN accuracy is not an estimate, so say so rather than reporting 0
+        const bytesProcessedSummary = dryRunResult.statistics?.bytesEstimateUnknown
+            ? "could not be estimated by BigQuery"
+            : `${dryRunResult.statistics?.totalBytesProcessed || 0}`;
+        vscode.window.showInformationMessage(`GB: ${bytesProcessedSummary} - ${combinedTableIds}`);
     }
     return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults };
 }
