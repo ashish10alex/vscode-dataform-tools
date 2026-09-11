@@ -123,9 +123,10 @@ unquoted_identifiers_policy = all
 quoted_identifiers_policy = none
 
 [sqlfluff:templater:placeholder]
-param_regex = (?s)\${\s*(?P<param_name>[\w_]+)(?P<rec>(?:[^{}]+|{(?&rec)})*+)}|(?P<param_name>config|pre_operations|post_operations)\s*{(?&rec)}
+param_regex = (?s)\${\s*(?P<param_name>[\w_]+)(?P<rec>(?:[^{}]+|{(?&rec)})*+)}|(?P<param_name>config|pre_operations|post_operations|js)\s*{(?&rec)}
 ref = ref_table_placeholder
 self = self_table_placeholder
 when =
 config =
 pre_operations =
+js =
