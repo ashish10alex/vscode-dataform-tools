@@ -25,6 +25,7 @@ import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { CompilerOverrides } from "./CompilerOverrides";
+import { PropertyGraphSection } from "./PropertyGraphSection";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
@@ -243,6 +244,26 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     if (type === 'operations') {return 'Operations';};
     return 'Query';
   };
+
+  // Property graphs produce no query, so none of the toolbar below (format, lint, preview,
+  // dry run stats) applies to them. They get their own section instead.
+  if ((state.propertyGraphs?.length ?? 0) > 0) {
+    return (
+      <div className="space-y-6 pb-20">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
+            {state.relativeFilePath || " "}
+          </span>
+          {state.compilationTimeMs !== undefined && state.recompiling === false && (
+            <span className="text-xs text-[var(--vscode-descriptionForeground)]">
+              Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s
+            </span>
+          )}
+        </div>
+        <PropertyGraphSection state={state} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

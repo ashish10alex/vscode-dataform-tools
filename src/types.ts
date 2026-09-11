@@ -110,6 +110,71 @@ export interface PropertyGraph {
     description?: string;
     graphBody?: string;
     disabled?: boolean;
+    entities?: PropertyGraphEntity[];
+    relationships?: PropertyGraphRelationship[];
+}
+
+/** A column of the backing table exposed as a graph property. */
+export interface PropertyGraphFieldMapping {
+    /** Property name as exposed to GQL. */
+    name: string;
+    /** Column (or expression) on the backing table it maps to. */
+    expression: string;
+}
+
+export interface PropertyGraphLabel {
+    name: string;
+    description?: string;
+    fields?: PropertyGraphFieldMapping[];
+    /** True when the yaml used `fieldWildcard.importAll`, in which case `fields` is absent. */
+    importAll?: boolean;
+    isDefault?: boolean;
+}
+
+export interface PropertyGraphEntity {
+    name: string;
+    dataSource: Target;
+    keys: string[];
+    labels: PropertyGraphLabel[];
+}
+
+export interface PropertyGraphRelationshipEnd {
+    entity: string;
+    relationshipColumns: string[];
+    entityColumns: string[];
+}
+
+export interface PropertyGraphRelationship {
+    name: string;
+    dataSource: Target;
+    keys: string[];
+    source: PropertyGraphRelationshipEnd;
+    destination: PropertyGraphRelationshipEnd;
+    labels: PropertyGraphLabel[];
+}
+
+/** Outcome of dry running the synthesised CREATE PROPERTY GRAPH statement. */
+export interface PropertyGraphValidation {
+    targetName: string;
+    /** The exact SQL that was dry run, always surfaced so the check is never a black box. */
+    statement: string;
+    state: "ok" | "error" | "skipped";
+    message?: string;
+    /** Line within `graphBody` the error points at, when it could be attributed. */
+    graphBodyLine?: number;
+    /**
+     * True when the failure looks like it is in the wrapper this extension synthesises
+     * rather than in the user's graph body.
+     */
+    harnessError?: boolean;
+}
+
+/** Columns read back from BigQuery for an entity/relationship backing table. */
+export interface PropertyGraphElementSchema {
+    elementName: string;
+    fullTableId: string;
+    columns: { name: string; type: string; description?: string }[];
+    error?: string;
 }
 
 export interface ProjectConfig {

@@ -85,6 +85,10 @@ function App() {
 
   const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
+  // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
+  // so the panel collapses to a single tab for them.
+  const isPropertyGraphFile = (state.propertyGraphs?.length ?? 0) > 0;
+
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -139,10 +143,10 @@ function App() {
   useEffect(() => {
     if (state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json') {
       setActiveTab('project_config');
-    } else if (activeTab === 'project_config') {
+    } else if (activeTab === 'project_config' || (isPropertyGraphFile && activeTab !== 'compilation')) {
       setActiveTab('compilation');
     }
-  }, [state.relativeFilePath, activeTab]);
+  }, [state.relativeFilePath, activeTab, isPropertyGraphFile]);
 
   // Handle declarations view (full page override)
   if (state.declarations) {
@@ -169,6 +173,8 @@ function App() {
               >
                 Compiled Query
               </button>
+              {!isPropertyGraphFile && (
+              <>
               <button
                 onClick={() => setActiveTab('schema')}
                 className={clsx(
@@ -202,6 +208,8 @@ function App() {
               >
                 Workflow Executions
               </button>
+              </>
+              )}
             </div>
             <HeaderRightActions />
           </>
@@ -248,7 +256,7 @@ function App() {
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 
-{(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
+{!isPropertyGraphFile && (state.errorType === CompilationErrorType.COMPILATION_ERROR ||
           !state.models?.length ||
           (state.missingExecutables && state.missingExecutables.length > 0)) && (
           <CompilationError state={state} />
@@ -264,6 +272,7 @@ function App() {
         )}
 
         {!isConfigFile && !state.isHelperFile && activeTab === 'compilation' && (
+          isPropertyGraphFile ||
           state.tableOrViewQuery ||
           state.operationsQuery ||
           state.assertionQuery ||
@@ -273,9 +282,9 @@ function App() {
           state.declarations ||
           state.models?.some((m: any) => m.type === 'notebook')
         ) && <CompiledQueryTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && activeTab === 'schema' && <SchemaTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
+        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
+        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
 
       </div>
     </div>

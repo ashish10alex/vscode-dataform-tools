@@ -28,6 +28,23 @@ export const useVSCodeMessage = () => {
               : (prevState.dryRunning ?? false),
         };
 
+        // Property graph state belongs to one file. A message announcing a different file
+        // must not leave the previous file's graph on screen.
+        if (message.relativeFilePath && message.relativeFilePath !== prevState.relativeFilePath) {
+          nextState.propertyGraphs = message.propertyGraphs ?? null;
+          nextState.propertyGraphValidations = message.propertyGraphValidations ?? null;
+        }
+
+        // Element schemas arrive one at a time as the user expands nodes, so they are merged
+        // into the existing map rather than replacing it.
+        if (message.propertyGraphElementSchema) {
+          nextState.propertyGraphElementSchemas = {
+            ...(prevState.propertyGraphElementSchemas ?? {}),
+            [message.propertyGraphElementSchema.elementName]: message.propertyGraphElementSchema,
+          };
+          delete (nextState as Record<string, unknown>).propertyGraphElementSchema;
+        }
+
         // When starting a new compilation or dry run, clear old errors and stats 
         // to prevent stale data from persisting until new results arrive.
         if (message.recompiling === true || message.dryRunning === true) {
