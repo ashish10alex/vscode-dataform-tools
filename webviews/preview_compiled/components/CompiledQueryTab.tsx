@@ -28,6 +28,7 @@ import { CompilerOverrides } from "./CompilerOverrides";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
+import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 
 const ACCENT_EXPLORE = "inset 2px 0 0 var(--vscode-charts-green)";
 const ACCENT_PREVIEW = "inset 2px 0 0 var(--vscode-charts-blue)";
@@ -35,6 +36,26 @@ const ACCENT_RUN = "inset 2px 0 0 var(--vscode-charts-purple)";
 
 
 
+
+/**
+ * A stat line ending in UNKNOWN_ACCURACY_STAT means BigQuery could not estimate the bytes.
+ * Render it as a warning chip rather than plain text, so it is impossible to mistake for a
+ * normal estimate at a glance; the tooltip explains what BigQuery actually reported.
+ */
+const renderDryRunStatLine = (line: string) => {
+  if (!line.endsWith(UNKNOWN_ACCURACY_STAT)) {
+    return line;
+  }
+  const label = line.slice(0, -UNKNOWN_ACCURACY_STAT.length);
+  return (
+    <span title={UNKNOWN_ACCURACY_TOOLTIP}>
+      {label}
+      <span className="px-1.5 py-0.5 rounded font-semibold" style={UNKNOWN_ACCURACY_CHIP_STYLE}>
+        {UNKNOWN_ACCURACY_STAT}
+      </span>
+    </span>
+  );
+};
 
 interface CompiledQueryTabProps {
   state: WebviewState;
@@ -273,7 +294,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 {dryRunStat && !state.dryRunning && (
                   <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
                     {dryRunStat.split("<br>").map((line, i) => (
-                      <React.Fragment key={i}>{i > 0 && <br />}{line}</React.Fragment>
+                      <React.Fragment key={i}>{i > 0 && <br />}{renderDryRunStatLine(line)}</React.Fragment>
                     ))}
                   </div>
                 )}

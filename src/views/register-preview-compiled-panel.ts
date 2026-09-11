@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -1017,22 +1017,7 @@ export class CompiledQueryPanel {
             currencySymbol = currencySymbolMapping[currency];
         }
 
-        const formatCost = (result: any, type: string) => {
-            if(result?.statistics?.cost && result?.error?.hasError === false){
-                const isUpperBound = result.statistics.totalBytesProcessedAccuracy === 'UPPER_BOUND';
-                const isLowerBound = result.statistics.totalBytesProcessedAccuracy === 'LOWER_BOUND';
-                const prefix = isUpperBound ? "Up to " : (isLowerBound ? "At least " : "");
-
-                if (result.statistics.statementType === 'SCRIPT' && 
-                    result.statistics.totalBytesProcessedAccuracy !== 'PRECISE' && 
-                    result.statistics.totalBytesProcessedAccuracy !== 'UPPER_BOUND') {
-                    return (type ? type + ": " : "") + "NOTE: Could not compute bytes processed estimate for script.";
-                }
-
-                return (type ? type + ": " : "") + prefix + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00");
-            }
-            return "";
-        };
+        const formatCost = (result: BigQueryDryRunResponse | undefined, type: string) => formatDryRunCostSummary(result, type, currencySymbol);
 
         const isJsFile = fileMetadata.queryMeta.type === "js";
 
