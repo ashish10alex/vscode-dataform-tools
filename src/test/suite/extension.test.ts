@@ -853,7 +853,7 @@ suite('formatDryRunCostSummary', () => {
         assert.strictEqual(formatDryRunCostSummary(lowerBound, '', '$'), 'At least 1.00 GiB $0.006');
     });
 
-    test('marks UNKNOWN accuracy so 0 bytes is not read as free', () => {
+    test('replaces the 0 bytes UNKNOWN reports with a warning', () => {
         // BigQuery reports totalBytesProcessed "0" whenever accuracy is UNKNOWN
         const result = buildResult({
             totalBytesProcessed: 0,
@@ -862,20 +862,30 @@ suite('formatDryRunCostSummary', () => {
             totalBytesProcessedAccuracy: 'UNKNOWN',
             bytesEstimateUnknown: true
         });
-        assert.strictEqual(formatDryRunCostSummary(result, '', '$'), '0 B $0.000 \u26a0');
+        assert.strictEqual(formatDryRunCostSummary(result, '', '$'), '\u26a0 Bytes unknown');
+        assert.strictEqual(formatDryRunCostSummary(result, 'Incremental', '$'), 'Incremental: \u26a0 Bytes unknown');
     });
 
-    test('marks scripts whose bytes could not be computed', () => {
-        const result = buildResult({
+    test('warns for scripts whose bytes could not be computed', () => {
+        const unknownScript = buildResult({
             totalBytesProcessed: 0,
             cost: { currency: 'USD', value: 0 },
             statementType: 'SCRIPT',
             totalBytesProcessedAccuracy: 'UNKNOWN',
             bytesEstimateUnknown: true
         });
+        assert.strictEqual(formatDryRunCostSummary(unknownScript, '', '$'), '\u26a0 Bytes unknown');
+
+        // A script with a non-precise but known accuracy keeps the existing note
+        const lowerBoundScript = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 },
+            statementType: 'SCRIPT',
+            totalBytesProcessedAccuracy: 'LOWER_BOUND'
+        });
         assert.strictEqual(
-            formatDryRunCostSummary(result, '', '$'),
-            'NOTE: Could not compute bytes processed estimate for script. \u26a0'
+            formatDryRunCostSummary(lowerBoundScript, '', '$'),
+            'NOTE: Could not compute bytes processed estimate for script.'
         );
     });
 

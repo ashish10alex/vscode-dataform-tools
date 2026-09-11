@@ -8,7 +8,7 @@ import { FindWidget } from '../components/FindWidget';
 import DependencyGraph from './DependencyGraph';
 import { BigQueryTableLink } from '../components/BigQueryTableLink';
 import { AutoGrowingTextarea } from '../components/AutoGrowingTextarea';
-import { UNKNOWN_ACCURACY_TOOLTIP } from '../utils/dryRunAccuracy';
+import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from '../utils/dryRunAccuracy';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -1274,33 +1274,30 @@ export default function App() {
                                         {/* Dry run stats */}
                                         {res.status === 'dry-run-success' && (
                                             <div className="flex gap-4 text-xs text-[var(--vscode-foreground)]">
-                                                {res.bytes && (
-                                                    <span>
-                                                        <span className="text-[var(--vscode-descriptionForeground)]">Bytes processed: </span>
-                                                        <span className="font-mono font-semibold">{res.bytes}</span>
-                                                        {res.bytesEstimateUnknown && (
-                                                            <span
-                                                                className="ml-1 text-[var(--vscode-editorWarning-foreground)]"
-                                                                title={UNKNOWN_ACCURACY_TOOLTIP}
-                                                            >
-                                                                ⚠
+                                                {/* BigQuery reports 0 bytes / 0 cost when it could not estimate them, so show a warning in their place */}
+                                                {res.bytesEstimateUnknown ? (
+                                                    <span
+                                                        className="px-1.5 py-0.5 rounded font-semibold"
+                                                        style={UNKNOWN_ACCURACY_CHIP_STYLE}
+                                                        title={UNKNOWN_ACCURACY_TOOLTIP}
+                                                    >
+                                                        {UNKNOWN_ACCURACY_STAT}
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        {res.bytes && (
+                                                            <span>
+                                                                <span className="text-[var(--vscode-descriptionForeground)]">Bytes processed: </span>
+                                                                <span className="font-mono font-semibold">{res.bytes}</span>
                                                             </span>
                                                         )}
-                                                    </span>
-                                                )}
-                                                {res.cost && (
-                                                    <span>
-                                                        <span className="text-[var(--vscode-descriptionForeground)]">Estimated cost: </span>
-                                                        <span className="font-mono font-semibold">{res.cost}</span>
-                                                        {res.bytesEstimateUnknown && (
-                                                            <span
-                                                                className="ml-1 text-[var(--vscode-editorWarning-foreground)]"
-                                                                title={UNKNOWN_ACCURACY_TOOLTIP}
-                                                            >
-                                                                ⚠
+                                                        {res.cost && (
+                                                            <span>
+                                                                <span className="text-[var(--vscode-descriptionForeground)]">Estimated cost: </span>
+                                                                <span className="font-mono font-semibold">{res.cost}</span>
                                                             </span>
                                                         )}
-                                                    </span>
+                                                    </>
                                                 )}
                                             </div>
                                         )}

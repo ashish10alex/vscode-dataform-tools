@@ -28,7 +28,7 @@ import { CompilerOverrides } from "./CompilerOverrides";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
-import { UNKNOWN_ACCURACY_MARKER, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
+import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 
 const ACCENT_EXPLORE = "inset 2px 0 0 var(--vscode-charts-green)";
 const ACCENT_PREVIEW = "inset 2px 0 0 var(--vscode-charts-blue)";
@@ -38,18 +38,21 @@ const ACCENT_RUN = "inset 2px 0 0 var(--vscode-charts-purple)";
 
 
 /**
- * Dry run stat lines carrying UNKNOWN_ACCURACY_MARKER report 0 bytes only because BigQuery
- * could not compute them statically. Render the warning glyph so it is visually distinct
- * from the number and hangs a tooltip explaining what the 0 means.
+ * A stat line ending in UNKNOWN_ACCURACY_STAT means BigQuery could not estimate the bytes.
+ * Render it as a warning chip rather than plain text, so it is impossible to mistake for a
+ * normal estimate at a glance; the tooltip explains what BigQuery actually reported.
  */
 const renderDryRunStatLine = (line: string) => {
-  if (!line.endsWith(UNKNOWN_ACCURACY_MARKER)) {
+  if (!line.endsWith(UNKNOWN_ACCURACY_STAT)) {
     return line;
   }
+  const label = line.slice(0, -UNKNOWN_ACCURACY_STAT.length);
   return (
     <span title={UNKNOWN_ACCURACY_TOOLTIP}>
-      {line.slice(0, -UNKNOWN_ACCURACY_MARKER.length)}
-      <span className="ml-1 text-[var(--vscode-editorWarning-foreground)]">⚠</span>
+      {label}
+      <span className="px-1.5 py-0.5 rounded font-semibold" style={UNKNOWN_ACCURACY_CHIP_STYLE}>
+        {UNKNOWN_ACCURACY_STAT}
+      </span>
     </span>
   );
 };

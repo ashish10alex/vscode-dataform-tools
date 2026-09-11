@@ -7,7 +7,7 @@ import { ColumnDef, Row } from '@tanstack/react-table';
 import StyledMultiSelect from '../../dependancy_graph/components/StyledMultiSelect';
 import { OptionType } from '../../dependancy_graph/components/StyledSelect';
 import { MultiValue } from 'react-select';
-import { UNKNOWN_ACCURACY_TOOLTIP } from '../../utils/dryRunAccuracy';
+import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_TOOLTIP } from '../../utils/dryRunAccuracy';
 
 interface CostEstimatorTabProps {
   state: WebviewState;
@@ -28,7 +28,8 @@ type CostEstimateRow = {
 
 const UNKNOWN_CELL = (
     <span
-        className="text-[var(--vscode-editorWarning-foreground)]"
+        className="px-1.5 py-0.5 rounded font-semibold"
+        style={UNKNOWN_ACCURACY_CHIP_STYLE}
         title={UNKNOWN_ACCURACY_TOOLTIP}
     >
         unknown
