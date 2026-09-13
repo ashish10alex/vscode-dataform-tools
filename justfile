@@ -189,10 +189,48 @@ download-vsix tag="":
     gh run download "$run" -n extension-vsix -D "$dir"
     echo "downloaded to $dir"
 
-# Release, push, and watch the publish in one go
+# Preview GitHub's auto-generated release notes for a tag (default: current version)
+release-notes tag="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tag="{{tag}}"
+    [ -n "$tag" ] || tag="v$(just _version)"
+    gh api "repos/{owner}/{repo}/releases/generate-notes" -f tag_name="$tag" -q .body
+
+# Create the GitHub release for a pushed tag with auto-generated notes
+github-release tag="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tag="{{tag}}"
+    [ -n "$tag" ] || tag="v$(just _version)"
+    v="${tag#v}"
+    if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+        echo "error: $tag is not on origin; run 'just push-release' first" >&2
+        exit 1
+    fi
+    if gh release view "$tag" >/dev/null 2>&1; then
+        echo "error: a GitHub release for $tag already exists: $(gh release view "$tag" --json url -q .url)" >&2
+        exit 1
+    fi
+    channel=$(just _channel "$v")
+    flags=(--verify-tag --generate-notes --title "$tag")
+    if [ "$channel" = "pre-release" ]; then
+        flags+=(--prerelease --latest=false)
+    else
+        flags+=(--latest)
+    fi
+    echo "notes preview:"
+    just release-notes "$tag" | sed 's/^/  /'
+    echo
+    read -r -p "Create $channel GitHub release $tag with these notes? [y/N] " answer
+    [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    gh release create "$tag" "${flags[@]}"
+
+# Release, push, watch the publish, and create the GitHub release in one go
 ship bump="patch": (release bump)
     just push-release
     just watch-deploy
+    just github-release
 
 _version:
     @node -p "require('./package.json').version"
