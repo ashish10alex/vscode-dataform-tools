@@ -16,6 +16,53 @@ import * as fs from 'fs';
 import { debounce } from "../debounce";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { parseCompilationStack } from "../parseCompilationStack";
+import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
+import {
+    PROPERTY_GRAPHS_MIN_CORE_VERSION,
+    buildPropertyGraphCreateStatement,
+    classifyPropertyGraphDryRunError,
+    fullTargetName,
+    getPropertyGraphsForFile,
+    isCoreVersionAtLeast,
+    isPropertyGraphCandidateFile,
+} from "../shared/propertyGraph";
+import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../types";
+
+/**
+ * Dry run the statement we synthesise for each graph and post the outcome back.
+ * Disabled graphs are skipped: Dataform will not execute them, so validating them
+ * would report failures for something that is never run.
+ */
+async function validatePropertyGraphs(webview: vscode.Webview, propertyGraphs: PropertyGraph[]) {
+    const validations: PropertyGraphValidation[] = await Promise.all(
+        propertyGraphs.map(async (graph): Promise<PropertyGraphValidation> => {
+            const targetName = fullTargetName(graph.target);
+            const { statement, bodyStartLine } = buildPropertyGraphCreateStatement(graph);
+
+            if (graph.disabled) {
+                return { targetName, statement, state: "skipped", message: "Graph is disabled, validation skipped" };
+            }
+            if (!graph.graphBody) {
+                return { targetName, statement, state: "skipped", message: "Compiler did not emit a graph body for this action" };
+            }
+
+            const dryRunResult = await queryDryRun(statement);
+            if (dryRunResult.error?.hasError) {
+                const message = dryRunResult.error.message ?? "Unknown BigQuery error";
+                const { line } = getLineAndColumnNumberFromErrorMessage(message);
+                return {
+                    targetName,
+                    statement,
+                    state: "error",
+                    ...classifyPropertyGraphDryRunError(bodyStartLine, message, line || undefined),
+                };
+            }
+            return { targetName, statement, state: "ok" };
+        }),
+    );
+
+    await webview.postMessage({ "propertyGraphValidations": validations, "dryRunning": false });
+}
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     let allSchemaCompletions: SchemaMetadata[] = [];
@@ -79,7 +126,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         const fileName = path.basename(document.fileName, '.' + fileExtension);
         const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
         
-        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js' || isConfigFile)) {
+        // definitions/**/*.yaml can hold a property graph, which the panel renders, so a save
+        // there has to refresh like a .sqlx save does.
+        const isDefinitionsYaml = isPropertyGraphCandidateFile(getRelativePath(document.fileName));
+        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js' || isConfigFile || isDefinitionsYaml)) {
             return;
         }
         activeEditorFileName = document?.fileName;
@@ -213,7 +263,10 @@ export class CompiledQueryPanel {
         this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
           async message => {
             const now = Date.now();
-            if(this.centerPanel){
+            // Schema requests are per-element, idempotent and user driven. Letting the debounce
+            // hack below swallow them would leave an expanded node stuck on its spinner.
+            const exemptFromDebounce = message.command === 'propertyGraphElementSchema';
+            if(this.centerPanel && !exemptFromDebounce){
                 if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
                     // NOTE: vscode.postMessage form webview sends in multiple messages when active editor is switched
                     // NOTE: This is debounce hack build to avoid processing multiple messages and process only the first message
@@ -639,6 +692,37 @@ export class CompiledQueryPanel {
                     });
                 }
                 return;
+              case 'propertyGraphElementSchema': {
+                const { elementName, target } = message.value ?? {};
+                if (!elementName || !target) {
+                    return;
+                }
+                const fullTableId = `${target.database}.${target.schema}.${target.name}`;
+                const columns = await getTableSchema(target.database, target.schema, target.name);
+                const elementSchema: PropertyGraphElementSchema = {
+                    elementName,
+                    fullTableId,
+                    columns: columns.map((column) => ({
+                        name: column.name,
+                        type: column.metadata?.type ?? "",
+                        description: column.metadata?.description,
+                    })),
+                    // getTableSchema swallows its errors and returns [], so an empty result is
+                    // the only signal available that the table could not be read.
+                    error: columns.length === 0 ? `Could not read the schema of ${fullTableId}` : undefined,
+                };
+                await this.centerPanel?.webviewPanel.webview.postMessage({
+                    "propertyGraphElementSchema": elementSchema,
+                });
+                return;
+              }
+              case 'runGeneratedQuery':
+                await vscode.commands.executeCommand(
+                    'vscode-dataform-tools.runGeneratedQuery',
+                    message.value?.query,
+                    message.value?.type ?? "table",
+                );
+                return;
               case 'openExternal':
                 if(message.url){
                     vscode.env.openExternal(vscode.Uri.parse(message.url));
@@ -863,6 +947,79 @@ export class CompiledQueryPanel {
             });
             return;
         }
+        // PropertyGraph actions live in yaml files that produce no queries, so they never
+        // reach the table/assertion/operation pipeline below and would otherwise render as
+        // an empty panel.
+        const relativeFilePathForGraphs = curFileMeta.pathMeta?.relativeFilePath;
+        if (isPropertyGraphCandidateFile(relativeFilePathForGraphs)) {
+            const propertyGraphs = getPropertyGraphsForFile(relativeFilePathForGraphs, CACHED_COMPILED_DATAFORM_JSON);
+
+            if (propertyGraphs.length > 0) {
+                if (diagnosticCollection) {
+                    diagnosticCollection.clear();
+                }
+                await webview.postMessage({
+                    "propertyGraphs": propertyGraphs,
+                    "propertyGraphValidations": null,
+                    "relativeFilePath": relativeFilePathForGraphs,
+                    "compilationTimeMs": curFileMeta.compilationTimeMs,
+                    "dataformTags": dataformTags,
+                    "dataformCoreVersion": curFileMeta.dataformCoreVersion,
+                    "compilerOptions": compilerOptions,
+                    "workflowUrls": workflowUrls,
+                    "workspaceFolder": workspaceFolder,
+                    "recompiling": false,
+                    "dryRunning": true,
+                    "errorType": null,
+                    "errorMessage": null,
+                    "isHelperFile": false,
+                    "declarations": null,
+                    "models": null,
+                    "tableOrViewQuery": null,
+                    "assertionQuery": null,
+                    "preOperations": null,
+                    "postOperations": null,
+                    "incrementalPreOpsQuery": null,
+                    "incrementalQuery": null,
+                    "nonIncrementalQuery": null,
+                    "operationsQuery": null,
+                    "testQuery": null,
+                    "expectedOutputQuery": null,
+                    "projectConfig": null,
+                    "packageJsonContent": null,
+                    "compiledQuerySchema": null,
+                });
+
+                // Validation is a network round trip; do not hold up the render for it.
+                validatePropertyGraphs(webview, propertyGraphs).catch((error) => {
+                    logger.error(`Error validating property graphs: ${error}`);
+                });
+                return;
+            }
+
+            const coreVersion = curFileMeta.dataformCoreVersion ?? CACHED_COMPILED_DATAFORM_JSON?.dataformCoreVersion;
+            if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
+                await webview.postMessage({
+                    "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
+                    "errorType": CompilationErrorType.COMPILATION_ERROR,
+                    "relativeFilePath": relativeFilePathForGraphs,
+                    "dataformCoreVersion": coreVersion,
+                    "recompiling": false,
+                    "dryRunning": false,
+                    "isHelperFile": false,
+                    "propertyGraphs": null,
+                    "models": null,
+                    "declarations": null,
+                    "tableOrViewQuery": null,
+                    "projectConfig": null,
+                    "packageJsonContent": null,
+                    "compiledQuerySchema": null,
+                    "workspaceFolder": workspaceFolder,
+                });
+                return;
+            }
+        }
+
         const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
         
         updateSchemaAutoCompletions(curFileMeta);
@@ -880,6 +1037,7 @@ export class CompiledQueryPanel {
                             }
                             await webview.postMessage({
                                 "declarations": filteredDeclarations,
+                                "propertyGraphs": null,
                                 "recompiling": false,
                                 "errorType": null,
                                 "errorMessage": null,
@@ -894,6 +1052,7 @@ export class CompiledQueryPanel {
                     // If it's a JS file but has no tables and no declarations, it's a helper file
                     await webview.postMessage({
                         "isHelperFile": true,
+                        "propertyGraphs": null,
                         "recompiling": false,
                         "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "errorType": null,
@@ -956,6 +1115,7 @@ export class CompiledQueryPanel {
             "modelType": fileMetadata.queryMeta.type,
             "actionTypes": [...new Set((fm.tables || []).map((m: any) => m.type).filter(Boolean))],
             "models": fm.tables,
+            "propertyGraphs": null,
             "recompiling": false,
             "dryRunning": true,
             "declarations": null,

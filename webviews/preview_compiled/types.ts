@@ -1,7 +1,9 @@
 import { CompilationErrorType } from "../../src/types";
 import type { WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
+import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../../src/types";
 export { CompilationErrorType };
 export type { WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse };
+export type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema };
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;
@@ -89,6 +91,10 @@ export interface WebviewState {
     devDependencies?: { [key: string]: string };
   };
   isHelperFile?: boolean;
+  propertyGraphs?: PropertyGraph[] | null;
+  propertyGraphValidations?: PropertyGraphValidation[] | null;
+  /** Keyed by `<graph target>::<element name>`, filled in lazily as elements are expanded. */
+  propertyGraphElementSchemas?: Record<string, PropertyGraphElementSchema>;
 }
 
 export interface Target {
