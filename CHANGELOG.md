@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.10...v1.12.11) (2026-09-16)
+
+
+### Features
+
+* show CTEs in outline and breadcrumbs for sqlx files ([e949f53](https://github.com/ashish10alex/vscode-dataform-tools/commit/e949f5389f55dd24893a1200356f6755dc20a695))
+
 ### [1.12.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.9...v1.12.10) (2026-09-16)
 
 
