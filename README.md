@@ -265,6 +265,10 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
       <td><code>vscode-dataform-tools.clearExtensionCache</code></td>
       <td>Clear extension cache</td>
     </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.openLastWorkflowExecution</code></td>
+      <td>Open last workflow execution in browser</td>
+    </tr>
   </tbody>
 </table>
 

@@ -212,6 +212,11 @@
                 "title": "Clear extension cache"
             },
             {
+                "command": "vscode-dataform-tools.openLastWorkflowExecution",
+                "category": "Dataform",
+                "title": "Open last workflow execution in browser"
+            },
+            {
                 "command": "vscode-dataform-tools.runTests",
                 "category": "Dataform",
                 "title": "Run all tests"
