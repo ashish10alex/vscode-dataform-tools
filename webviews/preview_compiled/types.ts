@@ -1,5 +1,5 @@
 import { CompilationErrorType } from "../../src/types";
-import type { WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
+import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
 export { CompilationErrorType };
 export type { WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse };
 
@@ -67,12 +67,7 @@ export interface WebviewState {
   declarations?: Declarations[] | null;
   targetTablesOrViews?: any[];
   compiledQuerySchema?: {
-    fields: {
-      name: string;
-      type: string;
-      description?: string;
-      mode?: string;
-    }[];
+    fields: ColumnMetadata[];
   };
   tagDryRunStatsMeta?: {
       tagDryRunStatsList?: any[];

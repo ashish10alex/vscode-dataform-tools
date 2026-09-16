@@ -296,19 +296,12 @@ export type GraphError = {
     stack?: string;
 };
 
-interface ColumnMetadataCore {
-    name: string;
-    type: string;
-    mode?: string;
-    description?: string;
-}
-
 export interface ColumnMetadata {
     name: string;
     type: string;
     mode?: string;
     description?: string;
-    fields?: ColumnMetadataCore[]
+    fields?: ColumnMetadata[]
 };
 
 export interface ErrorLocation {
