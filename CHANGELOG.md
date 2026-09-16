@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.8...v1.12.9) (2026-09-16)
+
+
+### Features
+
+* add command to open last workflow execution in browser ([dca8d02](https://github.com/ashish10alex/vscode-dataform-tools/commit/dca8d02df6b69036817eaff695a9e37ce6965aa2))
+
 ### [1.12.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.7...v1.12.8) (2026-09-13)
 
 
