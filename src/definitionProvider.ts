@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { findCteDefinition } from './cteScanner';
 import { getPostionOfSourceDeclaration, getPostionOfVariableInJsFileOrBlock, getWorkspaceFolder, runCompilation } from './utils';
 import { DataformCompiledJson } from './types';
 import path from 'path';
@@ -315,20 +316,14 @@ export class DataformCTEDefinitionProvider implements vscode.DefinitionProvider 
         }
 
         const searchTerm = document.getText(wordRange);
-        const documentText = document.getText();
-
-        // Look for CTE definition pattern: "WITH searchTerm AS (" or ", searchTerm AS ("
-        const cteRegex = new RegExp(`(WITH|,)\\s+${searchTerm}\\s+AS\\s*\\(`, 'i');
-        const match = documentText.match(cteRegex);
-
-        if (!match) {
+        const definition = findCteDefinition(document.getText(), searchTerm, document.offsetAt(pos));
+        if (!definition) {
             return undefined;
         }
 
-        // Find the position of the CTE definition
-        const offset = match.index || 0;
-        const position = document.positionAt(offset + match[1].length); // Position after "WITH" or ","
-
-        return new vscode.Location(document.uri, position);
+        return new vscode.Location(
+            document.uri,
+            new vscode.Range(document.positionAt(definition.nameStart), document.positionAt(definition.nameEnd))
+        );
     }
 }
