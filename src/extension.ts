@@ -181,7 +181,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ));
 
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(
-        { language: 'sqlx', scheme: 'file' },
+        { language: 'sqlx' },
         new SqlxDocumentSymbolProvider()
     ));
 
@@ -197,7 +197,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.languages.registerDefinitionProvider(
-            { scheme: 'file', language: 'sqlx' },
+            { language: 'sqlx' },
             new DataformCTEDefinitionProvider()
         )
     );

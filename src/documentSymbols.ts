@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { findCtes } from './cteScanner';
 
 export class SqlxDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 
@@ -25,7 +26,7 @@ function getAllBlockComments(text: string): { start: number; end: number }[] {
 }
 
 export function getDocumentSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
-    const symbols: vscode.DocumentSymbol[] = [];
+    const symbols: { symbol: vscode.DocumentSymbol; offset: number }[] = [];
     const text = document.getText();
 
     const blockComments = getAllBlockComments(text);
@@ -90,9 +91,43 @@ export function getDocumentSymbols(document: vscode.TextDocument): vscode.Docume
             range,
             selectionRange
         );
-        symbols.push(symbol);
+        symbols.push({ symbol, offset: item.index });
     }
-    return symbols;
+
+    return nestSymbolsUnderCtes(document, text, symbols);
+}
+
+function nestSymbolsUnderCtes(
+    document: vscode.TextDocument,
+    text: string,
+    referenceSymbols: { symbol: vscode.DocumentSymbol; offset: number }[]
+): vscode.DocumentSymbol[] {
+    const ctes = findCtes(text).map(cte => ({
+        cte,
+        symbol: new vscode.DocumentSymbol(
+            cte.name,
+            "cte",
+            vscode.SymbolKind.Struct,
+            new vscode.Range(document.positionAt(cte.start), document.positionAt(cte.end)),
+            new vscode.Range(document.positionAt(cte.nameStart), document.positionAt(cte.nameEnd))
+        ),
+    }));
+
+    const topLevel: { symbol: vscode.DocumentSymbol; offset: number }[] =
+        ctes.map(({ cte, symbol }) => ({ symbol, offset: cte.start }));
+
+    for (const reference of [...referenceSymbols].sort((a, b) => a.offset - b.offset)) {
+        const container = ctes
+            .filter(({ cte }) => reference.offset >= cte.start && reference.offset < cte.end)
+            .sort((a, b) => (a.cte.end - a.cte.start) - (b.cte.end - b.cte.start))[0];
+        if (container) {
+            container.symbol.children.push(reference.symbol);
+        } else {
+            topLevel.push(reference);
+        }
+    }
+
+    return topLevel.sort((a, b) => a.offset - b.offset).map(({ symbol }) => symbol);
 }
 
 function isMatchInComment(text: string, matchIndex: number, blockComments: { start: number; end: number }[]): boolean {

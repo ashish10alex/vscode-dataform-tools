@@ -476,33 +476,51 @@ suite("setDiagnostics with skipPreOpsInDryRun", () => {
 });
 
 suite("getDocumentSymbols", () => {
+    type SymbolTree = { name: string; detail: string; children: SymbolTree[] };
+    const toTree = (symbols: vscode.DocumentSymbol[]): SymbolTree[] =>
+        symbols.map(symbol => ({ name: symbol.name, detail: symbol.detail, children: toTree(symbol.children) }));
+    const ref = (name: string): SymbolTree => ({ name, detail: "ref", children: [] });
+    const cte = (name: string, children: SymbolTree[] = []): SymbolTree => ({ name, detail: "cte", children });
+
     test("able to get document symbols", async function () {
         this.timeout(9000);
         const hasDatasetTableSingleLine = `\${ref("football_data", "GAMES")}`;
         const hasDataasetTableMultiline = `\${ref("football_data",\n     "GAME_EVENTS")}`;
         const hasProjectDatasetTable =         '${ref(\n' + '        "drawingfire-b72a8",\n' + '        "football_data",\n' + '        "GAME_EVENTS"\n' + '   )}';
-        const expectedSymbolNames = [
-            `\${ref("PLAYERS")}`, 
-            `\${ref("PLAYER_VALUATIONS")}`, 
-            hasDatasetTableSingleLine, 
-            hasDataasetTableMultiline, 
-            hasProjectDatasetTable,
-            "raw-project.raw-dataset.raw-table"
-        ];
-        const expectedSymbolTypes = ["ref", "ref", "ref", "ref", "ref", "bq_table"];
-        const expectedSymbolCount = 6;
-        try {
-            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
-            const document = await vscode.workspace.openTextDocument(uri);
-            const symbols = getDocumentSymbols(document);
-            symbols.forEach((symbol, index) => {
-                assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name at index ${index}: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
-                assert.strictEqual(symbol.detail, expectedSymbolTypes[index], `Expected symbol detail (type) at index ${index}: ${expectedSymbolTypes[index]}, got: ${symbol.detail}`);
-            });
-            assert.strictEqual(symbols.length, expectedSymbolCount, `Expected ${expectedSymbolCount} symbols, got: ${symbols.length}`);
-        } catch (error: any) {
-            throw error;
-        }
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
+        const document = await vscode.workspace.openTextDocument(uri);
+        const symbols = getDocumentSymbols(document);
+
+        assert.deepStrictEqual(toTree(symbols), [
+            cte("PLAYERS", [ref(`\${ref("PLAYERS")}`)]),
+            cte("PLAYER_VALUATIONS", [ref(`\${ref("PLAYER_VALUATIONS")}`)]),
+            cte("GAMES", [ref(hasDatasetTableSingleLine)]),
+            cte("GAME_EVENTS", [ref(hasDataasetTableMultiline)]),
+            cte("MORE_GAME_EVENTS", [ref(hasProjectDatasetTable)]),
+            { name: "raw-project.raw-dataset.raw-table", detail: "bq_table", children: [] },
+        ]);
+    });
+
+    test("nests references under CTEs across WITH clauses", async function () {
+        this.timeout(9000);
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/089_CTE_SYMBOLS.sqlx"));
+        const document = await vscode.workspace.openTextDocument(uri);
+        const symbols = getDocumentSymbols(document);
+
+        assert.deepStrictEqual(toTree(symbols), [
+            cte("pre_cte", [ref(`\${ref("PLAYERS")}`)]),
+            cte("quoted cte", [ref(`\${ref("GAMES")}`)]),
+            cte("outer_cte"),
+            cte("inner_cte", [{ name: "raw-project.raw-dataset.raw-table", detail: "bq_table", children: [] }]),
+            cte("inc_cte"),
+            ref(`\${ref("GAME_EVENTS")}`),
+        ]);
+
+        const quoted = symbols[1];
+        assert.strictEqual(quoted.kind, vscode.SymbolKind.Struct);
+        assert.strictEqual(document.getText(quoted.selectionRange), "quoted cte");
+        assert.ok(document.getText(quoted.range).startsWith("`quoted cte` AS ("));
+        assert.ok(document.getText(quoted.range).endsWith(")"));
     });
 });
 
