@@ -104,6 +104,17 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Runs a query the extension generated rather than one taken from the active file,
+    // e.g. the starter GQL query built from a property graph.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.runGeneratedQuery', async (query: string, type: string) => {
+            if (!query) {
+                return;
+            }
+            await runQueryInPanel({ query: query, type: type || "table" }, queryResultsViewProvider);
+        })
+    );
+
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.dependencyGraphPanel', async () => {
         createDependencyGraphPanel(context, vscode.ViewColumn.One);
     }));
