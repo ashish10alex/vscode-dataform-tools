@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.9...v1.12.10) (2026-09-16)
+
+
+### Features
+
+* fix test not running ([1de992e](https://github.com/ashish10alex/vscode-dataform-tools/commit/1de992ec5f86512b9a377591b05273430e86b959))
+* support for nested columns ([3a383f1](https://github.com/ashish10alex/vscode-dataform-tools/commit/3a383f1610b30a1751728163e7eaf6cfcc526a80))
+
 ### [1.12.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.8...v1.12.9) (2026-09-16)
 
 
