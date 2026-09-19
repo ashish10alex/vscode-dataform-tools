@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.11...v1.12.12) (2026-09-19)
+
+
+### Features
+
+* show sources in a single column sorted by dataset ([19fbcc7](https://github.com/ashish10alex/vscode-dataform-tools/commit/19fbcc7001ef77dc01b726661f5126e807349653))
+
 ### [1.12.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.10...v1.12.11) (2026-09-16)
 
 
