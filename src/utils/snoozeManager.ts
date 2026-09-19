@@ -44,7 +44,7 @@ export class SnoozeManager {
     public markDirtyDuringSnooze() {
         if (this.isSnoozeActive()) {
             this.dirtyEditsDuringSnooze = true;
-            logger.debug("File saved during snooze; marked dirty for compilation");
+            logger.debug("Change during snooze; marked dirty for compilation on snooze end");
         }
     }
 
@@ -59,8 +59,9 @@ export class SnoozeManager {
         this.clearTimers();
 
         const durationMs = durationMinutes * 60 * 1000;
+        // Don't reset dirtyEditsDuringSnooze here: re-snoozing while active must keep pending edits.
+        // stopSnooze already clears it when a snooze ends.
         this.snoozeEndTime = Date.now() + durationMs;
-        this.dirtyEditsDuringSnooze = false;
         logger.info(`Snooze compilation started for ${durationMinutes} minutes (until ${new Date(this.snoozeEndTime).toLocaleTimeString()})`);
 
         // Status bar item setup

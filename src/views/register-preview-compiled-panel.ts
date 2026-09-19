@@ -77,9 +77,6 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     );
 
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
-        if (snoozeManager.isSnoozeActive()) {
-            return;
-        }
         const changedActiveEditorFileName = editor?.document?.fileName;
         const webviewPanelVisisble = CompiledQueryPanel?.centerPanel?.webviewPanel?.visible;
         if (!activeEditorFileName) {
@@ -87,6 +84,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         } else if (editor && changedActiveEditorFileName && activeEditorFileName !== changedActiveEditorFileName && webviewPanelVisisble) {
             activeEditorFileName = changedActiveEditorFileName;
             activeDocumentObj = editor.document;
+            if (snoozeManager.isSnoozeActive()) {
+                // Keep tracking the active file but defer the refresh until snooze ends
+                snoozeManager.markDirtyDuringSnooze();
+                return;
+            }
             let currentFileMetadata = await getCurrentFileMetadata(false);
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);

@@ -38,6 +38,14 @@ suite("SnoozeManager Test Suite", () => {
         assert.ok(secondEnd! > firstEnd!);
     });
 
+    test("re-triggering startSnooze keeps dirty edits from the current snooze", () => {
+        snoozeManager.startSnooze(undefined, 5);
+        snoozeManager.markDirtyDuringSnooze();
+
+        snoozeManager.startSnooze(undefined, 5);
+        assert.strictEqual(snoozeManager.hasDirtyEditsDuringSnooze(), true);
+    });
+
     test("markDirtyDuringSnooze flags dirty state when active", () => {
         snoozeManager.startSnooze(undefined, 5);
         assert.strictEqual(snoozeManager.hasDirtyEditsDuringSnooze(), false);
