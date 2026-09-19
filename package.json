@@ -180,6 +180,16 @@
                 "title": "Show compiled Query in web view"
             },
             {
+                "command": "vscode-dataform-tools.snoozeCompilation",
+                "category": "Dataform",
+                "title": "Snooze compilation (5 minutes)"
+            },
+            {
+                "command": "vscode-dataform-tools.stopSnoozeCompilation",
+                "category": "Dataform",
+                "title": "Stop snooze compilation"
+            },
+            {
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
                 "category": "Dataform",
                 "title": "Show dependency graph"
@@ -439,6 +449,12 @@
                         "sql"
                     ],
                     "markdownDescription": "Order of blocks when formatting .sqlx files. The config block will always be first. Default order is `js` -> `preOperations` -> `postOperations` -> `sql`."
+                },
+                "vscode-dataform-tools.compilationSnoozeMinutes": {
+                    "type": "number",
+                    "default": 5,
+                    "minimum": 1,
+                    "markdownDescription": "Duration in minutes to snooze automatic Dataform compilation when snooze is activated."
                 }
             }
         },

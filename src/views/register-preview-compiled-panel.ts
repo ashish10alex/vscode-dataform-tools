@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
+import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -55,10 +55,31 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                     workflowUrls: workflowUrls
                 });
             }
-        })
+        }),
+        vscode.commands.registerCommand('vscode-dataform-tools.snoozeCompilation', async () => {
+            snoozeManager.startSnooze(context);
+        }),
+        vscode.commands.registerCommand('vscode-dataform-tools.stopSnoozeCompilation', async () => {
+            await snoozeManager.stopSnooze(false);
+        }),
+        {
+            dispose: () => snoozeManager.dispose()
+        }
+    );
+
+    snoozeManager.registerWebviewHandlers(
+        (msg) => {
+            if (CompiledQueryPanel.centerPanel?.webviewPanel) {
+                CompiledQueryPanel.centerPanel.webviewPanel.webview.postMessage(msg);
+            }
+        },
+        () => !!(CompiledQueryPanel.centerPanel?.webviewPanel?.visible)
     );
 
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {
+        if (snoozeManager.isSnoozeActive()) {
+            return;
+        }
         const changedActiveEditorFileName = editor?.document?.fileName;
         const webviewPanelVisisble = CompiledQueryPanel?.centerPanel?.webviewPanel?.visible;
         if (!activeEditorFileName) {
@@ -75,7 +96,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 
 
-    const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
+    const triggerCompilationForDocument = async (document: vscode.TextDocument) => {
         const fileExtension = document.fileName.split('.').pop();
         const fileName = path.basename(document.fileName, '.' + fileExtension);
         const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
@@ -115,6 +136,32 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 compiledQueryWtDryRun(document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
             }
         }
+    };
+
+    snoozeManager.setOnSnoozeEndedCallback(async () => {
+        const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
+        if (doc) {
+            await triggerCompilationForDocument(doc);
+        }
+    });
+
+    const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
+        const fileExtension = document.fileName.split('.').pop();
+        const fileName = path.basename(document.fileName, '.' + fileExtension);
+        const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
+        
+        if (fileExtension && !(fileExtension === 'sqlx' || fileExtension === 'js' || isConfigFile)) {
+            return;
+        }
+
+        if (snoozeManager.isSnoozeActive()) {
+            snoozeManager.markDirtyDuringSnooze();
+            activeEditorFileName = document?.fileName;
+            activeDocumentObj = document;
+            return;
+        }
+
+        await triggerCompilationForDocument(document);
     }, globalThis.DEBOUNCE_WAIT);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(debouncedSaveHandler));
@@ -224,6 +271,12 @@ export class CompiledQueryPanel {
             }
 
             switch (message.command) {
+              case 'startSnooze':
+                await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
+                return;
+              case 'stopSnooze':
+                await vscode.commands.executeCommand('vscode-dataform-tools.stopSnoozeCompilation');
+                return;
               case 'lineageNavigation':
                 const projectId = message.value.split(".")[0];
                 const datasetId = message.value.split(".")[1];
@@ -1183,6 +1236,7 @@ export class CompiledQueryPanel {
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
                 "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
+                "snoozeEndTime": snoozeManager.getSnoozeEndTime(),
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "recompiling": false,
                 "dryRunning": false,
@@ -1224,6 +1278,9 @@ export class CompiledQueryPanel {
     }
 
     private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
+        if (initialState.snoozeEndTime === undefined) {
+            initialState.snoozeEndTime = snoozeManager.getSnoozeEndTime();
+        }
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const nonce = getNonce();

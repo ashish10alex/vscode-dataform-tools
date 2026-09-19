@@ -15,6 +15,7 @@ export interface DryRunErrorAnnotation {
 }
 
 export interface WebviewState {
+  snoozeEndTime?: number | null;
   preOperations?: string;
   postOperations?: string;
   tableOrViewQuery?: string;
