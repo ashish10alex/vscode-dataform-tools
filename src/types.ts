@@ -492,6 +492,7 @@ export interface ActionCounts {
 }
 
 export interface WebviewMessage {
+  snoozeEndTime?: number | null;
   tableOrViewQuery?: string;
   assertionQuery?: string;
   preOperations?: string;

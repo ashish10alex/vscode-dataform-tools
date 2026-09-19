@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, MessageSquareWarning, Info, Settings } from 'lucide-react';
+import { Loader2, MessageSquareWarning, Info, Settings, Clock } from 'lucide-react';
 import clsx from 'clsx';
 import { vscode } from './utils/vscode';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
@@ -21,23 +21,73 @@ import { CompilationError } from './components/CompilationError';
 import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
 
-function HeaderRightActions() {
+function HeaderRightActions({
+  snoozeEndTime,
+  onStartSnooze,
+}: {
+  snoozeEndTime?: number | null;
+  onStartSnooze?: () => void;
+}) {
+  const isSnoozed = !!(snoozeEndTime && snoozeEndTime > Date.now());
+
   return (
-    <a
-      href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-    >
-      Report an issue
-      <MessageSquareWarning className="w-3 h-3 ml-1" />
-    </a>
+    <div className="flex items-center space-x-3">
+      {!isSnoozed && onStartSnooze && (
+        <button
+          onClick={onStartSnooze}
+          title="Snooze compilation for 5 minutes"
+          className="flex items-center text-xs text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded transition-colors"
+        >
+          <Clock className="w-3.5 h-3.5 mr-1" />
+          Snooze (5m)
+        </button>
+      )}
+      <a
+        href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
+      >
+        Report an issue
+        <MessageSquareWarning className="w-3 h-3 ml-1" />
+      </a>
+    </div>
   );
 }
 
 function App() {
   const state = useVSCodeMessage();
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!state.snoozeEndTime || state.snoozeEndTime <= Date.now()) {
+      return;
+    }
+    setNow(Date.now());
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (state.snoozeEndTime && current >= state.snoozeEndTime) {
+        clearInterval(timer);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [state.snoozeEndTime]);
+
+  const isSnoozed = !!(state.snoozeEndTime && state.snoozeEndTime > now);
+  const remainingSec = isSnoozed ? Math.max(0, Math.ceil((state.snoozeEndTime! - now) / 1000)) : 0;
+  const minutesLeft = Math.floor(remainingSec / 60);
+  const secondsLeft = remainingSec % 60;
+  const timeLeftFormatted = `${minutesLeft}m ${secondsLeft.toString().padStart(2, "0")}s`;
+
+  const handleStartSnooze = () => {
+    vscode.postMessage({ command: "startSnooze" });
+  };
+
+  const handleStopSnooze = () => {
+    vscode.postMessage({ command: "stopSnooze" });
+  };
   const [isPolling, setIsPolling] = useState(false);
   const pollStartedAtRef = useRef<number | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -203,7 +253,7 @@ function App() {
                 Workflow Executions
               </button>
             </div>
-            <HeaderRightActions />
+            <HeaderRightActions snoozeEndTime={state.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </>
         )}
 
@@ -215,10 +265,30 @@ function App() {
             </h2>
             <div className="flex-grow"></div>
 
-            <HeaderRightActions />
+            <HeaderRightActions snoozeEndTime={state.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </div>
         )}
       </div>
+
+      {isSnoozed && (
+        <div className="flex items-center justify-between px-4 py-2 bg-[var(--vscode-inputValidation-warningBackground,rgba(255,200,0,0.1))] border-b border-[var(--vscode-inputValidation-warningBorder,var(--vscode-widget-border))] text-sm z-10">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-4 h-4 text-[var(--vscode-inputValidation-warningForeground,var(--vscode-notificationsWarningIcon-foreground))]" />
+            <span className="font-medium text-[var(--vscode-foreground)]">
+              Compilation snoozed
+            </span>
+            <span className="text-xs text-[var(--vscode-descriptionForeground)]">
+              ({timeLeftFormatted} remaining)
+            </span>
+          </div>
+          <button
+            onClick={handleStopSnooze}
+            className="px-2.5 py-1 text-xs rounded bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] font-medium transition-colors border border-[var(--vscode-widget-border)]"
+          >
+            Stop Snooze
+          </button>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
