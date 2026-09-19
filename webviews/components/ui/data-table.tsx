@@ -10,6 +10,8 @@ import {
   useReactTable,
   SortingState,
   ColumnFiltersState,
+  ExpandedState,
+  OnChangeFn,
   Column,
 } from '@tanstack/react-table';
 import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -23,6 +25,15 @@ interface DataTableProps<TData, TValue> {
   initialSorting?: SortingState
   /** Render with pagination controls + page-size dropdown. Defaults to true. */
   paginated?: boolean
+  /** Returns child rows for tree data. Defaults to `row._children`. */
+  getSubRows?: (row: TData) => TData[] | undefined
+  /**
+   * Controlled expanded state for tree data. When omitted, all rows are always expanded.
+   * While a filter is active every row is shown expanded, and matching child rows keep their parents;
+   * the stored state is restored once filters are cleared.
+   */
+  expanded?: ExpandedState
+  onExpandedChange?: OnChangeFn<ExpandedState>
 }
 
 function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, unknown>; shouldAutoFocus: boolean }) {
@@ -62,10 +73,15 @@ export function DataTable<TData, TValue>({
   onRowClick,
   initialSorting = [],
   paginated = true,
+  getSubRows = (row: any) => row._children,
+  expanded,
+  onExpandedChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const isTree = expanded !== undefined;
+  const isFiltering = globalFilter !== '' || columnFilters.some((f) => f.value !== undefined && f.value !== '');
 
   const table = useReactTable({
     data,
@@ -79,13 +95,21 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
-    getSubRows: (row: any) => row._children,
+    getSubRows,
     getExpandedRowModel: getExpandedRowModel(),
+    ...(isTree ? {
+      // Keep a parent row when one of its children matches the filter.
+      filterFromLeafRows: true,
+      // Page by top-level rows so a parent's children stay on the same page.
+      paginateExpandedRows: false,
+      // Ignore toggles while filtering so the stored state is restored when filters are cleared.
+      onExpandedChange: isFiltering ? () => {} : onExpandedChange,
+    } : {}),
     state: {
       sorting,
       columnFilters,
       globalFilter,
-      expanded: true,
+      expanded: isTree && !isFiltering ? expanded : true,
     },
     columnResizeMode: 'onChange',
     initialState: {

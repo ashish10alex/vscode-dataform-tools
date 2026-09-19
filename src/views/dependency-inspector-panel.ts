@@ -228,7 +228,14 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                             : undefined;
                         panel.webview.postMessage({
                             type: 'dryRunResult',
-                            value: { tableId, query, bytes, cost },
+                            value: {
+                                tableId,
+                                query,
+                                bytes,
+                                cost,
+                                // 0 bytes here only means BigQuery could not compute them statically
+                                bytesEstimateUnknown: result.statistics?.bytesEstimateUnknown === true,
+                            },
                         });
                     }
                 } catch (err: any) {

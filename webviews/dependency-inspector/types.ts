@@ -40,6 +40,8 @@ export interface ModelResult {
     // Dry run stats
     bytes?: string;
     cost?: string;
+    /** BigQuery reported accuracy UNKNOWN, so `bytes`/`cost` are not a real estimate. */
+    bytesEstimateUnknown?: boolean;
     // Query results
     results?: any[];
     columns?: any[];

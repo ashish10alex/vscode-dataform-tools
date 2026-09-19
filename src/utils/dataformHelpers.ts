@@ -6,7 +6,7 @@ import { logger } from '../logger';
 import { GitService } from '../gitClient';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
-import { CurrentFileMetadata, Target, Table, Operation, Assertion, Declarations, ExecutionMode } from '../types';
+import { BigQueryDryRunResponse, CurrentFileMetadata, Target, Table, Operation, Assertion, Declarations, ExecutionMode } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
 import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getDataformCliCmdBasedOnScope } from './dataformCompiler';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
@@ -49,6 +49,46 @@ export function formatBytes(bytes: number) {
     const value = (bytes / Math.pow(k, i)).toFixed(2);
 
     return `${value} ${units[i]}`;
+}
+
+/**
+ * Suffix appended to a dry run stat line when BigQuery reported accuracy UNKNOWN.
+ * Webviews look for this marker to attach a warning tooltip explaining that the
+ * reported 0 bytes / 0 cost is not a real estimate.
+ */
+export const UNKNOWN_ACCURACY_STAT = '\u26a0 Bytes unknown';
+
+/** Tooltip shown on a stat ending in UNKNOWN_ACCURACY_STAT. */
+export const UNKNOWN_ACCURACY_TOOLTIP = 'BigQuery could not estimate the bytes this query scans (totalBytesProcessedAccuracy: UNKNOWN), so it reports 0 bytes and 0 cost. The query will still scan data when executed \u2014 treat this as "no estimate", not as free.';
+
+/**
+ * Formats a dry run result into the short stat string shown in the compiled query panel,
+ * e.g. "Incremental: Up to 1.20 GiB $0.006", or "Incremental: \u26a0 Bytes unknown" when
+ * BigQuery could not estimate the bytes. Returns "" when there is nothing to show.
+ */
+export function formatDryRunCostSummary(result: BigQueryDryRunResponse | undefined, type: string, currencySymbol: string): string {
+    if (!result?.statistics?.cost || result?.error?.hasError !== false) {
+        return "";
+    }
+
+    const accuracy = result.statistics.totalBytesProcessedAccuracy;
+    const isUpperBound = accuracy === 'UPPER_BOUND';
+    const isLowerBound = accuracy === 'LOWER_BOUND';
+    const prefix = isUpperBound ? "Up to " : (isLowerBound ? "At least " : "");
+    const label = type ? type + ": " : "";
+
+    // BigQuery reports 0 bytes / 0 cost when it cannot compute them statically. Showing those
+    // figures reads as "this query is free", so replace them outright with a warning the
+    // webview renders as a chip; the raw values are explained in the tooltip.
+    if (result.statistics.bytesEstimateUnknown) {
+        return label + UNKNOWN_ACCURACY_STAT;
+    }
+
+    if (result.statistics.statementType === 'SCRIPT' && accuracy !== 'PRECISE' && accuracy !== 'UPPER_BOUND') {
+        return label + "NOTE: Could not compute bytes processed estimate for script.";
+    }
+
+    return label + prefix + formatBytes(result.statistics.totalBytesProcessed) + " " + currencySymbol + (result.statistics.cost.value.toFixed(3) || "0.00");
 }
 
 export function sendNotificationToUserOnExtensionUpdate(context: vscode.ExtensionContext) {

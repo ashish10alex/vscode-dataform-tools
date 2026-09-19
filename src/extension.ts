@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { DataformCompiledJson } from './types';
+import { DataformCompiledJson, WorkflowUrlEntry } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
@@ -192,7 +192,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ));
 
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(
-        { language: 'sqlx', scheme: 'file' },
+        { language: 'sqlx' },
         new SqlxDocumentSymbolProvider()
     ));
 
@@ -208,7 +208,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.languages.registerDefinitionProvider(
-            { scheme: 'file', language: 'sqlx' },
+            { language: 'sqlx' },
             new DataformCTEDefinitionProvider()
         )
     );
@@ -239,6 +239,16 @@ export async function activate(context: vscode.ExtensionContext) {
             logger.info(`Cleared cached data for key: ${key}`);
         });
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.openLastWorkflowExecution', async () => {
+        const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+        const lastEntry = workflowUrls[workflowUrls.length - 1];
+        if (!lastEntry?.url) {
+            vscode.window.showInformationMessage('No workflow execution found. Run a file or tag using the API first.');
+            return;
+        }
+        await vscode.env.openExternal(vscode.Uri.parse(lastEntry.url));
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(context, false, false, false, "cli"); }));

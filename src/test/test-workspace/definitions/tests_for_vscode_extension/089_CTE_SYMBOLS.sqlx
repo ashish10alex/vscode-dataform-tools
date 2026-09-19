@@ -1,0 +1,30 @@
+config {
+    type: 'incremental',
+}
+
+pre_operations {
+  CREATE TEMP TABLE staging AS
+  WITH pre_cte AS (
+    SELECT * FROM ${ref("PLAYERS")}
+  )
+  SELECT * FROM pre_cte;
+}
+
+-- WITH commented_cte AS (SELECT 1)
+
+WITH RECURSIVE `quoted cte` AS (
+  SELECT 'WITH not_a_cte AS (' AS s
+  FROM ${ref("GAMES")}
+)
+
+, outer_cte AS (
+  WITH inner_cte AS (
+    SELECT * FROM raw-project.raw-dataset.raw-table
+  )
+  SELECT * FROM inner_cte
+)
+
+SELECT * FROM outer_cte
+${when(incremental(), `WHERE id IN (WITH inc_cte AS (SELECT id FROM ${self()}) SELECT id FROM inc_cte)`)}
+UNION ALL
+SELECT * FROM ${ref("GAME_EVENTS")}

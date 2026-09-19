@@ -1,12 +1,12 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatBytes, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
+import { compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
-import { ColumnMetadata,  Column, ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
+import { ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
 import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -27,6 +27,7 @@ import {
     isPropertyGraphCandidateFile,
 } from "../shared/propertyGraph";
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../types";
+import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTree";
 
 /**
  * Dry run the statement we synthesise for each graph and post the outcome back.
@@ -1177,22 +1178,7 @@ export class CompiledQueryPanel {
             currencySymbol = currencySymbolMapping[currency];
         }
 
-        const formatCost = (result: any, type: string) => {
-            if(result?.statistics?.cost && result?.error?.hasError === false){
-                const isUpperBound = result.statistics.totalBytesProcessedAccuracy === 'UPPER_BOUND';
-                const isLowerBound = result.statistics.totalBytesProcessedAccuracy === 'LOWER_BOUND';
-                const prefix = isUpperBound ? "Up to " : (isLowerBound ? "At least " : "");
-
-                if (result.statistics.statementType === 'SCRIPT' && 
-                    result.statistics.totalBytesProcessedAccuracy !== 'PRECISE' && 
-                    result.statistics.totalBytesProcessedAccuracy !== 'UPPER_BOUND') {
-                    return (type ? type + ": " : "") + "NOTE: Could not compute bytes processed estimate for script.";
-                }
-
-                return (type ? type + ": " : "") + prefix + formatBytes(result?.statistics?.totalBytesProcessed) + " " + currencySymbol + (result?.statistics?.cost?.value.toFixed(3) || "0.00");
-            }
-            return "";
-        };
+        const formatCost = (result: BigQueryDryRunResponse | undefined, type: string) => formatDryRunCostSummary(result, type, currencySymbol);
 
         const isJsFile = fileMetadata.queryMeta.type === "js";
 
@@ -1298,55 +1284,17 @@ export class CompiledQueryPanel {
 
         if (compiledQuerySchema?.fields) {
             const curFileActionDescriptor: ActionDescription | undefined = curFileMeta.fileMetadata?.tables[0]?.actionDescriptor;
-            // Remove 'mode' attribute from each field
-            compiledQuerySchema.fields = compiledQuerySchema.fields.map(({ mode, ...rest }) => rest);
-
-            if (curFileActionDescriptor?.columns) {
-                const columnMap = new Map(
-                    curFileActionDescriptor.columns.map((column: Column) =>  {
-                        //TODO: assumes that there will only be one level of nesting. We can do something dynamically by recursively searching
-                        // NOTE: record type columns have their path as [BASE_COLUMN_NAME, NESTED_COLUMN_NAME]. Which is why we have to do column.path[1]
-                        if(column.path.length === 2){
-                            return [column.path[1], column.description];
-                        }
-                         return[column.path[0], column.description || ""];
-                        })
-                );
-
-                compiledQuerySchema.fields.forEach((columnMetadata: ColumnMetadata) => {
-                    if(columnMetadata?.name){
-                        const description = columnMap.get(columnMetadata.name);
-                        if (description !== undefined) {
-                            columnMetadata.description = description;
-                        }
-                    }
-                    if (columnMetadata?.fields){
-                        columnMetadata?.fields.forEach((columnMetadata: ColumnMetadata) => {
-                            if(columnMetadata?.name){
-                                const description = columnMap.get(columnMetadata.name);
-                                if (description !== undefined) {
-                                    columnMetadata.description = description;
-                                }
-                                compiledQuerySchema?.fields.push(
-                                    {
-                                        name: columnMetadata.name,
-                                        type: columnMetadata.type,
-                                        description: columnMetadata.description,
-                                    }
-
-                                );
-                            }
-                        });
-                    }
-                });
-            }
+            // Keep the nested structure (and mode) so the webview can render RECORD fields as a tree.
+            compiledQuerySchema = {
+                fields: applyColumnDescriptions(compiledQuerySchema.fields, curFileActionDescriptor?.columns ?? []),
+            };
         } else {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
 
+        // Hover matches on a column's own name, so flatten nested fields at every depth.
         columnHoverDescription = {
-            ...compiledQuerySchema,
-            fields: [...(compiledQuerySchema?.fields || [])]
+            fields: flattenSchemaFields(compiledQuerySchema?.fields || []),
         };
 
         schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {

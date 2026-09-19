@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "1.12.7",
+    "version": "1.12.12",
     "sponsor": {
         "url": "https://buymeacoffee.com/ashishalexj"
     },
@@ -210,6 +210,11 @@
                 "command": "vscode-dataform-tools.clearExtensionCache",
                 "category": "Dataform",
                 "title": "Clear extension cache"
+            },
+            {
+                "command": "vscode-dataform-tools.openLastWorkflowExecution",
+                "category": "Dataform",
+                "title": "Open last workflow execution in browser"
             },
             {
                 "command": "vscode-dataform-tools.runTests",
@@ -479,7 +484,7 @@
         "@typescript-eslint/parser": "^7.7.1",
         "@vitejs/plugin-react": "^4.2.0",
         "@vscode/test-cli": "^0.0.8",
-        "@vscode/test-electron": "^2.5.2",
+        "@vscode/test-electron": "^3.1.0",
         "@xyflow/react": "^12.4.3",
         "autoprefixer": "^10.4.24",
         "clsx": "^2.1.1",

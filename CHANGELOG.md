@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.11...v1.12.12) (2026-09-19)
+
+
+### Features
+
+* show sources in a single column sorted by dataset ([19fbcc7](https://github.com/ashish10alex/vscode-dataform-tools/commit/19fbcc7001ef77dc01b726661f5126e807349653))
+
+### [1.12.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.10...v1.12.11) (2026-09-16)
+
+
+### Features
+
+* show CTEs in outline and breadcrumbs for sqlx files ([e949f53](https://github.com/ashish10alex/vscode-dataform-tools/commit/e949f5389f55dd24893a1200356f6755dc20a695))
+
+### [1.12.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.9...v1.12.10) (2026-09-16)
+
+
+### Features
+
+* fix test not running ([1de992e](https://github.com/ashish10alex/vscode-dataform-tools/commit/1de992ec5f86512b9a377591b05273430e86b959))
+* support for nested columns ([3a383f1](https://github.com/ashish10alex/vscode-dataform-tools/commit/3a383f1610b30a1751728163e7eaf6cfcc526a80))
+
+### [1.12.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.8...v1.12.9) (2026-09-16)
+
+
+### Features
+
+* add command to open last workflow execution in browser ([dca8d02](https://github.com/ashish10alex/vscode-dataform-tools/commit/dca8d02df6b69036817eaff695a9e37ce6965aa2))
+
+### [1.12.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.7...v1.12.8) (2026-09-13)
+
+
+### Features
+
+* add executionTimeout setting for dataform run ([814e3f3](https://github.com/ashish10alex/vscode-dataform-tools/commit/814e3f3dbee62fa1776e6bb82f61997a0785b686))
+* show table description in table hover ([cd2d2d9](https://github.com/ashish10alex/vscode-dataform-tools/commit/cd2d2d995c031b8175265fcab4206c0664bb7561))
+* support PropertyGraph actions in dependency graph and tags ([702f205](https://github.com/ashish10alex/vscode-dataform-tools/commit/702f2055804c8bd0686ba9054855098065c70806))
+
+
+### Bug Fixes
+
+* do not treat UNKNOWN dry run accuracy as 0 bytes ([89dcb32](https://github.com/ashish10alex/vscode-dataform-tools/commit/89dcb32d405ac61ead78749b10c268c09856b7e1))
+* include declaration tags in the tag picker ([b067847](https://github.com/ashish10alex/vscode-dataform-tools/commit/b0678475a5661fdec76a7d483bbb9fb9082e94d3))
+* show an unmissable warning chip for unknown dry run bytes ([97d9a56](https://github.com/ashish10alex/vscode-dataform-tools/commit/97d9a569a2293d1ec8814064954bd954d1a81192))
+
+
+### CI
+
+* add temporary workflow to verify marketplace PAT ([26cf951](https://github.com/ashish10alex/vscode-dataform-tools/commit/26cf95190d19ebcc8a417033ff39086b046c5355))
+* drop temporary PAT verification workflow ([c0843bb](https://github.com/ashish10alex/vscode-dataform-tools/commit/c0843bb47227f04d1731470dbe51a855427740ff))
+* publish to each registry independently ([52d9e7b](https://github.com/ashish10alex/vscode-dataform-tools/commit/52d9e7b6a65a8ab9c97c906a3a918a96b326be51))
+
 ### [1.12.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.6...v1.12.7) (2026-09-09)
 
 

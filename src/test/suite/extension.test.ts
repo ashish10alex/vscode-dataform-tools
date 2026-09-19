@@ -4,7 +4,7 @@ globalThis.errorInPreOpsDenyList = false;
 globalThis.compilerOptionsMap = {};
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices, getDataformTags } from '../../utils';
+import { compileDataform, formatBytes, formatDryRunCostSummary, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices, getDataformTags } from '../../utils';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset, incrementalTableOffset } from '../../constants';
@@ -476,33 +476,51 @@ suite("setDiagnostics with skipPreOpsInDryRun", () => {
 });
 
 suite("getDocumentSymbols", () => {
+    type SymbolTree = { name: string; detail: string; children: SymbolTree[] };
+    const toTree = (symbols: vscode.DocumentSymbol[]): SymbolTree[] =>
+        symbols.map(symbol => ({ name: symbol.name, detail: symbol.detail, children: toTree(symbol.children) }));
+    const ref = (name: string): SymbolTree => ({ name, detail: "ref", children: [] });
+    const cte = (name: string, children: SymbolTree[] = []): SymbolTree => ({ name, detail: "cte", children });
+
     test("able to get document symbols", async function () {
         this.timeout(9000);
         const hasDatasetTableSingleLine = `\${ref("football_data", "GAMES")}`;
         const hasDataasetTableMultiline = `\${ref("football_data",\n     "GAME_EVENTS")}`;
         const hasProjectDatasetTable =         '${ref(\n' + '        "drawingfire-b72a8",\n' + '        "football_data",\n' + '        "GAME_EVENTS"\n' + '   )}';
-        const expectedSymbolNames = [
-            `\${ref("PLAYERS")}`, 
-            `\${ref("PLAYER_VALUATIONS")}`, 
-            hasDatasetTableSingleLine, 
-            hasDataasetTableMultiline, 
-            hasProjectDatasetTable,
-            "raw-project.raw-dataset.raw-table"
-        ];
-        const expectedSymbolTypes = ["ref", "ref", "ref", "ref", "ref", "bq_table"];
-        const expectedSymbolCount = 6;
-        try {
-            const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
-            const document = await vscode.workspace.openTextDocument(uri);
-            const symbols = getDocumentSymbols(document);
-            symbols.forEach((symbol, index) => {
-                assert.strictEqual(symbol.name, expectedSymbolNames[index], `Expected symbol name at index ${index}: ${expectedSymbolNames[index]}, got: ${symbol.name}`);
-                assert.strictEqual(symbol.detail, expectedSymbolTypes[index], `Expected symbol detail (type) at index ${index}: ${expectedSymbolTypes[index]}, got: ${symbol.detail}`);
-            });
-            assert.strictEqual(symbols.length, expectedSymbolCount, `Expected ${expectedSymbolCount} symbols, got: ${symbols.length}`);
-        } catch (error: any) {
-            throw error;
-        }
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx"));
+        const document = await vscode.workspace.openTextDocument(uri);
+        const symbols = getDocumentSymbols(document);
+
+        assert.deepStrictEqual(toTree(symbols), [
+            cte("PLAYERS", [ref(`\${ref("PLAYERS")}`)]),
+            cte("PLAYER_VALUATIONS", [ref(`\${ref("PLAYER_VALUATIONS")}`)]),
+            cte("GAMES", [ref(hasDatasetTableSingleLine)]),
+            cte("GAME_EVENTS", [ref(hasDataasetTableMultiline)]),
+            cte("MORE_GAME_EVENTS", [ref(hasProjectDatasetTable)]),
+            { name: "raw-project.raw-dataset.raw-table", detail: "bq_table", children: [] },
+        ]);
+    });
+
+    test("nests references under CTEs across WITH clauses", async function () {
+        this.timeout(9000);
+        const uri = vscode.Uri.file(path.join(workspaceFolder, "definitions/tests_for_vscode_extension/089_CTE_SYMBOLS.sqlx"));
+        const document = await vscode.workspace.openTextDocument(uri);
+        const symbols = getDocumentSymbols(document);
+
+        assert.deepStrictEqual(toTree(symbols), [
+            cte("pre_cte", [ref(`\${ref("PLAYERS")}`)]),
+            cte("quoted cte", [ref(`\${ref("GAMES")}`)]),
+            cte("outer_cte"),
+            cte("inner_cte", [{ name: "raw-project.raw-dataset.raw-table", detail: "bq_table", children: [] }]),
+            cte("inc_cte"),
+            ref(`\${ref("GAME_EVENTS")}`),
+        ]);
+
+        const quoted = symbols[1];
+        assert.strictEqual(quoted.kind, vscode.SymbolKind.Struct);
+        assert.strictEqual(document.getText(quoted.selectionRange), "quoted cte");
+        assert.ok(document.getText(quoted.range).startsWith("`quoted cte` AS ("));
+        assert.ok(document.getText(quoted.range).endsWith(")"));
     });
 });
 
@@ -818,6 +836,85 @@ suite('format bytes from dry run in human readable format', () => {
         assert.strictEqual(formatBytes(500), '500.00 B');
         assert.strictEqual(formatBytes(1500), '1.46 KiB');
         assert.strictEqual(formatBytes(1024 * 1024 * 1.5), '1.50 MiB');
+    });
+});
+
+suite('formatDryRunCostSummary', () => {
+    const oneGiB = 1024 ** 3;
+    const buildResult = (statistics: any, hasError = false): any => ({
+        statistics,
+        error: { hasError, message: hasError ? 'boom' : '' }
+    });
+
+    test('formats a precise estimate', () => {
+        const result = buildResult({
+            totalBytesProcessed: oneGiB,
+            cost: { currency: 'USD', value: 0.00625 },
+            totalBytesProcessedAccuracy: 'PRECISE'
+        });
+        assert.strictEqual(formatDryRunCostSummary(result, '', '$'), '1.00 GiB $0.006');
+    });
+
+    test('prefixes bound estimates and prepends the label', () => {
+        const upperBound = buildResult({
+            totalBytesProcessed: oneGiB,
+            cost: { currency: 'USD', value: 0.00625 },
+            totalBytesProcessedAccuracy: 'UPPER_BOUND'
+        });
+        assert.strictEqual(formatDryRunCostSummary(upperBound, 'Incremental', '$'), 'Incremental: Up to 1.00 GiB $0.006');
+
+        const lowerBound = buildResult({
+            totalBytesProcessed: oneGiB,
+            cost: { currency: 'USD', value: 0.00625 },
+            totalBytesProcessedAccuracy: 'LOWER_BOUND'
+        });
+        assert.strictEqual(formatDryRunCostSummary(lowerBound, '', '$'), 'At least 1.00 GiB $0.006');
+    });
+
+    test('replaces the 0 bytes UNKNOWN reports with a warning', () => {
+        // BigQuery reports totalBytesProcessed "0" whenever accuracy is UNKNOWN
+        const result = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 },
+            statementType: 'SELECT',
+            totalBytesProcessedAccuracy: 'UNKNOWN',
+            bytesEstimateUnknown: true
+        });
+        assert.strictEqual(formatDryRunCostSummary(result, '', '$'), '\u26a0 Bytes unknown');
+        assert.strictEqual(formatDryRunCostSummary(result, 'Incremental', '$'), 'Incremental: \u26a0 Bytes unknown');
+    });
+
+    test('warns for scripts whose bytes could not be computed', () => {
+        const unknownScript = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 },
+            statementType: 'SCRIPT',
+            totalBytesProcessedAccuracy: 'UNKNOWN',
+            bytesEstimateUnknown: true
+        });
+        assert.strictEqual(formatDryRunCostSummary(unknownScript, '', '$'), '\u26a0 Bytes unknown');
+
+        // A script with a non-precise but known accuracy keeps the existing note
+        const lowerBoundScript = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 },
+            statementType: 'SCRIPT',
+            totalBytesProcessedAccuracy: 'LOWER_BOUND'
+        });
+        assert.strictEqual(
+            formatDryRunCostSummary(lowerBoundScript, '', '$'),
+            'NOTE: Could not compute bytes processed estimate for script.'
+        );
+    });
+
+    test('returns an empty string when there is nothing to show', () => {
+        assert.strictEqual(formatDryRunCostSummary(undefined, '', '$'), '');
+        assert.strictEqual(formatDryRunCostSummary(buildResult({ totalBytesProcessed: 0 }), '', '$'), '');
+        const erroredResult = buildResult({
+            totalBytesProcessed: 0,
+            cost: { currency: 'USD', value: 0 }
+        }, true);
+        assert.strictEqual(formatDryRunCostSummary(erroredResult, '', '$'), '');
     });
 });
 

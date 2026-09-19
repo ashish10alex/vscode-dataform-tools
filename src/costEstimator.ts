@@ -48,9 +48,14 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     }
 
     const dryRunOutput = await queryDryRun(fullQuery);
-    const costOfRunningModel = dryRunOutput?.statistics?.cost?.value || 0;
+    // BigQuery reports 0 bytes when it cannot compute them statically. Leaving the figures
+    // undefined keeps them out of the table totals instead of understating the tag's cost.
+    const bytesEstimateUnknown = dryRunOutput?.statistics?.bytesEstimateUnknown === true;
+    const costOfRunningModel = bytesEstimateUnknown ? undefined : (dryRunOutput?.statistics?.cost?.value || 0);
     // 1024 bytes ** 3 = 1GiB
-    const totalGBProcessed = ((dryRunOutput?.statistics?.totalBytesProcessed || 0) / (1024 ** 3)).toFixed(3);
+    const totalGBProcessed = bytesEstimateUnknown
+        ? undefined
+        : ((dryRunOutput?.statistics?.totalBytesProcessed || 0) / (1024 ** 3)).toFixed(3);
     const statementType = dryRunOutput?.statistics?.statementType;
     const totalBytesProcessedAccuracy = dryRunOutput?.statistics?.totalBytesProcessedAccuracy;
     const error = dryRunOutput?.error;
@@ -61,9 +66,10 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
         schema: curModel.target.schema,
         costOfRunningModel: costOfRunningModel,
         currency: dryRunOutput?.statistics?.cost?.currency as SupportedCurrency,
-        totalGBProcessed: totalGBProcessed || "0.000",
+        totalGBProcessed: totalGBProcessed,
         totalBytesProcessedAccuracy: totalBytesProcessedAccuracy,
         statementType: statementType,
+        bytesEstimateUnknown: bytesEstimateUnknown,
         error: error.message
     };
     });
