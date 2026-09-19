@@ -71,7 +71,8 @@ export function isPropertyGraphCandidateFile(relativeFilePath: string | undefine
         return false;
     }
     // workflow_settings.yaml is a config file and handled elsewhere
-    if (normalised.split("/").pop()?.startsWith("workflow_settings")) {
+    const fileName = normalised.split("/").pop();
+    if (fileName === "workflow_settings.yaml" || fileName === "workflow_settings.yml") {
         return false;
     }
     return normalised.startsWith("definitions/") || normalised.includes("/definitions/");

@@ -361,17 +361,23 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
     return seeded;
   });
 
-  const schemaKeyFor = useCallback((elementName: string) => `${graphKey}::${elementName}`, [graphKey]);
+  // The backing table is part of the key so repointing an element at another table fetches afresh
+  // instead of showing the previous table's columns.
+  const schemaKeyFor = useCallback(
+    (element: PropertyGraphEntity | PropertyGraphRelationship) =>
+      `${graphKey}::${element.name}::${fullTargetName(element.dataSource)}`,
+    [graphKey],
+  );
 
   const entityViews = useMemo(
     () => (graph.entities ?? []).map((entity) =>
-      toElementView(entity, "entity", state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(entity.name))),
+      toElementView(entity, "entity", state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(entity))),
     [graph.entities, state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor],
   );
 
   const relationshipViews = useMemo(
     () => (graph.relationships ?? []).map((relationship) =>
-      toElementView(relationship, "relationship", state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(relationship.name))),
+      toElementView(relationship, "relationship", state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(relationship))),
     [graph.relationships, state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor],
   );
 
@@ -391,9 +397,11 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
 
     // Only importAll elements need BigQuery: everything else already names all its properties.
     const element = elementByName.get(elementName);
-    const schemaKey = schemaKeyFor(elementName);
-    const needsSchema = element !== undefined
-      && elementImportsAllColumns(element)
+    if (element === undefined) {
+      return;
+    }
+    const schemaKey = schemaKeyFor(element);
+    const needsSchema = elementImportsAllColumns(element)
       && state.propertyGraphElementSchemas?.[schemaKey] === undefined
       && requestedSchemas[schemaKey] !== true;
 

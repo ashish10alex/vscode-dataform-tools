@@ -256,9 +256,11 @@ function App() {
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
         )}
 
-{!isPropertyGraphFile && (state.errorType === CompilationErrorType.COMPILATION_ERROR ||
-          !state.models?.length ||
-          (state.missingExecutables && state.missingExecutables.length > 0)) && (
+{(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
+          (!isPropertyGraphFile && (
+            !state.models?.length ||
+            (state.missingExecutables && state.missingExecutables.length > 0)
+          ))) && (
           <CompilationError state={state} />
         )}
 

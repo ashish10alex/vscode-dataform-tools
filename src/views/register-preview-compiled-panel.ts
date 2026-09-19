@@ -994,6 +994,8 @@ export class CompiledQueryPanel {
                 // Validation is a network round trip; do not hold up the render for it.
                 validatePropertyGraphs(webview, propertyGraphs).catch((error) => {
                     logger.error(`Error validating property graphs: ${error}`);
+                    // The render above set dryRunning: true; without this the webview spins forever.
+                    webview.postMessage({ "dryRunning": false });
                 });
                 return;
             }
