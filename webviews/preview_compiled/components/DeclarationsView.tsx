@@ -9,6 +9,8 @@ interface DeclarationsViewProps {
 }
 
 type DeclarationRow = {
+  source: string;
+  project: string;
   dataset: string;
   name: string;
   link: string;
@@ -17,7 +19,9 @@ type DeclarationRow = {
 export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations }) => {
   const data = useMemo<DeclarationRow[]>(() =>
     declarations.map(d => ({
-      dataset: `${d.target.database}.${d.target.schema}`,
+      source: `${d.target.database}.${d.target.schema}.${d.target.name}`,
+      project: d.target.database,
+      dataset: d.target.schema,
       name: d.target.name,
       link: `https://console.cloud.google.com/bigquery?project=${d.target.database}&ws=!1m5!1m4!4m3!1s${d.target.database}!2s${d.target.schema}!3s${d.target.name}`,
     })),
@@ -26,13 +30,13 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
 
   const columns = useMemo<ColumnDef<DeclarationRow>[]>(() => [
     {
-      accessorKey: 'dataset',
-      header: 'Project.Dataset',
-      size: 250,
-    },
-    {
-      accessorKey: 'name',
-      header: 'Name',
+      accessorKey: 'source',
+      header: 'Source',
+      // Order by dataset first, then table name, then project.
+      sortingFn: (a, b) =>
+        a.original.dataset.localeCompare(b.original.dataset) ||
+        a.original.name.localeCompare(b.original.name) ||
+        a.original.project.localeCompare(b.original.project),
       cell: ({ row }) => (
         <button
           className="text-[var(--vscode-textLink-foreground)] hover:underline text-left"
@@ -41,7 +45,7 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
             vsCodeApi.postMessage({ command: 'openExternal', url: row.original.link });
           }}
         >
-          {row.original.dataset}.{row.original.name}
+          {row.original.source}
         </button>
       ),
     },
@@ -57,8 +61,8 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
         <DataTable
           columns={columns}
           data={data}
-          autoFocusColumnId="dataset"
-          initialSorting={[{ id: 'dataset', desc: false }]}
+          autoFocusColumnId="source"
+          initialSorting={[{ id: 'source', desc: false }]}
         />
       </div>
     </div>
