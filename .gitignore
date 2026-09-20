@@ -7,7 +7,7 @@ node_modules
 .excalidraw
 user_config.json
 src/test/test-workspace/AGENDA.md
-webview/initialNodes.ts
+webviews/dependancy_graph/initialNodes.ts
 src/assets/nodeMetadata.ts
 
 # dataform-graph CLI build artifacts. The `dist` rule above already covers
