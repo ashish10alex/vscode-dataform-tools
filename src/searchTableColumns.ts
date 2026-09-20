@@ -38,7 +38,7 @@ async function pickModel(): Promise<ModelQuickPickItem | undefined> {
     const table = curFileMeta?.fileMetadata?.tables?.[0];
     if (!isCompleteTarget(table?.target)) {
         vscode.window.showErrorMessage(
-            "Could not work out which models this file uses. Open a Dataform model, or run this from a table hover."
+            "Could not work out which models this file uses. Open a Dataform model, or run this from a model hover."
         );
         return undefined;
     }

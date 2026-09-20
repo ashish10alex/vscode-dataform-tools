@@ -214,7 +214,7 @@
             {
                 "command": "vscode-dataform-tools.searchTableColumns",
                 "category": "Dataform",
-                "title": "Search columns of table"
+                "title": "Search columns in a model"
             },
             {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
