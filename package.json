@@ -212,6 +212,11 @@
                 "title": "Lint current file"
             },
             {
+                "command": "vscode-dataform-tools.searchTableColumns",
+                "category": "Dataform",
+                "title": "Search columns of table"
+            },
+            {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
                 "category": "Dataform",
                 "title": "Select workspace folder"

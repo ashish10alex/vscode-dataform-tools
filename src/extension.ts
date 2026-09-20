@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { DataformCompiledJson, WorkflowUrlEntry } from './types';
+import { DataformCompiledJson, Target, WorkflowUrlEntry } from './types';
 import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
@@ -21,6 +21,7 @@ import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
 import { getQueryStringForPreview, previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runTests } from './runTests';
+import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { logger } from './logger';
@@ -148,6 +149,8 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.cancelQuery', async () => { await cancelBigQueryJob(); }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.selectWorkspaceFolder', async () => { await selectWorkspaceFolder(); }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.searchTableColumns', async (target?: Target) => { await searchTableColumns(target); }));
 
     const assertionCodeLensProvider = new AssertionRunnerCodeLensProvider();
     context.subscriptions.push(

@@ -60,6 +60,14 @@ async function createHoverContentForTable(tableMetadata:any, target: Target, par
 
           const tableSchema = await getTableSchemaAsMarkdown(tableMetadata, columns);
           hoverMarkdownString.appendMarkdown(tableSchema);
+
+          if (tableSchema) {
+            // The hover itself cannot be searched, so offer the quick pick over the same schema.
+            const searchArgs = encodeURIComponent(JSON.stringify([target]));
+            hoverMarkdownString.appendMarkdown(
+              `\n\n[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?${searchArgs})\n`
+            );
+          }
           hoverMarkdownString.isTrusted = true;
           hoverMarkdownString.supportThemeIcons = true;
           return hoverMarkdownString;
