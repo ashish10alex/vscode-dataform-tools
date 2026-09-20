@@ -10,8 +10,8 @@ interface ModelQuickPickItem extends vscode.QuickPickItem {
 }
 
 interface ColumnQuickPickItem extends vscode.QuickPickItem {
-    /** The dotted path inserted at the cursor when the item is picked. */
-    insertText: string;
+    /** The dotted path copied to the clipboard when the item is picked. */
+    copyText: string;
 }
 
 const isCompleteTarget = (target?: Target): target is Target =>
@@ -145,7 +145,7 @@ export async function searchTableColumns(target?: Target) {
             label: `${icon} ${dottedPath}`,
             description: row.type,
             detail: row.description || undefined,
-            insertText: dottedPath,
+            copyText: dottedPath,
         };
     });
 
@@ -159,13 +159,8 @@ export async function searchTableColumns(target?: Target) {
         return;
     }
 
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
-        await editor.edit((editBuilder) => editBuilder.insert(editor.selection.active, picked.insertText));
-        return;
-    }
-
-    // No editor to insert into, so leave the column somewhere the user can still use it.
-    await vscode.env.clipboard.writeText(picked.insertText);
-    vscode.window.showInformationMessage(`Copied ${picked.insertText} to the clipboard`);
+    await vscode.env.clipboard.writeText(picked.copyText);
+    // Status bar rather than a notification: this is a command you run repeatedly, and stacked
+    // toasts get in the way.
+    vscode.window.setStatusBarMessage(`Copied ${picked.copyText} to the clipboard`, 3000);
 }
