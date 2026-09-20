@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { Column, Target } from "./types";
-import { fetchTableMetadata } from "./hoverProvider";
+import { fetchTableMetadata, resolveTableReferenceAtPosition } from "./hoverProvider";
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 import { getCurrentFileMetadata } from "./utils";
 
@@ -86,11 +86,31 @@ async function pickModel(): Promise<ModelQuickPickItem | undefined> {
     return picked;
 }
 
+/**
+ * Invoked from the editor context menu there is a cursor, so use the same resolution the hover
+ * does: a ref, a declaration, a raw table id or self() under the cursor wins over the picker.
+ */
+async function modelUnderCursor(): Promise<ModelQuickPickItem | undefined> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        return undefined;
+    }
+    const reference = await resolveTableReferenceAtPosition(editor.document, editor.selection.active);
+    if (!reference) {
+        return undefined;
+    }
+    return {
+        label: reference.target.name,
+        target: reference.target,
+        columns: reference.columns?.length ? reference.columns : columnsForTarget(reference.target),
+    };
+}
+
 export async function searchTableColumns(target?: Target) {
     // The hover passes the table it is describing, which skips the model picker.
     const model: ModelQuickPickItem | undefined = isCompleteTarget(target)
         ? { label: target.name, target, columns: columnsForTarget(target) }
-        : await pickModel();
+        : (await modelUnderCursor()) ?? (await pickModel());
     if (!model) {
         return;
     }

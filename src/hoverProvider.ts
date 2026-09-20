@@ -241,23 +241,6 @@ async function getTableSchemaAsMarkdown(metadata:any, columns?: Column[]) {
   return "";
 }
 
-async function getTableInformationFromRef(
-  searchTerm: string,
-): Promise<vscode.Hover | undefined> {
-  const nodes = global.TARGET_NAME_MAP?.get(searchTerm) || [];
-  if (nodes.length > 0) {
-    // Return hover for the first matching node
-    const node = nodes[0];
-    const tableMetadata = await getTableMetadata(node.target.database, node.target.schema, node.target.name);
-    const partitionBy = (node as any).bigquery?.partitionBy || "";
-    const compiledDescription = (node as any).actionDescriptor?.description;
-    const compiledColumns = (node as any).actionDescriptor?.columns;
-    const hoverMarkdownString = await createHoverContentForTable(tableMetadata, node.target, partitionBy, (node as any).type || "table", compiledDescription, compiledColumns);
-    return new vscode.Hover(hoverMarkdownString);
-  }
-  return undefined;
-}
-
 interface ImportedModule {
   module: string;
   path: string;
@@ -337,6 +320,137 @@ async function findModuleVarDefinition(
 }
 
 
+/** Where a table reference under the cursor came from. The hover renders each of these differently. */
+export type TableReferenceSource = "rawBigQueryId" | "ref" | "declaration" | "self";
+
+export interface ResolvedTableReference {
+  target: Target;
+  source: TableReferenceSource;
+  /** Action type for display, e.g. "table", "view", "declaration". */
+  type: string;
+  columns?: Column[];
+  description?: string;
+  partitionBy?: string;
+}
+
+function isPositionInsideTemplate(line: string, position: vscode.Position): boolean {
+  const templateRegex = /\$\{([^}]+)\}/g;
+  let templateMatch;
+  while ((templateMatch = templateRegex.exec(line)) !== null) {
+    const start = templateMatch.index;
+    const end = templateMatch.index + templateMatch[0].length;
+    if (position.character >= start && position.character <= end) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Works out which table the cursor is on: a raw project.dataset.table id outside a template,
+ * otherwise ${self()} or ${ref('...')} inside one. Shared by the hover and by the
+ * "Search columns of table" command so both agree on what the table under the cursor is.
+ */
+export async function resolveTableReferenceAtPosition(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+): Promise<ResolvedTableReference | undefined> {
+  const line = document.lineAt(position.line).text;
+
+  if (!isPositionInsideTemplate(line, position)) {
+    const bqTableRegex = /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/;
+    const bqRange = document.getWordRangeAtPosition(position, bqTableRegex);
+    if (bqRange) {
+      const parts = document.getText(bqRange).split('.');
+      if (parts.length === 3) {
+        const [database, schema, name] = parts;
+        return { target: { database, schema, name }, source: "rawBigQueryId", type: "table" };
+      }
+    }
+    return undefined;
+  }
+
+  const workspaceFolder = await getWorkspaceFolder();
+  if (!workspaceFolder) {
+    return undefined;
+  }
+
+  const wordRange = document.getWordRangeAtPosition(position);
+  if (!wordRange) {
+    return undefined;
+  }
+
+  let searchTerm = document.getText(wordRange);
+
+  if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
+    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    if (!dataformCompiledJson) {
+      return undefined;
+    }
+    const relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
+    const findMatch = (items?: Table[] | Operation[] | Assertion[]) =>
+      items?.find(item => item.fileName === relativeFilePath);
+    const match: any = findMatch(dataformCompiledJson?.operations)
+      || findMatch(dataformCompiledJson?.tables)
+      || findMatch(dataformCompiledJson?.assertions);
+    if (match?.target) {
+      return {
+        target: match.target,
+        source: "self",
+        type: match.type || "table",
+        columns: match.actionDescriptor?.columns,
+        description: match.actionDescriptor?.description,
+        partitionBy: match.bigquery?.partitionBy || "",
+      };
+    }
+    return undefined;
+  }
+
+  if (line.indexOf("${ref") === -1) {
+    return undefined;
+  }
+
+  const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+  if (!dataformCompiledJson) {
+    return undefined;
+  }
+
+  const declarations = dataformCompiledJson?.declarations;
+  if (declarations) {
+    for (const declaration of declarations) {
+      if (searchTerm === declaration.target.name) {
+        return {
+          target: declaration.target,
+          source: "declaration",
+          type: "declaration",
+          columns: (declaration as any).actionDescriptor?.columns,
+          description: (declaration as any).actionDescriptor?.description,
+        };
+      }
+    }
+  }
+
+  const tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
+  if (tablePrefix) {
+    searchTerm = tablePrefix + "_" + searchTerm;
+  }
+
+  // Declarations are not in TARGET_NAME_MAP yet, which is why they are matched above.
+  const node: any = (global.TARGET_NAME_MAP?.get(searchTerm) || [])[0];
+  if (node?.target) {
+    return {
+      target: node.target,
+      source: "ref",
+      type: node.type || "table",
+      columns: node.actionDescriptor?.columns,
+      description: node.actionDescriptor?.description,
+      partitionBy: node.bigquery?.partitionBy || "",
+    };
+  }
+
+  return undefined;
+}
+
 export class DataformHoverProvider implements vscode.HoverProvider {
   //@ts-ignore
   async provideHover(
@@ -344,50 +458,43 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     position: vscode.Position,
   ) {
     const line = document.lineAt(position.line).text;
+    const reference = await resolveTableReferenceAtPosition(document, position);
 
-    // Check if cursor is inside ${...}
-    let isInsideTemplate = false;
-    const templateRegex = /\$\{([^}]+)\}/g;
-    let templateMatch;
-    while ((templateMatch = templateRegex.exec(line)) !== null) {
-      const start = templateMatch.index;
-      const end = templateMatch.index + templateMatch[0].length;
-      if (position.character >= start && position.character <= end) {
-        isInsideTemplate = true;
-        break;
-      }
+    // ${self()} has always shown just the table id.
+    if (reference?.source === "self") {
+      return new vscode.Hover(new vscode.MarkdownString(`#### ${getMarkdownTableIdWtLink(reference.target)}`));
     }
 
-    // If NOT inside template, check for BQ raw ID hover
-    if (!isInsideTemplate) {
-      const bqTableRegex = /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/;
-      const bqRange = document.getWordRangeAtPosition(position, bqTableRegex);
-      if (bqRange) {
-        const bqIdentifier = document.getText(bqRange);
-        const parts = bqIdentifier.split('.');
-        if (parts.length === 3) {
-          const [project, dataset, table] = parts;
-          const tableMetadata = await getTableMetadata(project, dataset, table);
-          if (tableMetadata) {
-            const target = { database: project, schema: dataset, name: table };
-            const hoverMarkdownString = await createHoverContentForTable(tableMetadata, target, "", "table");
-            return new vscode.Hover(hoverMarkdownString);
-          } else {
-            const target = { database: project, schema: dataset, name: table };
-            const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-            const hoverMarkdownString = new vscode.MarkdownString(
-              `#### ${markdownTableIdWtLink}\n\n ---- \n\n $(warning) **Metadata unavailable**`
-            );
-            hoverMarkdownString.isTrusted = true;
-            hoverMarkdownString.supportThemeIcons = true;
-            return new vscode.Hover(hoverMarkdownString);
-          }
-        }
+    if (reference) {
+      const { database, schema, name } = reference.target;
+      const tableMetadata = await getTableMetadata(database, schema, name);
+
+      // A raw id can point at anything, so say so rather than showing an empty card.
+      if (!tableMetadata && reference.source === "rawBigQueryId") {
+        const hoverMarkdownString = new vscode.MarkdownString(
+          `#### ${getMarkdownTableIdWtLink(reference.target)}\n\n ---- \n\n $(warning) **Metadata unavailable**`
+        );
+        hoverMarkdownString.isTrusted = true;
+        hoverMarkdownString.supportThemeIcons = true;
+        return new vscode.Hover(hoverMarkdownString);
       }
+
+      const hoverMarkdownString = await createHoverContentForTable(
+        tableMetadata,
+        reference.target,
+        reference.partitionBy || "",
+        reference.type,
+        reference.description,
+        reference.columns,
+      );
+      return new vscode.Hover(hoverMarkdownString);
+    }
+
+    // Not a table. Inside a ${...} that is not a ref it may still be a JS variable or function.
+    if (!isPositionInsideTemplate(line, position) || line.indexOf("${ref") !== -1) {
       return undefined;
     }
 
-    // If we are inside a template, proceed with Dataform specific logic
     const workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
       return undefined;
@@ -397,97 +504,30 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     if (!wordRange) {
       return undefined;
     }
+    const searchTerm = document.getText(wordRange);
 
-    let searchTerm = document.getText(wordRange);
-
-    if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
-      const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
-      if (!dataformCompiledJson) {
-        return;
-      }
-
-      let tables = dataformCompiledJson?.tables;
-      let operations = dataformCompiledJson?.operations;
-      let assertions = dataformCompiledJson?.assertions;
-
-      let relativeFilePath = path.relative(workspaceFolder, document.uri.fsPath);
-      const getHoverForTarget = (target: Target) => {
-        const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-        return new vscode.Hover(new vscode.MarkdownString(`#### ${markdownTableIdWtLink}`));
-      };
-
-      const findMatchingTarget = (items?: Table[] | Operation[] | Assertion[]) => {
-        const match = items?.find(item => item.fileName === relativeFilePath);
-        return match?.target;
-      };
-
-      const target = findMatchingTarget(operations) || findMatchingTarget(tables) || findMatchingTarget(assertions);
-
-      if (target) {
-        return getHoverForTarget(target);
-      }
-
-    }
-
-    if (line.indexOf("${ref") !== -1) {
-    let hoverMeta: vscode.Hover | undefined;
-
-    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
-    if (!dataformCompiledJson) {
-        return;
-    }
-
-    let declarations = dataformCompiledJson?.declarations;
-    let tablePrefix = dataformCompiledJson?.projectConfig?.tablePrefix;
-
-    if (declarations) {
-      for (let i = 0; i < declarations.length; i++) {
-        let declarationName = declarations[i].target.name;
-        if (searchTerm === declarationName) {
-          const tableMetadata = await getTableMetadata( declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
-          const compiledDescription = (declarations[i] as any).actionDescriptor?.description;
-          const compiledColumns = (declarations[i] as any).actionDescriptor?.columns;
-          const hoverMarkdownString = await createHoverContentForTable(tableMetadata, declarations[i].target, "", "declaration", compiledDescription, compiledColumns);
-          return new vscode.Hover(hoverMarkdownString);
+    const regex = /\$\{([^}]+)\}/g;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      const content = match[1];
+      if (content.includes(".")) {
+        const [jsFileName, variableOrFunctionSignature] = content.split('.');
+        if (variableOrFunctionSignature.includes(searchTerm)) {
+          return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
+        }
+      } else if (content.includes('.') === false && content.trim() !== '') {
+        const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
+        const jsBlock = sqlxFileMetadata.jsBlock;
+        if (jsBlock.exists === true) {
+          const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
+          if (jsBlockCode) {
+            return getHoverOfVariableInJsFileOrBlock(jsBlockCode, searchTerm);
+          }
         }
       }
     }
 
-    if (tablePrefix) {
-      searchTerm = tablePrefix + "_" + searchTerm;
-    }
-
-    // Since declarations are not in TARGET_NAME_MAP yet, we use the old loop for them.
-    // However, everything else can instantly use the map!
-    hoverMeta = await getTableInformationFromRef(searchTerm);
-    if (hoverMeta) {
-      return hoverMeta;
-    }
-  } else {
-    const regex = /\$\{([^}]+)\}/g;
-    let match;
-    while ((match = regex.exec(line)) !== null) {
-        const content =  (match[1]);
-        if (content.includes(".")){
-          const [jsFileName, variableOrFunctionSignature] = content.split('.'); 
-          if(variableOrFunctionSignature.includes(searchTerm)){
-              return findModuleVarDefinition(document, workspaceFolder, jsFileName, searchTerm, 0, -1);
-          }
-        } else if (content.includes('.') === false && content.trim() !== ''){
-          const sqlxFileMetadata = getMetadataForSqlxFileBlocks(document);
-          const jsBlock = sqlxFileMetadata.jsBlock;
-          if(jsBlock.exists === true){
-            const jsBlockCode = await getTextByLineRange(document.uri, jsBlock.startLine, jsBlock.endLine);
-            if(jsBlockCode){
-            return getHoverOfVariableInJsFileOrBlock(jsBlockCode, searchTerm);
-            }
-          }
-      }
-    }
-
-    return undefined; // If not matches are found then we will not show anything on hover
-
-    }
+    return undefined; // If no matches are found then we will not show anything on hover
   }
 }
 

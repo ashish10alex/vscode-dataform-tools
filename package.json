@@ -266,6 +266,13 @@
             }
         ],
         "menus": {
+            "editor/context": [
+                {
+                    "command": "vscode-dataform-tools.searchTableColumns",
+                    "when": "resourceExtname == .sqlx",
+                    "group": "navigation@10"
+                }
+            ],
             "editor/title": [
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
