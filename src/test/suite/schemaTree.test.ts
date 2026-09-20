@@ -132,6 +132,21 @@ suite('schemaTree', () => {
             ]);
         });
 
+        test('carries the full path from the root, for nested fields too', () => {
+            const { rows } = flattenSchemaRows(deepSchema());
+            const paths = rows.map((row) => row.path.join('.'));
+            assert.deepStrictEqual(paths, [
+                'customer',
+                'customer.address',
+                'customer.address.city',
+                'customer.id',
+                'id',
+                'order',
+                'order.id',
+                'tags',
+            ]);
+        });
+
         test('sorts siblings by name at every depth', () => {
             const { rows } = flattenSchemaRows([
                 { name: 'b', type: 'RECORD', fields: [{ name: 'z', type: 'STRING' }, { name: 'a', type: 'STRING' }] },

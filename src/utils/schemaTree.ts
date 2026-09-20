@@ -105,6 +105,8 @@ export interface SchemaRowForDisplay {
     description: string;
     /** 0 for top level fields, 1 for the children of a RECORD, and so on. */
     depth: number;
+    /** Full path from the root, e.g. ["ALL_ATTRIBUTES", "ATTR_CODE"]. */
+    path: string[];
 }
 
 /** BigQuery omits mode for NULLABLE fields, so only other modes are worth showing. */
@@ -129,25 +131,27 @@ export function flattenSchemaRows(
     const rows: SchemaRowForDisplay[] = [];
     let omitted = 0;
 
-    const walk = (current: ColumnMetadata[], depth: number) => {
+    const walk = (current: ColumnMetadata[], parentPath: string[]) => {
         const siblings = [...current].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
         for (const field of siblings) {
             if (rows.length >= maxRows) {
                 omitted += countFields([field]);
                 continue;
             }
+            const path = [...parentPath, field.name || ""];
             rows.push({
                 name: field.name || "",
                 type: displayType(field),
                 description: field.description || "",
-                depth,
+                depth: parentPath.length,
+                path,
             });
             if (field.fields?.length) {
-                walk(field.fields, depth + 1);
+                walk(field.fields, path);
             }
         }
     };
 
-    walk(fields, 0);
+    walk(fields, []);
     return { rows, omitted };
 }

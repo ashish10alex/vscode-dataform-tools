@@ -212,6 +212,11 @@
                 "title": "Lint current file"
             },
             {
+                "command": "vscode-dataform-tools.searchTableColumns",
+                "category": "Dataform",
+                "title": "Search columns in a model"
+            },
+            {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
                 "category": "Dataform",
                 "title": "Select workspace folder"
@@ -261,6 +266,13 @@
             }
         ],
         "menus": {
+            "editor/context": [
+                {
+                    "command": "vscode-dataform-tools.searchTableColumns",
+                    "when": "resourceExtname == .sqlx",
+                    "group": "navigation@10"
+                }
+            ],
             "editor/title": [
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
