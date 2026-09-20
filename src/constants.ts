@@ -159,3 +159,5 @@ export const defaultCdnLinks = {
   highlightJsOneLightThemeUri: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-light.min.css",
   highlightJsLineNoExtUri: "https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js/dist/highlightjs-line-numbers.min.js",
 };
+// Beyond this the hover becomes a long scroll pane; the Schema tab is the place for wide tables.
+export const maxHoverSchemaRows = 150;

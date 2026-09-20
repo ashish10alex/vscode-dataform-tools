@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { ColumnMetadata } from '../../types';
-import { applyColumnDescriptions, buildColumnsConfig, flattenSchemaFields, formatAsUnquotedJson, pathKey } from '../../utils/schemaTree';
+import { applyColumnDescriptions, buildColumnsConfig, flattenSchemaFields, flattenSchemaRows, formatAsUnquotedJson, pathKey } from '../../utils/schemaTree';
 
 const scalar = (name: string, type = 'STRING'): ColumnMetadata => ({ name, type });
 
@@ -114,6 +114,64 @@ suite('schemaTree', () => {
                 '  }',
                 '}',
             ].join('\n'));
+        });
+    });
+    suite('flattenSchemaRows', () => {
+        test('lists each parent immediately before its children, with their depth', () => {
+            const { rows, omitted } = flattenSchemaRows(deepSchema());
+            assert.strictEqual(omitted, 0);
+            assert.deepStrictEqual(rows.map((row) => [row.name, row.depth]), [
+                ['customer', 0],
+                ['address', 1],
+                ['city', 2],
+                ['id', 1],
+                ['id', 0],
+                ['order', 0],
+                ['id', 1],
+                ['tags', 0],
+            ]);
+        });
+
+        test('sorts siblings by name at every depth', () => {
+            const { rows } = flattenSchemaRows([
+                { name: 'b', type: 'RECORD', fields: [{ name: 'z', type: 'STRING' }, { name: 'a', type: 'STRING' }] },
+                { name: 'a', type: 'STRING' },
+            ]);
+            assert.deepStrictEqual(rows.map((row) => row.name), ['a', 'b', 'a', 'z']);
+        });
+
+        test('appends the mode to the type unless it is NULLABLE', () => {
+            const { rows } = flattenSchemaRows(deepSchema());
+            const byName = (name: string) => rows.find((row) => row.name === name)!;
+            assert.strictEqual(byName('tags').type, 'STRING REPEATED');
+            assert.strictEqual(byName('customer').type, 'RECORD');
+            assert.strictEqual(rows.filter((row) => row.name === 'id')[1].type, 'STRING REQUIRED');
+        });
+
+        test('caps the rows and counts every field left out, descendants included', () => {
+            const all = flattenSchemaRows(realShapeSchema());
+            assert.strictEqual(all.rows.length, 39);
+
+            const { rows, omitted } = flattenSchemaRows(realShapeSchema(), { maxRows: 10 });
+            assert.strictEqual(rows.length, 10);
+            assert.strictEqual(omitted, 29);
+        });
+
+        test('skips the children of a record it stopped at rather than half listing them', () => {
+            const fields: ColumnMetadata[] = [
+                scalar('a'),
+                { name: 'b', type: 'RECORD', fields: [scalar('b1'), scalar('b2')] },
+            ];
+            const { rows, omitted } = flattenSchemaRows(fields, { maxRows: 1 });
+            assert.deepStrictEqual(rows.map((row) => row.name), ['a']);
+            assert.strictEqual(omitted, 3);
+        });
+
+        test('does not mutate the input', () => {
+            const fields = deepSchema();
+            const snapshot = JSON.stringify(fields);
+            flattenSchemaRows(fields, { maxRows: 2 });
+            assert.strictEqual(JSON.stringify(fields), snapshot);
         });
     });
 });
