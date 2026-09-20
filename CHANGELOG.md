@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.12.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.12...v1.12.13) (2026-09-20)
+
+
+### Features
+
+* add 5-minute snooze compilation with webview controls and notification ([8bebb43](https://github.com/ashish10alex/vscode-dataform-tools/commit/8bebb43ea2d11c097e5756a4c9bcab137d060906))
+* explain the starter GQL query in the graph's own terms ([8ecae9c](https://github.com/ashish10alex/vscode-dataform-tools/commit/8ecae9cdfd399ecb6f19c8253a0776e6319e8f0a))
+* name the relationship's table on the diagram edge ([5d0e93e](https://github.com/ashish10alex/vscode-dataform-tools/commit/5d0e93e8a2f9de3b5d0d28840ee3e0516818a008))
+* render property graphs in the compiled query webview ([43182a7](https://github.com/ashish10alex/vscode-dataform-tools/commit/43182a727c71e5c7c79ff655ea350dccf54b4e14)), closes [#349](https://github.com/ashish10alex/vscode-dataform-tools/issues/349)
+* search a table's columns from a quick pick ([#360](https://github.com/ashish10alex/vscode-dataform-tools/issues/360)) ([096015a](https://github.com/ashish10alex/vscode-dataform-tools/commit/096015a8e3cc028c12b95b2c6e186615d211c669))
+* show nested columns in table hover ([#358](https://github.com/ashish10alex/vscode-dataform-tools/issues/358)) ([747ae19](https://github.com/ashish10alex/vscode-dataform-tools/commit/747ae19b39352623040d3e0580b9af4f67eb7f7e)), closes [#354](https://github.com/ashish10alex/vscode-dataform-tools/issues/354)
+
+
+### Bug Fixes
+
+* address property graph review feedback ([585cbdf](https://github.com/ashish10alex/vscode-dataform-tools/commit/585cbdf33bb42bc17961ca1ac987a49488c23f69))
+* derive the query explanation from the graph, not from one example ([4b6b339](https://github.com/ashish10alex/vscode-dataform-tools/commit/4b6b339270f0a9789aaae34eee121a0f54283f52))
+* refresh correct file after snooze and keep pending edits on re-snooze ([941318d](https://github.com/ashish10alex/vscode-dataform-tools/commit/941318de233a8ccb9e1c1a9f7e344cb9fbeb42ba))
+
 ### [1.12.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.11...v1.12.12) (2026-09-19)
 
 
