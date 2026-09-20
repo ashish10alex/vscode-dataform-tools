@@ -25,6 +25,15 @@ async function createHoverContentForTable(tableMetadata:any, target: Target, par
           const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
           hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
 
+          // The hover itself cannot be searched, so offer the quick pick over the same schema.
+          // Kept directly under the title: at the bottom of a long schema table it is easy to miss.
+          if (tableMetadata?.schema?.fields?.length) {
+            const searchArgs = encodeURIComponent(JSON.stringify([target]));
+            hoverMarkdownString.appendMarkdown(
+              `[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?${searchArgs})\n\n`
+            );
+          }
+
           hoverMarkdownString.appendMarkdown("---- \n");
 
           // Prefer the description from BigQuery, fall back to the one in the compiled Dataform config
@@ -60,14 +69,6 @@ async function createHoverContentForTable(tableMetadata:any, target: Target, par
 
           const tableSchema = await getTableSchemaAsMarkdown(tableMetadata, columns);
           hoverMarkdownString.appendMarkdown(tableSchema);
-
-          if (tableSchema) {
-            // The hover itself cannot be searched, so offer the quick pick over the same schema.
-            const searchArgs = encodeURIComponent(JSON.stringify([target]));
-            hoverMarkdownString.appendMarkdown(
-              `\n\n[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?${searchArgs})\n`
-            );
-          }
           hoverMarkdownString.isTrusted = true;
           hoverMarkdownString.supportThemeIcons = true;
           return hoverMarkdownString;
