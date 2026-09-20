@@ -4,6 +4,7 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
 import { GitService } from './gitClient';
+import { getPropertyGraphsForFile } from './shared/propertyGraph';
 
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
 
@@ -47,10 +48,24 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         return;
     }
 
+    // PropertyGraph actions produce no queries, so they are absent from `tables` and have to be
+    // picked up from the compiled output directly for the file to be runnable at all.
+    const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON)
+        .filter((graph) => !graph.disabled);
+
     if (executionMode === "cli") {
         let actionsList: string[] = currFileMetadata.tables
             .filter((table: any) => table.type !== 'test')
             .map(table => `${table.target.database}.${table.target.schema}.${table.target.name}`);
+
+        propertyGraphs.forEach((graph) => {
+            actionsList.push(`${graph.target.database}.${graph.target.schema}.${graph.target.name}`);
+        });
+
+        if (actionsList.length === 0) {
+            vscode.window.showErrorMessage(`No runnable Dataform actions found in ${relativeFilePath}`);
+            return;
+        }
 
         let dataformActionCmd = "";
 
@@ -74,6 +89,15 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             const action = {database: table.target.database, schema: table.target.schema, name: table.target.name};
             actionsList.push(action);
         });
+
+        propertyGraphs.forEach((graph) => {
+            actionsList.push({database: graph.target.database, schema: graph.target.schema, name: graph.target.name});
+        });
+
+        if (actionsList.length === 0) {
+            vscode.window.showErrorMessage(`No runnable Dataform actions found in ${relativeFilePath}`);
+            return;
+        }
 
         const invocationConfig = {
             includedTargets: actionsList,

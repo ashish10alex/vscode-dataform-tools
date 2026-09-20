@@ -1,3 +1,8 @@
+/* Must stay ahead of the tailwind directives: a CSS @import has to come first.
+   Imported here rather than from the diagram component so the rules land in
+   preview_compiled.css, which is the only stylesheet the panel loads. */
+@import "@xyflow/react/dist/style.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
