@@ -11,14 +11,15 @@ import {
 // @ts-ignore
 import {parse as commentParser} from 'comment-parser';
 
-import { Assertion, ColumnMetadata, Operation, Table, Target } from "./types";
+import { Assertion, Column, ColumnMetadata, Operation, Table, Target } from "./types";
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
-import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
+import { maxHoverSchemaRows, sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
+import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 
-async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string): Promise<vscode.MarkdownString> {
+async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string, columns?: Column[]): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
 
           const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
@@ -57,7 +58,7 @@ async function createHoverContentForTable(tableMetadata:any, target: Target, par
           }
           hoverMarkdownString.appendMarkdown("---- \n");
 
-          const tableSchema = await getTableSchemaAsMarkdown(tableMetadata);
+          const tableSchema = await getTableSchemaAsMarkdown(tableMetadata, columns);
           hoverMarkdownString.appendMarkdown(tableSchema);
           hoverMarkdownString.isTrusted = true;
           hoverMarkdownString.supportThemeIcons = true;
@@ -189,30 +190,42 @@ export async function getTableMetadata(projectId: string, datasetId:string, tabl
   }
 }
 
-async function getTableSchemaAsMarkdown(metadata:any) {
+/** Indent one level of nesting. Non breaking spaces survive the markdown table renderer. */
+const nestedFieldIndent = "\u00A0\u00A0\u00A0";
+
+/**
+ * Newlines in a BigQuery description would split the markdown table across lines, so collapse
+ * them. Overriding `toCellText` also disables tablemark's own escaping, hence the `|` handling.
+ */
+const toHoverCellText = (value: unknown): string =>
+  String(value ?? "").replace(/\s*\r?\n\s*/g, " ").replace(/\|/g, "\\|");
+
+async function getTableSchemaAsMarkdown(metadata:any, columns?: Column[]) {
   try {
-    if(!metadata){
+    const fields: ColumnMetadata[] | undefined = metadata?.schema?.fields;
+    if (!fields || fields.length === 0) {
       return "";
     }
-    const schema = metadata.schema;
-    if (schema && schema.fields) {
-    schema.fields.sort((a:any, b:any) => a.name.localeCompare(b.name));
-    schema.fields.forEach((field:any) => {
-      field.name = field.name || "";
-      field.type = field.type || "";
-      field.description = field.description || "";
-      Object.keys(field).forEach(key => {
-        if (!["name", "type", "description"].includes(key)) {
-          delete field[key];
-        }
-      });
-    });
-  }
 
-  return import('tablemark').then(({ default: tablemark }) => {
-    const output = tablemark(schema.fields);
-    return output;
-  });
+    // Descriptions declared in the SQLX config block are not in BigQuery until the table is
+    // rebuilt, so prefer them when the caller has a compiled action to hand.
+    const describedFields = columns?.length ? applyColumnDescriptions(fields, columns) : fields;
+    const { rows, omitted } = flattenSchemaRows(describedFields, { maxRows: maxHoverSchemaRows });
+
+    const { default: tablemark } = await import('tablemark');
+    const table = tablemark(
+      rows.map((row) => ({
+        name: row.depth === 0 ? row.name : `${nestedFieldIndent.repeat(row.depth - 1)}\u2514\u2500 ${row.name}`,
+        type: row.type,
+        description: row.description,
+      })),
+      { toCellText: toHoverCellText }
+    );
+
+    if (omitted > 0) {
+      return `${table}\n\n_\u2026 ${omitted} more field${omitted === 1 ? "" : "s"} not shown, see the Schema tab_\n`;
+    }
+    return table;
   } catch (err) {
     console.error('Error:', err);
   }
@@ -229,7 +242,8 @@ async function getTableInformationFromRef(
     const tableMetadata = await getTableMetadata(node.target.database, node.target.schema, node.target.name);
     const partitionBy = (node as any).bigquery?.partitionBy || "";
     const compiledDescription = (node as any).actionDescriptor?.description;
-    const hoverMarkdownString = await createHoverContentForTable(tableMetadata, node.target, partitionBy, (node as any).type || "table", compiledDescription);
+    const compiledColumns = (node as any).actionDescriptor?.columns;
+    const hoverMarkdownString = await createHoverContentForTable(tableMetadata, node.target, partitionBy, (node as any).type || "table", compiledDescription, compiledColumns);
     return new vscode.Hover(hoverMarkdownString);
   }
   return undefined;
@@ -423,7 +437,8 @@ export class DataformHoverProvider implements vscode.HoverProvider {
         if (searchTerm === declarationName) {
           const tableMetadata = await getTableMetadata( declarations[i].target.database, declarations[i].target.schema, declarations[i].target.name);
           const compiledDescription = (declarations[i] as any).actionDescriptor?.description;
-          const hoverMarkdownString = await createHoverContentForTable(tableMetadata, declarations[i].target, "", "declaration", compiledDescription);
+          const compiledColumns = (declarations[i] as any).actionDescriptor?.columns;
+          const hoverMarkdownString = await createHoverContentForTable(tableMetadata, declarations[i].target, "", "declaration", compiledDescription, compiledColumns);
           return new vscode.Hover(hoverMarkdownString);
         }
       }

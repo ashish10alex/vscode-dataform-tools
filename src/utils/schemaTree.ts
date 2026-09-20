@@ -95,3 +95,59 @@ export function formatAsUnquotedJson(obj: Record<string, unknown>, indent = ""):
     });
     return `{\n${lines.join(",\n")}\n${indent}}`;
 }
+
+/** A field rendered as one row of a flat list, keeping the depth it sat at in the tree. */
+export interface SchemaRowForDisplay {
+    /** The field's own name, not its full path. */
+    name: string;
+    /** The field type, with the mode appended when it is not NULLABLE, e.g. `RECORD REPEATED`. */
+    type: string;
+    description: string;
+    /** 0 for top level fields, 1 for the children of a RECORD, and so on. */
+    depth: number;
+}
+
+/** BigQuery omits mode for NULLABLE fields, so only other modes are worth showing. */
+const displayType = (field: ColumnMetadata): string => {
+    const type = field.type || "";
+    return field.mode && field.mode !== "NULLABLE" ? `${type} ${field.mode}`.trim() : type;
+};
+
+const countFields = (fields: ColumnMetadata[]): number =>
+    fields.reduce((total, field) => total + 1 + (field.fields ? countFields(field.fields) : 0), 0);
+
+/**
+ * Depth first list of every field at every depth, each parent immediately followed by its
+ * children, siblings sorted by name. Stops after `maxRows` rows and reports how many fields
+ * (including the descendants of the fields it stopped at) were left out. The input is not mutated.
+ */
+export function flattenSchemaRows(
+    fields: ColumnMetadata[],
+    options: { maxRows?: number } = {}
+): { rows: SchemaRowForDisplay[]; omitted: number } {
+    const maxRows = options.maxRows ?? Infinity;
+    const rows: SchemaRowForDisplay[] = [];
+    let omitted = 0;
+
+    const walk = (current: ColumnMetadata[], depth: number) => {
+        const siblings = [...current].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        for (const field of siblings) {
+            if (rows.length >= maxRows) {
+                omitted += countFields([field]);
+                continue;
+            }
+            rows.push({
+                name: field.name || "",
+                type: displayType(field),
+                description: field.description || "",
+                depth,
+            });
+            if (field.fields?.length) {
+                walk(field.fields, depth + 1);
+            }
+        }
+    };
+
+    walk(fields, 0);
+    return { rows, omitted };
+}
