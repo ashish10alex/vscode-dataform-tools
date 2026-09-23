@@ -1,3 +1,9 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "FAQ",
+  description: "Answers to common Dataform Tools setup and usage questions.",
+};
+
 export default function FAQPage() {
   const faqs = [
     {
