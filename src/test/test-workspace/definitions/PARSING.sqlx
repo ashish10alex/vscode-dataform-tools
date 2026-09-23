@@ -1,0 +1,24 @@
+-- First line with some comment
+-- https://github.com/ashish10alex/vscode-dataform-tools
+-- Last line with some comment
+
+config {
+  type: "table",
+  tags: ["tag1", "tag2"],
+  schema: "my_schema",
+  name: "my_table"
+  }
+
+
+SELECT 
+
+"test" as some_column
+FROM
+    ${ref("GAMES")}
+
+-- Another comment
+
+pre_operations {
+  SET
+    @@query_label = "test"
+}
