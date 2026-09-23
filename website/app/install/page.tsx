@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import FeatureReels from "@/components/feature-reels";
 import { CodeBlock } from "@/components/code-block";
 import { InstallationStepHeader } from "@/components/installation-step-header";
+
+export const metadata: Metadata = {
+  title: "Install",
+  description: "Set up Dataform Tools: Dataform CLI, gcloud, sqlfluff and recommended extensions.",
+};
 
 export default function InstallationGuidePage() {
   return (
