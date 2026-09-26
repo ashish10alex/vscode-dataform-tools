@@ -1,8 +1,21 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { bigQueryJobConsoleUrl, parseBigQueryJobId, summariseJobStats, toJobStats } from '../../workflowJobTelemetry';
+import { bigQueryJobConsoleUrl, parseBigQueryJobId, summariseJobStats, toJobStats, workflowActionTarget } from '../../workflowJobTelemetry';
 
 suite('workflowJobTelemetry', () => {
+    test('workflowActionTarget shows the table that ran, with compiler overrides applied', () => {
+        const action = {
+            target: { database: 'proj', schema: 'sales_dev', name: 'aa_orders' },
+            canonicalTarget: { database: 'proj', schema: 'sales', name: 'orders' },
+        };
+        assert.strictEqual(workflowActionTarget(action), 'proj.sales_dev.aa_orders');
+    });
+
+    test('workflowActionTarget falls back to the canonical target', () => {
+        assert.strictEqual(workflowActionTarget({ canonicalTarget: { database: 'proj', schema: 'sales', name: 'orders' } }), 'proj.sales.orders');
+        assert.strictEqual(workflowActionTarget({}), '(unknown)');
+    });
+
     test('parseBigQueryJobId keeps a bare job ID in the default project', () => {
         assert.deepStrictEqual(parseBigQueryJobId('dataform_abc123', 'my-project'), { projectId: 'my-project', jobId: 'dataform_abc123' });
     });
