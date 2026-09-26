@@ -691,7 +691,10 @@ export class CompiledQueryPanel {
                 return;
               case 'cancelWorkflowInvocation':
                 if (message.value?.workflowInvocationId && this.centerPanel) {
-                    await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.value.workflowInvocationId);
+                    const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.value.workflowInvocationId);
+                    if (!cancelled) {
+                        this.centerPanel?.webviewPanel.webview.postMessage({ cancelWorkflowInvocationFailed: message.value.workflowInvocationId });
+                    }
                 }
                 return;
               case 'runFilesTagsWtOptionsApi':
@@ -704,7 +707,8 @@ export class CompiledQueryPanel {
                 const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
                 if (urlsToRefresh.length > 0) {
-                    const updatedUrls = await Promise.all(urlsToRefresh.map(async (item) => {
+                    const refreshedUrls = await Promise.all(urlsToRefresh.map(async (original) => {
+                        const item = { ...original };
                         const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
                         const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
                         const needsCountsBackfill = !item.actionCounts;
@@ -774,6 +778,14 @@ export class CompiledQueryPanel {
                         return item;
                     }));
 
+                    // Merge into the current history rather than overwriting it: entries may have been added,
+                    // cleared or cancelled while the API calls above were in flight.
+                    const latestUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                    const updatedUrls = latestUrls.map((current) => {
+                        const index = urlsToRefresh.findIndex((item) => item.workflowInvocationId && item.workflowInvocationId === current.workflowInvocationId);
+                        if (index === -1 || urlsToRefresh[index].state !== current.state) { return current; }
+                        return refreshedUrls[index];
+                    });
                     await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
                     this.centerPanel?.webviewPanel.webview.postMessage({
                         workflowUrls: updatedUrls

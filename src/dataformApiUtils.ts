@@ -59,14 +59,14 @@ export async function sendWorkflowInvocationNotification(
 
 /**
  * Asks Dataform to cancel a workflow invocation recorded in the execution history and marks it
- * CANCELING there; the next status refresh picks up the final CANCELLED state.
+ * CANCELING there; the next status refresh picks up the final CANCELLED state. Resolves to whether the request succeeded.
  */
-export async function cancelWorkflowInvocation(context: vscode.ExtensionContext, workflowInvocationId: string) {
+export async function cancelWorkflowInvocation(context: vscode.ExtensionContext, workflowInvocationId: string): Promise<boolean> {
     const storedUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
     const entry = storedUrls.find((item) => item.workflowInvocationId === workflowInvocationId);
     if (!entry?.projectId || !entry.location || !entry.repositoryName) {
         vscode.window.showErrorMessage(`Unable to cancel workflow invocation ${workflowInvocationId}: it is missing from the execution history`);
-        return;
+        return false;
     }
     try {
         const dataformClient = new DataformTools(entry.projectId, entry.location);
@@ -76,7 +76,7 @@ export async function cancelWorkflowInvocation(context: vscode.ExtensionContext,
         });
     } catch (error: any) {
         vscode.window.showErrorMessage(`Unable to cancel workflow invocation: ${error.message}`);
-        return;
+        return false;
     }
     const latestUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
     await context.workspaceState.update('dataform_workflow_urls', latestUrls.map((item) =>
@@ -84,6 +84,7 @@ export async function cancelWorkflowInvocation(context: vscode.ExtensionContext,
     ));
     vscode.commands.executeCommand('vscode-dataform-tools.refreshWorkflowUrls');
     vscode.window.showInformationMessage(`Cancellation requested for workflow invocation ${workflowInvocationId}`);
+    return true;
 }
 
 async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, gitClient: GitService, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean, gitCommitsBehind:number){
