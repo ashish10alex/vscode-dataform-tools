@@ -18,6 +18,8 @@ import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './c
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
+import { initRemoteCompiler, isRemoteMode } from './utils/remoteCompiler';
+import { clearRemoteCompileCache } from './utils/remoteCompileCache';
 import { getQueryStringForPreview, previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runTests } from './runTests';
@@ -76,8 +78,13 @@ export async function activate(context: vscode.ExtensionContext) {
     const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
     globalThis.bigQuerySnippetMetadata = JSON.parse(snippetsContent)[".source.sql-bigquery"];
 
+    initRemoteCompiler(context);
+
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
+        if (executable === 'dataform' && isRemoteMode()) {
+            continue; // Remote mode compiles with the Dataform API, the CLI is not needed
+        }
         logger.debug(`Checking executable availability: ${executable}`);
         executableIsAvailable(executable, true); // Show error if not found
     }
@@ -241,6 +248,7 @@ export async function activate(context: vscode.ExtensionContext) {
             context.globalState.update(key, undefined);
             logger.info(`Cleared cached data for key: ${key}`);
         });
+        clearRemoteCompileCache();
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
     }));
 

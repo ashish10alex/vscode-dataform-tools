@@ -4,6 +4,7 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
 import { ExecutionMode } from './types';
 import { GitService } from "./gitClient";
+import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
@@ -50,6 +51,7 @@ export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] 
 }
 
 export async function runTag(context:vscode.ExtensionContext, includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:ExecutionMode) {
+    executionMode = resolveExecutionMode(executionMode);
     if (dataformTags.length === 0) {
         vscode.window.showInformationMessage('No tags found in project');
         return;
@@ -106,6 +108,10 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
             invocationConfig,
             globalThis.compilerOptionsMap,
         );
+        return;
+    }
+
+    if (!(await confirmRemoteRun())) {
         return;
     }
 

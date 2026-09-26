@@ -3,6 +3,7 @@ import { WebviewState } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
+import { CompilationInfoBadge } from "./CompilationInfoBadge";
 import {
   Play,
   Network,
@@ -188,6 +189,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     setTimeout(() => setFormatting(false), 100);
   };
 
+  // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
+  const isRemoteMode = state.compilationInfo?.backend === "api";
+
   const handleLint = () => {
     vscode.postMessage({ command: "lintCurrentFile", value: true });
   };
@@ -254,11 +258,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
             {state.relativeFilePath || " "}
           </span>
-          {state.compilationTimeMs !== undefined && state.recompiling === false && (
-            <span className="text-xs text-[var(--vscode-descriptionForeground)]">
-              Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s
-            </span>
-          )}
+          <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
         </div>
         <PropertyGraphSection state={state} />
       </div>
@@ -272,11 +272,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
               {state.relativeFilePath || " "}
           </span>
-          {state.compilationTimeMs !== undefined && state.recompiling === false && (
-              <span className="text-xs text-[var(--vscode-descriptionForeground)]">
-                  Compiled in {(state.compilationTimeMs / 1000).toFixed(2)}s
-              </span>
-          )}
+          <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
           <div className="flex-grow"></div>
           <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
               <Wand2 className="w-3 h-3 mr-1.5" /> Format
@@ -595,16 +591,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                )}
 
                {/* Run group */}
-               {state.testQuery && (
+               {state.testQuery && !isRemoteMode && (
                    <button onClick={handleRunTest} disabled={state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                        <Play className="w-4 h-4 mr-1.5" /> Run Tests
                    </button>
                )}
                {state.actionTypes?.some(t => t !== 'test') && (
                    <div className="flex items-center gap-1">
+                       {!isRemoteMode && (
                        <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                            <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
                        </button>
+                       )}
                        <button onClick={() => { setSubmittingSince(Date.now()); handleRunModel(true); }} disabled={runningModel || state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
                            <Play className="w-4 h-4 mr-1.5" /> Run (API)
                        </button>

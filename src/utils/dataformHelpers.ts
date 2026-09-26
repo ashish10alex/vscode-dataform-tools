@@ -13,6 +13,7 @@ import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
 import { clearIndices } from './compiledJsonIndex';
+import { confirmRemoteRun } from './remoteCompiler';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -543,6 +544,9 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     }
 
     if(executionMode === "api"){
+        if (!(await confirmRemoteRun())) {
+            return;
+        }
 
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;

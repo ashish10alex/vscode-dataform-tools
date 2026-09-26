@@ -229,6 +229,47 @@ export class GitService {
         }
     }
 
+    /** SHA of the upstream tracking branch as last fetched, or undefined when the branch has no upstream. Does not fetch. */
+    public async getUpstreamSha(): Promise<string | undefined> {
+        try {
+            return await this.execCmd("git rev-parse @{u}") || undefined;
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    public async getHeadSha(): Promise<string | undefined> {
+        try {
+            return await this.execCmd("git rev-parse HEAD") || undefined;
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    /** Commits HEAD is ahead of / behind its upstream, or undefined when there is no upstream. */
+    public async getAheadBehind(): Promise<{ ahead: number, behind: number } | undefined> {
+        try {
+            const stdout = await this.execCmd("git rev-list --left-right --count HEAD...@{u}");
+            const [ahead, behind] = stdout.split(/\s+/).map(Number);
+            return { ahead: ahead || 0, behind: behind || 0 };
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    public async isDirty(): Promise<boolean> {
+        try {
+            return (await this.execCmd("git status --porcelain")) !== "";
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /** Pushes the branch, setting origin as its upstream so it works for branches not yet on the remote. */
+    public async pushBranch(gitBranchName: string): Promise<void> {
+        await this.execCmd(`git push -u origin "${gitBranchName}"`);
+    }
+
     private gitStatusToHumanReadable(statusCode: GitStatusCode): GitStatusCodeHumanReadable {
         switch (statusCode) {
             case "M": return "MODIFIED";

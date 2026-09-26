@@ -6,13 +6,15 @@ import { windowsDataformCliNotAvailableErrorMessage, linuxDataformCliNotAvailabl
 import { buildIndices } from './compiledJsonIndex';
 import { findExecutableInPaths } from './executableResolver';
 import { DataformCompiledJson, GraphError } from '../types';
+import { getRemoteCompiledJson, isRemoteMode } from './remoteCompiler';
+import { setCompilationInfo } from './compilationInfo';
 
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
 }
 
-function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
+export function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
     // NOTE: we might need to add support for more code compilation config items from https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.icodecompilationconfig
     let compilerOptionsObject: { [key: string]: string } = {};
     
@@ -130,6 +132,17 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     return resolvedPath;
 }
 
+/** The Dataform CLI a compile will run, and whether it comes from PATH, the executable path setting or the project's node_modules. */
+function describeDataformCli(workspaceFolder: string): { cliPath: string, cliSource: "path" | "setting" | "local" } {
+    const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+    const cliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
+    if (config.get<string>('dataformCliScope') === 'local') {
+        return { cliPath, cliSource: "local" };
+    }
+    const configuredPath = config.get<string>('dataformExecutablePath');
+    return { cliPath, cliSource: configuredPath && cliPath === configuredPath ? "setting" : "path" };
+}
+
 export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     let dataformCompilerOptions = getDataformCompilerOptions();
@@ -215,6 +228,7 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
                             }
                         } else if (errorOutput.includes(windowsDataformCliNotAvailableErrorMessage) || errorOutput.includes(linuxDataformCliNotAvailableErrorMessage)) {
                             possibleResolutions.push("Run `<b>npm install -g @dataform/cli</b>` in terminal");
+                            possibleResolutions.push("Or compile with the Dataform API instead: set `<b>vscode-dataform-tools.compilationBackend</b>` to `<b>api</b>` (beta)");
                         };
                         const endTime = performance.now();
                         resolve({ compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${errorOutput}`, fileName: "" }], possibleResolutions: possibleResolutions, compilationTimeMs: endTime - startTime });
@@ -234,7 +248,17 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
 
 export async function runCompilation(workspaceFolder: string): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     try {
+        if (isRemoteMode()) {
+            const { dataformCompiledJson, errors, compilationTimeMs } = await getRemoteCompiledJson(workspaceFolder);
+            if (dataformCompiledJson) {
+                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+                buildIndices(dataformCompiledJson);
+            }
+            return { dataformCompiledJson, errors, possibleResolutions: undefined, compilationTimeMs };
+        }
+
         let { compiledString, errors, possibleResolutions, compilationTimeMs } = await compileDataform(workspaceFolder);
+        setCompilationInfo({ backend: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !compiledString, ...describeDataformCli(workspaceFolder) });
         if (compiledString) {
             let dataformCompiledJson: DataformCompiledJson;
             try {

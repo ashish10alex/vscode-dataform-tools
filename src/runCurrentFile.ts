@@ -4,9 +4,11 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode } from './types';
 import { GitService } from './gitClient';
+import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+    executionMode = resolveExecutionMode(executionMode);
 
     let document =  getVSCodeDocument() || activeDocumentObj;
     if (!document) {
@@ -119,6 +121,9 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
                 return;
             }
 
+            if (!(await confirmRemoteRun())) {
+                return;
+            }
 
             const gitClient = new GitService();
             const gitInfo = await gitClient.getGitBranchAndRepoName();

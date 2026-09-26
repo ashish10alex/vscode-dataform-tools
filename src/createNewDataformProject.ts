@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import { createSelector, delay, getDataformCliCmdBasedOnScope, getGcpProjectIds, isDataformWorkspace, runCommandInTerminal } from "./utils";
 import path from 'path';
 import { gcloudComputeRegions } from './constants';
+import fs from 'fs';
+import { logger } from './logger';
+import { isRemoteMode } from './utils/remoteCompiler';
 
 export async function createNewDataformProject(){
 
@@ -32,6 +35,12 @@ export async function createNewDataformProject(){
         return;
     }
 
+    if (isRemoteMode()) {
+        await writeDataformProjectFiles(projectDir, gcpProjectId, defaultLocation);
+        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(path.resolve(projectDir)), { forceNewWindow: false });
+        return;
+    }
+
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder=projectDir);
     runCommandInTerminal(`${customDataformCliPath} init --project-dir "${projectDir}" --default-database "${gcpProjectId}" --default-location "${defaultLocation}"`);
     // NOTE: wait for half a second before a new vscode workspace at projectDir
@@ -42,6 +51,42 @@ export async function createNewDataformProject(){
 
     await vscode.commands.executeCommand('vscode.openFolder', folderUri, { forceNewWindow: false });
 
+}
+
+const FALLBACK_DATAFORM_CORE_VERSION = "3.0.70";
+
+async function getLatestDataformCoreVersion(): Promise<string> {
+    try {
+        const response = await fetch("https://registry.npmjs.org/@dataform/core/latest");
+        if (response.ok) {
+            const { version } = await response.json() as { version?: string };
+            if (version) {
+                return version;
+            }
+        }
+    } catch (error) {
+        logger.error(`Could not fetch latest @dataform/core version: ${error}`);
+    }
+    return FALLBACK_DATAFORM_CORE_VERSION;
+}
+
+/** Writes the files `dataform init` would create, for remote mode where the Dataform CLI is not installed. */
+async function writeDataformProjectFiles(projectDir: string, gcpProjectId: string, defaultLocation: string) {
+    const dataformCoreVersion = await getLatestDataformCoreVersion();
+    const workflowSettings = [
+        `defaultProject: ${gcpProjectId}`,
+        `defaultLocation: ${defaultLocation}`,
+        `defaultDataset: dataform`,
+        `defaultAssertionDataset: dataform_assertions`,
+        `dataformCoreVersion: ${dataformCoreVersion}`,
+        ``,
+    ].join("\n");
+
+    await fs.promises.mkdir(path.join(projectDir, "definitions"), { recursive: true });
+    await fs.promises.mkdir(path.join(projectDir, "includes"), { recursive: true });
+    await fs.promises.writeFile(path.join(projectDir, "workflow_settings.yaml"), workflowSettings);
+    await fs.promises.writeFile(path.join(projectDir, ".gitignore"), "node_modules/\n");
+    vscode.window.showInformationMessage(`Created Dataform project with @dataform/core ${dataformCoreVersion}. Push it to the git repository connected to your Dataform repository to compile it remotely.`);
 }
 
 async function openFolderSelector(){

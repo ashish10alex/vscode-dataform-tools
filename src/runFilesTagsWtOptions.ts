@@ -3,8 +3,10 @@ import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getR
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
+import { resolveExecutionMode } from './utils/remoteCompiler';
 
 export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, executionMode: ExecutionMode) {
+    executionMode = resolveExecutionMode(executionMode);
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags", "run open sqlx files"];
     const firstStageSelection = await vscode.window.showQuickPick(firstStageOptions, {
         placeHolder: 'Select an option'

@@ -6,6 +6,7 @@ import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocum
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
+import { isRemoteMode } from './utils/remoteCompiler';
 import { logger } from './logger';
 
 export async function formatDataformSqlxFile(document:vscode.TextDocument){
@@ -29,6 +30,10 @@ export async function formatDataformSqlxFile(document:vscode.TextDocument){
             return [vscode.TextEdit.replace(entireRange, formattedText)];
         }
     } else if (formattingCli === "dataform") {
+        if (isRemoteMode()) {
+            vscode.window.showInformationMessage("Formatting with the Dataform CLI is unavailable in remote mode. Set `vscode-dataform-tools.formattingCli` to `sqlfluff` to format files.");
+            return [];
+        }
         await formatCurrentFileWithDataform();
     }
     return [];

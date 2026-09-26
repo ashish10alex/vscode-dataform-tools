@@ -28,6 +28,11 @@ import {
 } from "../shared/propertyGraph";
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../types";
 import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTree";
+import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compilationInfo';
+import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
+
+/** Recompiles the active document and refreshes the panel; set when the panel is registered. */
+let recompileActiveDocument: (() => Promise<void>) | undefined;
 
 /**
  * Dry run the statement we synthesise for each graph and post the outcome back.
@@ -189,6 +194,18 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             }
         }
     };
+
+    setOnCompilationInfoChanged((info) => {
+        CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({ compilationInfo: info });
+    });
+
+    recompileActiveDocument = async () => {
+        const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
+        if (doc) {
+            await triggerCompilationForDocument(doc);
+        }
+    };
+    setOnRemoteCompileCompleted(recompileActiveDocument);
 
     snoozeManager.setOnSnoozeEndedCallback(async () => {
         const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
@@ -446,6 +463,14 @@ export class CompiledQueryPanel {
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 }
                 return;
+              case 'compileRemotely':
+                await vscode.commands.executeCommand('vscode-dataform-tools.compileRemotely');
+                return;
+              case 'switchCompilationBackend': {
+                await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
+                await recompileActiveDocument?.();
+                return;
+              }
               case 'runTests': {
                 const _workspaceFolder = message.value.workspaceFolder;
                 await runTests(_workspaceFolder);
@@ -809,6 +834,9 @@ export class CompiledQueryPanel {
         const missingExecutables: string[] = [];
         for (let i = 0; i < executablesToCheck.length; i++) {
             let executable = executablesToCheck[i];
+            if (executable === 'dataform' && isRemoteMode()) {
+                continue; // Remote mode compiles with the Dataform API, the CLI is not needed
+            }
             if (!executableIsAvailable(executable, false)) {
                 missingExecutables.push(executable);
             }
@@ -1444,6 +1472,9 @@ export class CompiledQueryPanel {
     private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
         if (initialState.snoozeEndTime === undefined) {
             initialState.snoozeEndTime = snoozeManager.getSnoozeEndTime();
+        }
+        if (initialState.compilationInfo === undefined) {
+            initialState.compilationInfo = getCompilationInfo();
         }
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
