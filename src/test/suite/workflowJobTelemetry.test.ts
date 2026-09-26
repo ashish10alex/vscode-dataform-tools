@@ -34,7 +34,7 @@ suite('workflowJobTelemetry', () => {
         assert.strictEqual(stats.slotMs, 1500);
         assert.strictEqual(stats.bytesBilledLabel, '1.00 GiB');
         assert.strictEqual(stats.slotTimeLabel, '1.5 s');
-        assert.strictEqual(stats.costLabel, '$0.0050');
+        assert.strictEqual(stats.costLabel, '$0.0061');
         assert.strictEqual(stats.location, 'EU');
     });
 
@@ -54,7 +54,7 @@ suite('workflowJobTelemetry', () => {
         assert.strictEqual(summary?.totalBytesBilled, 2 * 1024 ** 3);
         assert.strictEqual(summary?.slotMs, 1500);
         assert.strictEqual(summary?.totalBytesProcessed, 15);
-        assert.strictEqual(summary?.costLabel, '$0.0100');
+        assert.strictEqual(summary?.costLabel, '$0.0122');
     });
 
     test('summariseJobStats is undefined when nothing has loaded', () => {

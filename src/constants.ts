@@ -10,20 +10,27 @@ export const incrementalTableOffset = 1;
 export const assertionQueryOffset = 4;
 export const windowsDataformCliNotAvailableErrorMessage = "'dataform.cmd' is not recognized as an internal or external command";
 export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not found";
-export const costInPoundsForOneGb = 0.005;
 export const getBigQueryTimeoutMs = () => vscode.workspace.getConfiguration("vscode-dataform-tools").get<number>("bigQueryTimeoutMs") ?? 20000;
 
 export const errorDenylist = ["CREATE TEMPORARY FUNCTION statements must be followed by an actual query."];
 
-export const bigQueryDryRunCostOneGiBByCurrency: Record<SupportedCurrencies, number> = {
-  "USD": 0.005,
-  "EUR": 0.0046,
-  "GBP": 0.0039,
-  "JPY": 0.56,
-  "CAD": 0.0067,
-  "AUD": 0.0075,
-  "INR": 0.41,
+/** BigQuery on-demand query pricing: https://cloud.google.com/bigquery/pricing#on_demand_pricing */
+const bigQueryOnDemandUsdPerTiB = 6.25;
+
+/** Approximate conversion rates from USD (as of Sep 2026), used only to show cost estimates in the user's currency. */
+const usdExchangeRates: Record<SupportedCurrencies, number> = {
+  "USD": 1,
+  "EUR": 0.88,
+  "GBP": 0.76,
+  "JPY": 158,
+  "CAD": 1.41,
+  "AUD": 1.42,
+  "INR": 96,
 };
+
+export const bigQueryDryRunCostOneGiBByCurrency = Object.fromEntries(
+  Object.entries(usdExchangeRates).map(([currency, rate]) => [currency, (bigQueryOnDemandUsdPerTiB / 1024) * rate])
+) as Record<SupportedCurrencies, number>;
 
 export const currencySymbolMapping = {
   "USD": "$",

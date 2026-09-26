@@ -34,6 +34,8 @@ interface DataTableProps<TData, TValue> {
    */
   expanded?: ExpandedState
   onExpandedChange?: OnChangeFn<ExpandedState>
+  /** Where the row built from the columns' `footer` defs goes. Defaults to 'bottom'. */
+  footerPosition?: 'top' | 'bottom'
 }
 
 function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, unknown>; shouldAutoFocus: boolean }) {
@@ -76,6 +78,7 @@ export function DataTable<TData, TValue>({
   getSubRows = (row: any) => row._children,
   expanded,
   onExpandedChange,
+  footerPosition = 'bottom',
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -118,6 +121,8 @@ export function DataTable<TData, TValue>({
         }
     }
   });
+
+  const hasFooter = table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer));
 
   return (
     <div className="flex flex-col h-full overflow-hidden space-y-2">
@@ -180,6 +185,15 @@ export function DataTable<TData, TValue>({
             ))}
           </thead>
           <tbody className="divide-y divide-[var(--vscode-widget-border)]">
+            {hasFooter && footerPosition === 'top' && table.getFooterGroups().map((footerGroup) => (
+              <tr key={footerGroup.id} className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)]">
+                {footerGroup.headers.map((header) => (
+                  <td key={header.id} className="px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]">
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.footer, header.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <tr
@@ -208,7 +222,7 @@ export function DataTable<TData, TValue>({
               </tr>
             )}
           </tbody>
-          {table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer)) && (
+          {hasFooter && footerPosition === 'bottom' && (
              <tfoot className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)] border-t border-[var(--vscode-widget-border)] sticky bottom-0 z-10 shadow-sm">
                {table.getFooterGroups().map((footerGroup) => (
                  <tr key={footerGroup.id}>
