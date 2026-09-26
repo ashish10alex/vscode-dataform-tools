@@ -67,7 +67,7 @@ Officially recommended [VS Code extension for Dataform](https://marketplace.visu
   <tbody>
     <tr>
       <td><a href="#compilation">Compiled Query & Dry run stats</a></td>
-      <td>Compiled query with dry run stats in a vertical split</td>
+      <td>Compiled query with dry run stats in a vertical split, with the option to switch between backends for compilation (CLI or Dataform API)</td>
     </tr>
     <tr>
       <td><a href="#diagnostics">Inline diagnostics on <code>.sqlx</code> file</a> 🚨</td>
