@@ -3,6 +3,7 @@ import { WebviewState, CompilationErrorType } from '../types';
 import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
+import { CancelWorkflowButton } from './CancelWorkflowButton';
 
 interface WorkflowURLsTabProps {
     state: WebviewState;
@@ -142,9 +143,11 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                     {!isTerminal && (
                                         <span className="text-[var(--vscode-descriptionForeground)]">· {elapsedSec}s elapsed</span>
                                     )}
+                                    <span className="ml-auto" />
+                                    <CancelWorkflowButton entry={latest} />
                                     <button
                                         onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
-                                        className="ml-auto text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                                        className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
                                         title="Open in GCP"
                                         aria-label="Open in GCP"
                                     >
@@ -302,6 +305,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                               <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)]">
                                                 {getStatusLabel(item.state)}
                                             </span>
+                                            <CancelWorkflowButton entry={item} />
                                         </div>
                                     </td>
                                     <td className="px-4 py-2">

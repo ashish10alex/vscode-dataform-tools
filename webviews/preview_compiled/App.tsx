@@ -10,6 +10,7 @@ import { WorkflowURLsTab } from './components/WorkflowURLsTab';
 import {
   TERMINAL_WORKFLOW_STATES,
   POLL_FAST_MS,
+  POLL_CANCELING_MS,
   POLL_SLOW_MS,
   POLL_FAST_DURATION_MS,
   POLL_TIMEOUT_MS,
@@ -123,7 +124,8 @@ function App() {
       return;
     }
 
-    const delay = elapsed < POLL_FAST_DURATION_MS ? POLL_FAST_MS : POLL_SLOW_MS;
+    const isCanceling = items.some(i => i.state === 'CANCELING');
+    const delay = isCanceling ? POLL_CANCELING_MS : elapsed < POLL_FAST_DURATION_MS ? POLL_FAST_MS : POLL_SLOW_MS;
     pollTimerRef.current = setTimeout(() => {
       vscode.postMessage({ command: 'refreshWorkflowStatuses' });
     }, delay);
