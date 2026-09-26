@@ -531,6 +531,8 @@ export interface WorkflowUrlEntry {
     failedActions?: FailedAction[];
     actions?: WorkflowAction[];
     actionCounts?: ActionCounts;
+    /** Totals over the actions' BigQuery jobs, once their stats have been loaded */
+    jobStatsSummary?: WorkflowActionJobStats;
     includedTags?: string[];
     includedTargets?: Target[];
 }
@@ -544,6 +546,20 @@ export interface WorkflowAction {
     target: string;
     state: string;
     failureReason?: string;
+    /** ID of the BigQuery job that ran the action, once it has started */
+    jobId?: string;
+    jobStats?: WorkflowActionJobStats;
+}
+
+/** Stats of the BigQuery job behind a workflow action; the labels are preformatted for the webview. */
+export interface WorkflowActionJobStats {
+    location?: string;
+    totalBytesBilled?: number;
+    totalBytesProcessed?: number;
+    cost?: number;
+    bytesBilledLabel?: string;
+    costLabel?: string;
+    error?: string;
 }
 
 export interface ActionCounts {

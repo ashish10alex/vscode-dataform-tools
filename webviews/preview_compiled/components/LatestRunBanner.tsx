@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
-import { WebviewState, ActionCounts, WorkflowAction } from '../types';
+import { WebviewState, ActionCounts, WorkflowAction, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { DataTable } from '../../components/ui/data-table';
@@ -42,6 +42,15 @@ function CountBadge({ tone, label, count }: { tone: BadgeTone; label: string; co
     );
 }
 
+function CountBadgeText({ label, value }: { label: string; value?: string }) {
+    if (!value) { return null; }
+    return (
+        <span className="px-1.5 py-0.5 rounded font-medium border border-[var(--vscode-widget-border)]">
+            {label}: {value}
+        </span>
+    );
+}
+
 function renderCountBadges(counts: ActionCounts | undefined) {
     if (!counts || counts.total === 0) { return null; }
     return (
@@ -56,7 +65,12 @@ function renderCountBadges(counts: ActionCounts | undefined) {
     );
 }
 
-const actionColumns: ColumnDef<WorkflowAction>[] = [
+const TOTAL_CELL_CLASS = 'font-mono text-[10px] font-semibold text-[var(--vscode-foreground)]';
+
+/** Totals come from `jobStatsSummary`, so they cover the whole workflow regardless of the table's filters. */
+function buildActionColumns(workflowInvocationId: string | undefined, summary: WorkflowUrlEntry['jobStatsSummary']): ColumnDef<WorkflowAction>[] {
+    const jobCount = (actions: WorkflowAction[]) => actions.filter(a => a.jobStats && !a.jobStats.error).length;
+    return [
     {
         accessorKey: 'target',
         header: 'Target',
@@ -64,6 +78,11 @@ const actionColumns: ColumnDef<WorkflowAction>[] = [
         cell: ({ row }) => (
             <span className="font-mono text-xs text-[var(--vscode-foreground)] break-all">{row.original.target}</span>
         ),
+        footer: summary ? ({ table }) => (
+            <span className="text-xs font-semibold text-[var(--vscode-foreground)]">
+                Total ({jobCount(table.getCoreRowModel().rows.map(r => r.original))} BigQuery jobs)
+            </span>
+        ) : undefined,
     },
     {
         accessorKey: 'state',
@@ -77,6 +96,33 @@ const actionColumns: ColumnDef<WorkflowAction>[] = [
         ),
     },
     {
+        id: 'bytesBilled',
+        header: 'Bytes Billed',
+        size: 110,
+        accessorFn: (action) => action.jobStats?.totalBytesBilled ?? -1,
+        cell: ({ row }) => {
+            const stats = row.original.jobStats;
+            return (
+                <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]" title={stats?.error}>
+                    {stats?.error ? 'n/a' : stats?.bytesBilledLabel ?? ''}
+                </span>
+            );
+        },
+        footer: summary ? () => <span className={TOTAL_CELL_CLASS}>{summary.bytesBilledLabel}</span> : undefined,
+    },
+    {
+        id: 'cost',
+        header: 'Est. Cost',
+        size: 100,
+        accessorFn: (action) => action.jobStats?.cost ?? -1,
+        cell: ({ row }) => (
+            <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]">
+                {row.original.jobStats?.costLabel ?? ''}
+            </span>
+        ),
+        footer: summary ? () => <span className={TOTAL_CELL_CLASS}>{summary.costLabel}</span> : undefined,
+    },
+    {
         accessorKey: 'failureReason',
         header: 'Failure Reason',
         cell: ({ row }) => (
@@ -85,13 +131,57 @@ const actionColumns: ColumnDef<WorkflowAction>[] = [
             </span>
         ),
     },
-];
+    {
+        id: 'job',
+        header: 'Job',
+        size: 70,
+        enableSorting: false,
+        cell: ({ row }) => row.original.jobId ? (
+            <span className="inline-flex items-center gap-1">
+                <button
+                    onClick={() => vscode.postMessage({ command: 'openExecutedSql', value: { workflowInvocationId, target: row.original.target } })}
+                    className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
+                    title="View executed SQL"
+                    aria-label="View executed SQL"
+                >
+                    <FileCode className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={() => vscode.postMessage({ command: 'openBigQueryJob', value: { workflowInvocationId, target: row.original.target } })}
+                    className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
+                    title={`Open BigQuery job ${row.original.jobId}`}
+                    aria-label="Open BigQuery job in the Cloud Console"
+                >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+            </span>
+        ) : null,
+    },
+    ];
+}
 
 export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps) {
     const [expanded, setExpanded] = useState(false);
     const items = state.workflowUrls || [];
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
     const actionRows = useMemo<WorkflowAction[]>(() => latest?.actions ?? [], [latest?.actions]);
+    const actionColumns = useMemo(
+        () => buildActionColumns(latest?.workflowInvocationId, latest?.jobStatsSummary),
+        [latest?.workflowInvocationId, latest?.jobStatsSummary]
+    );
+
+    // Job stats are fetched from BigQuery once per invocation, when the user opens the run details
+    const statsRequestedFor = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        const invocationId = latest?.workflowInvocationId;
+        if (!expanded || !invocationId || statsRequestedFor.current.has(invocationId)) { return; }
+        const needsStats = actionRows.some(a => a.jobId && !a.jobStats && (a.state === 'SUCCEEDED' || a.state === 'FAILED'));
+        const isFinished = !!latest?.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
+        if (needsStats && isFinished) {
+            statsRequestedFor.current.add(invocationId);
+            vscode.postMessage({ command: 'loadWorkflowJobStats', value: { workflowInvocationId: invocationId } });
+        }
+    }, [expanded, latest?.workflowInvocationId, latest?.state, actionRows]);
 
     const isSubmitting = submittingSince != null && (!latest || latest.timestamp <= submittingSince);
 
@@ -148,6 +238,14 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
             </div>
 
             {renderCountBadges(latest.actionCounts)}
+
+            {latest.jobStatsSummary && (
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--vscode-descriptionForeground)]">
+                    <span>BigQuery:</span>
+                    <CountBadgeText label="Billed" value={latest.jobStatsSummary.bytesBilledLabel} />
+                    <CountBadgeText label="Est. cost" value={latest.jobStatsSummary.costLabel} />
+                </div>
+            )}
 
             {expanded && (
                 <div className="flex flex-col gap-3 mt-1 pt-2 border-t border-[var(--vscode-widget-border)]">
@@ -236,6 +334,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                                     paginated={false}
                                     autoFocusColumnId="target"
                                     initialSorting={[{ id: 'state', desc: false }]}
+                                    footerPosition="top"
                                 />
                             </div>
                         </div>

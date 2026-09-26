@@ -26,6 +26,7 @@ import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
@@ -98,6 +99,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(diagnosticCollection);
 
     registerCompiledQueryPanel(context);
+    registerExecutedSqlProvider(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider, {

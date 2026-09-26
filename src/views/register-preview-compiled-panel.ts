@@ -17,6 +17,7 @@ import { debounce } from "../debounce";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
+import { loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
 import {
     PROPERTY_GRAPHS_MIN_CORE_VERSION,
@@ -697,6 +698,28 @@ export class CompiledQueryPanel {
                     }
                 }
                 return;
+              case 'loadWorkflowJobStats':
+              case 'openExecutedSql':
+              case 'openBigQueryJob': {
+                const context = this.centerPanel?.extensionContext;
+                const storedUrls = context?.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                const entry = storedUrls.find((item) => item.workflowInvocationId === message.value?.workflowInvocationId);
+                if (!context || !entry) {
+                    return;
+                }
+                if (message.command === 'openExecutedSql') {
+                    await openExecutedSql(entry, message.value.target);
+                } else if (message.command === 'openBigQueryJob') {
+                    const action = entry.actions?.find((a) => a.target === message.value.target);
+                    if (action) {
+                        openBigQueryJobInConsole(entry, action);
+                    }
+                } else if (await loadJobStatsForInvocation(entry)) {
+                    await context.workspaceState.update('dataform_workflow_urls', storedUrls);
+                    this.centerPanel?.webviewPanel.webview.postMessage({ workflowUrls: storedUrls });
+                }
+                return;
+              }
               case 'runFilesTagsWtOptionsApi':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
                 return;
@@ -725,6 +748,7 @@ export class CompiledQueryPanel {
                                     const list = (actions || []) as any[];
                                     const counts: ActionCounts = { total: list.length, pending: 0, running: 0, succeeded: 0, failed: 0, cancelled: 0, skipped: 0 };
                                     const actionInfos: WorkflowAction[] = [];
+                                    const previousJobStats = new Map((item.actions ?? []).map((a) => [a.target, a.jobStats]));
                                     for (const a of list) {
                                         const s = a?.state;
                                         if (s === 'PENDING') { counts.pending++; }
@@ -734,13 +758,13 @@ export class CompiledQueryPanel {
                                         else if (s === 'CANCELLED') { counts.cancelled++; }
                                         else if (s === 'SKIPPED' || s === 'DISABLED') { counts.skipped++; }
 
-                                        const tgt = a?.canonicalTarget || a?.target || {};
-                                        const parts = [tgt.database, tgt.schema, tgt.name].filter(Boolean);
-                                        const target = parts.join('.') || '(unknown)';
+                                        const target = workflowActionTarget(a);
                                         actionInfos.push({
                                             target,
                                             state: typeof s === 'string' ? s : 'UNKNOWN',
                                             failureReason: a?.failureReason || undefined,
+                                            jobId: a?.bigqueryAction?.jobId || undefined,
+                                            jobStats: previousJobStats.get(target),
                                         });
                                     }
                                     item.actionCounts = counts;
@@ -749,12 +773,7 @@ export class CompiledQueryPanel {
                                     if (item.state === 'FAILED') {
                                         const failedActions = list
                                             .filter((a: any) => !!a?.failureReason)
-                                            .map((a: any) => {
-                                                const tgt = a.canonicalTarget || a.target || {};
-                                                const parts = [tgt.database, tgt.schema, tgt.name].filter(Boolean);
-                                                const target = parts.join('.') || '(unknown)';
-                                                return { target, failureReason: a.failureReason as string };
-                                            });
+                                            .map((a: any) => ({ target: workflowActionTarget(a), failureReason: a.failureReason as string }));
                                         item.failedActions = failedActions.length > 0 ? failedActions : [{
                                             target: '(workflow)',
                                             failureReason: `Workflow invocation reported FAILED but the Dataform API returned no per-action failure reasons (${list.length} action(s) inspected). This usually means the failure happened before any action ran (e.g. compilation or workspace sync). Open in GCP for full logs.`,
