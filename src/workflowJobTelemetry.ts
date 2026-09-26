@@ -136,7 +136,8 @@ export async function openExecutedSql(entry: WorkflowUrlEntry, target: string) {
     try {
         const dataformClient = new DataformTools(entry.projectId, entry.location);
         const actions = await dataformClient.queryWorkflowInvocationActions(entry.repositoryName, entry.workflowInvocationId);
-        const action = (actions ?? []).find((a) => workflowActionTarget(a) === target);
+        // History saved before targets included compiler overrides stores the canonical name.
+        const action = (actions ?? []).find((a) => workflowActionTarget(a) === target || workflowActionTarget({ canonicalTarget: a.canonicalTarget }) === target);
         const sqlScript = action?.bigqueryAction?.sqlScript;
         if (!sqlScript) {
             vscode.window.showInformationMessage(`No executed SQL found for ${target}`);
@@ -156,8 +157,12 @@ export async function openExecutedSql(entry: WorkflowUrlEntry, target: string) {
     }
 }
 
+/**
+ * `target` is the table the action actually wrote to, with compiler overrides (table prefix, schema/database
+ * suffix) applied. `canonicalTarget` is the name the project would have without overrides, so it is only a fallback.
+ */
 export function workflowActionTarget(action: { canonicalTarget?: any, target?: any }): string {
-    const tgt = action?.canonicalTarget || action?.target || {};
+    const tgt = action?.target || action?.canonicalTarget || {};
     const parts = [tgt.database, tgt.schema, tgt.name].filter(Boolean);
     return parts.join('.') || '(unknown)';
 }
