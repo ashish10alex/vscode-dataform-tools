@@ -261,6 +261,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </span>
           <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
         </div>
+        <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} />
         <PropertyGraphSection state={state} />
       </div>
     );

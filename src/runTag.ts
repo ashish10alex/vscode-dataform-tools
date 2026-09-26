@@ -8,7 +8,7 @@ import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
 import { recordLastRun } from "./lastRun";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
-    await recordLastRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli' });
+    await recordLastRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli', workspaceFolder });
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
     let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
     runCommandInTerminal(runmultitagscommand);
@@ -71,7 +71,7 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
         if (!workspaceFolder) { return; }
 
         if(executionMode === "cli"){
-            await recordLastRun({ kind: 'tags', items: [selection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli' });
+            await recordLastRun({ kind: 'tags', items: [selection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder });
 
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
             let cmd = "";
@@ -94,13 +94,15 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
 }
 
 export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
-    await recordLastRun({
+    // Saved only once the run is about to dispatch, so a cancelled run does not replace the last one.
+    const recordThisRun = (workspaceFolder: string) => recordLastRun({
         kind: 'tags',
         items: tagsToRun,
         includeDependencies: transitiveDependenciesIncluded,
         includeDependents: transitiveDependentsIncluded,
         fullRefresh: fullyRefreshIncrementalTablesEnabled,
         executionMode: executionMode === "api_workspace" ? "api_workspace" : "api",
+        workspaceFolder,
     });
 
     const invocationConfig = {
@@ -111,6 +113,10 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
     };
 
     if(executionMode === "api_workspace"){
+        const runFolder = await getWorkspaceFolder();
+        if (runFolder) {
+            await recordThisRun(runFolder);
+        }
         await showLoadingProgress(
             "",
             syncAndrunDataformRemotely,
@@ -128,6 +134,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
 
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) { return; }
+    await recordThisRun(workspaceFolder);
 
     const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
     const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;

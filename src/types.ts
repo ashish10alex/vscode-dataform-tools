@@ -699,6 +699,8 @@ export interface LastRunRequest {
     includeDependents: boolean;
     fullRefresh: boolean;
     executionMode: ExecutionMode;
+    /** Absolute path of the Dataform folder the run used; `items` are relative to it. */
+    workspaceFolder: string;
     timestamp: number;
 }
 

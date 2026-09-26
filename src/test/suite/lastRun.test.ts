@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { buildLastRunView, describeOverrides, findMissingItems, planReplay, resolveReplayMode, summarizeItems, summarizeLastRun } from '../../lastRun';
+import { buildLastRunView, describeOverrides, findMissingItems, isFromOtherFolder, planReplay, resolveReplayMode, summarizeItems, summarizeLastRun } from '../../lastRun';
 import { LastRunRequest } from '../../types';
 
 function request(overrides: Partial<LastRunRequest> = {}): LastRunRequest {
@@ -11,6 +11,7 @@ function request(overrides: Partial<LastRunRequest> = {}): LastRunRequest {
         includeDependents: false,
         fullRefresh: false,
         executionMode: 'cli',
+        workspaceFolder: '/repo/analytics',
         timestamp: 1_700_000_000_000,
         ...overrides,
     };
@@ -101,17 +102,28 @@ suite('lastRun.findMissingItems', () => {
         assert.deepStrictEqual(findMissingItems(request({ items: ['daily', 'gone'] }), ['daily'], () => true), ['gone']);
     });
 
-    test('skips the tag check when the tag list is unknown', () => {
-        assert.deepStrictEqual(findMissingItems(request({ items: ['daily'] }), [], () => true), []);
+    test('skips the tag check when the project could not be compiled', () => {
+        assert.deepStrictEqual(findMissingItems(request({ items: ['daily'] }), undefined, () => true), []);
+    });
+
+    test('reports every tag when the project no longer has any', () => {
+        assert.deepStrictEqual(findMissingItems(request({ items: ['daily'] }), [], () => true), ['daily']);
     });
 
     test('reports files that no longer exist', () => {
         const missing = findMissingItems(
             request({ kind: 'files', items: ['a.sqlx', 'b.sqlx'] }),
-            [],
+            undefined,
             (relativePath) => relativePath === 'a.sqlx',
         );
         assert.deepStrictEqual(missing, ['b.sqlx']);
+    });
+});
+
+suite('lastRun.isFromOtherFolder', () => {
+    test('rejects replaying against a different Dataform folder', () => {
+        assert.strictEqual(isFromOtherFolder(request(), '/repo/marketing'), true);
+        assert.strictEqual(isFromOtherFolder(request(), '/repo/analytics/'), false);
     });
 });
 

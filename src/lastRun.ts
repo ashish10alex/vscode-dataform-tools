@@ -94,18 +94,29 @@ export function summarizeLastRun(request: LastRunRequest, replayMode: ExecutionM
         `Full refresh: ${request.fullRefresh ? 'yes' : 'no'}`,
         `Mode: ${modeLabel(replayMode)}`,
     ];
+    if (request.workspaceFolder) {
+        detailLines.push(`Folder: ${request.workspaceFolder}`);
+    }
     if (overrides) {
         detailLines.push(`Compiler overrides: ${overrides}`);
     }
     return { label, detail: detailLines.join('\n') };
 }
 
-/** Items of the recorded run that no longer exist. Tags are only checked when the project's tag list is known. */
-export function findMissingItems(request: LastRunRequest, knownTags: string[], fileExists: (relativePath: string) => boolean): string[] {
+/**
+ * Items of the recorded run that no longer exist. `knownTags` is undefined when the project could not be
+ * compiled, in which case tags are left for the runner to report.
+ */
+export function findMissingItems(request: LastRunRequest, knownTags: string[] | undefined, fileExists: (relativePath: string) => boolean): string[] {
     if (request.kind === 'tags') {
-        return knownTags.length === 0 ? [] : request.items.filter((tag) => !knownTags.includes(tag));
+        return knownTags === undefined ? [] : request.items.filter((tag) => !knownTags.includes(tag));
     }
     return request.items.filter((item) => !fileExists(item));
+}
+
+/** The recorded run's paths are relative to its folder, so it must not be replayed against another Dataform folder. */
+export function isFromOtherFolder(request: LastRunRequest, currentFolder: string): boolean {
+    return !!request.workspaceFolder && path.resolve(request.workspaceFolder) !== path.resolve(currentFolder);
 }
 
 export type ReplayRunner = 'currentFile' | 'files' | 'tagsCli' | 'tagsApi';

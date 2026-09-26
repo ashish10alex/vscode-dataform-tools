@@ -102,7 +102,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             if(!tagSelection){return;};
             // Records the options the user picked so a rerun uses them, even though the command below
             // currently passes includeDependents for both flags.
-            await recordLastRun({ kind: 'tags', items: [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli' });
+            await recordLastRun({ kind: 'tags', items: [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder });
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
             let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, [tagSelection], defaultDataformCompileTime, includeDependents, includeDependents, fullRefresh);
             runCommandInTerminal(runTagsWtDepsCommand);

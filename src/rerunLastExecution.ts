@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ExecutionMode } from './types';
-import { findMissingItems, getLastRun, planReplay, summarizeLastRun, describeOverrides } from './lastRun';
-import { getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
+import { findMissingItems, getLastRun, isFromOtherFolder, planReplay, summarizeLastRun, describeOverrides } from './lastRun';
+import { getDataformTags, getOrCompileDataformJson, getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
 import { isRemoteMode } from './utils/remoteCompiler';
 import { runCurrentFile } from './runCurrentFile';
 import { runMultipleTagsFromSelection, runTagWtApi } from './runTag';
@@ -36,9 +36,27 @@ export async function rerunLastExecution(context: vscode.ExtensionContext) {
         return;
     }
 
+    if (isFromOtherFolder(request, workspaceFolder)) {
+        const selectFolder = 'Select Dataform folder';
+        const choice = await vscode.window.showErrorMessage(
+            `Cannot rerun last execution. It ran in ${request.workspaceFolder}, but the selected Dataform folder is ${workspaceFolder}.`,
+            selectFolder,
+        );
+        if (choice === selectFolder) {
+            await vscode.commands.executeCommand('vscode-dataform-tools.selectWorkspaceFolder');
+        }
+        return;
+    }
+
     const plan = planReplay(request, isRemoteMode());
 
-    const missing = findMissingItems(request, dataformTags, (relativePath) => fs.existsSync(path.join(workspaceFolder, relativePath)));
+    // The tag list is only populated once the panel has compiled, so read it from the compiled project instead.
+    let knownTags: string[] | undefined;
+    if (request.kind === 'tags') {
+        const compiledJson = await getOrCompileDataformJson(workspaceFolder);
+        knownTags = compiledJson ? await getDataformTags(compiledJson) : undefined;
+    }
+    const missing = findMissingItems(request, knownTags, (relativePath) => fs.existsSync(path.join(workspaceFolder, relativePath)));
     if (missing.length > 0) {
         const what = request.kind === 'tags' ? 'Tag(s) no longer in the project' : 'File(s) no longer exist';
         await offerRunWithOptions(
