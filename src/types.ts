@@ -556,10 +556,8 @@ export interface WorkflowActionJobStats {
     location?: string;
     totalBytesBilled?: number;
     totalBytesProcessed?: number;
-    slotMs?: number;
     cost?: number;
     bytesBilledLabel?: string;
-    slotTimeLabel?: string;
     costLabel?: string;
     error?: string;
 }

@@ -7,8 +7,8 @@ import { SupportedCurrency, WorkflowAction, WorkflowActionJobStats, WorkflowUrlE
 import { formatBytes } from './utils';
 
 /*
- * Telemetry for the BigQuery jobs behind a workflow invocation: bytes billed, slot time and the
- * SQL Dataform executed, looked up from `WorkflowInvocationAction.bigqueryAction`.
+ * Telemetry for the BigQuery jobs behind a workflow invocation: bytes billed and the SQL Dataform
+ * executed, looked up from `WorkflowInvocationAction.bigqueryAction`.
  */
 
 export const EXECUTED_SQL_SCHEME = 'dataform-executed-sql';
@@ -30,18 +30,6 @@ export function bigQueryJobConsoleUrl(ref: BigQueryJobRef): string {
     return `https://console.cloud.google.com/bigquery?project=${ref.projectId}&j=bq:${location}:${ref.jobId}&page=queryresults`;
 }
 
-export function formatSlotTime(slotMs: number): string {
-    if (slotMs < 1000) {
-        return `${slotMs} ms`;
-    }
-    const seconds = slotMs / 1000;
-    if (seconds < 60) {
-        return `${seconds.toFixed(1)} s`;
-    }
-    const minutes = seconds / 60;
-    return minutes < 60 ? `${minutes.toFixed(1)} min` : `${(minutes / 60).toFixed(1)} h`;
-}
-
 /** Builds display-ready stats from the `statistics` block of BigQuery job metadata. */
 export function toJobStats(statistics: any, location: string | undefined, currency: SupportedCurrency): WorkflowActionJobStats {
     const toNumber = (value: unknown) => {
@@ -50,7 +38,6 @@ export function toJobStats(statistics: any, location: string | undefined, curren
     };
     const totalBytesBilled = toNumber(statistics?.query?.totalBytesBilled);
     const totalBytesProcessed = toNumber(statistics?.totalBytesProcessed ?? statistics?.query?.totalBytesProcessed);
-    const slotMs = toNumber(statistics?.totalSlotMs ?? statistics?.query?.totalSlotMs);
     const cost = totalBytesBilled === undefined
         ? undefined
         : (totalBytesBilled / (1024 ** 3)) * bigQueryDryRunCostOneGiBByCurrency[currency];
@@ -58,10 +45,8 @@ export function toJobStats(statistics: any, location: string | undefined, curren
         location,
         totalBytesBilled,
         totalBytesProcessed,
-        slotMs,
         cost,
         bytesBilledLabel: totalBytesBilled === undefined ? undefined : formatBytes(totalBytesBilled),
-        slotTimeLabel: slotMs === undefined ? undefined : formatSlotTime(slotMs),
         costLabel: cost === undefined ? undefined : `${currencySymbolMapping[currency]}${cost.toFixed(4)}`,
     };
 }
@@ -72,9 +57,9 @@ export function summariseJobStats(actions: WorkflowAction[], currency: Supported
     if (loaded.length === 0) {
         return undefined;
     }
-    const sum = (key: 'totalBytesBilled' | 'totalBytesProcessed' | 'slotMs') => loaded.reduce((total, stats) => total + (stats[key] ?? 0), 0);
+    const sum = (key: 'totalBytesBilled' | 'totalBytesProcessed') => loaded.reduce((total, stats) => total + (stats[key] ?? 0), 0);
     return toJobStats(
-        { totalBytesProcessed: sum('totalBytesProcessed'), totalSlotMs: sum('slotMs'), query: { totalBytesBilled: sum('totalBytesBilled') } },
+        { totalBytesProcessed: sum('totalBytesProcessed'), query: { totalBytesBilled: sum('totalBytesBilled') } },
         undefined,
         currency,
     );

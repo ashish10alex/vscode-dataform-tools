@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { bigQueryJobConsoleUrl, formatSlotTime, parseBigQueryJobId, summariseJobStats, toJobStats } from '../../workflowJobTelemetry';
+import { bigQueryJobConsoleUrl, parseBigQueryJobId, summariseJobStats, toJobStats } from '../../workflowJobTelemetry';
 
 suite('workflowJobTelemetry', () => {
     test('parseBigQueryJobId keeps a bare job ID in the default project', () => {
@@ -20,20 +20,11 @@ suite('workflowJobTelemetry', () => {
         );
     });
 
-    test('formatSlotTime picks a readable unit', () => {
-        assert.strictEqual(formatSlotTime(250), '250 ms');
-        assert.strictEqual(formatSlotTime(12_300), '12.3 s');
-        assert.strictEqual(formatSlotTime(90_000), '1.5 min');
-        assert.strictEqual(formatSlotTime(5_400_000), '1.5 h');
-    });
-
     test('toJobStats reads BigQuery statistics, which arrive as strings', () => {
-        const stats = toJobStats({ totalBytesProcessed: '2147483648', totalSlotMs: '1500', query: { totalBytesBilled: '1073741824' } }, 'EU', 'USD');
+        const stats = toJobStats({ totalBytesProcessed: '2147483648', query: { totalBytesBilled: '1073741824' } }, 'EU', 'USD');
         assert.strictEqual(stats.totalBytesBilled, 1073741824);
         assert.strictEqual(stats.totalBytesProcessed, 2147483648);
-        assert.strictEqual(stats.slotMs, 1500);
         assert.strictEqual(stats.bytesBilledLabel, '1.00 GiB');
-        assert.strictEqual(stats.slotTimeLabel, '1.5 s');
         assert.strictEqual(stats.costLabel, '$0.0061');
         assert.strictEqual(stats.location, 'EU');
     });
@@ -46,13 +37,12 @@ suite('workflowJobTelemetry', () => {
 
     test('summariseJobStats totals loaded stats and skips errors', () => {
         const summary = summariseJobStats([
-            { target: 'a', state: 'SUCCEEDED', jobStats: { totalBytesBilled: 1024 ** 3, slotMs: 1000, totalBytesProcessed: 10 } },
-            { target: 'b', state: 'SUCCEEDED', jobStats: { totalBytesBilled: 1024 ** 3, slotMs: 500, totalBytesProcessed: 5 } },
+            { target: 'a', state: 'SUCCEEDED', jobStats: { totalBytesBilled: 1024 ** 3, totalBytesProcessed: 10 } },
+            { target: 'b', state: 'SUCCEEDED', jobStats: { totalBytesBilled: 1024 ** 3, totalBytesProcessed: 5 } },
             { target: 'c', state: 'FAILED', jobStats: { error: 'Not found' } },
             { target: 'd', state: 'SKIPPED' },
         ], 'USD');
         assert.strictEqual(summary?.totalBytesBilled, 2 * 1024 ** 3);
-        assert.strictEqual(summary?.slotMs, 1500);
         assert.strictEqual(summary?.totalBytesProcessed, 15);
         assert.strictEqual(summary?.costLabel, '$0.0122');
     });
