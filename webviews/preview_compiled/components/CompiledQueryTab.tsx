@@ -3,6 +3,7 @@ import { WebviewState } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
+import { LastRunCard } from "./LastRunCard";
 import { CompilationInfoBadge } from "./CompilationInfoBadge";
 import {
   Play,
@@ -260,6 +261,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </span>
           <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
         </div>
+        <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} />
         <PropertyGraphSection state={state} />
       </div>
     );
@@ -672,6 +674,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                )}
            </div>
 
+           <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} />
            <LatestRunBanner state={state} submittingSince={submittingSince} />
       </div>
 

@@ -6,7 +6,7 @@ import { logger } from '../logger';
 import { GitService } from '../gitClient';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
-import { BigQueryDryRunResponse, CurrentFileMetadata, Target, Table, Operation, Assertion, Declarations, ExecutionMode } from '../types';
+import { BigQueryDryRunResponse, CurrentFileMetadata, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
 import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getDataformCliCmdBasedOnScope } from './dataformCompiler';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
@@ -14,6 +14,7 @@ import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
 import { clearIndices } from './compiledJsonIndex';
 import { confirmRemoteRun } from './remoteCompiler';
+import { recordLastRun } from '../lastRun';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -524,6 +525,9 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         return;
     }
 
+    // Saved only once the run is about to dispatch, so a cancelled run does not replace the last one.
+    const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = { kind: 'files', items: selectedFiles, includeDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode, workspaceFolder };
+
     const invocationConfig = {
         includedTargets: includedTargets,
         transitiveDependenciesIncluded: includeDependencies,
@@ -532,6 +536,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     };
 
     if(executionMode === "api_workspace"){
+        await recordLastRun(lastRunRequest);
         await showLoadingProgress(
             "",
             syncAndrunDataformRemotely,
@@ -547,6 +552,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         if (!(await confirmRemoteRun())) {
             return;
         }
+        await recordLastRun(lastRunRequest);
 
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
@@ -604,6 +610,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
         let dataformActionCmd = "";
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);
+        await recordLastRun(lastRunRequest);
         runCommandInTerminal(dataformActionCmd);
     }
 }

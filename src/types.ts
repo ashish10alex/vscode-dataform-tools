@@ -688,6 +688,30 @@ export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:strin
 
 export type ExecutionMode = "cli" | "api" | "api_workspace";
 
+export type LastRunKind = 'currentFile' | 'files' | 'tags';
+
+/** The selection and options of the most recent Dataform run, kept so it can be repeated. */
+export interface LastRunRequest {
+    kind: LastRunKind;
+    /** Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`. */
+    items: string[];
+    includeDependencies: boolean;
+    includeDependents: boolean;
+    fullRefresh: boolean;
+    executionMode: ExecutionMode;
+    /** Absolute path of the Dataform folder the run used; `items` are relative to it. */
+    workspaceFolder: string;
+    timestamp: number;
+}
+
+/** Summary of the last run as rendered by the compiled query webview. */
+export interface LastRunView {
+    label: string;
+    detail: string;
+    timestamp: number;
+    fullRefresh: boolean;
+}
+
 export interface CachedResults {
     fileMetadata: any;
     curFileMeta: any;

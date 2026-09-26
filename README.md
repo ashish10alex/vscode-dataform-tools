@@ -269,6 +269,10 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
       <td><code>vscode-dataform-tools.openLastWorkflowExecution</code></td>
       <td>Open last workflow execution in browser</td>
     </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.rerunLastExecution</code></td>
+      <td>Rerun last execution (same files/tags, options and mode as the previous run)</td>
+    </tr>
   </tbody>
 </table>
 

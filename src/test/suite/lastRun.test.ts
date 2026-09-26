@@ -1,0 +1,139 @@
+import * as assert from 'assert';
+import { suite, test } from 'mocha';
+import { buildLastRunView, describeOverrides, findMissingItems, isFromOtherFolder, planReplay, resolveReplayMode, summarizeItems, summarizeLastRun } from '../../lastRun';
+import { LastRunRequest } from '../../types';
+
+function request(overrides: Partial<LastRunRequest> = {}): LastRunRequest {
+    return {
+        kind: 'tags',
+        items: ['daily'],
+        includeDependencies: false,
+        includeDependents: false,
+        fullRefresh: false,
+        executionMode: 'cli',
+        workspaceFolder: '/repo/analytics',
+        timestamp: 1_700_000_000_000,
+        ...overrides,
+    };
+}
+
+suite('lastRun.summarizeItems', () => {
+    test('lists up to two items and counts the rest', () => {
+        assert.strictEqual(summarizeItems(['a']), 'a');
+        assert.strictEqual(summarizeItems(['a', 'b']), 'a, b');
+        assert.strictEqual(summarizeItems(['a', 'b', 'c', 'd', 'e']), 'a, b +3 more');
+    });
+});
+
+suite('lastRun.summarizeLastRun', () => {
+    test('describes a tag run with dependencies', () => {
+        const { label } = summarizeLastRun(request({ includeDependencies: true }), 'cli');
+        assert.strictEqual(label, 'tag daily · +dependencies · CLI');
+    });
+
+    test('uses file names in the label and full paths in the detail', () => {
+        const { label, detail } = summarizeLastRun(
+            request({ kind: 'currentFile', items: ['definitions/marts/orders.sqlx'], fullRefresh: true }),
+            'api',
+        );
+        assert.strictEqual(label, 'file orders.sqlx · full refresh · API');
+        assert.ok(detail.includes('Files: definitions/marts/orders.sqlx'));
+        assert.ok(detail.includes('Full refresh: yes'));
+    });
+
+    test('truncates long file lists in the label', () => {
+        const { label } = summarizeLastRun(
+            request({ kind: 'files', items: ['d/a.sqlx', 'd/b.sqlx', 'd/c.sqlx'], includeDependents: true }),
+            'api_workspace',
+        );
+        assert.strictEqual(label, '3 files: a.sqlx, b.sqlx +1 more · +dependents · API (remote workspace)');
+    });
+
+    test('lists compiler overrides in the detail only when present', () => {
+        assert.ok(!summarizeLastRun(request(), 'cli').detail.includes('Compiler overrides'));
+        assert.ok(summarizeLastRun(request(), 'cli', 'schemaSuffix=dev').detail.includes('Compiler overrides: schemaSuffix=dev'));
+    });
+});
+
+suite('lastRun.describeOverrides', () => {
+    test('summarises scalar options and vars, ignoring empty values', () => {
+        assert.strictEqual(describeOverrides({}), undefined);
+        assert.strictEqual(describeOverrides(undefined), undefined);
+        assert.strictEqual(
+            describeOverrides({ schemaSuffix: 'dev', tablePrefix: '', vars: { env: 'test' } }),
+            'schemaSuffix=dev; vars: env=test',
+        );
+    });
+});
+
+suite('lastRun.resolveReplayMode', () => {
+    test('replays CLI runs through the API in remote mode', () => {
+        assert.strictEqual(resolveReplayMode('cli', true), 'api');
+        assert.strictEqual(resolveReplayMode('cli', false), 'cli');
+    });
+
+    test('keeps API modes as recorded', () => {
+        assert.strictEqual(resolveReplayMode('api', false), 'api');
+        assert.strictEqual(resolveReplayMode('api_workspace', true), 'api_workspace');
+    });
+});
+
+suite('lastRun.planReplay', () => {
+    test('keeps dependencies and dependents distinct', () => {
+        const plan = planReplay(request({ includeDependencies: true }), false);
+        assert.strictEqual(plan.includeDependencies, true);
+        assert.strictEqual(plan.includeDependents, false);
+    });
+
+    test('routes tag runs by the mode they replay in', () => {
+        assert.strictEqual(planReplay(request({ executionMode: 'cli' }), false).runner, 'tagsCli');
+        assert.strictEqual(planReplay(request({ executionMode: 'cli' }), true).runner, 'tagsApi');
+        assert.strictEqual(planReplay(request({ executionMode: 'api_workspace' }), false).runner, 'tagsApi');
+    });
+
+    test('routes file runs to the matching runner', () => {
+        assert.strictEqual(planReplay(request({ kind: 'currentFile', items: ['a.sqlx'] }), false).runner, 'currentFile');
+        assert.strictEqual(planReplay(request({ kind: 'files', items: ['a.sqlx'] }), false).runner, 'files');
+    });
+});
+
+suite('lastRun.findMissingItems', () => {
+    test('reports tags that are no longer in the project', () => {
+        assert.deepStrictEqual(findMissingItems(request({ items: ['daily', 'gone'] }), ['daily'], () => true), ['gone']);
+    });
+
+    test('skips the tag check when the project could not be compiled', () => {
+        assert.deepStrictEqual(findMissingItems(request({ items: ['daily'] }), undefined, () => true), []);
+    });
+
+    test('reports every tag when the project no longer has any', () => {
+        assert.deepStrictEqual(findMissingItems(request({ items: ['daily'] }), [], () => true), ['daily']);
+    });
+
+    test('reports files that no longer exist', () => {
+        const missing = findMissingItems(
+            request({ kind: 'files', items: ['a.sqlx', 'b.sqlx'] }),
+            undefined,
+            (relativePath) => relativePath === 'a.sqlx',
+        );
+        assert.deepStrictEqual(missing, ['b.sqlx']);
+    });
+});
+
+suite('lastRun.isFromOtherFolder', () => {
+    test('rejects replaying against a different Dataform folder', () => {
+        assert.strictEqual(isFromOtherFolder(request(), '/repo/marketing'), true);
+        assert.strictEqual(isFromOtherFolder(request(), '/repo/analytics/'), false);
+    });
+});
+
+suite('lastRun.buildLastRunView', () => {
+    test('returns null when nothing has run yet', () => {
+        assert.strictEqual(buildLastRunView(undefined, false, {}), null);
+    });
+
+    test('shows the mode the replay will actually use', () => {
+        const view = buildLastRunView(request({ executionMode: 'cli' }), true, {});
+        assert.ok(view?.label.endsWith('· API'));
+    });
+});

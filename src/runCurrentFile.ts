@@ -2,26 +2,30 @@ import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation } from "./utils";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
-import { ExecutionMode } from './types';
+import { ExecutionMode, LastRunRequest } from './types';
 import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
+import { recordLastRun } from './lastRun';
 
-export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+/** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
+export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
     executionMode = resolveExecutionMode(executionMode);
 
-    let document =  getVSCodeDocument() || activeDocumentObj;
-    if (!document) {
-        return;
-    }
+    let relativeFilePath = relativeFilePathOverride;
+    if (!relativeFilePath) {
+        let document =  getVSCodeDocument() || activeDocumentObj;
+        if (!document) {
+            return;
+        }
 
-    var result = getFileNameFromDocument(document, false);
-    if (result.success === false) {
-        vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`);
-        return;
+        const result = getFileNameFromDocument(document, false);
+        if (result.success === false) {
+            vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`);
+            return;
+        }
+        relativeFilePath = result.value[1];
     }
-    //@ts-ignore
-    const [filename, relativeFilePath, extension] = result.value;
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         return;
@@ -55,6 +59,9 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
     const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON)
         .filter((graph) => !graph.disabled);
 
+    // Saved only once the run is about to dispatch, so a cancelled or non-runnable run does not replace the last one.
+    const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = { kind: 'currentFile', items: [relativeFilePath], includeDependencies: includDependencies, includeDependents, fullRefresh, executionMode, workspaceFolder };
+
     if (executionMode === "cli") {
         let actionsList: string[] = currFileMetadata.tables
             .filter((table: any) => table.type !== 'test')
@@ -73,6 +80,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
         // create the dataform run command for the list of actions from actionsList
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
+        await recordLastRun(lastRunRequest);
         runCommandInTerminal(dataformActionCmd);
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
@@ -110,6 +118,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
         try{
             if(executionMode === "api_workspace"){
+                await recordLastRun(lastRunRequest);
                 await showLoadingProgress(
                     "",
                     syncAndrunDataformRemotely,
@@ -124,6 +133,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             if (!(await confirmRemoteRun())) {
                 return;
             }
+            await recordLastRun(lastRunRequest);
 
             const gitClient = new GitService();
             const gitInfo = await gitClient.getGitBranchAndRepoName();
