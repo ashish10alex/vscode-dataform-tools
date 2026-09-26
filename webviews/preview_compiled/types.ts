@@ -1,8 +1,8 @@
 import { CompilationErrorType } from "../../src/types";
-import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse } from "../../src/types";
+import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView } from "../../src/types";
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../../src/types";
 export { CompilationErrorType };
-export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse };
+export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView };
 export type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema };
 import type { CompilationInfo } from "../../src/utils/compilationInfo";
 export type { CompilationInfo };
@@ -82,6 +82,7 @@ export interface WebviewState {
   };
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
+  lastRun?: LastRunView | null;
   missingExecutables?: string[];
   dataformCoreVersion?: string;
   projectConfig?: ProjectConfig;

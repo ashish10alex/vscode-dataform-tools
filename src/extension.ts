@@ -25,6 +25,8 @@ import { runTag } from './runTag';
 import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
+import { initLastRun } from './lastRun';
+import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
@@ -80,6 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.bigQuerySnippetMetadata = JSON.parse(snippetsContent)[".source.sql-bigquery"];
 
     initRemoteCompiler(context);
+    initLastRun(context);
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -253,6 +256,8 @@ export async function activate(context: vscode.ExtensionContext) {
         clearRemoteCompileCache();
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
     }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.rerunLastExecution', () => rerunLastExecution(context)));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.openLastWorkflowExecution', async () => {
         const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];

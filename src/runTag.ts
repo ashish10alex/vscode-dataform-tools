@@ -5,8 +5,10 @@ import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from ".
 import { ExecutionMode } from './types';
 import { GitService } from "./gitClient";
 import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
+import { recordLastRun } from "./lastRun";
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    await recordLastRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli' });
     let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
     let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
     runCommandInTerminal(runmultitagscommand);
@@ -69,6 +71,7 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
         if (!workspaceFolder) { return; }
 
         if(executionMode === "cli"){
+            await recordLastRun({ kind: 'tags', items: [selection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli' });
 
             let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
             let cmd = "";
@@ -91,6 +94,14 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
 }
 
 export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
+    await recordLastRun({
+        kind: 'tags',
+        items: tagsToRun,
+        includeDependencies: transitiveDependenciesIncluded,
+        includeDependents: transitiveDependentsIncluded,
+        fullRefresh: fullyRefreshIncrementalTablesEnabled,
+        executionMode: executionMode === "api_workspace" ? "api_workspace" : "api",
+    });
 
     const invocationConfig = {
         includedTags: tagsToRun,

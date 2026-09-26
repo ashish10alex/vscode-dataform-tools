@@ -32,6 +32,7 @@ import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema
 import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTree";
 import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compilationInfo';
 import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
+import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -92,7 +93,17 @@ async function updateSchemaAutoCompletions(currentFileMetadata:any) {
     schemaAutoCompletions = allSchemaCompletions;
 }
 
+function getLastRunView() {
+    return buildLastRunView(getLastRun(), isRemoteMode(), globalThis.compilerOptionsMap);
+}
+
 export function registerCompiledQueryPanel(context: ExtensionContext) {
+
+    context.subscriptions.push(
+        onDidChangeLastRun(() => {
+            CompiledQueryPanel.centerPanel?.webviewPanel.webview.postMessage({ lastRun: getLastRunView() });
+        })
+    );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.showCompiledQueryInWebView', async() => {
@@ -720,6 +731,9 @@ export class CompiledQueryPanel {
                 }
                 return;
               }
+              case 'rerunLastExecution':
+                await vscode.commands.executeCommand('vscode-dataform-tools.rerunLastExecution');
+                return;
               case 'runFilesTagsWtOptionsApi':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
                 return;
@@ -1097,6 +1111,7 @@ export class CompiledQueryPanel {
                     "dataformCoreVersion": curFileMeta.dataformCoreVersion,
                     "compilerOptions": compilerOptions,
                     "workflowUrls": workflowUrls,
+                    "lastRun": getLastRunView(),
                     "workspaceFolder": workspaceFolder,
                     "recompiling": false,
                     "dryRunning": true,
@@ -1253,6 +1268,7 @@ export class CompiledQueryPanel {
             "declarations": null,
             "compilerOptions": compilerOptions,
             "workflowUrls": workflowUrls,
+            "lastRun": getLastRunView(),
             "errorType": null,
             "errorMessage": null,
             "dataformCoreVersion": curFileMeta.dataformCoreVersion,
@@ -1481,6 +1497,7 @@ export class CompiledQueryPanel {
                 "declarations": null,
                 "compilerOptions": compilerOptions,
                 "workflowUrls": workflowUrls,
+                "lastRun": getLastRunView(),
                 "errorType": null,
                 "projectConfig": curFileMeta.projectConfig,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
@@ -1521,6 +1538,9 @@ export class CompiledQueryPanel {
         }
         if (initialState.compilationBackend === undefined) {
             initialState.compilationBackend = isRemoteMode() ? "api" : "cli";
+        }
+        if (initialState.lastRun === undefined) {
+            initialState.lastRun = getLastRunView();
         }
         if (initialState.compilationInfo === undefined) {
             initialState.compilationInfo = getCompilationInfo();

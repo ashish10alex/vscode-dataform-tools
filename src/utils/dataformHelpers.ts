@@ -14,6 +14,7 @@ import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
 import { clearIndices } from './compiledJsonIndex';
 import { confirmRemoteRun } from './remoteCompiler';
+import { recordLastRun } from '../lastRun';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -523,6 +524,8 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
         vscode.window.showErrorMessage("Dataform execution aborted: Compilation failed or no valid targets found.");
         return;
     }
+
+    await recordLastRun({ kind: 'files', items: selectedFiles, includeDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode });
 
     const invocationConfig = {
         includedTargets: includedTargets,

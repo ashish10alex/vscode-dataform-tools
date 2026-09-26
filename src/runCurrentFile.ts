@@ -6,22 +6,26 @@ import { ExecutionMode } from './types';
 import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
+import { recordLastRun } from './lastRun';
 
-export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+/** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
+export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
     executionMode = resolveExecutionMode(executionMode);
 
-    let document =  getVSCodeDocument() || activeDocumentObj;
-    if (!document) {
-        return;
-    }
+    let relativeFilePath = relativeFilePathOverride;
+    if (!relativeFilePath) {
+        let document =  getVSCodeDocument() || activeDocumentObj;
+        if (!document) {
+            return;
+        }
 
-    var result = getFileNameFromDocument(document, false);
-    if (result.success === false) {
-        vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`);
-        return;
+        const result = getFileNameFromDocument(document, false);
+        if (result.success === false) {
+            vscode.window.showErrorMessage(`Extension was unable to get filename of the current file`);
+            return;
+        }
+        relativeFilePath = result.value[1];
     }
-    //@ts-ignore
-    const [filename, relativeFilePath, extension] = result.value;
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         return;
@@ -54,6 +58,8 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
     // picked up from the compiled output directly for the file to be runnable at all.
     const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON)
         .filter((graph) => !graph.disabled);
+
+    await recordLastRun({ kind: 'currentFile', items: [relativeFilePath], includeDependencies: includDependencies, includeDependents, fullRefresh, executionMode });
 
     if (executionMode === "cli") {
         let actionsList: string[] = currFileMetadata.tables
