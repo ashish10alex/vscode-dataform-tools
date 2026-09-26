@@ -85,7 +85,12 @@ async function writeDataformProjectFiles(projectDir: string, gcpProjectId: strin
     await fs.promises.mkdir(path.join(projectDir, "definitions"), { recursive: true });
     await fs.promises.mkdir(path.join(projectDir, "includes"), { recursive: true });
     await fs.promises.writeFile(path.join(projectDir, "workflow_settings.yaml"), workflowSettings);
-    await fs.promises.writeFile(path.join(projectDir, ".gitignore"), "node_modules/\n");
+    // The folder may be inside an existing clone; keep any .gitignore already there
+    await fs.promises.writeFile(path.join(projectDir, ".gitignore"), "node_modules/\n", { flag: "wx" }).catch((error) => {
+        if (error.code !== "EEXIST") {
+            throw error;
+        }
+    });
     vscode.window.showInformationMessage(`Created Dataform project with @dataform/core ${dataformCoreVersion}. Push it to the git repository connected to your Dataform repository to compile it remotely.`);
 }
 

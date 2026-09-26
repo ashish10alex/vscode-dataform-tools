@@ -1,12 +1,13 @@
 import fs from "fs";
 import path from 'path';
 import * as vscode from 'vscode';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import util from 'util';
 import { GitFileChange, GitFileChangeRaw, GitStatusCode, GitStatusCodeHumanReadable } from './types';
 import { logger } from "./logger";
 
 const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 
 export class GitService {
     private projectRoot: string;
@@ -30,6 +31,15 @@ export class GitService {
         } catch (error: any) {
             throw error;
         }
+    }
+
+    /** Runs git without a shell, so arguments such as branch names are never shell-interpreted. */
+    private async execGit(args: string[]): Promise<string> {
+        if (!this.projectRoot) {
+            throw new Error("No project root found (no workspace open).");
+        }
+        const { stdout } = await execFilePromise("git", args, { cwd: this.projectRoot });
+        return stdout.trim();
     }
 
     public async getGitBranchAndRepoName() {
@@ -84,7 +94,7 @@ export class GitService {
 
     public async triggerGitPull(gitBranchName: string): Promise<void> {
         try {
-            await this.execCmd(`git branch --set-upstream-to=origin/${gitBranchName}`);
+            await this.execGit(["branch", `--set-upstream-to=origin/${gitBranchName}`]);
             await this.execCmd('git pull');
         } catch (error: any) {
             vscode.window.showErrorMessage(`Error running git pull: ${error.message}`);
@@ -140,10 +150,8 @@ export class GitService {
     }
 
     public async getGitStatusCommitedFiles(gitBranchName: string): Promise<GitFileChange[]> {
-        const gitCommand = `git show --name-status --pretty="format:commit_hash: %H" origin/${gitBranchName}..HEAD`;
-
         try {
-            const stdout = await this.execCmd(gitCommand);
+            const stdout = await this.execGit(["show", "--name-status", "--pretty=format:commit_hash: %H", `origin/${gitBranchName}..HEAD`]);
             const lines = stdout.split("\n").filter(line => line.trim());
             
             const committedFiles: GitFileChangeRaw[] = [];
@@ -218,10 +226,8 @@ export class GitService {
 
     public async localBranchBehindRemote(gitBranchName: string): Promise<boolean> {
         // FIXME: Assumes remote name is 'origin'
-        const gitCommand = `git diff --name-only ${gitBranchName} origin/${gitBranchName}`;
-        
         try {
-            const stdout = await this.execCmd(gitCommand);
+            const stdout = await this.execGit(["diff", "--name-only", gitBranchName, `origin/${gitBranchName}`]);
             const lines = stdout.split("\n");
             return lines.length > 0 && lines[0] !== "";
         } catch (error) {
@@ -267,7 +273,7 @@ export class GitService {
 
     /** Pushes the branch, setting origin as its upstream so it works for branches not yet on the remote. */
     public async pushBranch(gitBranchName: string): Promise<void> {
-        await this.execCmd(`git push -u origin "${gitBranchName}"`);
+        await this.execGit(["push", "-u", "origin", gitBranchName]);
     }
 
     private gitStatusToHumanReadable(statusCode: GitStatusCode): GitStatusCodeHumanReadable {

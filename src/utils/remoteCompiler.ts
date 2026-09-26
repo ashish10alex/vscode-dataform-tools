@@ -334,7 +334,9 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
     }
 
     const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
+    // Read once so a config switch mid-compile cannot file this result under the other config
     const releaseConfig = getSelectedReleaseConfig();
+    const entryConfigKey = releaseConfig ?? DEFAULT_CONFIG_KEY;
 
     updateRemoteModeStatusBar({ state: "compiling" });
     const startTime = performance.now();
@@ -362,7 +364,7 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
                 const entry: RemoteCompileEntry = {
                     repositoryName,
                     sha: result.resolvedGitCommitSha ?? "unknown",
-                    configKey: configKey(),
+                    configKey: entryConfigKey,
                     compiledAt: Date.now(),
                     compiledJson: toDataformCompiledJson(result as ApiCompilationResult, actions),
                 };
