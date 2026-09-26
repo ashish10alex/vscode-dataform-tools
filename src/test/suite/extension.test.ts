@@ -18,12 +18,29 @@ WARN: The test would not be able to run if your project path is very long this i
 NOTE: Also, we are having to remove `.vscode-test/user-data` before running `vscode-test` in the `npm run test` script in package.json
 WARN: These tests currently are only tested to be running on mac os. We will need to change the script for `npm run test` in package.json for it to work in multiple platforms
 */
-import { suite, test } from 'mocha';
+import { suite, suiteSetup, test } from 'mocha';
 import { findProjectRoot } from './helper';
 
 // Get the project root once
 const projectRoot = findProjectRoot(__dirname);
 const workspaceFolder = path.join(projectRoot, 'src', 'test', 'test-workspace');
+
+// Compiling the test workspace takes ~1s, so every test that needs the compiled json shares one compile
+let compiledTestWorkspace: Promise<DataformCompiledJson> | undefined;
+function compileTestWorkspace(): Promise<DataformCompiledJson> {
+    compiledTestWorkspace ??= compileDataform(workspaceFolder).then(({ compiledString, errors }) => {
+        if (errors) {
+            throw new Error(JSON.stringify(errors, null, 2));
+        }
+        if (!compiledString) {
+            throw new Error('Compilation failed');
+        }
+        const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
+        buildIndices(dataformCompiledJson);
+        return dataformCompiledJson;
+    });
+    return compiledTestWorkspace;
+}
 
 suite('GetMetadataForSqlxFileBlocks', () => {
     test('Config block has multiple curley braces are in the same line and sqlx file has pre_operations', async () => {
@@ -525,303 +542,159 @@ suite("getDocumentSymbols", () => {
 });
 
 suite('getQueryMetaForCurrentFile', () => {
+    let dataformCompiledJson: DataformCompiledJson;
 
-    test("able to get model of type: table [ has assertion ]", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
-
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "table");
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
-
-                    assert.strictEqual(sqlxBlockMetadata.tables[1].type, "assertion");
-                    assert.strictEqual(sqlxBlockMetadata.tables[1].fileName, relativeFilePath);
-
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "table");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
-
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
-                    assert.ok(sqlxBlockMetadata.queryMeta.tableQueries[0]?.query);
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+    suiteSetup(async function () {
+        this.timeout(20000);
+        dataformCompiledJson = await compileTestWorkspace();
     });
 
-    test("able to parse .js file with notebook blocks", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/notebooks/notebook.js";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    // console.log('[DEBUG] sqlxBlockMetadata:', JSON.stringify(sqlxBlockMetadata, null, 2));
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "notebook");
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, "definitions/notebooks/test_one.ipynb");
-                    assert.strictEqual(sqlxBlockMetadata.tables[1].type, "notebook");
-                    assert.strictEqual(sqlxBlockMetadata.tables[1].fileName, "definitions/notebooks/test_two.ipynb");
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+    test("able to get model of type: table [ has assertion ]", async () => {
+        const relativeFilePath = "definitions/0100_GAMES_META.sqlx";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
+        assert.strictEqual(sqlxBlockMetadata.tables[0].type, "table");
+        assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
+
+        assert.strictEqual(sqlxBlockMetadata.tables[1].type, "assertion");
+        assert.strictEqual(sqlxBlockMetadata.tables[1].fileName, relativeFilePath);
+
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "table");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
+
+        assert.notStrictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
+        assert.ok(sqlxBlockMetadata.queryMeta.tableQueries[0]?.query);
     });
 
-
-
-    test("able to get model of type: view", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/0100_CLUBS.sqlx";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "view");
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
-
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "view");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
-
-                    assert.ok(sqlxBlockMetadata.queryMeta.tableQueries[0]?.query);
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+    test("able to parse .js file with notebook blocks", async () => {
+        const relativeFilePath = "definitions/notebooks/notebook.js";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 2);
+        assert.strictEqual(sqlxBlockMetadata.tables[0].type, "notebook");
+        assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, "definitions/notebooks/test_one.ipynb");
+        assert.strictEqual(sqlxBlockMetadata.tables[1].type, "notebook");
+        assert.strictEqual(sqlxBlockMetadata.tables[1].fileName, "definitions/notebooks/test_two.ipynb");
     });
 
-    test("able to get model of type: incremental", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/0300_INCREMENTAL.sqlx";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, 'incremental');
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
+    test("able to get model of type: view", async () => {
+        const relativeFilePath = "definitions/0100_CLUBS.sqlx";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
+        assert.strictEqual(sqlxBlockMetadata.tables[0].type, "view");
+        assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "incremental");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "view");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
 
-                    assert.ok(sqlxBlockMetadata.queryMeta.incrementalQueries[0]?.nonIncrementalQuery);
-                    assert.ok(sqlxBlockMetadata.queryMeta.incrementalQueries[0]?.incrementalQuery);
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
-
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+        assert.ok(sqlxBlockMetadata.queryMeta.tableQueries[0]?.query);
     });
 
-    test("able to get model of type: assertion", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/assertions/0100_CLUBS_ASSER.sqlx";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "assertion");
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
+    test("able to get model of type: incremental", async () => {
+        const relativeFilePath = "definitions/0300_INCREMENTAL.sqlx";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
+        assert.strictEqual(sqlxBlockMetadata.tables[0].type, 'incremental');
+        assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "assertion");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "incremental");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
 
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
-
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+        assert.ok(sqlxBlockMetadata.queryMeta.incrementalQueries[0]?.nonIncrementalQuery);
+        assert.ok(sqlxBlockMetadata.queryMeta.incrementalQueries[0]?.incrementalQuery);
+        assert.notStrictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
+        assert.notStrictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
     });
 
-    test("able to get model of type: operations", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    //console.log('[TEST] sqlxBlockMetadata:', sqlxBlockMetadata);
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].type, "operations");
-                    assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
+    test("able to get model of type: assertion", async () => {
+        const relativeFilePath = "definitions/assertions/0100_CLUBS_ASSER.sqlx";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
+        assert.strictEqual(sqlxBlockMetadata.tables[0].type, "assertion");
+        assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "operations");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "assertion");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
 
-                    assert.notStrictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
-
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+        assert.notStrictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
     });
 
-    test("able to get model of type: js", async function () {
-        this.timeout(9000);
-        try {
-            const relativeFilePath = "definitions/010_JS_MULTIPLE.js";
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    buildIndices(dataformCompiledJson);
-                    let sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
-                    assert.strictEqual(sqlxBlockMetadata.tables.length, 4);
+    test("able to get model of type: operations", async () => {
+        const relativeFilePath = "definitions/0500_OPERATIONS.sqlx";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 1);
+        assert.strictEqual(sqlxBlockMetadata.tables[0].type, "operations");
+        assert.strictEqual(sqlxBlockMetadata.tables[0].fileName, relativeFilePath);
 
-                    assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "js");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "operations");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.tableQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalQueries.length, 0);
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.preOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.incrementalPreOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.postOpsQuery, "");
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.assertionQuery, "");
 
-                    sqlxBlockMetadata.tables.forEach(table => {
-                        assert.strictEqual(table.fileName, relativeFilePath);
-                    });
-
-                    const expectedTypes = ["view", "view", "assertion", "operations"];
-
-                    const expectedTargets = [
-                        {
-                            schema: "dataform",
-                            name: "test_js_table_1",
-                            database: "drawingfire-b72a8"
-                        },
-                        {
-                            schema: "dataform",
-                            name: "test_js_table_2",
-                            database: "drawingfire-b72a8"
-                        },
-                        {
-                            schema: "dataform_assertions",
-                            name: "test_js_assert",
-                            database: "drawingfire-b72a8"
-                        },
-                        {
-                            schema: "dataform",
-                            name: "test_js_ops",
-                            database: "drawingfire-b72a8"
-                        }
-                    ];
-
-                    expectedTypes.forEach((type, i) => assert.strictEqual(sqlxBlockMetadata.tables[i].type, type));
-
-                    sqlxBlockMetadata.tables.forEach((table, i) => {
-                        assert.ok(table.target, `Table ${i} should have a target`);
-                        assert.strictEqual(table.target.schema, expectedTargets[i].schema, `Table ${i} expected schema: ${expectedTargets[i].schema}, got: ${table.target.schema}`);
-                        assert.strictEqual(table.target.name, expectedTargets[i].name, `Table ${i} expected name: ${expectedTargets[i].name}, got: ${table.target.name}`);
-                        assert.strictEqual(table.target.database, expectedTargets[i].database, `Table ${i} expected database: ${expectedTargets[i].database}, got: ${table.target.database}`);
-                    });
-
-                    sqlxBlockMetadata.tables.forEach(table => {
-                        assert.strictEqual(table.fileName, relativeFilePath);
-                    });
-
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+        assert.notStrictEqual(sqlxBlockMetadata.queryMeta.operationsQuery, "");
     });
 
+    test("able to get model of type: js", async () => {
+        const relativeFilePath = "definitions/010_JS_MULTIPLE.js";
+        const sqlxBlockMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
+        assert.strictEqual(sqlxBlockMetadata.tables.length, 4);
+
+        assert.strictEqual(sqlxBlockMetadata.queryMeta.type, "js");
+
+        sqlxBlockMetadata.tables.forEach(table => {
+            assert.strictEqual(table.fileName, relativeFilePath);
+        });
+
+        const expectedTypes = ["view", "view", "assertion", "operations"];
+
+        const expectedTargets = [
+            {
+                schema: "dataform",
+                name: "test_js_table_1",
+                database: "drawingfire-b72a8"
+            },
+            {
+                schema: "dataform",
+                name: "test_js_table_2",
+                database: "drawingfire-b72a8"
+            },
+            {
+                schema: "dataform_assertions",
+                name: "test_js_assert",
+                database: "drawingfire-b72a8"
+            },
+            {
+                schema: "dataform",
+                name: "test_js_ops",
+                database: "drawingfire-b72a8"
+            }
+        ];
+
+        expectedTypes.forEach((type, i) => assert.strictEqual(sqlxBlockMetadata.tables[i].type, type));
+
+        sqlxBlockMetadata.tables.forEach((table, i) => {
+            assert.ok(table.target, `Table ${i} should have a target`);
+            assert.strictEqual(table.target.schema, expectedTargets[i].schema, `Table ${i} expected schema: ${expectedTargets[i].schema}, got: ${table.target.schema}`);
+            assert.strictEqual(table.target.name, expectedTargets[i].name, `Table ${i} expected name: ${expectedTargets[i].name}, got: ${table.target.name}`);
+            assert.strictEqual(table.target.database, expectedTargets[i].database, `Table ${i} expected database: ${expectedTargets[i].database}, got: ${table.target.database}`);
+        });
+    });
 });
 
 suite('format bytes from dry run in human readable format', () => {
@@ -955,8 +828,8 @@ suite('handleSemicolonPrePostOps', () => {
                 SET MY_VAR = 1;
                 -- delete the previous day's data;
 `);
-        assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, result.queryMeta.incrementalPreOpsQuery);
-        assert.strictEqual(result.queryMeta.postOpsQuery, result.queryMeta.postOpsQuery);
+        assert.strictEqual(result.queryMeta.incrementalPreOpsQuery, "SELECT 2;");
+        assert.strictEqual(result.queryMeta.postOpsQuery, "");
     });
 
 });
@@ -1036,28 +909,11 @@ suite("getQueryStringForPreview skipPreOps", () => {
 suite('getDataformTags', () => {
 
     test("tags are collected from tables, assertions, operations and notebooks", async function () {
-        this.timeout(9000);
-        try {
-            let { compiledString, errors } = await compileDataform(workspaceFolder);
-            if (compiledString) {
-                const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-                if (dataformCompiledJson) {
-                    let dataformTags = await getDataformTags(dataformCompiledJson);
+        this.timeout(20000);
+        const dataformTags = await getDataformTags(await compileTestWorkspace());
 
-                    // FOOTY is on multiple tables, so this also asserts that tags are de-duplicated
-                    assert.deepStrictEqual(dataformTags, ["FOOTY", "OPS_TAG", "new_tag", "tag2"]);
-                } else {
-                    throw new Error('Compilation failed');
-                }
-            }
-            if (errors) {
-                throw new Error(JSON.stringify(errors, null, 2));
-            }
-        } catch (error: any) {
-            console.error('Test failed:', error);
-            vscode.window.showErrorMessage(`Test failed: ${error.message}`);
-            throw error;
-        }
+        // FOOTY is on multiple tables, so this also asserts that tags are de-duplicated
+        assert.deepStrictEqual(dataformTags, ["FOOTY", "OPS_TAG", "new_tag", "tag2"]);
     });
 
     test("no tags are returned when the compiled json has no actions", async function () {
