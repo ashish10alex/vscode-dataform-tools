@@ -769,6 +769,13 @@ export class CompiledQueryPanel {
                                     }
                                     item.actionCounts = counts;
                                     item.actions = actionInfos;
+                                    // Loaded here rather than on request from the webview so each action's bytes billed
+                                    // shows as soon as it finishes, and so this refresh cannot overwrite stats loaded concurrently.
+                                    try {
+                                        await loadJobStatsForInvocation(item);
+                                    } catch (e: any) {
+                                        logger.error(`Error loading BigQuery job stats: ${e.message}`);
+                                    }
 
                                     if (item.state === 'FAILED') {
                                         const failedActions = list

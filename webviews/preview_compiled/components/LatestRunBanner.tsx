@@ -170,7 +170,8 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
         [latest?.workflowInvocationId, latest?.jobStatsSummary]
     );
 
-    // Job stats are fetched from BigQuery once per invocation, when the user opens the run details
+    // Job stats normally arrive with each status refresh while the run is in progress. This one-off request
+    // covers history entries that finished without them, when the user opens the run details.
     const statsRequestedFor = useRef<Set<string>>(new Set());
     useEffect(() => {
         const invocationId = latest?.workflowInvocationId;
@@ -239,7 +240,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
 
             {renderCountBadges(latest.actionCounts)}
 
-            {latest.jobStatsSummary && (
+            {isTerminal && latest.jobStatsSummary && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--vscode-descriptionForeground)]">
                     <span>BigQuery:</span>
                     <CountBadgeText label="Billed" value={latest.jobStatsSummary.bytesBilledLabel} />
