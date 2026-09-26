@@ -178,6 +178,16 @@ async function createDataformClient(workspaceFolder: string, repositoryName: str
     return new DataformTools(projectId, location, clientOptions);
 }
 
+/** Dataform client for the repository named after the current git repository. */
+export async function createDataformClientForCurrentRepository(): Promise<{ dataformClient: DataformTools, repositoryName: string }> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceFolder) {
+        throw new Error("No workspace folder open");
+    }
+    const { repositoryName } = await getGitInfo();
+    return { dataformClient: await createDataformClient(workspaceFolder, repositoryName), repositoryName };
+}
+
 /**
  * Remote compilation only sees pushed commits. Warns when the local branch differs from its upstream
  * and offers to push. Returns false when the user cancels.
