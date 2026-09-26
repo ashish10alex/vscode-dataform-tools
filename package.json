@@ -235,6 +235,21 @@
                 "command": "vscode-dataform-tools.runTests",
                 "category": "Dataform",
                 "title": "Run all tests"
+            },
+            {
+                "command": "vscode-dataform-tools.compileRemotely",
+                "category": "Dataform",
+                "title": "Compile using API (remote mode) [beta]"
+            },
+            {
+                "command": "vscode-dataform-tools.remoteModeActions",
+                "category": "Dataform",
+                "title": "Remote mode actions [beta]"
+            },
+            {
+                "command": "vscode-dataform-tools.switchCompilationBackend",
+                "category": "Dataform",
+                "title": "Switch compilation backend (CLI / API)"
             }
         ],
         "languages": [
@@ -266,6 +281,20 @@
             }
         ],
         "menus": {
+            "commandPalette": [
+                {
+                    "command": "vscode-dataform-tools.runTests",
+                    "when": "!vscode-dataform-tools.remoteMode"
+                },
+                {
+                    "command": "vscode-dataform-tools.compileRemotely",
+                    "when": "vscode-dataform-tools.remoteMode"
+                },
+                {
+                    "command": "vscode-dataform-tools.remoteModeActions",
+                    "when": "vscode-dataform-tools.remoteMode"
+                }
+            ],
             "editor/context": [
                 {
                     "command": "vscode-dataform-tools.searchTableColumns",
@@ -294,6 +323,20 @@
         "configuration": {
             "title": "Dataform",
             "properties": {
+                "vscode-dataform-tools.compilationBackend": {
+                    "type": "string",
+                    "default": "cli",
+                    "enum": [
+                        "cli",
+                        "api"
+                    ],
+                    "enumDescriptions": [
+                        "Compile locally with the Dataform CLI (default)",
+                        "[beta] Remote mode: compile the pushed commit of the current branch with the Dataform API. The Dataform CLI is not needed"
+                    ],
+                    "scope": "resource",
+                    "markdownDescription": "**[beta]** Where the Dataform project is compiled. `api` (remote mode) compiles the **pushed** commit of the current git branch with the Dataform API, so the Dataform CLI does not need to be installed. Results are cached per commit; run `Dataform: Compile using API` or click the status bar item to recompile. Runs also go through the API, and `Run all tests` is unavailable."
+                },
                 "vscode-dataform-tools.compilerOptions": {
                     "type": "string",
                     "default": "",

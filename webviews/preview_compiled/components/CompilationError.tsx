@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, Cloud } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
 import { WebviewState, CompilationErrorType } from '../types';
 import { CompilerOverrides } from './CompilerOverrides';
+import { CompilationInfoBadge } from './CompilationInfoBadge';
 
 interface CompilationErrorProps {
   state: WebviewState;
 }
+
+/** Offered when the Dataform CLI is missing or failing: remote mode compiles without it. */
+const SwitchToApiButton: React.FC = () => (
+  <button
+    onClick={() => vscode.postMessage({ command: 'switchCompilationBackend', value: 'api' })}
+    className="mt-3 flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)]"
+  >
+    <Cloud className="w-3 h-3 mr-1.5" /> Compile with the Dataform API instead (beta)
+  </button>
+);
 
 interface AccordionSectionProps {
   label: string;
@@ -81,7 +92,9 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
     workspaceFolder,
     compilationErrors,
     possibleResolutions,
+    compilationInfo,
   } = state;
+  const cliCompileFailed = compilationInfo?.backend !== 'api';
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     root: true,
@@ -128,6 +141,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
                   <ul className="mt-2 ml-6 pl-3 border-l-2 border-[var(--vscode-inputValidation-errorBorder)] list-none space-y-2">
                     <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">npm i -g @dataform/cli</code></li>
                     <li>Run <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> from the root of your project to verify</li>
+                    <li>Or skip the CLI and compile with the Dataform API: <SwitchToApiButton /></li>
                   </ul>
                 </li>
               )}
@@ -255,6 +269,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
               {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
             </span>
           </div>
+          <CompilationInfoBadge info={compilationInfo} className="mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
 
           <div className="space-y-1">
             {groups.map((group) => (
@@ -269,6 +284,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             ))}
           </div>
 
+          {cliCompileFailed && (
           <p className="mt-3 mb-0 text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60 italic">
             Run{' '}
             <code className="px-1 py-0.5 bg-[var(--vscode-editor-background)] opacity-70 rounded font-mono border border-[var(--vscode-widget-border)]">
@@ -276,6 +292,9 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             </code>{' '}
             in the terminal for the full error output.
           </p>
+          )}
+
+          {cliCompileFailed && <SwitchToApiButton />}
 
           {possibleResolutions && possibleResolutions.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[var(--vscode-inputValidation-errorBorder)]">
@@ -313,6 +332,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
             <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
           </div>
+          <CompilationInfoBadge info={compilationInfo} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
         </div>
         <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
       </>

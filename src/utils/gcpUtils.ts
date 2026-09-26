@@ -10,6 +10,9 @@ export async function getCachedDataformRepositoryLocation(context: vscode.Extens
         let cachedGcpLocation = context.globalState.get<string>(`vscode_dataform_tools_${repositoryName}`);
         if (!cachedGcpLocation) {
             cachedGcpLocation = await createSelector(gcloudComputeRegions, "Select Dataform repository location");
+            if (cachedGcpLocation) {
+                await context.globalState.update(`vscode_dataform_tools_${repositoryName}`, cachedGcpLocation);
+            }
         }
         return cachedGcpLocation;
 }

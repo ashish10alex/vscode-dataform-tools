@@ -4,6 +4,8 @@ import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema
 export { CompilationErrorType };
 export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse };
 export type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema };
+import type { CompilationInfo } from "../../src/utils/compilationInfo";
+export type { CompilationInfo };
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;
@@ -58,8 +60,10 @@ export interface WebviewState {
   errorWorkflowInvocation?: string;
   apiUrlLoading?: boolean;
   recompiling?: boolean;
+  compilationBackend?: "cli" | "api";
   dryRunning?: boolean;
   compilationTimeMs?: number;
+  compilationInfo?: CompilationInfo;
   dataformTags?: string[];
   selectedTags?: string[];
   currencySymbol?: string;

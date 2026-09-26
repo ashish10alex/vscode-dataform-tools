@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Uri } from 'vscode';
 import { randomUUID } from 'crypto';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
+import { isRemoteMode } from '../utils/remoteCompiler';
 import { queryDryRun } from '../bigqueryDryRun';
 import { queryBigQuery } from '../bigqueryRunQuery';
 import { fetchTableMetadata } from '../hoverProvider';
@@ -116,7 +117,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
             case 'getModels': {
                 let compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
                 if (!compiledJson) {
-                    panel.webview.postMessage({ type: 'compiling', value: true });
+                    panel.webview.postMessage({ type: 'compiling', value: true, backend: isRemoteMode() ? 'api' : 'cli' });
                     const workspaceFolder = await getWorkspaceFolder();
                     if (!workspaceFolder) {
                         panel.webview.postMessage({
