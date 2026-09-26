@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.13.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.13...v1.13.0) (2026-09-26)
+
+
+### Features
+
+* add ability cancel workflow invocation ([#363](https://github.com/ashish10alex/vscode-dataform-tools/issues/363)) ([854688b](https://github.com/ashish10alex/vscode-dataform-tools/commit/854688bba1c3d58dd40d92bc8ecafc986985662f))
+* add ability to choose compilation backend (api/cli) ([#362](https://github.com/ashish10alex/vscode-dataform-tools/issues/362)) ([b33fd01](https://github.com/ashish10alex/vscode-dataform-tools/commit/b33fd01dfb9381bf7393c9f56776072d2c0546e3))
+* add bytes billed and cost estimate of workflow invocation from bigquery job metadata ([#364](https://github.com/ashish10alex/vscode-dataform-tools/issues/364)) ([d69e032](https://github.com/ashish10alex/vscode-dataform-tools/commit/d69e032d76502115358ec89ca572f6489895caf6))
+* rerun the last execution from the webview or command palette ([#366](https://github.com/ashish10alex/vscode-dataform-tools/issues/366)) ([9df2041](https://github.com/ashish10alex/vscode-dataform-tools/commit/9df2041a2654640fe94fa28bb8ab2dd325d9dba1))
+* show the bytes billed as soon as the job is complete in workflow ([1c90a18](https://github.com/ashish10alex/vscode-dataform-tools/commit/1c90a1850ec17bf60322f7d8ad5f3ae1f969771a))
+* **website:** redesign landing page with shipped features, author credit and auto changelog ([#361](https://github.com/ashish10alex/vscode-dataform-tools/issues/361)) ([de6c2fa](https://github.com/ashish10alex/vscode-dataform-tools/commit/de6c2fafc2a96244fe91ed824aa63eb3a7abcd69))
+
+
+### Bug Fixes
+
+* show workflow action targets with compiler overrides applied ([#365](https://github.com/ashish10alex/vscode-dataform-tools/issues/365)) ([d36046c](https://github.com/ashish10alex/vscode-dataform-tools/commit/d36046c605c531577f1f8a54cc279f327e0c650e))
+
+
+### CI
+
+* improve speed of test runs ([e2f5a58](https://github.com/ashish10alex/vscode-dataform-tools/commit/e2f5a58c0e66a7498ae5ff0cbdcb4425ddabb615))
+
 ### [1.12.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.12...v1.12.13) (2026-09-20)
 
 
