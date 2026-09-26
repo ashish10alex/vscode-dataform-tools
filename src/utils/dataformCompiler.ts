@@ -286,8 +286,9 @@ export async function getOrCompileDataformJson(
         return CACHED_COMPILED_DATAFORM_JSON;
     }
     logger.debug('No cached compilation found, compiling dataform project...');
+    const backend = isRemoteMode() ? "API" : "CLI";
     vscode.window.showWarningMessage(
-        "Compiling Dataform project, this may take a moment..."
+        `Compiling Dataform project (${backend}), this may take a moment...`
     );
     const { dataformCompiledJson } = await runCompilation(workspaceFolder);
     return dataformCompiledJson;

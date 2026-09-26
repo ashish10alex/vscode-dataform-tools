@@ -597,6 +597,7 @@ export interface WebviewMessage {
   workflowInvocationUrlGCP?: string;
   errorWorkflowInvocation?: string;
   recompiling?: boolean;
+  compilationBackend?: "cli" | "api";
   dryRunning?: boolean;
   modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
   declarations?: Declarations[] | null;

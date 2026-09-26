@@ -24,6 +24,7 @@ const REMOTE_COMPILE_CANCELLED = "Remote compilation cancelled";
 
 let extensionContext: vscode.ExtensionContext | undefined;
 let inFlightCompile: Promise<RemoteCompileOutcome> | undefined;
+let inFlightCompileSha: string | undefined;
 let onRemoteCompileCompleted: (() => Promise<void> | void) | undefined;
 
 /** Called after an explicit remote compile so open views can redraw from the new result. */
@@ -259,10 +260,7 @@ function outcomeFromEntry(entry: RemoteCompileEntry): RemoteCompileOutcome {
     return { dataformCompiledJson: entry.compiledJson, errors: undefined, compilationTimeMs: undefined };
 }
 
-async function describeStaleness(git: GitService, entry: RemoteCompileEntry, staleCache: boolean): Promise<string | undefined> {
-    if (staleCache) {
-        return "The upstream branch has moved on since this compilation. Compile remotely to refresh.";
-    }
+async function describeStaleness(git: GitService, entry: RemoteCompileEntry): Promise<string | undefined> {
     const headSha = await git.getHeadSha();
     if (headSha && headSha !== entry.sha) {
         return "Local HEAD differs from the compiled commit.";
@@ -273,8 +271,8 @@ async function describeStaleness(git: GitService, entry: RemoteCompileEntry, sta
     return undefined;
 }
 
-async function reportEntry(git: GitService, entry: RemoteCompileEntry, staleCache: boolean, durationMs?: number) {
-    const reason = await describeStaleness(git, entry, staleCache);
+async function reportEntry(git: GitService, entry: RemoteCompileEntry, durationMs?: number) {
+    const reason = await describeStaleness(git, entry);
     const hasErrors = (entry.compiledJson.graphErrors?.compilationErrors?.length ?? 0) > 0;
     updateRemoteModeStatusBar({ state: "compiled", sha: entry.sha, stale: !!reason, reason, hasErrors });
     setCompilationInfo({
@@ -370,7 +368,7 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
                 };
                 await saveRemoteCompile(entry);
                 const compilationTimeMs = performance.now() - startTime;
-                await reportEntry(git, entry, false, compilationTimeMs);
+                await reportEntry(git, entry, compilationTimeMs);
                 logger.info(`Remote compilation of ${branch} @ ${entry.sha} returned ${actions.length} actions`);
 
                 return { ...outcomeFromEntry(entry), compilationTimeMs };
@@ -383,21 +381,27 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
 }
 
 /**
- * Compiled JSON for the current branch in remote mode. Served from the cache when a result exists
- * (flagged stale in the status bar if it was not compiled from the current upstream commit); only
- * compiles remotely when nothing has been compiled yet for this repository.
+ * Compiled JSON for the current branch in remote mode. Served from the cache when the upstream commit
+ * has already been compiled; otherwise (e.g. after checking out another branch) compiles it remotely.
  */
 export async function getRemoteCompiledJson(workspaceFolder: string): Promise<RemoteCompileOutcome> {
     const { git, repositoryName } = await getGitInfo();
     const upstreamSha = await git.getUpstreamSha();
-    const cached = await getRemoteCompile(repositoryName, upstreamSha, configKey());
+    const cached = upstreamSha ? await getRemoteCompile(repositoryName, upstreamSha, configKey()) : undefined;
     if (cached) {
-        await reportEntry(git, cached.entry, cached.stale);
-        return outcomeFromEntry(cached.entry);
+        await reportEntry(git, cached);
+        return outcomeFromEntry(cached);
     }
 
-    if (!inFlightCompile) {
-        inFlightCompile = compileRemotely(workspaceFolder, false).finally(() => { inFlightCompile = undefined; });
+    // A compile of another commit (e.g. started before a branch switch) must not be reused
+    if (!inFlightCompile || inFlightCompileSha !== upstreamSha) {
+        const compile = compileRemotely(workspaceFolder, false).finally(() => {
+            if (inFlightCompile === compile) {
+                inFlightCompile = undefined;
+            }
+        });
+        inFlightCompile = compile;
+        inFlightCompileSha = upstreamSha;
     }
     return inFlightCompile;
 }

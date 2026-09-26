@@ -60,6 +60,7 @@ export interface WebviewState {
   errorWorkflowInvocation?: string;
   apiUrlLoading?: boolean;
   recompiling?: boolean;
+  compilationBackend?: "cli" | "api";
   dryRunning?: boolean;
   compilationTimeMs?: number;
   compilationInfo?: CompilationInfo;

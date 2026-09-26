@@ -72,47 +72,16 @@ async function readEntry(uri: vscode.Uri): Promise<RemoteCompileEntry | undefine
     }
 }
 
-/**
- * Returns the result compiled for `sha`, or else the most recent result for the repository.
- * `stale` is true when the returned result was not compiled from `sha`.
- */
-export async function getRemoteCompile(repositoryName: string, sha: string | undefined, configKey: string): Promise<{ entry: RemoteCompileEntry, stale: boolean } | undefined> {
-    if (latestEntry && latestEntry.repositoryName === repositoryName && latestEntry.configKey === configKey) {
-        if (!sha || latestEntry.sha === sha) {
-            return { entry: latestEntry, stale: !sha };
-        }
+/** The result compiled from `sha` with the given config, if there is one. */
+export async function getRemoteCompile(repositoryName: string, sha: string, configKey: string): Promise<RemoteCompileEntry | undefined> {
+    if (latestEntry && latestEntry.repositoryName === repositoryName && latestEntry.configKey === configKey && latestEntry.sha === sha) {
+        return latestEntry;
     }
-
-    const dir = repoDir(repositoryName);
-    if (sha) {
-        const exact = await readEntry(vscode.Uri.joinPath(dir, entryFileName(sha, configKey)));
-        if (exact) {
-            latestEntry = exact;
-            return { entry: exact, stale: false };
-        }
+    const exact = await readEntry(vscode.Uri.joinPath(repoDir(repositoryName), entryFileName(sha, configKey)));
+    if (exact) {
+        latestEntry = exact;
     }
-
-    if (latestEntry && latestEntry.repositoryName === repositoryName) {
-        return { entry: latestEntry, stale: true };
-    }
-
-    try {
-        const files = (await vscode.workspace.fs.readDirectory(dir)).filter(([name]) => name.endsWith(".json"));
-        let newest: RemoteCompileEntry | undefined;
-        for (const [name] of files) {
-            const entry = await readEntry(vscode.Uri.joinPath(dir, name));
-            if (entry && (!newest || entry.compiledAt > newest.compiledAt)) {
-                newest = entry;
-            }
-        }
-        if (newest) {
-            latestEntry = newest;
-            return { entry: newest, stale: true };
-        }
-    } catch {
-        // No cache directory yet
-    }
-    return undefined;
+    return exact;
 }
 
 export function getLatestRemoteCompile(): RemoteCompileEntry | undefined {

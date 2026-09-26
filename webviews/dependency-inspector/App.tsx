@@ -123,6 +123,7 @@ export default function App() {
     const [depth, setDepth] = useState(3);
     const [initError, setInitError] = useState<string | null>(null);
     const [compiling, setCompiling] = useState(false);
+    const [compilingBackend, setCompilingBackend] = useState<"cli" | "api">("cli");
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<'table' | 'graph'>('table');
     const [filtersRestored, setFiltersRestored] = useState(false);
@@ -234,6 +235,9 @@ export default function App() {
             switch (msg.type) {
                 case 'compiling':
                     setCompiling(msg.value === true);
+                    if (msg.backend) {
+                        setCompilingBackend(msg.backend);
+                    }
                     break;
 
                 case 'models': {
@@ -791,7 +795,7 @@ export default function App() {
             {compiling && (
                 <div className="flex items-center gap-2 text-sm text-[var(--vscode-descriptionForeground)] animate-pulse">
                     <span>⏳</span>
-                    <span>Compiling Dataform project…</span>
+                    <span>Compiling Dataform project ({compilingBackend === "api" ? "API" : "CLI"})…</span>
                 </div>
             )}
 

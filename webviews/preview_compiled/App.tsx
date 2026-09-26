@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, MessageSquareWarning, Info, Settings, Clock } from 'lucide-react';
+import { Loader2, MessageSquareWarning, Info, Settings, Clock, Terminal, Cloud } from 'lucide-react';
 import clsx from 'clsx';
 import { vscode } from './utils/vscode';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
@@ -300,27 +300,43 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
-        {state.recompiling && (
+        {state.recompiling && (() => {
+          const backend = state.compilationBackend || state.compilationInfo?.backend || 'cli';
+          const isApi = backend === 'api';
+          const backendLabel = isApi ? 'API' : 'CLI';
+          return (
             <div className="mb-4">
-                <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
-                    <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
-                    <span>{state.dataformCoreVersion ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...` : `Compiling Dataform...`}</span>
+              <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
+                <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
+                <span>
+                  {state.dataformCoreVersion
+                    ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...`
+                    : `Compiling Dataform...`}
+                </span>
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono rounded bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border border-[var(--vscode-widget-border)]"
+                  title={isApi ? "Compiling remotely with the Dataform API" : "Compiling locally with the Dataform CLI"}
+                >
+                  {isApi ? <Cloud className="w-3.5 h-3.5" /> : <Terminal className="w-3.5 h-3.5" />}
+                  {backendLabel}
+                </span>
+              </div>
+              {state.dataformCoreVersion && (
+                <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
+                  <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
+                    <Info className="w-4 h-4" />
+                    Note
+                  </h4>
+                  <div className="text-[13px] text-[var(--vscode-foreground)] opacity-90 leading-relaxed pr-2">
+                    <p className="m-0">
+                      When specifying <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">dataformCoreVersion</code> in <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>, and installs dataform core by running <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">npm install</code>. This requires a network call and might take time. To avoid this, create a local <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>.
+                    </p>
+                  </div>
                 </div>
-                {state.dataformCoreVersion && (
-                    <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
-                        <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
-                            <Info className="w-4 h-4" />
-                            Note
-                        </h4>
-                        <div className="text-[13px] text-[var(--vscode-foreground)] opacity-90 leading-relaxed pr-2">
-                            <p className="m-0">
-                                When specifying <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">dataformCoreVersion</code> in <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>, and installs dataform core by running <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">npm install</code>. This requires a network call and might take time. To avoid this, create a local <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>.
-                            </p>
-                        </div>
-                    </div>
-                )}
+              )}
             </div>
-        )}
+          );
+        })()}
 
         {state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && !state.compilationErrors && (
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />

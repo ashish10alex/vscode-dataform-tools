@@ -17,6 +17,12 @@ export const useVSCodeMessage = () => {
         const nextState = {
           ...prevState,
           ...message,
+          compilationBackend:
+            message.compilationBackend ??
+            message.compilationInfo?.backend ??
+            prevState.compilationBackend ??
+            prevState.compilationInfo?.backend ??
+            "cli",
           // Unless the host explicitly says recompiling/dryRunning: true, clear it
           recompiling:
             typeof message.recompiling === "boolean"

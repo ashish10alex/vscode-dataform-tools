@@ -173,6 +173,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 }
                 CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
                     "recompiling": true,
+                    "compilationBackend": isRemoteMode() ? "api" : "cli",
                     "dataformCoreVersion": dataformCoreVersion,
                     "relativeFilePath": getRelativePath(document.fileName),
                 });
@@ -844,7 +845,7 @@ export class CompiledQueryPanel {
 
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion });
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
             } else {
                 await webview.postMessage({
                     "missingExecutables": missingExecutables,
@@ -862,13 +863,14 @@ export class CompiledQueryPanel {
         }
 
         if(this.webviewPanel.webview.html === ""){
-            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion });
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
         }
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
             await webview.postMessage({
                 "recompiling": true,
+                "compilationBackend": isRemoteMode() ? "api" : "cli",
                 "compilerOptions": compilerOptions,
                 "dataformCoreVersion": dataformCoreVersion,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
@@ -1472,6 +1474,9 @@ export class CompiledQueryPanel {
     private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
         if (initialState.snoozeEndTime === undefined) {
             initialState.snoozeEndTime = snoozeManager.getSnoozeEndTime();
+        }
+        if (initialState.compilationBackend === undefined) {
+            initialState.compilationBackend = isRemoteMode() ? "api" : "cli";
         }
         if (initialState.compilationInfo === undefined) {
             initialState.compilationInfo = getCompilationInfo();
