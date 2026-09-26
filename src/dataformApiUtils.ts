@@ -44,16 +44,46 @@ export async function sendWorkflowInvocationNotification(
         await context.workspaceState.update('dataform_workflow_urls', storedUrls);
         vscode.commands.executeCommand('vscode-dataform-tools.refreshWorkflowUrls');
     }
-    vscode.window.showInformationMessage(
-        `Workflow invocation created`,
-        'View workflow execution'
-    ).then(selection => {
+    const canCancel = !!(context && workflowInvocationId && projectId && location && repositoryName);
+    const actions = canCancel ? ['View workflow execution', 'Cancel workflow'] : ['View workflow execution'];
+    vscode.window.showInformationMessage(`Workflow invocation created`, ...actions).then(selection => {
         if (selection === 'View workflow execution') {
             if(url){
                 vscode.env.openExternal(vscode.Uri.parse(url));
             }
+        } else if (selection === 'Cancel workflow' && context && workflowInvocationId) {
+            cancelWorkflowInvocation(context, workflowInvocationId);
         }
     });
+}
+
+/**
+ * Asks Dataform to cancel a workflow invocation recorded in the execution history and marks it
+ * CANCELING there; the next status refresh picks up the final CANCELLED state.
+ */
+export async function cancelWorkflowInvocation(context: vscode.ExtensionContext, workflowInvocationId: string) {
+    const storedUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+    const entry = storedUrls.find((item) => item.workflowInvocationId === workflowInvocationId);
+    if (!entry?.projectId || !entry.location || !entry.repositoryName) {
+        vscode.window.showErrorMessage(`Unable to cancel workflow invocation ${workflowInvocationId}: it is missing from the execution history`);
+        return;
+    }
+    try {
+        const dataformClient = new DataformTools(entry.projectId, entry.location);
+        // NOTE: calls the underlying client until a release of @ashishalex/dataform-tools with cancelWorkflowInvocation is used
+        await dataformClient.client.cancelWorkflowInvocation({
+            name: `projects/${entry.projectId}/locations/${entry.location}/repositories/${entry.repositoryName}/workflowInvocations/${workflowInvocationId}`
+        });
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Unable to cancel workflow invocation: ${error.message}`);
+        return;
+    }
+    const latestUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+    await context.workspaceState.update('dataform_workflow_urls', latestUrls.map((item) =>
+        item.workflowInvocationId === workflowInvocationId ? { ...item, state: 'CANCELING' } : item
+    ));
+    vscode.commands.executeCommand('vscode-dataform-tools.refreshWorkflowUrls');
+    vscode.window.showInformationMessage(`Cancellation requested for workflow invocation ${workflowInvocationId}`);
 }
 
 async function resetWorkspaceChangesFollowedByGitPull(dataformClient: DataformTools, gitClient: GitService, repositoryName:string, workspaceName:string, remoteGitRepoExsists:boolean, gitCommitsBehind:number){

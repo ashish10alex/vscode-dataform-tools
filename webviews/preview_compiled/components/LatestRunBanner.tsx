@@ -5,6 +5,7 @@ import { WebviewState, ActionCounts, WorkflowAction } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { DataTable } from '../../components/ui/data-table';
+import { CancelWorkflowButton } from './CancelWorkflowButton';
 
 interface LatestRunBannerProps {
     state: WebviewState;
@@ -134,9 +135,11 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 {!isTerminal && (
                     <span className="text-[var(--vscode-descriptionForeground)]">· {elapsedSec}s elapsed</span>
                 )}
+                <span className="ml-auto" />
+                <CancelWorkflowButton entry={latest} />
                 <button
                     onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
-                    className="ml-auto text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                    className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
                     title="Open in GCP"
                     aria-label="Open in GCP"
                 >

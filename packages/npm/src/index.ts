@@ -275,6 +275,26 @@ export class DataformTools {
     }
 
     /**
+     * Requests cancellation of a running workflow invocation. Actions already running are cancelled and pending ones are skipped.
+     * @param repositoryName - Name of the Dataform repository
+     * @param workflowInvocationId - ID of the workflow invocation
+     * @returns A promise that resolves once the cancellation has been requested. The invocation moves to `CANCELING` and then `CANCELLED`.
+     */
+    async cancelWorkflowInvocation(repositoryName:string, workflowInvocationId:string) {
+        if (!repositoryName) {
+            throw new Error("repositoryName must be provided.");
+        }else if (!workflowInvocationId){
+            throw new Error("workflowInvocationId must be provided.");
+        }
+
+        const workflowInvocationPath = `projects/${this.gcpProjectId}/locations/${this.gcpLocation}/repositories/${repositoryName}/workflowInvocations/${workflowInvocationId}`;
+        const [response] = await this.client.cancelWorkflowInvocation({
+            name: workflowInvocationPath
+        });
+        return response;
+    }
+
+    /**
      * Lists workflow invocations within a specific repository.
      * @param repositoryName - Name of the Dataform repository
      * @param options - Optional parameters for the request like pageSize, pageToken, orderBy. See {@link https://docs.cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.ilistworkflowinvocationsrequest|IListWorkflowInvocationsRequest}

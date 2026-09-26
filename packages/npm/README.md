@@ -205,6 +205,15 @@ const workflowInvocation = await client.getWorkflowInvocation("repository-name",
 console.log(workflowInvocation)
 ```
 
+### Cancel workflow invocation
+
+```js
+import {DataformTools} from "@ashishalex/dataform-tools"
+
+const client = new DataformTools("your-gcp-project-id", "europe-west2")
+await client.cancelWorkflowInvocation("repository-name", "workflow-invocation-id")
+```
+
 ### List Workflow Invocations
 
 ```js

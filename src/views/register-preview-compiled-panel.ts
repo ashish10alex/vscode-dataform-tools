@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import { debounce } from "../debounce";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { parseCompilationStack } from "../parseCompilationStack";
+import { cancelWorkflowInvocation } from "../dataformApiUtils";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
 import {
     PROPERTY_GRAPHS_MIN_CORE_VERSION,
@@ -687,6 +688,11 @@ export class CompiledQueryPanel {
                 this.centerPanel?.webviewPanel.webview.postMessage({
                     workflowUrls: []
                 });
+                return;
+              case 'cancelWorkflowInvocation':
+                if (message.value?.workflowInvocationId && this.centerPanel) {
+                    await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.value.workflowInvocationId);
+                }
                 return;
               case 'runFilesTagsWtOptionsApi':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
