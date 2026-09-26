@@ -37,7 +37,7 @@ jobs:
       pypi_released: "${{ contains(github.event.head_commit.message, 'chore(main): release pypi-package') }}"
       dataform_graph_cli_released: "${{ contains(github.event.head_commit.message, 'chore(main): release dataform-graph-cli') }}"
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           config-file: release-please-config.json
@@ -56,10 +56,10 @@ jobs:
       run:
         working-directory: packages/npm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -87,10 +87,10 @@ jobs:
       run:
         working-directory: packages/pypi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -114,10 +114,10 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
