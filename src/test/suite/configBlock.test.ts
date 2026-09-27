@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
+import * as os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
@@ -216,6 +217,24 @@ suite('configBlock.providers', () => {
         assert.ok(fix?.edit, 'expected the rename quick fix');
         await vscode.workspace.applyEdit(fix.edit);
         assert.strictEqual(document.getText(), 'config {\n  type: "table",\n  partitionBy: "DATE(ts)"\n}\nSELECT 1');
+    });
+
+    test('skips key checks in Dataform 2.x projects', async () => {
+        const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dataform-v2-'));
+        try {
+            fs.writeFileSync(path.join(projectDir, 'dataform.json'), '{}');
+            fs.mkdirSync(path.join(projectDir, 'definitions'));
+            const file = path.join(projectDir, 'definitions', 'model.sqlx');
+            fs.writeFileSync(file, 'config {\n  type: "view",\n  uniqueKey: ["id"],\n  disabled: "no"\n}\nSELECT 1');
+
+            const document = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
+            // Opening a .sqlx file also activates the extension itself, so each diagnostic can be
+            // reported twice (once per registration); compare the distinct codes.
+            const diagnostics = await waitForConfigDiagnostics(document.uri);
+            assert.deepStrictEqual([...new Set(diagnostics.map(d => d.code))], ['wrong-value-kind']);
+        } finally {
+            fs.rmSync(projectDir, { recursive: true, force: true });
+        }
     });
 
     test('completes keys for the action type and enum values', async () => {

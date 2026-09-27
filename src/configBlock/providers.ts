@@ -40,13 +40,17 @@ export function isOnConfigKey(document: vscode.TextDocument, position: vscode.Po
 // ---------------------------------------------------------------------------------------------------
 // Dataform version
 
-/** Project roots mapped to whether they use Dataform core 2.x. */
+/**
+ * Directories of open `.sqlx` files mapped to whether their project uses Dataform core 2.x.
+ * Cached so the file system is only walked once per directory, not on every diagnostics refresh.
+ */
 const legacyProjectCache = new Map<string, Promise<boolean>>();
 
-function findProjectRoot(filePath: string): string | undefined {
-    let dir = path.dirname(filePath);
+const pathExists = (filePath: string) => fs.promises.access(filePath).then(() => true, () => false);
+
+async function findProjectRoot(dir: string): Promise<string | undefined> {
     while (true) {
-        if (fs.existsSync(path.join(dir, 'workflow_settings.yaml')) || fs.existsSync(path.join(dir, 'dataform.json'))) {
+        if (await pathExists(path.join(dir, 'workflow_settings.yaml')) || await pathExists(path.join(dir, 'dataform.json'))) {
             return dir;
         }
         const parent = path.dirname(dir);
@@ -57,23 +61,29 @@ function findProjectRoot(filePath: string): string | undefined {
     }
 }
 
+async function detectDataformV2Project(dir: string): Promise<boolean> {
+    const root = await findProjectRoot(dir);
+    if (!root) {
+        return false;
+    }
+    const version = await readDataformCoreVersion(root).catch(() => undefined);
+    if (version) {
+        return Number.parseInt(version, 10) < 3;
+    }
+    // 2.x projects are configured with dataform.json instead of workflow_settings.yaml.
+    return !(await pathExists(path.join(root, 'workflow_settings.yaml')));
+}
+
 /** Dataform 2.x accepts a different set of config keys than the bundled 3.x schema. */
 function isDataformV2Project(document: vscode.TextDocument): Promise<boolean> {
-    const root = document.uri.scheme === 'file' ? findProjectRoot(document.uri.fsPath) : undefined;
-    if (!root) {
+    if (document.uri.scheme !== 'file') {
         return Promise.resolve(false);
     }
-    let result = legacyProjectCache.get(root);
+    const dir = path.dirname(document.uri.fsPath);
+    let result = legacyProjectCache.get(dir);
     if (!result) {
-        result = (async () => {
-            const version = await readDataformCoreVersion(root).catch(() => undefined);
-            if (version) {
-                return Number.parseInt(version, 10) < 3;
-            }
-            // 2.x projects are configured with dataform.json instead of workflow_settings.yaml.
-            return !fs.existsSync(path.join(root, 'workflow_settings.yaml'));
-        })();
-        legacyProjectCache.set(root, result);
+        result = detectDataformV2Project(dir);
+        legacyProjectCache.set(dir, result);
     }
     return result;
 }
