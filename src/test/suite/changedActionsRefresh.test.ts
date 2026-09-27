@@ -23,12 +23,12 @@ suite('gitHeadWatcher.headKey', () => {
 
 suite('changedActions.noChangesMessage', () => {
     test('explains that the default branch has nothing to compare against itself', () => {
-        const message = noChangesMessage({ baseRef: 'origin/main', onDefaultBranch: true });
+        const message = noChangesMessage({ baseRef: 'origin/main', defaultBranch: 'main', onDefaultBranch: true });
         assert.ok(message.startsWith("You're on main, the branch Run Changed compares against"));
     });
 
     test('names the base on a feature branch', () => {
-        assert.strictEqual(noChangesMessage({ baseRef: 'origin/main', onDefaultBranch: false }), 'No changed actions vs origin/main');
+        assert.strictEqual(noChangesMessage({ baseRef: 'origin/main', defaultBranch: 'main', onDefaultBranch: false }), 'No changed actions vs origin/main');
     });
 });
 

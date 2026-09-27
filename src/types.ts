@@ -729,6 +729,8 @@ export interface ChangedActionsView {
     mergeBaseSha?: string;
     /** What the base was compared with: the working tree, or the pushed commit in remote mode */
     headLabel?: string;
+    /** The `defaultBranch` setting, e.g. `main` */
+    defaultBranch?: string;
     /** The checked-out branch is the one being compared against, so only local edits can show up */
     onDefaultBranch?: boolean;
     changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config')[] }[];

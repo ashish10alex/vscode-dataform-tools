@@ -49,8 +49,9 @@ export async function isGitRepo(workspaceFolder: string): Promise<boolean> {
     }
 }
 
-function getDefaultBranch(): string {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('defaultBranch')?.trim() || 'main';
+/** Read for the Dataform folder, so a folder-level setting applies in multi-root workspaces. */
+function getDefaultBranch(workspaceFolder: string): string {
+    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).get<string>('defaultBranch')?.trim() || 'main';
 }
 
 /** `origin/<branch>` when it exists, else the local branch. Does not fetch. */
@@ -71,6 +72,8 @@ interface ChangeBase {
     mergeBaseSha: string;
     headLabel: string;
     remote: boolean;
+    /** The `defaultBranch` setting, e.g. `main` */
+    defaultBranch: string;
     /** True when the checked-out branch is the one being compared against */
     onDefaultBranch: boolean;
 }
@@ -81,7 +84,7 @@ interface ChangeBase {
  */
 async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
     const remote = isRemoteMode();
-    const defaultBranch = getDefaultBranch();
+    const defaultBranch = getDefaultBranch(workspaceFolder);
     const baseRef = await resolveBaseRef(workspaceFolder, defaultBranch);
     // A detached HEAD reports "HEAD", so it counts as a feature branch
     const onDefaultBranch = (await git(workspaceFolder, ['rev-parse', '--abbrev-ref', 'HEAD'])) === defaultBranch;
@@ -96,7 +99,7 @@ async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
         headLabel = `pushed commit ${head.slice(0, 7)}`;
     }
     const mergeBaseSha = await git(workspaceFolder, ['merge-base', baseRef, head]);
-    return { baseRef, mergeBaseSha, headLabel, remote, onDefaultBranch };
+    return { baseRef, mergeBaseSha, headLabel, remote, defaultBranch, onDefaultBranch };
 }
 
 function shortHash(value: string): string {
@@ -223,6 +226,7 @@ export interface ChangedActionsResult extends CompiledGraphDiff {
     baseRef: string;
     mergeBaseSha: string;
     headLabel: string;
+    defaultBranch: string;
     onDefaultBranch: boolean;
 }
 
@@ -233,7 +237,7 @@ export async function computeChangedActions(workspaceFolder: string, head: Dataf
     if (!baseGraph) {
         return undefined;
     }
-    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, onDefaultBranch: base.onDefaultBranch, ...diffCompiledGraphs(baseGraph, head) };
+    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diffCompiledGraphs(baseGraph, head) };
 }
 
 export function toChangedActionsView(result: ChangedActionsResult): ChangedActionsView {
@@ -243,6 +247,7 @@ export function toChangedActionsView(result: ChangedActionsResult): ChangedActio
         baseRef: result.baseRef,
         mergeBaseSha: result.mergeBaseSha,
         headLabel: result.headLabel,
+        defaultBranch: result.defaultBranch,
         onDefaultBranch: result.onDefaultBranch,
         changed: result.changed.map(strip),
         deleted: result.deleted,
@@ -271,9 +276,9 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
 }
 
 /** Explains an empty result; on the default branch itself there is nothing to compare unless files were edited. */
-export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 'onDefaultBranch'>): string {
+export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 'defaultBranch' | 'onDefaultBranch'>): string {
     return result.onDefaultBranch
-        ? `You're on ${getDefaultBranch()}, the branch Run Changed compares against, so there is nothing to compare. Switch to a feature branch, or edit files.`
+        ? `You're on ${result.defaultBranch}, the branch Run Changed compares against, so there is nothing to compare. Switch to a feature branch, or edit files.`
         : `No changed actions vs ${result.baseRef}`;
 }
 

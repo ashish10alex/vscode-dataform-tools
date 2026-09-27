@@ -30,7 +30,8 @@ function splitTarget(target: string): { dataset: string; name: string } {
 }
 
 /** File name first, since the folder (without the common `definitions/`) is only context. */
-function splitFile(fileName: string): { base: string; dir: string } {
+function splitFile(rawFileName: string): { base: string; dir: string } {
+  const fileName = rawFileName.replace(/\\/g, "/");
   const slash = fileName.lastIndexOf("/");
   const dir = slash >= 0 ? fileName.slice(0, slash).replace(/^definitions\/?/, "") : "";
   return { base: slash >= 0 ? fileName.slice(slash + 1) : fileName, dir };
@@ -129,7 +130,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const baseRef = changedActions.baseRef ?? "default branch";
   const noChanges = status === "ready" && changed.length === 0;
   const onDefaultBranch = status === "ready" && !!changedActions.onDefaultBranch;
-  const defaultBranch = baseRef.replace(/^origin\//, "");
+  const defaultBranch = changedActions.defaultBranch ?? baseRef.replace(/^origin\//, "");
   const flags = [
     includeDependencies && "+dependencies",
     includeDependents && "+dependents",
