@@ -99,6 +99,16 @@
                 "title": "Run file(s) / tag(s) with options using API"
             },
             {
+                "command": "vscode-dataform-tools.runChangedActions",
+                "category": "Dataform",
+                "title": "Run changed actions (vs default branch)"
+            },
+            {
+                "command": "vscode-dataform-tools.runChangedActionsApi",
+                "category": "Dataform",
+                "title": "Run changed actions (vs default branch) using API"
+            },
+            {
                 "command": "vscode-dataform-tools.createNewDataformProject",
                 "category": "Dataform",
                 "title": "create new Dataform project"

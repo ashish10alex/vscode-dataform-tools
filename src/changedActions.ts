@@ -253,39 +253,35 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
     }
 }
 
-/**
- * Compiles the project, works out the changed actions and runs them. Returns the result so the caller
- * can refresh its view, or undefined when nothing ran.
- */
-export async function runChangedActions(
-    context: vscode.ExtensionContext,
-    workspaceFolder: string,
-    includeDependencies: boolean,
-    includeDependents: boolean,
-    fullRefresh: boolean,
-    executionMode: ExecutionMode,
-): Promise<ChangedActionsResult | undefined> {
+/** Compiles the project and works out the changed actions, reporting failures to the user. */
+export async function prepareChangedActions(workspaceFolder: string): Promise<ChangedActionsResult | undefined> {
     const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
     if (!dataformCompiledJson) {
         vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
         return undefined;
     }
-
-    let result: ChangedActionsResult | undefined;
     try {
-        result = await computeChangedActions(workspaceFolder, dataformCompiledJson, true);
+        return await computeChangedActions(workspaceFolder, dataformCompiledJson, true);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Could not work out changed actions: ${error.message}`);
         return undefined;
     }
-    if (!result) {
-        return undefined;
-    }
+}
+
+/** Runs the changed actions of `result`, or says there are none. */
+export async function dispatchChangedActions(
+    context: vscode.ExtensionContext,
+    workspaceFolder: string,
+    result: ChangedActionsResult,
+    includeDependencies: boolean,
+    includeDependents: boolean,
+    fullRefresh: boolean,
+    executionMode: ExecutionMode,
+): Promise<void> {
     if (result.changed.length === 0) {
         vscode.window.showInformationMessage(`No changed actions vs ${result.baseRef}`);
-        return result;
+        return;
     }
-
     const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = {
         kind: 'changed',
         items: result.changed.map((action) => action.target),
@@ -297,5 +293,23 @@ export async function runChangedActions(
         workspaceFolder,
     };
     await runIncludedTargets(context, workspaceFolder, result.changed.map((action) => action.targetObj), includeDependencies, includeDependents, fullRefresh, executionMode, lastRunRequest);
+}
+
+/**
+ * Compiles the project, works out the changed actions and runs them. Returns the result so the caller
+ * can refresh its view, or undefined when it could not be worked out.
+ */
+export async function runChangedActions(
+    context: vscode.ExtensionContext,
+    workspaceFolder: string,
+    includeDependencies: boolean,
+    includeDependents: boolean,
+    fullRefresh: boolean,
+    executionMode: ExecutionMode,
+): Promise<ChangedActionsResult | undefined> {
+    const result = await prepareChangedActions(workspaceFolder);
+    if (result) {
+        await dispatchChangedActions(context, workspaceFolder, result, includeDependencies, includeDependents, fullRefresh, executionMode);
+    }
     return result;
 }
