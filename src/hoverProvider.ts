@@ -18,6 +18,7 @@ import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
 import { maxHoverSchemaRows, sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
+import { isOnConfigKey } from "./configBlock/providers";
 
 async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string, columns?: Column[]): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
@@ -531,113 +532,64 @@ export class DataformHoverProvider implements vscode.HoverProvider {
   }
 }
 
-export class DataformConfigProvider implements vscode.HoverProvider {
+export class DataformColumnHoverProvider implements vscode.HoverProvider {
   async provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
   ) {
-    // TODO: Add more hover documentation for config block here
-    const line = document.lineAt(position.line).text;
-    if (line.includes("nonNull:")) {
-      return new vscode.Hover(new vscode.MarkdownString(`#### assertion: ( nonNull )
+    // Config keys get their docs from the config block hover in src/configBlock/providers.ts
+    if (isOnConfigKey(document, position)) {
+      return null;
+    }
+    const range = document.getWordRangeAtPosition(position);
+    if (!range) {
+        return null;
+    }
+    const word = document.getText(range);
 
-    This condition asserts that the specified columns are not null across all table rows
-    The following code sample shows a nonNull assertion in the config block of a table:
+    if(sqlKeywordsToExcludeFromHoverDefinition.includes(word.toLowerCase())){
+      return null;
+    }
 
-      config {
-      type: "table",
-      assertions: {
-        nonNull: ["user_id", "customer_id", "email"]
-        }
-      }
-      SELECT ...
-        `));
-    } else if (line.includes("rowConditions:")){
-      return new vscode.Hover(new vscode.MarkdownString(`#### assertion: ( rowConditions )
-
-      This condition asserts that all table rows follow the custom logic you define.
-      Each row condition is a custom SQL expression, and each table row is evaluated against each row condition. The assertion fails if any table row results in false.
-
-      config {
-        type: "incremental",
-        assertions: {
-          rowConditions: [
-            'signup_date is null or signup_date > "2022-08-01"',
-            'email like "%@%.%"'
-          ]
-        }
-      }
-      SELECT ...
-        `));
-
-    } else if (line.includes("uniqueKey:")){
-      return new vscode.Hover(new vscode.MarkdownString(`#### assertion: ( uniqueKey )
-
-      This condition asserts that, in a specified column, no table rows have the same value.
-      The following code sample shows a uniqueKey assertion in the config block of a view:
-
-      config {
-        type: "view",
-        assertions: {
-          uniqueKey: ["user_id"]
-        }
-      }
-      SELECT ...
-        `));
-
-    } else if (line.includes("assertions:")){
-      return new vscode.Hover(new vscode.MarkdownString(`#### [Dataform assertion documentation](https://cloud.google.com/dataform/docs/assertions)`));
-    } else {
-        const range = document.getWordRangeAtPosition(position);
-        if (!range) {
-            return null;
-        }
-        const word = document.getText(range);
-
-        if(sqlKeywordsToExcludeFromHoverDefinition.includes(word.toLowerCase())){
-          return null;
-        }
-
-        if(columnHoverDescription){
-          const matchingColumns = columnHoverDescription.fields.filter(
-            (item: ColumnMetadata) => item.name.toLowerCase() === word.toLowerCase()
-          );
-          
-          if(matchingColumns.length > 0){
-            // Collect unique descriptions (non-empty) and types
-            const uniqueDescriptions = new Set<string>();
-            const types = new Set<string>();
-            
-            matchingColumns.forEach((column: ColumnMetadata) => {
-              if(column.description && column.description.trim() !== ""){
-                uniqueDescriptions.add(column.description.trim());
-              }
-              if(column.type){
-                types.add(column.type);
-              }
-            });
-            
-            // Build hover content
-            let hoverContent = "";
-            
-            // Add unique descriptions if any exist
-            if(uniqueDescriptions.size > 0){
-              Array.from(uniqueDescriptions).forEach((description) => {
-                hoverContent += `${description}\n\n`;
-              });
-            }
-            
-            // Add type information
-            if(types.size > 0){
-              const typeList = Array.from(types).join(", ");
-              hoverContent += `type: [${typeList}]\n\n`;
-            }
-            
-            if(hoverContent.trim() !== ""){
-              return new vscode.Hover(new vscode.MarkdownString(hoverContent.trim()));
-            }
+    if(columnHoverDescription){
+      const matchingColumns = columnHoverDescription.fields.filter(
+        (item: ColumnMetadata) => item.name.toLowerCase() === word.toLowerCase()
+      );
+      
+      if(matchingColumns.length > 0){
+        // Collect unique descriptions (non-empty) and types
+        const uniqueDescriptions = new Set<string>();
+        const types = new Set<string>();
+        
+        matchingColumns.forEach((column: ColumnMetadata) => {
+          if(column.description && column.description.trim() !== ""){
+            uniqueDescriptions.add(column.description.trim());
           }
+          if(column.type){
+            types.add(column.type);
+          }
+        });
+        
+        // Build hover content
+        let hoverContent = "";
+        
+        // Add unique descriptions if any exist
+        if(uniqueDescriptions.size > 0){
+          Array.from(uniqueDescriptions).forEach((description) => {
+            hoverContent += `${description}\n\n`;
+          });
         }
+        
+        // Add type information
+        if(types.size > 0){
+          const typeList = Array.from(types).join(", ");
+          hoverContent += `type: [${typeList}]\n\n`;
+        }
+        
+        if(hoverContent.trim() !== ""){
+          return new vscode.Hover(new vscode.MarkdownString(hoverContent.trim()));
+        }
+      }
     }
 
     return undefined;

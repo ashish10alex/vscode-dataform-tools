@@ -366,6 +366,11 @@
                     "default": true,
                     "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
                 },
+                "vscode-dataform-tools.configBlockDiagnostics": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Show warnings in `.sqlx` `config {}` blocks for unknown options, options that don't apply to the action `type`, and invalid values, as you type"
+                },
                 "vscode-dataform-tools.defaultDataformCompileTime": {
                     "type": "string",
                     "default": "5m",
@@ -536,6 +541,7 @@
         "esbuild-watch": "node esbuild.js --watch",
         "package": "npm run check-types && npm run build:webviews && node esbuild.js --production",
         "check-types": "tsc -p ./",
+        "generate:config-schema": "node scripts/generate-config-schema.mjs",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test": "rimraf .vscode-test/user-data && vscode-test",

@@ -7,7 +7,8 @@ import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticati
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
-import { DataformConfigProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
+import { DataformColumnHoverProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
+import { registerConfigBlockFeatures } from './configBlock/providers';
 import { defaultCdnLinks, executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
 import { executableIsAvailable } from './utils';
@@ -218,8 +219,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.languages.registerHoverProvider(
         { language: 'sqlx' },
-        new DataformConfigProvider()
+        new DataformColumnHoverProvider()
     ));
+
+    registerConfigBlockFeatures(context);
 
     context.subscriptions.push(
         vscode.languages.registerDefinitionProvider(

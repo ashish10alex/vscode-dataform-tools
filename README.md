@@ -109,6 +109,10 @@ Officially recommended [VS Code extension for Dataform](https://marketplace.visu
       <td>Apply dry run suggestions at the speed of thought</td>
     </tr>
     <tr>
+      <td>Config block IntelliSense</td>
+      <td>Completion, hover docs and as-you-type warnings with quick fixes for <code>config {}</code> options, based on the action <code>type</code>. Catches typos like <code>partitonBy</code> and options that don't apply, like <code>uniqueKey</code> on a view</td>
+    </tr>
+    <tr>
       <td><a href="#filetagruns">Run file(s)/tag(s)</a></td>
       <td>Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or <a href="https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient">Dataform API</a></td>
     </tr>
