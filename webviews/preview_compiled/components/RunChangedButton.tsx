@@ -128,6 +128,8 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const status = changedActions.status;
   const baseRef = changedActions.baseRef ?? "default branch";
   const noChanges = status === "ready" && changed.length === 0;
+  const onDefaultBranch = status === "ready" && !!changedActions.onDefaultBranch;
+  const defaultBranch = baseRef.replace(/^origin\//, "");
   const flags = [
     includeDependencies && "+dependencies",
     includeDependents && "+dependents",
@@ -163,9 +165,9 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
     <div ref={ref} className="relative">
       <button
         onClick={toggle}
-        disabled={disabled || noChanges}
+        disabled={disabled}
         className="pl-3 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
-        title={noChanges ? `No changes vs ${baseRef}` : `Run only the actions changed vs ${baseRef}`}
+        title={noChanges ? `No changes vs ${baseRef}. Click to recheck` : `Run only the actions changed vs ${baseRef}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -187,6 +189,11 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
         >
           <div className="flex items-start justify-between gap-2 mb-2">
             <p className="text-xs text-[var(--vscode-descriptionForeground)]">
+              {onDefaultBranch && (
+                <span className="block mb-0.5 text-[var(--vscode-foreground)]">
+                  You're on <span className="font-mono">{defaultBranch}</span>, the branch Run Changed compares against.
+                </span>
+              )}
               {status === "ready" ? (
                 <>
                   Compared with <span className="font-mono">{baseRef}</span>
@@ -253,8 +260,12 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /> {changedActions.error}
               </div>
             )}
-            {status === "ready" && changed.length === 0 && (
-              <p className="py-2 text-[var(--vscode-descriptionForeground)]">No changed actions.</p>
+            {noChanges && (
+              <p className="py-2 text-[var(--vscode-descriptionForeground)]">
+                {onDefaultBranch
+                  ? "Nothing to compare. Switch to a feature branch, or edit files."
+                  : "No changed actions."}
+              </p>
             )}
             {status === "ready" && changedGroups.map(([fileName, actions]) => (
               <div key={fileName} className="py-1.5 border-t first:border-t-0 border-[var(--vscode-widget-border)]">

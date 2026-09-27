@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ExecutionMode } from './types';
 import { getWorkspaceFolder } from './utils';
 import { resolveExecutionMode } from './utils/remoteCompiler';
-import { ChangedActionsResult, dispatchChangedActions, prepareChangedActions } from './changedActions';
+import { ChangedActionsResult, dispatchChangedActions, noChangesMessage, prepareChangedActions } from './changedActions';
 
 /** Keybinding args; when any is given the prompts are skipped and the changed actions run straight away. */
 export interface RunChangedActionsArgs {
@@ -73,7 +73,7 @@ export async function runChangedActionsCommand(context: vscode.ExtensionContext,
         return;
     }
     if (result.changed.length === 0) {
-        vscode.window.showInformationMessage(`No changed actions vs ${result.baseRef}`);
+        vscode.window.showInformationMessage(noChangesMessage(result));
         return;
     }
 

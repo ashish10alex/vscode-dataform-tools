@@ -71,6 +71,8 @@ interface ChangeBase {
     mergeBaseSha: string;
     headLabel: string;
     remote: boolean;
+    /** True when the checked-out branch is the one being compared against */
+    onDefaultBranch: boolean;
 }
 
 /**
@@ -79,7 +81,10 @@ interface ChangeBase {
  */
 async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
     const remote = isRemoteMode();
-    const baseRef = await resolveBaseRef(workspaceFolder, getDefaultBranch());
+    const defaultBranch = getDefaultBranch();
+    const baseRef = await resolveBaseRef(workspaceFolder, defaultBranch);
+    // A detached HEAD reports "HEAD", so it counts as a feature branch
+    const onDefaultBranch = (await git(workspaceFolder, ['rev-parse', '--abbrev-ref', 'HEAD'])) === defaultBranch;
     let head = 'HEAD';
     let headLabel = 'working tree';
     if (remote) {
@@ -91,7 +96,7 @@ async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
         headLabel = `pushed commit ${head.slice(0, 7)}`;
     }
     const mergeBaseSha = await git(workspaceFolder, ['merge-base', baseRef, head]);
-    return { baseRef, mergeBaseSha, headLabel, remote };
+    return { baseRef, mergeBaseSha, headLabel, remote, onDefaultBranch };
 }
 
 function shortHash(value: string): string {
@@ -208,6 +213,7 @@ export interface ChangedActionsResult extends CompiledGraphDiff {
     baseRef: string;
     mergeBaseSha: string;
     headLabel: string;
+    onDefaultBranch: boolean;
 }
 
 /** Undefined when the base is not cached and `allowCompile` is false. */
@@ -217,7 +223,7 @@ export async function computeChangedActions(workspaceFolder: string, head: Dataf
     if (!baseGraph) {
         return undefined;
     }
-    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, ...diffCompiledGraphs(baseGraph, head) };
+    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, onDefaultBranch: base.onDefaultBranch, ...diffCompiledGraphs(baseGraph, head) };
 }
 
 export function toChangedActionsView(result: ChangedActionsResult): ChangedActionsView {
@@ -227,6 +233,7 @@ export function toChangedActionsView(result: ChangedActionsResult): ChangedActio
         baseRef: result.baseRef,
         mergeBaseSha: result.mergeBaseSha,
         headLabel: result.headLabel,
+        onDefaultBranch: result.onDefaultBranch,
         changed: result.changed.map(strip),
         deleted: result.deleted,
     };
@@ -251,6 +258,13 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
         logger.error(`Failed to work out changed actions: ${error.message}`);
         return { status: 'error', error: error.message };
     }
+}
+
+/** Explains an empty result; on the default branch itself there is nothing to compare unless files were edited. */
+export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 'onDefaultBranch'>): string {
+    return result.onDefaultBranch
+        ? `You're on ${getDefaultBranch()}, the branch Run Changed compares against, so there is nothing to compare. Switch to a feature branch, or edit files.`
+        : `No changed actions vs ${result.baseRef}`;
 }
 
 /** Compiles the project and works out the changed actions, reporting failures to the user. */
@@ -279,7 +293,7 @@ export async function dispatchChangedActions(
     executionMode: ExecutionMode,
 ): Promise<void> {
     if (result.changed.length === 0) {
-        vscode.window.showInformationMessage(`No changed actions vs ${result.baseRef}`);
+        vscode.window.showInformationMessage(noChangesMessage(result));
         return;
     }
     const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = {

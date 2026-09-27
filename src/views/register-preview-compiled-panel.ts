@@ -35,6 +35,7 @@ import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compil
 import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
+import { watchGitHead } from '../gitHeadWatcher';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -250,6 +251,22 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     }, globalThis.DEBOUNCE_WAIT);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(debouncedSaveHandler));
+
+    // A checkout, commit or pull changes the project without saving a file, so treat it like a save.
+    watchGitHead(context, async (repositoryRoot) => {
+        const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
+        const relative = doc ? path.relative(repositoryRoot, doc.fileName) : '..';
+        if (!doc || relative.startsWith('..') || path.isAbsolute(relative)) {
+            return; // A different repository from the Dataform project being shown
+        }
+        // The count belongs to the previous branch; drop it now rather than after the recompile
+        CompiledQueryPanel.centerPanel?.postMessage({ changedActions: { status: 'idle' } });
+        if (snoozeManager.isSnoozeActive()) {
+            snoozeManager.markDirtyDuringSnooze();
+            return;
+        }
+        await triggerCompilationForDocument(doc);
+    });
 
 
 }
