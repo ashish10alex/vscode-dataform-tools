@@ -6,6 +6,11 @@ import { runCurrentFile } from './runCurrentFile';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { recordLastRun } from './lastRun';
 
+export function getRunSingleTagCommand(workspaceFolder: string, tag: string, includeDependencies: boolean, includeDependents: boolean, fullRefresh: boolean): string {
+    const defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
+    return getRunTagsWtOptsCommand(workspaceFolder, [tag], defaultDataformCompileTime, includeDependencies, includeDependents, fullRefresh);
+}
+
 export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, executionMode: ExecutionMode) {
     executionMode = resolveExecutionMode(executionMode);
     const firstStageOptions = ["run current file", "run a tag", "run multiple files", "run multiple tags", "run open sqlx files"];
@@ -100,12 +105,8 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, "cli");
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            // Records the options the user picked so a rerun uses them, even though the command below
-            // currently passes includeDependents for both flags.
             await recordLastRun({ kind: 'tags', items: [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder });
-            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-            let runTagsWtDepsCommand = getRunTagsWtOptsCommand(workspaceFolder, [tagSelection], defaultDataformCompileTime, includeDependents, includeDependents, fullRefresh);
-            runCommandInTerminal(runTagsWtDepsCommand);
+            runCommandInTerminal(getRunSingleTagCommand(workspaceFolder, tagSelection, includeDependencies, includeDependents, fullRefresh));
         } else if (firstStageSelection === "run multiple files" || firstStageSelection === "run open sqlx files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
