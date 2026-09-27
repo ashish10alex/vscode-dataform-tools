@@ -135,5 +135,6 @@ suite('lastRun.buildLastRunView', () => {
     test('shows the mode the replay will actually use', () => {
         const view = buildLastRunView(request({ executionMode: 'cli' }), true, {});
         assert.ok(view?.label.endsWith('· API'));
+        assert.strictEqual(view?.executionMode, 'api');
     });
 });

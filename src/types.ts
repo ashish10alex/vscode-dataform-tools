@@ -710,6 +710,8 @@ export interface LastRunView {
     detail: string;
     timestamp: number;
     fullRefresh: boolean;
+    /** Mode a rerun would use, which can differ from the recorded one in remote mode. */
+    executionMode: ExecutionMode;
 }
 
 export interface CachedResults {

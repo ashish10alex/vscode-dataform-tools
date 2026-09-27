@@ -731,9 +731,16 @@ export class CompiledQueryPanel {
                 }
                 return;
               }
-              case 'rerunLastExecution':
+              case 'rerunLastExecution': {
+                const previousTimestamp = getLastRun()?.timestamp;
                 await vscode.commands.executeCommand('vscode-dataform-tools.rerunLastExecution');
+                // Every runner records the run just before dispatching it, so an unchanged timestamp means
+                // the rerun was cancelled or failed its checks and the webview should stop showing progress.
+                if (getLastRun()?.timestamp === previousTimestamp) {
+                  this.centerPanel?.webviewPanel.webview.postMessage({ rerunAborted: true });
+                }
                 return;
+              }
               case 'runFilesTagsWtOptionsApi':
                 await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
                 return;

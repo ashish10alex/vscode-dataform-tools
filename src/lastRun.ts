@@ -152,6 +152,7 @@ export function buildLastRunView(request: LastRunRequest | undefined, remoteMode
     if (!request) {
         return null;
     }
-    const { label, detail } = summarizeLastRun(request, resolveReplayMode(request.executionMode, remoteMode), describeOverrides(compilerOptions));
-    return { label, detail, timestamp: request.timestamp, fullRefresh: request.fullRefresh };
+    const executionMode = resolveReplayMode(request.executionMode, remoteMode);
+    const { label, detail } = summarizeLastRun(request, executionMode, describeOverrides(compilerOptions));
+    return { label, detail, timestamp: request.timestamp, fullRefresh: request.fullRefresh, executionMode };
 }
