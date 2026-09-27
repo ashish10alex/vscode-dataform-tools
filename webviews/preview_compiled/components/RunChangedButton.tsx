@@ -184,8 +184,12 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
         <div
           ref={popoverRef}
           role="dialog"
-          style={popoverLeft === undefined ? { right: 0 } : { left: popoverLeft }}
-          className="absolute top-full mt-1 z-20 w-[min(640px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
+          style={{
+            ...(popoverLeft === undefined ? { right: 0 } : { left: popoverLeft }),
+            // widget-border is transparent or near the background in many themes, so derive a faint edge from the text colour
+            borderColor: "color-mix(in srgb, var(--vscode-foreground) 22%, transparent)",
+          }}
+          className="absolute top-full mt-1 z-20 w-[min(640px,calc(100vw-2rem))] p-3 rounded-lg border bg-[var(--vscode-editor-background)] shadow-lg"
         >
           <div className="flex items-start justify-between gap-2 mb-2">
             <p className="text-xs text-[var(--vscode-descriptionForeground)]">
