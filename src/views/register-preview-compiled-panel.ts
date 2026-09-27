@@ -259,13 +259,10 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
     public currentFileMetadata: any;
-    private lastMessageTime = 0;
-    private readonly DEBOUNCE_INTERVAL = 300; // milliseconds
     private _cachedResults?: CachedResults;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
-        // Tracked per instance: the static handler below only marks the panel `centerPanel` points to
-        webviewPanel.onDidDispose(() => { this.centerPanelDisposed = true; });
+        CompiledQueryPanel.registerListeners(this, extensionContext);
         this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
     }
 
@@ -346,31 +343,26 @@ export class CompiledQueryPanel {
             );
             CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
         }
+    }
 
-        this.centerPanel?.webviewPanel.onDidDispose(() => {
-                if(this.centerPanel){
-                    this.centerPanel.centerPanelDisposed  = true;
+    // Called once per panel from the constructor. getInstance runs on every save/recompile, so
+    // registering these there would stack a duplicate message handler on each call.
+    private static registerListeners(panel: CompiledQueryPanel, extensionContext: ExtensionContext) {
+        const disposables: vscode.Disposable[] = [];
+
+        panel.webviewPanel.onDidDispose(() => {
+                panel.centerPanelDisposed = true;
+                if(this.centerPanel === panel){
                     this.centerPanel = undefined;
                 }
+                disposables.forEach((disposable) => disposable.dispose());
             },
             null,
+            disposables,
             );
 
-        this.centerPanel?.webviewPanel.webview.onDidReceiveMessage(
+        panel.webviewPanel.webview.onDidReceiveMessage(
           async message => {
-            const now = Date.now();
-            // Schema requests are per-element, idempotent and user driven. Letting the debounce
-            // hack below swallow them would leave an expanded node stuck on its spinner.
-            const exemptFromDebounce = message.command === 'propertyGraphElementSchema';
-            if(this.centerPanel && !exemptFromDebounce){
-                if (now - this?.centerPanel?.lastMessageTime < this?.centerPanel?.DEBOUNCE_INTERVAL) {
-                    // NOTE: vscode.postMessage form webview sends in multiple messages when active editor is switched
-                    // NOTE: This is debounce hack build to avoid processing multiple messages and process only the first message
-                    return;
-                }
-                this.centerPanel.lastMessageTime = now;
-            }
-
             switch (message.command) {
               case 'startSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
@@ -919,7 +911,7 @@ export class CompiledQueryPanel {
             return;
           },
           undefined,
-          undefined,
+          disposables,
       );
 
     }
