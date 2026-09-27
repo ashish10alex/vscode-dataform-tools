@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.0...v1.13.1) (2026-09-27)
+
+
+### Features
+
+* add ui toggle to show workflow run detail in full screen ([#370](https://github.com/ashish10alex/vscode-dataform-tools/issues/370)) ([2087a2a](https://github.com/ashish10alex/vscode-dataform-tools/commit/2087a2a17b9aec68b96b8860a27f1af488f32b37))
+* IntelliSense for sqlx config blocks ([#367](https://github.com/ashish10alex/vscode-dataform-tools/issues/367)) ([3469fe1](https://github.com/ashish10alex/vscode-dataform-tools/commit/3469fe14b273a76738c3c3a4a3a21a4ef77f50b0))
+* show immediate feedback when clicking Run again in the webview ([#369](https://github.com/ashish10alex/vscode-dataform-tools/issues/369)) ([28e2035](https://github.com/ashish10alex/vscode-dataform-tools/commit/28e2035e6b6777b5d029c832447a0c6428c9c086))
+* show time taken to execute workflow action ([#368](https://github.com/ashish10alex/vscode-dataform-tools/issues/368)) ([6b9c503](https://github.com/ashish10alex/vscode-dataform-tools/commit/6b9c5039b0afbd89d655cdb00d72058cc46a7abe))
+
+
+### CI
+
+* move workflows off deprecated Node 20 actions ([5ccb7be](https://github.com/ashish10alex/vscode-dataform-tools/commit/5ccb7be4914fedb5de421b1d4ca94205872ae6f1))
+
 ## [1.13.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.12.13...v1.13.0) (2026-09-26)
 
 
