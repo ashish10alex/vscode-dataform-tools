@@ -4,8 +4,6 @@ import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
-const ACCENT_RUN = "inset 2px 0 0 var(--vscode-charts-purple)";
-
 const REASON_LABELS: Record<string, { label: string; title: string }> = {
   new: { label: "new", title: "Not in the default branch" },
   sql: { label: "SQL", title: "Compiled query, incremental query or pre/post operations differ" },
@@ -162,19 +160,18 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   };
 
   return (
-    <div ref={ref} className="relative ml-1">
+    <div ref={ref} className="relative">
       <button
         onClick={toggle}
         disabled={disabled || noChanges}
-        style={{ boxShadow: ACCENT_RUN }}
-        className="pl-4 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50"
+        className="pl-3 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
         title={noChanges ? `No changes vs ${baseRef}` : `Run only the actions changed vs ${baseRef}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
         <GitCompare className="w-4 h-4 mr-1.5" /> Run Changed
         {status === "ready" && (
-          <span className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.22)" }}>
+          <span className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--vscode-button-foreground) 25%, transparent)" }}>
             {changed.length}
           </span>
         )}
@@ -227,8 +224,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
                 <button
                   onClick={() => run(false)}
                   disabled={status !== "ready" || changed.length === 0}
-                  style={{ boxShadow: ACCENT_RUN }}
-                  className="flex-1 justify-center pl-4 pr-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                  className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5 mr-1.5" /> Run (CLI)
                 </button>
@@ -236,8 +232,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               <button
                 onClick={() => run(true)}
                 disabled={status !== "ready" || changed.length === 0}
-                style={{ boxShadow: ACCENT_RUN }}
-                className="flex-1 justify-center pl-4 pr-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
               >
                 <Play className="w-3.5 h-3.5 mr-1.5" /> Run (API)
               </button>

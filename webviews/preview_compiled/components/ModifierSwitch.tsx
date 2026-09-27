@@ -1,0 +1,49 @@
+import React from "react";
+import { AlertTriangle } from "lucide-react";
+import clsx from "clsx";
+
+const ON_COLOR = "var(--vscode-charts-yellow, #cca700)";
+// Full refresh rebuilds tables from scratch, so it is flagged in the warning colour rather than the usual on colour.
+const WARNING_COLOR = "var(--vscode-charts-orange, #d18616)";
+const OFF_TRACK = "color-mix(in srgb, var(--vscode-foreground) 25%, transparent)";
+const OFF_KNOB = "color-mix(in srgb, var(--vscode-foreground) 75%, transparent)";
+
+interface ModifierSwitchProps {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  title: string;
+  /** Marks a modifier with side effects worth a second look when it is on. */
+  warning?: boolean;
+}
+
+/** An on/off switch that changes how the run controls beside it execute (e.g. include dependencies). */
+export const ModifierSwitch: React.FC<ModifierSwitchProps> = ({ label, checked, onChange, title, warning }) => {
+  const onColor = warning ? WARNING_COLOR : ON_COLOR;
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      title={title}
+      className={clsx(
+        "inline-flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]",
+        checked ? "font-semibold" : "opacity-80 hover:opacity-100"
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className="relative inline-block w-[30px] h-4 shrink-0 rounded-full transition-colors"
+        style={{ background: checked ? onColor : OFF_TRACK }}
+      >
+        <span
+          className="absolute top-0.5 w-3 h-3 rounded-full transition-[left]"
+          style={{ left: checked ? 16 : 2, background: checked ? "var(--vscode-editor-background)" : OFF_KNOB }}
+        />
+      </span>
+      {warning && checked && <AlertTriangle className="w-3.5 h-3.5" style={{ color: WARNING_COLOR }} />}
+      {label}
+    </button>
+  );
+};
