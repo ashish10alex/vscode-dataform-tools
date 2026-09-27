@@ -1,8 +1,8 @@
 import { CompilationErrorType } from "../../src/types";
-import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView } from "../../src/types";
+import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView, ExecutionMode } from "../../src/types";
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../../src/types";
 export { CompilationErrorType };
-export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView };
+export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView, ExecutionMode };
 export type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema };
 import type { CompilationInfo } from "../../src/utils/compilationInfo";
 export type { CompilationInfo };

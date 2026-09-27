@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { WebviewState } from "../types";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { ExecutionMode, WebviewState } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
@@ -81,6 +81,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     const timeoutId = setTimeout(() => setSubmittingSince(null), 30000);
     return () => clearTimeout(timeoutId);
   }, [state.workflowUrls, submittingSince]);
+  // API reruns keep showing progress in the latest run banner until the workflow invocation appears.
+  const handleRerunDispatched = useCallback((executionMode: ExecutionMode) => {
+    if (executionMode !== "cli") { setSubmittingSince(Date.now()); }
+  }, []);
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
   const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.selectedTags || []);
@@ -261,7 +265,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </span>
           <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
         </div>
-        <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} />
+        <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
         <PropertyGraphSection state={state} />
       </div>
     );
@@ -674,7 +678,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                )}
            </div>
 
-           <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} />
+           <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
            <LatestRunBanner state={state} submittingSince={submittingSince} />
       </div>
 
