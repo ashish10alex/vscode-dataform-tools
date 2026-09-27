@@ -143,8 +143,8 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                     {!isTerminal && (
                                         <span className="text-[var(--vscode-descriptionForeground)]">· {elapsedSec}s elapsed</span>
                                     )}
-                                    <span className="ml-auto" />
                                     <CancelWorkflowButton entry={latest} />
+                                    <span className="ml-auto" />
                                     <button
                                         onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
                                         className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"

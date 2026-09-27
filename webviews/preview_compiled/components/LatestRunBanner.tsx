@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode, Download } from 'lucide-react';
+import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode, Download, Maximize2, Minimize2 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { WebviewState, ActionCounts, WorkflowAction, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
@@ -227,6 +227,9 @@ function buildActionColumns(workflowInvocationId: string | undefined, summary: W
 
 export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps) {
     const [expanded, setExpanded] = useState(false);
+    // Full width covers the whole panel with the run details, giving the actions table room.
+    const [fullWidth, setFullWidth] = useState(false);
+    const showDetails = expanded || fullWidth;
     const items = state.workflowUrls || [];
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
     const actionRows = useMemo<WorkflowAction[]>(() => latest?.actions ?? [], [latest?.actions]);
@@ -241,14 +244,21 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     const statsRequestedFor = useRef<Set<string>>(new Set());
     useEffect(() => {
         const invocationId = latest?.workflowInvocationId;
-        if (!expanded || !invocationId || statsRequestedFor.current.has(invocationId)) { return; }
+        if (!showDetails || !invocationId || statsRequestedFor.current.has(invocationId)) { return; }
         const needsStats = actionRows.some(needsJobStats);
         const isFinished = !!latest?.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
         if (needsStats && isFinished) {
             statsRequestedFor.current.add(invocationId);
             vscode.postMessage({ command: 'loadWorkflowJobStats', value: { workflowInvocationId: invocationId } });
         }
-    }, [expanded, latest?.workflowInvocationId, latest?.state, actionRows]);
+    }, [showDetails, latest?.workflowInvocationId, latest?.state, actionRows]);
+
+    useEffect(() => {
+        if (!fullWidth) { return; }
+        const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { setFullWidth(false); } };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [fullWidth]);
 
     const isSubmitting = submittingSince != null && (!latest || latest.timestamp <= submittingSince);
 
@@ -268,9 +278,11 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     const elapsedSec = Math.max(0, Math.floor((Date.now() - latest.timestamp) / 1000));
 
     return (
-        <div className="mt-3 flex flex-col gap-2 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background)] p-2.5">
+        <div className={fullWidth
+            ? 'fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-[var(--vscode-editor-background)] p-4'
+            : 'mt-3 flex flex-col gap-2 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background)] p-2.5'}>
             <div className="flex items-center gap-2 text-xs">
-                <button
+                {!fullWidth && <button
                     onClick={() => setExpanded(v => !v)}
                     className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-foreground)]"
                     aria-expanded={expanded}
@@ -278,7 +290,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                     title={expanded ? 'Hide run details' : 'Show run details'}
                 >
                     {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                </button>
+                </button>}
                 {getStatusIcon(latest.state)}
                 <span className="font-mono text-[var(--vscode-foreground)]">
                     Latest API run: {latest.workspace || '(unknown workspace)'} · {latest.state || 'UNKNOWN'}
@@ -292,8 +304,8 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 {!isTerminal && (
                     <span className="text-[var(--vscode-descriptionForeground)]">· {elapsedSec}s elapsed</span>
                 )}
-                <span className="ml-auto" />
                 <CancelWorkflowButton entry={latest} />
+                <span className="ml-auto" />
                 <button
                     onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
                     className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
@@ -301,6 +313,15 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                     aria-label="Open in GCP"
                 >
                     <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={() => setFullWidth(v => !v)}
+                    className="text-[var(--vscode-foreground)] p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                    title={fullWidth ? 'Exit full width (Esc)' : 'Show run details full width'}
+                    aria-label={fullWidth ? 'Exit full width' : 'Show run details full width'}
+                    aria-pressed={fullWidth}
+                >
+                    {fullWidth ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 </button>
             </div>
 
@@ -320,8 +341,8 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 </div>
             )}
 
-            {expanded && (
-                <div className="flex flex-col gap-3 mt-1 pt-2 border-t border-[var(--vscode-widget-border)]">
+            {showDetails && (
+                <div className={`flex flex-col gap-3 mt-1 pt-2 border-t border-[var(--vscode-widget-border)] ${fullWidth ? 'flex-1 min-h-0' : ''}`}>
                     <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                         <span className="text-[var(--vscode-descriptionForeground)]">Time</span>
                         <span className="text-[var(--vscode-foreground)]">{new Date(latest.timestamp).toLocaleString()}</span>
@@ -396,7 +417,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                     </div>
 
                     {actionRows.length > 0 && (
-                        <div className="flex flex-col gap-1">
+                        <div className={`flex flex-col gap-1 ${fullWidth ? 'flex-1 min-h-0' : ''}`}>
                             <div className="flex items-center gap-2 text-xs font-medium text-[var(--vscode-foreground)]">
                                 Actions ({actionRows.length})
                                 <button
@@ -408,7 +429,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                                     Export CSV
                                 </button>
                             </div>
-                            <div className="max-h-[28rem] overflow-auto">
+                            <div className={fullWidth ? 'flex-1 min-h-[12rem] overflow-auto' : 'max-h-[28rem] overflow-auto'}>
                                 <DataTable
                                     columns={actionColumns}
                                     data={actionRows}
