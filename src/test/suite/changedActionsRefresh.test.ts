@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { headKey } from '../../gitHeadWatcher';
-import { noChangesMessage } from '../../changedActions';
+import { baseCacheDay, noChangesMessage } from '../../changedActions';
 
 function repo(name: string | undefined, commit: string | undefined) {
     return { state: { HEAD: name === undefined && commit === undefined ? undefined : { name, commit } } } as any;
@@ -29,5 +29,12 @@ suite('changedActions.noChangesMessage', () => {
 
     test('names the base on a feature branch', () => {
         assert.strictEqual(noChangesMessage({ baseRef: 'origin/main', onDefaultBranch: false }), 'No changed actions vs origin/main');
+    });
+});
+
+suite('changedActions.baseCacheDay', () => {
+    test('keys the base by UTC day, so date-dependent includes compile alike on both sides', () => {
+        assert.strictEqual(baseCacheDay(new Date('2026-09-28T23:59:59Z')), '2026-09-28');
+        assert.notStrictEqual(baseCacheDay(new Date('2026-09-27T10:54:00Z')), baseCacheDay(new Date('2026-09-28T09:00:00Z')));
     });
 });

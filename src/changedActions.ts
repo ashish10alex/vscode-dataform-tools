@@ -107,9 +107,18 @@ function projectCacheDir(workspaceFolder: string): string {
     return path.join(getStorageRoot(), 'graphs', shortHash(path.resolve(workspaceFolder)));
 }
 
-/** The compiled base depends on the compiler options (schema suffix, vars, ...) as well as the commit. */
+/**
+ * Projects often compute values from the current date in includes/ (e.g. `new Date()` minus six months),
+ * so a commit compiled yesterday differs from the same commit compiled today. Base graphs are therefore
+ * cached per UTC day, which keeps them comparable with the compile of the working tree.
+ */
+export function baseCacheDay(now = new Date()): string {
+    return now.toISOString().slice(0, 10);
+}
+
+/** The compiled base depends on the compiler options (schema suffix, vars, ...) and the day as well as the commit. */
 function localCacheFile(workspaceFolder: string, sha: string): string {
-    return path.join(projectCacheDir(workspaceFolder), `${sha}__${shortHash(getDataformCompilerOptions())}.json`);
+    return path.join(projectCacheDir(workspaceFolder), `${sha}__${shortHash(getDataformCompilerOptions())}__${baseCacheDay()}.json`);
 }
 
 const memoryCache = new Map<string, DataformCompiledJson>();
@@ -175,7 +184,8 @@ async function readLocalBase(file: string): Promise<DataformCompiledJson | undef
  * is returned, so refreshing the view never starts a compile on its own.
  */
 async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowCompile: boolean): Promise<DataformCompiledJson | undefined> {
-    const key = base.remote ? `remote:${base.mergeBaseSha}` : localCacheFile(workspaceFolder, base.mergeBaseSha);
+    const day = baseCacheDay();
+    const key = base.remote ? `remote:${base.mergeBaseSha}@${day}` : localCacheFile(workspaceFolder, base.mergeBaseSha);
     const pending = inFlight.get(key);
     if (pending) {
         return pending;
@@ -183,7 +193,7 @@ async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowComp
 
     if (base.remote) {
         if (!allowCompile) {
-            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, true);
+            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, true, day);
         }
     } else {
         const cached = await readLocalBase(key);
@@ -194,7 +204,7 @@ async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowComp
 
     const compile = (async () => {
         if (base.remote) {
-            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha);
+            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, false, day);
         }
         const graph = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Compiling ${base.baseRef} @ ${base.mergeBaseSha.slice(0, 7)}` },

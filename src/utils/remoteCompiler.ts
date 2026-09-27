@@ -358,13 +358,15 @@ async function createRemoteCompileEntry(
 
 /**
  * Compiled JSON of another pushed commit, such as the merge-base with the default branch, using the same
- * compilation settings as the current branch. Cached by SHA, but never replaces the current compilation.
- * With `cachedOnly`, returns undefined instead of calling the API when the commit is not cached.
+ * compilation settings as the current branch. Cached by SHA (and `cacheTag`, when given), but never
+ * replaces the current compilation. With `cachedOnly`, returns undefined instead of calling the API
+ * when the commit is not cached.
  */
-export async function compileRemoteCommit(workspaceFolder: string, sha: string, cachedOnly = false): Promise<DataformCompiledJson | undefined> {
+export async function compileRemoteCommit(workspaceFolder: string, sha: string, cachedOnly = false, cacheTag?: string): Promise<DataformCompiledJson | undefined> {
     const { repositoryName } = await getGitInfo();
     const releaseConfig = getSelectedReleaseConfig();
-    let entry = await getRemoteCompile(repositoryName, sha, releaseConfig ?? DEFAULT_CONFIG_KEY, false);
+    const cacheKey = `${releaseConfig ?? DEFAULT_CONFIG_KEY}${cacheTag ? `@${cacheTag}` : ""}`;
+    let entry = await getRemoteCompile(repositoryName, sha, cacheKey, false);
     if (!entry && cachedOnly) {
         return undefined;
     }
@@ -374,6 +376,7 @@ export async function compileRemoteCommit(workspaceFolder: string, sha: string, 
             { location: vscode.ProgressLocation.Window, title: `Compiling ${sha.slice(0, 7)} with the Dataform API` },
             (progress) => createRemoteCompileEntry(dataformClient, repositoryName, sha, releaseConfig, (message) => progress.report({ message })),
         );
+        entry = { ...entry, configKey: cacheKey };
         await saveRemoteCompile(entry, false);
     }
     const graphErrors = entry.compiledJson.graphErrors?.compilationErrors ?? [];
