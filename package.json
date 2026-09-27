@@ -22,6 +22,18 @@
         "Data Science",
         "Testing"
     ],
+    "keywords": [
+        "dataform",
+        "sqlx",
+        "bigquery",
+        "google-cloud",
+        "gcp",
+        "data-lineage",
+        "dag",
+        "sqlfluff",
+        "elt",
+        "dbt"
+    ],
     "extensionDependencies": [
         "vscode.git"
     ],
