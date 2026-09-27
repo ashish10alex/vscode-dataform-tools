@@ -17,7 +17,8 @@ import { debounce } from "../debounce";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
-import { loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
+import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
+import { timestampToMs } from "../shared/jobTiming";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
 import {
     PROPERTY_GRAPHS_MIN_CORE_VERSION,
@@ -710,6 +711,7 @@ export class CompiledQueryPanel {
                 }
                 return;
               case 'loadWorkflowJobStats':
+              case 'exportWorkflowActionsCsv':
               case 'openExecutedSql':
               case 'openBigQueryJob': {
                 const context = this.centerPanel?.extensionContext;
@@ -720,6 +722,8 @@ export class CompiledQueryPanel {
                 }
                 if (message.command === 'openExecutedSql') {
                     await openExecutedSql(entry, message.value.target);
+                } else if (message.command === 'exportWorkflowActionsCsv') {
+                    await exportWorkflowActionsCsv(entry);
                 } else if (message.command === 'openBigQueryJob') {
                     const action = entry.actions?.find((a) => a.target === message.value.target);
                     if (action) {
@@ -757,6 +761,8 @@ export class CompiledQueryPanel {
                                 if (invocation && invocation.state) {
                                   item.state = invocation.state as string;
                                 }
+                                item.invocationStartTime = timestampToMs(invocation?.invocationTiming?.startTime) ?? item.invocationStartTime;
+                                item.invocationEndTime = timestampToMs(invocation?.invocationTiming?.endTime) ?? item.invocationEndTime;
                                 try {
                                     const actions = await dataformClient.queryWorkflowInvocationActions(item.repositoryName, item.workflowInvocationId);
                                     const list = (actions || []) as any[];
@@ -779,6 +785,7 @@ export class CompiledQueryPanel {
                                             failureReason: a?.failureReason || undefined,
                                             jobId: a?.bigqueryAction?.jobId || undefined,
                                             jobStats: previousJobStats.get(target),
+                                            startTime: timestampToMs(a?.invocationTiming?.startTime),
                                         });
                                     }
                                     item.actionCounts = counts;

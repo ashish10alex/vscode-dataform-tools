@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode } from 'lucide-react';
+import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode, Download } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { WebviewState, ActionCounts, WorkflowAction, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { DataTable } from '../../components/ui/data-table';
+import { formatDuration, needsJobStats } from '../../../src/shared/jobTiming';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 
 interface LatestRunBannerProps {
@@ -66,9 +67,33 @@ function renderCountBadges(counts: ActionCounts | undefined) {
 }
 
 const TOTAL_CELL_CLASS = 'font-mono text-[10px] font-semibold text-[var(--vscode-foreground)]';
+const STAT_CELL_CLASS = 'font-mono text-[10px] text-[var(--vscode-descriptionForeground)]';
 
-/** Totals come from `jobStatsSummary`, so they cover the whole workflow regardless of the table's filters. */
-function buildActionColumns(workflowInvocationId: string | undefined, summary: WorkflowUrlEntry['jobStatsSummary']): ColumnDef<WorkflowAction>[] {
+const DURATION_HELP = 'How long the BigQuery job took, start to end, including time spent waiting for free slots. '
+    + 'The total is the whole workflow, start to end, since actions run in parallel.';
+const SLOT_TIME_HELP = 'How much compute the query used: working time added up across all the BigQuery workers (slots) that ran it. '
+    + 'High slot time means an expensive query, even when Duration is short. The total is the sum across jobs.';
+
+/** Column header with a hover explanation; the dotted underline hints that there is one. */
+function HelpHeader({ label, help }: { label: string; help: string }) {
+    return <span title={help} className="cursor-help underline decoration-dotted underline-offset-2">{label}</span>;
+}
+
+/** Time since a running action started, from the Dataform API, until its BigQuery job time is known. */
+function runningElapsedMs(action: WorkflowAction): number | undefined {
+    return action.state === 'RUNNING' && action.startTime ? Date.now() - action.startTime : undefined;
+}
+
+/** Start to end of the whole invocation; runs saved before timing was recorded have none. */
+function workflowDurationMs(entry: WorkflowUrlEntry | undefined): number | undefined {
+    return entry?.invocationStartTime && entry.invocationEndTime ? entry.invocationEndTime - entry.invocationStartTime : undefined;
+}
+
+/**
+ * Totals cover the whole workflow regardless of the table's filters: `jobStatsSummary` for BigQuery stats, and the
+ * invocation's wall-clock time for Duration, since actions run in parallel.
+ */
+function buildActionColumns(workflowInvocationId: string | undefined, summary: WorkflowUrlEntry['jobStatsSummary'], totalDurationMs: number | undefined): ColumnDef<WorkflowAction>[] {
     const jobCount = (actions: WorkflowAction[]) => actions.filter(a => a.jobStats && !a.jobStats.error).length;
     return [
     {
@@ -94,6 +119,46 @@ function buildActionColumns(workflowInvocationId: string | undefined, summary: W
                 <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]">{row.original.state}</span>
             </span>
         ),
+    },
+    {
+        id: 'duration',
+        header: () => <HelpHeader label="Duration" help={DURATION_HELP} />,
+        size: 110,
+        accessorFn: (action) => action.jobStats?.durationMs ?? runningElapsedMs(action) ?? -1,
+        cell: ({ row }) => {
+            const stats = row.original.jobStats;
+            if (stats?.durationMs !== undefined) {
+                const title = `BigQuery job started ${new Date(stats.startTime!).toLocaleString()}\nEnded ${new Date(stats.endTime!).toLocaleString()}`;
+                return <span className={STAT_CELL_CLASS} title={title}>{formatDuration(stats.durationMs)}</span>;
+            }
+            const elapsedMs = runningElapsedMs(row.original);
+            if (elapsedMs !== undefined) {
+                return (
+                    <span className={`${STAT_CELL_CLASS} italic opacity-70 whitespace-nowrap`} title="Time since the action started; replaced by the BigQuery job time when it finishes">
+                        running · {formatDuration(elapsedMs)}
+                    </span>
+                );
+            }
+            return <span className={STAT_CELL_CLASS} title={stats?.error}>{stats?.error ? 'n/a' : ''}</span>;
+        },
+        footer: totalDurationMs !== undefined
+            ? () => <span className={TOTAL_CELL_CLASS} title="Start to end of the whole workflow; actions run in parallel">{formatDuration(totalDurationMs)}</span>
+            : undefined,
+    },
+    {
+        id: 'slotTime',
+        header: () => <HelpHeader label="Slot Time" help={SLOT_TIME_HELP} />,
+        size: 110,
+        accessorFn: (action) => action.jobStats?.totalSlotMs ?? -1,
+        cell: ({ row }) => {
+            const slotMs = row.original.jobStats?.totalSlotMs;
+            return slotMs === undefined ? null : (
+                <span className={STAT_CELL_CLASS} title={`${slotMs.toLocaleString()} slot-ms`}>{formatDuration(slotMs)}</span>
+            );
+        },
+        footer: summary?.totalSlotMs !== undefined
+            ? () => <span className={TOTAL_CELL_CLASS} title={`${summary.totalSlotMs!.toLocaleString()} slot-ms`}>{formatDuration(summary.totalSlotMs!)}</span>
+            : undefined,
     },
     {
         id: 'bytesBilled',
@@ -165,9 +230,10 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     const items = state.workflowUrls || [];
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
     const actionRows = useMemo<WorkflowAction[]>(() => latest?.actions ?? [], [latest?.actions]);
+    const totalDurationMs = workflowDurationMs(latest);
     const actionColumns = useMemo(
-        () => buildActionColumns(latest?.workflowInvocationId, latest?.jobStatsSummary),
-        [latest?.workflowInvocationId, latest?.jobStatsSummary]
+        () => buildActionColumns(latest?.workflowInvocationId, latest?.jobStatsSummary, totalDurationMs),
+        [latest?.workflowInvocationId, latest?.jobStatsSummary, totalDurationMs]
     );
 
     // Job stats normally arrive with each status refresh while the run is in progress. This one-off request
@@ -176,7 +242,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     useEffect(() => {
         const invocationId = latest?.workflowInvocationId;
         if (!expanded || !invocationId || statsRequestedFor.current.has(invocationId)) { return; }
-        const needsStats = actionRows.some(a => a.jobId && !a.jobStats && (a.state === 'SUCCEEDED' || a.state === 'FAILED'));
+        const needsStats = actionRows.some(needsJobStats);
         const isFinished = !!latest?.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
         if (needsStats && isFinished) {
             statsRequestedFor.current.add(invocationId);
@@ -240,11 +306,17 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
 
             {renderCountBadges(latest.actionCounts)}
 
-            {isTerminal && latest.jobStatsSummary && (
+            {isTerminal && (latest.jobStatsSummary || totalDurationMs !== undefined) && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--vscode-descriptionForeground)]">
-                    <span>BigQuery:</span>
-                    <CountBadgeText label="Billed" value={latest.jobStatsSummary.bytesBilledLabel} />
-                    <CountBadgeText label="Est. cost" value={latest.jobStatsSummary.costLabel} />
+                    <CountBadgeText label="Duration" value={totalDurationMs === undefined ? undefined : formatDuration(totalDurationMs)} />
+                    {latest.jobStatsSummary && (
+                        <>
+                            <span>BigQuery:</span>
+                            <CountBadgeText label="Slot time" value={latest.jobStatsSummary.totalSlotMs === undefined ? undefined : formatDuration(latest.jobStatsSummary.totalSlotMs)} />
+                            <CountBadgeText label="Billed" value={latest.jobStatsSummary.bytesBilledLabel} />
+                            <CountBadgeText label="Est. cost" value={latest.jobStatsSummary.costLabel} />
+                        </>
+                    )}
                 </div>
             )}
 
@@ -325,8 +397,16 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
 
                     {actionRows.length > 0 && (
                         <div className="flex flex-col gap-1">
-                            <div className="text-xs font-medium text-[var(--vscode-foreground)]">
+                            <div className="flex items-center gap-2 text-xs font-medium text-[var(--vscode-foreground)]">
                                 Actions ({actionRows.length})
+                                <button
+                                    onClick={() => vscode.postMessage({ command: 'exportWorkflowActionsCsv', value: { workflowInvocationId: latest.workflowInvocationId } })}
+                                    className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-normal text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                                    title="Export every action with its timing, slot time, bytes billed and cost to a CSV file"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    Export CSV
+                                </button>
                             </div>
                             <div className="max-h-[28rem] overflow-auto">
                                 <DataTable
