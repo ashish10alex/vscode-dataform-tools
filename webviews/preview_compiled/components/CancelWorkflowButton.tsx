@@ -5,8 +5,9 @@ import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 
 /**
- * Stop button for an invocation that is still running; renders nothing once it can no longer be cancelled.
- * Shows "Cancelling…" from the click until the entry reaches CANCELING, or reverts if the request fails.
+ * Labelled stop button for an invocation that is still running; renders nothing once it can no longer be cancelled.
+ * Placed beside the run's status rather than among the view icons, so it is hard to hit by accident.
+ * Shows "Stopping…" from the click until the entry reaches CANCELING, or reverts if the request fails.
  */
 export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
     const [requested, setRequested] = useState(false);
@@ -31,7 +32,7 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
         return (
             <span className="inline-flex items-center gap-1 text-xs text-[var(--vscode-descriptionForeground)]" role="status">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Cancelling…
+                Stopping…
             </span>
         );
     }
@@ -42,11 +43,12 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
                 setRequested(true);
                 vscode.postMessage({ command: 'cancelWorkflowInvocation', value: { workflowInvocationId: entry.workflowInvocationId } });
             }}
-            className="text-[var(--vscode-errorForeground)] p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] inline-flex items-center justify-center transition-colors"
-            title="Cancel workflow invocation"
-            aria-label="Cancel workflow invocation"
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-[var(--vscode-errorForeground)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--vscode-errorForeground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
+            title="Stop the run: running actions are cancelled and pending ones skipped (cancels the Dataform workflow invocation)"
+            aria-label="Stop workflow run"
         >
-            <CircleStop className="w-3.5 h-3.5" />
+            <CircleStop className="w-3 h-3" />
+            Stop run
         </button>
     );
 }
