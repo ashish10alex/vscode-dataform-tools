@@ -3,11 +3,13 @@ import { DataformTools } from "@ashishalex/dataform-tools";
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { bigQueryDryRunCostOneGiBByCurrency, currencySymbolMapping } from './constants';
 import { logger } from './logger';
+import { needsJobStats } from './shared/jobTiming';
 import { SupportedCurrency, WorkflowAction, WorkflowActionJobStats, WorkflowUrlEntry } from './types';
 import { formatBytes } from './utils';
+import { arrayToCsv } from './utils/vscodeUi';
 
 /*
- * Telemetry for the BigQuery jobs behind a workflow invocation: bytes billed and the SQL Dataform
+ * Telemetry for the BigQuery jobs behind a workflow invocation: bytes billed, timing and the SQL Dataform
  * executed, looked up from `WorkflowInvocationAction.bigqueryAction`.
  */
 
@@ -38,6 +40,8 @@ export function toJobStats(statistics: any, location: string | undefined, curren
     };
     const totalBytesBilled = toNumber(statistics?.query?.totalBytesBilled);
     const totalBytesProcessed = toNumber(statistics?.totalBytesProcessed ?? statistics?.query?.totalBytesProcessed);
+    const startTime = toNumber(statistics?.startTime);
+    const endTime = toNumber(statistics?.endTime);
     const cost = totalBytesBilled === undefined
         ? undefined
         : (totalBytesBilled / (1024 ** 3)) * bigQueryDryRunCostOneGiBByCurrency[currency];
@@ -45,6 +49,10 @@ export function toJobStats(statistics: any, location: string | undefined, curren
         location,
         totalBytesBilled,
         totalBytesProcessed,
+        startTime,
+        endTime,
+        durationMs: startTime === undefined || endTime === undefined ? undefined : endTime - startTime,
+        totalSlotMs: toNumber(statistics?.totalSlotMs),
         cost,
         bytesBilledLabel: totalBytesBilled === undefined ? undefined : formatBytes(totalBytesBilled),
         costLabel: cost === undefined ? undefined : `${currencySymbolMapping[currency]}${cost.toFixed(4)}`,
@@ -57,9 +65,9 @@ export function summariseJobStats(actions: WorkflowAction[], currency: Supported
     if (loaded.length === 0) {
         return undefined;
     }
-    const sum = (key: 'totalBytesBilled' | 'totalBytesProcessed') => loaded.reduce((total, stats) => total + (stats[key] ?? 0), 0);
+    const sum = (key: 'totalBytesBilled' | 'totalBytesProcessed' | 'totalSlotMs') => loaded.reduce((total, stats) => total + (stats[key] ?? 0), 0);
     return toJobStats(
-        { totalBytesProcessed: sum('totalBytesProcessed'), query: { totalBytesBilled: sum('totalBytesBilled') } },
+        { totalBytesProcessed: sum('totalBytesProcessed'), totalSlotMs: sum('totalSlotMs'), query: { totalBytesBilled: sum('totalBytesBilled') } },
         undefined,
         currency,
     );
@@ -86,12 +94,10 @@ async function fetchJobStats(ref: BigQueryJobRef, currency: SupportedCurrency): 
 
 /**
  * Fills in `jobStats` for finished actions of an invocation that ran a BigQuery job and have no
- * stats yet. Returns true when any action was updated.
+ * stats yet (see `needsJobStats`). Returns true when any action was updated.
  */
 export async function loadJobStatsForInvocation(entry: WorkflowUrlEntry): Promise<boolean> {
-    const pending = (entry.actions ?? []).filter((action) =>
-        action.jobId && !action.jobStats && (action.state === 'SUCCEEDED' || action.state === 'FAILED')
-    );
+    const pending = (entry.actions ?? []).filter(needsJobStats);
     if (pending.length === 0 || !entry.projectId) {
         return false;
     }
@@ -117,6 +123,45 @@ export async function loadJobStatsForInvocation(entry: WorkflowUrlEntry): Promis
         entry.jobStatsSummary = summariseJobStats(entry.actions ?? [], currency);
     }
     return updated;
+}
+
+/** One row per action with raw values rather than display labels, so the CSV works in a spreadsheet. */
+export function workflowActionsCsvRows(actions: WorkflowAction[], currency: SupportedCurrency): Record<string, string | number | undefined>[] {
+    const toIso = (ms: number | undefined) => ms === undefined ? undefined : new Date(ms).toISOString();
+    const toSeconds = (ms: number | undefined) => ms === undefined ? undefined : ms / 1000;
+    return actions.map((action) => {
+        const stats = action.jobStats;
+        return {
+            target: action.target,
+            state: action.state,
+            duration_seconds: toSeconds(stats?.durationMs),
+            slot_seconds: toSeconds(stats?.totalSlotMs),
+            bytes_billed: stats?.totalBytesBilled,
+            [`est_cost_${currency.toLowerCase()}`]: stats?.cost,
+            job_start_time: toIso(stats?.startTime),
+            job_end_time: toIso(stats?.endTime),
+            failure_reason: action.failureReason,
+            job_id: action.jobId,
+        };
+    });
+}
+
+export async function exportWorkflowActionsCsv(entry: WorkflowUrlEntry) {
+    const actions = entry.actions ?? [];
+    if (actions.length === 0) {
+        return;
+    }
+    const filename = `workflow_actions_${entry.workflowInvocationId ?? 'run'}.csv`;
+    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+    const uri = await vscode.window.showSaveDialog({
+        defaultUri: folder ? vscode.Uri.joinPath(folder, filename) : vscode.Uri.file(filename),
+        filters: { 'CSV': ['csv'] },
+    });
+    if (!uri) {
+        return;
+    }
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(arrayToCsv(workflowActionsCsvRows(actions, getCurrency())), 'utf8'));
+    vscode.window.showInformationMessage(`Exported ${actions.length} workflow actions to ${uri.fsPath}`);
 }
 
 export function openBigQueryJobInConsole(entry: WorkflowUrlEntry, action: WorkflowAction) {

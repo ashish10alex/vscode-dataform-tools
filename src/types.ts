@@ -533,6 +533,9 @@ export interface WorkflowUrlEntry {
     actionCounts?: ActionCounts;
     /** Totals over the actions' BigQuery jobs, once their stats have been loaded */
     jobStatsSummary?: WorkflowActionJobStats;
+    /** Epoch ms bounds of the whole invocation, from the Dataform API; `invocationEndTime` is set once it finishes */
+    invocationStartTime?: number;
+    invocationEndTime?: number;
     includedTags?: string[];
     includedTargets?: Target[];
 }
@@ -549,6 +552,8 @@ export interface WorkflowAction {
     /** ID of the BigQuery job that ran the action, once it has started */
     jobId?: string;
     jobStats?: WorkflowActionJobStats;
+    /** Epoch ms the Dataform action started, used for the elapsed time while it is running */
+    startTime?: number;
 }
 
 /** Stats of the BigQuery job behind a workflow action; the labels are preformatted for the webview. */
@@ -556,6 +561,12 @@ export interface WorkflowActionJobStats {
     location?: string;
     totalBytesBilled?: number;
     totalBytesProcessed?: number;
+    /** Epoch ms bounds of the job; a script job's cover its child jobs */
+    startTime?: number;
+    endTime?: number;
+    durationMs?: number;
+    /** Includes the slot time of a script job's child jobs */
+    totalSlotMs?: number;
     cost?: number;
     bytesBilledLabel?: string;
     costLabel?: string;

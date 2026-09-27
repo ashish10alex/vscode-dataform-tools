@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { bigQueryJobConsoleUrl, parseBigQueryJobId, summariseJobStats, toJobStats, workflowActionTarget } from '../../workflowJobTelemetry';
+import { bigQueryJobConsoleUrl, parseBigQueryJobId, summariseJobStats, toJobStats, workflowActionsCsvRows, workflowActionTarget } from '../../workflowJobTelemetry';
 
 suite('workflowJobTelemetry', () => {
     test('workflowActionTarget shows the table that ran, with compiler overrides applied', () => {
@@ -42,6 +42,14 @@ suite('workflowJobTelemetry', () => {
         assert.strictEqual(stats.location, 'EU');
     });
 
+    test('toJobStats reads job timing and slot time', () => {
+        const stats = toJobStats({ startTime: '1790456410606', endTime: '1790456443163', totalSlotMs: '1233' }, 'EU', 'USD');
+        assert.strictEqual(stats.startTime, 1790456410606);
+        assert.strictEqual(stats.endTime, 1790456443163);
+        assert.strictEqual(stats.durationMs, 32557);
+        assert.strictEqual(stats.totalSlotMs, 1233);
+    });
+
     test('toJobStats leaves missing statistics undefined', () => {
         const stats = toJobStats({}, undefined, 'USD');
         assert.strictEqual(stats.totalBytesBilled, undefined);
@@ -58,6 +66,32 @@ suite('workflowJobTelemetry', () => {
         assert.strictEqual(summary?.totalBytesBilled, 2 * 1024 ** 3);
         assert.strictEqual(summary?.totalBytesProcessed, 15);
         assert.strictEqual(summary?.costLabel, '$0.0122');
+    });
+
+    test('summariseJobStats sums slot time but not durations, which overlap', () => {
+        const summary = summariseJobStats([
+            { target: 'a', state: 'SUCCEEDED', jobStats: { totalSlotMs: 1000, durationMs: 5000 } },
+            { target: 'b', state: 'SUCCEEDED', jobStats: { totalSlotMs: 250, durationMs: 4000 } },
+        ], 'USD');
+        assert.strictEqual(summary?.totalSlotMs, 1250);
+        assert.strictEqual(summary?.durationMs, undefined);
+    });
+
+    test('workflowActionsCsvRows exports raw values, blank where nothing loaded', () => {
+        const rows = workflowActionsCsvRows([
+            {
+                target: 'p.d.t1', state: 'SUCCEEDED', jobId: 'j1',
+                jobStats: { durationMs: 32557, totalSlotMs: 1233, totalBytesBilled: 1024, cost: 0.5, startTime: Date.UTC(2026, 8, 26, 21, 0, 10), endTime: Date.UTC(2026, 8, 26, 21, 0, 43) },
+            },
+            { target: 'p.d.t2', state: 'FAILED', failureReason: 'Boom, "bad"' },
+        ], 'EUR');
+        assert.deepStrictEqual(rows[0], {
+            target: 'p.d.t1', state: 'SUCCEEDED', duration_seconds: 32.557, slot_seconds: 1.233, bytes_billed: 1024, est_cost_eur: 0.5,
+            job_start_time: '2026-09-26T21:00:10.000Z', job_end_time: '2026-09-26T21:00:43.000Z', failure_reason: undefined, job_id: 'j1',
+        });
+        assert.deepStrictEqual(Object.keys(rows[1]), Object.keys(rows[0]));
+        assert.strictEqual(rows[1].failure_reason, 'Boom, "bad"');
+        assert.strictEqual(rows[1].duration_seconds, undefined);
     });
 
     test('summariseJobStats is undefined when nothing has loaded', () => {
