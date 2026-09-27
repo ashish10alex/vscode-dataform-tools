@@ -34,6 +34,7 @@ import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTre
 import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compilationInfo';
 import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
+import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -742,6 +743,25 @@ export class CompiledQueryPanel {
                 // the rerun was cancelled or failed its checks and the webview should stop showing progress.
                 if (getLastRun()?.timestamp === previousTimestamp) {
                   this.centerPanel?.webviewPanel.webview.postMessage({ rerunAborted: true });
+                }
+                return;
+              }
+              case 'computeChangedActions':
+                await this.centerPanel?.postChangedActions(true);
+                return;
+              case 'runChangedActions': {
+                const _workspaceFolder = await getWorkspaceFolder();
+                if (!_workspaceFolder) { return; }
+                const result = await runChangedActions(
+                    extensionContext,
+                    _workspaceFolder,
+                    !!message.value.includeDependencies,
+                    !!message.value.includeDependents,
+                    !!message.value.fullRefresh,
+                    message.value.api ? 'api' : 'cli',
+                );
+                if (result) {
+                    this.centerPanel?.webviewPanel.webview.postMessage({ changedActions: toChangedActionsView(result) });
                 }
                 return;
               }
@@ -1536,9 +1556,26 @@ export class CompiledQueryPanel {
         }
     }
 
+    /**
+     * Sends the "Run changed" state. Without `allowCompile` it only diffs against an already compiled base,
+     * which keeps the button's count current after every compile without compiling the base unprompted.
+     */
+    public async postChangedActions(allowCompile: boolean) {
+        const webview = this.webviewPanel.webview;
+        if (!allowCompile && !CACHED_COMPILED_DATAFORM_JSON) {
+            return; // Nothing compiled yet, e.g. not a Dataform workspace, which the compile has already reported
+        }
+        if (allowCompile) {
+            await webview.postMessage({ changedActions: { status: 'computing' } });
+        }
+        const changedActions = await getChangedActionsView(await getWorkspaceFolder(), allowCompile);
+        await webview.postMessage({ changedActions });
+    }
+
     private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
+        this.postChangedActions(false).catch((error) => logger.error(`Failed to refresh changed actions: ${error}`));
         if(webview){
             // this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         } else {

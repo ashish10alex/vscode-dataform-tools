@@ -58,6 +58,7 @@ function selectionLabel(request: LastRunRequest, items: string[]): string {
         case 'currentFile': return `file ${items[0] ?? ''}`;
         case 'files': return `${request.items.length} file${plural}: ${summarizeItems(items)}`;
         case 'tags': return `tag${plural} ${summarizeItems(items)}`;
+        case 'changed': return `changed actions vs ${request.baseRef ?? 'default branch'}`;
     }
 }
 
@@ -83,12 +84,14 @@ export function describeOverrides(compilerOptions: typeof globalThis.compilerOpt
 }
 
 export function summarizeLastRun(request: LastRunRequest, replayMode: ExecutionMode, overrides?: string): { label: string; detail: string } {
-    const baseNames = request.kind === 'tags' ? request.items : request.items.map((item) => path.basename(item));
+    const baseNames = request.kind === 'tags' || request.kind === 'changed' ? request.items : request.items.map((item) => path.basename(item));
     const label = [selectionLabel(request, baseNames), ...flagLabels(request), modeLabel(replayMode)].join(' · ');
 
-    const itemHeading = request.kind === 'tags' ? 'Tags' : 'Files';
+    const itemLine = request.kind === 'changed'
+        ? `Last ran ${request.items.length} action${request.items.length === 1 ? '' : 's'}: ${request.items.join(', ')} (recomputed on rerun)`
+        : `${request.kind === 'tags' ? 'Tags' : 'Files'}: ${request.items.join(', ')}`;
     const detailLines = [
-        `${itemHeading}: ${request.items.join(', ')}`,
+        itemLine,
         `Dependencies: ${request.includeDependencies ? 'yes' : 'no'}`,
         `Dependents: ${request.includeDependents ? 'yes' : 'no'}`,
         `Full refresh: ${request.fullRefresh ? 'yes' : 'no'}`,
@@ -111,6 +114,9 @@ export function findMissingItems(request: LastRunRequest, knownTags: string[] | 
     if (request.kind === 'tags') {
         return knownTags === undefined ? [] : request.items.filter((tag) => !knownTags.includes(tag));
     }
+    if (request.kind === 'changed') {
+        return [];
+    }
     return request.items.filter((item) => !fileExists(item));
 }
 
@@ -119,7 +125,7 @@ export function isFromOtherFolder(request: LastRunRequest, currentFolder: string
     return !!request.workspaceFolder && path.resolve(request.workspaceFolder) !== path.resolve(currentFolder);
 }
 
-export type ReplayRunner = 'currentFile' | 'files' | 'tagsCli' | 'tagsApi';
+export type ReplayRunner = 'currentFile' | 'files' | 'tagsCli' | 'tagsApi' | 'changed';
 
 export interface ReplayPlan {
     runner: ReplayRunner;

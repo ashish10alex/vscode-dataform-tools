@@ -354,6 +354,12 @@
                     "scope": "resource",
                     "markdownDescription": "**[beta]** Where the Dataform project is compiled. `api` (remote mode) compiles the **pushed** commit of the current git branch with the Dataform API, so the Dataform CLI does not need to be installed. Results are cached per commit; run `Dataform: Compile using API` or click the status bar item to recompile. Runs also go through the API, and `Run all tests` is unavailable."
                 },
+                "vscode-dataform-tools.defaultBranch": {
+                    "type": "string",
+                    "default": "main",
+                    "scope": "resource",
+                    "markdownDescription": "Default git branch that **Run Changed** in the compiled query panel compares against. Uses `origin/<branch>` when it exists, otherwise the local branch, and diffs against its merge-base with your branch. Nothing is fetched automatically."
+                },
                 "vscode-dataform-tools.compilerOptions": {
                     "type": "string",
                     "default": "",

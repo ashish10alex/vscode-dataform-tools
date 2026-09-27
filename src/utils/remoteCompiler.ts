@@ -322,6 +322,67 @@ async function createCompilationResultWithRetry<T>(create: () => Promise<T>, rep
     }
 }
 
+/** Compiles `gitCommitish` with the Dataform API using the selected release config's settings, or the compiler options setting. */
+async function createRemoteCompileEntry(
+    dataformClient: DataformTools,
+    repositoryName: string,
+    gitCommitish: string,
+    releaseConfig: string | undefined,
+    report: (message: string) => void,
+): Promise<RemoteCompileEntry> {
+    let codeCompilationConfig = createCompilerOptionsObjectForApi([getDataformCompilerOptions()]);
+    if (releaseConfig) {
+        report("Reading release config…");
+        const [config] = await dataformClient.client.getReleaseConfig({ name: releaseConfig });
+        codeCompilationConfig = (config.codeCompilationConfig ?? {}) as typeof codeCompilationConfig;
+    }
+
+    const result = await createCompilationResultWithRetry(
+        () => dataformClient.createCompilationResult(repositoryName, codeCompilationConfig, undefined, gitCommitish),
+        report,
+    );
+    let actions: ApiCompilationResultAction[] = [];
+    if (result.name) {
+        report("Fetching compiled actions…");
+        actions = await dataformClient.queryCompilationResultActions(result.name) as ApiCompilationResultAction[];
+    }
+
+    return {
+        repositoryName,
+        sha: result.resolvedGitCommitSha ?? "unknown",
+        configKey: releaseConfig ?? DEFAULT_CONFIG_KEY,
+        compiledAt: Date.now(),
+        compiledJson: toDataformCompiledJson(result as ApiCompilationResult, actions),
+    };
+}
+
+/**
+ * Compiled JSON of another pushed commit, such as the merge-base with the default branch, using the same
+ * compilation settings as the current branch. Cached by SHA, but never replaces the current compilation.
+ * With `cachedOnly`, returns undefined instead of calling the API when the commit is not cached.
+ */
+export async function compileRemoteCommit(workspaceFolder: string, sha: string, cachedOnly = false): Promise<DataformCompiledJson | undefined> {
+    const { repositoryName } = await getGitInfo();
+    const releaseConfig = getSelectedReleaseConfig();
+    let entry = await getRemoteCompile(repositoryName, sha, releaseConfig ?? DEFAULT_CONFIG_KEY, false);
+    if (!entry && cachedOnly) {
+        return undefined;
+    }
+    if (!entry) {
+        const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
+        entry = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Window, title: `Compiling ${sha.slice(0, 7)} with the Dataform API` },
+            (progress) => createRemoteCompileEntry(dataformClient, repositoryName, sha, releaseConfig, (message) => progress.report({ message })),
+        );
+        await saveRemoteCompile(entry, false);
+    }
+    const graphErrors = entry.compiledJson.graphErrors?.compilationErrors ?? [];
+    if (graphErrors.length > 0) {
+        throw new Error(`${graphErrors[0].fileName ? `${graphErrors[0].fileName}: ` : ""}${graphErrors[0].message}`);
+    }
+    return entry.compiledJson;
+}
+
 async function compileRemotely(workspaceFolder: string, interactive: boolean): Promise<RemoteCompileOutcome> {
     const { git, branch, repositoryName } = await getGitInfo();
     if (interactive) {
@@ -336,7 +397,6 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
     const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
     // Read once so a config switch mid-compile cannot file this result under the other config
     const releaseConfig = getSelectedReleaseConfig();
-    const entryConfigKey = releaseConfig ?? DEFAULT_CONFIG_KEY;
 
     updateRemoteModeStatusBar({ state: "compiling" });
     const startTime = performance.now();
@@ -344,34 +404,11 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
         return await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: `Compiling ${branch} with the Dataform API` },
             async (progress) => {
-                let codeCompilationConfig = createCompilerOptionsObjectForApi([getDataformCompilerOptions()]);
-                if (releaseConfig) {
-                    progress.report({ message: "Reading release config…" });
-                    const [config] = await dataformClient.client.getReleaseConfig({ name: releaseConfig });
-                    codeCompilationConfig = (config.codeCompilationConfig ?? {}) as typeof codeCompilationConfig;
-                }
-
-                const result = await createCompilationResultWithRetry(
-                    () => dataformClient.createCompilationResult(repositoryName, codeCompilationConfig, undefined, branch),
-                    (message) => progress.report({ message }),
-                );
-                let actions: ApiCompilationResultAction[] = [];
-                if (result.name) {
-                    progress.report({ message: "Fetching compiled actions…" });
-                    actions = await dataformClient.queryCompilationResultActions(result.name) as ApiCompilationResultAction[];
-                }
-
-                const entry: RemoteCompileEntry = {
-                    repositoryName,
-                    sha: result.resolvedGitCommitSha ?? "unknown",
-                    configKey: entryConfigKey,
-                    compiledAt: Date.now(),
-                    compiledJson: toDataformCompiledJson(result as ApiCompilationResult, actions),
-                };
+                const entry = await createRemoteCompileEntry(dataformClient, repositoryName, branch, releaseConfig, (message) => progress.report({ message }));
                 await saveRemoteCompile(entry);
                 const compilationTimeMs = performance.now() - startTime;
                 await reportEntry(git, entry, compilationTimeMs);
-                logger.info(`Remote compilation of ${branch} @ ${entry.sha} returned ${actions.length} actions`);
+                logger.info(`Remote compilation of ${branch} @ ${entry.sha} returned ${entry.compiledJson.targets.length} actions`);
 
                 return { ...outcomeFromEntry(entry), compilationTimeMs };
             }

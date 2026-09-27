@@ -27,6 +27,7 @@ import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
+import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
@@ -84,6 +85,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     initRemoteCompiler(context);
     initLastRun(context);
+    initChangedActions(context);
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];

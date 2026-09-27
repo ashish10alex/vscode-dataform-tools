@@ -527,7 +527,11 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
 
     // Saved only once the run is about to dispatch, so a cancelled run does not replace the last one.
     const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = { kind: 'files', items: selectedFiles, includeDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode, workspaceFolder };
+    await runIncludedTargets(context, workspaceFolder, includedTargets, includeDependencies, includeDownstreamDependents, fullRefresh, executionMode, lastRunRequest);
+}
 
+/** Runs the given actions with the CLI or the Dataform API, recording `lastRunRequest` just before dispatching. */
+export async function runIncludedTargets(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>) {
     const invocationConfig = {
         includedTargets: includedTargets,
         transitiveDependenciesIncluded: includeDependencies,
@@ -597,16 +601,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
             vscode.window.showErrorMessage(error.message);
         }
     } else if (executionMode === "cli") {
-        let actionsList: string[] = [];
-        fileMetadatas.forEach(fileMetadata => {
-            if (fileMetadata) {
-                fileMetadata.tables.forEach((table: { target: { database: string; schema: string; name: string; }; type?: string }) => {
-                    if (table.type === 'test') { return; }
-                    const action = `${table.target.database}.${table.target.schema}.${table.target.name}`;
-                    actionsList.push(action);
-                });
-            }
-        });
+        const actionsList = includedTargets.map((target) => `${target.database}.${target.schema}.${target.name}`);
         let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
         let dataformActionCmd = "";
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);

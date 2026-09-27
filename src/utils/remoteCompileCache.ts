@@ -37,8 +37,11 @@ function entryFileName(sha: string, configKey: string) {
     return `${sha}__${encodeURIComponent(configKey)}.json`;
 }
 
-export async function saveRemoteCompile(entry: RemoteCompileEntry): Promise<void> {
-    latestEntry = entry;
+/** `trackAsLatest` is false for compiles of other commits (e.g. the merge-base), which must not become the current result. */
+export async function saveRemoteCompile(entry: RemoteCompileEntry, trackAsLatest = true): Promise<void> {
+    if (trackAsLatest) {
+        latestEntry = entry;
+    }
     const dir = repoDir(entry.repositoryName);
     try {
         await vscode.workspace.fs.createDirectory(dir);
@@ -73,12 +76,12 @@ async function readEntry(uri: vscode.Uri): Promise<RemoteCompileEntry | undefine
 }
 
 /** The result compiled from `sha` with the given config, if there is one. */
-export async function getRemoteCompile(repositoryName: string, sha: string, configKey: string): Promise<RemoteCompileEntry | undefined> {
+export async function getRemoteCompile(repositoryName: string, sha: string, configKey: string, trackAsLatest = true): Promise<RemoteCompileEntry | undefined> {
     if (latestEntry && latestEntry.repositoryName === repositoryName && latestEntry.configKey === configKey && latestEntry.sha === sha) {
         return latestEntry;
     }
     const exact = await readEntry(vscode.Uri.joinPath(repoDir(repositoryName), entryFileName(sha, configKey)));
-    if (exact) {
+    if (exact && trackAsLatest) {
         latestEntry = exact;
     }
     return exact;

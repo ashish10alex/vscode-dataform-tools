@@ -5,6 +5,7 @@ import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
 import { LastRunCard } from "./LastRunCard";
 import { CompilationInfoBadge } from "./CompilationInfoBadge";
+import { RunChangedButton } from "./RunChangedButton";
 import {
   Play,
   Network,
@@ -574,6 +575,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 </label>
            </div>
 
+           <div className="flex flex-col gap-2">
            <div className="flex flex-wrap items-center gap-1">
                {/* Explore group */}
                <div className="flex items-center gap-1">
@@ -592,11 +594,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                    <Eye className="w-4 h-4 mr-1.5" /> Preview Data
                </button>
 
-               {(state.testQuery || state.actionTypes?.some(t => t !== 'test') || (state.dataformTags && state.dataformTags.length > 0)) && (
-                   <div className="w-px h-5 bg-[var(--vscode-widget-border)] mx-1" />
-               )}
+           </div>
 
-               {/* Run group */}
+           {/* Run group, on its own row so every run action stays in one place however the panel wraps */}
+           <div className="flex flex-wrap items-center gap-1">
                {state.testQuery && !isRemoteMode && (
                    <button onClick={handleRunTest} disabled={state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
                        <Play className="w-4 h-4 mr-1.5" /> Run Tests
@@ -676,6 +677,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                        )}
                    </div>
                )}
+               <RunChangedButton
+                   changedActions={state.changedActions}
+                   isRemoteMode={isRemoteMode}
+                   disabled={runningModel || !!state.recompiling}
+                   includeDependencies={includeDependencies}
+                   includeDependents={includeDependents}
+                   fullRefresh={fullRefresh}
+                   onApiRunDispatched={() => setSubmittingSince(Date.now())}
+               />
+           </div>
            </div>
 
            <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
