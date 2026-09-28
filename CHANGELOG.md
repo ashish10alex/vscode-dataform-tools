@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.2...v1.13.3) (2026-09-28)
+
+
+### Bug Fixes
+
+* fall back to visible Dataform document when recompiling from panel ([5e83ec7](https://github.com/ashish10alex/vscode-dataform-tools/commit/5e83ec7c9a7268c1aef93b491e973224e2801275))
+* match the compile loading skeleton to the current preview UI ([#375](https://github.com/ashish10alex/vscode-dataform-tools/issues/375)) ([170a00e](https://github.com/ashish10alex/vscode-dataform-tools/commit/170a00e26071c476e580b3cf150a0c1811cd3e96))
+
 ### [1.13.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.1...v1.13.2) (2026-09-28)
 
 
