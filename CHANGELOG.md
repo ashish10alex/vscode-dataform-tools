@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.2](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.1...v1.13.2) (2026-09-28)
+
+
+### Features
+
+* run only actions changed vs the default branch ([#371](https://github.com/ashish10alex/vscode-dataform-tools/issues/371)) ([fdefc48](https://github.com/ashish10alex/vscode-dataform-tools/commit/fdefc48280a752e36bd91fb82c6bd9f896ae16cc))
+
+
+### Bug Fixes
+
+* honour "include dependencies" when running a single tag via CLI ([#372](https://github.com/ashish10alex/vscode-dataform-tools/issues/372)) ([d281feb](https://github.com/ashish10alex/vscode-dataform-tools/commit/d281feb6e49154a1c483114b025103509823d253))
+* register compiled query panel listeners once per panel ([#373](https://github.com/ashish10alex/vscode-dataform-tools/issues/373)) ([76f7adb](https://github.com/ashish10alex/vscode-dataform-tools/commit/76f7adb04f79979674704acbde6682d7d5836980))
+
 ### [1.13.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.0...v1.13.1) (2026-09-27)
 
 
