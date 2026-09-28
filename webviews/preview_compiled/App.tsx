@@ -137,6 +137,8 @@ function App() {
 
   const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
+  const showSkeleton = !!state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && !state.compilationErrors;
+
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
   const isPropertyGraphFile = (state.propertyGraphs?.length ?? 0) > 0;
@@ -340,8 +342,8 @@ function App() {
           );
         })()}
 
-        {state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && !state.compilationErrors && (
-            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} />
+        {showSkeleton && (
+            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} backend={state.compilationBackend || state.compilationInfo?.backend} />
         )}
 
 {(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
@@ -352,7 +354,7 @@ function App() {
           <CompilationError state={state} />
         )}
 
-        {isConfigFile && <ProjectConfigTab state={state} />}
+        {isConfigFile && !showSkeleton && <ProjectConfigTab state={state} />}
         {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.operationsQuery && !state.assertionQuery && !state.incrementalQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && !state.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
             <div>
                 <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
