@@ -39,6 +39,7 @@ export const useVSCodeMessage = () => {
         if (message.relativeFilePath && message.relativeFilePath !== prevState.relativeFilePath) {
           nextState.propertyGraphs = message.propertyGraphs ?? null;
           nextState.propertyGraphValidations = message.propertyGraphValidations ?? null;
+          nextState.deferral = message.deferral ?? null;
         }
 
         // Element schemas arrive one at a time as the user expands nodes, so they are merged

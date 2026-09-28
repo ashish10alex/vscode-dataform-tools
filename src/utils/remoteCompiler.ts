@@ -5,7 +5,7 @@ import { load as loadYaml } from 'js-yaml';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { GitService } from '../gitClient';
 import { logger } from '../logger';
-import { DataformCompiledJson, ExecutionMode, GraphError } from '../types';
+import { CodeCompilationConfig, DataformCompiledJson, ExecutionMode, GraphError } from '../types';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { toDataformCompiledJson, ApiCompilationResult, ApiCompilationResultAction } from './remoteCompileAdapter';
 import { DEFAULT_CONFIG_KEY, getRemoteCompile, initRemoteCompileCache, saveRemoteCompile, RemoteCompileEntry } from './remoteCompileCache';
@@ -322,16 +322,20 @@ async function createCompilationResultWithRetry<T>(create: () => Promise<T>, rep
     }
 }
 
-/** Compiles `gitCommitish` with the Dataform API using the selected release config's settings, or the compiler options setting. */
+/**
+ * Compiles `gitCommitish` with the Dataform API using `configOverride` when given, else the selected release
+ * config's settings, else the compiler options setting.
+ */
 async function createRemoteCompileEntry(
     dataformClient: DataformTools,
     repositoryName: string,
     gitCommitish: string,
     releaseConfig: string | undefined,
     report: (message: string) => void,
+    configOverride?: CodeCompilationConfig,
 ): Promise<RemoteCompileEntry> {
-    let codeCompilationConfig = createCompilerOptionsObjectForApi([getDataformCompilerOptions()]);
-    if (releaseConfig) {
+    let codeCompilationConfig: CodeCompilationConfig = configOverride ?? createCompilerOptionsObjectForApi([getDataformCompilerOptions()]);
+    if (releaseConfig && !configOverride) {
         report("Reading release config…");
         const [config] = await dataformClient.client.getReleaseConfig({ name: releaseConfig });
         codeCompilationConfig = (config.codeCompilationConfig ?? {}) as typeof codeCompilationConfig;
@@ -375,6 +379,34 @@ export async function compileRemoteCommit(workspaceFolder: string, sha: string, 
         entry = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Compiling ${sha.slice(0, 7)} with the Dataform API` },
             (progress) => createRemoteCompileEntry(dataformClient, repositoryName, sha, releaseConfig, (message) => progress.report({ message })),
+        );
+        entry = { ...entry, configKey: cacheKey };
+        await saveRemoteCompile(entry, false);
+    }
+    const graphErrors = entry.compiledJson.graphErrors?.compilationErrors ?? [];
+    if (graphErrors.length > 0) {
+        throw new Error(`${graphErrors[0].fileName ? `${graphErrors[0].fileName}: ` : ""}${graphErrors[0].message}`);
+    }
+    return entry.compiledJson;
+}
+
+/**
+ * Compiled JSON of the pushed commit of the current branch with explicit compilation settings, such as the
+ * prod options of defer to prod. Cached by SHA and `cacheTag`, but never replaces the current compilation.
+ */
+export async function compileRemoteHeadWithConfig(workspaceFolder: string, codeCompilationConfig: CodeCompilationConfig, cacheTag: string): Promise<DataformCompiledJson> {
+    const { git, branch, repositoryName } = await getGitInfo();
+    const upstreamSha = await git.getUpstreamSha();
+    if (!upstreamSha) {
+        throw new Error(`Branch "${branch}" is not pushed`);
+    }
+    const cacheKey = `${DEFAULT_CONFIG_KEY}@${cacheTag}`;
+    let entry = await getRemoteCompile(repositoryName, upstreamSha, cacheKey, false);
+    if (!entry) {
+        const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
+        entry = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Window, title: `Compiling ${upstreamSha.slice(0, 7)} with prod options` },
+            (progress) => createRemoteCompileEntry(dataformClient, repositoryName, upstreamSha, undefined, (message) => progress.report({ message }), codeCompilationConfig),
         );
         entry = { ...entry, configKey: cacheKey };
         await saveRemoteCompile(entry, false);

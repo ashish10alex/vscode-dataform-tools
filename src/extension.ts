@@ -30,7 +30,9 @@ import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
 import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
-import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import { CompiledQueryPanel, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import { initDeferToProd } from './defer/deferStatusBar';
+import { initProdTargets } from './defer/prodTargets';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
@@ -87,6 +89,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initRemoteCompiler(context);
     initLastRun(context);
     initChangedActions(context);
+    initProdTargets(context);
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -106,6 +109,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(diagnosticCollection);
 
     registerCompiledQueryPanel(context);
+    initDeferToProd(context, refreshCompiledQueryPanel);
     registerExecutedSqlProvider(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);

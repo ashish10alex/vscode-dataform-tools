@@ -14,10 +14,41 @@ function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
 }
 
-export function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
-    // NOTE: we might need to add support for more code compilation config items from https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.icodecompilationconfig
-    let compilerOptionsObject: { [key: string]: string } = {};
-    
+/** `--vars` value as the CLI takes it (`a=1,b=2`), or as a JSON object. */
+function parseVars(value: string): { [key: string]: string } {
+    const vars: { [key: string]: string } = {};
+    if (value.trim().startsWith("{")) {
+        try {
+            const parsed = JSON.parse(value);
+            Object.entries(parsed).forEach(([key, val]) => { vars[key] = String(val); });
+        } catch {
+            logger.error(`Could not parse --vars as JSON: ${value}`);
+        }
+        return vars;
+    }
+    value.split(",").forEach((pair) => {
+        const separator = pair.indexOf("=");
+        if (separator > 0) {
+            vars[pair.slice(0, separator).trim()] = pair.slice(separator + 1).trim();
+        }
+    });
+    return vars;
+}
+
+const COMPILER_FLAG_TO_API_KEY: { [flag: string]: Exclude<keyof typeof globalThis.compilerOptionsMap, "vars" | "defaultNotebookRuntimeOptions"> } = {
+    "--table-prefix": "tablePrefix",
+    "--schema-suffix": "schemaSuffix",
+    "--database-suffix": "databaseSuffix",
+    "--default-database": "defaultDatabase",
+    "--default-schema": "defaultSchema",
+    "--default-location": "defaultLocation",
+    "--assertion-schema": "assertionSchema",
+};
+
+export function createCompilerOptionsObjectForApi(compilerOptions: string[]): typeof globalThis.compilerOptionsMap {
+    // See https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/protos.google.cloud.dataform.v1beta1.icodecompilationconfig
+    let compilerOptionsObject: typeof globalThis.compilerOptionsMap = {};
+
     if (!compilerOptions || compilerOptions.length === 0 || !compilerOptions[0] || typeof compilerOptions[0] !== 'string') {
         return compilerOptionsObject;
     }
@@ -25,23 +56,18 @@ export function createCompilerOptionsObjectForApi(compilerOptions: string[]) {
     let compilerOptionsToApi = compilerOptions[0].split(" ");
 
     compilerOptionsToApi.forEach((opt: string) => {
-        if (!opt.includes("=")) {
+        const separator = opt.indexOf("=");
+        if (separator === -1) {
             return;
         }
 
-        let value = opt.split("=")[1];
-        value = stripQuotes(value);
+        const flag = opt.slice(0, separator);
+        const value = stripQuotes(opt.slice(separator + 1));
 
-        if (opt.startsWith("--table-prefix")) {
-            compilerOptionsObject["tablePrefix"] = value;
-        }
-
-        if (opt.startsWith("--schema-suffix")) {
-            compilerOptionsObject["schemaSuffix"] = value;
-        }
-
-        if (opt.startsWith("--database-suffix")) {
-            compilerOptionsObject["databaseSuffix"] = value;
+        if (flag === "--vars") {
+            compilerOptionsObject.vars = { ...compilerOptionsObject.vars, ...parseVars(value) };
+        } else if (COMPILER_FLAG_TO_API_KEY[flag]) {
+            compilerOptionsObject[COMPILER_FLAG_TO_API_KEY[flag]] = value;
         }
     });
 
@@ -151,9 +177,14 @@ function describeDataformCli(workspaceFolder: string): { cliPath: string, cliSou
     return { cliPath, cliSource: configuredPath && cliPath === configuredPath ? "setting" : "path" };
 }
 
-export function compileDataform(workspaceFolder: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
+/**
+ * Compiles with the compiler options setting, or with `compilerOptionsOverride` (e.g. the prod options
+ * used by defer to prod). An override compile leaves `compilerOptionsMap`, which API runs use, untouched.
+ */
+export function compileDataform(workspaceFolder: string, compilerOptionsOverride?: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
-    let dataformCompilerOptions = getDataformCompilerOptions();
+    const isOverride = compilerOptionsOverride !== undefined;
+    let dataformCompilerOptions = isOverride ? compilerOptionsOverride.trim() : getDataformCompilerOptions();
     let compilerOptions: string[] = [];
     if (dataformCompilerOptions !== "") {
         compilerOptions.push(dataformCompilerOptions);
@@ -180,13 +211,14 @@ export function compileDataform(workspaceFolder: string): Promise<{ compiledStri
         spawnedProcess.on('close', async (code: number) => {
             try {
                 if (code === 0) {
-                    if(compilerOptions.length>0){
-                        globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
-                    }else{
-                        globalThis.compilerOptionsMap = {};
+                    if (!isOverride) {
+                        if(compilerOptions.length>0){
+                            globalThis.compilerOptionsMap = createCompilerOptionsObjectForApi(compilerOptions);
+                        }else{
+                            globalThis.compilerOptionsMap = {};
+                        }
+                        logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
                     }
-
-                    logger.debug(`compilerOptionsMap: ${JSON.stringify(globalThis.compilerOptionsMap)}`);
                     const endTime = performance.now();
                     resolve({ compiledString: stdOut, errors: undefined, possibleResolutions: undefined, compilationTimeMs: endTime - startTime });
                 } else {

@@ -15,6 +15,7 @@ import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
 import { clearIndices } from './compiledJsonIndex';
 import { confirmRemoteRun } from './remoteCompiler';
 import { recordLastRun } from '../lastRun';
+import { deferFileMetadata, prepareDeferral } from '../defer';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -186,6 +187,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         } else {
             logger.debug('No cached compilation found, performing fresh compilation');
         }
+        prepareDeferral(workspaceFolder);
         let { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } = await runCompilation(workspaceFolder); // Takes ~1100ms
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
@@ -224,12 +226,14 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             if (targetToSearch) {
                 dependents = await getDependentsOfTarget(targetToSearch);
             }
+            const deferral = isConfigFile ? undefined : await deferFileMetadata(fileMetadata, dataformCompiledJson, workspaceFolder);
 
             return {
                 isDataformWorkspace: true,
                 errors: { dataformCompilationErrors: errors },
                 possibleResolutions: possibleResolutions,
                 fileMetadata: fileMetadata,
+                deferral: deferral,
                 dependents: dependents,
                 lineageMetadata: null,
                 pathMeta: {
@@ -289,11 +293,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         if (targetToSearch) {
             dependents = await getDependentsOfTarget(targetToSearch);
         }
-
+        const deferral = await deferFileMetadata(fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
 
         return {
             isDataformWorkspace: true,
             fileMetadata: fileMetadata,
+            deferral: deferral,
             dependents: dependents,
             lineageMetadata: null,
             pathMeta: {

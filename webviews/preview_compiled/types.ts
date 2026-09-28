@@ -1,8 +1,8 @@
 import { CompilationErrorType } from "../../src/types";
-import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView, ExecutionMode, ChangedActionsView } from "../../src/types";
+import type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView, ExecutionMode, ChangedActionsView, DeferralView, DeferToProdState } from "../../src/types";
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../../src/types";
 export { CompilationErrorType };
-export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView, ExecutionMode, ChangedActionsView };
+export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, ActionCounts, ProjectConfig, BigQueryDryRunResponse, LastRunView, ExecutionMode, ChangedActionsView, DeferralView, DeferToProdState };
 export type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema };
 import type { CompilationInfo } from "../../src/utils/compilationInfo";
 export type { CompilationInfo };
@@ -20,6 +20,9 @@ export interface DryRunErrorAnnotation {
 
 export interface WebviewState {
   snoozeEndTime?: number | null;
+  /** Null when defer to prod is off */
+  deferral?: DeferralView | null;
+  deferToProd?: DeferToProdState;
   preOperations?: string;
   postOperations?: string;
   tableOrViewQuery?: string;
