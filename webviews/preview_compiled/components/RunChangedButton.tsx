@@ -1,7 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ChevronDown, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
+import { describeComparison } from "../../../src/shared/changeComparison";
+import { countTypeNames, describeTypeCounts } from "../../../src/shared/actionTypes";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
 const REASON_LABELS: Record<string, { label: string; title: string }> = {
@@ -9,6 +11,9 @@ const REASON_LABELS: Record<string, { label: string; title: string }> = {
   sql: { label: "SQL", title: "Compiled query, incremental query or pre/post operations differ" },
   config: { label: "config", title: "Materialization settings differ (type, partitioning, clustering, unique key, ...)" },
 };
+
+/** Up to this many changed actions, every file starts expanded. */
+const EXPAND_ALL_UP_TO = 5;
 
 const NONE_CHANGED: NonNullable<ChangedActionsView["changed"]> = [];
 const NONE_DELETED: NonNullable<ChangedActionsView["deleted"]> = [];
@@ -57,6 +62,54 @@ const ActionName: React.FC<{ target: string; className?: string }> = ({ target, 
   );
 };
 
+type ChangedAction = NonNullable<ChangedActionsView["changed"]>[number];
+
+const ReasonBadge: React.FC<{ reason: string }> = ({ reason }) => (
+  <span
+    title={REASON_LABELS[reason]?.title}
+    className="px-1 rounded text-[10px] bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]"
+  >
+    {REASON_LABELS[reason]?.label ?? reason}
+  </span>
+);
+
+/** A file's changed actions: one row with its type counts and reasons, expanding to the actions. */
+const ChangedFileGroup: React.FC<{ fileName: string; actions: ChangedAction[]; expanded: boolean; onToggle: () => void }> = ({ fileName, actions, expanded, onToggle }) => {
+  const reasons = (["new", "sql", "config"] as const).filter((reason) => actions.some((a) => a.reasons.includes(reason)));
+  return (
+    <div className="py-1.5 border-t first:border-t-0 border-[var(--vscode-widget-border)]">
+      <button
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="w-full grid grid-cols-[auto_1fr_auto] items-center gap-1.5 rounded text-left hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+      >
+        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        <FileHeading fileName={fileName} />
+        <span className="flex items-center gap-1 whitespace-nowrap">
+          <span className="text-[11px] text-[var(--vscode-descriptionForeground)]">{describeTypeCounts(countTypeNames(actions.map((a) => a.type)))}</span>
+          {reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
+        </span>
+      </button>
+      {expanded && (
+        <ul className="mt-1 space-y-1">
+          {actions.map((action) => {
+            const badge = ACTION_TYPE_BADGE_STYLES[action.type] ?? DEFAULT_BADGE_STYLE;
+            return (
+              <li key={action.target} className="grid grid-cols-[1fr_auto] items-start gap-3 pl-5">
+                <ActionName target={action.target} />
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{action.type}</span>
+                  {action.reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 function groupByFile<T extends { fileName: string }>(items: T[]): [string, T[]][] {
   const groups = new Map<string, T[]>();
   for (const item of items) {
@@ -77,6 +130,8 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   onApiRunDispatched,
 }) => {
   const [open, setOpen] = useState(false);
+  // Files whose expansion differs from the default, which depends on the size of the change set
+  const [toggledFiles, setToggledFiles] = useState<Set<string>>(new Set());
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   // Left offset from the button's wrapper. Undefined until measured, when the popover is right-aligned.
@@ -128,6 +183,8 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
 
   const status = changedActions.status;
   const baseRef = changedActions.baseRef ?? "default branch";
+  const headRef = changedActions.headRef;
+  const comparison = describeComparison(headRef, baseRef);
   const noChanges = status === "ready" && changed.length === 0;
   const onDefaultBranch = status === "ready" && !!changedActions.onDefaultBranch;
   const defaultBranch = changedActions.defaultBranch ?? baseRef.replace(/^origin\//, "");
@@ -141,13 +198,27 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
     .map((reason) => [reason, changed.filter((a) => a.reasons.includes(reason)).length] as const)
     .filter(([, count]) => count > 0)
     .map(([reason, count]) => `${count} ${REASON_LABELS[reason].label}`);
-  const summary = `${changed.length} action${changed.length === 1 ? "" : "s"} in ${changedGroups.length} file${changedGroups.length === 1 ? "" : "s"} · ${reasonCounts.join(" · ")}`;
+  const typeCounts = describeTypeCounts(countTypeNames(changed.map((a) => a.type)));
+  const summary = `${changed.length} action${changed.length === 1 ? "" : "s"} in ${changedGroups.length} file${changedGroups.length === 1 ? "" : "s"}${typeCounts ? `: ${typeCounts}` : ""} · ${reasonCounts.join(" · ")}`;
+
+  const expandedByDefault = changed.length <= EXPAND_ALL_UP_TO;
+  const isExpanded = (fileName: string) => expandedByDefault !== toggledFiles.has(fileName);
+  const allExpanded = changedGroups.every(([fileName]) => isExpanded(fileName));
+  const toggleFile = (fileName: string) => setToggledFiles((prev) => {
+    const next = new Set(prev);
+    if (!next.delete(fileName)) { next.add(fileName); }
+    return next;
+  });
+  // Expanding all toggles every file only when they start collapsed, and collapsing all the reverse
+  const setAllExpanded = (expand: boolean) =>
+    setToggledFiles(expand === expandedByDefault ? new Set() : new Set(changedGroups.map(([fileName]) => fileName)));
 
   const compute = () => vscode.postMessage({ command: "computeChangedActions" });
 
   const toggle = () => {
     const next = !open;
     setOpen(next);
+    if (next) { setToggledFiles(new Set()); }
     if (next && status !== "ready" && status !== "computing") {
       compute();
     }
@@ -168,7 +239,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
         onClick={toggle}
         disabled={disabled}
         className="pl-3 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
-        title={noChanges ? `No changes vs ${baseRef}. Click to recheck` : `Run only the actions changed vs ${baseRef}`}
+        title={noChanges ? `No changes ${comparison}. Click to recheck` : `Run only the actions changed ${comparison}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -201,14 +272,14 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               )}
               {status === "ready" ? (
                 <>
-                  Compared with <span className="font-mono">{baseRef}</span>
+                  Changes {headRef && <>in <span className="font-mono">{headRef}</span> </>}vs <span className="font-mono">{baseRef}</span>
                   {changedActions.mergeBaseSha && (
                     <> @ <span className="font-mono">{changedActions.mergeBaseSha.slice(0, 7)}</span> (merge-base)</>
                   )}
                   {changedActions.headLabel && <> · {changedActions.headLabel}</>}
                 </>
               ) : (
-                <>Changes vs <span className="font-mono">{baseRef}</span></>
+                <>Changes {headRef && <>in <span className="font-mono">{headRef}</span> </>}vs <span className="font-mono">{baseRef}</span></>
               )}
             </p>
             <button
@@ -251,7 +322,17 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
             </div>
           </div>
           {status === "ready" && changed.length > 0 && (
-            <p className="mb-2 text-xs text-[var(--vscode-foreground)]">{summary}</p>
+            <div className="mb-2 flex items-start justify-between gap-2 text-xs">
+              <p className="text-[var(--vscode-foreground)]">{summary}</p>
+              {changedGroups.length > 1 && (
+                <button
+                  onClick={() => setAllExpanded(!allExpanded)}
+                  className="shrink-0 px-1.5 py-0.5 rounded text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                >
+                  {allExpanded ? "Collapse all" : "Expand all"}
+                </button>
+              )}
+            </div>
           )}
 
           <div className="max-h-[50vh] overflow-y-auto text-xs pr-1">
@@ -273,31 +354,13 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               </p>
             )}
             {status === "ready" && changedGroups.map(([fileName, actions]) => (
-              <div key={fileName} className="py-1.5 border-t first:border-t-0 border-[var(--vscode-widget-border)]">
-                <FileHeading fileName={fileName} />
-                <ul className="mt-1 space-y-1">
-                  {actions.map((action) => {
-                    const badge = ACTION_TYPE_BADGE_STYLES[action.type] ?? DEFAULT_BADGE_STYLE;
-                    return (
-                      <li key={action.target} className="grid grid-cols-[1fr_auto] items-start gap-3 pl-3">
-                        <ActionName target={action.target} />
-                        <span className="flex items-center gap-1 whitespace-nowrap">
-                          <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{action.type}</span>
-                          {action.reasons.map((reason) => (
-                            <span
-                              key={reason}
-                              title={REASON_LABELS[reason]?.title}
-                              className="px-1 rounded text-[10px] bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]"
-                            >
-                              {REASON_LABELS[reason]?.label ?? reason}
-                            </span>
-                          ))}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              <ChangedFileGroup
+                key={fileName}
+                fileName={fileName}
+                actions={actions}
+                expanded={isExpanded(fileName)}
+                onToggle={() => toggleFile(fileName)}
+              />
             ))}
             {status === "ready" && deleted.length > 0 && (
               <div className="mt-2 pt-2 border-t border-[var(--vscode-widget-border)] opacity-60">

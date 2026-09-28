@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import util from 'util';
 import { execFile } from 'child_process';
 import { logger } from './logger';
+import { describeComparison } from './shared/changeComparison';
 import { ChangedActionsView, DataformCompiledJson, ExecutionMode, LastRunRequest } from './types';
 import { ChangedAction, CompiledGraphDiff, diffCompiledGraphs } from './utils/compiledGraphDiff';
 import { compileDataform, getDataformCompilerOptions, parseCompiledString, runCompilation } from './utils/dataformCompiler';
@@ -71,6 +72,8 @@ interface ChangeBase {
     baseRef: string;
     mergeBaseSha: string;
     headLabel: string;
+    /** The branch being compared (its upstream in remote mode), or a short SHA on a detached HEAD */
+    headRef: string;
     remote: boolean;
     /** The `defaultBranch` setting, e.g. `main` */
     defaultBranch: string;
@@ -87,19 +90,22 @@ async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
     const defaultBranch = getDefaultBranch(workspaceFolder);
     const baseRef = await resolveBaseRef(workspaceFolder, defaultBranch);
     // A detached HEAD reports "HEAD", so it counts as a feature branch
-    const onDefaultBranch = (await git(workspaceFolder, ['rev-parse', '--abbrev-ref', 'HEAD'])) === defaultBranch;
+    const currentBranch = await git(workspaceFolder, ['rev-parse', '--abbrev-ref', 'HEAD']);
+    const onDefaultBranch = currentBranch === defaultBranch;
     let head = 'HEAD';
     let headLabel = 'working tree';
+    let headRef = currentBranch === 'HEAD' ? await git(workspaceFolder, ['rev-parse', '--short', 'HEAD']) : currentBranch;
     if (remote) {
         try {
             head = await git(workspaceFolder, ['rev-parse', '@{u}']);
+            headRef = await git(workspaceFolder, ['rev-parse', '--abbrev-ref', '@{u}']);
         } catch {
             throw new Error('The current branch is not pushed. Remote mode compares the pushed commit, so push the branch first.');
         }
         headLabel = `pushed commit ${head.slice(0, 7)}`;
     }
     const mergeBaseSha = await git(workspaceFolder, ['merge-base', baseRef, head]);
-    return { baseRef, mergeBaseSha, headLabel, remote, defaultBranch, onDefaultBranch };
+    return { baseRef, mergeBaseSha, headLabel, headRef, remote, defaultBranch, onDefaultBranch };
 }
 
 function shortHash(value: string): string {
@@ -226,6 +232,7 @@ export interface ChangedActionsResult extends CompiledGraphDiff {
     baseRef: string;
     mergeBaseSha: string;
     headLabel: string;
+    headRef: string;
     defaultBranch: string;
     onDefaultBranch: boolean;
 }
@@ -237,7 +244,7 @@ export async function computeChangedActions(workspaceFolder: string, head: Dataf
     if (!baseGraph) {
         return undefined;
     }
-    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diffCompiledGraphs(baseGraph, head) };
+    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, headRef: base.headRef, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diffCompiledGraphs(baseGraph, head) };
 }
 
 export function toChangedActionsView(result: ChangedActionsResult): ChangedActionsView {
@@ -247,6 +254,7 @@ export function toChangedActionsView(result: ChangedActionsResult): ChangedActio
         baseRef: result.baseRef,
         mergeBaseSha: result.mergeBaseSha,
         headLabel: result.headLabel,
+        headRef: result.headRef,
         defaultBranch: result.defaultBranch,
         onDefaultBranch: result.onDefaultBranch,
         changed: result.changed.map(strip),
@@ -276,10 +284,10 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
 }
 
 /** Explains an empty result; on the default branch itself there is nothing to compare unless files were edited. */
-export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 'defaultBranch' | 'onDefaultBranch'>): string {
+export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 'headRef' | 'defaultBranch' | 'onDefaultBranch'>): string {
     return result.onDefaultBranch
         ? `You're on ${result.defaultBranch}, the branch Run Changed compares against, so there is nothing to compare. Switch to a feature branch, or edit files.`
-        : `No changed actions vs ${result.baseRef}`;
+        : `No changed actions ${describeComparison(result.headRef, result.baseRef)}`;
 }
 
 /** Compiles the project and works out the changed actions, reporting failures to the user. */
@@ -315,6 +323,7 @@ export async function dispatchChangedActions(
         kind: 'changed',
         items: result.changed.map((action) => action.target),
         baseRef: result.baseRef,
+        headRef: result.headRef,
         includeDependencies,
         includeDependents,
         fullRefresh,

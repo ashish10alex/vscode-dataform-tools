@@ -7,6 +7,7 @@ import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { DataTable } from '../../components/ui/data-table';
 import { formatDuration, needsJobStats } from '../../../src/shared/jobTiming';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
+import { IncludedTargetsList } from './IncludedTargetsList';
 
 interface LatestRunBannerProps {
     state: WebviewState;
@@ -365,13 +366,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                                     ))}
                                 </div>
                             ) : latest.includedTargets && latest.includedTargets.length > 0 ? (
-                                <div className="flex flex-col gap-0.5">
-                                    {latest.includedTargets.map((t: any, i: number) => (
-                                        <span key={i} className="break-all" title={`${t.database}.${t.schema}.${t.name}`}>
-                                            {t.schema}.{t.name}
-                                        </span>
-                                    ))}
-                                </div>
+                                <IncludedTargetsList targets={latest.includedTargets} typeCounts={latest.includedTargetTypes} />
                             ) : (
                                 <span className="text-[var(--vscode-descriptionForeground)] opacity-60 italic">Full workspace</span>
                             )}

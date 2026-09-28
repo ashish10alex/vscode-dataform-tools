@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ExecutionMode, LastRunRequest, LastRunView } from './types';
+import { describeComparison } from './shared/changeComparison';
 
 const LAST_RUN_STATE_KEY = 'dataform_last_run_request';
 
@@ -58,7 +59,7 @@ function selectionLabel(request: LastRunRequest, items: string[]): string {
         case 'currentFile': return `file ${items[0] ?? ''}`;
         case 'files': return `${request.items.length} file${plural}: ${summarizeItems(items)}`;
         case 'tags': return `tag${plural} ${summarizeItems(items)}`;
-        case 'changed': return `changed actions vs ${request.baseRef ?? 'default branch'}`;
+        case 'changed': return `${request.items.length} changed action${plural} ${describeComparison(request.headRef, request.baseRef ?? 'default branch')}`;
     }
 }
 

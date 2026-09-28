@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ExecutionMode } from './types';
 import { getWorkspaceFolder } from './utils';
 import { resolveExecutionMode } from './utils/remoteCompiler';
+import { describeComparison } from './shared/changeComparison';
 import { ChangedActionsResult, dispatchChangedActions, noChangesMessage, prepareChangedActions } from './changedActions';
 
 /** Keybinding args; when any is given the prompts are skipped and the changed actions run straight away. */
@@ -37,7 +38,7 @@ function pickRunType(result: ChangedActionsResult): Promise<RunTypeItem['runType
     }
 
     const quickPick = vscode.window.createQuickPick<RunTypeItem>();
-    quickPick.title = `Changed actions vs ${result.baseRef} @ ${result.mergeBaseSha.slice(0, 7)} (${result.headLabel})`;
+    quickPick.title = `Changed actions ${describeComparison(result.headRef, result.baseRef)} @ ${result.mergeBaseSha.slice(0, 7)} (${result.headLabel})`;
     quickPick.placeholder = 'Select run type';
     quickPick.items = items;
     quickPick.matchOnDescription = true;

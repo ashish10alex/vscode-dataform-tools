@@ -4,6 +4,7 @@ import path from 'path';
 import {GitService} from "./gitClient";
 import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation} from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
+import { countActionTypes } from './shared/actionTypes';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
 
 export async function sendWorkflowInvocationNotification(
@@ -35,6 +36,7 @@ export async function sendWorkflowInvocationNotification(
             state: 'RUNNING',
             includedTags: invocationConfig?.includedTags,
             includedTargets: invocationConfig?.includedTargets,
+            includedTargetTypes: invocationConfig?.includedTargets ? countActionTypes(invocationConfig.includedTargets, CACHED_COMPILED_DATAFORM_JSON) : undefined,
         });
 
         if (storedUrls.length > 20) {

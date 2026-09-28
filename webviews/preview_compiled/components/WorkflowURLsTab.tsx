@@ -4,6 +4,7 @@ import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCir
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
+import { IncludedTargetsList } from './IncludedTargetsList';
 
 interface WorkflowURLsTabProps {
     state: WebviewState;
@@ -266,32 +267,9 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                                 ))}
                                             </div>
                                         ) : item.includedTargets && item.includedTargets.length > 0 ? (
-                                            item.includedTargets.length > 2 ? (
-                                                <div className="relative group">
-                                                    <span className="text-xs cursor-help underline decoration-dotted text-[var(--vscode-textLink-foreground)]">
-                                                        {item.includedTargets.length} files
-                                                    </span>
-                                                    <div className="absolute z-10 hidden group-hover:block bottom-full mb-2 bg-[var(--vscode-sideBar-background)] border border-[var(--vscode-widget-border)] shadow-lg rounded-md p-2 w-max max-w-xs overflow-hidden">
-                                                        <div className="max-h-48 overflow-y-auto pr-2">
-                                                            <ul className="text-xs space-y-1">
-                                                                {item.includedTargets.map((t: any, i: number) => (
-                                                                    <li key={i} className="truncate" title={`${t.database}.${t.schema}.${t.name}`}>
-                                                                        {t.schema}.{t.name}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col gap-1 text-xs">
-                                                    {item.includedTargets.map((t: any, i: number) => (
-                                                        <span key={i} className="break-all" title={`${t.database}.${t.schema}.${t.name}`}>
-                                                            {t.name}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )
+                                            <div className="text-xs">
+                                                <IncludedTargetsList targets={item.includedTargets} typeCounts={item.includedTargetTypes} />
+                                            </div>
                                         ) : (
                                             <span className="text-[var(--vscode-descriptionForeground)] opacity-60 text-[10px] italic">Full workspace</span>
                                         )}
