@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { ExecutionMode, WebviewState } from "../types";
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
+import { ExecutionMode, WebviewState, WorkflowUrlEntry } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
 import { LastRunCard } from "./LastRunCard";
 import { CompilationInfoBadge } from "./CompilationInfoBadge";
+import { RunChangedButton } from "./RunChangedButton";
+import { RunBackend, RunSplitButton } from "./RunSplitButton";
+import { ModifierSwitch } from "./ModifierSwitch";
 import {
   Play,
   Network,
@@ -33,12 +36,10 @@ import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 
-const ACCENT_EXPLORE = "inset 2px 0 0 var(--vscode-charts-green)";
-const ACCENT_PREVIEW = "inset 2px 0 0 var(--vscode-charts-blue)";
-const ACCENT_RUN = "inset 2px 0 0 var(--vscode-charts-purple)";
-
-
-
+const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
+const PRIMARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]`;
+const SECONDARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]`;
+const SEGMENT_BUTTON = "px-3 py-1.5 text-sm flex items-center text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
 
 /**
  * A stat line ending in UNKNOWN_ACCURACY_STAT means BigQuery could not estimate the bytes.
@@ -171,6 +172,42 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     setTimeout(() => setRunningModel(false), 3000);
   };
 
+  // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
+  const isRemoteMode = state.compilationInfo?.backend === "api";
+  const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
+  const runBackend: RunBackend = isRemoteMode ? "api" : preferredBackend;
+  const hasRunnableActions = !!state.actionTypes?.some(t => t !== 'test');
+  const hasTags = (state.dataformTags?.length ?? 0) > 0;
+  const showTestRun = !!state.testQuery && !isRemoteMode;
+  const hasRunControls = hasRunnableActions || hasTags || (!!state.changedActions && state.changedActions.status !== "unavailable");
+  const latestApiRun = useMemo(
+    () => (state.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
+    [state.workflowUrls]
+  );
+
+  const isPropertyGraphFile = (state.propertyGraphs?.length ?? 0) > 0;
+  // The divider only separates the switches from the run buttons on the same line; once the switches wrap it would dangle.
+  const modifierSwitchesRef = useRef<HTMLDivElement>(null);
+  const [modifierSwitchesWrapped, setModifierSwitchesWrapped] = useState(false);
+  useLayoutEffect(() => {
+    const switches = modifierSwitchesRef.current;
+    const row = switches?.parentElement;
+    if (!switches || !row) { return; }
+    const measure = () => {
+      const first = row.firstElementChild as HTMLElement;
+      setModifierSwitchesWrapped(switches.offsetTop >= first.offsetTop + first.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [hasRunControls, isPropertyGraphFile]);
+
+  const handleRun = (backend: RunBackend) => {
+    if (backend === "api") { setSubmittingSince(Date.now()); }
+    handleRunModel(backend === "api");
+  };
+
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
   const runTagShortcutHint = isMac ? "⌘↵" : "Ctrl+↵";
   const runTagLabel = selectedTagsForRun.length === 0
@@ -193,9 +230,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "formatCurrentFile", value: true });
     setTimeout(() => setFormatting(false), 100);
   };
-
-  // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
-  const isRemoteMode = state.compilationInfo?.backend === "api";
 
   const handleLint = () => {
     vscode.postMessage({ command: "lintCurrentFile", value: true });
@@ -256,7 +290,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   // Property graphs produce no query, so none of the toolbar below (format, lint, preview,
   // dry run stats) applies to them. They get their own section instead.
-  if ((state.propertyGraphs?.length ?? 0) > 0) {
+  if (isPropertyGraphFile) {
     return (
       <div className="space-y-6 pb-20">
         <div className="flex flex-wrap items-center gap-2">
@@ -265,7 +299,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </span>
           <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
         </div>
-        <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
+        <LastRunCard lastRun={state.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
         <PropertyGraphSection state={state} />
       </div>
     );
@@ -555,131 +589,124 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
 
       {/* Toolbar */}
-       <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
 
           <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
 
-           <div className="flex flex-wrap gap-4 text-sm text-[var(--vscode-foreground)]">
-                <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={includeDependencies} onChange={e => setIncludeDependencies(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
-                    <span>Include Dependencies</span>
-                </label>
-                <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={includeDependents} onChange={e => setIncludeDependents(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
-                    <span>Include Dependents</span>
-                </label>
-                <label className="flex items-center cursor-pointer space-x-2">
-                    <input type="checkbox" checked={fullRefresh} onChange={e => setFullRefresh(e.target.checked)} className="form-checkbox h-4 w-4 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] rounded" />
-                    <span>Full Refresh</span>
-                </label>
-           </div>
+          {/* Explore & inspect: read-only, so none of the run modifiers apply */}
+          <div className="flex flex-wrap items-center gap-2">
+              <div role="group" aria-label="Explore dependencies" className="inline-flex rounded border border-[var(--vscode-widget-border)] overflow-hidden">
+                  <button onClick={handleDependencyGraph} disabled={state.recompiling} className={SEGMENT_BUTTON} title="Open the dependency graph">
+                      <Network className="w-4 h-4 mr-1.5" /> Graph
+                  </button>
+                  <button onClick={handleDependencyInspector} disabled={state.recompiling} className={clsx(SEGMENT_BUTTON, "border-l border-[var(--vscode-widget-border)]")} title="Inspect upstream and downstream dependencies">
+                      <ListTree className="w-4 h-4 mr-1.5" /> Inspector
+                  </button>
+              </div>
+              <button onClick={handlePreviewResults} disabled={state.recompiling} className={SECONDARY_BUTTON} title="Preview the query results">
+                  <Eye className="w-4 h-4 mr-1.5" /> Preview Data
+              </button>
+          </div>
 
-           <div className="flex flex-wrap items-center gap-1">
-               {/* Explore group */}
-               <div className="flex items-center gap-1">
-                   <button onClick={handleDependencyGraph} disabled={state.recompiling} style={{ boxShadow: ACCENT_EXPLORE }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
-                       <Network className="w-4 h-4 mr-1.5" /> Graph
-                   </button>
-                   <button onClick={handleDependencyInspector} disabled={state.recompiling} style={{ boxShadow: ACCENT_EXPLORE }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm flex items-center disabled:opacity-50">
-                       <ListTree className="w-4 h-4 mr-1.5" /> Inspector
-                   </button>
-               </div>
+          {/* Run controls with the modifiers they consume, on their own row so they stay together however the panel wraps */}
+          {(hasRunControls || showTestRun) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 pt-3 border-t border-[var(--vscode-widget-border)]">
+              {showTestRun && (
+                  <button
+                      onClick={handleRunTest}
+                      disabled={state.recompiling}
+                      className={hasRunnableActions ? SECONDARY_BUTTON : PRIMARY_BUTTON}
+                  >
+                      <Play className="w-4 h-4 mr-1.5" /> Run Tests
+                  </button>
+              )}
+              {(hasRunnableActions || hasTags) && (
+                  <div ref={tagPopoverRef} className="relative">
+                      {hasRunnableActions ? (
+                          <RunSplitButton
+                              backend={runBackend}
+                              isRemoteMode={isRemoteMode}
+                              hasTags={hasTags}
+                              running={runningModel}
+                              disabled={!!state.recompiling}
+                              onRun={handleRun}
+                              onBackendChange={setPreferredBackend}
+                              onRunTag={() => setTagPopoverOpen(true)}
+                          />
+                      ) : (
+                          <button
+                              onClick={() => setTagPopoverOpen(o => !o)}
+                              disabled={runningModel || state.recompiling}
+                              className={PRIMARY_BUTTON}
+                              title="Run by tag via Dataform API"
+                              aria-haspopup="dialog"
+                              aria-expanded={tagPopoverOpen}
+                          >
+                              <Tag className="w-4 h-4 mr-1.5" /> Run Tag…
+                          </button>
+                      )}
+                      {tagPopoverOpen && (
+                          <div
+                              role="dialog"
+                              aria-label="Run by tag"
+                              onKeyDown={handleTagPopoverKeyDown}
+                              className="absolute top-full left-0 mt-1 z-20 w-[min(320px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
+                          >
+                              <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run via the Dataform API:</p>
+                              <StyledMultiSelect
+                                  options={tagOptions}
+                                  value={selectedTagRunOptions}
+                                  onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
+                                  onMenuOpen={() => setTagMenuOpen(true)}
+                                  onMenuClose={() => setTagMenuOpen(false)}
+                                  placeholder="Search and select tags..."
+                                  isSearchable
+                                  closeMenuOnSelect
+                                  blurInputOnSelect={false}
+                                  autoFocus
+                              />
+                              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
+                                  <button
+                                      onClick={() => setTagPopoverOpen(false)}
+                                      className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
+                                  >
+                                      Cancel
+                                  </button>
+                                  <button
+                                      onClick={() => { handleRunTagApi(); setTagPopoverOpen(false); }}
+                                      disabled={selectedTagsForRun.length === 0}
+                                      className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                                  >
+                                      <Play className="w-3.5 h-3.5 mr-1.5" /> {runTagLabel}
+                                      <span className="ml-2 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
+                                  </button>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              )}
+              <RunChangedButton
+                  changedActions={state.changedActions}
+                  isRemoteMode={isRemoteMode}
+                  disabled={runningModel || !!state.recompiling}
+                  includeDependencies={includeDependencies}
+                  includeDependents={includeDependents}
+                  fullRefresh={fullRefresh}
+                  onApiRunDispatched={() => setSubmittingSince(Date.now())}
+              />
+              {hasRunControls && (
+                  <div ref={modifierSwitchesRef} role="group" aria-label="Run modifiers" className="flex flex-wrap items-center gap-1.5">
+                          {!modifierSwitchesWrapped && <div className="w-px h-5 mr-0.5 bg-[var(--vscode-widget-border)]" aria-hidden="true" />}
+                          <ModifierSwitch label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Include dependencies (--include-deps)" />
+                          <ModifierSwitch label="+Dependents" checked={includeDependents} onChange={setIncludeDependents} title="Include dependents (--include-dependents)" />
+                          <ModifierSwitch label="Full Refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental tables from scratch (--full-refresh)" warning />
+                  </div>
+              )}
+          </div>
+          )}
 
-               <div className="w-px h-5 bg-[var(--vscode-widget-border)] mx-1" />
-
-               {/* Preview group */}
-               <button onClick={handlePreviewResults} disabled={state.recompiling} style={{ boxShadow: ACCENT_PREVIEW }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
-                   <Eye className="w-4 h-4 mr-1.5" /> Preview Data
-               </button>
-
-               {(state.testQuery || state.actionTypes?.some(t => t !== 'test') || (state.dataformTags && state.dataformTags.length > 0)) && (
-                   <div className="w-px h-5 bg-[var(--vscode-widget-border)] mx-1" />
-               )}
-
-               {/* Run group */}
-               {state.testQuery && !isRemoteMode && (
-                   <button onClick={handleRunTest} disabled={state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
-                       <Play className="w-4 h-4 mr-1.5" /> Run Tests
-                   </button>
-               )}
-               {state.actionTypes?.some(t => t !== 'test') && (
-                   <div className="flex items-center gap-1">
-                       {!isRemoteMode && (
-                       <button onClick={() => handleRunModel(false)} disabled={runningModel || state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50">
-                           <Play className="w-4 h-4 mr-1.5" /> Run (CLI)
-                       </button>
-                       )}
-                       <button onClick={() => { setSubmittingSince(Date.now()); handleRunModel(true); }} disabled={runningModel || state.recompiling} style={{ boxShadow: ACCENT_RUN }} className="pl-4 pr-3 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 relative">
-                           <Play className="w-4 h-4 mr-1.5" /> Run (API)
-                       </button>
-                   </div>
-               )}
-               {state.dataformTags && state.dataformTags.length > 0 && (
-                   <div ref={tagPopoverRef} className="relative ml-1">
-                       <button
-                           onClick={() => setTagPopoverOpen(o => !o)}
-                           disabled={runningModel || state.recompiling}
-                           style={{ boxShadow: ACCENT_RUN }}
-                           className="pl-4 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50"
-                           title="Run by tag via Dataform API"
-                           aria-haspopup="dialog"
-                           aria-expanded={tagPopoverOpen}
-                       >
-                           <Tag className="w-4 h-4 mr-1.5" /> Run Tag (API)
-                           {selectedTagsForRun.length > 0 && (
-                               <span
-                                   className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full"
-                                   style={{ background: "rgba(255,255,255,0.22)" }}
-                               >
-                                   {selectedTagsForRun.length}
-                               </span>
-                           )}
-                           <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />
-                       </button>
-                       {tagPopoverOpen && (
-                           <div
-                               role="dialog"
-                               onKeyDown={handleTagPopoverKeyDown}
-                               className="absolute top-full right-0 mt-1 z-20 w-[320px] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
-                           >
-                               <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run:</p>
-                               <StyledMultiSelect
-                                   options={tagOptions}
-                                   value={selectedTagRunOptions}
-                                   onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
-                                   onMenuOpen={() => setTagMenuOpen(true)}
-                                   onMenuClose={() => setTagMenuOpen(false)}
-                                   placeholder="Search and select tags..."
-                                   isSearchable
-                                   closeMenuOnSelect
-                                   blurInputOnSelect={false}
-                                   autoFocus
-                               />
-                               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
-                                   <button
-                                       onClick={() => setTagPopoverOpen(false)}
-                                       className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
-                                   >
-                                       Cancel
-                                   </button>
-                                   <button
-                                       onClick={() => { handleRunTagApi(); setTagPopoverOpen(false); }}
-                                       disabled={selectedTagsForRun.length === 0}
-                                       style={{ boxShadow: ACCENT_RUN }}
-                                       className="flex-1 justify-center pl-4 pr-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
-                                   >
-                                       <Play className="w-3.5 h-3.5 mr-1.5" /> {runTagLabel}
-                                       <span className="ml-2 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
-                                   </button>
-                               </div>
-                           </div>
-                       )}
-                   </div>
-               )}
-           </div>
-
-           <LastRunCard lastRun={state.lastRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
-           <LatestRunBanner state={state} submittingSince={submittingSince} />
+          <LastRunCard lastRun={state.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
+          <LatestRunBanner state={state} submittingSince={submittingSince} />
       </div>
 
       {/* Code Blocks — one accordion per target per query type */}

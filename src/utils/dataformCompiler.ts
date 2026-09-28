@@ -84,6 +84,14 @@ function extractDataformJsonFromMultipleJson(compiledString: string) {
     }
 }
 
+export function parseCompiledString(compiledString: string): DataformCompiledJson {
+    try {
+        return JSON.parse(compiledString);
+    } catch (parseError) {
+        return extractDataformJsonFromMultipleJson(compiledString);
+    }
+}
+
 export function getDataformCompilationTimeoutFromConfig() {
     let dataformCompilationTimeoutVal: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
     if (dataformCompilationTimeoutVal) {
@@ -260,12 +268,7 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
         let { compiledString, errors, possibleResolutions, compilationTimeMs } = await compileDataform(workspaceFolder);
         setCompilationInfo({ backend: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !compiledString, ...describeDataformCli(workspaceFolder) });
         if (compiledString) {
-            let dataformCompiledJson: DataformCompiledJson;
-            try {
-                dataformCompiledJson = JSON.parse(compiledString);
-            } catch (parseError) {
-                dataformCompiledJson = extractDataformJsonFromMultipleJson(compiledString);
-            }
+            const dataformCompiledJson = parseCompiledString(compiledString);
             CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
             buildIndices(dataformCompiledJson);
             logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);

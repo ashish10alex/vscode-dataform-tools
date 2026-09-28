@@ -14,6 +14,7 @@ import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExt
 import { executableIsAvailable } from './utils';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
+import { runChangedActionsCommand, RunChangedActionsArgs } from './runChangedActionsCommand';
 import { createNewDataformProject } from './createNewDataformProject';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
@@ -27,6 +28,7 @@ import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
+import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
@@ -84,6 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     initRemoteCompiler(context);
     initLastRun(context);
+    initChangedActions(context);
 
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
@@ -328,6 +331,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace', () => { runFilesTagsWtOptions(context, "api_workspace"); })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.runChangedActions', (args?: RunChangedActionsArgs) => runChangedActionsCommand(context, "cli", args)),
+        vscode.commands.registerCommand('vscode-dataform-tools.runChangedActionsApi', (args?: RunChangedActionsArgs) => runChangedActionsCommand(context, "api", args)),
     );
 
     context.subscriptions.push(

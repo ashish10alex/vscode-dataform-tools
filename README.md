@@ -82,6 +82,10 @@ Officially recommended [VS Code extension for Dataform](https://marketplace.visu
       <td>Preview query results in a table by running the file</td>
     </tr>
     <tr>
+      <td>Run changed actions</td>
+      <td>Run only the actions whose compiled SQL or materialization settings changed vs the merge-base with your default branch (set with <code>vscode-dataform-tools.defaultBranch</code>), like dbt's <code>state:modified</code>. Catches changes made through <code>includes/</code>, and shows what will run before running it</td>
+    </tr>
+    <tr>
       <td><a href="#hover">BigQuery hover provider</a></td>
       <td>Hover definition for tables, columns, column descriptions, types and common BigQuery functions</td>
     </tr>
@@ -276,6 +280,14 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
     <tr>
       <td><code>vscode-dataform-tools.rerunLastExecution</code></td>
       <td>Rerun last execution (same files/tags, options and mode as the previous run)</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runChangedActions</code></td>
+      <td>Run only the actions changed vs the default branch, after previewing them. In a keybinding, pass <code>"args": { "includeDependents": true, "fullRefresh": false }</code> (also <code>includeDependencies</code>) to skip the prompts</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.runChangedActionsApi</code></td>
+      <td>Same as above, using the Dataform API</td>
     </tr>
   </tbody>
 </table>

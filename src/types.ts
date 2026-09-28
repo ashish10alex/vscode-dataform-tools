@@ -699,13 +699,18 @@ export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:strin
 
 export type ExecutionMode = "cli" | "api" | "api_workspace";
 
-export type LastRunKind = 'currentFile' | 'files' | 'tags';
+export type LastRunKind = 'currentFile' | 'files' | 'tags' | 'changed';
 
 /** The selection and options of the most recent Dataform run, kept so it can be repeated. */
 export interface LastRunRequest {
     kind: LastRunKind;
-    /** Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`. */
+    /**
+     * Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`, and for `changed`
+     * the actions that ran (informational only: a rerun recomputes them).
+     */
     items: string[];
+    /** `changed`: the ref the changes were computed against, e.g. `origin/main`. */
+    baseRef?: string;
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
@@ -713,6 +718,24 @@ export interface LastRunRequest {
     /** Absolute path of the Dataform folder the run used; `items` are relative to it. */
     workspaceFolder: string;
     timestamp: number;
+}
+
+/** "Run changed" state rendered by the compiled query webview. */
+export interface ChangedActionsView {
+    /** idle: in a git repo but nothing computed yet; unavailable: not a git repo */
+    status: 'idle' | 'computing' | 'ready' | 'error' | 'unavailable';
+    /** e.g. `origin/main` */
+    baseRef?: string;
+    mergeBaseSha?: string;
+    /** What the base was compared with: the working tree, or the pushed commit in remote mode */
+    headLabel?: string;
+    /** The `defaultBranch` setting, e.g. `main` */
+    defaultBranch?: string;
+    /** The checked-out branch is the one being compared against, so only local edits can show up */
+    onDefaultBranch?: boolean;
+    changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config')[] }[];
+    deleted?: { target: string; fileName: string; type: string }[];
+    error?: string;
 }
 
 /** Summary of the last run as rendered by the compiled query webview. */

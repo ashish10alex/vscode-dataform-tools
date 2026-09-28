@@ -49,6 +49,15 @@ suite('lastRun.summarizeLastRun', () => {
         assert.strictEqual(label, '3 files: a.sqlx, b.sqlx +1 more · +dependents · API (remote workspace)');
     });
 
+    test('describes a changed-actions run by its base ref and notes the rerun recomputes', () => {
+        const { label, detail } = summarizeLastRun(
+            request({ kind: 'changed', items: ['p.d.orders', 'p.d.customers'], baseRef: 'origin/main' }),
+            'cli',
+        );
+        assert.strictEqual(label, 'changed actions vs origin/main · CLI');
+        assert.ok(detail.includes('Last ran 2 actions: p.d.orders, p.d.customers (recomputed on rerun)'));
+    });
+
     test('lists compiler overrides in the detail only when present', () => {
         assert.ok(!summarizeLastRun(request(), 'cli').detail.includes('Compiler overrides'));
         assert.ok(summarizeLastRun(request(), 'cli', 'schemaSuffix=dev').detail.includes('Compiler overrides: schemaSuffix=dev'));
@@ -95,6 +104,10 @@ suite('lastRun.planReplay', () => {
         assert.strictEqual(planReplay(request({ kind: 'currentFile', items: ['a.sqlx'] }), false).runner, 'currentFile');
         assert.strictEqual(planReplay(request({ kind: 'files', items: ['a.sqlx'] }), false).runner, 'files');
     });
+
+    test('routes changed-actions runs to the recomputing runner', () => {
+        assert.strictEqual(planReplay(request({ kind: 'changed', items: ['p.d.orders'] }), true).runner, 'changed');
+    });
 });
 
 suite('lastRun.findMissingItems', () => {
@@ -117,6 +130,10 @@ suite('lastRun.findMissingItems', () => {
             (relativePath) => relativePath === 'a.sqlx',
         );
         assert.deepStrictEqual(missing, ['b.sqlx']);
+    });
+
+    test('never reports changed-actions runs as missing, since they are recomputed', () => {
+        assert.deepStrictEqual(findMissingItems(request({ kind: 'changed', items: ['p.d.gone'] }), undefined, () => false), []);
     });
 });
 

@@ -7,6 +7,7 @@ import { getDataformTags, getOrCompileDataformJson, getWorkspaceFolder, runMulti
 import { isRemoteMode } from './utils/remoteCompiler';
 import { runCurrentFile } from './runCurrentFile';
 import { runMultipleTagsFromSelection, runTagWtApi } from './runTag';
+import { runChangedActions } from './changedActions';
 
 const CHOOSE_WHAT_TO_RUN = 'Choose what to run';
 
@@ -92,6 +93,9 @@ export async function rerunLastExecution(context: vscode.ExtensionContext) {
             return;
         case 'tagsApi':
             await runTagWtApi(context, items, includeDependencies, includeDependents, fullRefresh, executionMode);
+            return;
+        case 'changed':
+            await runChangedActions(context, workspaceFolder, includeDependencies, includeDependents, fullRefresh, executionMode);
             return;
     }
 }

@@ -34,6 +34,8 @@ import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTre
 import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compilationInfo';
 import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
+import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
+import { watchGitHead } from '../gitHeadWatcher';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -43,7 +45,7 @@ let recompileActiveDocument: (() => Promise<void>) | undefined;
  * Disabled graphs are skipped: Dataform will not execute them, so validating them
  * would report failures for something that is never run.
  */
-async function validatePropertyGraphs(webview: vscode.Webview, propertyGraphs: PropertyGraph[]) {
+async function validatePropertyGraphs(postMessage: (message: unknown) => Thenable<boolean>, propertyGraphs: PropertyGraph[]) {
     const validations: PropertyGraphValidation[] = await Promise.all(
         propertyGraphs.map(async (graph): Promise<PropertyGraphValidation> => {
             const targetName = fullTargetName(graph.target);
@@ -71,7 +73,7 @@ async function validatePropertyGraphs(webview: vscode.Webview, propertyGraphs: P
         }),
     );
 
-    await webview.postMessage({ "propertyGraphValidations": validations, "dryRunning": false });
+    await postMessage({ "propertyGraphValidations": validations, "dryRunning": false });
 }
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
@@ -102,7 +104,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
         onDidChangeLastRun(() => {
-            CompiledQueryPanel.centerPanel?.webviewPanel.webview.postMessage({ lastRun: getLastRunView() });
+            CompiledQueryPanel.centerPanel?.postMessage({ lastRun: getLastRunView() });
         })
     );
 
@@ -117,7 +119,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
                 const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                CompiledQueryPanel.centerPanel.webviewPanel.webview.postMessage({
+                CompiledQueryPanel.centerPanel.postMessage({
                     workflowUrls: workflowUrls
                 });
             }
@@ -136,7 +138,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     snoozeManager.registerWebviewHandlers(
         (msg) => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
-                CompiledQueryPanel.centerPanel.webviewPanel.webview.postMessage(msg);
+                CompiledQueryPanel.centerPanel.postMessage(msg);
             }
         },
         () => !!(CompiledQueryPanel.centerPanel?.webviewPanel?.visible)
@@ -185,7 +187,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 if (workspaceFolder) {
                     dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
                 }
-                CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({
+                CompiledQueryPanel?.centerPanel?.postMessage({
                     "recompiling": true,
                     "compilationBackend": isRemoteMode() ? "api" : "cli",
                     "dataformCoreVersion": dataformCoreVersion,
@@ -211,7 +213,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     };
 
     setOnCompilationInfoChanged((info) => {
-        CompiledQueryPanel?.centerPanel?.webviewPanel?.webview.postMessage({ compilationInfo: info });
+        CompiledQueryPanel?.centerPanel?.postMessage({ compilationInfo: info });
     });
 
     recompileActiveDocument = async () => {
@@ -250,6 +252,22 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(debouncedSaveHandler));
 
+    // A checkout, commit or pull changes the project without saving a file, so treat it like a save.
+    watchGitHead(context, async (repositoryRoot) => {
+        const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
+        const relative = doc ? path.relative(repositoryRoot, doc.fileName) : '..';
+        if (!doc || relative.startsWith('..') || path.isAbsolute(relative)) {
+            return; // A different repository from the Dataform project being shown
+        }
+        // The count belongs to the previous branch; drop it now rather than after the recompile
+        CompiledQueryPanel.centerPanel?.postMessage({ changedActions: { status: 'idle' } });
+        if (snoozeManager.isSnoozeActive()) {
+            snoozeManager.markDirtyDuringSnooze();
+            return;
+        }
+        await triggerCompilationForDocument(doc);
+    });
+
 
 }
 
@@ -263,6 +281,17 @@ export class CompiledQueryPanel {
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         CompiledQueryPanel.registerListeners(this, extensionContext);
         this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
+    }
+
+    /**
+     * Compiles, dry runs and API calls often finish after the user has closed the panel, and touching a
+     * disposed panel's webview throws, so every message goes through here and is dropped once it is closed.
+     */
+    public postMessage(message: unknown): Thenable<boolean> {
+        if (this.centerPanelDisposed) {
+            return Promise.resolve(false);
+        }
+        return this.webviewPanel.webview.postMessage(message);
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
@@ -525,7 +554,7 @@ export class CompiledQueryPanel {
                     "dataformTags": dataformTags,
                     "apiUrlLoading": true,
                 };
-                this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
+                this.centerPanel?.postMessage(messageDict);
                 const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, "api");
                 if(!result){
                     return;
@@ -533,7 +562,7 @@ export class CompiledQueryPanel {
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
                 const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
-                this.centerPanel?.webviewPanel.webview.postMessage(messageDict);
+                this.centerPanel?.postMessage(messageDict);
                 return;
               case 'runTagApi': {
                 const tagsToRun: string[] = Array.isArray(message.value.selectedTags)
@@ -576,7 +605,7 @@ export class CompiledQueryPanel {
                     const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
                     const dryRunIncrementalErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
                     const _costEstNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
-                    this.centerPanel?.webviewPanel.webview.postMessage({
+                    this.centerPanel?.postMessage({
                         "tableOrViewQuery": fileMetadata?.queryMeta?.tableQueries?.map((t: any) => t.query).join("\n"),
                         "assertionQuery": fileMetadata?.queryMeta?.assertionQuery,
                         "preOperations": fileMetadata?.queryMeta?.preOpsQuery,
@@ -650,7 +679,7 @@ export class CompiledQueryPanel {
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata?.tables?.[0]?.target, locationLineage);
 
-                this.centerPanel?.webviewPanel.webview.postMessage({
+                this.centerPanel?.postMessage({
                     "tableOrViewQuery": fileMetadata?.queryMeta?.tableQueries?.map((t: any) => t.query).join("\n"),
                     "assertionQuery": fileMetadata?.queryMeta?.assertionQuery,
                     "preOperations": fileMetadata?.queryMeta?.preOpsQuery,
@@ -686,13 +715,13 @@ export class CompiledQueryPanel {
               }
               case 'getWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                this.centerPanel?.webviewPanel.webview.postMessage({
+                this.centerPanel?.postMessage({
                     workflowUrls: currentWorkflowUrls
                 });
                 return;
               case 'clearWorkflowUrls':
                 await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
-                this.centerPanel?.webviewPanel.webview.postMessage({
+                this.centerPanel?.postMessage({
                     workflowUrls: []
                 });
                 return;
@@ -700,7 +729,7 @@ export class CompiledQueryPanel {
                 if (message.value?.workflowInvocationId && this.centerPanel) {
                     const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.value.workflowInvocationId);
                     if (!cancelled) {
-                        this.centerPanel?.webviewPanel.webview.postMessage({ cancelWorkflowInvocationFailed: message.value.workflowInvocationId });
+                        this.centerPanel?.postMessage({ cancelWorkflowInvocationFailed: message.value.workflowInvocationId });
                     }
                 }
                 return;
@@ -725,7 +754,7 @@ export class CompiledQueryPanel {
                     }
                 } else if (await loadJobStatsForInvocation(entry)) {
                     await context.workspaceState.update('dataform_workflow_urls', storedUrls);
-                    this.centerPanel?.webviewPanel.webview.postMessage({ workflowUrls: storedUrls });
+                    this.centerPanel?.postMessage({ workflowUrls: storedUrls });
                 }
                 return;
               }
@@ -735,7 +764,26 @@ export class CompiledQueryPanel {
                 // Every runner records the run just before dispatching it, so an unchanged timestamp means
                 // the rerun was cancelled or failed its checks and the webview should stop showing progress.
                 if (getLastRun()?.timestamp === previousTimestamp) {
-                  this.centerPanel?.webviewPanel.webview.postMessage({ rerunAborted: true });
+                  this.centerPanel?.postMessage({ rerunAborted: true });
+                }
+                return;
+              }
+              case 'computeChangedActions':
+                await this.centerPanel?.postChangedActions(true);
+                return;
+              case 'runChangedActions': {
+                const _workspaceFolder = await getWorkspaceFolder();
+                if (!_workspaceFolder) { return; }
+                const result = await runChangedActions(
+                    extensionContext,
+                    _workspaceFolder,
+                    !!message.value.includeDependencies,
+                    !!message.value.includeDependents,
+                    !!message.value.fullRefresh,
+                    message.value.api ? 'api' : 'cli',
+                );
+                if (result) {
+                    this.centerPanel?.postMessage({ changedActions: toChangedActionsView(result) });
                 }
                 return;
               }
@@ -835,7 +883,7 @@ export class CompiledQueryPanel {
                         return refreshedUrls[index];
                     });
                     await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
-                    this.centerPanel?.webviewPanel.webview.postMessage({
+                    this.centerPanel?.postMessage({
                         workflowUrls: updatedUrls
                     });
                 }
@@ -859,7 +907,7 @@ export class CompiledQueryPanel {
                     // the only signal available that the table could not be read.
                     error: columns.length === 0 ? `Could not read the schema of ${fullTableId}` : undefined,
                 };
-                await this.centerPanel?.webviewPanel.webview.postMessage({
+                await this.centerPanel?.postMessage({
                     "propertyGraphElementSchema": elementSchema,
                 });
                 return;
@@ -888,6 +936,9 @@ export class CompiledQueryPanel {
 
     //@ts-ignore
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined, freshCompilation: boolean = true) {
+        if (this.centerPanelDisposed) {
+            return;
+        }
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
         const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
@@ -909,11 +960,16 @@ export class CompiledQueryPanel {
             }
         }
 
+        // Setting html on a panel closed during the awaits above would throw
+        if (this.centerPanelDisposed) {
+            return;
+        }
+
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
                 this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
             } else {
-                await webview.postMessage({
+                await this.postMessage({
                     "missingExecutables": missingExecutables,
                     "recompiling": false,
                     "errorType": CompilationErrorType.MISSING_EXECUTABLE,
@@ -934,7 +990,7 @@ export class CompiledQueryPanel {
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
-            await webview.postMessage({
+            await this.postMessage({
                 "recompiling": true,
                 "compilationBackend": isRemoteMode() ? "api" : "cli",
                 "compilerOptions": compilerOptions,
@@ -949,7 +1005,7 @@ export class CompiledQueryPanel {
         }
 
         if(!curFileMeta){
-            await webview.postMessage({
+            await this.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
                 "recompiling": false,
                 "errorType": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
@@ -967,7 +1023,7 @@ export class CompiledQueryPanel {
         if (curFileMeta.isDataformWorkspace===false){
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             const currentDirectory = workspaceFolder?.uri.fsPath;
-            await webview.postMessage({
+            await this.postMessage({
                 "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
                 "recompiling": false,
                 "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
@@ -980,7 +1036,7 @@ export class CompiledQueryPanel {
             });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
-            await webview.postMessage({
+            await this.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
                 "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
@@ -994,7 +1050,7 @@ export class CompiledQueryPanel {
             });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
-            await webview.postMessage({
+            await this.postMessage({
                 "errorType": CompilationErrorType.FILE_NOT_FOUND,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
@@ -1007,7 +1063,7 @@ export class CompiledQueryPanel {
             });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
-            await webview.postMessage({
+            await this.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
                 "recompiling": false,
                 "errorType": CompilationErrorType.QUERY_META_ERROR,
@@ -1024,7 +1080,7 @@ export class CompiledQueryPanel {
         if(curFileMeta.errors?.dataformCompilationErrors){
             let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
-                await webview.postMessage({ "recompiling": false });
+                await this.postMessage({ "recompiling": false });
                 return;
             }
 
@@ -1041,7 +1097,7 @@ export class CompiledQueryPanel {
                 }
             }
 
-            await webview.postMessage({
+            await this.postMessage({
                 "compilationErrors": curFileMeta.errors.dataformCompilationErrors?.map((compilationError: { error: string; fileName: string; stack?: string }) => {
                     const { lineNumber, sourceContext } = parseCompilationStack(compilationError.stack);
                     return { error: compilationError.error, fileName: compilationError.fileName, lineNumber, sourceContext };
@@ -1077,7 +1133,7 @@ export class CompiledQueryPanel {
         );
 
         if (isConfigFile) {
-            await webview.postMessage({
+            await this.postMessage({
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "projectConfig": curFileMeta.projectConfig,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
@@ -1110,7 +1166,7 @@ export class CompiledQueryPanel {
                 if (diagnosticCollection) {
                     diagnosticCollection.clear();
                 }
-                await webview.postMessage({
+                await this.postMessage({
                     "propertyGraphs": propertyGraphs,
                     "propertyGraphValidations": null,
                     "relativeFilePath": relativeFilePathForGraphs,
@@ -1144,17 +1200,17 @@ export class CompiledQueryPanel {
                 });
 
                 // Validation is a network round trip; do not hold up the render for it.
-                validatePropertyGraphs(webview, propertyGraphs).catch((error) => {
+                validatePropertyGraphs((message) => this.postMessage(message), propertyGraphs).catch((error) => {
                     logger.error(`Error validating property graphs: ${error}`);
                     // The render above set dryRunning: true; without this the webview spins forever.
-                    webview.postMessage({ "dryRunning": false });
+                    this.postMessage({ "dryRunning": false });
                 });
                 return;
             }
 
             const coreVersion = curFileMeta.dataformCoreVersion ?? CACHED_COMPILED_DATAFORM_JSON?.dataformCoreVersion;
             if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
-                await webview.postMessage({
+                await this.postMessage({
                     "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
                     "errorType": CompilationErrorType.COMPILATION_ERROR,
                     "relativeFilePath": relativeFilePathForGraphs,
@@ -1190,7 +1246,7 @@ export class CompiledQueryPanel {
                             if(diagnosticCollection){
                                 diagnosticCollection.clear();
                             }
-                            await webview.postMessage({
+                            await this.postMessage({
                                 "declarations": filteredDeclarations,
                                 "propertyGraphs": null,
                                 "recompiling": false,
@@ -1205,7 +1261,7 @@ export class CompiledQueryPanel {
                     }
                     
                     // If it's a JS file but has no tables and no declarations, it's a helper file
-                    await webview.postMessage({
+                    await this.postMessage({
                         "isHelperFile": true,
                         "propertyGraphs": null,
                         "recompiling": false,
@@ -1231,7 +1287,7 @@ export class CompiledQueryPanel {
 
         const fm = curFileMeta.fileMetadata;
         if (!fm) {
-            await webview.postMessage({
+            await this.postMessage({
                 "errorMessage": `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.`,
                 "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
@@ -1249,7 +1305,7 @@ export class CompiledQueryPanel {
         let fileMetadata = handleSemicolonPrePostOps(fm);
         let targetTablesOrViews = fm.tables;
 
-        await webview.postMessage({
+        await this.postMessage({
             "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
             "assertionQuery": fileMetadata.queryMeta.assertionQuery,
             "preOperations": fileMetadata.queryMeta.preOpsQuery,
@@ -1291,7 +1347,7 @@ export class CompiledQueryPanel {
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
-            await webview.postMessage({
+            await this.postMessage({
                 "recompiling": false,
                 "dryRunning": false,
             });
@@ -1462,7 +1518,7 @@ export class CompiledQueryPanel {
 
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
-            await webview.postMessage({
+            await this.postMessage({
                 "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                 "assertionQuery": fileMetadata.queryMeta.assertionQuery,
                 "preOperations": fileMetadata.queryMeta.preOpsQuery,
@@ -1530,9 +1586,25 @@ export class CompiledQueryPanel {
         }
     }
 
+    /**
+     * Sends the "Run changed" state. Without `allowCompile` it only diffs against an already compiled base,
+     * which keeps the button's count current after every compile without compiling the base unprompted.
+     */
+    public async postChangedActions(allowCompile: boolean) {
+        if (this.centerPanelDisposed || (!allowCompile && !CACHED_COMPILED_DATAFORM_JSON)) {
+            return; // Nothing compiled yet, e.g. not a Dataform workspace, which the compile has already reported
+        }
+        if (allowCompile) {
+            await this.postMessage({ changedActions: { status: 'computing' } });
+        }
+        const changedActions = await getChangedActionsView(await getWorkspaceFolder(), allowCompile);
+        await this.postMessage({ changedActions });
+    }
+
     private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
+        this.postChangedActions(false).catch((error) => logger.error(`Failed to refresh changed actions: ${error}`));
         if(webview){
             // this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         } else {
