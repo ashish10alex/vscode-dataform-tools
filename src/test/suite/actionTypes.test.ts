@@ -18,6 +18,16 @@ suite('actionTypes.countActionTypes', () => {
         const counts = countActionTypes(['orders', 'events', 'orders_v', 'orders_unique', 'grant', 'gone'].map(target), compiled);
         assert.deepStrictEqual(counts, { table: 1, incremental: 1, view: 1, assertion: 1, operation: 1, other: 1 });
     });
+
+    test('counts property graphs', () => {
+        const compiled = { tables: [], propertyGraphs: [{ target: target('graph') }] } as any;
+        assert.deepStrictEqual(countActionTypes([target('graph')], compiled), { propertyGraph: 1 });
+    });
+
+    test('gives no counts without a compiled graph rather than counting everything as other', () => {
+        assert.strictEqual(countActionTypes([target('orders'), target('events')], undefined), undefined);
+        assert.strictEqual(describeActionTypes(2, countActionTypes([target('orders'), target('events')], undefined)), '2 actions');
+    });
 });
 
 suite('actionTypes.describeActionTypes', () => {
@@ -37,8 +47,8 @@ suite('actionTypes.describeActionTypes', () => {
 suite('actionTypes.countTypeNames', () => {
     test('maps compiled type names, including the plural operations type', () => {
         assert.deepStrictEqual(
-            countTypeNames(['table', 'assertion', 'assertion', 'operations', 'notebook', 'mystery']),
-            { table: 1, assertion: 2, operation: 1, notebook: 1, other: 1 },
+            countTypeNames(['table', 'assertion', 'assertion', 'operations', 'notebook', 'propertyGraph', 'mystery']),
+            { table: 1, assertion: 2, operation: 1, notebook: 1, propertyGraph: 1, other: 1 },
         );
     });
 });

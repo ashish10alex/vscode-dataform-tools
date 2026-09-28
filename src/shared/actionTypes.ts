@@ -30,6 +30,7 @@ function toActionTypeKey(type: string): ActionTypeKey {
         case 'view':
         case 'assertion':
         case 'notebook':
+        case 'propertyGraph':
             return type;
         case 'operation':
         case 'operations':
@@ -49,23 +50,29 @@ export function countTypeNames(types: string[]): ActionTypeCounts {
     return counts;
 }
 
-/** Counts `targets` by action type, looked up in the compiled graph; targets it does not know count as `other`. */
-export function countActionTypes(targets: Target[], compiled: DataformCompiledJson | undefined): ActionTypeCounts {
+/**
+ * Counts `targets` by action type, looked up in the compiled graph; targets it does not know count as `other`.
+ * Undefined without a compiled graph, so the summary shows just the total rather than everything as `other`.
+ */
+export function countActionTypes(targets: Target[], compiled: DataformCompiledJson | undefined): ActionTypeCounts | undefined {
+    if (!compiled) {
+        return undefined;
+    }
     const types = new Map<string, ActionTypeKey>();
-    for (const table of compiled?.tables ?? []) {
+    for (const table of compiled.tables ?? []) {
         const type = table.type === 'incremental' || table.type === 'view' ? table.type : 'table';
         types.set(targetKey(table.target), type);
     }
-    for (const assertion of compiled?.assertions ?? []) {
+    for (const assertion of compiled.assertions ?? []) {
         types.set(targetKey(assertion.target), 'assertion');
     }
-    for (const operation of compiled?.operations ?? []) {
+    for (const operation of compiled.operations ?? []) {
         types.set(targetKey(operation.target), 'operation');
     }
-    for (const notebook of compiled?.notebooks ?? []) {
+    for (const notebook of compiled.notebooks ?? []) {
         types.set(targetKey(notebook.target), 'notebook');
     }
-    for (const graph of compiled?.propertyGraphs ?? []) {
+    for (const graph of compiled.propertyGraphs ?? []) {
         types.set(targetKey(graph.target), 'propertyGraph');
     }
     const counts: ActionTypeCounts = {};

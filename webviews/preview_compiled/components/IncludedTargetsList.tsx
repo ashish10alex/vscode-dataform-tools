@@ -31,8 +31,8 @@ export function IncludedTargetsList({ targets, typeCounts }: { targets: Target[]
                 {describeActionTypes(targets.length, typeCounts)}
             </button>
             {expanded && (
-                <div className="flex flex-col gap-0.5 pl-[1.125rem]">
-                    {targets.map((target, i) => <TargetName key={i} target={target} />)}
+                <div className="flex flex-col gap-0.5 pl-[1.125rem] max-h-60 overflow-y-auto">
+                    {targets.map((target) => <TargetName key={`${target.database}.${target.schema}.${target.name}`} target={target} />)}
                 </div>
             )}
         </div>
