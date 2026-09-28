@@ -41,6 +41,17 @@ import { watchGitHead } from '../gitHeadWatcher';
 let recompileActiveDocument: (() => Promise<void>) | undefined;
 
 /**
+ * The document the panel is showing. A click inside the panel focuses the webview, which clears
+ * `activeTextEditor`, and `activeDocumentObj` is unset until a save or editor switch (e.g. when the
+ * panel was opened from the editor title button), so fall back to a Dataform file still visible beside it.
+ */
+function getDocumentToRecompile(): vscode.TextDocument | undefined {
+    return activeDocumentObj
+        || vscode.window.activeTextEditor?.document
+        || vscode.window.visibleTextEditors.find((editor) => /\.(sqlx|js)$/.test(editor.document.fileName))?.document;
+}
+
+/**
  * Dry run the statement we synthesise for each graph and post the outcome back.
  * Disabled graphs are skipped: Dataform will not execute them, so validating them
  * would report failures for something that is never run.
@@ -217,7 +228,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     recompileActiveDocument = async () => {
-        const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
+        const doc = getDocumentToRecompile();
         if (doc) {
             await triggerCompilationForDocument(doc);
         }
@@ -225,7 +236,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     setOnRemoteCompileCompleted(recompileActiveDocument);
 
     snoozeManager.setOnSnoozeEndedCallback(async () => {
-        const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
+        const doc = getDocumentToRecompile();
         if (doc) {
             await triggerCompilationForDocument(doc);
         }
@@ -505,8 +516,12 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand('vscode-dataform-tools.compileRemotely');
                 return;
               case 'switchCompilationBackend': {
-                await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
-                await recompileActiveDocument?.();
+                try {
+                  await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
+                  await recompileActiveDocument?.();
+                } catch (error: any) {
+                  vscode.window.showErrorMessage(`Unable to switch the compilation backend: ${error.message}`);
+                }
                 return;
               }
               case 'runTests': {
