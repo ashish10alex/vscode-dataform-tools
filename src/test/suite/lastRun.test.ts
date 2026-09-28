@@ -49,13 +49,18 @@ suite('lastRun.summarizeLastRun', () => {
         assert.strictEqual(label, '3 files: a.sqlx, b.sqlx +1 more · +dependents · API (remote workspace)');
     });
 
-    test('describes a changed-actions run by its base ref and notes the rerun recomputes', () => {
+    test('describes a changed-actions run by its branches and notes the rerun recomputes', () => {
         const { label, detail } = summarizeLastRun(
-            request({ kind: 'changed', items: ['p.d.orders', 'p.d.customers'], baseRef: 'origin/main' }),
+            request({ kind: 'changed', items: ['p.d.orders', 'p.d.customers'], baseRef: 'origin/main', headRef: 'feat/orders' }),
             'cli',
         );
-        assert.strictEqual(label, 'changed actions vs origin/main · CLI');
+        assert.strictEqual(label, '2 changed actions in feat/orders vs origin/main · CLI');
         assert.ok(detail.includes('Last ran 2 actions: p.d.orders, p.d.customers (recomputed on rerun)'));
+    });
+
+    test('leaves out the branch of changed-actions runs recorded without one', () => {
+        const { label } = summarizeLastRun(request({ kind: 'changed', items: ['p.d.orders'], baseRef: 'origin/main' }), 'api');
+        assert.strictEqual(label, '1 changed action vs origin/main · API');
     });
 
     test('lists compiler overrides in the detail only when present', () => {

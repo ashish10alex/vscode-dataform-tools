@@ -1,5 +1,6 @@
 import { TextDocument } from "vscode";
 import { protos } from '@google-cloud/dataform';
+import type { ActionTypeCounts } from './shared/actionTypes';
 
 export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
 
@@ -538,6 +539,8 @@ export interface WorkflowUrlEntry {
     invocationEndTime?: number;
     includedTags?: string[];
     includedTargets?: Target[];
+    /** `includedTargets` counted by action type when the run was dispatched; absent on older entries */
+    includedTargetTypes?: ActionTypeCounts;
 }
 
 export interface FailedAction {
@@ -711,6 +714,8 @@ export interface LastRunRequest {
     items: string[];
     /** `changed`: the ref the changes were computed against, e.g. `origin/main`. */
     baseRef?: string;
+    /** `changed`: the branch whose changes ran, e.g. `feat/orders`; absent on runs recorded before it was kept. */
+    headRef?: string;
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
@@ -729,6 +734,8 @@ export interface ChangedActionsView {
     mergeBaseSha?: string;
     /** What the base was compared with: the working tree, or the pushed commit in remote mode */
     headLabel?: string;
+    /** The branch being compared, e.g. `feat/orders` (its upstream in remote mode), or a short SHA on a detached HEAD */
+    headRef?: string;
     /** The `defaultBranch` setting, e.g. `main` */
     defaultBranch?: string;
     /** The checked-out branch is the one being compared against, so only local edits can show up */
