@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.3...v1.13.4) (2026-09-28)
+
+
+### Features
+
+* name both branches for changed actions and collapse long action lists ([#377](https://github.com/ashish10alex/vscode-dataform-tools/issues/377)) ([e6591cd](https://github.com/ashish10alex/vscode-dataform-tools/commit/e6591cd1ec65f48f79992c349210c50f7a055ea9))
+
 ### [1.13.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.2...v1.13.3) (2026-09-28)
 
 
