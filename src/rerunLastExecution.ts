@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ExecutionMode } from './types';
+import { ExecutionMode, LastRunRequest } from './types';
 import { findMissingItems, getLastRun, isFromOtherFolder, planReplay, summarizeLastRun, describeOverrides } from './lastRun';
 import { getDataformTags, getOrCompileDataformJson, getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
 import { isRemoteMode } from './utils/remoteCompiler';
 import { runCurrentFile } from './runCurrentFile';
 import { runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { runChangedActions } from './changedActions';
+import { withDeferOverride } from './defer/deferRun';
 
 const CHOOSE_WHAT_TO_RUN = 'Choose what to run';
 
@@ -80,8 +81,13 @@ export async function rerunLastExecution(context: vscode.ExtensionContext) {
     }
     vscode.window.showInformationMessage(`Rerunning: ${label}`);
 
-    const { items, includeDependencies, includeDependents, fullRefresh, executionMode } = plan;
-    switch (plan.runner) {
+    await withDeferOverride(request.deferToProd ?? false, () => replayRun(context, workspaceFolder, request));
+}
+
+/** Runs a recorded request again through the runner it came from */
+export async function replayRun(context: vscode.ExtensionContext, workspaceFolder: string, request: LastRunRequest) {
+    const { items, includeDependencies, includeDependents, fullRefresh, executionMode, runner } = planReplay(request, isRemoteMode());
+    switch (runner) {
         case 'currentFile':
             await runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, executionMode, items[0]);
             return;

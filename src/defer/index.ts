@@ -65,12 +65,21 @@ function reportError(message: string) {
     }
 }
 
+type SelectedActions = { target?: Target, dependencyTargets?: Target[], type?: string }[];
+
 /**
- * Which upstream actions of the current file to read from prod. Undefined when defer to prod is off or
- * unavailable, in which case the queries run as compiled.
+ * Which upstream actions of the Selected Actions to read from prod. Undefined when defer to prod is off or
+ * unavailable, in which case everything runs as compiled. `enabled` overrides the setting, e.g. for a rerun
+ * of a run recorded with defer on. With `awaitStale`, Stale Deferral flags are set before returning, as a
+ * run has to ask about them first; otherwise they may arrive later through `onDeferralUpdated`.
  */
-export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
-    if (!isDeferEnabled(workspaceFolder)) {
+export async function resolveDeferralForActions(
+    selected: SelectedActions,
+    devGraph: DataformCompiledJson,
+    workspaceFolder: string,
+    options: { enabled?: boolean, awaitStale?: boolean } = {},
+): Promise<Deferral | undefined> {
+    if (!(options.enabled ?? isDeferEnabled(workspaceFolder))) {
         return undefined;
     }
     const availability = getDeferAvailability(workspaceFolder);
@@ -78,7 +87,6 @@ export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph:
         return undefined;
     }
 
-    const selected = fileMetadata.tables ?? [];
     const devActions = indexGraphActions(devGraph);
     const requiredKeys = selected
         .flatMap((action) => action.dependencyTargets ?? [])
@@ -101,12 +109,20 @@ export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph:
             prodStatus: (target) => prodStatuses.get(targetId(target)) ?? "missing",
         });
         lastReportedError = undefined;
-        flagStaleDeferrals(entries, workspaceFolder, devGraph);
+        const stale = flagStaleDeferrals(entries, workspaceFolder, devGraph);
+        if (options.awaitStale) {
+            await stale;
+        }
         return { entries };
     } catch (error: any) {
         reportError(error?.message ?? String(error));
         return undefined;
     }
+}
+
+/** Which upstream actions of the current file to read from prod */
+export function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
+    return resolveDeferralForActions(fileMetadata.tables ?? [], devGraph, workspaceFolder);
 }
 
 /**

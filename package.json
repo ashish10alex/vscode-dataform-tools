@@ -287,6 +287,11 @@
                 "command": "vscode-dataform-tools.deferToProdActions",
                 "category": "Dataform",
                 "title": "Defer to prod actions"
+            },
+            {
+                "command": "vscode-dataform-tools.removeProxyViews",
+                "category": "Dataform",
+                "title": "Remove defer to prod proxy views"
             }
         ],
         "languages": [
@@ -389,7 +394,7 @@
                     "type": "boolean",
                     "default": false,
                     "scope": "resource",
-                    "markdownDescription": "Defer to prod, like dbt's `--defer`: when an upstream table of the current file has not been built in dev, dry runs, previews and the compiled query read it from prod instead. The prod table comes from compiling with `#vscode-dataform-tools.prodCompilerOptions#`. Toggle it from the status bar."
+                    "markdownDescription": "Defer to prod, like dbt's `--defer`: when an upstream table has not been built in dev, dry runs, previews and the compiled query read it from prod instead, and runs read it through a labelled proxy view created in dev. The prod table comes from compiling with `#vscode-dataform-tools.prodCompilerOptions#`. Toggle it from the status bar or the compiled query panel."
                 },
                 "vscode-dataform-tools.prodCompilerOptions": {
                     "type": "string",

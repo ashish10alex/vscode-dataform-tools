@@ -621,7 +621,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   label="Defer to prod"
                   checked={deferToProd}
                   onChange={handleToggleDeferToProd}
-                  title="Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run and Preview Data (like dbt --defer)"
+                  title="Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)"
               />
           </div>
 

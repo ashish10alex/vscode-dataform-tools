@@ -3,6 +3,8 @@ import { pickBackendConfigurationTarget } from '../utils/remoteCompiler';
 import { getDeferAvailability, isDeferEnabled } from './index';
 import { clearProdTargetCache } from './prodTargets';
 import { clearTableExistenceCache } from './tableExistence';
+import { removeProxyViews } from './proxyViews';
+import { getOrCompileDataformJson } from '../utils/dataformCompiler';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -34,7 +36,7 @@ function refreshStatusBar() {
         const availability = getDeferAvailability(workspaceFolder);
         if (availability.available) {
             statusBarItem.text = "$(cloud-download) Defer: prod";
-            statusBarItem.tooltip = `Upstream tables not built in dev are read from prod${availability.prodOptions ? ` (${availability.prodOptions})` : " (project defaults)"}. Click for options.`;
+            statusBarItem.tooltip = `Upstream tables not built in dev are read from prod in previews, dry runs and runs${availability.prodOptions ? ` (${availability.prodOptions})` : " (project defaults)"}. Click for options.`;
         } else {
             statusBarItem.text = "$(warning) Defer: prod";
             statusBarItem.tooltip = `Defer to prod is on but not applied. ${availability.reason}`;
@@ -61,6 +63,11 @@ async function clearDeferCaches() {
     await clearProdTargetCache();
 }
 
+async function removeProxyViewsCommand() {
+    const workspaceFolder = currentWorkspaceFolder();
+    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder) : undefined);
+}
+
 async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
     const enabled = isDeferEnabled(currentWorkspaceFolder());
     const actions = [
@@ -72,6 +79,11 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
                 await clearDeferCaches();
                 await refreshPanel();
             },
+        },
+        {
+            label: "$(trash) Remove proxy views",
+            description: "Delete the dev views that deferred runs created",
+            run: removeProxyViewsCommand,
         },
         {
             label: "$(settings) Open defer to prod settings",
@@ -89,6 +101,7 @@ export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: 
         statusBarItem,
         vscode.commands.registerCommand('vscode-dataform-tools.toggleDeferToProd', toggleDeferToProd),
         vscode.commands.registerCommand('vscode-dataform-tools.deferToProdActions', () => deferToProdActions(refreshPanel)),
+        vscode.commands.registerCommand('vscode-dataform-tools.removeProxyViews', removeProxyViewsCommand),
         vscode.workspace.onDidChangeConfiguration(async (event) => {
             if (!DEFER_SETTINGS.some((setting) => event.affectsConfiguration(`vscode-dataform-tools.${setting}`))) {
                 return;

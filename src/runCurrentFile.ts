@@ -6,7 +6,7 @@ import { ExecutionMode, LastRunRequest } from './types';
 import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
-import { recordLastRun } from './lastRun';
+import { beginRun } from './defer/deferRun';
 
 /** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
@@ -80,7 +80,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
         // create the dataform run command for the list of actions from actionsList
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
-        await recordLastRun(lastRunRequest);
+        if (!(await beginRun(lastRunRequest))) { return; }
         runCommandInTerminal(dataformActionCmd);
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
@@ -118,7 +118,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
         try{
             if(executionMode === "api_workspace"){
-                await recordLastRun(lastRunRequest);
+                if (!(await beginRun(lastRunRequest))) { return; }
                 await showLoadingProgress(
                     "",
                     syncAndrunDataformRemotely,
@@ -133,7 +133,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
             if (!(await confirmRemoteRun())) {
                 return;
             }
-            await recordLastRun(lastRunRequest);
+            if (!(await beginRun(lastRunRequest))) { return; }
 
             const gitClient = new GitService();
             const gitInfo = await gitClient.getGitBranchAndRepoName();

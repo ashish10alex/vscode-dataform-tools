@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, collectCandidates, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, rewriteSql } from '../../defer/deferRules';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
 
@@ -196,5 +196,46 @@ suite('dataformCompiler.createCompilerOptionsObjectForApi', () => {
             createCompilerOptionsObjectForApi([`--vars='{"env": "prod", "tier": "gold"}'  --table-prefix=tmp`]),
             { vars: { env: 'prod', tier: 'gold' }, tablePrefix: 'tmp' },
         );
+    });
+});
+
+suite('deferRules.computeRunSet', () => {
+    // raw -> staging -> mart -> report, plus a test and an assertion on mart
+    const action = (name: string, deps: string[], extra: Record<string, unknown> = {}) => ({
+        type: 'table', fileName: `definitions/${name}.sqlx`, tags: [], target: dev(name), dependencyTargets: deps.map((d) => dev(d)), ...extra,
+    });
+    const g = graph({
+        tables: [
+            action('staging', ['raw']),
+            action('mart', ['staging'], { tags: ['daily'] }),
+            action('report', ['mart']),
+            action('mart_test', ['mart'], { type: 'test' }),
+        ],
+        assertions: [{ type: 'assertion', fileName: 'definitions/mart.sqlx', tags: [], target: dev('mart_assert'), dependencyTargets: [dev('mart')] }],
+        declarations: [{ target: dev('raw'), canonicalTarget: canonical('raw') }],
+    });
+    const names = (selection: Parameters<typeof computeRunSet>[1]) => computeRunSet(g, selection).map((a) => a.target.name).sort();
+    const base = { includeDependencies: false, includeDependents: false };
+
+    test('selects by file, tag or target id and leaves tests out', () => {
+        assert.deepStrictEqual(names({ ...base, kind: 'currentFile', items: ['definitions/mart.sqlx'] }), ['mart', 'mart_assert']);
+        assert.deepStrictEqual(names({ ...base, kind: 'tags', items: ['daily'] }), ['mart']);
+        assert.deepStrictEqual(names({ ...base, kind: 'changed', items: ['proj-dev.sales_dev.report'] }), ['report']);
+    });
+
+    test('adds transitive dependencies or dependents when the run includes them, but never declarations', () => {
+        assert.deepStrictEqual(names({ kind: 'changed', items: ['proj-dev.sales_dev.report'], includeDependencies: true, includeDependents: false }), ['mart', 'report', 'staging']);
+        assert.deepStrictEqual(names({ kind: 'changed', items: ['proj-dev.sales_dev.staging'], includeDependencies: false, includeDependents: true }), ['mart', 'mart_assert', 'report', 'staging']);
+    });
+});
+
+suite('deferRules.proxyViewSpec', () => {
+    test('builds a labelled view at the Dev Target that reads the Prod Target', () => {
+        const spec = proxyViewSpec(deferred('orders'));
+        assert.deepStrictEqual(
+            { projectId: spec.projectId, datasetId: spec.datasetId, tableId: spec.tableId, query: spec.query, labels: spec.labels },
+            { projectId: 'proj-dev', datasetId: 'sales_dev', tableId: 'orders', query: 'SELECT * FROM `proj-prod.sales.orders`', labels: { dataform_tools_proxy: 'true' } },
+        );
+        assert.throws(() => proxyViewSpec({ dev: dev('new_table'), status: 'missingEverywhere' }));
     });
 });

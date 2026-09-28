@@ -209,3 +209,94 @@ export function findAccessDeniedTargets(errorMessage: string | undefined): Targe
     }
     return targets;
 }
+
+interface RunnableAction {
+    target: Target;
+    fileName?: string;
+    type?: string;
+    tags?: string[];
+    dependencyTargets?: Target[];
+}
+
+export interface RunSelection {
+    kind: "currentFile" | "files" | "tags" | "changed";
+    /** Workspace-relative files, tag names or `database.schema.name` target ids, depending on `kind` */
+    items: string[];
+    includeDependencies: boolean;
+    includeDependents: boolean;
+}
+
+/**
+ * The actions a run builds: the ones it selects, plus their transitive dependencies or dependents when the
+ * run includes them. Upstream actions outside this set are the ones a deferred run reads from prod.
+ */
+export function computeRunSet(graph: DataformCompiledJson, selection: RunSelection): RunnableAction[] {
+    const actions: RunnableAction[] = [...(graph.tables ?? []), ...(graph.operations ?? []), ...(graph.assertions ?? [])]
+        .filter((action) => action?.target && action.type !== "test");
+    const byId = new Map(actions.map((action) => [targetId(action.target), action]));
+
+    const items = new Set(selection.items);
+    const seeds = actions.filter((action) => {
+        switch (selection.kind) {
+            case "currentFile":
+            case "files":
+                return !!action.fileName && items.has(action.fileName);
+            case "tags":
+                return (action.tags ?? []).some((tag) => items.has(tag));
+            case "changed":
+                return items.has(targetId(action.target));
+        }
+    });
+
+    const runSet = new Map(seeds.map((action) => [targetId(action.target), action]));
+    const walk = (next: (action: RunnableAction) => string[]) => {
+        const queue = [...runSet.values()];
+        while (queue.length > 0) {
+            for (const id of next(queue.pop()!)) {
+                const action = byId.get(id);
+                if (action && !runSet.has(id)) {
+                    runSet.set(id, action);
+                    queue.push(action);
+                }
+            }
+        }
+    };
+    if (selection.includeDependencies) {
+        walk((action) => (action.dependencyTargets ?? []).map(targetId));
+    }
+    if (selection.includeDependents) {
+        const dependents = new Map<string, string[]>();
+        for (const action of actions) {
+            for (const dependency of action.dependencyTargets ?? []) {
+                const id = targetId(dependency);
+                dependents.set(id, [...(dependents.get(id) ?? []), targetId(action.target)]);
+            }
+        }
+        walk((action) => dependents.get(targetId(action.target)) ?? []);
+    }
+    return [...runSet.values()];
+}
+
+export interface ProxyViewSpec {
+    projectId: string;
+    datasetId: string;
+    tableId: string;
+    query: string;
+    labels: { [key: string]: string };
+    description: string;
+}
+
+/** The view created at a Deferred Action's Dev Target so a Dataform run reads its Prod Target */
+export function proxyViewSpec(entry: DeferralEntry): ProxyViewSpec {
+    if (!entry.prod) {
+        throw new Error(`${targetId(entry.dev)} has no prod table to read`);
+    }
+    return {
+        projectId: entry.dev.database,
+        datasetId: entry.dev.schema,
+        tableId: entry.dev.name,
+        query: `SELECT * FROM \`${targetId(entry.prod)}\``,
+        labels: { [PROXY_VIEW_LABEL]: "true" },
+        description: `Defer to prod proxy for ${targetId(entry.prod)}, created by Dataform Tools. The next dev build of this action replaces it.`,
+    };
+}

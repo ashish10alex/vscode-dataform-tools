@@ -30,7 +30,7 @@ _Avoid_: modified model, dirty action
 ### Defer
 
 **Selected Action**:
-An action the user asked to run, preview or dry run, as opposed to its upstream actions.
+An action a run, preview or dry run executes: the ones the user picked, plus any dependencies or dependents the run includes. Its other upstream actions are the ones that can be deferred.
 
 **Deferral**:
 Reading an upstream action or declaration from its Prod Target instead of its Dev Target, because it is not a Selected Action, its Dev Target does not exist, and its Prod Target exists and is readable.

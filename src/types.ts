@@ -742,6 +742,8 @@ export interface LastRunRequest {
     includeDependents: boolean;
     fullRefresh: boolean;
     executionMode: ExecutionMode;
+    /** Upstream tables not built in dev were read from prod; a rerun does the same. Absent on runs recorded before defer to prod. */
+    deferToProd?: boolean;
     /** Absolute path of the Dataform folder the run used; `items` are relative to it. */
     workspaceFolder: string;
     timestamp: number;

@@ -81,6 +81,20 @@ export async function findExistingDevTargets(targets: Target[]): Promise<Set<str
     return existing;
 }
 
+/** `database.schema` of the given Dev Targets whose dataset does not exist. Proxy Views are never created in them. */
+export async function findMissingDevDatasets(targets: Target[]): Promise<Set<string>> {
+    await checkAuthentication();
+    const datasets = new Map<string, Target>();
+    targets.forEach((target) => datasets.set(`${target.database}.${target.schema}`, target));
+    const missing = new Set<string>();
+    await Promise.all([...datasets.entries()].map(async ([key, target]) => {
+        if ((await listDevDataset(target.database, target.schema)).tables === "missing") {
+            missing.add(key);
+        }
+    }));
+    return missing;
+}
+
 async function lookupProdTable(target: Target): Promise<ProdStatus> {
     const id = targetId(target);
     if (unreadable.has(id)) {
