@@ -28,7 +28,6 @@ tailwind.config.js
 out/test*/**
 out/webviews/**
 
-
 node_modules/**
 out/**
 src/**
@@ -44,3 +43,12 @@ node_modules/concurrently*/**
 website/**
 
 user_config.json
+
+# Agent & CI workflows/configs
+.agents/**
+.gemini/**
+.claude/**
+AGENTS.md
+justfile
+release-please-config.json
+.release-please-manifest.json

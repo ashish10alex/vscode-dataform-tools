@@ -1,0 +1,1 @@
+../../../.agents/skills/extension-release/SKILL.md
