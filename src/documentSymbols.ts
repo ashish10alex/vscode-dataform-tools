@@ -25,14 +25,27 @@ function getAllBlockComments(text: string): { start: number; end: number }[] {
     return blockComments;
 }
 
+// Dataform ref() patterns: ${ref("name")}, ${ref("schema", "name")} and ${ref("database", "schema", "name")}
+const regexToIdentifyRefsInSqlxFile = /\${ref\(\s*(['"])([^'"]+)\1\s*(?:,\s*\1([^'"]+)\1\s*)?(?:,\s*\1([^'"]+)\1\s*)?\)}/gs;
+
+/** `${ref(...)}` expressions outside comments, with their offset, length and quoted arguments */
+export function findRefs(text: string): { index: number; length: number; args: string[] }[] {
+    const blockComments = getAllBlockComments(text);
+    const refs: { index: number; length: number; args: string[] }[] = [];
+    for (const match of text.matchAll(regexToIdentifyRefsInSqlxFile)) {
+        const index = match.index || 0;
+        if (!isMatchInComment(text, index, blockComments)) {
+            refs.push({ index, length: match[0].length, args: [match[2], match[3], match[4]].filter((arg): arg is string => !!arg) });
+        }
+    }
+    return refs;
+}
+
 export function getDocumentSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
     const symbols: { symbol: vscode.DocumentSymbol; offset: number }[] = [];
     const text = document.getText();
 
     const blockComments = getAllBlockComments(text);
-
-    // Dataform ref() patterns
-    const regexToIdentifyRefsInSqlxFile = /\${ref\(\s*(['"])([^'"]+)\1\s*(?:,\s*\1([^'"]+)\1\s*)?(?:,\s*\1([^'"]+)\1\s*)?\)}/gs;
     const refMatches = text.matchAll(regexToIdentifyRefsInSqlxFile);
     const myFoundSymbols = [];
 

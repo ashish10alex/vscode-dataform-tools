@@ -19,12 +19,15 @@ export interface DeferralEntry {
     status: DeferralStatus;
     /** A Stale Deferral: also a Changed Action, so the Prod Target does not reflect this branch */
     stale?: boolean;
+    /** A function or procedure: previews call its prod version, but a run builds it in dev instead of a proxy view */
+    routine?: boolean;
 }
 
 /** An upstream action whose Dev Target differs from its Prod Target, before existence is checked */
 export interface DeferralCandidate {
     dev: Target;
     prod?: Target;
+    routine?: boolean;
 }
 
 export type ProdStatus = "exists" | "missing" | "unreadable";
@@ -35,15 +38,37 @@ export interface DeferralLookups {
     prodStatus: (target: Target) => ProdStatus;
 }
 
-interface GraphAction {
+export interface GraphAction {
     target: Target;
     canonicalTarget?: Target;
     type?: string;
     hasOutput?: boolean;
+    queries?: string[];
+}
+
+const CREATES_ROUTINE = /\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:TEMP(?:ORARY)?\s+)?(?:TABLE\s+)?(?:AGGREGATE\s+)?(?:FUNCTION|PROCEDURE)\b/i;
+
+/** An operation whose output is a function or procedure (a UDF), which BigQuery lists apart from tables */
+export function isRoutineOperation(action: GraphAction | undefined): boolean {
+    return action?.type === "operations" && !!action.hasOutput && (action.queries ?? []).some((query) => CREATES_ROUTINE.test(query));
 }
 
 export function targetId(target: Target): string {
     return `${target.database}.${target.schema}.${target.name}`;
+}
+
+/**
+ * The dependency a `${ref(...)}` names, matched on the canonical schema and name, which are what the ref
+ * arguments give, so table prefixes and schema suffixes do not matter. Undefined when it names none or several.
+ */
+export function matchRef(args: string[], dependencies: GraphAction[]): Target | undefined {
+    const name = args[args.length - 1];
+    const schema = args.length >= 2 ? args[args.length - 2] : undefined;
+    const matches = dependencies.filter((dependency) => {
+        const canonical = dependency.canonicalTarget ?? dependency.target;
+        return canonical.name === name && (schema === undefined || canonical.schema === schema);
+    });
+    return matches.length === 1 ? matches[0].target : undefined;
 }
 
 /**
@@ -129,7 +154,7 @@ export function collectCandidates(
             if (prod && targetId(prod) === id) {
                 continue;
             }
-            candidates.set(id, { dev: dependency, prod });
+            candidates.set(id, isRoutineOperation(upstream) ? { dev: dependency, prod, routine: true } : { dev: dependency, prod });
         }
     }
     return [...candidates.values()];
@@ -138,18 +163,16 @@ export function collectCandidates(
 /** Applies the defer rule to candidates whose existence has been looked up. Returns only candidates missing in dev. */
 export function decideDeferral(candidates: DeferralCandidate[], lookups: DeferralLookups): DeferralEntry[] {
     const entries: DeferralEntry[] = [];
-    for (const { dev, prod } of candidates) {
+    for (const { dev, prod, routine } of candidates) {
         if (lookups.devExists(dev)) {
             continue;
         }
         const status = prod ? lookups.prodStatus(prod) : "missing";
-        if (status === "exists") {
-            entries.push({ dev, prod, status: "deferred" });
-        } else if (status === "unreadable") {
-            entries.push({ dev, prod, status: "unreadable" });
-        } else {
-            entries.push({ dev, prod, status: "missingEverywhere" });
+        const entry: DeferralEntry = { dev, prod, status: status === "exists" ? "deferred" : status === "unreadable" ? "unreadable" : "missingEverywhere" };
+        if (routine) {
+            entry.routine = true;
         }
+        entries.push(entry);
     }
     return entries;
 }
@@ -208,4 +231,111 @@ export function findAccessDeniedTargets(errorMessage: string | undefined): Targe
         targets.push({ database: match[1], schema: match[2], name: match[3] });
     }
     return targets;
+}
+
+interface RunnableAction {
+    target: Target;
+    fileName?: string;
+    type?: string;
+    tags?: string[];
+    dependencyTargets?: Target[];
+}
+
+export interface RunSelection {
+    kind: "currentFile" | "files" | "tags" | "changed";
+    /** Workspace-relative files, tag names or `database.schema.name` target ids, depending on `kind` */
+    items: string[];
+    includeDependencies: boolean;
+    includeDependents: boolean;
+}
+
+/**
+ * The actions a run builds: the ones it selects, plus their transitive dependencies or dependents when the
+ * run includes them. Upstream actions outside this set are the ones a deferred run reads from prod.
+ */
+export function computeRunSet(graph: DataformCompiledJson, selection: RunSelection): RunnableAction[] {
+    const actions: RunnableAction[] = [...(graph.tables ?? []), ...(graph.operations ?? []), ...(graph.assertions ?? [])]
+        .filter((action) => action?.target && action.type !== "test");
+    const byId = new Map(actions.map((action) => [targetId(action.target), action]));
+
+    const items = new Set(selection.items);
+    const seeds = actions.filter((action) => {
+        switch (selection.kind) {
+            case "currentFile":
+            case "files":
+                return !!action.fileName && items.has(action.fileName);
+            case "tags":
+                return (action.tags ?? []).some((tag) => items.has(tag));
+            case "changed":
+                return items.has(targetId(action.target));
+        }
+    });
+
+    const runSet = new Map(seeds.map((action) => [targetId(action.target), action]));
+    const walk = (next: (action: RunnableAction) => string[]) => {
+        const queue = [...runSet.values()];
+        while (queue.length > 0) {
+            for (const id of next(queue.pop()!)) {
+                const action = byId.get(id);
+                if (action && !runSet.has(id)) {
+                    runSet.set(id, action);
+                    queue.push(action);
+                }
+            }
+        }
+    };
+    if (selection.includeDependencies) {
+        walk((action) => (action.dependencyTargets ?? []).map(targetId));
+    }
+    if (selection.includeDependents) {
+        const dependents = new Map<string, string[]>();
+        for (const action of actions) {
+            for (const dependency of action.dependencyTargets ?? []) {
+                const id = targetId(dependency);
+                dependents.set(id, [...(dependents.get(id) ?? []), targetId(action.target)]);
+            }
+        }
+        walk((action) => dependents.get(targetId(action.target)) ?? []);
+    }
+    return [...runSet.values()];
+}
+
+export interface ProxyViewSpec {
+    projectId: string;
+    datasetId: string;
+    tableId: string;
+    query: string;
+    labels: { [key: string]: string };
+    description: string;
+}
+
+/** The view created at a Deferred Action's Dev Target so a Dataform run reads its Prod Target */
+export function proxyViewSpec(entry: DeferralEntry): ProxyViewSpec {
+    if (!entry.prod) {
+        throw new Error(`${targetId(entry.dev)} has no prod table to read`);
+    }
+    return {
+        projectId: entry.dev.database,
+        datasetId: entry.dev.schema,
+        tableId: entry.dev.name,
+        query: `SELECT * FROM \`${targetId(entry.prod)}\``,
+        labels: { [PROXY_VIEW_LABEL]: "true" },
+        description: `Defer to prod proxy for ${targetId(entry.prod)}, created by Dataform Tools. The next dev build of this action replaces it.`,
+    };
+}
+
+export type ProxyViewAction = "create" | "update" | "keep" | "leaveRealTable";
+
+/**
+ * What to do at a Dev Target before a deferred run. Proxy Views still count as not built in dev, so the same
+ * entries come back on every run: an existing proxy that already reads the right table is kept as it is.
+ */
+export function proxyViewAction(existing: { labels?: { [key: string]: string }, view?: { query?: string } } | undefined, spec: ProxyViewSpec): ProxyViewAction {
+    if (!existing) {
+        return "create";
+    }
+    if (existing.labels?.[PROXY_VIEW_LABEL] !== "true") {
+        return "leaveRealTable";
+    }
+    return existing.view?.query?.trim() === spec.query ? "keep" : "update";
 }

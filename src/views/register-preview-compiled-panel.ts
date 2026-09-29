@@ -538,6 +538,10 @@ export class CompiledQueryPanel {
               case 'deferToProdActions':
                 await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
                 return;
+              case 'removeProxyViews':
+                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews', message.value);
+                await refreshCompiledQueryPanel();
+                return;
               case 'toggleDeferToProd':
                 await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.value);
                 return;
@@ -1353,6 +1357,7 @@ export class CompiledQueryPanel {
         await this.postMessage({
             "deferral": toDeferralView(curFileMeta.deferral),
             "deferToProd": getDeferToProdState(workspaceFolder),
+            "leftoverProxies": curFileMeta.leftoverProxies ?? null,
             "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
             "assertionQuery": fileMetadata.queryMeta.assertionQuery,
             "preOperations": fileMetadata.queryMeta.preOpsQuery,
@@ -1572,6 +1577,7 @@ export class CompiledQueryPanel {
             await this.postMessage({
                 "deferral": toDeferralView(curFileMeta.deferral),
                 "deferToProd": getDeferToProdState(workspaceFolder),
+            "leftoverProxies": curFileMeta.leftoverProxies ?? null,
                 "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                 "assertionQuery": fileMetadata.queryMeta.assertionQuery,
                 "preOperations": fileMetadata.queryMeta.preOpsQuery,

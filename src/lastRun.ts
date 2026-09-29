@@ -14,13 +14,18 @@ export function initLastRun(context: vscode.ExtensionContext) {
     context.subscriptions.push(lastRunChanged);
 }
 
-/** Remembers a run so it can be repeated. Called by every Dataform run path just before it executes. */
+/** Remembers a run so it can be repeated. Called through `beginRun` by every Dataform run path just before it executes. */
 export async function recordLastRun(request: Omit<LastRunRequest, 'timestamp'>) {
     if (!extensionContext) {
         return;
     }
     await extensionContext.workspaceState.update(LAST_RUN_STATE_KEY, { ...request, timestamp: Date.now() });
     lastRunChanged.fire();
+}
+
+/** The extension context, for code that replays runs outside a command handler */
+export function getLastRunContext(): vscode.ExtensionContext | undefined {
+    return extensionContext;
 }
 
 export function getLastRun(): LastRunRequest | undefined {
@@ -50,6 +55,7 @@ function flagLabels(request: LastRunRequest): string[] {
     if (request.includeDependencies) { flags.push('+dependencies'); }
     if (request.includeDependents) { flags.push('+dependents'); }
     if (request.fullRefresh) { flags.push('full refresh'); }
+    if (request.deferToProd) { flags.push('deferred to prod'); }
     return flags;
 }
 
@@ -96,6 +102,7 @@ export function summarizeLastRun(request: LastRunRequest, replayMode: ExecutionM
         `Dependencies: ${request.includeDependencies ? 'yes' : 'no'}`,
         `Dependents: ${request.includeDependents ? 'yes' : 'no'}`,
         `Full refresh: ${request.fullRefresh ? 'yes' : 'no'}`,
+        `Defer to prod: ${request.deferToProd ? 'yes' : 'no'}`,
         `Mode: ${modeLabel(replayMode)}`,
     ];
     if (request.workspaceFolder) {

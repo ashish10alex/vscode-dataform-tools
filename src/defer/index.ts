@@ -3,7 +3,8 @@ import { logger } from '../logger';
 import { DataformCompiledJson, DeferToProdState, DeferralView, TablesWtFullQuery, Target } from '../types';
 import { computeChangedActions, isGitRepo } from '../changedActions';
 import { applyDeferral, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, targetId } from './deferRules';
-import { findExistingDevTargets, getProdStatuses, markProdUnreadable } from './tableExistence';
+import { findExistingDevTargets, findProxyViews, getProdStatuses, markProdUnreadable } from './tableExistence';
+import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
 
 export interface Deferral {
@@ -13,6 +14,10 @@ export interface Deferral {
 const deferralUpdated = new vscode.EventEmitter<void>();
 /** Fires when Stale Deferral flags arrive after the deferral was first shown */
 export const onDeferralUpdated = deferralUpdated.event;
+
+const deferralResolved = new vscode.EventEmitter<void>();
+/** Fires after the current file's deferral was worked out for a compile, dry run or preview */
+export const onDeferralResolved = deferralResolved.event;
 
 let lastReportedError: string | undefined;
 
@@ -65,12 +70,21 @@ function reportError(message: string) {
     }
 }
 
+type SelectedActions = { target?: Target, dependencyTargets?: Target[], type?: string }[];
+
 /**
- * Which upstream actions of the current file to read from prod. Undefined when defer to prod is off or
- * unavailable, in which case the queries run as compiled.
+ * Which upstream actions of the Selected Actions to read from prod. Undefined when defer to prod is off or
+ * unavailable, in which case everything runs as compiled. `enabled` overrides the setting, e.g. for a rerun
+ * of a run recorded with defer on. With `awaitStale`, Stale Deferral flags are set before returning, as a
+ * run has to ask about them first; otherwise they may arrive later through `onDeferralUpdated`.
  */
-export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
-    if (!isDeferEnabled(workspaceFolder)) {
+export async function resolveDeferralForActions(
+    selected: SelectedActions,
+    devGraph: DataformCompiledJson,
+    workspaceFolder: string,
+    options: { enabled?: boolean, awaitStale?: boolean } = {},
+): Promise<Deferral | undefined> {
+    if (!(options.enabled ?? isDeferEnabled(workspaceFolder))) {
         return undefined;
     }
     const availability = getDeferAvailability(workspaceFolder);
@@ -78,7 +92,6 @@ export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph:
         return undefined;
     }
 
-    const selected = fileMetadata.tables ?? [];
     const devActions = indexGraphActions(devGraph);
     const requiredKeys = selected
         .flatMap((action) => action.dependencyTargets ?? [])
@@ -92,16 +105,20 @@ export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph:
             return { entries: [] };
         }
         const existingDev = await findExistingDevTargets(candidates.map((candidate) => candidate.dev));
-        const prodToCheck = candidates
-            .filter((candidate) => candidate.prod && !existingDev.has(targetId(candidate.dev)))
-            .map((candidate) => candidate.prod!);
-        const prodStatuses = await getProdStatuses(prodToCheck);
+        const prodToCheck = candidates.filter((candidate) => candidate.prod && !existingDev.has(targetId(candidate.dev)));
+        const prodStatuses = await getProdStatuses(
+            prodToCheck.map((candidate) => candidate.prod!),
+            new Set(prodToCheck.filter((candidate) => candidate.routine).map((candidate) => targetId(candidate.prod!))),
+        );
         const entries = decideDeferral(candidates, {
             devExists: (target) => existingDev.has(targetId(target)),
             prodStatus: (target) => prodStatuses.get(targetId(target)) ?? "missing",
         });
         lastReportedError = undefined;
-        flagStaleDeferrals(entries, workspaceFolder, devGraph);
+        const stale = flagStaleDeferrals(entries, workspaceFolder, devGraph);
+        if (options.awaitStale) {
+            await stale;
+        }
         return { entries };
     } catch (error: any) {
         reportError(error?.message ?? String(error));
@@ -109,17 +126,55 @@ export async function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph:
     }
 }
 
+/** Which upstream actions of the current file to read from prod */
+export function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
+    return resolveDeferralForActions(fileMetadata.tables ?? [], devGraph, workspaceFolder);
+}
+
+/**
+ * Upstream actions of the Selected Actions whose Dev Target is a Proxy View left by an earlier deferred run:
+ * they read prod even with defer to prod off. Only looked up once this workspace has created proxy views.
+ */
+export async function findLeftoverProxies(selected: SelectedActions): Promise<Target[]> {
+    if (!proxyViewsMayExist()) {
+        return [];
+    }
+    const selectedIds = new Set(selected.filter((action) => action.target).map((action) => targetId(action.target!)));
+    const upstream = new Map<string, Target>();
+    for (const dependency of selected.flatMap((action) => action.dependencyTargets ?? [])) {
+        if (!selectedIds.has(targetId(dependency))) {
+            upstream.set(targetId(dependency), dependency);
+        }
+    }
+    try {
+        return await findProxyViews([...upstream.values()]);
+    } catch (error: any) {
+        logger.error(`Defer to prod: could not look for leftover proxy views: ${error?.message}`);
+        return [];
+    }
+}
+
 /**
  * Rewrites the queries of the current file so deferred upstream actions are read from prod. Called for every
  * read of the current file's metadata, so dry runs, previews and the compiled query panel all see the same SQL.
  * A retry after an `Access Denied` error just reads the metadata again: the unreadable Prod Target is then skipped.
+ * When nothing is deferred, it reports upstream Proxy Views that still read prod.
  */
-export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
-    const deferral = await resolveDeferral(fileMetadata, devGraph, workspaceFolder);
-    if (deferral && countDeferred(deferral) > 0) {
-        fileMetadata.queryMeta = applyDeferral(fileMetadata.queryMeta, deferral.entries);
+export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<{ deferral?: Deferral, leftoverProxies?: string[] }> {
+    try {
+        const deferral = await resolveDeferral(fileMetadata, devGraph, workspaceFolder);
+        if (!deferral) {
+            const leftovers = await findLeftoverProxies(fileMetadata.tables ?? []);
+            return { leftoverProxies: leftovers.length > 0 ? leftovers.map(targetId) : undefined };
+        }
+        if (countDeferred(deferral) > 0) {
+            fileMetadata.queryMeta = applyDeferral(fileMetadata.queryMeta, deferral.entries);
+        }
+        return { deferral };
+    } finally {
+        // A compile or a new lookup may have changed what editors should show for the file
+        deferralResolved.fire();
     }
-    return deferral;
 }
 
 /**

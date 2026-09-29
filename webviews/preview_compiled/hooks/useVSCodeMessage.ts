@@ -40,6 +40,7 @@ export const useVSCodeMessage = () => {
           nextState.propertyGraphs = message.propertyGraphs ?? null;
           nextState.propertyGraphValidations = message.propertyGraphValidations ?? null;
           nextState.deferral = message.deferral ?? null;
+          nextState.leftoverProxies = message.leftoverProxies ?? null;
         }
 
         // Element schemas arrive one at a time as the user expands nodes, so they are merged

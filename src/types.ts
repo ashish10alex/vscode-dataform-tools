@@ -442,6 +442,8 @@ export type CurrentFileMetadata = {
     fileMetadata?: TablesWtFullQuery;
     /** Set when defer to prod is on: which upstream actions the queries in `fileMetadata` read from prod */
     deferral?: { entries: DeferralEntry[] };
+    /** With defer to prod off: upstream tables that are still Proxy Views, so they read prod anyway */
+    leftoverProxies?: string[];
     possibleResolutions?: any[];
     dependents?: any;
     lineageMetadata?: {
@@ -742,6 +744,8 @@ export interface LastRunRequest {
     includeDependents: boolean;
     fullRefresh: boolean;
     executionMode: ExecutionMode;
+    /** Upstream tables not built in dev were read from prod; a rerun does the same. Absent on runs recorded before defer to prod. */
+    deferToProd?: boolean;
     /** Absolute path of the Dataform folder the run used; `items` are relative to it. */
     workspaceFolder: string;
     timestamp: number;

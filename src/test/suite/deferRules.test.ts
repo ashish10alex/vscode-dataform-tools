@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, collectCandidates, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, proxyViewAction, rewriteSql } from '../../defer/deferRules';
+import { findRefs } from '../../documentSymbols';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
 
@@ -196,5 +197,106 @@ suite('dataformCompiler.createCompilerOptionsObjectForApi', () => {
             createCompilerOptionsObjectForApi([`--vars='{"env": "prod", "tier": "gold"}'  --table-prefix=tmp`]),
             { vars: { env: 'prod', tier: 'gold' }, tablePrefix: 'tmp' },
         );
+    });
+});
+
+suite('deferRules.computeRunSet', () => {
+    // raw -> staging -> mart -> report, plus a test and an assertion on mart
+    const action = (name: string, deps: string[], extra: Record<string, unknown> = {}) => ({
+        type: 'table', fileName: `definitions/${name}.sqlx`, tags: [], target: dev(name), dependencyTargets: deps.map((d) => dev(d)), ...extra,
+    });
+    const g = graph({
+        tables: [
+            action('staging', ['raw']),
+            action('mart', ['staging'], { tags: ['daily'] }),
+            action('report', ['mart']),
+            action('mart_test', ['mart'], { type: 'test' }),
+        ],
+        assertions: [{ type: 'assertion', fileName: 'definitions/mart.sqlx', tags: [], target: dev('mart_assert'), dependencyTargets: [dev('mart')] }],
+        declarations: [{ target: dev('raw'), canonicalTarget: canonical('raw') }],
+    });
+    const names = (selection: Parameters<typeof computeRunSet>[1]) => computeRunSet(g, selection).map((a) => a.target.name).sort();
+    const base = { includeDependencies: false, includeDependents: false };
+
+    test('selects by file, tag or target id and leaves tests out', () => {
+        assert.deepStrictEqual(names({ ...base, kind: 'currentFile', items: ['definitions/mart.sqlx'] }), ['mart', 'mart_assert']);
+        assert.deepStrictEqual(names({ ...base, kind: 'tags', items: ['daily'] }), ['mart']);
+        assert.deepStrictEqual(names({ ...base, kind: 'changed', items: ['proj-dev.sales_dev.report'] }), ['report']);
+    });
+
+    test('adds transitive dependencies or dependents when the run includes them, but never declarations', () => {
+        assert.deepStrictEqual(names({ kind: 'changed', items: ['proj-dev.sales_dev.report'], includeDependencies: true, includeDependents: false }), ['mart', 'report', 'staging']);
+        assert.deepStrictEqual(names({ kind: 'changed', items: ['proj-dev.sales_dev.staging'], includeDependencies: false, includeDependents: true }), ['mart', 'mart_assert', 'report', 'staging']);
+    });
+});
+
+suite('deferRules.proxyViewSpec', () => {
+    test('builds a labelled view at the Dev Target that reads the Prod Target', () => {
+        const spec = proxyViewSpec(deferred('orders'));
+        assert.deepStrictEqual(
+            { projectId: spec.projectId, datasetId: spec.datasetId, tableId: spec.tableId, query: spec.query, labels: spec.labels },
+            { projectId: 'proj-dev', datasetId: 'sales_dev', tableId: 'orders', query: 'SELECT * FROM `proj-prod.sales.orders`', labels: { dataform_tools_proxy: 'true' } },
+        );
+        assert.throws(() => proxyViewSpec({ dev: dev('new_table'), status: 'missingEverywhere' }));
+    });
+});
+
+suite('deferRules.matchRef and documentSymbols.findRefs', () => {
+    test('finds refs outside comments with their arguments', () => {
+        const text = 'SELECT * FROM ${ref("orders")}\n/* ${ref("old")} */\nJOIN ${ref(\'sales\', \'customers\')}';
+        const refs = findRefs(text);
+        assert.deepStrictEqual(refs.map((ref) => ref.args), [['orders'], ['sales', 'customers']]);
+        assert.strictEqual(text.slice(refs[0].index, refs[0].index + refs[0].length), '${ref("orders")}');
+    });
+
+    test('matches a ref to a dependency by canonical name, ignoring prefixes and suffixes', () => {
+        const dependencies = [
+            { target: { database: 'proj-dev', schema: 'sales_aalex', name: 'ABA_orders' }, canonicalTarget: canonical('orders') },
+            { target: dev('customers'), canonicalTarget: canonical('customers') },
+            { target: dev('customers', 'crm_dev'), canonicalTarget: { database: 'proj-dev', schema: 'crm', name: 'customers' } },
+        ];
+        assert.deepStrictEqual(matchRef(['orders'], dependencies), dependencies[0].target);
+        assert.strictEqual(matchRef(['customers'], dependencies), undefined, 'ambiguous without a schema');
+        assert.deepStrictEqual(matchRef(['crm', 'customers'], dependencies), dependencies[2].target);
+        assert.strictEqual(matchRef(['missing'], dependencies), undefined);
+    });
+});
+
+suite('deferRules functions and procedures', () => {
+    const op = (queries: string[], hasOutput = true) => ({ type: 'operations', hasOutput, target: dev('fn'), canonicalTarget: canonical('fn'), queries });
+
+    test('recognises operations that create a function or procedure', () => {
+        assert.ok(isRoutineOperation(op(['CREATE OR REPLACE FUNCTION `proj`.ds.fn(x STRING) RETURNS STRING AS (x)'])));
+        assert.ok(isRoutineOperation(op(['create temp function f() as (1); CREATE PROCEDURE ds.p() BEGIN END'])));
+        assert.ok(isRoutineOperation(op(['CREATE OR REPLACE TABLE FUNCTION ds.tvf(d DATE) AS SELECT 1'])));
+        assert.ok(!isRoutineOperation(op(['CREATE OR REPLACE TABLE ds.t AS SELECT 1'])));
+        assert.ok(!isRoutineOperation(op(['CREATE OR REPLACE FUNCTION ds.fn() AS (1)'], false)));
+        assert.ok(!isRoutineOperation({ type: 'table', target: dev('t') }));
+    });
+
+    test('flags function candidates and entries so runs build them instead of making a proxy view', () => {
+        const devGraph = graph({ operations: [op(['CREATE OR REPLACE FUNCTION ds.fn() AS (1)'])] });
+        const prodGraph = graph({ operations: [{ ...op([]), target: prod('fn'), canonicalTarget: prod('fn') }] });
+        const candidates = collectCandidates([{ type: 'table', target: dev('report'), dependencyTargets: [dev('fn')] }], indexGraphActions(devGraph), buildProdTargetMap(prodGraph));
+        assert.deepStrictEqual(candidates, [{ dev: dev('fn'), prod: prod('fn'), routine: true }]);
+        const entries = decideDeferral(candidates, { devExists: () => false, prodStatus: () => 'exists' });
+        assert.deepStrictEqual(entries, [{ dev: dev('fn'), prod: prod('fn'), status: 'deferred', routine: true }]);
+        assert.strictEqual(rewriteSql('SELECT `proj-dev.sales_dev.fn`(x)', entries), 'SELECT `proj-prod.sales.fn`(x)');
+    });
+});
+
+suite('deferRules.proxyViewAction', () => {
+    const spec = proxyViewSpec(deferred('orders'));
+    const proxy = (query: string) => ({ labels: { dataform_tools_proxy: 'true' }, view: { query } });
+
+    test('creates a missing view, keeps one that already reads the Prod Target and repoints one that does not', () => {
+        assert.strictEqual(proxyViewAction(undefined, spec), 'create');
+        assert.strictEqual(proxyViewAction(proxy('SELECT * FROM `proj-prod.sales.orders`\n'), spec), 'keep');
+        assert.strictEqual(proxyViewAction(proxy('SELECT * FROM `old-prod.sales.orders`'), spec), 'update');
+    });
+
+    test('never touches a real dev table or view', () => {
+        assert.strictEqual(proxyViewAction({ view: { query: 'SELECT 1' } }, spec), 'leaveRealTable');
+        assert.strictEqual(proxyViewAction({ labels: { team: 'sales' } }, spec), 'leaveRealTable');
     });
 });

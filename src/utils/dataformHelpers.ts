@@ -14,7 +14,7 @@ import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
 import { clearIndices } from './compiledJsonIndex';
 import { confirmRemoteRun } from './remoteCompiler';
-import { recordLastRun } from '../lastRun';
+import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, prepareDeferral } from '../defer';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
@@ -226,14 +226,14 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             if (targetToSearch) {
                 dependents = await getDependentsOfTarget(targetToSearch);
             }
-            const deferral = isConfigFile ? undefined : await deferFileMetadata(fileMetadata, dataformCompiledJson, workspaceFolder);
+            const deferred = isConfigFile ? {} : await deferFileMetadata(fileMetadata, dataformCompiledJson, workspaceFolder);
 
             return {
                 isDataformWorkspace: true,
                 errors: { dataformCompilationErrors: errors },
                 possibleResolutions: possibleResolutions,
                 fileMetadata: fileMetadata,
-                deferral: deferral,
+                ...deferred,
                 dependents: dependents,
                 lineageMetadata: null,
                 pathMeta: {
@@ -294,12 +294,12 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             dependents = await getDependentsOfTarget(targetToSearch);
         }
         const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
-        const deferral = isConfigFile ? undefined : await deferFileMetadata(fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
+        const deferred = isConfigFile ? {} : await deferFileMetadata(fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
 
         return {
             isDataformWorkspace: true,
             fileMetadata: fileMetadata,
-            deferral: deferral,
+            ...deferred,
             dependents: dependents,
             lineageMetadata: null,
             pathMeta: {
@@ -536,7 +536,7 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     await runIncludedTargets(context, workspaceFolder, includedTargets, includeDependencies, includeDownstreamDependents, fullRefresh, executionMode, lastRunRequest);
 }
 
-/** Runs the given actions with the CLI or the Dataform API, recording `lastRunRequest` just before dispatching. */
+/** Runs the given actions with the CLI or the Dataform API, preparing defer to prod and recording `lastRunRequest` just before dispatching. */
 export async function runIncludedTargets(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>) {
     const invocationConfig = {
         includedTargets: includedTargets,
@@ -546,7 +546,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
     };
 
     if(executionMode === "api_workspace"){
-        await recordLastRun(lastRunRequest);
+        if (!(await beginRun(lastRunRequest))) { return; }
         await showLoadingProgress(
             "",
             syncAndrunDataformRemotely,
@@ -562,7 +562,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         if (!(await confirmRemoteRun())) {
             return;
         }
-        await recordLastRun(lastRunRequest);
+        if (!(await beginRun(lastRunRequest))) { return; }
 
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
@@ -611,7 +611,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
         let dataformActionCmd = "";
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);
-        await recordLastRun(lastRunRequest);
+        if (!(await beginRun(lastRunRequest))) { return; }
         runCommandInTerminal(dataformActionCmd);
     }
 }

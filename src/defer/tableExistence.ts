@@ -11,7 +11,8 @@ import { PROXY_VIEW_LABEL, ProdStatus, targetId } from './deferRules';
 
 const TTL_MS = 2 * 60 * 1000;
 
-type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing" | "unknown" };
+/** `tables` holds real tables, views and routines (functions, procedures); Proxy Views are kept apart in `proxies` */
+type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing" | "unknown", proxies: Set<string> };
 
 const devDatasets = new Map<string, DatasetListing>();
 const prodTables = new Map<string, { fetchedAt: number, status: ProdStatus }>();
@@ -38,23 +39,38 @@ async function listDevDataset(database: string, schema: string): Promise<Dataset
         if (!bigquery) {
             throw new Error("BigQuery client not available");
         }
-        const [tables] = await bigquery.dataset(schema, { projectId: database }).getTables({ autoPaginate: true });
+        const dataset = bigquery.dataset(schema, { projectId: database });
+        const [[tables], routines] = await Promise.all([
+            dataset.getTables({ autoPaginate: true }),
+            // UDFs built by operations are routines, which the table listing leaves out
+            dataset.getRoutines({ autoPaginate: true }).then(([found]) => found).catch((error: any) => {
+                logger.error(`Defer to prod: could not list routines of ${key}: ${error?.message}`);
+                return [];
+            }),
+        ]);
         const names = new Set<string>();
+        const proxies = new Set<string>();
         for (const table of tables) {
+            if (!table.id) {
+                continue;
+            }
             // A Proxy View reads prod through the dev name, so it does not count as built in dev
-            if (table.metadata?.labels?.[PROXY_VIEW_LABEL] !== "true" && table.id) {
+            if (table.metadata?.labels?.[PROXY_VIEW_LABEL] === "true") {
+                proxies.add(table.id);
+            } else {
                 names.add(table.id);
             }
         }
-        listing = { fetchedAt: Date.now(), tables: names };
+        routines.forEach((routine) => routine.id && names.add(routine.id));
+        listing = { fetchedAt: Date.now(), tables: names, proxies };
     } catch (error: any) {
         if (errorCode(error) === 404) {
-            listing = { fetchedAt: Date.now(), tables: "missing" };
+            listing = { fetchedAt: Date.now(), tables: "missing", proxies: new Set() };
         } else {
             // Without a listing we cannot tell, so assume the table exists and leave the query as compiled.
             // Not cached, as the error may be transient.
             logger.error(`Defer to prod: could not list ${key}: ${error?.message}`);
-            return { fetchedAt: Date.now(), tables: "unknown" };
+            return { fetchedAt: Date.now(), tables: "unknown", proxies: new Set() };
         }
     }
     devDatasets.set(key, listing);
@@ -81,7 +97,31 @@ export async function findExistingDevTargets(targets: Target[]): Promise<Set<str
     return existing;
 }
 
-async function lookupProdTable(target: Target): Promise<ProdStatus> {
+/** The given Dev Targets that are Proxy Views, i.e. read prod whether or not defer to prod is on */
+export async function findProxyViews(targets: Target[]): Promise<Target[]> {
+    await checkAuthentication();
+    const listings = new Map<string, DatasetListing>();
+    await Promise.all([...new Map(targets.map((target) => [`${target.database}.${target.schema}`, target])).entries()].map(async ([key, target]) => {
+        listings.set(key, await listDevDataset(target.database, target.schema));
+    }));
+    return targets.filter((target) => listings.get(`${target.database}.${target.schema}`)?.proxies.has(target.name));
+}
+
+/** `database.schema` of the given Dev Targets whose dataset does not exist. Proxy Views are never created in them. */
+export async function findMissingDevDatasets(targets: Target[]): Promise<Set<string>> {
+    await checkAuthentication();
+    const datasets = new Map<string, Target>();
+    targets.forEach((target) => datasets.set(`${target.database}.${target.schema}`, target));
+    const missing = new Set<string>();
+    await Promise.all([...datasets.entries()].map(async ([key, target]) => {
+        if ((await listDevDataset(target.database, target.schema)).tables === "missing") {
+            missing.add(key);
+        }
+    }));
+    return missing;
+}
+
+async function lookupProdTable(target: Target, routine: boolean): Promise<ProdStatus> {
     const id = targetId(target);
     if (unreadable.has(id)) {
         return "unreadable";
@@ -96,7 +136,8 @@ async function lookupProdTable(target: Target): Promise<ProdStatus> {
         if (!bigquery) {
             throw new Error("BigQuery client not available");
         }
-        await bigquery.dataset(target.schema, { projectId: target.database }).table(target.name).getMetadata();
+        const dataset = bigquery.dataset(target.schema, { projectId: target.database });
+        await (routine ? dataset.routine(target.name) : dataset.table(target.name)).getMetadata();
         status = "exists";
     } catch (error: any) {
         if (errorCode(error) === 403) {
@@ -114,11 +155,12 @@ async function lookupProdTable(target: Target): Promise<ProdStatus> {
     return status;
 }
 
-export async function getProdStatuses(targets: Target[]): Promise<Map<string, ProdStatus>> {
+/** `routines` holds the ids of targets that are functions or procedures, which are looked up as routines */
+export async function getProdStatuses(targets: Target[], routines: Set<string> = new Set()): Promise<Map<string, ProdStatus>> {
     await checkAuthentication();
     const statuses = new Map<string, ProdStatus>();
     await Promise.all(targets.map(async (target) => {
-        statuses.set(targetId(target), await lookupProdTable(target));
+        statuses.set(targetId(target), await lookupProdTable(target, routines.has(targetId(target))));
     }));
     return statuses;
 }

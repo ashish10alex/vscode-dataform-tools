@@ -160,3 +160,12 @@ suite('lastRun.buildLastRunView', () => {
         assert.strictEqual(view?.executionMode, 'api');
     });
 });
+
+suite('lastRun defer to prod', () => {
+    test('labels a run recorded with defer to prod so a rerun says it reads prod', () => {
+        const { label, detail } = summarizeLastRun(request({ deferToProd: true }), 'cli');
+        assert.ok(label.includes('deferred to prod'));
+        assert.ok(detail.includes('Defer to prod: yes'));
+        assert.ok(!summarizeLastRun(request(), 'cli').label.includes('deferred to prod'));
+    });
+});
