@@ -127,6 +127,22 @@ export function buildProdTargetMap(prodGraph: DataformCompiledJson): Map<string,
 }
 
 /**
+ * True when the Prod Options name the same table as dev for every action the project builds, so there is
+ * nothing to read from prod, e.g. prod is the project defaults and the dev compiler options only set vars.
+ * Declarations are left out, as they name the same table in dev and prod anyway.
+ */
+export function prodMatchesDev(devGraph: DataformCompiledJson, prodTargets: Map<string, Target>): boolean {
+    const built: GraphAction[] = [
+        ...(devGraph.tables ?? []),
+        ...(devGraph.operations ?? []).filter((operation: GraphAction) => operation.hasOutput),
+    ].filter((action) => !!action?.target);
+    const matched = built
+        .map((action) => ({ dev: action.target, prod: lookupProdTarget(prodTargets, action) }))
+        .filter((pair) => !!pair.prod);
+    return matched.length > 0 && matched.every((pair) => targetId(pair.prod!) === targetId(pair.dev));
+}
+
+/**
  * Upstream actions of the Selected Actions whose Dev Target differs from their Prod Target. Selected Actions
  * are never deferred, and neither are operations without output, which have no table to read.
  */

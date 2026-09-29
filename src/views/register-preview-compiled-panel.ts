@@ -548,6 +548,12 @@ export class CompiledQueryPanel {
               case 'openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
+              case 'retryDeferral':
+                await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
+                return;
+              case 'showLogs':
+                logger.show();
+                return;
               case 'switchCompilationBackend': {
                 try {
                   await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
@@ -1355,7 +1361,7 @@ export class CompiledQueryPanel {
         this.deferral = curFileMeta.deferral;
 
         await this.postMessage({
-            "deferral": toDeferralView(curFileMeta.deferral),
+            "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
             "deferToProd": getDeferToProdState(workspaceFolder),
             "leftoverProxies": curFileMeta.leftoverProxies ?? null,
             "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
@@ -1575,7 +1581,7 @@ export class CompiledQueryPanel {
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await this.postMessage({
-                "deferral": toDeferralView(curFileMeta.deferral),
+                "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
                 "deferToProd": getDeferToProdState(workspaceFolder),
             "leftoverProxies": curFileMeta.leftoverProxies ?? null,
                 "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),

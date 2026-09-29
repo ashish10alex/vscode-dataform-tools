@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, proxyViewAction, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql } from '../../defer/deferRules';
 import { findRefs } from '../../documentSymbols';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
@@ -157,6 +157,36 @@ suite('deferRules.collectCandidates and decideDeferral', () => {
             ['not_in_prod', 'missingEverywhere'],
             ['new_on_branch', 'missingEverywhere'],
         ]);
+    });
+});
+
+suite('deferRules.prodMatchesDev', () => {
+    const lake = { database: 'lake', schema: 'raw', name: 'events' };
+    const devGraph = graph({
+        tables: [{ type: 'table', target: dev('orders'), canonicalTarget: canonical('orders') }],
+        operations: [
+            { type: 'operations', hasOutput: true, target: dev('udf'), canonicalTarget: canonical('udf') },
+            { type: 'operations', hasOutput: false, target: dev('cleanup'), canonicalTarget: canonical('cleanup') },
+        ],
+        declarations: [{ target: lake, canonicalTarget: lake }],
+    });
+
+    test('is true when prod names the same table as dev for every built action', () => {
+        const sameGraph = graph({
+            tables: [{ type: 'table', target: dev('orders'), canonicalTarget: canonical('orders') }],
+            operations: [{ type: 'operations', hasOutput: true, target: dev('udf'), canonicalTarget: canonical('udf') }],
+            declarations: [{ target: lake, canonicalTarget: lake }],
+        });
+        assert.strictEqual(prodMatchesDev(devGraph, buildProdTargetMap(sameGraph)), true);
+    });
+
+    test('is false when any built action has another prod table, or none can be matched', () => {
+        const prodGraph = graph({
+            tables: [{ type: 'table', target: prod('orders'), canonicalTarget: prod('orders') }],
+            operations: [{ type: 'operations', hasOutput: true, target: dev('udf'), canonicalTarget: canonical('udf') }],
+        });
+        assert.strictEqual(prodMatchesDev(devGraph, buildProdTargetMap(prodGraph)), false);
+        assert.strictEqual(prodMatchesDev(devGraph, new Map()), false);
     });
 });
 

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { logger } from '../logger';
 import { DataformCompiledJson, DeferToProdState, DeferralView, TablesWtFullQuery, Target } from '../types';
 import { computeChangedActions, isGitRepo } from '../changedActions';
-import { applyDeferral, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, targetId } from './deferRules';
+import { applyDeferral, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, prodMatchesDev, targetId } from './deferRules';
 import { findExistingDevTargets, findProxyViews, getProdStatuses, markProdUnreadable } from './tableExistence';
 import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
@@ -72,6 +72,8 @@ function reportError(message: string) {
 
 type SelectedActions = { target?: Target, dependencyTargets?: Target[], type?: string }[];
 
+type ResolveOptions = { enabled?: boolean, awaitStale?: boolean };
+
 /**
  * Which upstream actions of the Selected Actions to read from prod. Undefined when defer to prod is off or
  * unavailable, in which case everything runs as compiled. `enabled` overrides the setting, e.g. for a rerun
@@ -82,14 +84,24 @@ export async function resolveDeferralForActions(
     selected: SelectedActions,
     devGraph: DataformCompiledJson,
     workspaceFolder: string,
-    options: { enabled?: boolean, awaitStale?: boolean } = {},
+    options: ResolveOptions = {},
 ): Promise<Deferral | undefined> {
+    return (await tryResolveDeferral(selected, devGraph, workspaceFolder, options)).deferral;
+}
+
+/** Like {@link resolveDeferralForActions}, but says why defer to prod is on and still not applied */
+async function tryResolveDeferral(
+    selected: SelectedActions,
+    devGraph: DataformCompiledJson,
+    workspaceFolder: string,
+    options: ResolveOptions = {},
+): Promise<{ deferral?: Deferral, error?: string }> {
     if (!(options.enabled ?? isDeferEnabled(workspaceFolder))) {
-        return undefined;
+        return {};
     }
     const availability = getDeferAvailability(workspaceFolder);
     if (!availability.available) {
-        return undefined;
+        return {};
     }
 
     const devActions = indexGraphActions(devGraph);
@@ -99,10 +111,14 @@ export async function resolveDeferralForActions(
 
     try {
         const prodTargets = await getProdTargets(workspaceFolder, availability.prodOptions, requiredKeys);
+        if (prodMatchesDev(devGraph, prodTargets)) {
+            const prod = availability.prodOptions ? `The prod compiler options (${availability.prodOptions})` : "Prod, which is the project defaults,";
+            throw new Error(`${prod} name the same tables as dev, so there is nothing to read from prod. Point the prod compiler options at your prod project, e.g. --default-database=my-prod-project.`);
+        }
         const candidates = collectCandidates(selected, devActions, prodTargets);
         if (candidates.length === 0) {
             lastReportedError = undefined;
-            return { entries: [] };
+            return { deferral: { entries: [] } };
         }
         const existingDev = await findExistingDevTargets(candidates.map((candidate) => candidate.dev));
         const prodToCheck = candidates.filter((candidate) => candidate.prod && !existingDev.has(targetId(candidate.dev)));
@@ -119,17 +135,14 @@ export async function resolveDeferralForActions(
         if (options.awaitStale) {
             await stale;
         }
-        return { entries };
+        return { deferral: { entries } };
     } catch (error: any) {
-        reportError(error?.message ?? String(error));
-        return undefined;
+        const message = error?.message ?? String(error);
+        reportError(message);
+        return { error: message };
     }
 }
 
-/** Which upstream actions of the current file to read from prod */
-export function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
-    return resolveDeferralForActions(fileMetadata.tables ?? [], devGraph, workspaceFolder);
-}
 
 /**
  * Upstream actions of the Selected Actions whose Dev Target is a Proxy View left by an earlier deferred run:
@@ -158,11 +171,14 @@ export async function findLeftoverProxies(selected: SelectedActions): Promise<Ta
  * Rewrites the queries of the current file so deferred upstream actions are read from prod. Called for every
  * read of the current file's metadata, so dry runs, previews and the compiled query panel all see the same SQL.
  * A retry after an `Access Denied` error just reads the metadata again: the unreadable Prod Target is then skipped.
- * When nothing is deferred, it reports upstream Proxy Views that still read prod.
+ * When nothing is deferred, it reports upstream Proxy Views that still read prod, and when the lookup failed, why.
  */
-export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<{ deferral?: Deferral, leftoverProxies?: string[] }> {
+export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<{ deferral?: Deferral, deferralError?: string, leftoverProxies?: string[] }> {
     try {
-        const deferral = await resolveDeferral(fileMetadata, devGraph, workspaceFolder);
+        const { deferral, error } = await tryResolveDeferral(fileMetadata.tables ?? [], devGraph, workspaceFolder);
+        if (error) {
+            return { deferralError: error };
+        }
         if (!deferral) {
             const leftovers = await findLeftoverProxies(fileMetadata.tables ?? []);
             return { leftoverProxies: leftovers.length > 0 ? leftovers.map(targetId) : undefined };
@@ -241,12 +257,16 @@ export function countDeferred(deferral: Deferral | undefined): number {
     return deferral?.entries.filter((entry) => entry.status === "deferred").length ?? 0;
 }
 
-/** Null when defer to prod is off or unavailable, so the panel hides its banner */
-export function toDeferralView(deferral: Deferral | undefined): DeferralView | null {
+/** Null when defer to prod is off or unavailable; the banner then shows the switch or why it is not applied */
+export function toDeferralView(deferral: Deferral | undefined, error?: string): DeferralView | null {
+    if (error) {
+        return { status: "error", message: error };
+    }
     if (!deferral) {
         return null;
     }
     return {
+        status: "ready",
         entries: deferral.entries.map((entry) => ({
             dev: targetId(entry.dev),
             prod: entry.prod ? targetId(entry.prod) : undefined,
