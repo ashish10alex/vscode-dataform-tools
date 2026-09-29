@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.5...v1.13.6) (2026-09-29)
+
+
+### Features
+
+* show assertions toggle in the dependency graph ( default false ) ([#381](https://github.com/ashish10alex/vscode-dataform-tools/issues/381)) ([47ad047](https://github.com/ashish10alex/vscode-dataform-tools/commit/47ad047f7552c0e07ae85050dd85d8b0698f2220))
+
 ### [1.13.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.4...v1.13.5) (2026-09-29)
 
 
