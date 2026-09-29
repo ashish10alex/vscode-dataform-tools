@@ -10,7 +10,7 @@ export interface GraphPayload {
     currentActiveEditorIdx: string;
     /** When set, the webview pre-applies this tag filter on first render. */
     initialTag?: string;
-    /** Whether assertion actions start visible; the webview toggle changes it. Defaults to true. */
+    /** Whether assertion actions start visible; the webview toggle changes it. Defaults to false. */
     showAssertions?: boolean;
 }
 

@@ -98,7 +98,7 @@ const Flow: React.FC = () => {
   // The graph as the host sent it; fullNodes/fullEdges below apply the assertions toggle.
   const [rawNodes, setRawNodes] = useState<Node[]>([]);
   const [rawEdges, setRawEdges] = useState<Edge[]>([]);
-  const [showAssertions, setShowAssertions] = useState<boolean>(true);
+  const [showAssertions, setShowAssertions] = useState<boolean>(false);
   const [view, setView] = useState<GraphView>(FULL_VIEW);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -220,10 +220,10 @@ const Flow: React.FC = () => {
           setRawEdges(initialEdges);
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
 
-          // The host sets the starting state (extension setting / CLI --hide-assertions),
+          // The host sets the starting state (extension setting / CLI --show-assertions),
           // but a focus on an assertion wins so the requested node is on screen.
           const focusIsAssertion = initialNodes.some((n) => n.id === currentActiveEditorIdx && isAssertionNode(n));
-          const initialShowAssertions = message.value.showAssertions !== false || focusIsAssertion;
+          const initialShowAssertions = message.value.showAssertions === true || focusIsAssertion;
           setShowAssertions(initialShowAssertions);
           const graph = graphFor(initialNodes, initialEdges, initialShowAssertions);
 
