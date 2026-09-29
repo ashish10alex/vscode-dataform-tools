@@ -539,7 +539,7 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
                 return;
               case 'toggleDeferToProd':
-                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd');
+                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.value);
                 return;
               case 'openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');

@@ -86,6 +86,24 @@ suite('deferRules.prodKey', () => {
     });
 });
 
+suite('deferRules.buildProdTargetMap', () => {
+    const clicks = (database: string): Target => ({ database, schema: 'events', name: 'clicks' });
+    const prodGraph = graph({
+        declarations: [
+            { target: clicks('raw-proj'), canonicalTarget: clicks('raw-proj') },
+            { target: clicks('warehouse-proj'), canonicalTarget: clicks('warehouse-proj') },
+        ],
+    });
+
+    test('matches actions sharing a schema and name across databases only by their database', () => {
+        const prodTargets = buildProdTargetMap(prodGraph);
+        const devActions = indexGraphActions(graph({ declarations: [{ target: clicks('raw-proj'), canonicalTarget: clicks('raw-proj') }] }));
+        const selected = [{ type: 'table', target: dev('report'), dependencyTargets: [clicks('raw-proj')] }];
+        assert.deepStrictEqual(collectCandidates(selected, devActions, prodTargets), []);
+        assert.strictEqual(prodTargets.has('events.clicks'), false);
+    });
+});
+
 suite('deferRules.collectCandidates and decideDeferral', () => {
     const devGraph = graph({
         tables: [
@@ -147,6 +165,7 @@ suite('deferRules.findAccessDeniedTargets', () => {
         assert.deepStrictEqual(findAccessDeniedTargets(message), [prod('orders')]);
         assert.deepStrictEqual(findAccessDeniedTargets('Not found: Table proj-dev:sales_dev.orders'), []);
         assert.deepStrictEqual(findAccessDeniedTargets(undefined), []);
+        assert.deepStrictEqual(findAccessDeniedTargets('Access Denied: Table proj-prod:sales.orders. User does not have permission'), [prod('orders')]);
     });
 });
 
@@ -166,5 +185,16 @@ suite('dataformCompiler.createCompilerOptionsObjectForApi', () => {
         assert.deepStrictEqual(createCompilerOptionsObjectForApi(['--vars={"env":"prod"}']), { vars: { env: 'prod' } });
         assert.deepStrictEqual(createCompilerOptionsObjectForApi([]), {});
         assert.deepStrictEqual(createCompilerOptionsObjectForApi(['']), {});
+    });
+
+    test('keeps quoted values with spaces in one option', () => {
+        assert.deepStrictEqual(
+            createCompilerOptionsObjectForApi(['--vars="env=prod, tier=gold" --schema-suffix=dev']),
+            { vars: { env: 'prod', tier: 'gold' }, schemaSuffix: 'dev' },
+        );
+        assert.deepStrictEqual(
+            createCompilerOptionsObjectForApi([`--vars='{"env": "prod", "tier": "gold"}'  --table-prefix=tmp`]),
+            { vars: { env: 'prod', tier: 'gold' }, tablePrefix: 'tmp' },
+        );
     });
 });

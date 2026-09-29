@@ -293,7 +293,8 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
         if (targetToSearch) {
             dependents = await getDependentsOfTarget(targetToSearch);
         }
-        const deferral = await deferFileMetadata(fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
+        const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
+        const deferral = isConfigFile ? undefined : await deferFileMetadata(fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
 
         return {
             isDataformWorkspace: true,

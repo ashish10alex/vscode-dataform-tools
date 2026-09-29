@@ -51,9 +51,10 @@ async function listDevDataset(database: string, schema: string): Promise<Dataset
         if (errorCode(error) === 404) {
             listing = { fetchedAt: Date.now(), tables: "missing" };
         } else {
-            // Without a listing we cannot tell, so assume the table exists and leave the query as compiled
+            // Without a listing we cannot tell, so assume the table exists and leave the query as compiled.
+            // Not cached, as the error may be transient.
             logger.error(`Defer to prod: could not list ${key}: ${error?.message}`);
-            listing = { fetchedAt: Date.now(), tables: "unknown" };
+            return { fetchedAt: Date.now(), tables: "unknown" };
         }
     }
     devDatasets.set(key, listing);
@@ -101,11 +102,12 @@ async function lookupProdTable(target: Target): Promise<ProdStatus> {
         if (errorCode(error) === 403) {
             status = "unreadable";
             unreadable.add(id);
-        } else {
-            if (errorCode(error) !== 404) {
-                logger.error(`Defer to prod: could not look up ${id}: ${error?.message}`);
-            }
+        } else if (errorCode(error) === 404) {
             status = "missing";
+        } else {
+            // Not cached, as the error may be transient
+            logger.error(`Defer to prod: could not look up ${id}: ${error?.message}`);
+            return "missing";
         }
     }
     prodTables.set(id, { fetchedAt: Date.now(), status });

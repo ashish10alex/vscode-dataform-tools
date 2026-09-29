@@ -53,7 +53,8 @@ export function createCompilerOptionsObjectForApi(compilerOptions: string[]): ty
         return compilerOptionsObject;
     }
 
-    let compilerOptionsToApi = compilerOptions[0].split(" ");
+    // Split on whitespace outside quotes, as the shell does for the CLI, so `--vars="a=1, b=2"` stays one option
+    let compilerOptionsToApi = compilerOptions[0].match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
 
     compilerOptionsToApi.forEach((opt: string) => {
         const separator = opt.indexOf("=");

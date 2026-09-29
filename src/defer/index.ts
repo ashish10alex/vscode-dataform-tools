@@ -176,7 +176,7 @@ export function handleAccessDenied(deferral: Deferral | undefined, errorMessages
     vscode.window.showWarningMessage(`No read access to ${names} in prod, so the dev table is used instead.`, "Turn off defer to prod")
         .then((choice) => {
             if (choice) {
-                vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd');
+                vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', false);
             }
         });
     return denied;

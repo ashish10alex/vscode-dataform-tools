@@ -55,6 +55,16 @@ export function prodKey(action: GraphAction): string {
     return `${target.schema}.${target.name}`;
 }
 
+/** Like {@link prodKey} but with the database, to tell apart actions that share a schema and name across databases */
+function fullProdKey(action: GraphAction): string {
+    return targetId(action.canonicalTarget ?? action.target);
+}
+
+/** Prod Target of an action: by {@link fullProdKey} when the database matches, else by {@link prodKey} */
+function lookupProdTarget(prodTargets: Map<string, Target>, action: GraphAction): Target | undefined {
+    return prodTargets.get(fullProdKey(action)) ?? prodTargets.get(prodKey(action));
+}
+
 function graphActions(graph: DataformCompiledJson): GraphAction[] {
     const actions: GraphAction[] = [
         ...(graph.tables ?? []),
@@ -70,9 +80,25 @@ export function indexGraphActions(graph: DataformCompiledJson): Map<string, Grap
     return new Map(graphActions(graph).map((action) => [targetId(action.target), action]));
 }
 
-/** Prod Target of every action and declaration of a compile made with the Prod Options, keyed by {@link prodKey} */
+/**
+ * Prod Target of every action and declaration of a compile made with the Prod Options, keyed by both
+ * {@link fullProdKey} and {@link prodKey}. A {@link prodKey} shared by actions in different databases is
+ * left out, so such an action is only matched when its database is the same in both compiles.
+ */
 export function buildProdTargetMap(prodGraph: DataformCompiledJson): Map<string, Target> {
-    return new Map(graphActions(prodGraph).map((action) => [prodKey(action), action.target]));
+    const targets = new Map<string, Target>();
+    const ambiguous = new Set<string>();
+    for (const action of graphActions(prodGraph)) {
+        targets.set(fullProdKey(action), action.target);
+        const key = prodKey(action);
+        const existing = targets.get(key);
+        if (existing && targetId(existing) !== targetId(action.target)) {
+            ambiguous.add(key);
+        }
+        targets.set(key, action.target);
+    }
+    ambiguous.forEach((key) => targets.delete(key));
+    return targets;
 }
 
 /**
@@ -99,7 +125,7 @@ export function collectCandidates(
             if (upstream?.type === "operations" && !upstream.hasOutput) {
                 continue;
             }
-            const prod = prodTargets.get(prodKey(upstream ?? { target: dependency }));
+            const prod = lookupProdTarget(prodTargets, upstream ?? { target: dependency });
             if (prod && targetId(prod) === id) {
                 continue;
             }
@@ -177,7 +203,8 @@ export function findAccessDeniedTargets(errorMessage: string | undefined): Targe
         return [];
     }
     const targets: Target[] = [];
-    for (const match of errorMessage.matchAll(/Access Denied: Table ([^:\s]+):([^.\s]+)\.([^:\s,]+)/g)) {
+    // Table names cannot contain dots, so a sentence-ending period is not taken as part of the name
+    for (const match of errorMessage.matchAll(/Access Denied: Table ([^:\s]+):([^.\s]+)\.([^:\s,.]+)/g)) {
         targets.push({ database: match[1], schema: match[2], name: match[3] });
     }
     return targets;

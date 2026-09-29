@@ -44,11 +44,16 @@ function refreshStatusBar() {
     statusBarItem.show();
 }
 
-async function toggleDeferToProd() {
+/** Flips defer to prod, or sets it to `enabled` when given, so a caller with a stale view of the setting cannot invert it */
+async function toggleDeferToProd(enabled?: boolean) {
     const workspaceFolder = currentWorkspaceFolder();
     const config = vscode.workspace.getConfiguration('vscode-dataform-tools', workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
     const target = pickBackendConfigurationTarget(config.inspect<boolean>('deferToProd'), !!vscode.workspace.workspaceFolders?.length);
-    await config.update('deferToProd', !isDeferEnabled(workspaceFolder), target);
+    const value = typeof enabled === 'boolean' ? enabled : !isDeferEnabled(workspaceFolder);
+    if (value === isDeferEnabled(workspaceFolder)) {
+        return;
+    }
+    await config.update('deferToProd', value, target);
 }
 
 async function clearDeferCaches() {
@@ -59,7 +64,7 @@ async function clearDeferCaches() {
 async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
     const enabled = isDeferEnabled(currentWorkspaceFolder());
     const actions = [
-        { label: enabled ? "$(circle-slash) Turn off defer to prod" : "$(cloud-download) Turn on defer to prod", run: toggleDeferToProd },
+        { label: enabled ? "$(circle-slash) Turn off defer to prod" : "$(cloud-download) Turn on defer to prod", run: () => toggleDeferToProd() },
         {
             label: "$(refresh) Refresh prod targets and table cache",
             description: "Recompile with the prod options and look up dev and prod tables again",

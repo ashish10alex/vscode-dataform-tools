@@ -252,7 +252,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   useEffect(() => setDeferToProd(!!state.deferToProd?.enabled), [state.deferToProd?.enabled]);
   const handleToggleDeferToProd = (checked: boolean) => {
     setDeferToProd(checked);
-    vscode.postMessage({ command: "toggleDeferToProd" });
+    vscode.postMessage({ command: "toggleDeferToProd", value: checked });
   };
 
   const handlePreviewResults = () => {
