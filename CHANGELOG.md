@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.4...v1.13.5) (2026-09-29)
+
+
+### Features
+
+* defer to prod for dry runs, previews and the compiled query view ([#378](https://github.com/ashish10alex/vscode-dataform-tools/issues/378)) ([90e2d87](https://github.com/ashish10alex/vscode-dataform-tools/commit/90e2d87f179ba68fba4437b07f330d37e4efd414))
+* defer to prod for runs through proxy views ([#379](https://github.com/ashish10alex/vscode-dataform-tools/issues/379)) ([af1da48](https://github.com/ashish10alex/vscode-dataform-tools/commit/af1da489f6bb56ab98de13f72598ab9a34e47ac8))
+
 ### [1.13.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.3...v1.13.4) (2026-09-28)
 
 

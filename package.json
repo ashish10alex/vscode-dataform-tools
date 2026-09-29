@@ -8,7 +8,7 @@
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
     },
-    "version": "1.13.4",
+    "version": "1.13.5",
     "sponsor": {
         "url": "https://buymeacoffee.com/ashishalexj"
     },
@@ -298,22 +298,42 @@
             {
                 "id": "dataformTools.deferredRef.foreground",
                 "description": "Label after a ref that defer to prod reads from prod",
-                "defaults": { "dark": "#E5C07B", "light": "#8A6400", "highContrast": "#FFD700", "highContrastLight": "#7A5800" }
+                "defaults": {
+                    "dark": "#E5C07B",
+                    "light": "#8A6400",
+                    "highContrast": "#FFD700",
+                    "highContrastLight": "#7A5800"
+                }
             },
             {
                 "id": "dataformTools.deferredRef.background",
                 "description": "Background of the label after a ref that defer to prod reads from prod",
-                "defaults": { "dark": "#E5C07B1F", "light": "#8A64001A", "highContrast": null, "highContrastLight": null }
+                "defaults": {
+                    "dark": "#E5C07B1F",
+                    "light": "#8A64001A",
+                    "highContrast": null,
+                    "highContrastLight": null
+                }
             },
             {
                 "id": "dataformTools.deferredRefWarning.foreground",
                 "description": "Label after a ref that defer to prod warns about: changed on the branch, not built, or a leftover proxy view",
-                "defaults": { "dark": "#F0A15A", "light": "#B34D00", "highContrast": "#FFA500", "highContrastLight": "#A34700" }
+                "defaults": {
+                    "dark": "#F0A15A",
+                    "light": "#B34D00",
+                    "highContrast": "#FFA500",
+                    "highContrastLight": "#A34700"
+                }
             },
             {
                 "id": "dataformTools.deferredRefWarning.background",
                 "description": "Background of the label after a ref that defer to prod warns about",
-                "defaults": { "dark": "#F0A15A1F", "light": "#B34D001A", "highContrast": null, "highContrastLight": null }
+                "defaults": {
+                    "dark": "#F0A15A1F",
+                    "light": "#B34D001A",
+                    "highContrast": null,
+                    "highContrastLight": null
+                }
             }
         ],
         "languages": [
