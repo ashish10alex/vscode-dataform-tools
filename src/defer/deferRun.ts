@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 import { logger } from '../logger';
-import { LastRunRequest } from '../types';
+import { LastRunRequest, Target } from '../types';
 import { getLastRunContext, recordLastRun } from '../lastRun';
 import { replayRun } from '../rerunLastExecution';
 import { getOrCompileDataformJson } from '../utils/dataformCompiler';
 import { createDataformClientForCurrentRepository } from '../utils/remoteCompiler';
+import { runIncludedTargets } from '../utils/dataformHelpers';
 import { computeRunSet, DeferralEntry, targetId } from './deferRules';
-import { getDeferAvailability, isDeferEnabled, resolveDeferralForActions } from './index';
-import { ensureProxyViews } from './proxyViews';
+import { findLeftoverProxies, getDeferAvailability, isDeferEnabled, resolveDeferralForActions } from './index';
+import { ensureProxyViews, proxyViewsMayExist } from './proxyViews';
 import { clearTableExistenceCache, findMissingDevDatasets } from './tableExistence';
 
 /*
@@ -19,6 +20,7 @@ import { clearTableExistenceCache, findMissingDevDatasets } from './tableExisten
 const API_RUNNER_APPROVED_KEY = "defer_to_prod_api_runner_approved";
 const RUN_WITH_DEPENDENCIES = "Run with dependencies";
 const RUN_ANYWAY = "Run anyway";
+const BUILD_CHANGED_FIRST = "Build changed upstream first";
 
 type RunRequest = Omit<LastRunRequest, 'timestamp'>;
 
@@ -35,13 +37,68 @@ export async function withDeferOverride<T>(deferToProd: boolean, run: () => Prom
     }
 }
 
+/** Target ids added to a run's selection, set while a run with its changed upstream actions dispatches */
+let extraRunTargets: string[] | undefined;
+
 /** Repeats the run with its dependencies, so the upstream actions it would have read from prod are built in dev */
-async function runWithDependencies(request: RunRequest) {
+async function runWithDependencies(request: RunRequest, deferToProd: boolean) {
     const context = getLastRunContext();
     if (!context) {
         return;
     }
-    await withDeferOverride(true, () => replayRun(context, request.workspaceFolder, { ...request, includeDependencies: true, timestamp: Date.now() }));
+    await withDeferOverride(deferToProd, () => replayRun(context, request.workspaceFolder, { ...request, includeDependencies: true, timestamp: Date.now() }));
+}
+
+/**
+ * Runs the changed upstream actions and the run's own actions as one run. Dataform orders it by dependency,
+ * so the changed upstream actions are built in dev before the actions that read them. Only those are added,
+ * unlike a run with dependencies, which builds everything upstream.
+ */
+async function runWithChangedUpstream(request: RunRequest, stale: DeferralEntry[], runSet: { target: Target }[]) {
+    const context = getLastRunContext();
+    if (!context) {
+        return;
+    }
+    const targets = new Map<string, Target>();
+    [...stale.map((entry) => entry.dev), ...runSet.map((action) => action.target)].forEach((target) => targets.set(targetId(target), target));
+    const previous = extraRunTargets;
+    extraRunTargets = stale.map((entry) => targetId(entry.dev));
+    try {
+        // The run set already includes any dependencies or dependents, so they are not added again
+        await withDeferOverride(true, () => runIncludedTargets(context, request.workspaceFolder, [...targets.values()], false, false, request.fullRefresh, request.executionMode, request));
+    } finally {
+        extraRunTargets = previous;
+    }
+}
+
+/**
+ * With defer to prod off, a Proxy View left by an earlier deferred run still makes the run read prod. Returns
+ * false when the user cancels or starts a run with dependencies instead.
+ */
+async function confirmLeftoverProxies(request: RunRequest): Promise<boolean> {
+    if (!proxyViewsMayExist()) {
+        return true;
+    }
+    const graph = await getOrCompileDataformJson(request.workspaceFolder);
+    if (!graph) {
+        return true;
+    }
+    clearTableExistenceCache({ includeUnreadable: false });
+    const leftovers = await findLeftoverProxies(computeRunSet(graph, request));
+    if (leftovers.length === 0) {
+        return true;
+    }
+    const actions = request.includeDependencies ? [RUN_ANYWAY] : [RUN_WITH_DEPENDENCIES, RUN_ANYWAY];
+    const choice = await vscode.window.showWarningMessage(
+        `Defer to prod is off, but ${leftovers.length} upstream table${leftovers.length === 1 ? " is a proxy view" : "s are proxy views"} from an earlier deferred run, so this run would read prod for ${leftovers.length === 1 ? "it" : "them"}.`,
+        { modal: true, detail: `${leftovers.map(targetId).join("\n")}\n\nRun with dependencies builds them in dev, replacing the proxy views. "Dataform: Remove defer to prod proxy views" deletes them.` },
+        ...actions,
+    );
+    if (choice === RUN_WITH_DEPENDENCIES) {
+        await runWithDependencies(request, false);
+        return false;
+    }
+    return choice === RUN_ANYWAY;
 }
 
 function describe(entries: DeferralEntry[], note: (entry: DeferralEntry) => string): string {
@@ -92,7 +149,7 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
     const record = (deferToProd: boolean) => recordLastRun({ ...request, deferToProd }).then(() => true);
     const workspaceFolder = request.workspaceFolder;
     if (!(deferOverride ?? isDeferEnabled(workspaceFolder))) {
-        return record(false);
+        return (await confirmLeftoverProxies(request)) ? record(false) : false;
     }
     const availability = getDeferAvailability(workspaceFolder);
     if (!availability.available) {
@@ -105,6 +162,9 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
         return record(false);
     }
     const runSet = computeRunSet(graph, request);
+    if (extraRunTargets) {
+        runSet.push(...computeRunSet(graph, { kind: "changed", items: extraRunTargets, includeDependencies: false, includeDependents: false }));
+    }
     // A run acts on what exists now, e.g. a table the previous run just built, so skip the cached listings
     clearTableExistenceCache({ includeUnreadable: false });
     const deferral = await resolveDeferralForActions(runSet, graph, workspaceFolder, { enabled: true, awaitStale: true });
@@ -131,21 +191,25 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
             ...actions,
         );
         if (choice === RUN_WITH_DEPENDENCIES) {
-            await runWithDependencies(request);
+            await runWithDependencies(request, true);
         }
         return false;
     }
 
     const stale = deferred.filter((entry) => entry.stale);
     if (stale.length > 0) {
-        const actions = request.includeDependencies ? [RUN_ANYWAY] : [RUN_WITH_DEPENDENCIES, RUN_ANYWAY];
+        const actions = request.includeDependencies ? [RUN_ANYWAY] : [BUILD_CHANGED_FIRST, RUN_WITH_DEPENDENCIES, RUN_ANYWAY];
         const choice = await vscode.window.showWarningMessage(
             `${stale.length} upstream table${stale.length === 1 ? "" : "s"} read from prod changed on this branch, so the run would use the prod version.`,
-            { modal: true, detail: describe(stale, (entry) => `reads ${targetId(entry.prod!)}`) },
+            { modal: true, detail: `${describe(stale, (entry) => `reads ${targetId(entry.prod!)}`)}\n\n${BUILD_CHANGED_FIRST} adds only these to the run, built in dev before the actions that read them.` },
             ...actions,
         );
+        if (choice === BUILD_CHANGED_FIRST) {
+            await runWithChangedUpstream(request, stale, runSet);
+            return false;
+        }
         if (choice === RUN_WITH_DEPENDENCIES) {
-            await runWithDependencies(request);
+            await runWithDependencies(request, true);
             return false;
         }
         if (choice !== RUN_ANYWAY) {

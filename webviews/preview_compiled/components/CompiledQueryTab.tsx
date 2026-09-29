@@ -331,7 +331,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </button>
       </div>
 
-      <DeferralBanner deferral={state.deferral} deferToProd={state.deferToProd} />
+      <DeferralBanner deferral={state.deferral} deferToProd={state.deferToProd} leftoverProxies={state.leftoverProxies} />
 
       {/* Model Link */}
       {/* Model Links */}

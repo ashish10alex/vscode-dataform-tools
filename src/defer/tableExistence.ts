@@ -11,7 +11,8 @@ import { PROXY_VIEW_LABEL, ProdStatus, targetId } from './deferRules';
 
 const TTL_MS = 2 * 60 * 1000;
 
-type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing" | "unknown" };
+/** `tables` holds real tables and views; Proxy Views are kept apart in `proxies` */
+type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing" | "unknown", proxies: Set<string> };
 
 const devDatasets = new Map<string, DatasetListing>();
 const prodTables = new Map<string, { fetchedAt: number, status: ProdStatus }>();
@@ -40,21 +41,27 @@ async function listDevDataset(database: string, schema: string): Promise<Dataset
         }
         const [tables] = await bigquery.dataset(schema, { projectId: database }).getTables({ autoPaginate: true });
         const names = new Set<string>();
+        const proxies = new Set<string>();
         for (const table of tables) {
+            if (!table.id) {
+                continue;
+            }
             // A Proxy View reads prod through the dev name, so it does not count as built in dev
-            if (table.metadata?.labels?.[PROXY_VIEW_LABEL] !== "true" && table.id) {
+            if (table.metadata?.labels?.[PROXY_VIEW_LABEL] === "true") {
+                proxies.add(table.id);
+            } else {
                 names.add(table.id);
             }
         }
-        listing = { fetchedAt: Date.now(), tables: names };
+        listing = { fetchedAt: Date.now(), tables: names, proxies };
     } catch (error: any) {
         if (errorCode(error) === 404) {
-            listing = { fetchedAt: Date.now(), tables: "missing" };
+            listing = { fetchedAt: Date.now(), tables: "missing", proxies: new Set() };
         } else {
             // Without a listing we cannot tell, so assume the table exists and leave the query as compiled.
             // Not cached, as the error may be transient.
             logger.error(`Defer to prod: could not list ${key}: ${error?.message}`);
-            return { fetchedAt: Date.now(), tables: "unknown" };
+            return { fetchedAt: Date.now(), tables: "unknown", proxies: new Set() };
         }
     }
     devDatasets.set(key, listing);
@@ -79,6 +86,16 @@ export async function findExistingDevTargets(targets: Target[]): Promise<Set<str
         }
     }
     return existing;
+}
+
+/** The given Dev Targets that are Proxy Views, i.e. read prod whether or not defer to prod is on */
+export async function findProxyViews(targets: Target[]): Promise<Target[]> {
+    await checkAuthentication();
+    const listings = new Map<string, DatasetListing>();
+    await Promise.all([...new Map(targets.map((target) => [`${target.database}.${target.schema}`, target])).entries()].map(async ([key, target]) => {
+        listings.set(key, await listDevDataset(target.database, target.schema));
+    }));
+    return targets.filter((target) => listings.get(`${target.database}.${target.schema}`)?.proxies.has(target.name));
 }
 
 /** `database.schema` of the given Dev Targets whose dataset does not exist. Proxy Views are never created in them. */

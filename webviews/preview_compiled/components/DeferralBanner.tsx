@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CloudDownload, Settings2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, CloudDownload, Settings2, Trash2 } from "lucide-react";
 import type { DeferralView, DeferToProdState } from "../types";
 import { vscode } from "../utils/vscode";
 
@@ -9,7 +9,31 @@ const STATUS_NOTE: Record<DeferralView["entries"][number]["status"], string | un
 };
 
 /** Which upstream tables of this file are read from prod, shown above the compiled SQL that already reflects it. */
-export function DeferralBanner({ deferral, deferToProd }: { deferral?: DeferralView | null; deferToProd?: DeferToProdState }) {
+const WARNING_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]";
+
+export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { deferral?: DeferralView | null; deferToProd?: DeferToProdState; leftoverProxies?: string[] | null }) {
+  if (!deferral && leftoverProxies && leftoverProxies.length > 0) {
+    return (
+      <div className="rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
+          <span className="font-semibold text-[var(--vscode-foreground)]">
+            {leftoverProxies.length} upstream table{leftoverProxies.length === 1 ? " is a proxy view" : "s are proxy views"} from an earlier deferred run, so {leftoverProxies.length === 1 ? "it reads" : "they read"} prod
+          </span>
+          <div className="flex-grow" />
+          <button onClick={() => vscode.postMessage({ command: "toggleDeferToProd" })} className={WARNING_BUTTON}>
+            <CloudDownload className="w-3 h-3" /> Turn on defer to prod
+          </button>
+          <button onClick={() => vscode.postMessage({ command: "removeProxyViews" })} className={WARNING_BUTTON}>
+            <Trash2 className="w-3 h-3" /> Remove proxy views
+          </button>
+        </div>
+        {leftoverProxies.map((id) => (
+          <div key={id} className="font-mono text-[var(--vscode-descriptionForeground)]">{id}</div>
+        ))}
+      </div>
+    );
+  }
   if (deferToProd?.enabled && !deferToProd.available) {
     return (
       <div className="rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs flex flex-wrap items-center gap-2">

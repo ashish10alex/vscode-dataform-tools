@@ -23,6 +23,8 @@ export interface WebviewState {
   /** Null when defer to prod is off */
   deferral?: DeferralView | null;
   deferToProd?: DeferToProdState;
+  /** With defer to prod off: upstream tables still read from prod through leftover proxy views */
+  leftoverProxies?: string[] | null;
   preOperations?: string;
   postOperations?: string;
   tableOrViewQuery?: string;

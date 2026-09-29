@@ -2,13 +2,29 @@ import * as vscode from 'vscode';
 import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
 import { logger } from '../logger';
 import { DataformCompiledJson } from '../types';
+import { getLastRunContext } from '../lastRun';
 import { DeferralEntry, PROXY_VIEW_LABEL, proxyViewSpec, targetId } from './deferRules';
+import { clearTableExistenceCache } from './tableExistence';
 
 /*
  * Proxy Views let a Dataform run defer to prod: Dataform only reads the Dev Target, so a view there reading
  * the Prod Target makes the run read prod. They are labelled so they can be told apart from real dev tables,
  * which are never replaced, and removed later.
  */
+
+const PROXY_VIEWS_CREATED_KEY = "defer_to_prod_proxy_views_created";
+
+/**
+ * True once this workspace has created Proxy Views that have not all been removed since. Until then nothing
+ * looks for leftover proxies, so users who never ran with defer to prod make no extra BigQuery calls.
+ */
+export function proxyViewsMayExist(): boolean {
+    return getLastRunContext()?.workspaceState.get<boolean>(PROXY_VIEWS_CREATED_KEY) === true;
+}
+
+async function setProxyViewsMayExist(value: boolean) {
+    await getLastRunContext()?.workspaceState.update(PROXY_VIEWS_CREATED_KEY, value);
+}
 
 function bigQuery() {
     const client = getBigQueryClient();
@@ -50,6 +66,10 @@ export async function ensureProxyViews(entries: DeferralEntry[]): Promise<number
             logger.info(`Defer to prod: ${targetId(entry.dev)} now exists in dev, no proxy view created`);
         }
     }
+    if (written > 0) {
+        await setProxyViewsMayExist(true);
+        clearTableExistenceCache({ includeUnreadable: false });
+    }
     return written;
 }
 
@@ -87,6 +107,7 @@ export async function removeProxyViews(graph: DataformCompiledJson | undefined) 
     });
 
     if (proxies.length === 0) {
+        await setProxyViewsMayExist(false);
         vscode.window.showInformationMessage("No proxy views found in the project's dev datasets.");
         return;
     }
@@ -101,6 +122,10 @@ export async function removeProxyViews(graph: DataformCompiledJson | undefined) 
     }
     const results = await Promise.allSettled(proxies.map((proxy) => proxy.remove()));
     const failed = results.filter((result) => result.status === "rejected").length;
+    clearTableExistenceCache({ includeUnreadable: false });
+    if (failed === 0) {
+        await setProxyViewsMayExist(false);
+    }
     if (failed > 0) {
         vscode.window.showErrorMessage(`Deleted ${proxies.length - failed} proxy views; ${failed} could not be deleted. See the Dataform Tools log.`);
         results.forEach((result, i) => {

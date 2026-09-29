@@ -3,7 +3,8 @@ import { logger } from '../logger';
 import { DataformCompiledJson, DeferToProdState, DeferralView, TablesWtFullQuery, Target } from '../types';
 import { computeChangedActions, isGitRepo } from '../changedActions';
 import { applyDeferral, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, targetId } from './deferRules';
-import { findExistingDevTargets, getProdStatuses, markProdUnreadable } from './tableExistence';
+import { findExistingDevTargets, findProxyViews, getProdStatuses, markProdUnreadable } from './tableExistence';
+import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
 
 export interface Deferral {
@@ -126,16 +127,44 @@ export function resolveDeferral(fileMetadata: TablesWtFullQuery, devGraph: Dataf
 }
 
 /**
+ * Upstream actions of the Selected Actions whose Dev Target is a Proxy View left by an earlier deferred run:
+ * they read prod even with defer to prod off. Only looked up once this workspace has created proxy views.
+ */
+export async function findLeftoverProxies(selected: SelectedActions): Promise<Target[]> {
+    if (!proxyViewsMayExist()) {
+        return [];
+    }
+    const selectedIds = new Set(selected.filter((action) => action.target).map((action) => targetId(action.target!)));
+    const upstream = new Map<string, Target>();
+    for (const dependency of selected.flatMap((action) => action.dependencyTargets ?? [])) {
+        if (!selectedIds.has(targetId(dependency))) {
+            upstream.set(targetId(dependency), dependency);
+        }
+    }
+    try {
+        return await findProxyViews([...upstream.values()]);
+    } catch (error: any) {
+        logger.error(`Defer to prod: could not look for leftover proxy views: ${error?.message}`);
+        return [];
+    }
+}
+
+/**
  * Rewrites the queries of the current file so deferred upstream actions are read from prod. Called for every
  * read of the current file's metadata, so dry runs, previews and the compiled query panel all see the same SQL.
  * A retry after an `Access Denied` error just reads the metadata again: the unreadable Prod Target is then skipped.
+ * When nothing is deferred, it reports upstream Proxy Views that still read prod.
  */
-export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<Deferral | undefined> {
+export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<{ deferral?: Deferral, leftoverProxies?: string[] }> {
     const deferral = await resolveDeferral(fileMetadata, devGraph, workspaceFolder);
-    if (deferral && countDeferred(deferral) > 0) {
+    if (!deferral) {
+        const leftovers = await findLeftoverProxies(fileMetadata.tables ?? []);
+        return { leftoverProxies: leftovers.length > 0 ? leftovers.map(targetId) : undefined };
+    }
+    if (countDeferred(deferral) > 0) {
         fileMetadata.queryMeta = applyDeferral(fileMetadata.queryMeta, deferral.entries);
     }
-    return deferral;
+    return { deferral };
 }
 
 /**

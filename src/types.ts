@@ -442,6 +442,8 @@ export type CurrentFileMetadata = {
     fileMetadata?: TablesWtFullQuery;
     /** Set when defer to prod is on: which upstream actions the queries in `fileMetadata` read from prod */
     deferral?: { entries: DeferralEntry[] };
+    /** With defer to prod off: upstream tables that are still Proxy Views, so they read prod anyway */
+    leftoverProxies?: string[];
     possibleResolutions?: any[];
     dependents?: any;
     lineageMetadata?: {
