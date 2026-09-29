@@ -15,6 +15,10 @@ const deferralUpdated = new vscode.EventEmitter<void>();
 /** Fires when Stale Deferral flags arrive after the deferral was first shown */
 export const onDeferralUpdated = deferralUpdated.event;
 
+const deferralResolved = new vscode.EventEmitter<void>();
+/** Fires after the current file's deferral was worked out for a compile, dry run or preview */
+export const onDeferralResolved = deferralResolved.event;
+
 let lastReportedError: string | undefined;
 
 function settings(workspaceFolder?: string) {
@@ -101,10 +105,11 @@ export async function resolveDeferralForActions(
             return { entries: [] };
         }
         const existingDev = await findExistingDevTargets(candidates.map((candidate) => candidate.dev));
-        const prodToCheck = candidates
-            .filter((candidate) => candidate.prod && !existingDev.has(targetId(candidate.dev)))
-            .map((candidate) => candidate.prod!);
-        const prodStatuses = await getProdStatuses(prodToCheck);
+        const prodToCheck = candidates.filter((candidate) => candidate.prod && !existingDev.has(targetId(candidate.dev)));
+        const prodStatuses = await getProdStatuses(
+            prodToCheck.map((candidate) => candidate.prod!),
+            new Set(prodToCheck.filter((candidate) => candidate.routine).map((candidate) => targetId(candidate.prod!))),
+        );
         const entries = decideDeferral(candidates, {
             devExists: (target) => existingDev.has(targetId(target)),
             prodStatus: (target) => prodStatuses.get(targetId(target)) ?? "missing",
@@ -156,15 +161,20 @@ export async function findLeftoverProxies(selected: SelectedActions): Promise<Ta
  * When nothing is deferred, it reports upstream Proxy Views that still read prod.
  */
 export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGraph: DataformCompiledJson, workspaceFolder: string): Promise<{ deferral?: Deferral, leftoverProxies?: string[] }> {
-    const deferral = await resolveDeferral(fileMetadata, devGraph, workspaceFolder);
-    if (!deferral) {
-        const leftovers = await findLeftoverProxies(fileMetadata.tables ?? []);
-        return { leftoverProxies: leftovers.length > 0 ? leftovers.map(targetId) : undefined };
+    try {
+        const deferral = await resolveDeferral(fileMetadata, devGraph, workspaceFolder);
+        if (!deferral) {
+            const leftovers = await findLeftoverProxies(fileMetadata.tables ?? []);
+            return { leftoverProxies: leftovers.length > 0 ? leftovers.map(targetId) : undefined };
+        }
+        if (countDeferred(deferral) > 0) {
+            fileMetadata.queryMeta = applyDeferral(fileMetadata.queryMeta, deferral.entries);
+        }
+        return { deferral };
+    } finally {
+        // A compile or a new lookup may have changed what editors should show for the file
+        deferralResolved.fire();
     }
-    if (countDeferred(deferral) > 0) {
-        fileMetadata.queryMeta = applyDeferral(fileMetadata.queryMeta, deferral.entries);
-    }
-    return { deferral };
 }
 
 /**

@@ -43,7 +43,8 @@ export async function ensureProxyViews(entries: DeferralEntry[]): Promise<number
     await checkAuthentication();
     const client = bigQuery();
     let written = 0;
-    for (const entry of entries.filter((e) => e.status === "deferred")) {
+    // A view cannot stand in for a function or procedure: a run builds those in dev instead
+    for (const entry of entries.filter((e) => e.status === "deferred" && !e.routine)) {
         const spec = proxyViewSpec(entry);
         const table = client.dataset(spec.datasetId, { projectId: spec.projectId }).table(spec.tableId);
         const view = { query: spec.query, useLegacySql: false };

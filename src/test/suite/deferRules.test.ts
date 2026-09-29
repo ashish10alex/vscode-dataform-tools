@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, rewriteSql } from '../../defer/deferRules';
+import { findRefs } from '../../documentSymbols';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
 
@@ -237,5 +238,49 @@ suite('deferRules.proxyViewSpec', () => {
             { projectId: 'proj-dev', datasetId: 'sales_dev', tableId: 'orders', query: 'SELECT * FROM `proj-prod.sales.orders`', labels: { dataform_tools_proxy: 'true' } },
         );
         assert.throws(() => proxyViewSpec({ dev: dev('new_table'), status: 'missingEverywhere' }));
+    });
+});
+
+suite('deferRules.matchRef and documentSymbols.findRefs', () => {
+    test('finds refs outside comments with their arguments', () => {
+        const text = 'SELECT * FROM ${ref("orders")}\n/* ${ref("old")} */\nJOIN ${ref(\'sales\', \'customers\')}';
+        const refs = findRefs(text);
+        assert.deepStrictEqual(refs.map((ref) => ref.args), [['orders'], ['sales', 'customers']]);
+        assert.strictEqual(text.slice(refs[0].index, refs[0].index + refs[0].length), '${ref("orders")}');
+    });
+
+    test('matches a ref to a dependency by canonical name, ignoring prefixes and suffixes', () => {
+        const dependencies = [
+            { target: { database: 'proj-dev', schema: 'sales_aalex', name: 'ABA_orders' }, canonicalTarget: canonical('orders') },
+            { target: dev('customers'), canonicalTarget: canonical('customers') },
+            { target: dev('customers', 'crm_dev'), canonicalTarget: { database: 'proj-dev', schema: 'crm', name: 'customers' } },
+        ];
+        assert.deepStrictEqual(matchRef(['orders'], dependencies), dependencies[0].target);
+        assert.strictEqual(matchRef(['customers'], dependencies), undefined, 'ambiguous without a schema');
+        assert.deepStrictEqual(matchRef(['crm', 'customers'], dependencies), dependencies[2].target);
+        assert.strictEqual(matchRef(['missing'], dependencies), undefined);
+    });
+});
+
+suite('deferRules functions and procedures', () => {
+    const op = (queries: string[], hasOutput = true) => ({ type: 'operations', hasOutput, target: dev('fn'), canonicalTarget: canonical('fn'), queries });
+
+    test('recognises operations that create a function or procedure', () => {
+        assert.ok(isRoutineOperation(op(['CREATE OR REPLACE FUNCTION `proj`.ds.fn(x STRING) RETURNS STRING AS (x)'])));
+        assert.ok(isRoutineOperation(op(['create temp function f() as (1); CREATE PROCEDURE ds.p() BEGIN END'])));
+        assert.ok(isRoutineOperation(op(['CREATE OR REPLACE TABLE FUNCTION ds.tvf(d DATE) AS SELECT 1'])));
+        assert.ok(!isRoutineOperation(op(['CREATE OR REPLACE TABLE ds.t AS SELECT 1'])));
+        assert.ok(!isRoutineOperation(op(['CREATE OR REPLACE FUNCTION ds.fn() AS (1)'], false)));
+        assert.ok(!isRoutineOperation({ type: 'table', target: dev('t') }));
+    });
+
+    test('flags function candidates and entries so runs build them instead of making a proxy view', () => {
+        const devGraph = graph({ operations: [op(['CREATE OR REPLACE FUNCTION ds.fn() AS (1)'])] });
+        const prodGraph = graph({ operations: [{ ...op([]), target: prod('fn'), canonicalTarget: prod('fn') }] });
+        const candidates = collectCandidates([{ type: 'table', target: dev('report'), dependencyTargets: [dev('fn')] }], indexGraphActions(devGraph), buildProdTargetMap(prodGraph));
+        assert.deepStrictEqual(candidates, [{ dev: dev('fn'), prod: prod('fn'), routine: true }]);
+        const entries = decideDeferral(candidates, { devExists: () => false, prodStatus: () => 'exists' });
+        assert.deepStrictEqual(entries, [{ dev: dev('fn'), prod: prod('fn'), status: 'deferred', routine: true }]);
+        assert.strictEqual(rewriteSql('SELECT `proj-dev.sales_dev.fn`(x)', entries), 'SELECT `proj-prod.sales.fn`(x)');
     });
 });

@@ -294,6 +294,28 @@
                 "title": "Remove defer to prod proxy views"
             }
         ],
+        "colors": [
+            {
+                "id": "dataformTools.deferredRef.foreground",
+                "description": "Label after a ref that defer to prod reads from prod",
+                "defaults": { "dark": "#E5C07B", "light": "#8A6400", "highContrast": "#FFD700", "highContrastLight": "#7A5800" }
+            },
+            {
+                "id": "dataformTools.deferredRef.background",
+                "description": "Background of the label after a ref that defer to prod reads from prod",
+                "defaults": { "dark": "#E5C07B1F", "light": "#8A64001A", "highContrast": null, "highContrastLight": null }
+            },
+            {
+                "id": "dataformTools.deferredRefWarning.foreground",
+                "description": "Label after a ref that defer to prod warns about: changed on the branch, not built, or a leftover proxy view",
+                "defaults": { "dark": "#F0A15A", "light": "#B34D00", "highContrast": "#FFA500", "highContrastLight": "#A34700" }
+            },
+            {
+                "id": "dataformTools.deferredRefWarning.background",
+                "description": "Background of the label after a ref that defer to prod warns about",
+                "defaults": { "dark": "#F0A15A1F", "light": "#B34D001A", "highContrast": null, "highContrastLight": null }
+            }
+        ],
         "languages": [
             {
                 "id": "sqlx",
@@ -407,6 +429,11 @@
                     "default": 10,
                     "minimum": 0,
                     "markdownDescription": "Ask before running a preview that reads upstream tables from prod and scans more than this many GiB. `0` turns the check off."
+                },
+                "vscode-dataform-tools.deferToProdEditorHints": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Show a coloured label after each `${ref(...)}` in .sqlx files that defer to prod reads from prod (`→ prod`), or that is not built anywhere or is still a leftover proxy view. Hover the ref for the dev and prod tables and a link to the prod table. Colours: `dataformTools.deferredRef.*` in `workbench.colorCustomizations`."
                 },
                 "vscode-dataform-tools.currencyFoDryRunCost": {
                     "type": "string",

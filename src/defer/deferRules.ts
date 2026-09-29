@@ -19,12 +19,15 @@ export interface DeferralEntry {
     status: DeferralStatus;
     /** A Stale Deferral: also a Changed Action, so the Prod Target does not reflect this branch */
     stale?: boolean;
+    /** A function or procedure: previews call its prod version, but a run builds it in dev instead of a proxy view */
+    routine?: boolean;
 }
 
 /** An upstream action whose Dev Target differs from its Prod Target, before existence is checked */
 export interface DeferralCandidate {
     dev: Target;
     prod?: Target;
+    routine?: boolean;
 }
 
 export type ProdStatus = "exists" | "missing" | "unreadable";
@@ -35,15 +38,37 @@ export interface DeferralLookups {
     prodStatus: (target: Target) => ProdStatus;
 }
 
-interface GraphAction {
+export interface GraphAction {
     target: Target;
     canonicalTarget?: Target;
     type?: string;
     hasOutput?: boolean;
+    queries?: string[];
+}
+
+const CREATES_ROUTINE = /\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:TEMP(?:ORARY)?\s+)?(?:TABLE\s+)?(?:AGGREGATE\s+)?(?:FUNCTION|PROCEDURE)\b/i;
+
+/** An operation whose output is a function or procedure (a UDF), which BigQuery lists apart from tables */
+export function isRoutineOperation(action: GraphAction | undefined): boolean {
+    return action?.type === "operations" && !!action.hasOutput && (action.queries ?? []).some((query) => CREATES_ROUTINE.test(query));
 }
 
 export function targetId(target: Target): string {
     return `${target.database}.${target.schema}.${target.name}`;
+}
+
+/**
+ * The dependency a `${ref(...)}` names, matched on the canonical schema and name, which are what the ref
+ * arguments give, so table prefixes and schema suffixes do not matter. Undefined when it names none or several.
+ */
+export function matchRef(args: string[], dependencies: GraphAction[]): Target | undefined {
+    const name = args[args.length - 1];
+    const schema = args.length >= 2 ? args[args.length - 2] : undefined;
+    const matches = dependencies.filter((dependency) => {
+        const canonical = dependency.canonicalTarget ?? dependency.target;
+        return canonical.name === name && (schema === undefined || canonical.schema === schema);
+    });
+    return matches.length === 1 ? matches[0].target : undefined;
 }
 
 /**
@@ -129,7 +154,7 @@ export function collectCandidates(
             if (prod && targetId(prod) === id) {
                 continue;
             }
-            candidates.set(id, { dev: dependency, prod });
+            candidates.set(id, isRoutineOperation(upstream) ? { dev: dependency, prod, routine: true } : { dev: dependency, prod });
         }
     }
     return [...candidates.values()];
@@ -138,18 +163,16 @@ export function collectCandidates(
 /** Applies the defer rule to candidates whose existence has been looked up. Returns only candidates missing in dev. */
 export function decideDeferral(candidates: DeferralCandidate[], lookups: DeferralLookups): DeferralEntry[] {
     const entries: DeferralEntry[] = [];
-    for (const { dev, prod } of candidates) {
+    for (const { dev, prod, routine } of candidates) {
         if (lookups.devExists(dev)) {
             continue;
         }
         const status = prod ? lookups.prodStatus(prod) : "missing";
-        if (status === "exists") {
-            entries.push({ dev, prod, status: "deferred" });
-        } else if (status === "unreadable") {
-            entries.push({ dev, prod, status: "unreadable" });
-        } else {
-            entries.push({ dev, prod, status: "missingEverywhere" });
+        const entry: DeferralEntry = { dev, prod, status: status === "exists" ? "deferred" : status === "unreadable" ? "unreadable" : "missingEverywhere" };
+        if (routine) {
+            entry.routine = true;
         }
+        entries.push(entry);
     }
     return entries;
 }

@@ -50,19 +50,19 @@ async function runWithDependencies(request: RunRequest, deferToProd: boolean) {
 }
 
 /**
- * Runs the changed upstream actions and the run's own actions as one run. Dataform orders it by dependency,
- * so the changed upstream actions are built in dev before the actions that read them. Only those are added,
- * unlike a run with dependencies, which builds everything upstream.
+ * Runs some upstream actions and the run's own actions as one run. Dataform orders it by dependency, so the
+ * added actions are built in dev before the actions that read them. Only those are added, unlike a run with
+ * dependencies, which builds everything upstream.
  */
-async function runWithChangedUpstream(request: RunRequest, stale: DeferralEntry[], runSet: { target: Target }[]) {
+async function runWithUpstreamActions(request: RunRequest, upstream: DeferralEntry[], runSet: { target: Target }[]) {
     const context = getLastRunContext();
     if (!context) {
         return;
     }
     const targets = new Map<string, Target>();
-    [...stale.map((entry) => entry.dev), ...runSet.map((action) => action.target)].forEach((target) => targets.set(targetId(target), target));
+    [...upstream.map((entry) => entry.dev), ...runSet.map((action) => action.target)].forEach((target) => targets.set(targetId(target), target));
     const previous = extraRunTargets;
-    extraRunTargets = stale.map((entry) => targetId(entry.dev));
+    extraRunTargets = [...(previous ?? []), ...upstream.map((entry) => targetId(entry.dev))];
     try {
         // The run set already includes any dependencies or dependents, so they are not added again
         await withDeferOverride(true, () => runIncludedTargets(context, request.workspaceFolder, [...targets.values()], false, false, request.fullRefresh, request.executionMode, request));
@@ -172,6 +172,15 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
         return record(false); // Why was already reported
     }
 
+    // A proxy view cannot stand in for a function or procedure, and building one is cheap, so a run builds
+    // the missing ones in dev as part of the run
+    const routines = deferral.entries.filter((entry) => entry.routine);
+    if (routines.length > 0) {
+        vscode.window.showInformationMessage(`Defer to prod: also building ${routines.length} function${routines.length === 1 ? "" : "s"} not built in dev: ${routines.map((entry) => entry.dev.name).join(", ")}`);
+        await runWithUpstreamActions(request, routines, runSet);
+        return false;
+    }
+
     const deferred = deferral.entries.filter((entry) => entry.status === "deferred");
     const missingDatasets = await findMissingDevDatasets(deferred.map((entry) => entry.dev));
     const blocked = [
@@ -205,7 +214,7 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
             ...actions,
         );
         if (choice === BUILD_CHANGED_FIRST) {
-            await runWithChangedUpstream(request, stale, runSet);
+            await runWithUpstreamActions(request, stale, runSet);
             return false;
         }
         if (choice === RUN_WITH_DEPENDENCIES) {

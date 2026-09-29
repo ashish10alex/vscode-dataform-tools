@@ -11,7 +11,7 @@ import { PROXY_VIEW_LABEL, ProdStatus, targetId } from './deferRules';
 
 const TTL_MS = 2 * 60 * 1000;
 
-/** `tables` holds real tables and views; Proxy Views are kept apart in `proxies` */
+/** `tables` holds real tables, views and routines (functions, procedures); Proxy Views are kept apart in `proxies` */
 type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing" | "unknown", proxies: Set<string> };
 
 const devDatasets = new Map<string, DatasetListing>();
@@ -39,7 +39,15 @@ async function listDevDataset(database: string, schema: string): Promise<Dataset
         if (!bigquery) {
             throw new Error("BigQuery client not available");
         }
-        const [tables] = await bigquery.dataset(schema, { projectId: database }).getTables({ autoPaginate: true });
+        const dataset = bigquery.dataset(schema, { projectId: database });
+        const [[tables], routines] = await Promise.all([
+            dataset.getTables({ autoPaginate: true }),
+            // UDFs built by operations are routines, which the table listing leaves out
+            dataset.getRoutines({ autoPaginate: true }).then(([found]) => found).catch((error: any) => {
+                logger.error(`Defer to prod: could not list routines of ${key}: ${error?.message}`);
+                return [];
+            }),
+        ]);
         const names = new Set<string>();
         const proxies = new Set<string>();
         for (const table of tables) {
@@ -53,6 +61,7 @@ async function listDevDataset(database: string, schema: string): Promise<Dataset
                 names.add(table.id);
             }
         }
+        routines.forEach((routine) => routine.id && names.add(routine.id));
         listing = { fetchedAt: Date.now(), tables: names, proxies };
     } catch (error: any) {
         if (errorCode(error) === 404) {
@@ -112,7 +121,7 @@ export async function findMissingDevDatasets(targets: Target[]): Promise<Set<str
     return missing;
 }
 
-async function lookupProdTable(target: Target): Promise<ProdStatus> {
+async function lookupProdTable(target: Target, routine: boolean): Promise<ProdStatus> {
     const id = targetId(target);
     if (unreadable.has(id)) {
         return "unreadable";
@@ -127,7 +136,8 @@ async function lookupProdTable(target: Target): Promise<ProdStatus> {
         if (!bigquery) {
             throw new Error("BigQuery client not available");
         }
-        await bigquery.dataset(target.schema, { projectId: target.database }).table(target.name).getMetadata();
+        const dataset = bigquery.dataset(target.schema, { projectId: target.database });
+        await (routine ? dataset.routine(target.name) : dataset.table(target.name)).getMetadata();
         status = "exists";
     } catch (error: any) {
         if (errorCode(error) === 403) {
@@ -145,11 +155,12 @@ async function lookupProdTable(target: Target): Promise<ProdStatus> {
     return status;
 }
 
-export async function getProdStatuses(targets: Target[]): Promise<Map<string, ProdStatus>> {
+/** `routines` holds the ids of targets that are functions or procedures, which are looked up as routines */
+export async function getProdStatuses(targets: Target[], routines: Set<string> = new Set()): Promise<Map<string, ProdStatus>> {
     await checkAuthentication();
     const statuses = new Map<string, ProdStatus>();
     await Promise.all(targets.map(async (target) => {
-        statuses.set(targetId(target), await lookupProdTable(target));
+        statuses.set(targetId(target), await lookupProdTable(target, routines.has(targetId(target))));
     }));
     return statuses;
 }

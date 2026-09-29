@@ -33,6 +33,7 @@ import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { initDeferToProd } from './defer/deferStatusBar';
 import { initProdTargets } from './defer/prodTargets';
+import { registerDeferEditorHints } from './defer/deferEditorHints';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
@@ -110,6 +111,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     registerCompiledQueryPanel(context);
     initDeferToProd(context, refreshCompiledQueryPanel);
+    registerDeferEditorHints(context);
     registerExecutedSqlProvider(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);

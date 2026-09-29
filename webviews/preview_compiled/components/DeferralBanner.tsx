@@ -1,4 +1,5 @@
-import { AlertTriangle, ArrowRight, CloudDownload, Settings2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, ArrowRight, ChevronDown, ChevronRight, CloudDownload, Settings2, Trash2 } from "lucide-react";
 import type { DeferralView, DeferToProdState } from "../types";
 import { vscode } from "../utils/vscode";
 
@@ -12,6 +13,8 @@ const STATUS_NOTE: Record<DeferralView["entries"][number]["status"], string | un
 const WARNING_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]";
 
 export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { deferral?: DeferralView | null; deferToProd?: DeferToProdState; leftoverProxies?: string[] | null }) {
+  // Collapsed to the summary by default, like the other sections of the panel; kept across recompiles
+  const [expanded, setExpanded] = useState(false);
   if (!deferral && leftoverProxies && leftoverProxies.length > 0) {
     return (
       <div className="rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
@@ -53,18 +56,35 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
     return null;
   }
   const deferred = deferral.entries.filter((entry) => entry.status === "deferred");
+  const warnings = deferral.entries.filter((entry) => entry.stale || entry.status !== "deferred").length;
+  const hasEntries = deferral.entries.length > 0;
   const openActions = () => vscode.postMessage({ command: "deferToProdActions" });
+  const Chevron = expanded ? ChevronDown : ChevronRight;
 
   return (
     <div className="rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--vscode-foreground)]">
-        <CloudDownload className="w-3.5 h-3.5 text-[var(--vscode-textLink-foreground)]" />
-        <span className="font-semibold">Defer to prod</span>
-        <span className="text-[var(--vscode-descriptionForeground)]">
-          {deferred.length === 0
-            ? "every upstream table is read from dev"
-            : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod`}
-        </span>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          disabled={!hasEntries}
+          aria-expanded={expanded}
+          title={hasEntries ? (expanded ? "Hide the upstream tables" : "Show the upstream tables") : undefined}
+          className="flex items-center gap-2 min-w-0 text-left disabled:cursor-default"
+        >
+          {hasEntries ? <Chevron className="w-3.5 h-3.5 text-zinc-400" /> : <span className="w-3.5" />}
+          <CloudDownload className="w-3.5 h-3.5 text-[var(--vscode-textLink-foreground)]" />
+          <span className="font-semibold">Defer to prod</span>
+          <span className="text-[var(--vscode-descriptionForeground)]">
+            {deferred.length === 0
+              ? "no upstream table is read from prod"
+              : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod`}
+          </span>
+          {warnings > 0 && (
+            <span className="flex items-center gap-1 text-[var(--vscode-editorWarning-foreground)]">
+              <AlertTriangle className="w-3 h-3" /> {warnings} warning{warnings === 1 ? "" : "s"}
+            </span>
+          )}
+        </button>
         <div className="flex-grow" />
         <button
           onClick={openActions}
@@ -74,7 +94,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
           <Settings2 className="w-3 h-3" /> Options
         </button>
       </div>
-      {deferral.entries.map((entry) => {
+      {expanded && deferral.entries.map((entry) => {
         const note = entry.stale ? "changed on this branch, prod may be out of date" : STATUS_NOTE[entry.status];
         const isWarning = entry.stale || entry.status !== "deferred";
         return (
