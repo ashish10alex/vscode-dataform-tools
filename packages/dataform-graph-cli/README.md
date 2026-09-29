@@ -43,6 +43,9 @@ A local HTTP server starts on `127.0.0.1` and your default browser opens to it. 
                        interactively (file → model).
 -t, --tag [tag]        Filter the initial view to a specific tag. Pass --tag with
                        no value to pick a tag interactively.
+    --show-assertions  Start with assertion actions visible (default: hidden;
+                       dependencies through them are drawn as dashed edges).
+                       Toggle with the Show assertions checkbox.
 -i, --input <path>     Use a pre-compiled dataform JSON file instead of running
                        `dataform compile --json`.
 -c, --cwd <path>       Directory to run `dataform compile --json` from
