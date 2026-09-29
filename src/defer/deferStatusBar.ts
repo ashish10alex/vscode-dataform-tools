@@ -63,7 +63,12 @@ async function clearDeferCaches() {
     await clearProdTargetCache();
 }
 
-async function removeProxyViewsCommand() {
+/** `ids` limits it to those proxy views, as the compiled query panel already knows them; otherwise the whole project is scanned */
+async function removeProxyViewsCommand(ids?: string[]) {
+    if (Array.isArray(ids) && ids.length > 0) {
+        await removeProxyViews(undefined, ids);
+        return;
+    }
     const workspaceFolder = currentWorkspaceFolder();
     await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder) : undefined);
 }
@@ -83,7 +88,7 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
         {
             label: "$(trash) Remove proxy views",
             description: "Delete the dev views that deferred runs created",
-            run: removeProxyViewsCommand,
+            run: () => removeProxyViewsCommand(),
         },
         {
             label: "$(settings) Open defer to prod settings",

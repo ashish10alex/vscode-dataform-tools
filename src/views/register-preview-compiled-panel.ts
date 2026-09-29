@@ -539,7 +539,7 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
                 return;
               case 'removeProxyViews':
-                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews');
+                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews', message.value);
                 await refreshCompiledQueryPanel();
                 return;
               case 'toggleDeferToProd':

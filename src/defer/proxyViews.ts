@@ -86,13 +86,12 @@ export async function ensureProxyViews(entries: DeferralEntry[]): Promise<{ crea
     return counts;
 }
 
-/** Deletes every labelled Proxy View in the dev datasets of the project, after asking. */
-export async function removeProxyViews(graph: DataformCompiledJson | undefined) {
-    if (!graph) {
-        vscode.window.showWarningMessage("Compile the Dataform project first, so its dev datasets are known.");
-        return;
-    }
-    await checkAuthentication();
+function isProxyView(metadata: any): boolean {
+    return metadata?.type === "VIEW" && metadata?.labels?.[PROXY_VIEW_LABEL] === "true";
+}
+
+/** Every labelled Proxy View in the dev datasets of the project. Lists each dataset, so it takes a few seconds. */
+async function findAllProxyViews(graph: DataformCompiledJson): Promise<string[]> {
     const client = bigQuery();
     const datasets = new Map<string, { projectId: string, datasetId: string }>();
     for (const action of [...(graph.tables ?? []), ...(graph.operations ?? []), ...(graph.assertions ?? []), ...(graph.declarations ?? [])]) {
@@ -100,53 +99,81 @@ export async function removeProxyViews(graph: DataformCompiledJson | undefined) 
             datasets.set(`${action.target.database}.${action.target.schema}`, { projectId: action.target.database, datasetId: action.target.schema });
         }
     }
-
-    const proxies: { id: string, remove: () => Promise<unknown> }[] = [];
-    await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: "Looking for proxy views" }, async () => {
-        await Promise.all([...datasets.values()].map(async ({ projectId, datasetId }) => {
+    const ids: string[] = [];
+    await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: `Defer to prod: looking for proxy views in ${datasets.size} dev dataset${datasets.size === 1 ? "" : "s"}…` },
+        () => Promise.all([...datasets.values()].map(async ({ projectId, datasetId }) => {
             try {
                 const [tables] = await client.dataset(datasetId, { projectId }).getTables({ autoPaginate: true });
-                for (const table of tables) {
-                    if (table.metadata?.type === "VIEW" && table.metadata?.labels?.[PROXY_VIEW_LABEL] === "true") {
-                        proxies.push({ id: `${projectId}.${datasetId}.${table.id}`, remove: () => table.delete() });
-                    }
-                }
+                tables.filter((table) => isProxyView(table.metadata) && table.id).forEach((table) => ids.push(`${projectId}.${datasetId}.${table.id}`));
             } catch (error: any) {
                 if (errorCode(error) !== 404) {
                     logger.error(`Defer to prod: could not list ${projectId}.${datasetId}: ${error?.message}`);
                 }
             }
-        }));
-    });
+        })),
+    );
+    return ids.sort();
+}
 
-    if (proxies.length === 0) {
+/**
+ * Deletes Proxy Views after asking: the given `database.schema.name` ids, e.g. the ones the compiled query panel
+ * lists, or else every one in the project's dev datasets. Each is checked to still be a labelled proxy view just
+ * before it is deleted, so a table built in dev since is never removed.
+ */
+export async function removeProxyViews(graph: DataformCompiledJson | undefined, knownIds?: string[]) {
+    const wholeProject = !knownIds || knownIds.length === 0;
+    if (wholeProject && !graph) {
+        vscode.window.showWarningMessage("Compile the Dataform project first, so its dev datasets are known.");
+        return;
+    }
+    await checkAuthentication();
+    const client = bigQuery();
+    const ids = wholeProject ? await findAllProxyViews(graph!) : [...knownIds].sort();
+
+    if (ids.length === 0) {
         await setProxyViewsMayExist(false);
         vscode.window.showInformationMessage("No proxy views found in the project's dev datasets.");
         return;
     }
-    const ids = proxies.map((proxy) => proxy.id).sort();
     const choice = await vscode.window.showWarningMessage(
-        `Delete ${proxies.length} proxy view${proxies.length === 1 ? "" : "s"} created by defer to prod?`,
+        `Delete ${ids.length} proxy view${ids.length === 1 ? "" : "s"} created by defer to prod?`,
         { modal: true, detail: ids.join("\n") },
         "Delete",
     );
     if (choice !== "Delete") {
         return;
     }
-    const results = await Promise.allSettled(proxies.map((proxy) => proxy.remove()));
-    const failed = results.filter((result) => result.status === "rejected").length;
+
+    const results = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: `Defer to prod: deleting ${ids.length} proxy view${ids.length === 1 ? "" : "s"}…` },
+        () => Promise.allSettled(ids.map(async (id) => {
+            const [projectId, datasetId, tableId] = id.split(".");
+            const table = client.dataset(datasetId, { projectId }).table(tableId);
+            const [metadata] = await table.getMetadata();
+            if (!isProxyView(metadata)) {
+                return false; // Replaced by a real dev build since it was listed
+            }
+            await table.delete();
+            return true;
+        })),
+    );
     clearTableExistenceCache({ includeUnreadable: false });
-    if (failed === 0) {
+
+    const failed = results.filter((result) => result.status === "rejected").length;
+    const deleted = results.filter((result) => result.status === "fulfilled" && result.value).length;
+    results.forEach((result, i) => {
+        if (result.status === "rejected") {
+            logger.error(`Defer to prod: could not delete ${ids[i]}: ${result.reason}`);
+        }
+    });
+    // Only a full scan knows no proxy view is left anywhere in the project
+    if (wholeProject && failed === 0) {
         await setProxyViewsMayExist(false);
     }
     if (failed > 0) {
-        vscode.window.showErrorMessage(`Deleted ${proxies.length - failed} proxy views; ${failed} could not be deleted. See the Dataform Tools log.`);
-        results.forEach((result, i) => {
-            if (result.status === "rejected") {
-                logger.error(`Defer to prod: could not delete ${proxies[i].id}: ${result.reason}`);
-            }
-        });
+        vscode.window.showErrorMessage(`Deleted ${deleted} proxy view${deleted === 1 ? "" : "s"}; ${failed} could not be deleted. See the Dataform Tools log.`);
     } else {
-        vscode.window.showInformationMessage(`Deleted ${proxies.length} proxy view${proxies.length === 1 ? "" : "s"}.`);
+        vscode.window.showInformationMessage(`Deleted ${deleted} proxy view${deleted === 1 ? "" : "s"}.`);
     }
 }
