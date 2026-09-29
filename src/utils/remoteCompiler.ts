@@ -390,6 +390,10 @@ export async function compileRemoteCommit(workspaceFolder: string, sha: string, 
     return entry.compiledJson;
 }
 
+function notPushedMessage(branch: string): string {
+    return `Branch "${branch}" is not pushed or has no upstream branch set. API mode compiles the pushed commit, so push the branch (git push -u origin ${branch}) or switch to the Dataform CLI to compile your local changes.`;
+}
+
 /**
  * Compiled JSON of the pushed commit of the current branch with explicit compilation settings, such as the
  * prod options of defer to prod. Cached by SHA and `cacheTag`, but never replaces the current compilation.
@@ -398,7 +402,7 @@ export async function compileRemoteHeadWithConfig(workspaceFolder: string, codeC
     const { git, branch, repositoryName } = await getGitInfo();
     const upstreamSha = await git.getUpstreamSha();
     if (!upstreamSha) {
-        throw new Error(`Branch "${branch}" is not pushed`);
+        throw new Error(notPushedMessage(branch));
     }
     const cacheKey = `${DEFAULT_CONFIG_KEY}@${cacheTag}`;
     let entry = await getRemoteCompile(repositoryName, upstreamSha, cacheKey, false);
@@ -426,7 +430,7 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
         }
     } else if (!(await git.getUpstreamSha())) {
         // Compiles triggered by saves never prompt; divergence is surfaced in the status bar instead
-        throw new Error(`Branch "${branch}" is not pushed. Push it or run "Dataform: Compile using API (remote mode)"`);
+        throw new Error(notPushedMessage(branch));
     }
 
     const dataformClient = await createDataformClient(workspaceFolder, repositoryName);

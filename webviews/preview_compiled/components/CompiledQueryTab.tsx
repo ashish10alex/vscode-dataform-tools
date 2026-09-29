@@ -298,7 +298,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
             {state.relativeFilePath || " "}
           </span>
-          <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
+          <CompilationInfoBadge info={state.compilationInfo} backend={state.compilationBackend} recompiling={state.recompiling} />
         </div>
         <LastRunCard lastRun={state.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
         <PropertyGraphSection state={state} />
@@ -313,7 +313,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
               {state.relativeFilePath || " "}
           </span>
-          <CompilationInfoBadge info={state.compilationInfo} recompiling={state.recompiling} />
+          <CompilationInfoBadge info={state.compilationInfo} backend={state.compilationBackend} recompiling={state.recompiling} />
           <div className="flex-grow"></div>
           <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
               <Wand2 className="w-3 h-3 mr-1.5" /> Format
