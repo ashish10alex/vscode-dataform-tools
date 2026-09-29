@@ -129,8 +129,10 @@ undo-release:
         echo "error: the release commit is already on origin/main" >&2
         exit 1
     fi
-    read -r -p "Delete tag $tag and reset main to HEAD~1? [y/N] " answer
-    [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    if [ "${NON_INTERACTIVE:-0}" != "1" ] && [ "${CI:-false}" != "true" ]; then
+        read -r -p "Delete tag $tag and reset main to HEAD~1? [y/N] " answer
+        [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    fi
     git tag -d "$tag"
     git reset --hard HEAD~1
     echo "undid local release $tag"
@@ -150,8 +152,10 @@ push-release:
         exit 1
     fi
     just _warn-if-prerelease "$v"
-    read -r -p "Push main + $tag and publish $v ($(just _channel "$v")) to VS Marketplace and Open VSX? [y/N] " answer
-    [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    if [ "${NON_INTERACTIVE:-0}" != "1" ] && [ "${CI:-false}" != "true" ]; then
+        read -r -p "Push main + $tag and publish $v ($(just _channel "$v")) to VS Marketplace and Open VSX? [y/N] " answer
+        [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    fi
     git push --follow-tags origin main
     echo "pushed $tag; follow the publish with: just watch-deploy"
 
@@ -222,8 +226,10 @@ github-release tag="":
     echo "notes preview:"
     just release-notes "$tag" | sed 's/^/  /'
     echo
-    read -r -p "Create $channel GitHub release $tag with these notes? [y/N] " answer
-    [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    if [ "${NON_INTERACTIVE:-0}" != "1" ] && [ "${CI:-false}" != "true" ]; then
+        read -r -p "Create $channel GitHub release $tag with these notes? [y/N] " answer
+        [[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+    fi
     gh release create "$tag" "${flags[@]}"
 
 # Release, push, watch the publish, and create the GitHub release in one go
