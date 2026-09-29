@@ -210,8 +210,19 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             </p>
             <p className="mt-0 mb-3 opacity-90">Ignore the error if the file you are in is not expected to produce a sql output</p>
 
+            {!cliCompileFailed && (
+              <CompilationInfoBadge info={compilationInfo} backend={backend} className="mb-3 opacity-80" />
+            )}
+
             <h4 className="mt-0 mb-2 text-md font-semibold">Possible resolution/fix(s):</h4>
             <ol className="mt-0 ml-5 list-decimal list-outside opacity-90 space-y-2">
+              {!cliCompileFailed && (
+                <li>
+                  API mode compiles the pushed commit of the current branch, so a new or renamed file is missing until it is committed and pushed.
+                  Push your changes, or compile your local files with the Dataform CLI:
+                  <SwitchBackendButton to="cli" />
+                </li>
+              )}
               <li>
                 If you are using multi-root workspace, select the correct workspace folder for the file by{' '}
                 <a
@@ -225,7 +236,9 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
                   clicking here
                 </a>
               </li>
-              <li>Check if running <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> throws an error</li>
+              {cliCompileFailed && (
+                <li>Check if running <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> throws an error</li>
+              )}
               <li>
                 Check if case of the file has been changed and the case does not match what is being shown in the error message above,
                 this is a known issue with VSCode <a href="https://github.com/microsoft/vscode/issues/123660" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">#123660</a>.
