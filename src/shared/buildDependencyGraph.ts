@@ -123,6 +123,8 @@ function populate(type: StructType, structs: AnyStruct[], state: PopulateState, 
                 datasetColor: state.datasetColorMap.get(dataset) || "grey",
                 fileName: struct.fileName,
                 isExternalSource,
+                // Newer @dataform/core versions set `type: "assertion"` on assertions, older ones leave it unset.
+                isAssertion: type === "assertions",
                 fullTableName,
             },
         });

@@ -18,6 +18,7 @@ interface CliOptions {
     // `string` when supplied with a value, `undefined` when not supplied.
     model?: string | boolean;
     tag?: string | boolean;
+    hideAssertions?: boolean;
     input?: string;
     cwd?: string;
     dataformBin?: string;
@@ -230,6 +231,11 @@ async function main() {
                 "Pass --tag with no value to pick a tag interactively."
         )
         .option(
+            "--hide-assertions",
+            "Start with assertion actions hidden; dependencies through them are drawn as dashed edges. " +
+                "Toggle with the Show assertions checkbox. Ignored when --model points at an assertion."
+        )
+        .option(
             "-i, --input <path>",
             "Use a pre-compiled dataform JSON file instead of running `dataform compile --json`."
         )
@@ -327,6 +333,7 @@ async function main() {
         datasetColorMap: Object.fromEntries(datasetColorMap),
         currentActiveEditorIdx: resolvedFocusId ?? "",
         initialTag,
+        showAssertions: !opts.hideAssertions,
     };
 
     const webviewDir = path.resolve(__dirname, "..", "webview-dist");

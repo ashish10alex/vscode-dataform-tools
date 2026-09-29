@@ -474,6 +474,11 @@
                     "default": true,
                     "markdownDescription": "Shows compiled sql query on veritcal split when `.sqlx` file is saved"
                 },
+                "vscode-dataform-tools.showAssertionsInDependencyGraph": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Show assertion actions when the dependency graph opens. Use the graph's **Show assertions** checkbox to switch for the current panel. When hidden, dependencies that run through an assertion are drawn as dashed edges."
+                },
                 "vscode-dataform-tools.configBlockDiagnostics": {
                     "type": "boolean",
                     "default": true,

@@ -113,7 +113,8 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                             initialNodesStatic: output.dependancyTreeMetadata,
                             initialEdgesStatic: output.initialEdgesStatic,
                             datasetColorMap: Object.fromEntries(output.datasetColorMap),
-                            currentActiveEditorIdx: output.currentActiveEditorIdx
+                            currentActiveEditorIdx: output.currentActiveEditorIdx,
+                            showAssertions: vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showAssertionsInDependencyGraph', true),
                         }
                     });
                     break;

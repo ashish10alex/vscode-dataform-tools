@@ -20,11 +20,12 @@ interface NodeData {
   type: 'view' | 'table' | 'operation' | 'operations' | 'source' | 'assertions' | 'propertyGraphs';
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
+  isAssertion: boolean;
   fullTableName: string;
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, fullTableName, fileName } = data;
+  const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, isAssertion, fullTableName, fileName } = data;
   const [isHovered, setIsHovered] = React.useState(false);
   const [showNotification, setShowNotification] = React.useState(false);
 
@@ -50,7 +51,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
   const nodeStyle = {
     background: isExternalSource ? datasetColor : '#ffffff',
     border: `1px solid ${datasetColor}`,
-    borderLeft: type === 'assertions' ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
+    borderLeft: isAssertion ? '4px solid rgba(255, 0, 0, 0.6)' : undefined,
     position: 'relative' as const,
     // Extra height accommodates the bottom "schema" strip without crowding
     // the existing icon buttons in the lower-right corner.
