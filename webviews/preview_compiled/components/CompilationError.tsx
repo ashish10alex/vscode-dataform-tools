@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, Cloud } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, Cloud, Terminal } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
 import { WebviewState, CompilationErrorType } from '../types';
@@ -10,13 +10,18 @@ interface CompilationErrorProps {
   state: WebviewState;
 }
 
-/** Offered when the Dataform CLI is missing or failing: remote mode compiles without it. */
-const SwitchToApiButton: React.FC = () => (
+/**
+ * Offered on failed compiles so either backend is always one click away: remote mode compiles without
+ * the Dataform CLI, and the CLI compiles local changes that are not pushed yet.
+ */
+const SwitchBackendButton: React.FC<{ to: 'cli' | 'api' }> = ({ to }) => (
   <button
-    onClick={() => vscode.postMessage({ command: 'switchCompilationBackend', value: 'api' })}
+    onClick={() => vscode.postMessage({ command: 'switchCompilationBackend', value: to })}
     className="mt-3 flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)]"
   >
-    <Cloud className="w-3 h-3 mr-1.5" /> Compile with the Dataform API instead (beta)
+    {to === 'api'
+      ? <><Cloud className="w-3 h-3 mr-1.5" /> Compile with the Dataform API instead (beta)</>
+      : <><Terminal className="w-3 h-3 mr-1.5" /> Compile with the Dataform CLI instead</>}
   </button>
 );
 
@@ -94,7 +99,11 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
     possibleResolutions,
     compilationInfo,
   } = state;
-  const cliCompileFailed = compilationInfo?.backend !== 'api';
+  // The selected backend, not compilationInfo: an API compile that fails early records no info,
+  // which would leave the last CLI compile describing the error.
+  const backend = state.compilationBackend ?? compilationInfo?.backend ?? 'cli';
+  const cliCompileFailed = backend !== 'api';
+  const otherBackend = cliCompileFailed ? 'api' : 'cli';
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     root: true,
@@ -141,7 +150,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
                   <ul className="mt-2 ml-6 pl-3 border-l-2 border-[var(--vscode-inputValidation-errorBorder)] list-none space-y-2">
                     <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">npm i -g @dataform/cli</code></li>
                     <li>Run <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> from the root of your project to verify</li>
-                    <li>Or skip the CLI and compile with the Dataform API: <SwitchToApiButton /></li>
+                    <li>Or skip the CLI and compile with the Dataform API: <SwitchBackendButton to="api" /></li>
                   </ul>
                 </li>
               )}
@@ -269,7 +278,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
               {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <CompilationInfoBadge info={compilationInfo} className="mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+          <CompilationInfoBadge info={compilationInfo} backend={backend} className="mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
 
           <div className="space-y-1">
             {groups.map((group) => (
@@ -294,7 +303,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
           </p>
           )}
 
-          {cliCompileFailed && <SwitchToApiButton />}
+          <SwitchBackendButton to={otherBackend} />
 
           {possibleResolutions && possibleResolutions.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[var(--vscode-inputValidation-errorBorder)]">
@@ -324,6 +333,8 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
   }
 
   if (errorMessage) {
+    // Switching backends cannot fix a file or folder that is not part of a Dataform project
+    const offerSwitch = errorType !== CompilationErrorType.UNSUPPORTED_FILE_TYPE && errorType !== CompilationErrorType.NOT_A_DATAFORM_WORKSPACE;
     return (
       <>
         <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
@@ -332,7 +343,8 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
             <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
           </div>
-          <CompilationInfoBadge info={compilationInfo} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+          <CompilationInfoBadge info={compilationInfo} backend={backend} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+          {offerSwitch && <SwitchBackendButton to={otherBackend} />}
         </div>
         <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
       </>
