@@ -247,14 +247,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     }
   };
 
-  // Follows the setting, but flips at once on click instead of waiting for the panel to redraw
-  const [deferToProd, setDeferToProd] = useState(!!state.deferToProd?.enabled);
-  useEffect(() => setDeferToProd(!!state.deferToProd?.enabled), [state.deferToProd?.enabled]);
-  const handleToggleDeferToProd = (checked: boolean) => {
-    setDeferToProd(checked);
-    vscode.postMessage({ command: "toggleDeferToProd", value: checked });
-  };
-
   const handlePreviewResults = () => {
     vscode.postMessage({ command: "previewResults", value: true });
   };
@@ -617,12 +609,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               <button onClick={handlePreviewResults} disabled={state.recompiling} className={SECONDARY_BUTTON} title="Preview the query results">
                   <Eye className="w-4 h-4 mr-1.5" /> Preview Data
               </button>
-              <ModifierSwitch
-                  label="Defer to prod"
-                  checked={deferToProd}
-                  onChange={handleToggleDeferToProd}
-                  title="Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)"
-              />
           </div>
 
           {/* Run controls with the modifiers they consume, on their own row so they stay together however the panel wraps */}
