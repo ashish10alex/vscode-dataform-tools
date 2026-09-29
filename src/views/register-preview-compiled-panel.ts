@@ -548,6 +548,18 @@ export class CompiledQueryPanel {
               case 'openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
+              case 'retryDeferral':
+                try {
+                  await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
+                } catch (error: any) {
+                  // The banner waits for a new deferral after Retry, so without one it would stay on "looking up"
+                  logger.error(`Defer to prod: retry failed: ${error?.message}`);
+                  panel.postMessage({ deferral: toDeferralView(undefined, `Retry failed: ${error?.message ?? error}`) });
+                }
+                return;
+              case 'showLogs':
+                logger.show();
+                return;
               case 'switchCompilationBackend': {
                 try {
                   await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
@@ -1355,7 +1367,7 @@ export class CompiledQueryPanel {
         this.deferral = curFileMeta.deferral;
 
         await this.postMessage({
-            "deferral": toDeferralView(curFileMeta.deferral),
+            "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
             "deferToProd": getDeferToProdState(workspaceFolder),
             "leftoverProxies": curFileMeta.leftoverProxies ?? null,
             "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
@@ -1575,7 +1587,7 @@ export class CompiledQueryPanel {
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await this.postMessage({
-                "deferral": toDeferralView(curFileMeta.deferral),
+                "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
                 "deferToProd": getDeferToProdState(workspaceFolder),
             "leftoverProxies": curFileMeta.leftoverProxies ?? null,
                 "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),

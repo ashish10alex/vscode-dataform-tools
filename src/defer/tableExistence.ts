@@ -12,7 +12,7 @@ import { PROXY_VIEW_LABEL, ProdStatus, targetId } from './deferRules';
 const TTL_MS = 2 * 60 * 1000;
 
 /** `tables` holds real tables, views and routines (functions, procedures); Proxy Views are kept apart in `proxies` */
-type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing" | "unknown", proxies: Set<string> };
+type DatasetListing = { fetchedAt: number, tables: Set<string> | "missing", proxies: Set<string> };
 
 const devDatasets = new Map<string, DatasetListing>();
 const prodTables = new Map<string, { fetchedAt: number, status: ProdStatus }>();
@@ -27,6 +27,26 @@ function errorCode(error: any): number | undefined {
     return error?.code ?? error?.response?.statusCode;
 }
 
+/** Throws why BigQuery cannot be reached, e.g. the client could not be created, instead of a bare "not available" later */
+async function requireAuthentication() {
+    const error = await checkAuthentication();
+    if (error) {
+        throw new Error(error);
+    }
+}
+
+/**
+ * Throws with the dataset named. Guessing would hide the failure: taking the upstream table as built in dev
+ * quietly reads dev, and taking it as missing reads prod for a table that may be built in dev.
+ */
+function listingError(key: string, error: any): Error {
+    const reason = errorCode(error) === 403
+        ? `No permission to list the dev dataset ${key}, so it is not known which upstream tables are built in dev. Check which account the extension uses for BigQuery.`
+        : `Could not list the dev dataset ${key} to see which upstream tables are built in dev.`;
+    return new Error(`${reason} ${error?.message ?? error}`);
+}
+
+/** Lists a dev dataset, "missing" when it does not exist. Throws when it cannot be listed. */
 async function listDevDataset(database: string, schema: string): Promise<DatasetListing> {
     const key = `${database}.${schema}`;
     const cached = devDatasets.get(key);
@@ -67,19 +87,17 @@ async function listDevDataset(database: string, schema: string): Promise<Dataset
         if (errorCode(error) === 404) {
             listing = { fetchedAt: Date.now(), tables: "missing", proxies: new Set() };
         } else {
-            // Without a listing we cannot tell, so assume the table exists and leave the query as compiled.
-            // Not cached, as the error may be transient.
-            logger.error(`Defer to prod: could not list ${key}: ${error?.message}`);
-            return { fetchedAt: Date.now(), tables: "unknown", proxies: new Set() };
+            // Not cached, as the error may be transient
+            throw listingError(key, error);
         }
     }
     devDatasets.set(key, listing);
     return listing;
 }
 
-/** Ids of the given Dev Targets that exist in BigQuery and are not Proxy Views */
+/** Ids of the given Dev Targets that exist in BigQuery and are not Proxy Views. Throws when a dev dataset cannot be listed. */
 export async function findExistingDevTargets(targets: Target[]): Promise<Set<string>> {
-    await checkAuthentication();
+    await requireAuthentication();
     const datasets = new Map<string, Target>();
     targets.forEach((target) => datasets.set(`${target.database}.${target.schema}`, target));
     const listings = new Map<string, DatasetListing>();
@@ -90,7 +108,7 @@ export async function findExistingDevTargets(targets: Target[]): Promise<Set<str
     const existing = new Set<string>();
     for (const target of targets) {
         const tables = listings.get(`${target.database}.${target.schema}`)?.tables;
-        if (tables === "unknown" || (tables instanceof Set && tables.has(target.name))) {
+        if (tables instanceof Set && tables.has(target.name)) {
             existing.add(targetId(target));
         }
     }
@@ -107,15 +125,22 @@ export async function findProxyViews(targets: Target[]): Promise<Target[]> {
     return targets.filter((target) => listings.get(`${target.database}.${target.schema}`)?.proxies.has(target.name));
 }
 
-/** `database.schema` of the given Dev Targets whose dataset does not exist. Proxy Views are never created in them. */
+/**
+ * `database.schema` of the given Dev Targets whose dataset does not exist. Proxy Views are never created in them.
+ * A dataset that cannot be listed is not counted, so creating the proxy view reports the actual error.
+ */
 export async function findMissingDevDatasets(targets: Target[]): Promise<Set<string>> {
     await checkAuthentication();
     const datasets = new Map<string, Target>();
     targets.forEach((target) => datasets.set(`${target.database}.${target.schema}`, target));
     const missing = new Set<string>();
     await Promise.all([...datasets.entries()].map(async ([key, target]) => {
-        if ((await listDevDataset(target.database, target.schema)).tables === "missing") {
-            missing.add(key);
+        try {
+            if ((await listDevDataset(target.database, target.schema)).tables === "missing") {
+                missing.add(key);
+            }
+        } catch (error: any) {
+            logger.error(`Defer to prod: ${error?.message}`);
         }
     }));
     return missing;
@@ -146,18 +171,20 @@ async function lookupProdTable(target: Target, routine: boolean): Promise<ProdSt
         } else if (errorCode(error) === 404) {
             status = "missing";
         } else {
-            // Not cached, as the error may be transient
-            logger.error(`Defer to prod: could not look up ${id}: ${error?.message}`);
-            return "missing";
+            // Not cached, as the error may be transient. Taking it as missing would hide why nothing is read from prod.
+            throw new Error(`Could not look up the prod table ${id}: ${error?.message ?? error}`);
         }
     }
     prodTables.set(id, { fetchedAt: Date.now(), status });
     return status;
 }
 
-/** `routines` holds the ids of targets that are functions or procedures, which are looked up as routines */
+/**
+ * `routines` holds the ids of targets that are functions or procedures, which are looked up as routines.
+ * Throws when a lookup fails other than with not found or access denied.
+ */
 export async function getProdStatuses(targets: Target[], routines: Set<string> = new Set()): Promise<Map<string, ProdStatus>> {
-    await checkAuthentication();
+    await requireAuthentication();
     const statuses = new Map<string, ProdStatus>();
     await Promise.all(targets.map(async (target) => {
         statuses.set(targetId(target), await lookupProdTable(target, routines.has(targetId(target))));

@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { AlertTriangle, ArrowRight, ChevronDown, ChevronRight, CloudDownload, Settings2, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, ChevronDown, ChevronRight, CloudDownload, RotateCw, ScrollText, Settings2, Trash2 } from "lucide-react";
 import type { DeferralView, DeferToProdState } from "../types";
 import { vscode } from "../utils/vscode";
 import { ModifierSwitch } from "./ModifierSwitch";
 
-const STATUS_NOTE: Record<DeferralView["entries"][number]["status"], string | undefined> = {
+type DeferralEntryView = Extract<DeferralView, { status: "ready" }>["entries"][number];
+
+const STATUS_NOTE: Record<DeferralEntryView["status"], string | undefined> = {
   deferred: undefined,
   missingEverywhere: "not built in dev or prod",
   unreadable: "no read access to prod, using dev",
 };
 
 const SECONDARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]";
+const PRIMARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]";
+const WARNING_BOX = "rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs";
+/** The prod compile takes a few seconds; past this the lookup has most likely failed without saying so */
+const SLOW_LOOKUP_MS = 30_000;
 const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
 
 /**
@@ -25,6 +31,22 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   // Follows the setting, but flips at once on click instead of waiting for the panel to redraw
   const [on, setOn] = useState(!!deferToProd?.enabled);
   useEffect(() => setOn(!!deferToProd?.enabled), [deferToProd?.enabled]);
+  // Set by Retry until the panel redraws with the new lookup
+  const [retrying, setRetrying] = useState(false);
+  useEffect(() => setRetrying(false), [deferral]);
+
+  // Waiting for the upstream tables: just switched on, or retried. The panel redraws once they are looked up.
+  const pending = !!deferToProd?.available && on && (!deferral || retrying);
+  const [attempt, setAttempt] = useState(0);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (!pending) {
+      return;
+    }
+    const timer = setTimeout(() => setSlow(true), SLOW_LOOKUP_MS);
+    return () => clearTimeout(timer);
+  }, [pending, attempt]);
 
   if (!deferToProd) {
     return null;
@@ -34,12 +56,32 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
     setExpanded(false);
     vscode.postMessage({ command: "toggleDeferToProd", value: checked });
   };
+  const retry = () => {
+    setRetrying(true);
+    setAttempt((count) => count + 1);
+    vscode.postMessage({ command: "retryDeferral" });
+  };
   const deferSwitch = <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
+  const setProdOptionsButton = (label: string, primary: boolean) => (
+    <button onClick={() => vscode.postMessage({ command: "openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
+      <Settings2 className="w-3 h-3" /> {label}
+    </button>
+  );
+  const retryButton = (
+    <button onClick={retry} title="Compile with the prod options and look up the upstream tables again" className={SECONDARY_BUTTON}>
+      <RotateCw className="w-3 h-3" /> Retry
+    </button>
+  );
+  const logsButton = (
+    <button onClick={() => vscode.postMessage({ command: "showLogs" })} title="Open the Dataform Tools output" className={SECONDARY_BUTTON}>
+      <ScrollText className="w-3 h-3" /> Show logs
+    </button>
+  );
 
   // Off, but proxy views from an earlier deferred run still read prod: a warning, so it stays expanded
   if (!on && leftoverProxies && leftoverProxies.length > 0) {
     return (
-      <div className="rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
+      <div className={clsx(WARNING_BOX, "space-y-1.5")}>
         <div className="flex flex-wrap items-center gap-2">
           {deferSwitch}
           <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
@@ -67,34 +109,51 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
     );
   }
 
-  if (!deferToProd.available && deferToProd.enabled) {
+  // Availability does not depend on the setting, so this shows as soon as the switch is flipped
+  if (!deferToProd.available) {
     return (
-      <div className="rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs flex flex-wrap items-center gap-2">
+      <div className={clsx(WARNING_BOX, "flex flex-wrap items-center gap-2")}>
         {deferSwitch}
         <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
         <span className="font-semibold text-[var(--vscode-foreground)]">On but not applied.</span>
         <span className="text-[var(--vscode-descriptionForeground)]">{deferToProd.reason}</span>
-        <button
-          onClick={() => vscode.postMessage({ command: "openDeferToProdSettings" })}
-          className="flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]"
-        >
-          <Settings2 className="w-3 h-3" /> Set prod options
-        </button>
+        {setProdOptionsButton("Set prod options", true)}
       </div>
     );
   }
 
-  const entries = deferral?.entries ?? [];
+  if (deferral?.status === "error" && !pending) {
+    return (
+      <div className={clsx(WARNING_BOX, "space-y-1.5")}>
+        <div className="flex flex-wrap items-center gap-2">
+          {deferSwitch}
+          <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
+          <span className="font-semibold text-[var(--vscode-foreground)]">Could not look up the upstream tables, so nothing is read from prod.</span>
+          <div className="flex-grow" />
+          {setProdOptionsButton("Set prod options", true)}
+          {retryButton}
+          {logsButton}
+        </div>
+        <div className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-[var(--vscode-descriptionForeground)]">{deferral.message}</div>
+      </div>
+    );
+  }
+
+  const entries = deferral?.status === "ready" ? deferral.entries : [];
   const deferred = entries.filter((entry) => entry.status === "deferred");
   const warnings = entries.filter((entry) => entry.stale || entry.status !== "deferred").length;
-  const hasEntries = entries.length > 0;
+  const hasEntries = !pending && entries.length > 0;
   const Chevron = expanded ? ChevronDown : ChevronRight;
-  // Just switched on: the panel redraws once the upstream tables have been looked up
-  const summary = !deferral
-    ? "looking up upstream tables…"
-    : deferred.length === 0
-      ? "no upstream table is read from prod"
-      : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod`;
+  // Every upstream table that has a prod name is missing there: the prod options likely point at the wrong place
+  const withProd = entries.filter((entry) => entry.prod);
+  const noneInProd = !pending && withProd.length > 0 && withProd.every((entry) => entry.status === "missingEverywhere");
+  const summary = pending
+    ? (slow ? "still looking up upstream tables, this is taking longer than usual" : "looking up upstream tables…")
+    : noneInProd
+      ? `none of the ${withProd.length} upstream table${withProd.length === 1 ? " was" : "s were"} found in prod`
+      : deferred.length === 0
+        ? "no upstream table is read from prod"
+        : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod`;
 
   return (
     <div className="rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
@@ -107,9 +166,9 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
           title={hasEntries ? (expanded ? "Hide the upstream tables" : "Show the upstream tables") : undefined}
           className="flex items-center gap-2 min-w-0 text-left disabled:cursor-default"
         >
-          <CloudDownload className={clsx("w-3.5 h-3.5", deferral ? "text-[var(--vscode-textLink-foreground)]" : "text-[var(--vscode-descriptionForeground)] animate-pulse")} />
-          <span className="text-[var(--vscode-descriptionForeground)]">{summary}</span>
-          {warnings > 0 && (
+          <CloudDownload className={clsx("w-3.5 h-3.5", pending ? "text-[var(--vscode-descriptionForeground)] animate-pulse" : "text-[var(--vscode-textLink-foreground)]")} />
+          <span className={noneInProd ? "text-[var(--vscode-editorWarning-foreground)]" : "text-[var(--vscode-descriptionForeground)]"}>{summary}</span>
+          {!pending && !noneInProd && warnings > 0 && (
             <span className="flex items-center gap-1 text-[var(--vscode-editorWarning-foreground)]">
               <AlertTriangle className="w-3 h-3" /> {warnings} warning{warnings === 1 ? "" : "s"}
             </span>
@@ -117,6 +176,9 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
           {hasEntries && <Chevron className="w-3.5 h-3.5 text-zinc-400" />}
         </button>
         <div className="flex-grow" />
+        {pending && slow && retryButton}
+        {pending && slow && logsButton}
+        {noneInProd && setProdOptionsButton("Check prod options", false)}
         <button
           onClick={() => vscode.postMessage({ command: "deferToProdActions" })}
           title="Refresh, remove proxy views or configure defer to prod"
@@ -125,7 +187,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
           <Settings2 className="w-3 h-3" /> Options
         </button>
       </div>
-      {expanded && entries.map((entry) => {
+      {expanded && hasEntries && entries.map((entry) => {
         const note = entry.stale ? "changed on this branch, prod may be out of date" : STATUS_NOTE[entry.status];
         const isWarning = entry.stale || entry.status !== "deferred";
         return (

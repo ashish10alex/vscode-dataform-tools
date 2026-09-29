@@ -63,6 +63,12 @@ async function clearDeferCaches() {
     await clearProdTargetCache();
 }
 
+/** Forgets the prod compile and table listings, then redraws the panel, which looks everything up again */
+async function refreshDeferToProd(refreshPanel: () => Promise<void> | void) {
+    await clearDeferCaches();
+    await refreshPanel();
+}
+
 /** `ids` limits it to those proxy views, as the compiled query panel already knows them; otherwise the whole project is scanned */
 async function removeProxyViewsCommand(ids?: string[]) {
     if (Array.isArray(ids) && ids.length > 0) {
@@ -80,10 +86,7 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
         {
             label: "$(refresh) Refresh prod targets and table cache",
             description: "Recompile with the prod options and look up dev and prod tables again",
-            run: async () => {
-                await clearDeferCaches();
-                await refreshPanel();
-            },
+            run: () => refreshDeferToProd(refreshPanel),
         },
         {
             label: "$(trash) Remove proxy views",
@@ -107,6 +110,7 @@ export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: 
         vscode.commands.registerCommand('vscode-dataform-tools.toggleDeferToProd', toggleDeferToProd),
         vscode.commands.registerCommand('vscode-dataform-tools.deferToProdActions', () => deferToProdActions(refreshPanel)),
         vscode.commands.registerCommand('vscode-dataform-tools.removeProxyViews', removeProxyViewsCommand),
+        vscode.commands.registerCommand('vscode-dataform-tools.refreshDeferToProd', () => refreshDeferToProd(refreshPanel)),
         vscode.workspace.onDidChangeConfiguration(async (event) => {
             if (!DEFER_SETTINGS.some((setting) => event.affectsConfiguration(`vscode-dataform-tools.${setting}`))) {
                 return;

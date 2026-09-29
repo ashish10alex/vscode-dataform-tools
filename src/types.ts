@@ -425,8 +425,9 @@ export interface DeferToProdState {
     reason?: string;
 }
 
-/** What the compiled query panel shows about defer to prod for the current file */
-export interface DeferralView {
+/** What the compiled query panel shows about defer to prod for the current file: its upstream tables, or why looking them up failed */
+export type DeferralView = {
+    status: "ready";
     entries: {
         /** `database.schema.name` */
         dev: string;
@@ -434,7 +435,10 @@ export interface DeferralView {
         status: DeferralEntry["status"];
         stale?: boolean;
     }[];
-}
+} | {
+    status: "error";
+    message: string;
+};
 
 export type CurrentFileMetadata = {
     isDataformWorkspace?: boolean;
@@ -442,6 +446,8 @@ export type CurrentFileMetadata = {
     fileMetadata?: TablesWtFullQuery;
     /** Set when defer to prod is on: which upstream actions the queries in `fileMetadata` read from prod */
     deferral?: { entries: DeferralEntry[] };
+    /** Set when defer to prod is on but looking up the upstream tables failed, e.g. the prod compile failed */
+    deferralError?: string;
     /** With defer to prod off: upstream tables that are still Proxy Views, so they read prod anyway */
     leftoverProxies?: string[];
     possibleResolutions?: any[];

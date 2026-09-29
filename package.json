@@ -292,6 +292,11 @@
                 "command": "vscode-dataform-tools.removeProxyViews",
                 "category": "Dataform",
                 "title": "Remove defer to prod proxy views"
+            },
+            {
+                "command": "vscode-dataform-tools.refreshDeferToProd",
+                "category": "Dataform",
+                "title": "Refresh defer to prod (recompile prod, look up tables again)"
             }
         ],
         "colors": [
