@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.6...v1.13.7) (2026-09-29)
+
+
+### Bug Fixes
+
+* show why defer to prod could not look up upstream tables ([#382](https://github.com/ashish10alex/vscode-dataform-tools/issues/382)) ([389880f](https://github.com/ashish10alex/vscode-dataform-tools/commit/389880f8a5681e5619d2285f4866daf8b6ba7298))
+
 ### [1.13.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.5...v1.13.6) (2026-09-29)
 
 
