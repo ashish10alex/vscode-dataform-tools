@@ -549,7 +549,13 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
               case 'retryDeferral':
-                await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
+                try {
+                  await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
+                } catch (error: any) {
+                  // The banner waits for a new deferral after Retry, so without one it would stay on "looking up"
+                  logger.error(`Defer to prod: retry failed: ${error?.message}`);
+                  panel.postMessage({ deferral: toDeferralView(undefined, `Retry failed: ${error?.message ?? error}`) });
+                }
                 return;
               case 'showLogs':
                 logger.show();
