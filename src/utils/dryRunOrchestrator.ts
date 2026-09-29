@@ -7,6 +7,7 @@ import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '
 import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset } from '../offsetCalculations';
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
+import { handleAccessDenied } from '../defer';
 import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
 import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 
@@ -111,6 +112,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     ]);
 
     const [preOpsDryRunResult, postOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
+
+    // A deferred query denied access to a prod table: those tables fall back to dev on the next read of the metadata
+    const accessDeniedTargets = handleAccessDenied(curFileMeta.deferral, [
+        ...aggregateDryRunResults, ...perAssertionDryRunResults, ...perTableDryRunResults, ...perNonIncrementalDryRunResults,
+        ...perIncrementalDryRunResults, ...perOperationDryRunResults,
+    ].map((result) => result?.error?.hasError ? result.error.message : undefined));
 
     // Enrich each query entry with the result of its dry run so callers
     // can access query + error as one cohesive object instead of separate maps.
@@ -227,7 +234,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             const preOpsSkippedInDryRun = shouldSkipAggregatePreOps && (type === "table" || type === "view");
             setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount, preOpsSkippedInDryRun);
         }
-        return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults };
+        return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets };
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -242,7 +249,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             : `${dryRunResult.statistics?.totalBytesProcessed || 0}`;
         vscode.window.showInformationMessage(`GB: ${bytesProcessedSummary} - ${combinedTableIds}`);
     }
-    return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults };
+    return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets };
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {
@@ -262,7 +269,15 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
     dataformTags = queryAutoCompMeta.dataformTags;
     declarationsAndTargets = queryAutoCompMeta.declarationsAndTargets;
 
-    await dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
+    const { accessDeniedTargets } = await dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
+    if (accessDeniedTargets.length > 0) {
+        // Read again so the unreadable prod tables keep their dev refs
+        diagnosticCollection.clear();
+        curFileMeta = await getCurrentFileMetadata(false);
+        if (curFileMeta?.fileMetadata) {
+            await dryRunAndShowDiagnostics(curFileMeta, document, diagnosticCollection, showCompiledQueryInVerticalSplitOnSave);
+        }
+    }
 
     return [queryAutoCompMeta.dataformTags, queryAutoCompMeta.declarationsAndTargets];
 }

@@ -1,6 +1,7 @@
 import { TextDocument } from "vscode";
 import { protos } from '@google-cloud/dataform';
 import type { ActionTypeCounts } from './shared/actionTypes';
+import type { DeferralEntry } from './defer/deferRules';
 
 export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
 
@@ -416,10 +417,31 @@ export type SchemaMetadata = {
     name: string, metadata: Metadata
 };
 
+/** Whether defer to prod is switched on for the workspace, and whether it can be applied */
+export interface DeferToProdState {
+    enabled: boolean;
+    available: boolean;
+    /** Why it cannot be applied, when it is not available */
+    reason?: string;
+}
+
+/** What the compiled query panel shows about defer to prod for the current file */
+export interface DeferralView {
+    entries: {
+        /** `database.schema.name` */
+        dev: string;
+        prod?: string;
+        status: DeferralEntry["status"];
+        stale?: boolean;
+    }[];
+}
+
 export type CurrentFileMetadata = {
     isDataformWorkspace?: boolean;
     errors?: { errorGettingFileNameFromDocument?: string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean; queryMetaError?: string | undefined }
     fileMetadata?: TablesWtFullQuery;
+    /** Set when defer to prod is on: which upstream actions the queries in `fileMetadata` read from prod */
+    deferral?: { entries: DeferralEntry[] };
     possibleResolutions?: any[];
     dependents?: any;
     lineageMetadata?: {

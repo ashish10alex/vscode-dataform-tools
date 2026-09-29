@@ -36,9 +36,23 @@ import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
 import { watchGitHead } from '../gitHeadWatcher';
+import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
+
+/** Redraws the panel from the cached compile, e.g. after defer to prod is switched on or off */
+export async function refreshCompiledQueryPanel() {
+    const panel = CompiledQueryPanel.centerPanel;
+    if (!panel || panel.centerPanelDisposed) {
+        return;
+    }
+    const document = getDocumentToRecompile();
+    if (document) {
+        activeDocumentObj = document;
+    }
+    await panel.refreshFromCache(await getCurrentFileMetadata(false));
+}
 
 /**
  * The document the panel is showing. A click inside the panel focuses the webview, which clears
@@ -116,6 +130,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push(
         onDidChangeLastRun(() => {
             CompiledQueryPanel.centerPanel?.postMessage({ lastRun: getLastRunView() });
+        }),
+        onDeferralUpdated(() => {
+            const panel = CompiledQueryPanel.centerPanel;
+            panel?.postMessage({ deferral: toDeferralView(panel.deferral) });
         })
     );
 
@@ -287,6 +305,8 @@ export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
     public currentFileMetadata: any;
+    /** Defer to prod state of the file shown; its Stale Deferral flags can arrive after it was posted */
+    public deferral: CurrentFileMetadata["deferral"];
     private _cachedResults?: CachedResults;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
@@ -514,6 +534,15 @@ export class CompiledQueryPanel {
                 return;
               case 'compileRemotely':
                 await vscode.commands.executeCommand('vscode-dataform-tools.compileRemotely');
+                return;
+              case 'deferToProdActions':
+                await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
+                return;
+              case 'toggleDeferToProd':
+                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.value);
+                return;
+              case 'openDeferToProdSettings':
+                await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
               case 'switchCompilationBackend': {
                 try {
@@ -1319,8 +1348,11 @@ export class CompiledQueryPanel {
 
         let fileMetadata = handleSemicolonPrePostOps(fm);
         let targetTablesOrViews = fm.tables;
+        this.deferral = curFileMeta.deferral;
 
         await this.postMessage({
+            "deferral": toDeferralView(curFileMeta.deferral),
+            "deferToProd": getDeferToProdState(workspaceFolder),
             "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
             "assertionQuery": fileMetadata.queryMeta.assertionQuery,
             "preOperations": fileMetadata.queryMeta.preOpsQuery,
@@ -1382,6 +1414,10 @@ export class CompiledQueryPanel {
             dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
             tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
         ]);
+        if (dryRunResults.accessDeniedTargets.length > 0) {
+            // Read again so the prod tables we cannot read keep their dev refs, then show and dry run that
+            return this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, await getCurrentFileMetadata(false), false);
+        }
         const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults } = dryRunResults;
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
@@ -1534,6 +1570,8 @@ export class CompiledQueryPanel {
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             await this.postMessage({
+                "deferral": toDeferralView(curFileMeta.deferral),
+                "deferToProd": getDeferToProdState(workspaceFolder),
                 "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
                 "assertionQuery": fileMetadata.queryMeta.assertionQuery,
                 "preOperations": fileMetadata.queryMeta.preOpsQuery,
@@ -1605,6 +1643,11 @@ export class CompiledQueryPanel {
      * Sends the "Run changed" state. Without `allowCompile` it only diffs against an already compiled base,
      * which keeps the button's count current after every compile without compiling the base unprompted.
      */
+    public async refreshFromCache(currentFileMetadata: CurrentFileMetadata | undefined) {
+        const showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showCompiledQueryInVerticalSplitOnSave');
+        await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, true, currentFileMetadata, false);
+    }
+
     public async postChangedActions(allowCompile: boolean) {
         if (this.centerPanelDisposed || (!allowCompile && !CACHED_COMPILED_DATAFORM_JSON)) {
             return; // Nothing compiled yet, e.g. not a Dataform workspace, which the compile has already reported
