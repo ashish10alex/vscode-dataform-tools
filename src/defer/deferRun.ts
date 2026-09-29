@@ -231,12 +231,14 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
             return false;
         }
         try {
-            const written = await vscode.window.withProgress(
-                { location: vscode.ProgressLocation.Notification, title: "Defer to prod: creating proxy views" },
+            // Usually the views exist from an earlier run, so check quietly and only speak up when something changed
+            const { created, updated } = await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Window, title: "Defer to prod: checking proxy views" },
                 () => ensureProxyViews(deferred),
             );
-            if (written > 0) {
-                vscode.window.showInformationMessage(`Defer to prod: ${written} upstream table${written === 1 ? "" : "s"} read from prod through proxy views.`);
+            if (created + updated > 0) {
+                const parts = [created > 0 ? `created ${created}` : "", updated > 0 ? `repointed ${updated}` : ""].filter(Boolean).join(", ");
+                vscode.window.showInformationMessage(`Defer to prod: ${parts} proxy view${created + updated === 1 ? "" : "s"}, so ${deferred.length} upstream table${deferred.length === 1 ? " is" : "s are"} read from prod.`);
             }
         } catch (error: any) {
             vscode.window.showErrorMessage(`Defer to prod: could not create proxy views, so the run was not started. ${error?.message ?? error}`);

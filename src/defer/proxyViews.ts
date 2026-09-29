@@ -3,7 +3,7 @@ import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
 import { logger } from '../logger';
 import { DataformCompiledJson } from '../types';
 import { getLastRunContext } from '../lastRun';
-import { DeferralEntry, PROXY_VIEW_LABEL, proxyViewSpec, targetId } from './deferRules';
+import { DeferralEntry, PROXY_VIEW_LABEL, proxyViewAction, proxyViewSpec, targetId } from './deferRules';
 import { clearTableExistenceCache } from './tableExistence';
 
 /*
@@ -38,15 +38,20 @@ function errorCode(error: any): number | undefined {
     return error?.code ?? error?.response?.statusCode;
 }
 
-/** Creates or updates the Proxy View of each deferred entry. Returns how many were created or updated. */
-export async function ensureProxyViews(entries: DeferralEntry[]): Promise<number> {
+/**
+ * Makes sure each deferred entry has a Proxy View reading its Prod Target. Proxy Views still count as not
+ * built in dev, so the same entries come back on every run: one that already reads the right table is left
+ * alone. Returns how many views were created and how many were repointed.
+ */
+export async function ensureProxyViews(entries: DeferralEntry[]): Promise<{ created: number, updated: number }> {
     await checkAuthentication();
     const client = bigQuery();
-    let written = 0;
+    const counts = { created: 0, updated: 0 };
     // A view cannot stand in for a function or procedure: a run builds those in dev instead
-    for (const entry of entries.filter((e) => e.status === "deferred" && !e.routine)) {
+    await Promise.all(entries.filter((e) => e.status === "deferred" && !e.routine).map(async (entry) => {
         const spec = proxyViewSpec(entry);
-        const table = client.dataset(spec.datasetId, { projectId: spec.projectId }).table(spec.tableId);
+        const dataset = client.dataset(spec.datasetId, { projectId: spec.projectId });
+        const table = dataset.table(spec.tableId);
         const view = { query: spec.query, useLegacySql: false };
         let existing: any;
         try {
@@ -56,22 +61,29 @@ export async function ensureProxyViews(entries: DeferralEntry[]): Promise<number
                 throw error;
             }
         }
-        if (!existing) {
-            await client.dataset(spec.datasetId, { projectId: spec.projectId }).createTable(spec.tableId, { view, labels: spec.labels, description: spec.description });
-            written++;
-        } else if (existing.labels?.[PROXY_VIEW_LABEL] === "true") {
-            await table.setMetadata({ view, labels: spec.labels, description: spec.description });
-            written++;
-        } else {
-            // Built in dev since the deferral was worked out, so the run reads it as it is
-            logger.info(`Defer to prod: ${targetId(entry.dev)} now exists in dev, no proxy view created`);
+        switch (proxyViewAction(existing, spec)) {
+            case "create":
+                await dataset.createTable(spec.tableId, { view, labels: spec.labels, description: spec.description });
+                counts.created++;
+                break;
+            case "update":
+                // e.g. the prod options changed since the view was created
+                await table.setMetadata({ view, labels: spec.labels, description: spec.description });
+                counts.updated++;
+                break;
+            case "leaveRealTable":
+                // Built in dev since the deferral was worked out, so the run reads it as it is
+                logger.info(`Defer to prod: ${targetId(entry.dev)} now exists in dev, no proxy view created`);
+                break;
+            case "keep":
+                break;
         }
-    }
-    if (written > 0) {
+    }));
+    if (counts.created + counts.updated > 0) {
         await setProxyViewsMayExist(true);
         clearTableExistenceCache({ includeUnreadable: false });
     }
-    return written;
+    return counts;
 }
 
 /** Deletes every labelled Proxy View in the dev datasets of the project, after asking. */

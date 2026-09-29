@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, proxyViewAction, rewriteSql } from '../../defer/deferRules';
 import { findRefs } from '../../documentSymbols';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
@@ -282,5 +282,21 @@ suite('deferRules functions and procedures', () => {
         const entries = decideDeferral(candidates, { devExists: () => false, prodStatus: () => 'exists' });
         assert.deepStrictEqual(entries, [{ dev: dev('fn'), prod: prod('fn'), status: 'deferred', routine: true }]);
         assert.strictEqual(rewriteSql('SELECT `proj-dev.sales_dev.fn`(x)', entries), 'SELECT `proj-prod.sales.fn`(x)');
+    });
+});
+
+suite('deferRules.proxyViewAction', () => {
+    const spec = proxyViewSpec(deferred('orders'));
+    const proxy = (query: string) => ({ labels: { dataform_tools_proxy: 'true' }, view: { query } });
+
+    test('creates a missing view, keeps one that already reads the Prod Target and repoints one that does not', () => {
+        assert.strictEqual(proxyViewAction(undefined, spec), 'create');
+        assert.strictEqual(proxyViewAction(proxy('SELECT * FROM `proj-prod.sales.orders`\n'), spec), 'keep');
+        assert.strictEqual(proxyViewAction(proxy('SELECT * FROM `old-prod.sales.orders`'), spec), 'update');
+    });
+
+    test('never touches a real dev table or view', () => {
+        assert.strictEqual(proxyViewAction({ view: { query: 'SELECT 1' } }, spec), 'leaveRealTable');
+        assert.strictEqual(proxyViewAction({ labels: { team: 'sales' } }, spec), 'leaveRealTable');
     });
 });

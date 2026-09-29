@@ -323,3 +323,19 @@ export function proxyViewSpec(entry: DeferralEntry): ProxyViewSpec {
         description: `Defer to prod proxy for ${targetId(entry.prod)}, created by Dataform Tools. The next dev build of this action replaces it.`,
     };
 }
+
+export type ProxyViewAction = "create" | "update" | "keep" | "leaveRealTable";
+
+/**
+ * What to do at a Dev Target before a deferred run. Proxy Views still count as not built in dev, so the same
+ * entries come back on every run: an existing proxy that already reads the right table is kept as it is.
+ */
+export function proxyViewAction(existing: { labels?: { [key: string]: string }, view?: { query?: string } } | undefined, spec: ProxyViewSpec): ProxyViewAction {
+    if (!existing) {
+        return "create";
+    }
+    if (existing.labels?.[PROXY_VIEW_LABEL] !== "true") {
+        return "leaveRealTable";
+    }
+    return existing.view?.query?.trim() === spec.query ? "keep" : "update";
+}
