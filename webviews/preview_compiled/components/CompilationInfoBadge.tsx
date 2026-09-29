@@ -42,6 +42,7 @@ export function CompilationInfoBadge({ info, backend, recompiling, className }: 
         </span>
       )}
       <button
+        type="button"
         onClick={() => vscode.postMessage({ command: "switchCompilationBackend", value: mode === "api" ? "cli" : "api" })}
         title={mode === "api" ? "Compile locally with the Dataform CLI instead" : "Compile the pushed commit with the Dataform API instead (beta)"}
         className="underline decoration-dotted hover:text-[var(--vscode-textLink-activeForeground)]"
@@ -50,6 +51,7 @@ export function CompilationInfoBadge({ info, backend, recompiling, className }: 
       </button>
       {mode === "api" && (
         <button
+          type="button"
           onClick={() => vscode.postMessage({ command: "compileRemotely" })}
           title="Compile the latest pushed commit with the Dataform API"
           className="flex items-center px-2 py-0.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)]"

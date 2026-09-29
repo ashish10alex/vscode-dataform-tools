@@ -391,7 +391,7 @@ export async function compileRemoteCommit(workspaceFolder: string, sha: string, 
 }
 
 function notPushedMessage(branch: string): string {
-    return `Branch "${branch}" is not pushed. API mode compiles the pushed commit, so push the branch or switch to the Dataform CLI to compile your local changes.`;
+    return `Branch "${branch}" is not pushed or has no upstream branch set. API mode compiles the pushed commit, so push the branch (git push -u origin ${branch}) or switch to the Dataform CLI to compile your local changes.`;
 }
 
 /**

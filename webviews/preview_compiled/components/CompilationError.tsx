@@ -16,6 +16,7 @@ interface CompilationErrorProps {
  */
 const SwitchBackendButton: React.FC<{ to: 'cli' | 'api' }> = ({ to }) => (
   <button
+    type="button"
     onClick={() => vscode.postMessage({ command: 'switchCompilationBackend', value: to })}
     className="mt-3 flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)]"
   >
@@ -333,7 +334,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
   }
 
   if (errorMessage) {
-    // Switching backends cannot fix a file or folder that is not part of a Dataform project
+    // Neither compilation status nor a backend switch applies to a file or folder outside a Dataform project
     const offerSwitch = errorType !== CompilationErrorType.UNSUPPORTED_FILE_TYPE && errorType !== CompilationErrorType.NOT_A_DATAFORM_WORKSPACE;
     return (
       <>
@@ -343,8 +344,12 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
             <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
           </div>
-          <CompilationInfoBadge info={compilationInfo} backend={backend} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
-          {offerSwitch && <SwitchBackendButton to={otherBackend} />}
+          {offerSwitch && (
+            <>
+              <CompilationInfoBadge info={compilationInfo} backend={backend} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+              <SwitchBackendButton to={otherBackend} />
+            </>
+          )}
         </div>
         <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
       </>
