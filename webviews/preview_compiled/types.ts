@@ -6,6 +6,8 @@ export type { ColumnMetadata, WorkflowUrlEntry, FailedAction, WorkflowAction, Ac
 export type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema };
 import type { CompilationInfo } from "../../src/utils/compilationInfo";
 export type { CompilationInfo };
+import type { ApiRunGitState } from "../../src/shared/apiRunGitState";
+export type { ApiRunGitState };
 
 export interface LastModifiedTimeMetaItem {
   lastModifiedTime: string | undefined;
@@ -89,6 +91,8 @@ export interface WebviewState {
   workflowUrls?: WorkflowUrlEntry[];
   lastRun?: LastRunView | null;
   changedActions?: ChangedActionsView;
+  /** What a run through the Dataform API leaves out, since it runs the branch as pushed */
+  apiRunGitState?: ApiRunGitState;
   missingExecutables?: string[];
   dataformCoreVersion?: string;
   projectConfig?: ProjectConfig;

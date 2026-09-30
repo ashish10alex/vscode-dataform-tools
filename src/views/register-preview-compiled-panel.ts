@@ -35,7 +35,8 @@ import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compil
 import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
-import { watchGitHead } from '../gitHeadWatcher';
+import { watchGitHead, watchGitState } from '../gitHeadWatcher';
+import { computeApiRunGitState } from '../apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
@@ -261,6 +262,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
+        // Without the git extension this is the only signal that the uncommitted changes moved
+        CompiledQueryPanel.centerPanel?.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
+
         const fileExtension = document.fileName.split('.').pop();
         const fileName = path.basename(document.fileName, '.' + fileExtension);
         const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
@@ -297,7 +301,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         await triggerCompilationForDocument(doc);
     });
 
-
+    // Edits, commits, pushes and fetches change what a Dataform API run leaves out
+    watchGitState(context, () => {
+        CompiledQueryPanel.centerPanel?.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
+    });
 }
 
 
@@ -335,6 +342,7 @@ export class CompiledQueryPanel {
                 return;
             }
             CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
+            CompiledQueryPanel.centerPanel.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         } else {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
@@ -1677,10 +1685,31 @@ export class CompiledQueryPanel {
         await this.postMessage({ changedActions });
     }
 
+    private apiRunGitStateRequest = 0;
+
+    /** Sends what a Dataform API run would leave out: uncommitted and unpushed changes to the project. */
+    public async postApiRunGitState() {
+        if (this.centerPanelDisposed) {
+            return;
+        }
+        // Read the resolved folder directly: resolving it here could prompt or warn on every git change
+        const folder = globalThis.workspaceFolder;
+        if (!folder) {
+            return;
+        }
+        const request = ++this.apiRunGitStateRequest;
+        const apiRunGitState = await computeApiRunGitState(folder);
+        // A slower earlier request must not overwrite a newer answer
+        if (request === this.apiRunGitStateRequest) {
+            await this.postMessage({ apiRunGitState });
+        }
+    }
+
     private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
         let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
         this.postChangedActions(false).catch((error) => logger.error(`Failed to refresh changed actions: ${error}`));
+        this.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         if(webview){
             // this.webviewPanel.webview.html = this._getHtmlForWebview(webview);
         } else {
