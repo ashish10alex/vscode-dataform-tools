@@ -290,19 +290,27 @@ export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 
         : `No changed actions ${describeComparison(result.headRef, result.baseRef)}`;
 }
 
-/** Compiles the project and works out the changed actions, reporting failures to the user. */
+/**
+ * Compiles the project and works out the changed actions, reporting failures to the user. Shows progress
+ * straight away, since a compile of changed files or of a new base can take seconds before anything runs.
+ */
 export async function prepareChangedActions(workspaceFolder: string): Promise<ChangedActionsResult | undefined> {
-    const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
-    if (!dataformCompiledJson) {
-        vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
-        return undefined;
-    }
-    try {
-        return await computeChangedActions(workspaceFolder, dataformCompiledJson, true);
-    } catch (error: any) {
-        vscode.window.showErrorMessage(`Could not work out changed actions: ${error.message}`);
-        return undefined;
-    }
+    return vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Working out changed actions…' },
+        async () => {
+            const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
+            if (!dataformCompiledJson) {
+                vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
+                return undefined;
+            }
+            try {
+                return await computeChangedActions(workspaceFolder, dataformCompiledJson, true);
+            } catch (error: any) {
+                vscode.window.showErrorMessage(`Could not work out changed actions: ${error.message}`);
+                return undefined;
+            }
+        },
+    );
 }
 
 export interface ChangedFileSelection {

@@ -275,7 +275,8 @@ type CompilationResult = { dataformCompiledJson: DataformCompiledJson | undefine
 let latestCompileId = 0;
 /**
  * Answers a compile whose inputs have not changed since without running the CLI: the compilation loaded
- * from disk on startup, or the outcome of the startup compile. A failure is only handed out once.
+ * from disk on startup, the outcome of the startup compile, or the last successful compile. A failure is
+ * only handed out once.
  */
 let reusable: { fingerprint: CompileFingerprint, result: CompilationResult } | undefined;
 /** The startup compile, which a compile of the same inputs joins instead of starting another */
@@ -325,6 +326,8 @@ async function compileWithCli(workspaceFolder: string, fingerprint?: CompileFing
         stale = false;
         if (fingerprint) {
             saveCliCompile({ workspaceFolder, fingerprint, compiledAt: Date.now() }, compiledString);
+            // Taken before the compile, so an edit made while it ran still forces the next one
+            reusable = { fingerprint, result: { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } };
         }
         logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
         return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };

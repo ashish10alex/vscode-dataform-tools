@@ -66,10 +66,7 @@ export async function runChangedActionsCommand(context: vscode.ExtensionContext,
         return;
     }
 
-    const result = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Working out changed actions…' },
-        () => prepareChangedActions(workspaceFolder),
-    );
+    const result = await prepareChangedActions(workspaceFolder);
     if (!result) {
         return;
     }
