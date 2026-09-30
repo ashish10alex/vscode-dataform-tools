@@ -58,6 +58,15 @@ suite('lastRun.summarizeLastRun', () => {
         assert.ok(detail.includes('Last ran 2 actions: p.d.orders, p.d.customers (recomputed on rerun)'));
     });
 
+    test('counts the picked files of a changed-actions run that left some out', () => {
+        const { label, detail } = summarizeLastRun(
+            request({ kind: 'changed', items: ['p.d.orders', 'p.d.a'], files: ['definitions/orders.sqlx', 'definitions/gen.js'], changedFileCount: 5, baseRef: 'origin/main', headRef: 'feat/orders' }),
+            'cli',
+        );
+        assert.strictEqual(label, '2 changed actions (2 of 5 files) in feat/orders vs origin/main · CLI');
+        assert.ok(detail.includes('Only changes in: definitions/orders.sqlx, definitions/gen.js'));
+    });
+
     test('leaves out the branch of changed-actions runs recorded without one', () => {
         const { label } = summarizeLastRun(request({ kind: 'changed', items: ['p.d.orders'], baseRef: 'origin/main' }), 'api');
         assert.strictEqual(label, '1 changed action vs origin/main · API');

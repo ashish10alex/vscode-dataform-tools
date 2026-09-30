@@ -65,7 +65,10 @@ function selectionLabel(request: LastRunRequest, items: string[]): string {
         case 'currentFile': return `file ${items[0] ?? ''}`;
         case 'files': return `${request.items.length} file${plural}: ${summarizeItems(items)}`;
         case 'tags': return `tag${plural} ${summarizeItems(items)}`;
-        case 'changed': return `${request.items.length} changed action${plural} ${describeComparison(request.headRef, request.baseRef ?? 'default branch')}`;
+        case 'changed': {
+            const files = request.files ? ` (${request.files.length} of ${request.changedFileCount ?? '?'} files)` : '';
+            return `${request.items.length} changed action${plural}${files} ${describeComparison(request.headRef, request.baseRef ?? 'default branch')}`;
+        }
     }
 }
 
@@ -99,6 +102,7 @@ export function summarizeLastRun(request: LastRunRequest, replayMode: ExecutionM
         : `${request.kind === 'tags' ? 'Tags' : 'Files'}: ${request.items.join(', ')}`;
     const detailLines = [
         itemLine,
+        ...(request.kind === 'changed' && request.files ? [`Only changes in: ${request.files.join(', ')}`] : []),
         `Dependencies: ${request.includeDependencies ? 'yes' : 'no'}`,
         `Dependents: ${request.includeDependents ? 'yes' : 'no'}`,
         `Full refresh: ${request.fullRefresh ? 'yes' : 'no'}`,

@@ -863,6 +863,7 @@ export class CompiledQueryPanel {
                     !!message.value.includeDependents,
                     !!message.value.fullRefresh,
                     message.value.api ? 'api' : 'cli',
+                    Array.isArray(message.value.files) ? message.value.files : undefined,
                 );
                 if (result) {
                     this.centerPanel?.postMessage({ changedActions: toChangedActionsView(result) });

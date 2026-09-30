@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
-import { describeComparison } from "../../../src/shared/changeComparison";
+import { changedFileKey, describeComparison } from "../../../src/shared/changeComparison";
 import { countTypeNames, describeTypeCounts } from "../../../src/shared/actionTypes";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
@@ -73,29 +73,49 @@ const ReasonBadge: React.FC<{ reason: string }> = ({ reason }) => (
   </span>
 );
 
-/** A file's changed actions: one row with its type counts and reasons, expanding to the actions. */
-const ChangedFileGroup: React.FC<{ fileName: string; actions: ChangedAction[]; expanded: boolean; onToggle: () => void }> = ({ fileName, actions, expanded, onToggle }) => {
+/**
+ * A file's changed actions: one row with its type counts and reasons, expanding to the actions. The
+ * checkbox decides whether the file's changes run; it is separate from the row so it does not expand it.
+ */
+const ChangedFileGroup: React.FC<{
+  fileName: string;
+  actions: ChangedAction[];
+  expanded: boolean;
+  onToggle: () => void;
+  selected: boolean;
+  onSelect: (selected: boolean) => void;
+}> = ({ fileName, actions, expanded, onToggle, selected, onSelect }) => {
   const reasons = (["new", "sql", "config"] as const).filter((reason) => actions.some((a) => a.reasons.includes(reason)));
   return (
     <div className="py-1.5 border-t first:border-t-0 border-[var(--vscode-widget-border)]">
-      <button
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="w-full grid grid-cols-[auto_1fr_auto] items-center gap-1.5 rounded text-left hover:bg-[var(--vscode-toolbar-hoverBackground)]"
-      >
-        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-        <FileHeading fileName={fileName} />
-        <span className="flex items-center gap-1 whitespace-nowrap">
-          <span className="text-[11px] text-[var(--vscode-descriptionForeground)]">{describeTypeCounts(countTypeNames(actions.map((a) => a.type)))}</span>
-          {reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
-        </span>
-      </button>
+      <div className="grid grid-cols-[auto_1fr] items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={(e) => onSelect(e.target.checked)}
+          aria-label={`Run changes in ${fileName}`}
+          title={selected ? "Leave this file's changes out of the run" : "Include this file's changes in the run"}
+          className="cursor-pointer accent-[var(--vscode-button-background)]"
+        />
+        <button
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className={`w-full grid grid-cols-[auto_1fr_auto] items-center gap-1.5 rounded text-left hover:bg-[var(--vscode-toolbar-hoverBackground)] ${selected ? "" : "opacity-50"}`}
+        >
+          {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          <FileHeading fileName={fileName} />
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <span className="text-[11px] text-[var(--vscode-descriptionForeground)]">{describeTypeCounts(countTypeNames(actions.map((a) => a.type)))}</span>
+            {reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
+          </span>
+        </button>
+      </div>
       {expanded && (
-        <ul className="mt-1 space-y-1">
+        <ul className={`mt-1 space-y-1 ${selected ? "" : "opacity-50"}`}>
           {actions.map((action) => {
             const badge = ACTION_TYPE_BADGE_STYLES[action.type] ?? DEFAULT_BADGE_STYLE;
             return (
-              <li key={action.target} className="grid grid-cols-[1fr_auto] items-start gap-3 pl-5">
+              <li key={action.target} className="grid grid-cols-[1fr_auto] items-start gap-3 pl-10">
                 <ActionName target={action.target} />
                 <span className="flex items-center gap-1 whitespace-nowrap">
                   <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{action.type}</span>
@@ -113,7 +133,7 @@ const ChangedFileGroup: React.FC<{ fileName: string; actions: ChangedAction[]; e
 function groupByFile<T extends { fileName: string }>(items: T[]): [string, T[]][] {
   const groups = new Map<string, T[]>();
   for (const item of items) {
-    const key = item.fileName || "(unknown file)";
+    const key = changedFileKey(item.fileName);
     groups.set(key, [...(groups.get(key) ?? []), item]);
   }
   return [...groups.entries()];
@@ -132,6 +152,8 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const [open, setOpen] = useState(false);
   // Files whose expansion differs from the default, which depends on the size of the change set
   const [toggledFiles, setToggledFiles] = useState<Set<string>>(new Set());
+  // Files left out of the run. Everything starts included, including files that become changed while open.
+  const [uncheckedFiles, setUncheckedFiles] = useState<Set<string>>(new Set());
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   // Left offset from the button's wrapper. Undefined until measured, when the popover is right-aligned.
@@ -177,6 +199,15 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const changedGroups = useMemo(() => groupByFile(changed), [changed]);
   const deletedGroups = useMemo(() => groupByFile(deleted), [deleted]);
 
+  // A file that drops out of the change set is forgotten, so it comes back included if it changes again
+  useEffect(() => {
+    setUncheckedFiles((prev) => {
+      const present = new Set(changedGroups.map(([fileName]) => fileName));
+      const next = new Set([...prev].filter((fileName) => present.has(fileName)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [changedGroups]);
+
   if (!changedActions || changedActions.status === "unavailable") {
     return null;
   }
@@ -194,12 +225,34 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
     fullRefresh && "full refresh",
   ].filter(Boolean) as string[];
 
+  const selectedGroups = changedGroups.filter(([fileName]) => !uncheckedFiles.has(fileName));
+  const selectedActions = selectedGroups.flatMap(([, actions]) => actions);
+  const allSelected = selectedGroups.length === changedGroups.length;
+  const noneSelected = selectedGroups.length === 0;
+  const setFileSelected = (fileName: string, selected: boolean) => setUncheckedFiles((prev) => {
+    const next = new Set(prev);
+    if (selected) { next.delete(fileName); } else { next.add(fileName); }
+    return next;
+  });
+  const setAllSelected = (select: boolean) =>
+    setUncheckedFiles(select ? new Set() : new Set(changedGroups.map(([fileName]) => fileName)));
+
+  // Dataform pulls actions in by graph, so an unchecked file can still run through these flags
+  const pulledInAs = [includeDependencies && "dependencies", includeDependents && "dependents"].filter(Boolean).join(" or ");
+  const depsHint = !allSelected && pulledInAs ? `unchecked files may still run as ${pulledInAs}` : "";
+
+  const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
   const reasonCounts = (["new", "sql", "config"] as const)
-    .map((reason) => [reason, changed.filter((a) => a.reasons.includes(reason)).length] as const)
+    .map((reason) => [reason, selectedActions.filter((a) => a.reasons.includes(reason)).length] as const)
     .filter(([, count]) => count > 0)
     .map(([reason, count]) => `${count} ${REASON_LABELS[reason].label}`);
-  const typeCounts = describeTypeCounts(countTypeNames(changed.map((a) => a.type)));
-  const summary = `${changed.length} action${changed.length === 1 ? "" : "s"} in ${changedGroups.length} file${changedGroups.length === 1 ? "" : "s"}${typeCounts ? `: ${typeCounts}` : ""} · ${reasonCounts.join(" · ")}`;
+  const typeCounts = describeTypeCounts(countTypeNames(selectedActions.map((a) => a.type)));
+  const breakdown = `${typeCounts ? `: ${typeCounts}` : ""} · ${reasonCounts.join(" · ")}`;
+  const summary = noneSelected
+    ? "No files selected. Select at least one to run."
+    : allSelected
+      ? `${plural(changed.length, "action")} in ${plural(changedGroups.length, "file")}${breakdown}`
+      : `${selectedActions.length} of ${plural(changed.length, "action")} in ${selectedGroups.length} of ${plural(changedGroups.length, "file")} selected${breakdown}`;
 
   const expandedByDefault = changed.length <= EXPAND_ALL_UP_TO;
   const isExpanded = (fileName: string) => expandedByDefault !== toggledFiles.has(fileName);
@@ -213,12 +266,19 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const setAllExpanded = (expand: boolean) =>
     setToggledFiles(expand === expandedByDefault ? new Set() : new Set(changedGroups.map(([fileName]) => fileName)));
 
+  const canRun = status === "ready" && selectedActions.length > 0;
+  const runLabel = status === "ready" && selectedActions.length > 0 ? `Run ${selectedActions.length}` : "Run";
+  const runTitle = status === "ready" && changed.length > 0 && noneSelected ? "Select at least one file to run" : undefined;
+
   const compute = () => vscode.postMessage({ command: "computeChangedActions" });
 
   const toggle = () => {
     const next = !open;
     setOpen(next);
-    if (next) { setToggledFiles(new Set()); }
+    if (next) {
+      setToggledFiles(new Set());
+      setUncheckedFiles(new Set());
+    }
     if (next && status !== "ready" && status !== "computing") {
       compute();
     }
@@ -227,7 +287,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const run = (api: boolean) => {
     vscode.postMessage({
       command: "runChangedActions",
-      value: { api, includeDependencies, includeDependents, fullRefresh },
+      value: { api, includeDependencies, includeDependents, fullRefresh, files: selectedGroups.map(([fileName]) => fileName) },
     });
     if (api) { onApiRunDispatched(); }
     setOpen(false);
@@ -294,7 +354,9 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
 
           <div className="mb-3 pb-3 border-b border-[var(--vscode-widget-border)]">
             {flags.length > 0 && (
-              <p className="mb-2 text-[11px] text-[var(--vscode-descriptionForeground)]">With {flags.join(", ")}</p>
+              <p className="mb-2 text-[11px] text-[var(--vscode-descriptionForeground)]">
+                With {flags.join(", ")}{depsHint && <> · {depsHint}</>}
+              </p>
             )}
             <div className="flex items-center gap-2">
               <button
@@ -306,31 +368,41 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               {!isRemoteMode && (
                 <button
                   onClick={() => run(false)}
-                  disabled={status !== "ready" || changed.length === 0}
+                  disabled={!canRun}
+                  title={runTitle}
                   className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
                 >
-                  <Play className="w-3.5 h-3.5 mr-1.5" /> Run (CLI)
+                  <Play className="w-3.5 h-3.5 mr-1.5" /> {runLabel} (CLI)
                 </button>
               )}
               <button
                 onClick={() => run(true)}
-                disabled={status !== "ready" || changed.length === 0}
+                disabled={!canRun}
+                title={runTitle}
                 className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
               >
-                <Play className="w-3.5 h-3.5 mr-1.5" /> Run (API)
+                <Play className="w-3.5 h-3.5 mr-1.5" /> {runLabel} (API)
               </button>
             </div>
           </div>
           {status === "ready" && changed.length > 0 && (
             <div className="mb-2 flex items-start justify-between gap-2 text-xs">
-              <p className="text-[var(--vscode-foreground)]">{summary}</p>
+              <p className={noneSelected ? "text-[var(--vscode-errorForeground)]" : "text-[var(--vscode-foreground)]"}>{summary}</p>
               {changedGroups.length > 1 && (
-                <button
-                  onClick={() => setAllExpanded(!allExpanded)}
-                  className="shrink-0 px-1.5 py-0.5 rounded text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
-                >
-                  {allExpanded ? "Collapse all" : "Expand all"}
-                </button>
+                <span className="shrink-0 flex items-center">
+                  <button
+                    onClick={() => setAllSelected(!allSelected)}
+                    className="px-1.5 py-0.5 rounded text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                  >
+                    {allSelected ? "Select none" : "Select all"}
+                  </button>
+                  <button
+                    onClick={() => setAllExpanded(!allExpanded)}
+                    className="px-1.5 py-0.5 rounded text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
+                  >
+                    {allExpanded ? "Collapse all" : "Expand all"}
+                  </button>
+                </span>
               )}
             </div>
           )}
@@ -360,6 +432,8 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
                 actions={actions}
                 expanded={isExpanded(fileName)}
                 onToggle={() => toggleFile(fileName)}
+                selected={!uncheckedFiles.has(fileName)}
+                onSelect={(selected) => setFileSelected(fileName, selected)}
               />
             ))}
             {status === "ready" && deleted.length > 0 && (

@@ -751,6 +751,10 @@ export interface LastRunRequest {
      * the actions that ran (informational only: a rerun recomputes them).
      */
     items: string[];
+    /** `changed`: the files whose changes ran, when some changed files were left out; a rerun keeps to them. Absent when every changed file ran. */
+    files?: string[];
+    /** `changed` with `files`: how many files had changes when it ran. */
+    changedFileCount?: number;
     /** `changed`: the ref the changes were computed against, e.g. `origin/main`. */
     baseRef?: string;
     /** `changed`: the branch whose changes ran, e.g. `feat/orders`; absent on runs recorded before it was kept. */
