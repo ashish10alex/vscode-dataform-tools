@@ -161,6 +161,18 @@ function entryPaths(workspaceFolder: string): { meta: string, compiled: string }
     return { meta: path.join(storageRoot, `${key}.meta.json`), compiled: path.join(storageRoot, `${key}.compiled.json`) };
 }
 
+/** Another window on the same project may read the file meanwhile, so it must never see it half written */
+async function writeFileAtomically(file: string, content: string) {
+    const temporary = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    try {
+        await fsp.writeFile(temporary, content);
+        await fsp.rename(temporary, file);
+    } catch (error) {
+        await fsp.rm(temporary, { force: true });
+        throw error;
+    }
+}
+
 /** The raw `dataform compile --json` output is saved as-is, which avoids serialising several MB of JSON again. */
 export async function saveCliCompile(meta: CliCompileEntryMeta, compiledString: string): Promise<void> {
     const paths = entryPaths(meta.workspaceFolder);
@@ -171,8 +183,8 @@ export async function saveCliCompile(meta: CliCompileEntryMeta, compiledString: 
         await fsp.mkdir(storageRoot, { recursive: true });
         // Written last, so a meta file is only ever next to the output it describes
         await fsp.rm(paths.meta, { force: true });
-        await fsp.writeFile(paths.compiled, compiledString);
-        await fsp.writeFile(paths.meta, JSON.stringify(meta));
+        await writeFileAtomically(paths.compiled, compiledString);
+        await writeFileAtomically(paths.meta, JSON.stringify(meta));
         await pruneOldEntries();
     } catch (error) {
         logger.error(`Failed to persist the CLI compilation: ${error}`);
