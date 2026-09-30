@@ -21,7 +21,7 @@ export type ApiRunGitState =
     | {
         kind: "tracking";
         branch: string;
-        /** e.g. `origin/feat/orders` */
+        /** The branch of the same name on the remote, which the API runs, e.g. `origin/feat/orders` */
         upstream: string;
         uncommitted: ApiRunFileChange[];
         /** Unpushed commits that touch the Dataform project */

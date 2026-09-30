@@ -342,6 +342,7 @@ export class CompiledQueryPanel {
                 return;
             }
             CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
+            CompiledQueryPanel.centerPanel.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         } else {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){

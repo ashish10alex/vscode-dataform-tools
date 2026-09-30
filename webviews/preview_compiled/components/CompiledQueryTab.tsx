@@ -182,8 +182,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const hasTags = (state.dataformTags?.length ?? 0) > 0;
   const showTestRun = !!state.testQuery && !isRemoteMode;
   const hasRunControls = hasRunnableActions || hasTags || (!!state.changedActions && state.changedActions.status !== "unavailable");
-  // Run Tag always goes through the API; without runnable actions it is the primary run control
-  const runsViaApi = isRemoteMode || (hasRunnableActions ? runBackend === "api" : hasTags);
+  // Run Tag always goes through the API, whichever backend Run is set to
+  const runsViaApi = isRemoteMode || (hasRunnableActions ? runBackend === "api" || (hasTags && tagPopoverOpen) : hasTags);
   const latestApiRun = useMemo(
     () => (state.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
     [state.workflowUrls]

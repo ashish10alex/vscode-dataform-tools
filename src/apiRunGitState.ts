@@ -19,15 +19,16 @@ async function tryGit(cwd: string, args: string[]): Promise<string | undefined> 
 }
 
 /**
- * The ref a Dataform API run uses: the branch's upstream, else `origin/<branch>` for a branch pushed
- * without setting one. Only reads refs as last fetched.
+ * The ref a Dataform API run uses: the branch of the same name on the remote, since the run submits the
+ * branch name. Not `@{u}`, which can track a differently named branch such as `origin/main`.
+ * The remote is the one the branch tracks, else `origin`. Only reads refs as last fetched.
  */
-async function resolveUpstream(cwd: string, branch: string): Promise<string | undefined> {
-    const upstream = await tryGit(cwd, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
-    if (upstream) {
-        return upstream;
-    }
-    return (await tryGit(cwd, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${branch}`])) ? `origin/${branch}` : undefined;
+async function resolveRemoteBranch(cwd: string, branch: string): Promise<string | undefined> {
+    // `.` means the branch tracks another local branch
+    const tracked = await tryGit(cwd, ['config', '--get', `branch.${branch}.remote`]);
+    const remote = tracked && tracked !== '.' ? tracked : 'origin';
+    const remoteBranch = `${remote}/${branch}`;
+    return (await tryGit(cwd, ['rev-parse', '--verify', '--quiet', `refs/remotes/${remoteBranch}`])) ? remoteBranch : undefined;
 }
 
 /** What a Dataform API run of `workspaceFolder`'s current branch would leave out. */
@@ -40,7 +41,7 @@ export async function computeApiRunGitState(workspaceFolder: string): Promise<Ap
     if (!branch) {
         return { kind: 'noUpstream' };
     }
-    const upstream = await resolveUpstream(workspaceFolder, branch);
+    const upstream = await resolveRemoteBranch(workspaceFolder, branch);
     if (!upstream) {
         return { kind: 'noUpstream', branch };
     }
