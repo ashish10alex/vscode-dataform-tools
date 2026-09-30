@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.7...v1.13.8) (2026-09-30)
+
+
+### Bug Fixes
+
+* offer a way back to the CLI when an API compile fails ([#383](https://github.com/ashish10alex/vscode-dataform-tools/issues/383)) ([a179e2e](https://github.com/ashish10alex/vscode-dataform-tools/commit/a179e2ed10212a13bb05b91ace12d36a2a1fa132))
+* offer the CLI when a file is missing from an API compile ([#384](https://github.com/ashish10alex/vscode-dataform-tools/issues/384)) ([e0d87b4](https://github.com/ashish10alex/vscode-dataform-tools/commit/e0d87b43e6ab1d30c8c4951697ae2535fd86b282))
+
 ### [1.13.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.6...v1.13.7) (2026-09-29)
 
 
