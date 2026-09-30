@@ -495,6 +495,11 @@
                     "pattern": "^(\\d+[sm])+$",
                     "markdownDescription": "Duration to allow project compilation to complete. Use format like '5m', '60s' etc. Passed to `dataform compile --json --timeout=<value>`"
                 },
+                "vscode-dataform-tools.persistCompilation": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Save the last Dataform CLI compilation of the project and show it as soon as VS Code starts, instead of waiting for `dataform compile`. It is reused only while `definitions/`, `includes/`, the project settings and package files, the Dataform CLI, `compilerOptions` and the day are unchanged. Otherwise it is shown as outdated while the project recompiles in the background, and runs, dry runs and cost estimates wait for the fresh compilation. Output that depends on something else, such as the time of day, needs a recompile: save any Dataform file."
+                },
                 "vscode-dataform-tools.executionTimeout": {
                     "type": "string",
                     "default": "",

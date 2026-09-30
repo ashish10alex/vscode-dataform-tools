@@ -3,11 +3,12 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { logger } from '../logger';
 import { windowsDataformCliNotAvailableErrorMessage, linuxDataformCliNotAvailableErrorMessage } from '../constants';
-import { buildIndices } from './compiledJsonIndex';
+import { buildIndices, clearIndices } from './compiledJsonIndex';
 import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { DataformCompiledJson, GraphError } from '../types';
 import { getRemoteCompiledJson, isRemoteMode } from './remoteCompiler';
 import { setCompilationInfo } from './compilationInfo';
+import { CompileFingerprint, computeCompileFingerprint, fingerprintsMatch, isPersistCompilationEnabled, loadCliCompile, saveCliCompile, staleReason } from './cliCompileCache';
 
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
@@ -268,7 +269,76 @@ export function compileDataform(workspaceFolder: string, compilerOptionsOverride
     });
 }
 
-export async function runCompilation(workspaceFolder: string): Promise<{ dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
+type CompilationResult = { dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined };
+
+/** Bumped by every CLI compile, so a slower earlier compile cannot replace the result of a later one */
+let latestCompileId = 0;
+/**
+ * Answers a compile whose inputs have not changed since without running the CLI: the compilation loaded
+ * from disk on startup, or the outcome of the startup compile. A failure is only handed out once.
+ */
+let reusable: { fingerprint: CompileFingerprint, result: CompilationResult } | undefined;
+/** The startup compile, which a compile of the same inputs joins instead of starting another */
+let startupCompile: { fingerprint: CompileFingerprint, promise: Promise<CompilationResult> } | undefined;
+/** The cached JSON is a saved compilation of inputs that have changed since, shown until the startup compile replaces it */
+let stale = false;
+let onStartupCompileSettled: (() => void) | undefined;
+
+export function isCompilationStale(): boolean {
+    return stale;
+}
+
+export function setOnStartupCompileSettled(callback: () => void) {
+    onStartupCompileSettled = callback;
+}
+
+function currentFingerprint(workspaceFolder: string): Promise<CompileFingerprint> {
+    return computeCompileFingerprint(workspaceFolder, getDataformCliCmdBasedOnScope(workspaceFolder), getDataformCompilerOptions());
+}
+
+async function compileWithCli(workspaceFolder: string, fingerprint?: CompileFingerprint): Promise<CompilationResult> {
+    const compileId = ++latestCompileId;
+    reusable = undefined;
+    let compiled: Awaited<ReturnType<typeof compileDataform>>;
+    let dataformCompiledJson: DataformCompiledJson | undefined;
+    try {
+        compiled = await compileDataform(workspaceFolder);
+        dataformCompiledJson = compiled.compiledString ? parseCompiledString(compiled.compiledString) : undefined;
+    } catch (error: any) {
+        // A CLI that fails to start, or output that does not parse, is a failed compile like any other: a rejection
+        // would leave compiles joined on the startup compile failing, and the outdated saved compilation in use
+        logger.error(`Dataform CLI compilation failed: ${error?.message ?? error}`);
+        compiled = { compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${error?.message ?? error}`, fileName: "" }], possibleResolutions: undefined, compilationTimeMs: undefined };
+    }
+    const { compiledString, errors, possibleResolutions, compilationTimeMs } = compiled;
+    const superseded = compileId !== latestCompileId;
+    if (!superseded) {
+        setCompilationInfo({ backend: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !dataformCompiledJson, ...describeDataformCli(workspaceFolder) });
+    }
+    if (compiledString && dataformCompiledJson) {
+        if (superseded) {
+            logger.debug('Discarding a compilation that finished after a later one started');
+            return { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs };
+        }
+        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
+        buildIndices(dataformCompiledJson);
+        stale = false;
+        if (fingerprint) {
+            saveCliCompile({ workspaceFolder, fingerprint, compiledAt: Date.now() }, compiledString);
+        }
+        logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
+        return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
+    }
+    if (stale && !superseded) {
+        // The saved compilation must not outlive a failed compile of the current files
+        CACHED_COMPILED_DATAFORM_JSON = undefined;
+        clearIndices();
+        stale = false;
+    }
+    return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
+}
+
+export async function runCompilation(workspaceFolder: string): Promise<CompilationResult> {
     try {
         if (isRemoteMode()) {
             const { dataformCompiledJson, errors, compilationTimeMs } = await getRemoteCompiledJson(workspaceFolder);
@@ -279,25 +349,93 @@ export async function runCompilation(workspaceFolder: string): Promise<{ datafor
             return { dataformCompiledJson, errors, possibleResolutions: undefined, compilationTimeMs };
         }
 
-        let { compiledString, errors, possibleResolutions, compilationTimeMs } = await compileDataform(workspaceFolder);
-        setCompilationInfo({ backend: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !compiledString, ...describeDataformCli(workspaceFolder) });
-        if (compiledString) {
-            const dataformCompiledJson = parseCompiledString(compiledString);
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            buildIndices(dataformCompiledJson);
-            logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
-            return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
+        if (!isPersistCompilationEnabled()) {
+            return await compileWithCli(workspaceFolder);
         }
-        return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
+        const fingerprint = await currentFingerprint(workspaceFolder);
+        if (reusable && fingerprintsMatch(reusable.fingerprint, fingerprint)) {
+            logger.debug('Compile inputs unchanged since the last compilation, reusing it');
+            const { result } = reusable;
+            if (!result.dataformCompiledJson) {
+                reusable = undefined;
+            }
+            return result;
+        }
+        if (startupCompile && fingerprintsMatch(startupCompile.fingerprint, fingerprint)) {
+            logger.debug('Joining the startup compilation');
+            return await startupCompile.promise;
+        }
+        return await compileWithCli(workspaceFolder, fingerprint);
     } catch (error: any) {
         logger.error(`runCompilation failed: ${error.message}`);
         return { dataformCompiledJson: undefined, errors: [{ error: `Error compiling Dataform: ${error.message}`, fileName: "" }], possibleResolutions: undefined, compilationTimeMs: undefined };
     }
 }
 
+/**
+ * Called on activation: loads the project's saved compilation so the compiled query panel can show it without
+ * waiting for the CLI. When the project changed since (or nothing was saved), compiles in the background; a
+ * changed project's saved compilation is shown as outdated meanwhile.
+ */
+export async function prewarmCliCompilation(workspaceFolder: string): Promise<void> {
+    if (isRemoteMode() || !isPersistCompilationEnabled()) {
+        return;
+    }
+    const [fingerprint, saved] = await Promise.all([currentFingerprint(workspaceFolder), loadCliCompile(workspaceFolder)]);
+    if (latestCompileId !== 0 || CACHED_COMPILED_DATAFORM_JSON) {
+        return; // Something compiled while the saved compilation was being read
+    }
+
+    let savedJson: DataformCompiledJson | undefined;
+    if (saved) {
+        try {
+            savedJson = parseCompiledString(saved.compiledString);
+        } catch (error) {
+            logger.error(`Ignoring an unreadable saved compilation: ${error}`);
+        }
+    }
+    if (saved && savedJson) {
+        const reason = staleReason(saved.meta.fingerprint, fingerprint);
+        CACHED_COMPILED_DATAFORM_JSON = savedJson;
+        buildIndices(savedJson);
+        const compilerOptions = getDataformCompilerOptions();
+        globalThis.compilerOptionsMap = compilerOptions ? createCompilerOptionsObjectForApi([compilerOptions]) : {};
+        setCompilationInfo({ backend: "cli", compiledAt: saved.meta.compiledAt, fromCache: true, stale: !!reason, staleReason: reason, ...describeDataformCli(workspaceFolder) });
+        if (!reason) {
+            logger.info('Loaded the saved compilation; compile inputs are unchanged');
+            reusable = { fingerprint, result: { dataformCompiledJson: savedJson, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined } };
+            return;
+        }
+        logger.info(`Showing the saved compilation until a fresh one finishes: ${reason}`);
+        stale = true;
+    }
+
+    const promise = compileWithCli(workspaceFolder, fingerprint);
+    const compileId = latestCompileId;
+    startupCompile = { fingerprint, promise };
+    // compileWithCli reports failures in its result rather than rejecting
+    promise.then((result) => {
+        if (startupCompile?.promise === promise) {
+            startupCompile = undefined;
+        }
+        if (compileId === latestCompileId) {
+            reusable = { fingerprint, result };
+            onStartupCompileSettled?.();
+        }
+    }).catch((error) => logger.error(`Failed to finish the startup compilation: ${error}`));
+}
+
+/** Waits for a fresh compilation when the cached JSON is an outdated saved one, so nothing is run or estimated from it. */
+export async function ensureFreshCompilation(workspaceFolder: string): Promise<void> {
+    if (stale && !isRemoteMode()) {
+        await runCompilation(workspaceFolder);
+    }
+}
+
 export async function getOrCompileDataformJson(
     workspaceFolder: string
 ): Promise<DataformCompiledJson | undefined> {
+    await ensureFreshCompilation(workspaceFolder);
     if (CACHED_COMPILED_DATAFORM_JSON) {
         logger.debug('Returning cached compiled dataform JSON');
         return CACHED_COMPILED_DATAFORM_JSON;

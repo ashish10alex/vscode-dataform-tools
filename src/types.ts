@@ -457,6 +457,8 @@ export type CurrentFileMetadata = {
     deferralError?: string;
     /** With defer to prod off: upstream tables that are still Proxy Views, so they read prod anyway */
     leftoverProxies?: string[];
+    /** The defer to prod lookup still running; `fileMetadata` has the deferral applied once it resolves */
+    deferralPending?: Promise<Pick<CurrentFileMetadata, "deferral" | "deferralError" | "leftoverProxies">>;
     possibleResolutions?: any[];
     dependents?: any;
     lineageMetadata?: {

@@ -6,7 +6,7 @@ import { logger } from '../logger';
 import { GitService } from '../gitClient';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
-import { BigQueryDryRunResponse, CurrentFileMetadata, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
+import { BigQueryDryRunResponse, CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
 import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig } from './dataformCompiler';
 import { getDataformCliCmdBasedOnScope } from './executableResolver';
@@ -147,7 +147,25 @@ export async function getDependentsOfTarget(targetToSearch: Target) {
     return dependents;
 }
 
-export async function getCurrentFileMetadata(freshCompilation: boolean): Promise<CurrentFileMetadata | undefined> {
+/**
+ * Defer to prod looks up upstream tables in BigQuery, which takes a second or two. With `deferralInBackground`
+ * the metadata comes back without waiting for it, with the lookup in `deferralPending`, so the compiled query
+ * panel can show the SQL first and redraw it with the deferral applied.
+ */
+function deferFileMetadataFor(isConfigFile: boolean, fileMetadata: Parameters<typeof deferFileMetadata>[0], compiledJson: DataformCompiledJson, workspaceFolder: string, deferralInBackground: boolean) {
+    if (isConfigFile) {
+        return {};
+    }
+    const deferral = deferFileMetadata(fileMetadata, compiledJson, workspaceFolder);
+    if (!deferralInBackground) {
+        return deferral;
+    }
+    // Nobody awaits it when the panel shows an error instead, so it must not reject
+    return { deferralPending: deferral.catch((error): { deferralError: string } => ({ deferralError: error?.message ?? String(error) })) };
+}
+
+export async function getCurrentFileMetadata(freshCompilation: boolean, options: { deferralInBackground?: boolean } = {}): Promise<CurrentFileMetadata | undefined> {
+    const deferralInBackground = options.deferralInBackground ?? false;
     let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
     if (!document) {
         return;
@@ -227,7 +245,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             if (targetToSearch) {
                 dependents = await getDependentsOfTarget(targetToSearch);
             }
-            const deferred = isConfigFile ? {} : await deferFileMetadata(fileMetadata, dataformCompiledJson, workspaceFolder);
+            const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, dataformCompiledJson, workspaceFolder, deferralInBackground);
 
             return {
                 isDataformWorkspace: true,
@@ -295,7 +313,7 @@ export async function getCurrentFileMetadata(freshCompilation: boolean): Promise
             dependents = await getDependentsOfTarget(targetToSearch);
         }
         const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
-        const deferred = isConfigFile ? {} : await deferFileMetadata(fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
+        const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder, deferralInBackground);
 
         return {
             isDataformWorkspace: true,

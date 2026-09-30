@@ -11,7 +11,8 @@ import { DataformColumnHoverProvider, DataformHoverProvider, DataformBigQueryHov
 import { registerConfigBlockFeatures } from './configBlock/providers';
 import { defaultCdnLinks, executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
-import { executableIsAvailable } from './utils';
+import { executableIsAvailable, isDataformWorkspace, prewarmCliCompilation } from './utils';
+import { initCliCompileCache } from './utils/cliCompileCache';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { runChangedActionsCommand, RunChangedActionsArgs } from './runChangedActionsCommand';
@@ -91,6 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initLastRun(context);
     initChangedActions(context);
     initProdTargets(context);
+    initCliCompileCache(context);
 
     const activationWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     for (let i = 0; i < executablesToCheck.length; i++) {
@@ -112,6 +114,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     registerCompiledQueryPanel(context);
     initDeferToProd(context, refreshCompiledQueryPanel);
+
+    // Only when the project is unambiguous: the compiled JSON is shared by the whole window
+    const dataformFolders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath).filter(isDataformWorkspace);
+    if (dataformFolders.length === 1) {
+        prewarmCliCompilation(dataformFolders[0]).catch((error) => logger.error(`Failed to prepare the saved compilation: ${error}`));
+    }
     registerDeferEditorHints(context);
     registerExecutedSqlProvider(context);
 

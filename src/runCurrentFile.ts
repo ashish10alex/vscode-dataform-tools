@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation } from "./utils";
+import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode, LastRunRequest } from './types';
@@ -34,6 +34,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     let currFileMetadata;
+    await ensureFreshCompilation(workspaceFolder);
     if (!CACHED_COMPILED_DATAFORM_JSON) {
 
         let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
