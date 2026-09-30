@@ -1,7 +1,7 @@
 import { TextDocument } from "vscode";
 import { protos } from '@google-cloud/dataform';
 import type { ActionTypeCounts } from './shared/actionTypes';
-import type { DeferralEntry } from './defer/deferRules';
+import type { BuiltInDevEntry, DeferralEntry } from './defer/deferRules';
 
 export type FileNameMetadataResult<T, E> = { success: true; value: T } | { success: false; error: E };
 
@@ -435,6 +435,13 @@ export type DeferralView = {
         status: DeferralEntry["status"];
         stale?: boolean;
     }[];
+    /** Upstream tables read from dev because they are built there */
+    builtInDev?: {
+        /** `database.schema.name` */
+        dev: string;
+        /** Epoch ms */
+        lastModified?: number;
+    }[];
 } | {
     status: "error";
     message: string;
@@ -445,7 +452,7 @@ export type CurrentFileMetadata = {
     errors?: { errorGettingFileNameFromDocument?: string, dataformCompilationErrors?: GraphError[]; fileNotFoundError?: boolean; queryMetaError?: string | undefined }
     fileMetadata?: TablesWtFullQuery;
     /** Set when defer to prod is on: which upstream actions the queries in `fileMetadata` read from prod */
-    deferral?: { entries: DeferralEntry[] };
+    deferral?: { entries: DeferralEntry[], builtInDev?: BuiltInDevEntry[] };
     /** Set when defer to prod is on but looking up the upstream tables failed, e.g. the prod compile failed */
     deferralError?: string;
     /** With defer to prod off: upstream tables that are still Proxy Views, so they read prod anyway */

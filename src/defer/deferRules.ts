@@ -23,6 +23,16 @@ export interface DeferralEntry {
     routine?: boolean;
 }
 
+/**
+ * An upstream action that has a Prod Target but is read from dev, because it is built there (dbt's default
+ * `--defer` rule). Listed so the user can see why it is not read from prod, and how old the dev table is.
+ */
+export interface BuiltInDevEntry {
+    dev: Target;
+    /** Epoch ms, when it could be looked up */
+    lastModified?: number;
+}
+
 /** An upstream action whose Dev Target differs from its Prod Target, before existence is checked */
 export interface DeferralCandidate {
     dev: Target;

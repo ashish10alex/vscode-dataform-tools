@@ -4,8 +4,23 @@ import { AlertTriangle, ArrowRight, ChevronDown, ChevronRight, CloudDownload, Ro
 import type { DeferralView, DeferToProdState } from "../types";
 import { vscode } from "../utils/vscode";
 import { ModifierSwitch } from "./ModifierSwitch";
+import { formatRelativeTime } from "../utils/compilationInfoFormat";
 
 type DeferralEntryView = Extract<DeferralView, { status: "ready" }>["entries"][number];
+type BuiltInDevView = NonNullable<Extract<DeferralView, { status: "ready" }>["builtInDev"]>[number];
+
+/** Built in dev tables grouped by `project.dataset`, both sorted, so long ids are not repeated on every row */
+function groupByDataset(tables: BuiltInDevView[]): [string, { name: string; id: string; lastModified?: number }[]][] {
+  const groups = new Map<string, { name: string; id: string; lastModified?: number }[]>();
+  for (const table of tables) {
+    const split = table.dev.lastIndexOf(".");
+    const dataset = table.dev.slice(0, split);
+    groups.set(dataset, [...(groups.get(dataset) ?? []), { name: table.dev.slice(split + 1), id: table.dev, lastModified: table.lastModified }]);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dataset, rows]) => [dataset, rows.sort((a, b) => a.name.localeCompare(b.name))]);
+}
 
 const STATUS_NOTE: Record<DeferralEntryView["status"], string | undefined> = {
   deferred: undefined,
@@ -18,6 +33,7 @@ const PRIMARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--
 const WARNING_BOX = "rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs";
 /** The prod compile takes a few seconds; past this the lookup has most likely failed without saying so */
 const SLOW_LOOKUP_MS = 30_000;
+const BUILT_IN_DEV_TITLE = "Built in dev, so it is read from dev, like dbt --defer. Upstream tables are only read from prod when they are not built in dev.";
 const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
 
 /**
@@ -142,7 +158,8 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   const entries = deferral?.status === "ready" ? deferral.entries : [];
   const deferred = entries.filter((entry) => entry.status === "deferred");
   const warnings = entries.filter((entry) => entry.stale || entry.status !== "deferred").length;
-  const hasEntries = !pending && entries.length > 0;
+  const builtInDev = deferral?.status === "ready" ? deferral.builtInDev ?? [] : [];
+  const hasEntries = !pending && (entries.length > 0 || builtInDev.length > 0);
   const Chevron = expanded ? ChevronDown : ChevronRight;
   // Every upstream table that has a prod name is missing there: the prod options likely point at the wrong place
   const withProd = entries.filter((entry) => entry.prod);
@@ -152,8 +169,10 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
     : noneInProd
       ? `none of the ${withProd.length} upstream table${withProd.length === 1 ? " was" : "s were"} found in prod`
       : deferred.length === 0
-        ? "no upstream table is read from prod"
-        : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod`;
+        ? builtInDev.length === 0
+          ? "no upstream table is read from prod"
+          : `nothing read from prod: ${entries.length > 0 ? `${builtInDev.length} upstream table${builtInDev.length === 1 ? " is" : "s are"}` : builtInDev.length === 1 ? "the upstream table is" : `all ${builtInDev.length} upstream tables are`} built in dev`
+        : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod${builtInDev.length > 0 ? `, ${builtInDev.length} built in dev read from dev` : ""}`;
 
   return (
     <div className="rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
@@ -204,6 +223,27 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
           </div>
         );
       })}
+      {expanded && hasEntries && builtInDev.length > 0 && (
+        <div title={BUILT_IN_DEV_TITLE} className="space-y-1.5 pt-0.5">
+          <div className="text-[var(--vscode-descriptionForeground)]">Built in dev, so read from dev</div>
+          {/* One grid for every group, so the times line up down the whole list */}
+          <div className="grid grid-cols-[minmax(0,max-content)_1fr] gap-x-6">
+            {groupByDataset(builtInDev).map(([dataset, rows], index) => (
+              <div key={dataset} className="contents">
+                <div className={clsx("col-span-2 font-mono text-[var(--vscode-descriptionForeground)] truncate", index > 0 && "mt-1.5")}>{dataset}</div>
+                {rows.map((row) => (
+                  <div key={row.id} className="contents">
+                    <span title={row.id} className="pl-4 font-mono text-[var(--vscode-foreground)] truncate">{row.name}</span>
+                    <span className="whitespace-nowrap text-[var(--vscode-descriptionForeground)]">
+                      {row.lastModified ? `updated ${formatRelativeTime(row.lastModified, Date.now())}` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
