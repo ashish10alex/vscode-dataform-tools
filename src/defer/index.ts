@@ -2,13 +2,15 @@ import * as vscode from 'vscode';
 import { logger } from '../logger';
 import { DataformCompiledJson, DeferToProdState, DeferralView, TablesWtFullQuery, Target } from '../types';
 import { computeChangedActions, isGitRepo } from '../changedActions';
-import { applyDeferral, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, prodMatchesDev, targetId } from './deferRules';
-import { findExistingDevTargets, findProxyViews, getProdStatuses, markProdUnreadable } from './tableExistence';
+import { applyDeferral, BuiltInDevEntry, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, prodMatchesDev, targetId } from './deferRules';
+import { findExistingDevTargets, findProxyViews, getDevLastModified, getProdStatuses, markProdUnreadable } from './tableExistence';
 import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
 
 export interface Deferral {
     entries: DeferralEntry[];
+    /** Upstream actions left on their Dev Target because they are built in dev */
+    builtInDev?: BuiltInDevEntry[];
 }
 
 const deferralUpdated = new vscode.EventEmitter<void>();
@@ -122,10 +124,18 @@ async function tryResolveDeferral(
         }
         const existingDev = await findExistingDevTargets(candidates.map((candidate) => candidate.dev));
         const prodToCheck = candidates.filter((candidate) => candidate.prod && !existingDev.has(targetId(candidate.dev)));
-        const prodStatuses = await getProdStatuses(
-            prodToCheck.map((candidate) => candidate.prod!),
-            new Set(prodToCheck.filter((candidate) => candidate.routine).map((candidate) => targetId(candidate.prod!))),
-        );
+        const builtInDevCandidates = candidates.filter((candidate) => candidate.prod && existingDev.has(targetId(candidate.dev)));
+        const [prodStatuses, lastModified] = await Promise.all([
+            getProdStatuses(
+                prodToCheck.map((candidate) => candidate.prod!),
+                new Set(prodToCheck.filter((candidate) => candidate.routine).map((candidate) => targetId(candidate.prod!))),
+            ),
+            getDevLastModified(
+                builtInDevCandidates.map((candidate) => candidate.dev),
+                new Set(builtInDevCandidates.filter((candidate) => candidate.routine).map((candidate) => targetId(candidate.dev))),
+            ),
+        ]);
+        const builtInDev = builtInDevCandidates.map(({ dev }) => ({ dev, lastModified: lastModified.get(targetId(dev)) }));
         const entries = decideDeferral(candidates, {
             devExists: (target) => existingDev.has(targetId(target)),
             prodStatus: (target) => prodStatuses.get(targetId(target)) ?? "missing",
@@ -135,7 +145,7 @@ async function tryResolveDeferral(
         if (options.awaitStale) {
             await stale;
         }
-        return { deferral: { entries } };
+        return { deferral: { entries, builtInDev } };
     } catch (error: any) {
         const message = error?.message ?? String(error);
         reportError(message);
@@ -273,5 +283,6 @@ export function toDeferralView(deferral: Deferral | undefined, error?: string): 
             status: entry.status,
             stale: entry.stale,
         })),
+        builtInDev: (deferral.builtInDev ?? []).map((entry) => ({ dev: targetId(entry.dev), lastModified: entry.lastModified })),
     };
 }

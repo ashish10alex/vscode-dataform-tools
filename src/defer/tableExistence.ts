@@ -192,6 +192,40 @@ export async function getProdStatuses(targets: Target[], routines: Set<string> =
     return statuses;
 }
 
+const devLastModified = new Map<string, { fetchedAt: number, lastModified?: number }>();
+
+/**
+ * When each of the given Dev Targets was last modified, in epoch ms. The dataset listing leaves this out, so each
+ * one is looked up. Only shown to the user, so a failed lookup is logged and the target left out.
+ */
+export async function getDevLastModified(targets: Target[], routines: Set<string> = new Set()): Promise<Map<string, number>> {
+    const times = new Map<string, number>();
+    const bigquery = getBigQueryClient();
+    if (!bigquery) {
+        return times;
+    }
+    await Promise.all(targets.map(async (target) => {
+        const id = targetId(target);
+        let cached = devLastModified.get(id);
+        if (!cached || !isFresh(cached.fetchedAt)) {
+            try {
+                const dataset = bigquery.dataset(target.schema, { projectId: target.database });
+                const [metadata] = await (routines.has(id) ? dataset.routine(target.name) : dataset.table(target.name)).getMetadata();
+                const lastModified = Number(metadata?.lastModifiedTime);
+                cached = { fetchedAt: Date.now(), lastModified: Number.isFinite(lastModified) && lastModified > 0 ? lastModified : undefined };
+                devLastModified.set(id, cached);
+            } catch (error: any) {
+                logger.error(`Defer to prod: could not look up when ${id} was last modified: ${error?.message ?? error}`);
+                return;
+            }
+        }
+        if (cached.lastModified !== undefined) {
+            times.set(id, cached.lastModified);
+        }
+    }));
+    return times;
+}
+
 /** Records Prod Targets that a query was denied access to. Returns true when any of them is new. */
 export function markProdUnreadable(targets: Target[]): boolean {
     let added = false;
@@ -208,6 +242,7 @@ export function markProdUnreadable(targets: Target[]): boolean {
 export function clearTableExistenceCache(options: { includeUnreadable: boolean }) {
     devDatasets.clear();
     prodTables.clear();
+    devLastModified.clear();
     if (options.includeUnreadable) {
         unreadable.clear();
     }
