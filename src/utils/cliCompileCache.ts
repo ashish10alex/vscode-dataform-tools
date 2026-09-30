@@ -79,6 +79,9 @@ async function listFiles(root: string, relativeDir: string, out: string[]) {
         return;
     }
     await Promise.all(entries.map(async (entry) => {
+        if (entry.name.startsWith('.')) {
+            return; // The CLI skips them, and .DS_Store or editor swap files would change the fingerprint
+        }
         const relativePath = path.join(relativeDir, entry.name);
         if (entry.isDirectory()) {
             await listFiles(root, relativePath, out);

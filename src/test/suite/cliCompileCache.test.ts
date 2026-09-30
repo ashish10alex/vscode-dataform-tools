@@ -76,6 +76,14 @@ suite('cliCompileCache.computeCompileFingerprint', () => {
         assert.ok(fingerprintsMatch(before, after));
     });
 
+    test('ignores dotfiles such as .DS_Store and editor swap files', async () => {
+        const before = await computeCompileFingerprint(project, cliPath, '');
+        fs.writeFileSync(path.join(project, 'definitions', '.DS_Store'), 'finder');
+        fs.writeFileSync(path.join(project, 'definitions', 'staging', '.a.sqlx.swp'), 'vim');
+        const after = await computeCompileFingerprint(project, cliPath, '');
+        assert.ok(fingerprintsMatch(before, after));
+    });
+
     test('changes with the compiler options', async () => {
         const before = await computeCompileFingerprint(project, cliPath, '');
         const after = await computeCompileFingerprint(project, cliPath, '--schema-suffix=dev');
