@@ -7,6 +7,7 @@ import { LastRunCard } from "./LastRunCard";
 import { CompilationInfoBadge } from "./CompilationInfoBadge";
 import { RunChangedButton } from "./RunChangedButton";
 import { RunBackend, RunSplitButton } from "./RunSplitButton";
+import { ApiRunGitChip } from "./ApiRunGitChip";
 import { ModifierSwitch } from "./ModifierSwitch";
 import { DeferralBanner } from "./DeferralBanner";
 import {
@@ -181,6 +182,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const hasTags = (state.dataformTags?.length ?? 0) > 0;
   const showTestRun = !!state.testQuery && !isRemoteMode;
   const hasRunControls = hasRunnableActions || hasTags || (!!state.changedActions && state.changedActions.status !== "unavailable");
+  // Run Tag always goes through the API; without runnable actions it is the primary run control
+  const runsViaApi = isRemoteMode || (hasRunnableActions ? runBackend === "api" : hasTags);
   const latestApiRun = useMemo(
     () => (state.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
     [state.workflowUrls]
@@ -703,6 +706,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                           <ModifierSwitch label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Include dependencies (--include-deps)" />
                           <ModifierSwitch label="+Dependents" checked={includeDependents} onChange={setIncludeDependents} title="Include dependents (--include-dependents)" />
                           <ModifierSwitch label="Full Refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental tables from scratch (--full-refresh)" warning />
+                  </div>
+              )}
+              {runsViaApi && (
+                  <div className="basis-full">
+                      <ApiRunGitChip state={state.apiRunGitState} />
                   </div>
               )}
           </div>
