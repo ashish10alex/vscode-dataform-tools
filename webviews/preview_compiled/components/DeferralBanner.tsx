@@ -5,6 +5,7 @@ import type { DeferralView, DeferToProdState } from "../types";
 import { vscode } from "../utils/vscode";
 import { ModifierSwitch } from "./ModifierSwitch";
 import { formatRelativeTime } from "../utils/compilationInfoFormat";
+import { diffNames } from "../utils/nameDiff";
 
 type DeferralEntryView = Extract<DeferralView, { status: "ready" }>["entries"][number];
 
@@ -38,14 +39,30 @@ function withoutProject(dataset: string): string {
   return dataset.slice(dataset.indexOf(".") + 1);
 }
 
+const REMOVED_TEXT = "rounded-sm bg-[var(--vscode-diffEditor-removedTextBackground,rgba(255,0,0,0.2))]";
+const INSERTED_TEXT = "rounded-sm bg-[var(--vscode-diffEditor-insertedTextBackground,rgba(155,185,85,0.2))]";
+
+/** One side of a dev name and its prod name, with the part only this side has highlighted like a word diff */
+function DiffName({ name, other, side }: { name: string; other: string; side: "dev" | "prod" }) {
+  const diff = side === "dev" ? diffNames(name, other) : diffNames(other, name);
+  const changed = side === "dev" ? diff.before : diff.after;
+  return (
+    <>
+      {diff.prefix}
+      {changed && <span className={side === "dev" ? REMOVED_TEXT : INSERTED_TEXT}>{changed}</span>}
+      {diff.suffix}
+    </>
+  );
+}
+
 /** A section's label, with the project its tables are in (and the prod project they are read from) when they share one */
 function SectionHeading({ label, from, to }: { label: string; from?: string; to?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 text-[var(--vscode-descriptionForeground)]">
       <span>{label}</span>
-      {from && <span className="font-mono">· {from}</span>}
+      {from && <span className="font-mono">· {to && to !== from ? <DiffName name={from} other={to} side="dev" /> : from}</span>}
       {from && to && to !== from && <ArrowRight className="w-3 h-3 shrink-0" />}
-      {from && to && to !== from && <span className="font-mono">{to}</span>}
+      {from && to && to !== from && <span className="font-mono"><DiffName name={to} other={from} side="prod" /></span>}
     </div>
   );
 }
@@ -258,22 +275,24 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
               return (
                 <div key={key} className="contents">
                   <div className={clsx("col-span-4 [contain:inline-size] flex flex-wrap items-center gap-x-1.5 min-w-0 font-mono text-[var(--vscode-descriptionForeground)]", index > 0 && "mt-1.5")}>
-                    <span className="truncate">{devLabel}</span>
+                    <span className="truncate">{prodLabel && prodLabel !== devLabel ? <DiffName name={devLabel} other={prodLabel} side="dev" /> : devLabel}</span>
                     {prodLabel && prodLabel !== devLabel && <ArrowRight className="w-3 h-3 shrink-0" />}
-                    {prodLabel && prodLabel !== devLabel && <span className="truncate">{prodLabel}</span>}
+                    {prodLabel && prodLabel !== devLabel && <span className="truncate"><DiffName name={prodLabel} other={devLabel} side="prod" /></span>}
                   </div>
                   {rows.map((entry) => {
                     const note = entry.stale ? "changed on this branch, prod may be out of date" : STATUS_NOTE[entry.status];
                     const isWarning = entry.stale || entry.status !== "deferred";
                     const showProd = entry.status === "deferred" && !!entry.prod;
+                    const devName = splitTableId(entry.dev).name;
+                    const prodName = entry.prod ? splitTableId(entry.prod).name : "";
                     return (
                       <div key={entry.dev} className="contents">
                         <span title={entry.dev} className="pl-4 flex items-center gap-1 min-w-0 font-mono text-[var(--vscode-descriptionForeground)]">
                           {isWarning && <AlertTriangle className="w-3 h-3 shrink-0 text-[var(--vscode-editorWarning-foreground)]" />}
-                          <span className="truncate">{splitTableId(entry.dev).name}</span>
+                          <span className="truncate">{showProd ? <DiffName name={devName} other={prodName} side="dev" /> : devName}</span>
                         </span>
                         {showProd ? <ArrowRight className="w-3 h-3 text-[var(--vscode-descriptionForeground)]" /> : <span />}
-                        {showProd ? <span title={entry.prod} className="font-mono text-[var(--vscode-foreground)] truncate">{splitTableId(entry.prod!).name}</span> : <span />}
+                        {showProd ? <span title={entry.prod} className="font-mono text-[var(--vscode-foreground)] truncate"><DiffName name={prodName} other={devName} side="prod" /></span> : <span />}
                         <span />
                         {note && <span className="col-span-4 [contain:inline-size] pl-8 text-[var(--vscode-editorWarning-foreground)]">{note}</span>}
                       </div>
