@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises'; 
 import path from 'path';
 import {GitService} from "./gitClient";
-import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation} from './utils';
+import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation, ensureFreshCompilation, isCompilationStale } from './utils';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { countActionTypes } from './shared/actionTypes';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
@@ -294,6 +294,13 @@ export async function compileAndCreateWorkflowInvocation(dataformClient: Datafor
 export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken, context:vscode.ExtensionContext, invocationConfig:any, codeCompilationConfig?:CodeCompilationConfig){
         // 1
         progress.report({ message: 'Checking for cached compilation of Dataform project...', increment: 0 });
+        if (isCompilationStale()) {
+            const staleWorkspaceFolder = await getWorkspaceFolder();
+            if (staleWorkspaceFolder) {
+                progress.report({ message: 'Waiting for the Dataform project to finish compiling...' });
+                await ensureFreshCompilation(staleWorkspaceFolder);
+            }
+        }
         if (!CACHED_COMPILED_DATAFORM_JSON) {
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during compilation check.');

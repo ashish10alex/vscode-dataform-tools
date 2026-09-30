@@ -60,7 +60,9 @@ export function compilationInfoTooltip(info: CompilationInfo): string {
     lines.push(`Using compilation settings of release config ${info.releaseConfig}`);
   }
   if (info.fromCache) {
-    lines.push("Served from the cache; click Recompile to compile the latest pushed commit");
+    lines.push(info.backend === "api"
+      ? "Served from the cache; click Recompile to compile the latest pushed commit"
+      : "Saved from an earlier session; save any Dataform file to recompile");
   }
   if (info.stale && info.staleReason) {
     lines.push(info.staleReason);

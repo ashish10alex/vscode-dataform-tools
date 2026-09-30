@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import * as vscode from 'vscode';
-import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta } from "../utils";
+import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
@@ -242,6 +242,12 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         }
     };
 
+    setOnStartupCompileSettled(() => {
+        refreshCompiledQueryPanel()
+            .then(() => CompiledQueryPanel.centerPanel?.postChangedActions(false))
+            .catch((error) => logger.error(`Failed to refresh the panel after the startup compilation: ${error}`));
+    });
+
     setOnCompilationInfoChanged((info) => {
         CompiledQueryPanel?.centerPanel?.postMessage({ compilationInfo: info });
     });
@@ -333,6 +339,8 @@ export class CompiledQueryPanel {
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
+        // An outdated saved compilation is shown straight away; the startup compile redraws the panel when it finishes
+        const renderFresh = freshCompilation && !isCompilationStale();
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
@@ -341,7 +349,7 @@ export class CompiledQueryPanel {
                 }
                 return;
             }
-            CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
+            CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, renderFresh);
             CompiledQueryPanel.centerPanel.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         } else {
             const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
@@ -397,7 +405,7 @@ export class CompiledQueryPanel {
                     ],
                 }
             );
-            CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
+            CompiledQueryPanel.centerPanel = new CompiledQueryPanel(panel, extensionUri, extensionContext, forceShowInVeritcalSplit, currentFileMetadata, renderFresh);
         }
     }
 
@@ -655,6 +663,10 @@ export class CompiledQueryPanel {
                 const selectedTags: string[] = message.value.selectedTags;
                 const includeDependenciesCost = message.value.includeDependencies;
                 const includeDependentsCost = message.value.includeDependents;
+                const costWorkspaceFolder = await getWorkspaceFolder();
+                if (costWorkspaceFolder) {
+                    await ensureFreshCompilation(costWorkspaceFolder);
+                }
                 if(CACHED_COMPILED_DATAFORM_JSON){
                     logger.debug('Using cached compilation for tag cost estimation');
                     const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTags, includeDependenciesCost, includeDependentsCost);
@@ -1069,7 +1081,7 @@ export class CompiledQueryPanel {
         }
 
         if(!curFileMeta){
-            curFileMeta = await getCurrentFileMetadata(true);
+            curFileMeta = await getCurrentFileMetadata(freshCompilation);
         }
 
         if(!curFileMeta){
@@ -1267,6 +1279,10 @@ export class CompiledQueryPanel {
                     "compiledQuerySchema": null,
                 });
 
+                if (isCompilationStale()) {
+                    await this.postMessage({ "dryRunning": false });
+                    return;
+                }
                 // Validation is a network round trip; do not hold up the render for it.
                 validatePropertyGraphs((message) => this.postMessage(message), propertyGraphs).catch((error) => {
                     logger.error(`Error validating property graphs: ${error}`);
@@ -1412,6 +1428,13 @@ export class CompiledQueryPanel {
             "isHelperFile": false,
             "workspaceFolder": workspaceFolder,
     });
+
+        if (isCompilationStale()) {
+            // Dry running outdated SQL would report errors and costs of queries that may no longer exist.
+            // The panel is redrawn, with a dry run, once the fresh compilation finishes.
+            await this.postMessage({ "dryRunning": false });
+            return;
+        }
 
         if(diagnosticCollection){
             diagnosticCollection.clear();

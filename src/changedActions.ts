@@ -9,7 +9,7 @@ import { logger } from './logger';
 import { describeComparison } from './shared/changeComparison';
 import { ChangedActionsView, DataformCompiledJson, ExecutionMode, LastRunRequest } from './types';
 import { ChangedAction, CompiledGraphDiff, diffCompiledGraphs } from './utils/compiledGraphDiff';
-import { compileDataform, getDataformCompilerOptions, parseCompiledString, runCompilation } from './utils/dataformCompiler';
+import { compileDataform, getDataformCompilerOptions, isCompilationStale, parseCompiledString, runCompilation } from './utils/dataformCompiler';
 import { compileRemoteCommit, isRemoteMode } from './utils/remoteCompiler';
 import { runIncludedTargets } from './utils/dataformHelpers';
 import { extractSnapshot, mirrorTree } from './utils/gitSnapshot';
@@ -271,7 +271,7 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
         return { status: 'unavailable' };
     }
     const head = CACHED_COMPILED_DATAFORM_JSON;
-    if (!head) {
+    if (!head || isCompilationStale()) {
         return { status: 'idle' };
     }
     try {

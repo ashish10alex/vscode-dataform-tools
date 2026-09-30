@@ -48,6 +48,15 @@ suite('compilationInfoFormat.compilationInfoParts', () => {
         assert.ok(tooltip.includes('Served from the cache'));
         assert.ok(tooltip.includes('Local HEAD differs from the compiled commit.'));
     });
+
+    test('saved CLI compile says cached and how to recompile, without mentioning pushed commits', () => {
+        const info = { backend: 'cli' as const, compiledAt: minutesAgo(90), fromCache: true, stale: true, staleReason: 'Project files changed since this compilation; recompiling' };
+        assert.deepStrictEqual(compilationInfoParts(info, NOW), ['CLI', 'cached', '2 h ago']);
+        const tooltip = compilationInfoTooltip(info);
+        assert.ok(tooltip.includes('Saved from an earlier session'));
+        assert.ok(!tooltip.includes('pushed commit'));
+        assert.ok(tooltip.includes('Project files changed since this compilation'));
+    });
 });
 
 suite('compilationInfoFormat.customCliLabel', () => {
