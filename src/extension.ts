@@ -92,13 +92,14 @@ export async function activate(context: vscode.ExtensionContext) {
     initChangedActions(context);
     initProdTargets(context);
 
+    const activationWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     for (let i = 0; i < executablesToCheck.length; i++) {
         let executable = executablesToCheck[i];
         if (executable === 'dataform' && isRemoteMode()) {
             continue; // Remote mode compiles with the Dataform API, the CLI is not needed
         }
         logger.debug(`Checking executable availability: ${executable}`);
-        executableIsAvailable(executable, true); // Show error if not found
+        executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
     }
 
     // Clean up on deactivation

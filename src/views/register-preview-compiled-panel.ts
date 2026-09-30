@@ -1015,7 +1015,7 @@ export class CompiledQueryPanel {
             if (executable === 'dataform' && isRemoteMode()) {
                 continue; // Remote mode compiles with the Dataform API, the CLI is not needed
             }
-            if (!executableIsAvailable(executable, false)) {
+            if (!executableIsAvailable(executable, false, workspaceFolder)) {
                 missingExecutables.push(executable);
             }
         }

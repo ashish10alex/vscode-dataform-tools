@@ -4,7 +4,7 @@ import path from 'path';
 import { logger } from '../logger';
 import { windowsDataformCliNotAvailableErrorMessage, linuxDataformCliNotAvailableErrorMessage } from '../constants';
 import { buildIndices } from './compiledJsonIndex';
-import { findExecutableInPaths } from './executableResolver';
+import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { DataformCompiledJson, GraphError } from '../types';
 import { getRemoteCompiledJson, isRemoteMode } from './remoteCompiler';
 import { setCompilationInfo } from './compilationInfo';
@@ -146,25 +146,6 @@ export function getDataformCompilerOptions() {
         return dataformCompilerOptions;
     }
     return "";
-}
-
-export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
-    const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
-    const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
-    logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
-
-    if (dataformCliScope === 'local') {
-        const dataformCliLocalScopePath = isRunningOnWindows
-            ? path.join('node_modules', '.bin', 'dataform.cmd')
-            : path.join('node_modules', '.bin', 'dataform');
-        const fullLocalPath = path.join(workspaceFolder, dataformCliLocalScopePath);
-        logger.debug(`Using local dataform CLI: ${fullLocalPath}`);
-        return fullLocalPath;
-    }
-
-    const resolvedPath = findExecutableInPaths('dataform') || dataformCliBase;
-    logger.debug(`Using global dataform CLI: ${resolvedPath}`);
-    return resolvedPath;
 }
 
 /** The Dataform CLI a compile will run, and whether it comes from PATH, the executable path setting or the project's node_modules. */
