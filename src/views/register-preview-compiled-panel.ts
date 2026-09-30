@@ -52,7 +52,7 @@ export async function refreshCompiledQueryPanel() {
     if (document) {
         activeDocumentObj = document;
     }
-    await panel.refreshFromCache(await getCurrentFileMetadata(false));
+    await panel.refreshFromCache(await getCurrentFileMetadata(false, { deferralInBackground: true }));
 }
 
 /**
@@ -187,7 +187,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 snoozeManager.markDirtyDuringSnooze();
                 return;
             }
-            let currentFileMetadata = await getCurrentFileMetadata(false);
+            let currentFileMetadata = await getCurrentFileMetadata(false, { deferralInBackground: true });
             updateSchemaAutoCompletions(currentFileMetadata);
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
         }
@@ -223,7 +223,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                     "dataformCoreVersion": dataformCoreVersion,
                     "relativeFilePath": getRelativePath(document.fileName),
                 });
-                let currentFileMetadata = await getCurrentFileMetadata(true);
+                let currentFileMetadata = await getCurrentFileMetadata(true, { deferralInBackground: true });
                 updateSchemaAutoCompletions(currentFileMetadata);
                 CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
             } else {
@@ -321,6 +321,8 @@ export class CompiledQueryPanel {
     /** Defer to prod state of the file shown; its Stale Deferral flags can arrive after it was posted */
     public deferral: CurrentFileMetadata["deferral"];
     private _cachedResults?: CachedResults;
+    /** Bumped by every render, so a render still waiting on defer to prod can tell it has been replaced */
+    private renderSeq = 0;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
         CompiledQueryPanel.registerListeners(this, extensionContext);
@@ -1019,6 +1021,7 @@ export class CompiledQueryPanel {
         if (this.centerPanelDisposed) {
             return;
         }
+        const renderId = ++this.renderSeq;
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
         const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
@@ -1081,7 +1084,7 @@ export class CompiledQueryPanel {
         }
 
         if(!curFileMeta){
-            curFileMeta = await getCurrentFileMetadata(freshCompilation);
+            curFileMeta = await getCurrentFileMetadata(freshCompilation, { deferralInBackground: true });
         }
 
         if(!curFileMeta){
@@ -1428,6 +1431,17 @@ export class CompiledQueryPanel {
             "isHelperFile": false,
             "workspaceFolder": workspaceFolder,
     });
+
+        logger.debug(`Compiled query panel rendered ${curFileMeta.pathMeta?.relativeFilePath}${curFileMeta.deferralPending ? ", waiting for defer to prod" : ""}`);
+        if (curFileMeta.deferralPending) {
+            // The SQL is on screen; redraw it with the deferral applied, and dry run that, once the lookup finishes
+            const resolved = await curFileMeta.deferralPending;
+            if (renderId !== this.renderSeq || this.centerPanelDisposed) {
+                return; // Another file or compile is being shown by now
+            }
+            logger.debug(`Defer to prod resolved for ${curFileMeta.pathMeta?.relativeFilePath}, redrawing`);
+            return this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, { ...curFileMeta, ...resolved, deferralPending: undefined }, false);
+        }
 
         if (isCompilationStale()) {
             // Dry running outdated SQL would report errors and costs of queries that may no longer exist.
