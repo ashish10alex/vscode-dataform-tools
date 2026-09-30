@@ -101,7 +101,7 @@ export async function replayRun(context: vscode.ExtensionContext, workspaceFolde
             await runTagWtApi(context, items, includeDependencies, includeDependents, fullRefresh, executionMode);
             return;
         case 'changed':
-            await runChangedActions(context, workspaceFolder, includeDependencies, includeDependents, fullRefresh, executionMode, request.files);
+            await runChangedActions(context, workspaceFolder, includeDependencies, includeDependents, fullRefresh, executionMode, request.files, true);
             return;
     }
 }

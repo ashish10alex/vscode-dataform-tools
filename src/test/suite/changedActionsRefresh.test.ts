@@ -53,24 +53,30 @@ suite('changedActions.selectChangedFiles', () => {
     test('runs every changed action when no files were picked', () => {
         const selection = selectChangedFiles(changed, undefined);
         assert.strictEqual(selection.actions.length, 4);
-        assert.strictEqual(selection.subset, false);
+        assert.strictEqual(selection.scoped, false);
         assert.strictEqual(selection.changedFileCount, 3);
     });
 
     test('keeps every action of the picked files, and actions without a file under their shared key', () => {
         const selection = selectChangedFiles(changed, ['definitions/gen.js', '(unknown file)']);
         assert.deepStrictEqual(selection.actions.map((a) => a.target), ['p.d.a', 'p.d.b', 'p.d.x']);
-        assert.strictEqual(selection.subset, true);
+        assert.strictEqual(selection.scoped, true);
     });
 
-    test('is not a subset when every changed file was picked', () => {
-        assert.strictEqual(selectChangedFiles(changed, ['definitions/orders.sqlx', 'definitions/gen.js', '(unknown file)', 'definitions/old.sqlx']).subset, false);
+    test('is not scoped when every changed file was picked', () => {
+        assert.strictEqual(selectChangedFiles(changed, ['definitions/orders.sqlx', 'definitions/gen.js', '(unknown file)', 'definitions/old.sqlx']).scoped, false);
     });
 
     test('leaves out files that became changed after the pick', () => {
         const selection = selectChangedFiles([...changed, action('new', 'definitions/new.sqlx')], ['definitions/orders.sqlx', 'definitions/gen.js', '(unknown file)']);
         assert.ok(!selection.actions.some((a) => a.target === 'p.d.new'));
-        assert.strictEqual(selection.subset, true);
+        assert.strictEqual(selection.scoped, true);
+    });
+
+    test('stays scoped on a rerun of files recorded by a run that left some out', () => {
+        const selection = selectChangedFiles(changed, ['definitions/orders.sqlx', 'definitions/gen.js', '(unknown file)'], true);
+        assert.strictEqual(selection.actions.length, 4);
+        assert.strictEqual(selection.scoped, true);
     });
 
     test('selects nothing when the picked files no longer have changes', () => {

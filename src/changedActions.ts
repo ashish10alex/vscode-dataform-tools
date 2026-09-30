@@ -307,22 +307,26 @@ export async function prepareChangedActions(workspaceFolder: string): Promise<Ch
 
 export interface ChangedFileSelection {
     actions: ChangedAction[];
-    /** True when some changed file was left out, so a rerun must keep to the same files */
-    subset: boolean;
+    /** A rerun must keep to the same files: some changed file was left out, or the files came from such a run */
+    scoped: boolean;
     /** How many files have changed actions */
     changedFileCount: number;
 }
 
-/** The changed actions in `files` (keyed by `changedFileKey`), or all of them when `files` is undefined. */
-export function selectChangedFiles(changed: ChangedAction[], files: string[] | undefined): ChangedFileSelection {
+/**
+ * The changed actions in `files` (keyed by `changedFileKey`), or all of them when `files` is undefined.
+ * `replayed` marks files recorded by a run that left some out: they stay the scope even when every file
+ * with changes right now is among them, so a file left out that changes again later still does not run.
+ */
+export function selectChangedFiles(changed: ChangedAction[], files: string[] | undefined, replayed = false): ChangedFileSelection {
     const changedFiles = new Set(changed.map((action) => changedFileKey(action.fileName)));
     if (!files) {
-        return { actions: changed, subset: false, changedFileCount: changedFiles.size };
+        return { actions: changed, scoped: false, changedFileCount: changedFiles.size };
     }
     const selected = new Set(files);
     return {
         actions: changed.filter((action) => selected.has(changedFileKey(action.fileName))),
-        subset: [...changedFiles].some((file) => !selected.has(file)),
+        scoped: replayed || [...changedFiles].some((file) => !selected.has(file)),
         changedFileCount: changedFiles.size,
     };
 }
@@ -330,6 +334,7 @@ export function selectChangedFiles(changed: ChangedAction[], files: string[] | u
 /**
  * Runs the changed actions of `result`, or says there are none. With `files`, only the changes in those
  * files run; files that became changed since they were picked are left out, so nothing runs unseen.
+ * `replayed` is set when `files` come from the last run, see `selectChangedFiles`.
  */
 export async function dispatchChangedActions(
     context: vscode.ExtensionContext,
@@ -340,12 +345,13 @@ export async function dispatchChangedActions(
     fullRefresh: boolean,
     executionMode: ExecutionMode,
     files?: string[],
+    replayed = false,
 ): Promise<void> {
     if (result.changed.length === 0) {
         vscode.window.showInformationMessage(noChangesMessage(result));
         return;
     }
-    const { actions, subset, changedFileCount } = selectChangedFiles(result.changed, files);
+    const { actions, scoped, changedFileCount } = selectChangedFiles(result.changed, files, replayed);
     if (actions.length === 0) {
         vscode.window.showInformationMessage(`None of the selected files still have changes ${describeComparison(result.headRef, result.baseRef)}, so nothing was run.`);
         return;
@@ -353,7 +359,7 @@ export async function dispatchChangedActions(
     const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = {
         kind: 'changed',
         items: actions.map((action) => action.target),
-        ...(subset && files ? { files, changedFileCount } : {}),
+        ...(scoped && files ? { files, changedFileCount } : {}),
         baseRef: result.baseRef,
         headRef: result.headRef,
         includeDependencies,
@@ -377,10 +383,11 @@ export async function runChangedActions(
     fullRefresh: boolean,
     executionMode: ExecutionMode,
     files?: string[],
+    replayed = false,
 ): Promise<ChangedActionsResult | undefined> {
     const result = await prepareChangedActions(workspaceFolder);
     if (result) {
-        await dispatchChangedActions(context, workspaceFolder, result, includeDependencies, includeDependents, fullRefresh, executionMode, files);
+        await dispatchChangedActions(context, workspaceFolder, result, includeDependencies, includeDependents, fullRefresh, executionMode, files, replayed);
     }
     return result;
 }

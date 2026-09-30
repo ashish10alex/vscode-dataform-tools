@@ -199,20 +199,22 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const changedGroups = useMemo(() => groupByFile(changed), [changed]);
   const deletedGroups = useMemo(() => groupByFile(deleted), [deleted]);
 
-  // A file that drops out of the change set is forgotten, so it comes back included if it changes again
+  // A file that drops out of the change set is forgotten, so it comes back included if it changes again.
+  // Only a finished result counts: while recomputing there is no list, and the selection must survive it.
+  const status = changedActions?.status;
   useEffect(() => {
+    if (status !== "ready") { return; }
     setUncheckedFiles((prev) => {
       const present = new Set(changedGroups.map(([fileName]) => fileName));
       const next = new Set([...prev].filter((fileName) => present.has(fileName)));
       return next.size === prev.size ? prev : next;
     });
-  }, [changedGroups]);
+  }, [changedGroups, status]);
 
-  if (!changedActions || changedActions.status === "unavailable") {
+  if (!changedActions || status === "unavailable") {
     return null;
   }
 
-  const status = changedActions.status;
   const baseRef = changedActions.baseRef ?? "default branch";
   const headRef = changedActions.headRef;
   const comparison = describeComparison(headRef, baseRef);
