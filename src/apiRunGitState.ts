@@ -1,11 +1,13 @@
 import { execFile } from 'child_process';
 import util from 'util';
 import { logger } from './logger';
+import { perfCount, perfTimed } from './perf';
 import { ApiRunGitState, DATAFORM_PROJECT_PATHSPECS, parseNameStatusZ, parseStatusPorcelainZ } from './shared/apiRunGitState';
 
 const execFilePromise = util.promisify(execFile);
 
 async function git(cwd: string, args: string[]): Promise<string> {
+    perfCount('git.spawn');
     const { stdout } = await execFilePromise('git', args, { cwd, maxBuffer: 16 * 1024 * 1024 });
     return stdout;
 }
@@ -33,6 +35,10 @@ async function resolveRemoteBranch(cwd: string, branch: string): Promise<string 
 
 /** What a Dataform API run of `workspaceFolder`'s current branch would leave out. */
 export async function computeApiRunGitState(workspaceFolder: string): Promise<ApiRunGitState> {
+    return perfTimed('gitState', () => readApiRunGitState(workspaceFolder));
+}
+
+async function readApiRunGitState(workspaceFolder: string): Promise<ApiRunGitState> {
     const prefix = await tryGit(workspaceFolder, ['rev-parse', '--show-prefix']);
     if (prefix === undefined) {
         return { kind: 'unavailable' };

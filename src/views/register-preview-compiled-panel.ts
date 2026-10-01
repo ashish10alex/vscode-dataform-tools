@@ -11,6 +11,7 @@ import { currencySymbolMapping, executablesToCheck } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
+import { PerfSpan, perfStart, perfTimed } from "../perf";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
@@ -103,6 +104,7 @@ async function validatePropertyGraphs(postMessage: (message: unknown) => Thenabl
 }
 
 async function updateSchemaAutoCompletions(currentFileMetadata:any) {
+    const endSpan = perfStart('schemaFetch');
     let allSchemaCompletions: SchemaMetadata[] = [];
 
     if (currentFileMetadata?.fileMetadata?.tables) {
@@ -120,7 +122,12 @@ async function updateSchemaAutoCompletions(currentFileMetadata:any) {
         }));
     }
     schemaAutoCompletions = allSchemaCompletions;
+    endSpan({ columns: allSchemaCompletions.length });
 }
+
+// The save / editor switch that is about to render: armed right before `getInstance` so that the render it
+// starts, and not one already in flight, ends the span
+let armedPreviewSpan: ((attrs?: PerfSpan['attrs']) => void) | undefined;
 
 function getLastRunView() {
     return buildLastRunView(getLastRun(), isRemoteMode(), globalThis.compilerOptionsMap);
@@ -187,8 +194,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 snoozeManager.markDirtyDuringSnooze();
                 return;
             }
+            const endSwitchSpan = perfStart('switchPreview');
             let currentFileMetadata = await getCurrentFileMetadata(false, { deferralInBackground: true });
             updateSchemaAutoCompletions(currentFileMetadata);
+            armedPreviewSpan = endSwitchSpan;
             CompiledQueryPanel.getInstance(context.extensionUri, context, false, true, currentFileMetadata);
         }
     }, globalThis.DEBOUNCE_WAIT);
@@ -196,7 +205,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
 
 
-    const triggerCompilationForDocument = async (document: vscode.TextDocument) => {
+    const triggerCompilationForDocument = async (document: vscode.TextDocument, spanName: string = 'recompilePreview') => {
+        const endPreviewSpan = perfStart(spanName);
         const fileExtension = document.fileName.split('.').pop();
         const fileName = path.basename(document.fileName, '.' + fileExtension);
         const isConfigFile = fileName === 'workflow_settings' || fileName === 'dataform' || (fileName === 'package' && fileExtension === 'json');
@@ -225,6 +235,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 });
                 let currentFileMetadata = await getCurrentFileMetadata(true, { deferralInBackground: true });
                 updateSchemaAutoCompletions(currentFileMetadata);
+                armedPreviewSpan = endPreviewSpan;
                 CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, currentFileMetadata);
             } else {
                 showLoadingProgress(
@@ -286,7 +297,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             return;
         }
 
-        await triggerCompilationForDocument(document);
+        await triggerCompilationForDocument(document, 'savePreview');
     }, globalThis.DEBOUNCE_WAIT);
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(debouncedSaveHandler));
@@ -1019,6 +1030,18 @@ export class CompiledQueryPanel {
 
     //@ts-ignore
     private async sendUpdateToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined, freshCompilation: boolean = true) {
+        const endPreviewSpan = armedPreviewSpan;
+        armedPreviewSpan = undefined;
+        const endRenderSpan = perfStart('render');
+        try {
+            return await this.renderToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, curFileMeta, freshCompilation);
+        } finally {
+            endRenderSpan();
+            endPreviewSpan?.();
+        }
+    }
+
+    private async renderToView(showCompiledQueryInVerticalSplitOnSave:boolean | undefined, forceShowInVeritcalSplit:boolean, curFileMeta:CurrentFileMetadata|undefined, freshCompilation: boolean = true): Promise<vscode.Webview | void> {
         if (this.centerPanelDisposed) {
             return;
         }
@@ -1474,8 +1497,8 @@ export class CompiledQueryPanel {
         const testQueriesMeta: { name: string; testQuery: string; expectedOutputQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.testQueries ?? [];
 
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
-            dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document, diagnosticCollection, false),
-            tablesForLastModified.length > 0 ? getModelLastModifiedTime(tablesForLastModified.map((table) => table.target)) : Promise.resolve([]),
+            perfTimed('dryRuns', () => dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document!, diagnosticCollection, false)),
+            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map((table) => table.target))) : Promise.resolve([]),
         ]);
         if (dryRunResults.accessDeniedTargets.length > 0) {
             // Read again so the prod tables we cannot read keep their dev refs, then show and dry run that

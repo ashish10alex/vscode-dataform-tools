@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { logger } from '../logger';
+import { perfCount } from '../perf';
 import { cacheDurationMs } from '../constants';
 import { ExecutablePathCache, ExecutablePathInfo } from '../types';
 
@@ -117,6 +118,7 @@ function findExecutableInSystemPath(executableName: string): string | null {
         const command = isRunningOnWindows ? 'where' : 'which';
         logger.debug(`Searching for ${executableName} using '${command}' command`);
 
+        perfCount('which.execSync');
         const result = execSync(`${command} ${executableName}`, {
             encoding: 'utf8',
             timeout: 5000,

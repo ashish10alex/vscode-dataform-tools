@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { load as loadYaml, YAMLException } from 'js-yaml';
 import { logger } from '../logger';
+import { perfTimed } from '../perf';
 import { GitService } from '../gitClient';
 import { DataformTools } from "@ashishalex/dataform-tools";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
@@ -156,7 +157,7 @@ function deferFileMetadataFor(isConfigFile: boolean, fileMetadata: Parameters<ty
     if (isConfigFile) {
         return {};
     }
-    const deferral = deferFileMetadata(fileMetadata, compiledJson, workspaceFolder);
+    const deferral = perfTimed('deferral', () => deferFileMetadata(fileMetadata, compiledJson, workspaceFolder), { background: deferralInBackground });
     if (!deferralInBackground) {
         return deferral;
     }
@@ -165,6 +166,10 @@ function deferFileMetadataFor(isConfigFile: boolean, fileMetadata: Parameters<ty
 }
 
 export async function getCurrentFileMetadata(freshCompilation: boolean, options: { deferralInBackground?: boolean } = {}): Promise<CurrentFileMetadata | undefined> {
+    return perfTimed('fileMetadata', () => readCurrentFileMetadata(freshCompilation, options), { fresh: freshCompilation });
+}
+
+async function readCurrentFileMetadata(freshCompilation: boolean, options: { deferralInBackground?: boolean }): Promise<CurrentFileMetadata | undefined> {
     const deferralInBackground = options.deferralInBackground ?? false;
     let document = activeDocumentObj || vscode.window.activeTextEditor?.document;
     if (!document) {

@@ -3,6 +3,7 @@ import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './b
 import { bigQueryDryRunCostOneGiBByCurrency } from './constants';
 import { formatTimestamp } from './utils';
 import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency, Target } from './types';
+import { perfCount } from './perf';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -29,6 +30,7 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
         };
     }
 
+    perfCount('bq.dryRun');
     const errorMessage = await checkAuthentication();
 
     const bigqueryClient = getBigQueryClient();
@@ -127,6 +129,7 @@ export async function getModelLastModifiedTime(targetTablesOrViews: Target[]): P
         const tableId = targetTableOrView.name;
 
         try {
+            perfCount('bq.tableGet');
             const [table] = await bigqueryClient.dataset(datasetId, { projectId }).table(tableId).get();
             let lastModifiedTime = table?.metadata?.lastModifiedTime;
             lastModifiedTime = new Date(parseInt(lastModifiedTime));

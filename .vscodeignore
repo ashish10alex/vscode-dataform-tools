@@ -52,3 +52,7 @@ AGENTS.md
 justfile
 release-please-config.json
 .release-please-manifest.json
+
+# Benchmark scripts and results
+scripts/**
+bench-results/**
