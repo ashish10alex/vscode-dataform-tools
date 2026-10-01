@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { spawn } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 import path from 'path';
 import { logger } from '../logger';
 import { perfCount, perfStart, perfTimed } from '../perf';
@@ -177,15 +177,15 @@ function describeDataformCli(workspaceFolder: string): { cliPath: string, cliSou
  */
 type CliCompileOutput = { compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined };
 
-export function compileDataform(workspaceFolder: string, compilerOptionsOverride?: string): Promise<CliCompileOutput> {
+export function compileDataform(workspaceFolder: string, compilerOptionsOverride?: string, onSpawn?: (child: ChildProcess) => void): Promise<CliCompileOutput> {
     perfCount('cli.compile');
     const endSpan = perfStart('compile', { override: compilerOptionsOverride !== undefined });
-    const compilation = spawnDataformCompile(workspaceFolder, compilerOptionsOverride);
+    const compilation = spawnDataformCompile(workspaceFolder, compilerOptionsOverride, onSpawn);
     compilation.then(() => endSpan(), () => endSpan({ failed: true }));
     return compilation;
 }
 
-function spawnDataformCompile(workspaceFolder: string, compilerOptionsOverride?: string): Promise<CliCompileOutput> {
+function spawnDataformCompile(workspaceFolder: string, compilerOptionsOverride?: string, onSpawn?: (child: ChildProcess) => void): Promise<CliCompileOutput> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     const isOverride = compilerOptionsOverride !== undefined;
     let dataformCompilerOptions = isOverride ? compilerOptionsOverride.trim() : getDataformCompilerOptions();
@@ -199,7 +199,9 @@ function spawnDataformCompile(workspaceFolder: string, compilerOptionsOverride?:
         let spawnedProcess;
         let customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
         logger.debug(`customDataformCliPath: ${customDataformCliPath}`);
-        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions, "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true });
+        // Its own process group outside Windows, so killProcessTree can stop the CLI's compile worker too
+        spawnedProcess = spawn(customDataformCliPath, ["compile", '"' + workspaceFolder + '"', ...compilerOptions, "--json", `--timeout=${dataformCompilationTimeoutVal}`], { shell: true, detached: !isRunningOnWindows });
+        onSpawn?.(spawnedProcess);
 
         let stdOut = '';
         let errorOutput = '';
@@ -294,6 +296,24 @@ type CompilationResult = { dataformCompiledJson: DataformCompiledJson | undefine
 
 /** Bumped by every CLI compile, so a slower earlier compile cannot replace the result of a later one */
 let latestCompileId = 0;
+/** The CLI compile of the project in flight. A later one kills it and hands its callers the later result */
+let cliCompileInFlight: { child?: ChildProcess, handOver?: Promise<CompilationResult> } | undefined;
+
+/** Stops a CLI compile and the compile worker it forked */
+function killProcessTree(child: ChildProcess) {
+    if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) {
+        return;
+    }
+    try {
+        if (isRunningOnWindows) {
+            spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+        } else {
+            process.kill(-child.pid, 'SIGTERM');
+        }
+    } catch (error) {
+        logger.debug(`Could not stop a superseded compilation: ${error}`);
+    }
+}
 /**
  * Answers a compile whose inputs have not changed since without running the CLI: the compilation loaded
  * from disk on startup, the outcome of the startup compile, or the last successful compile. A failure is
@@ -318,15 +338,44 @@ function currentFingerprint(workspaceFolder: string): Promise<CompileFingerprint
     return computeCompileFingerprint(workspaceFolder, getDataformCliCmdBasedOnScope(workspaceFolder), getDataformCompilerOptions());
 }
 
-async function compileWithCli(workspaceFolder: string, fingerprint?: CompileFingerprint): Promise<CompilationResult> {
+function compileWithCli(workspaceFolder: string, fingerprint?: CompileFingerprint): Promise<CompilationResult> {
+    const previous = cliCompileInFlight;
+    const current: NonNullable<typeof cliCompileInFlight> = {};
+    cliCompileInFlight = current;
+    const result = runCliCompile(workspaceFolder, fingerprint, current).then((compiled) => {
+        // Killed or overtaken by a later compile: its callers get the later, more current result
+        return current.handOver ?? compiled;
+    }).finally(() => {
+        if (cliCompileInFlight === current) {
+            cliCompileInFlight = undefined;
+        }
+    });
+    if (previous) {
+        previous.handOver = result;
+        if (previous.child) {
+            logger.debug('Stopping a compilation that a later one replaces');
+            killProcessTree(previous.child);
+        }
+    }
+    return result;
+}
+
+async function runCliCompile(workspaceFolder: string, fingerprint: CompileFingerprint | undefined, inFlight: NonNullable<typeof cliCompileInFlight>): Promise<CompilationResult> {
     const compileId = ++latestCompileId;
     reusable = undefined;
     let compiled: Awaited<ReturnType<typeof compileDataform>>;
     let dataformCompiledJson: DataformCompiledJson | undefined;
     try {
-        compiled = await compileDataform(workspaceFolder);
+        compiled = await compileDataform(workspaceFolder, undefined, (child) => { inFlight.child = child; });
+        if (inFlight.handOver) {
+            // Killed: its output is incomplete
+            return { dataformCompiledJson: undefined, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined };
+        }
         dataformCompiledJson = compiled.compiledString ? parseCompiledString(compiled.compiledString) : undefined;
     } catch (error: any) {
+        if (inFlight.handOver) {
+            return { dataformCompiledJson: undefined, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined };
+        }
         // A CLI that fails to start, or output that does not parse, is a failed compile like any other: a rejection
         // would leave compiles joined on the startup compile failing, and the outdated saved compilation in use
         logger.error(`Dataform CLI compilation failed: ${error?.message ?? error}`);

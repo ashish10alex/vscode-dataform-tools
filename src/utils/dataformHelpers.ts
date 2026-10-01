@@ -17,7 +17,8 @@ import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
 import { clearIndices } from './compiledJsonIndex';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
-import { deferFileMetadata, prepareDeferral } from '../defer';
+import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
+import { proxyViewsMayExist } from '../defer/proxyViews';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -142,8 +143,11 @@ function deferFileMetadataFor(isConfigFile: boolean, fileMetadata: Parameters<ty
     if (isConfigFile) {
         return {};
     }
-    const deferral = perfTimed('deferral', () => deferFileMetadata(fileMetadata, compiledJson, workspaceFolder), { background: deferralInBackground });
-    if (!deferralInBackground) {
+    // Only worth a background lookup (and a second render of the panel) when it can take a while: with defer to
+    // prod off and no proxy views to look for, it returns straight away
+    const inBackground = deferralInBackground && (isDeferEnabled(workspaceFolder) || proxyViewsMayExist());
+    const deferral = perfTimed('deferral', () => deferFileMetadata(fileMetadata, compiledJson, workspaceFolder), { background: inBackground });
+    if (!inBackground) {
         return deferral;
     }
     // Nobody awaits it when the panel shows an error instead, so it must not reject

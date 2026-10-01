@@ -2,7 +2,6 @@ import { queryDryRun } from "./bigqueryDryRun";
 import * as vscode from 'vscode';
 import { Assertion, DataformCompiledJson, TagDryRunStats, TagDryRunStatsMeta, Operation, Table, Target, SupportedCurrency } from "./types";
 
-const MAX_DRY_RUN_CONCURRENCY = 10;
 
 const createFullTargetName = (target: Target) => {
     return `${target.database}.${target.schema}.${target.name}`;
@@ -74,13 +73,8 @@ async function getModelDryRunStats(filteredModels: Table[] | Operation[] | Asser
     };
     });
 
-    const results: TagDryRunStats[] = [];
-    for (let i = 0; i < modelFns.length; i += MAX_DRY_RUN_CONCURRENCY) {
-        const chunk = modelFns.slice(i, i + MAX_DRY_RUN_CONCURRENCY);
-        const chunkResults = await Promise.all(chunk.map(fn => fn()));
-        results.push(...chunkResults);
-    }
-    return results;
+    // queryDryRun limits how many run at once
+    return Promise.all(modelFns.map(fn => fn()));
 }
 
 export async function costEstimator(jsonData: DataformCompiledJson, selectedTags: string[], includeDependencies: boolean = false, includeDependents: boolean = false): Promise<TagDryRunStatsMeta|undefined>  {
@@ -177,22 +171,13 @@ export async function costEstimator(jsonData: DataformCompiledJson, selectedTags
             targetSet.has(createFullTargetName(assertion.target))
         );
 
-        let allResults = [];
-
-        if(filteredTables?.length > 0){
-            const tableResults = await getModelDryRunStats(filteredTables, undefined);
-            allResults.push(...tableResults);
-        }
-
-        if(filteredAssertions?.length > 0){
-            const assertionResults = await getModelDryRunStats(filteredAssertions, "assertion");
-            allResults.push(...assertionResults);
-        }
-
-        if(filteredOperations?.length > 0){
-            const operationResults = await getModelDryRunStats(filteredOperations, "operation");
-            allResults.push(...operationResults);
-        }
+        // Tables, assertions and operations share the dry run pool rather than waiting for each other
+        const [tableResults, assertionResults, operationResults] = await Promise.all([
+            filteredTables.length > 0 ? getModelDryRunStats(filteredTables, undefined) : [],
+            filteredAssertions.length > 0 ? getModelDryRunStats(filteredAssertions, "assertion") : [],
+            filteredOperations.length > 0 ? getModelDryRunStats(filteredOperations, "operation") : [],
+        ]);
+        const allResults = [...tableResults, ...assertionResults, ...operationResults];
         return {
             tagDryRunStatsList: allResults,
             error: undefined,

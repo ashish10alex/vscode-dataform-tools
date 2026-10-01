@@ -229,6 +229,13 @@ export async function getDevLastModified(targets: Target[], routines: Set<string
     return times;
 }
 
+/** Bumped whenever cached lookups are dropped, so results built on them can tell they are out of date */
+let existenceGeneration = 0;
+
+export function getTableExistenceGeneration(): number {
+    return existenceGeneration;
+}
+
 /** Records Prod Targets that a query was denied access to. Returns true when any of them is new. */
 export function markProdUnreadable(targets: Target[]): boolean {
     let added = false;
@@ -239,10 +246,14 @@ export function markProdUnreadable(targets: Target[]): boolean {
             added = true;
         }
     }
+    if (added) {
+        existenceGeneration++;
+    }
     return added;
 }
 
 export function clearTableExistenceCache(options: { includeUnreadable: boolean }) {
+    existenceGeneration++;
     devDatasets.clear();
     prodTables.clear();
     devLastModified.clear();
