@@ -1,4 +1,4 @@
-import { ColumnLink, DependencyType, LineageDirection, TraceFocus, TraceSource } from './types';
+import { ColumnLink, DependencyType, ImpactEntry, LineageDirection, TraceFocus, TraceSource } from './types';
 
 // Example lineage for previewing the trace panel in a plain browser, where there is no Dataplex to ask.
 
@@ -43,6 +43,15 @@ export const SAMPLE_FOCUS: TraceFocus = {
     table: `${PROJECT}.marts.fct_daily_revenue`,
     column: 'revenue_usd',
     change: { kind: 'dropped' },
+};
+
+/** A sample impact check on the focus table: one dropped column with readers, one retyped column with none */
+export const SAMPLE_IMPACT: { table: string; entries: ImpactEntry[] } = {
+    table: SAMPLE_FOCUS.table,
+    entries: [
+        { column: 'revenue_usd', change: { kind: 'dropped' }, copies: 1, derived: 2, mayRead: 1 },
+        { column: 'order_count', change: { kind: 'typeChanged', from: 'INT64', to: 'STRING' }, copies: 0, derived: 0, mayRead: 0 },
+    ],
 };
 
 function withoutProject(table: string): string {

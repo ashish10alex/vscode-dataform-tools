@@ -1,7 +1,8 @@
 import type { WebviewApi } from 'vscode-webview';
 import type { HostToViewMessage, ViewToHostMessage } from '../../src/shared/columnLineage/types';
 import { TraceController } from '../../src/shared/columnLineage/traceController';
-import { SAMPLE_FOCUS, SampleTraceSource, resolveSampleFile } from '../../src/shared/columnLineage/sampleSource';
+import { SAMPLE_FOCUS, SAMPLE_IMPACT, SampleTraceSource, resolveSampleFile } from '../../src/shared/columnLineage/sampleSource';
+import type { ImpactView } from '../../src/shared/columnLineage/types';
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
@@ -34,11 +35,35 @@ function standaloneBridge(): Bridge {
         (state) => listeners.forEach((listener) => listener({ type: 'trace', state })),
         resolveSampleFile,
     );
+    const emit = (message: HostToViewMessage) => listeners.forEach((listener) => listener(message));
+    // `#impact` previews impact mode: a short "checking" state, then the sample changes with the first one traced
+    let impact: ImpactView | null = null;
+    const select = (column: string) => {
+        const entry = SAMPLE_IMPACT.entries.find((candidate) => candidate.column === column);
+        if (!entry || !impact) {
+            return;
+        }
+        impact = { ...impact, selected: column };
+        emit({ type: 'impact', impact });
+        void controller.open({ table: SAMPLE_IMPACT.table, column, change: entry.change });
+    };
+    const checkImpact = () => {
+        impact = { status: 'loading', entries: [] };
+        emit({ type: 'trace', state: null });
+        emit({ type: 'impact', impact });
+        setTimeout(() => {
+            impact = { status: 'ready', table: SAMPLE_IMPACT.table, entries: SAMPLE_IMPACT.entries, checkedAt: Date.now() };
+            emit({ type: 'impact', impact });
+            select(SAMPLE_IMPACT.entries[0].column);
+        }, 700);
+    };
     return {
         hosted: false,
         post(message) {
             switch (message.type) {
-                case 'webviewReady': void controller.open(SAMPLE_FOCUS); break;
+                case 'webviewReady': location.hash === '#impact' ? checkImpact() : void controller.open(SAMPLE_FOCUS); break;
+                case 'selectImpact': select(message.column); break;
+                case 'recheckImpact': checkImpact(); break;
                 case 'expand': void controller.expand(message.nodeId); break;
                 case 'setUpstream': void controller.setUpstream(message.on); break;
                 case 'refresh': void controller.refresh(); break;

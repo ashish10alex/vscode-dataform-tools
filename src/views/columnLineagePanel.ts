@@ -5,7 +5,9 @@ import { logger } from '../logger';
 import { getNonce, getWorkspaceFolder, openFileOnLeftEditorPane } from '../utils';
 import { TraceController } from '../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource, resolveSampleFile } from '../shared/columnLineage/sampleSource';
-import { TraceFocus, TraceSource, ViewToHostMessage } from '../shared/columnLineage/types';
+import { HostToViewMessage, ImpactView, TraceFocus, TraceSource, ViewToHostMessage } from '../shared/columnLineage/types';
+import { DataplexTraceSource } from '../columnLineage/dataplexSource';
+import { ImpactAnalysis, toImpactEntries } from '../columnLineage/impactReport';
 
 function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'column_lineage.js'));
@@ -29,7 +31,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     `;
 }
 
-/** One trace panel, reused for each column traced */
+/** One trace panel, reused for each column traced. In impact mode it also lists the columns changed against prod. */
 export class ColumnLineagePanel {
     private static current: ColumnLineagePanel | undefined;
 
@@ -37,6 +39,12 @@ export class ColumnLineagePanel {
     private resolveFile: (table: string) => string | undefined = () => undefined;
     private ready = false;
     private pendingFocus: TraceFocus | undefined;
+
+    private impact: ImpactView | null = null;
+    private runImpact: (() => Promise<ImpactAnalysis>) | undefined;
+    private analysis: ImpactAnalysis | undefined;
+    /** Bumped per impact check, so a slow check doesn't overwrite a newer one */
+    private impactRun = 0;
 
     private constructor(private readonly panel: vscode.WebviewPanel) {
         panel.webview.onDidReceiveMessage((message: ViewToHostMessage) => this.handle(message));
@@ -47,22 +55,16 @@ export class ColumnLineagePanel {
         });
     }
 
-    /** Traces `focus`, by default the made-up sample project */
-    static show(
-        context: vscode.ExtensionContext,
-        focus: TraceFocus = SAMPLE_FOCUS,
-        source: TraceSource = new SampleTraceSource(),
-        resolveFile: (table: string) => string | undefined = resolveSampleFile,
-    ) {
+    private static open(context: vscode.ExtensionContext, title: string): ColumnLineagePanel {
         const existing = ColumnLineagePanel.current;
         if (existing) {
+            existing.panel.title = title;
             existing.panel.reveal(vscode.ViewColumn.Beside);
-            existing.trace(focus, source, resolveFile);
-            return;
+            return existing;
         }
         const panel = vscode.window.createWebviewPanel(
             'dataformColumnTrace',
-            `Trace: ${focus.column}`,
+            title,
             vscode.ViewColumn.Beside,
             {
                 enableScripts: true,
@@ -71,17 +73,84 @@ export class ColumnLineagePanel {
             },
         );
         panel.webview.html = getHtml(context, panel.webview);
-        const created = new ColumnLineagePanel(panel);
-        ColumnLineagePanel.current = created;
-        created.trace(focus, source, resolveFile);
+        ColumnLineagePanel.current = new ColumnLineagePanel(panel);
+        return ColumnLineagePanel.current;
+    }
+
+    /** Traces `focus`, by default the made-up sample project */
+    static show(
+        context: vscode.ExtensionContext,
+        focus: TraceFocus = SAMPLE_FOCUS,
+        source: TraceSource = new SampleTraceSource(),
+        resolveFile: (table: string) => string | undefined = resolveSampleFile,
+    ) {
+        const panel = ColumnLineagePanel.open(context, `Trace: ${focus.column}`);
+        panel.runImpact = undefined;
+        panel.setImpact(null);
+        panel.trace(focus, source, resolveFile);
+    }
+
+    /** Runs a column impact check and shows its changed columns, tracing the first one with readers */
+    static showImpact(context: vscode.ExtensionContext, run: () => Promise<ImpactAnalysis>) {
+        const panel = ColumnLineagePanel.open(context, 'Column impact');
+        panel.runImpact = run;
+        void panel.checkImpact();
+    }
+
+    private post(message: HostToViewMessage) {
+        if (this.ready) {
+            void this.panel.webview.postMessage(message);
+        }
+    }
+
+    private setImpact(impact: ImpactView | null) {
+        this.impact = impact;
+        this.post({ type: 'impact', impact });
+    }
+
+    private async checkImpact() {
+        if (!this.runImpact) {
+            return;
+        }
+        const run = ++this.impactRun;
+        this.controller = undefined;
+        this.pendingFocus = undefined;
+        this.post({ type: 'trace', state: null });
+        this.setImpact({ status: 'loading', entries: [] });
+        try {
+            const analysis = await this.runImpact();
+            if (run !== this.impactRun) {
+                return;
+            }
+            this.analysis = analysis;
+            const entries = toImpactEntries(analysis);
+            const first = entries.find((entry) => entry.copies + entry.derived + entry.mayRead > 0) ?? entries[0];
+            this.setImpact({ status: 'ready', table: analysis.table, entries, message: analysis.note, checkedAt: Date.now() });
+            if (first) {
+                this.selectImpact(first.column);
+            }
+        } catch (error: any) {
+            if (run === this.impactRun) {
+                this.setImpact({ status: 'error', entries: [], message: error?.message ?? String(error), checkedAt: Date.now() });
+            }
+        }
+    }
+
+    private selectImpact(column: string) {
+        const entry = this.impact?.entries.find((candidate) => candidate.column === column);
+        if (!entry || !this.analysis || !this.impact) {
+            return;
+        }
+        this.setImpact({ ...this.impact, selected: column });
+        const source = new DataplexTraceSource(this.analysis.schemas, this.analysis.index);
+        this.trace({ table: this.analysis.table, column, change: entry.change }, source, source.resolveFile);
     }
 
     private trace(focus: TraceFocus, source: TraceSource, resolveFile: (table: string) => string | undefined) {
-        this.panel.title = `Trace: ${focus.column}`;
         this.resolveFile = resolveFile;
         this.controller = new TraceController(
             source,
-            (state) => void this.panel.webview.postMessage({ type: 'trace', state }),
+            (state) => this.post({ type: 'trace', state }),
             resolveFile,
         );
         if (!this.ready) {
@@ -95,6 +164,7 @@ export class ColumnLineagePanel {
         switch (message.type) {
             case 'webviewReady': {
                 this.ready = true;
+                this.post({ type: 'impact', impact: this.impact });
                 const state = this.controller?.current;
                 if (this.pendingFocus) {
                     const focus = this.pendingFocus;
@@ -102,7 +172,7 @@ export class ColumnLineagePanel {
                     await this.controller?.open(focus);
                 } else if (state) {
                     // The webview reloaded; send what we have
-                    void this.panel.webview.postMessage({ type: 'trace', state });
+                    this.post({ type: 'trace', state });
                 }
                 break;
             }
@@ -117,6 +187,12 @@ export class ColumnLineagePanel {
                 break;
             case 'openFile':
                 await this.openFile(message.nodeId);
+                break;
+            case 'selectImpact':
+                this.selectImpact(message.column);
+                break;
+            case 'recheckImpact':
+                await this.checkImpact();
                 break;
         }
     }

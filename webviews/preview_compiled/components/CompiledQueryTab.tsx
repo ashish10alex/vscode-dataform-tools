@@ -13,6 +13,7 @@ import { DeferralBanner } from "./DeferralBanner";
 import {
   Play,
   Network,
+  GitCompareArrows,
   ListTree,
   Eye,
   ShieldCheck,
@@ -253,6 +254,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   const handlePreviewResults = () => {
     vscode.postMessage({ command: "previewResults", value: true });
+  };
+
+  // One table, view or incremental table: the actions whose schema can be compared with prod
+  const tableTargets = (state.targetTablesOrViews ?? []).filter((target: { type?: string }) => target?.type !== "test");
+  const canCheckColumnImpact = tableTargets.length === 1 && ["table", "view", "incremental"].includes(tableTargets[0]?.type);
+
+  const handleColumnImpact = () => {
+    vscode.postMessage({ command: "checkColumnImpact" });
   };
 
   const handleDependencyGraph = () => {
@@ -624,6 +633,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               <button onClick={handlePreviewResults} disabled={state.recompiling} className={SECONDARY_BUTTON} title="Preview the query results">
                   <Eye className="w-4 h-4 mr-1.5" /> Preview Data
               </button>
+              {canCheckColumnImpact && (
+                  <button
+                      onClick={handleColumnImpact}
+                      disabled={state.recompiling || state.dryRunning}
+                      className={SECONDARY_BUTTON}
+                      title="Compare this dry run with prod and show which downstream columns still read a dropped or retyped column (Dataplex lineage)"
+                  >
+                      <GitCompareArrows className="w-4 h-4 mr-1.5" /> Column impact
+                  </button>
+              )}
           </div>
 
           {/* Run controls with the modifiers they consume, on their own row so they stay together however the panel wraps */}

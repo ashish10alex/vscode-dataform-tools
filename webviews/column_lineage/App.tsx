@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controls, Edge, Node, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import type { TraceState } from '../../src/shared/columnLineage/types';
+import type { ImpactEntry, ImpactView, TraceState } from '../../src/shared/columnLineage/types';
 import { copiesOnly, expandDirection, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
 import { Bridge, createBridge } from './bridge';
 import { layoutTrace, laneLabel, NODE_WIDTH } from './layout';
@@ -216,9 +216,83 @@ function Toolbar({ state, bridge, onlyCopies, setOnlyCopies }: { state: TraceSta
     );
 }
 
+function changeLabel(entry: ImpactEntry): string {
+    return entry.change.kind === 'dropped' ? 'dropped' : `${entry.change.from} → ${entry.change.to}`;
+}
+
+function readerSummary(entry: ImpactEntry): string {
+    const parts = [
+        entry.copies ? `${entry.copies} cop${entry.copies === 1 ? 'y' : 'ies'}` : '',
+        entry.derived ? `${entry.derived} derived or filtered` : '',
+        entry.mayRead ? `${entry.mayRead} may read` : '',
+    ].filter(Boolean);
+    return parts.length ? parts.join(' · ') : 'No readers in Dataplex';
+}
+
+function ImpactSidebar({ impact, bridge }: { impact: ImpactView; bridge: Bridge }) {
+    const now = useNow(15000);
+    const table = impact.table?.split('.').slice(1).join('.');
+    return (
+        <aside className="ln-sidebar" aria-label="Columns changed against prod">
+            <div className="ln-side-head">
+                <span className="ln-eyebrow">Changes against prod</span>
+                {table && <span className="ln-side-table" title={impact.table}>{table}</span>}
+            </div>
+            {impact.status === 'loading' && (
+                <div className="ln-side-status" role="status"><span className="ln-spinner" aria-hidden="true" /> Comparing with prod and reading lineage…</div>
+            )}
+            {impact.status === 'error' && <div className="ln-side-status ln-side-error" role="alert">{impact.message}</div>}
+            {impact.status === 'ready' && impact.entries.length === 0 && <div className="ln-side-status">{impact.message}</div>}
+            {impact.entries.length > 0 && (
+                <ul className="ln-impact-list">
+                    {impact.entries.map((entry) => {
+                        const unread = entry.copies + entry.derived + entry.mayRead === 0;
+                        return (
+                            <li key={entry.column}>
+                                <button
+                                    type="button"
+                                    className={`ln-impact ${entry.column === impact.selected ? 'is-selected' : ''} ${unread ? 'is-unread' : ''}`}
+                                    aria-pressed={entry.column === impact.selected}
+                                    onClick={() => bridge.post({ type: 'selectImpact', column: entry.column })}
+                                >
+                                    <span className="ln-impact-row">
+                                        <span className="ln-impact-col">{entry.column}</span>
+                                        <span className="ln-chip ln-chip-warn">{changeLabel(entry)}</span>
+                                    </span>
+                                    <span className="ln-impact-counts">{readerSummary(entry)}</span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+            <div className="ln-side-foot">
+                <button type="button" className="ln-button" disabled={impact.status === 'loading'} onClick={() => bridge.post({ type: 'recheckImpact' })}>
+                    Check again
+                </button>
+                {impact.checkedAt && <span>{formatAgo(impact.checkedAt, now).replace('updated', 'checked')}</span>}
+            </div>
+        </aside>
+    );
+}
+
+function emptyMainText(impact: ImpactView | null): string {
+    if (!impact) {
+        return 'Loading column trace…';
+    }
+    if (impact.status === 'loading') {
+        return 'Comparing the dry run with prod…';
+    }
+    if (impact.status === 'error') {
+        return 'The column impact check could not run.';
+    }
+    return impact.entries.length ? 'Pick a column to trace its readers.' : 'Nothing to trace.';
+}
+
 export default function App() {
     const [bridge, setBridge] = useState<Bridge>();
-    const [state, setState] = useState<TraceState>();
+    const [state, setState] = useState<TraceState | null>(null);
+    const [impact, setImpact] = useState<ImpactView | null>(null);
     const [onlyCopies, setOnlyCopies] = useState(false);
 
     useEffect(() => {
@@ -231,6 +305,8 @@ export default function App() {
             unsubscribe = created.subscribe((message) => {
                 if (message.type === 'trace') {
                     setState(message.state);
+                } else if (message.type === 'impact') {
+                    setImpact(message.impact);
                 }
             });
             setBridge(created);
@@ -242,12 +318,12 @@ export default function App() {
         };
     }, []);
 
-    if (!bridge || !state) {
+    if (!bridge) {
         return <div className="ln-loading" role="status">Loading column trace…</div>;
     }
 
-    return (
-        <div className="ln-app">
+    const main = state ? (
+        <>
             <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} />
             {state.sourceKind === 'sample' && (
                 <div className="ln-banner" role="note">
@@ -264,6 +340,19 @@ export default function App() {
             <ReactFlowProvider>
                 <Trace state={state} bridge={bridge} onlyCopies={onlyCopies} />
             </ReactFlowProvider>
+        </>
+    ) : (
+        <div className="ln-main-empty" role="status">{emptyMainText(impact)}</div>
+    );
+
+    return (
+        <div className="ln-app">
+            {impact ? (
+                <div className="ln-split">
+                    <ImpactSidebar impact={impact} bridge={bridge} />
+                    <div className="ln-main">{main}</div>
+                </div>
+            ) : main}
         </div>
     );
 }

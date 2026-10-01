@@ -42,7 +42,7 @@ import { createDependencyInspectorPanel } from './views/dependency-inspector-pan
 import { ColumnLineagePanel } from './views/columnLineagePanel';
 import { GraphSampleSource, focusFromEditor } from './columnLineage/graphSampleSource';
 import { DataplexTraceSource } from './columnLineage/dataplexSource';
-import { ImpactPayload, columnImpactCodeActions, initColumnImpact, refreshColumnImpact } from './columnLineage/impactCheck';
+import { analyzeColumnImpact } from './columnLineage/impactReport';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
@@ -169,12 +169,14 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceImpactedColumn', (payload: ImpactPayload) => {
-        const source = new DataplexTraceSource(payload.schemas, payload.index);
-        ColumnLineagePanel.show(context, payload.focus, source, source.resolveFile);
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.checkColumnImpact', () => {
+        const document = vscode.window.activeTextEditor?.document ?? activeDocumentObj;
+        if (!document) {
+            vscode.window.showInformationMessage('Open a .sqlx file to check its column impact.');
+            return;
+        }
+        ColumnLineagePanel.showImpact(context, () => analyzeColumnImpact(document));
     }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.refreshColumnImpact', (uri: vscode.Uri) => refreshColumnImpact(uri)));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineageGuessed', async () => {
         const picked = await focusFromEditor(false);
@@ -287,8 +289,6 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(dataformCodeActionProviderDisposable());
-    initColumnImpact(context);
-    context.subscriptions.push(columnImpactCodeActions());
 
     context.subscriptions.push(sourcesAutoCompletionDisposable());
     context.subscriptions.push(schemaAutoCompletionDisposable());

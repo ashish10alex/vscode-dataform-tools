@@ -8,7 +8,7 @@ import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset 
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
 import { handleAccessDenied } from '../defer';
-import { checkColumnImpact, clearColumnImpact } from '../columnLineage/impactCheck';
+import { forgetDryRunSchema, recordDryRunSchema } from '../columnLineage/impactReport';
 import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
 import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 
@@ -168,12 +168,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         };
     }
 
-    // Column impact against prod runs in the background on the schema the dry run returned
+    // Kept for the on-demand column impact check, so it can compare with prod without another dry run
     const impactSchema = type === "incremental" ? nonIncrementalDryRunResult.schema : dryRunResult.schema;
     if (dryRunResult.error.hasError || (type === "incremental" && nonIncrementalDryRunResult.error.hasError) || !impactSchema) {
-        clearColumnImpact(document.uri);
+        forgetDryRunSchema(document);
     } else {
-        void checkColumnImpact(curFileMeta, document, impactSchema);
+        recordDryRunSchema(document, curFileMeta, impactSchema);
     }
 
     // check if we need to handle errors from non incremental query here

@@ -67,11 +67,39 @@ export interface TraceState {
     fetchedAt?: number;
 }
 
-export type HostToViewMessage = { type: 'trace'; state: TraceState };
+/** One column that changed against prod, with what Dataplex shows still reads it */
+export interface ImpactEntry {
+    column: string;
+    change: ColumnChange;
+    /** Readers that copy the column */
+    copies: number;
+    /** Readers that use it in an expression, filter or join */
+    derived: number;
+    /** Readers known only at table level */
+    mayRead: number;
+}
+
+export interface ImpactView {
+    status: 'loading' | 'ready' | 'error';
+    /** Prod Target the dry run was compared with */
+    table?: string;
+    entries: ImpactEntry[];
+    selected?: string;
+    /** Why there is nothing to list, or what went wrong */
+    message?: string;
+    checkedAt?: number;
+}
+
+export type HostToViewMessage =
+    /** null clears the trace, e.g. while an impact check has nothing to trace */
+    | { type: 'trace'; state: TraceState | null }
+    | { type: 'impact'; impact: ImpactView | null };
 
 export type ViewToHostMessage =
     | { type: 'webviewReady' }
     | { type: 'expand'; nodeId: string }
     | { type: 'setUpstream'; on: boolean }
     | { type: 'refresh' }
-    | { type: 'openFile'; nodeId: string };
+    | { type: 'openFile'; nodeId: string }
+    | { type: 'selectImpact'; column: string }
+    | { type: 'recheckImpact' };

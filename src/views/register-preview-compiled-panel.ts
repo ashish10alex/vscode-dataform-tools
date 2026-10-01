@@ -587,6 +587,9 @@ export class CompiledQueryPanel {
               case 'dependencyInspector':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyInspector");
                 return;
+              case 'checkColumnImpact':
+                await vscode.commands.executeCommand("vscode-dataform-tools.checkColumnImpact");
+                return;
               case 'previewResults':
                 if(message.value){
                     await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
