@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controls, Edge, Node, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import type { TraceState } from '../../src/shared/columnLineage/types';
-import { expandDirection, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
+import { copiesOnly, expandDirection, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
 import { Bridge, createBridge } from './bridge';
 import { layoutTrace, laneLabel, NODE_WIDTH } from './layout';
 import { LaneNode, LaneNodeData, LineageNode, LineageNodeData } from './LineageNode';
@@ -49,14 +49,15 @@ function Legend() {
     return (
         <div className="ln-legend" aria-label="Edge legend">
             {line('copy', 'copy')}
-            {line('xform', 'transformed')}
+            {line('xform', 'derived or filtered')}
             {line('table', 'table-level only')}
         </div>
     );
 }
 
-function Trace({ state, bridge }: { state: TraceState; bridge: Bridge }) {
+function Trace({ state: fullState, bridge, onlyCopies }: { state: TraceState; bridge: Bridge; onlyCopies: boolean }) {
     const [hovered, setHovered] = useState<string | undefined>();
+    const state = useMemo(() => (onlyCopies ? copiesOnly(fullState) : fullState), [fullState, onlyCopies]);
     const { fitView } = useReactFlow();
     const seenEdges = useRef(new Set<string>());
     const now = useNow(15000);
@@ -125,8 +126,9 @@ function Trace({ state, bridge }: { state: TraceState; bridge: Bridge }) {
         return () => clearTimeout(timer);
     }, [lanes.length, fitView]);
 
-    const focus = state.nodes.find((node) => node.id === focusNodeId(state));
-    const noReaders = !!focus?.expanded && !state.edges.some((edge) => edge.source === focus.id);
+    const focus = fullState.nodes.find((node) => node.id === focusNodeId(fullState));
+    const noReaders = !!focus?.expanded && !fullState.edges.some((edge) => edge.source === focus.id);
+    const hiddenByFilter = fullState.nodes.length - state.nodes.length;
 
     return (
         <div className="ln-canvas">
@@ -154,6 +156,11 @@ function Trace({ state, bridge }: { state: TraceState; bridge: Bridge }) {
                     <span>Dataplex keeps 30 days of run history and can't see BI tools or notebooks, so this doesn't prove the column is unused.</span>
                 </div>
             )}
+            {onlyCopies && hiddenByFilter > 0 && (
+                <div className="ln-filter-note" role="status">
+                    Hiding {hiddenByFilter} column{hiddenByFilter === 1 ? '' : 's'} linked only as derived or filtered
+                </div>
+            )}
             <footer className="ln-footer">
                 <Legend />
                 <span className="ln-grow" />
@@ -167,7 +174,16 @@ function Trace({ state, bridge }: { state: TraceState; bridge: Bridge }) {
     );
 }
 
-function Toolbar({ state, bridge }: { state: TraceState; bridge: Bridge }) {
+function Switch({ checked, onChange, label, title }: { checked: boolean; onChange: () => void; label: string; title?: string }) {
+    return (
+        <button type="button" role="switch" aria-checked={checked} className="ln-switch" title={title} onClick={onChange}>
+            <span className="ln-switch-track" aria-hidden="true"><span className="ln-switch-thumb" /></span>
+            {label}
+        </button>
+    );
+}
+
+function Toolbar({ state, bridge, onlyCopies, setOnlyCopies }: { state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void }) {
     const { focus, upstreamShown } = state;
     const parts = focus.table.split('.');
     return (
@@ -187,16 +203,13 @@ function Toolbar({ state, bridge }: { state: TraceState; bridge: Bridge }) {
                 </span>
             </div>
             <div className="ln-actions">
-                <button
-                    type="button"
-                    role="switch"
-                    aria-checked={upstreamShown}
-                    className="ln-switch"
-                    onClick={() => bridge.post({ type: 'setUpstream', on: !upstreamShown })}
-                >
-                    <span className="ln-switch-track" aria-hidden="true"><span className="ln-switch-thumb" /></span>
-                    Show upstream
-                </button>
+                <Switch checked={upstreamShown} onChange={() => bridge.post({ type: 'setUpstream', on: !upstreamShown })} label="Show upstream" />
+                <Switch
+                    checked={onlyCopies}
+                    onChange={() => setOnlyCopies(!onlyCopies)}
+                    label="Copies only"
+                    title="Hide derived or filtered links. Dataplex reports columns used in filters and joins the same way as real transformations."
+                />
                 <button type="button" className="ln-button" onClick={() => bridge.post({ type: 'refresh' })}>Refresh</button>
             </div>
         </header>
@@ -206,6 +219,7 @@ function Toolbar({ state, bridge }: { state: TraceState; bridge: Bridge }) {
 export default function App() {
     const [bridge, setBridge] = useState<Bridge>();
     const [state, setState] = useState<TraceState>();
+    const [onlyCopies, setOnlyCopies] = useState(false);
 
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
@@ -234,7 +248,7 @@ export default function App() {
 
     return (
         <div className="ln-app">
-            <Toolbar state={state} bridge={bridge} />
+            <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} />
             {state.sourceKind === 'sample' && (
                 <div className="ln-banner" role="note">
                     <strong>Sample data.</strong> This is a made-up project for previewing the panel. Run the trace from a
@@ -248,7 +262,7 @@ export default function App() {
                 </div>
             )}
             <ReactFlowProvider>
-                <Trace state={state} bridge={bridge} />
+                <Trace state={state} bridge={bridge} onlyCopies={onlyCopies} />
             </ReactFlowProvider>
         </div>
     );

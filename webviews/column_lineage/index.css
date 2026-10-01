@@ -97,6 +97,13 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 }
 .ln-empty strong { color: var(--ln-fg); font-weight: 600; }
 
+.ln-filter-note {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  padding: 3px 10px; border-radius: 2px; font-size: 11.5px;
+  background: var(--ln-surface); border: 1px solid var(--ln-border); color: var(--ln-dim);
+  pointer-events: none;
+}
+
 /* lanes: one band per hop, with a ruler of ticks along the top edge */
 .ln-lane { background: var(--ln-lane); border-radius: 2px; pointer-events: none; position: relative; }
 .ln-lane::before {

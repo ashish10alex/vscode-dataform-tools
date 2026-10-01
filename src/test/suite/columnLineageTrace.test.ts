@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { addHop, canExpand, initialTraceState, pathToFocus, removeUpstream, traceNodeId } from '../../shared/columnLineage/traceGraph';
+import { addHop, canExpand, copiesOnly, initialTraceState, pathToFocus, removeUpstream, traceNodeId } from '../../shared/columnLineage/traceGraph';
 import { TraceController } from '../../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
@@ -57,6 +57,24 @@ suite('Column lineage trace graph', () => {
         state = addHop({ ...state, upstreamShown: true }, focusId, 'upstream', [{ table: 'p.s.t', column: 'w', dependencyType: 'OTHER' }]);
         assert.deepStrictEqual([...pathToFocus(state, 'p.a.t#x').nodes].sort(), [focusId, 'p.a.t#x'].sort());
         assert.deepStrictEqual([...pathToFocus(state, 'p.s.t#w').nodes].sort(), [focusId, 'p.s.t#w'].sort());
+    });
+
+    test('copies only keeps copy and table-level links, and the columns they still reach', () => {
+        let state: TraceState = addHop(initialTraceState(focus, 'sample'), focusId, 'downstream', [
+            { table: 'p.rpt.top_scorers', column: 'player_id', dependencyType: 'EXACT_COPY' },
+            { table: 'p.rpt.league_table', column: 'points', dependencyType: 'OTHER' },
+            { table: 'p.rpt.match_events', dependencyType: 'TABLE_ONLY' },
+        ]);
+        state = addHop(state, 'p.rpt.league_table#points', 'downstream', [{ table: 'p.rpt.season', column: 'points', dependencyType: 'EXACT_COPY' }]);
+        state = addHop({ ...state, upstreamShown: true }, focusId, 'upstream', [
+            { table: 'p.raw.matches', column: 'revenue', dependencyType: 'EXACT_COPY' },
+            { table: 'p.raw.matches', column: 'home_team', dependencyType: 'OTHER' },
+        ]);
+        const filtered = copiesOnly(state);
+        assert.deepStrictEqual(filtered.nodes.map((node) => node.id).sort(), [
+            focusId, 'p.raw.matches#revenue', 'p.rpt.match_events#', 'p.rpt.top_scorers#player_id',
+        ].sort());
+        assert.ok(filtered.edges.every((edge) => edge.dependencyType !== 'OTHER'));
     });
 
     test('removing upstream drops only the upstream side', () => {

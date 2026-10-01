@@ -12,7 +12,7 @@ export interface LineageEdgeData extends Record<string, unknown> {
 
 const LABELS: Record<DependencyType, string | undefined> = {
     EXACT_COPY: 'copy',
-    OTHER: 'transformed',
+    OTHER: 'derived or filtered',
     TABLE_ONLY: undefined,
 };
 
@@ -20,7 +20,7 @@ export const LineageEdge: React.FC<EdgeProps> = ({ id, sourceX, sourceY, targetX
     const { dependencyType, dimmed, highlighted, entering } = data as LineageEdgeData;
     const [path] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, curvature: 0.35 });
     // Curve midpoints bunch up near a column with many readers; just before the target the edge is level and alone
-    const labelX = targetX - 44;
+    const labelX = targetX - 56;
     const labelY = targetY;
     const label = LABELS[dependencyType];
     const kind = dependencyType === 'EXACT_COPY' ? 'copy' : dependencyType === 'OTHER' ? 'xform' : 'table';

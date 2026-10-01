@@ -143,3 +143,35 @@ export function pathToFocus(state: TraceState, nodeId: string): { nodes: Set<str
     }
     return { nodes, edges };
 }
+
+/**
+ * The trace with only straight-copy links (and table-level "may read" links), keeping the columns still
+ * connected to the focus. Dataplex reports filter and join columns as OTHER, the same as real
+ * transformations, so this is the way to see where a column's values are copied from and to.
+ */
+export function copiesOnly(state: TraceState): TraceState {
+    const edges = state.edges.filter((edge) => edge.dependencyType !== 'OTHER');
+    const focusId = focusNodeId(state);
+    const kept = new Set([focusId]);
+    const queue = [focusId];
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        const hop = state.nodes.find((node) => node.id === current)?.hop ?? 0;
+        // Walk away from the focus: downstream along outgoing edges, upstream along incoming ones
+        const next = [
+            ...(hop >= 0 ? edges.filter((edge) => edge.source === current).map((edge) => edge.target) : []),
+            ...(hop <= 0 ? edges.filter((edge) => edge.target === current).map((edge) => edge.source) : []),
+        ];
+        for (const id of next) {
+            if (!kept.has(id)) {
+                kept.add(id);
+                queue.push(id);
+            }
+        }
+    }
+    return {
+        ...state,
+        nodes: state.nodes.filter((node) => kept.has(node.id)),
+        edges: edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)),
+    };
+}
