@@ -1,9 +1,23 @@
-import { addHop, canExpand, expandDirection, focusNodeId, initialTraceState, removeUpstream, setNodeError, setNodeLoading } from './traceGraph';
-import { TraceFocus, TraceSource, TraceState } from './types';
+import { addHop, canExpand, expandDirection, focusNodeId, frontier, initialTraceState, removeUpstream, setNodeError, setNodeLoading } from './traceGraph';
+import { LineageDirection, TraceFocus, TraceSource, TraceState } from './types';
+
+/** Hops loaded automatically on each side, so the list is readable without clicking through it */
+export const AUTO_HOPS = 3;
+/** A hop wider than this isn't loaded automatically; "load next hop" fetches it */
+export const AUTO_FRONTIER_LIMIT = 25;
+/** Lineage lookups in flight at once while loading a hop */
+const HOP_CONCURRENCY = 6;
+
+async function inBatches<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
+    for (let i = 0; i < items.length; i += size) {
+        await Promise.all(items.slice(i, i + size).map(run));
+    }
+}
 
 /**
- * Drives a column trace: fetches one hop at a time from a {@link TraceSource} and reports each new state.
- * Has no VS Code dependency, so the extension host and the webview's standalone preview share it.
+ * Drives a column trace: fetches hops from a {@link TraceSource} and reports each new state. Opening loads a
+ * few hops downstream on its own; more come one level at a time. Has no VS Code dependency, so the extension
+ * host and the webview's standalone preview share it.
  */
 export class TraceController {
     private state: TraceState | undefined;
@@ -26,6 +40,33 @@ export class TraceController {
         state.nodes[0].filePath = this.resolveFile(focus.table);
         this.set(state);
         await this.fetch(focusNodeId(state), 'downstream');
+        await this.autoExpand('downstream');
+    }
+
+    /** Loads the next hop on one side: every column on its outermost hop that hasn't been expanded */
+    async expandLevel(direction: LineageDirection): Promise<void> {
+        if (!this.state) {
+            return;
+        }
+        const generation = this.generation;
+        const ids = frontier(this.state, direction).map((node) => node.id);
+        await inBatches(ids, HOP_CONCURRENCY, async (id) => {
+            if (generation === this.generation) {
+                await this.expand(id);
+            }
+        });
+    }
+
+    /** Loads up to {@link AUTO_HOPS} hops on a side, stopping at a hop wider than {@link AUTO_FRONTIER_LIMIT} */
+    private async autoExpand(direction: LineageDirection) {
+        const generation = this.generation;
+        for (let hop = 1; hop < AUTO_HOPS && this.state && generation === this.generation; hop++) {
+            const next = frontier(this.state, direction);
+            if (next.length === 0 || next.length > AUTO_FRONTIER_LIMIT) {
+                return;
+            }
+            await this.expandLevel(direction);
+        }
     }
 
     async expand(nodeId: string): Promise<void> {
@@ -46,6 +87,9 @@ export class TraceController {
         }
         this.set({ ...this.state, upstreamShown: true });
         await this.fetch(focusNodeId(this.state), 'upstream');
+        if (this.state?.upstreamShown) {
+            await this.autoExpand('upstream');
+        }
     }
 
     async refresh(): Promise<void> {

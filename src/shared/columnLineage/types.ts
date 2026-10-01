@@ -101,5 +101,6 @@ export type ViewToHostMessage =
     | { type: 'setUpstream'; on: boolean }
     | { type: 'refresh' }
     | { type: 'openFile'; nodeId: string }
+    | { type: 'expandLevel'; direction: LineageDirection }
     | { type: 'selectImpact'; column: string }
     | { type: 'recheckImpact' };

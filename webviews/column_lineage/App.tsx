@@ -7,6 +7,7 @@ import { Bridge, createBridge } from './bridge';
 import { layoutTrace, laneLabel, NODE_WIDTH } from './layout';
 import { LaneNode, LaneNodeData, LineageNode, LineageNodeData } from './LineageNode';
 import { LineageEdge, LineageEdgeData } from './LineageEdge';
+import { LineageList } from './LineageList';
 
 const nodeTypes = { lineage: LineageNode, lane: LaneNode };
 const SOURCE_LABELS: Record<TraceState['sourceKind'], string> = {
@@ -183,7 +184,23 @@ function Switch({ checked, onChange, label, title }: { checked: boolean; onChang
     );
 }
 
-function Toolbar({ state, bridge, onlyCopies, setOnlyCopies }: { state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void }) {
+type View = 'list' | 'graph';
+
+function ViewSwitch({ view, setView }: { view: View; setView: (view: View) => void }) {
+    return (
+        <div className="ln-segment" role="radiogroup" aria-label="Show as">
+            {(['list', 'graph'] as View[]).map((option) => (
+                <button key={option} type="button" role="radio" aria-checked={view === option} className={view === option ? 'is-on' : ''} onClick={() => setView(option)}>
+                    {option === 'list' ? 'List' : 'Graph'}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView }: {
+    state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void; view: View; setView: (view: View) => void;
+}) {
     const { focus, upstreamShown } = state;
     const parts = focus.table.split('.');
     return (
@@ -203,6 +220,7 @@ function Toolbar({ state, bridge, onlyCopies, setOnlyCopies }: { state: TraceSta
                 </span>
             </div>
             <div className="ln-actions">
+                <ViewSwitch view={view} setView={setView} />
                 <Switch checked={upstreamShown} onChange={() => bridge.post({ type: 'setUpstream', on: !upstreamShown })} label="Show upstream" />
                 <Switch
                     checked={onlyCopies}
@@ -294,6 +312,8 @@ export default function App() {
     const [state, setState] = useState<TraceState | null>(null);
     const [impact, setImpact] = useState<ImpactView | null>(null);
     const [onlyCopies, setOnlyCopies] = useState(false);
+    const [view, setView] = useState<View>('list');
+    const listState = useMemo(() => (state && onlyCopies ? copiesOnly(state) : state), [state, onlyCopies]);
 
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
@@ -324,7 +344,7 @@ export default function App() {
 
     const main = state ? (
         <>
-            <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} />
+            <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} view={view} setView={setView} />
             {state.sourceKind === 'sample' && (
                 <div className="ln-banner" role="note">
                     <strong>Sample data.</strong> This is a made-up project for previewing the panel. Run the trace from a
@@ -337,9 +357,13 @@ export default function App() {
                     matched by name against each table's schema. Use “Trace Column Lineage Under Cursor” for real lineage from Dataplex.
                 </div>
             )}
-            <ReactFlowProvider>
-                <Trace state={state} bridge={bridge} onlyCopies={onlyCopies} />
-            </ReactFlowProvider>
+            {view === 'list' && listState
+                ? <LineageList state={listState} bridge={bridge} />
+                : (
+                    <ReactFlowProvider>
+                        <Trace state={state} bridge={bridge} onlyCopies={onlyCopies} />
+                    </ReactFlowProvider>
+                )}
         </>
     ) : (
         <div className="ln-main-empty" role="status">{emptyMainText(impact)}</div>

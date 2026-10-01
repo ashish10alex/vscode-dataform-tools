@@ -65,6 +65,7 @@ function standaloneBridge(): Bridge {
                 case 'selectImpact': select(message.column); break;
                 case 'recheckImpact': checkImpact(); break;
                 case 'expand': void controller.expand(message.nodeId); break;
+                case 'expandLevel': void controller.expandLevel(message.direction); break;
                 case 'setUpstream': void controller.setUpstream(message.on); break;
                 case 'refresh': void controller.refresh(); break;
                 case 'openFile': console.log('Would open the file for', message.nodeId); break;

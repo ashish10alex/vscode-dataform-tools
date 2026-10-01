@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { addHop, canExpand, copiesOnly, initialTraceState, pathToFocus, removeUpstream, traceNodeId } from '../../shared/columnLineage/traceGraph';
+import { addHop, canExpand, copiesOnly, frontier, initialTraceState, pathToFocus, removeUpstream, traceNodeId, traceRows } from '../../shared/columnLineage/traceGraph';
 import { TraceController } from '../../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
@@ -88,20 +88,31 @@ suite('Column lineage trace graph', () => {
 });
 
 suite('Column lineage trace controller', () => {
-    test('opens on downstream readers, expands, and toggles upstream against the sample source', async () => {
+    test('opens with several hops loaded, lists them, and toggles upstream against the sample source', async () => {
         const states: TraceState[] = [];
         const controller = new TraceController(new SampleTraceSource([0, 0]), (state) => states.push(state));
         await controller.open(SAMPLE_FOCUS);
         const opened = controller.current!;
-        assert.strictEqual(opened.nodes.filter((node) => node.hop === 1).length, 4);
         assert.ok(states.some((state) => state.nodes[0].loading), 'reports a loading state before the links arrive');
+        assert.strictEqual(opened.nodes.filter((node) => node.hop === 1).length, 4);
+        assert.strictEqual(opened.nodes.filter((node) => node.hop === 2).length, 5, 'loads the second hop without being asked');
 
-        const dashboard = opened.nodes.find((node) => node.table.endsWith('revenue_dashboard'))!;
-        await controller.expand(dashboard.id);
-        assert.strictEqual(controller.current!.nodes.filter((node) => node.hop === 2).length, 2);
+        const rows = traceRows(opened, 'downstream');
+        assert.deepStrictEqual(rows.slice(0, 4).map((row) => [row.node.table.split('.').pop(), row.dependencyType]), [
+            ['revenue_dashboard', 'EXACT_COPY'],
+            ['monthly_close', 'OTHER'],
+            ['customer_ltv_features', 'OTHER'],
+            ['customer_events', 'TABLE_ONLY'],
+        ]);
+        assert.ok(rows.filter((row) => row.node.hop === 2).every((row) => row.via[0].hop === 1));
 
         await controller.setUpstream(true);
-        assert.strictEqual(controller.current!.nodes.filter((node) => node.hop === -1).length, 1);
+        const upstream = controller.current!;
+        assert.deepStrictEqual(upstream.nodes.filter((node) => node.hop < 0).map((node) => node.hop).sort(), [-1, -2, -2, -3]);
+        assert.strictEqual(frontier(upstream, 'upstream').length, 1, 'stops after three hops, leaving the next one to load on request');
+        await controller.expandLevel('upstream');
+        assert.strictEqual(frontier(controller.current!, 'upstream').length, 0);
+
         await controller.setUpstream(false);
         assert.strictEqual(controller.current!.nodes.filter((node) => node.hop < 0).length, 0);
     });

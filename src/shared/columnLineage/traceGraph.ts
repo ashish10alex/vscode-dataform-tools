@@ -1,4 +1,4 @@
-import { ColumnLink, LineageDirection, TraceFocus, TraceNode, TraceSource, TraceState } from './types';
+import { ColumnLink, DependencyType, LineageDirection, TraceFocus, TraceNode, TraceSource, TraceState } from './types';
 
 // Pure state transitions for a column trace. The trace grows outward from the focus column one hop at a time.
 
@@ -174,4 +174,46 @@ export function copiesOnly(state: TraceState): TraceState {
         nodes: state.nodes.filter((node) => kept.has(node.id)),
         edges: edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)),
     };
+}
+
+/** Columns on the outermost hop of one side that can still be expanded: what "load next hop" would fetch */
+export function frontier(state: TraceState, direction: LineageDirection): TraceNode[] {
+    const side = state.nodes.filter((node) => (direction === 'downstream' ? node.hop > 0 : node.hop < 0));
+    if (side.length === 0) {
+        return [];
+    }
+    const outer = direction === 'downstream' ? Math.max(...side.map((node) => node.hop)) : Math.min(...side.map((node) => node.hop));
+    return side.filter((node) => node.hop === outer && canExpand(node));
+}
+
+export interface TraceRow {
+    node: TraceNode;
+    /** How the column is linked to the one it comes through: the strongest link when there are several */
+    dependencyType: DependencyType;
+    /** The columns one hop closer to the focus that it links to */
+    via: TraceNode[];
+}
+
+const STRENGTH: Record<DependencyType, number> = { EXACT_COPY: 0, OTHER: 1, TABLE_ONLY: 2 };
+
+/** One row per column on a side, by hop, then copies first, then table and column name */
+export function traceRows(state: TraceState, direction: LineageDirection): TraceRow[] {
+    const byId = new Map(state.nodes.map((node) => [node.id, node]));
+    const rows: TraceRow[] = [];
+    for (const node of state.nodes) {
+        if (direction === 'downstream' ? node.hop <= 0 : node.hop >= 0) {
+            continue;
+        }
+        const closer = direction === 'downstream'
+            ? state.edges.filter((edge) => edge.target === node.id && byId.get(edge.source)?.hop === node.hop - 1).map((edge) => ({ edge, via: byId.get(edge.source)! }))
+            : state.edges.filter((edge) => edge.source === node.id && byId.get(edge.target)?.hop === node.hop + 1).map((edge) => ({ edge, via: byId.get(edge.target)! }));
+        if (closer.length === 0) {
+            continue;
+        }
+        const dependencyType = closer.map(({ edge }) => edge.dependencyType).sort((a, b) => STRENGTH[a] - STRENGTH[b])[0];
+        rows.push({ node, dependencyType, via: closer.map(({ via }) => via) });
+    }
+    return rows.sort((a, b) => Math.abs(a.node.hop) - Math.abs(b.node.hop)
+        || STRENGTH[a.dependencyType] - STRENGTH[b.dependencyType]
+        || `${a.node.table}.${a.node.column ?? ''}`.localeCompare(`${b.node.table}.${b.node.column ?? ''}`));
 }

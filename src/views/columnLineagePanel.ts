@@ -179,6 +179,9 @@ export class ColumnLineagePanel {
             case 'expand':
                 await this.controller?.expand(message.nodeId);
                 break;
+            case 'expandLevel':
+                await this.controller?.expandLevel(message.direction);
+                break;
             case 'setUpstream':
                 await this.controller?.setUpstream(message.on);
                 break;
