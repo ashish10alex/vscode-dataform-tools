@@ -39,6 +39,8 @@ import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
+import { ColumnLineagePanel } from './views/columnLineagePanel';
+import { focusFromEditor } from './columnLineage/graphSampleSource';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
@@ -155,6 +157,13 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.dependencyInspector', () => {
         const activeFilePath = vscode.window.activeTextEditor?.document?.uri?.fsPath;
         createDependencyInspectorPanel(context, activeFilePath ?? lastDataformFilePath);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineage', async () => {
+        const picked = await focusFromEditor();
+        if (picked) {
+            ColumnLineagePanel.show(context, picked.focus, picked.source, picked.source.resolveFile);
+        }
     }));
 
     const debouncedActiveEditorChange = debounce(async (editor: vscode.TextEditor | undefined) => {

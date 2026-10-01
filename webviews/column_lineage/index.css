@@ -1,0 +1,201 @@
+/* Column trace panel. Every colour and font comes from the VS Code theme; the fallbacks only apply when the
+   page is previewed in a plain browser. */
+:root {
+  --ln-bg: var(--vscode-editor-background, #1e1e1e);
+  --ln-fg: var(--vscode-foreground, #cccccc);
+  --ln-dim: var(--vscode-descriptionForeground, #9d9d9d);
+  --ln-border: var(--vscode-editorWidget-border, var(--vscode-widget-border, #454545));
+  --ln-surface: var(--vscode-editorWidget-background, #252526);
+  --ln-surface-hover: var(--vscode-list-hoverBackground, #2a2d2e);
+  --ln-lane: color-mix(in srgb, var(--ln-fg) 3.5%, transparent);
+  --ln-lane-focus: color-mix(in srgb, var(--ln-focus) 7%, transparent);
+  --ln-copy: var(--vscode-charts-blue, #3794ff);
+  --ln-xform: var(--vscode-charts-purple, #b180d7);
+  --ln-table: var(--vscode-descriptionForeground, #9d9d9d);
+  --ln-focus: var(--vscode-focusBorder, #007fd4);
+  --ln-warn: var(--vscode-editorWarning-foreground, #cca700);
+  --ln-error: var(--vscode-errorForeground, #f48771);
+  --ln-link: var(--vscode-textLink-foreground, #3794ff);
+  --ln-button-bg: var(--vscode-button-secondaryBackground, #3a3d41);
+  --ln-button-fg: var(--vscode-button-secondaryForeground, #ffffff);
+  --ln-button-hover: var(--vscode-button-secondaryHoverBackground, #45494e);
+  --ln-switch-on: var(--vscode-button-background, #0e639c);
+  --ln-banner-bg: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+  --ln-banner-border: var(--vscode-editorInfo-foreground, #3794ff);
+  --ln-mono: var(--vscode-editor-font-family, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  --ln-ui: var(--vscode-font-family, -apple-system, "Segoe UI", system-ui, sans-serif);
+  --ln-ui-size: var(--vscode-font-size, 13px);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--ln-bg); color: var(--ln-fg); font-family: var(--ln-ui); font-size: var(--ln-ui-size); }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; }
+
+.ln-app { height: 100%; display: flex; flex-direction: column; }
+.ln-loading { padding: 24px; color: var(--ln-dim); }
+.ln-grow { flex: 1; }
+.ln-dataset { color: var(--ln-dim); }
+
+/* ---------- toolbar ---------- */
+.ln-toolbar {
+  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--ln-border);
+}
+.ln-title { display: grid; gap: 2px; min-width: 0; }
+.ln-eyebrow { font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ln-dim); }
+.ln-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ln-title-col { margin: 0; font-family: var(--ln-mono); font-size: 17px; font-weight: 600; line-height: 1.3; }
+.ln-title-table { font-family: var(--ln-mono); font-size: 12px; overflow-wrap: anywhere; }
+.ln-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+.ln-button {
+  background: var(--ln-button-bg); color: var(--ln-button-fg);
+  border: 0; border-radius: 2px; padding: 4px 12px; cursor: pointer;
+}
+.ln-button:hover { background: var(--ln-button-hover); }
+
+.ln-switch { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 2px 4px; cursor: pointer; }
+.ln-switch-track {
+  width: 28px; height: 16px; border-radius: 8px; position: relative;
+  background: color-mix(in srgb, var(--ln-fg) 22%, transparent);
+  transition: background 160ms ease;
+}
+.ln-switch-thumb {
+  position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--ln-fg); transition: transform 160ms ease;
+}
+.ln-switch[aria-checked="true"] .ln-switch-track { background: var(--ln-switch-on); }
+.ln-switch[aria-checked="true"] .ln-switch-thumb { transform: translateX(12px); background: #fff; }
+
+.ln-banner {
+  margin: 10px 18px 0;
+  padding: 7px 12px;
+  background: var(--ln-banner-bg);
+  border-left: 2px solid var(--ln-banner-border);
+  color: var(--ln-dim);
+  line-height: 1.5;
+}
+.ln-banner strong { color: var(--ln-fg); font-weight: 600; }
+
+/* ---------- chips ---------- */
+.ln-chip {
+  font-size: 10.5px; line-height: 16px; padding: 0 6px; border-radius: 2px; white-space: nowrap;
+  border: 1px solid currentColor;
+}
+.ln-chip-warn { color: var(--ln-warn); }
+
+/* ---------- canvas ---------- */
+.ln-canvas { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ln-canvas .react-flow { flex: 1; background: transparent; }
+.ln-empty {
+  position: absolute; left: 50%; top: 58%; transform: translateX(-50%);
+  max-width: 420px; display: grid; gap: 4px; text-align: center;
+  color: var(--ln-dim); line-height: 1.5; pointer-events: none;
+}
+.ln-empty strong { color: var(--ln-fg); font-weight: 600; }
+
+/* lanes: one band per hop, with a ruler of ticks along the top edge */
+.ln-lane { background: var(--ln-lane); border-radius: 2px; pointer-events: none; position: relative; }
+.ln-lane::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--ln-fg) 22%, transparent) 0 1px, transparent 1px 12px);
+  mask-image: linear-gradient(180deg, #000, transparent);
+}
+.ln-lane-focus { background: var(--ln-lane-focus); }
+.ln-lane-label {
+  position: absolute; top: 16px; left: 26px;
+  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ln-dim);
+}
+
+/* nodes */
+.ln-node {
+  width: 248px; height: 74px;
+  display: grid; grid-template-rows: auto auto 1fr; gap: 1px;
+  padding: 7px 10px 6px;
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-border);
+  border-radius: 3px;
+  transition: opacity 180ms ease, border-color 180ms ease, background 180ms ease;
+  animation: ln-node-in 260ms ease-out backwards;
+}
+.ln-node:hover { background: var(--ln-surface-hover); }
+.ln-node.is-dim { opacity: 0.32; }
+.ln-node.is-hl { border-color: color-mix(in srgb, var(--ln-fg) 45%, var(--ln-border)); }
+.ln-focus {
+  border-color: var(--ln-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ln-focus) 22%, transparent);
+}
+.ln-tableOnly { background: transparent; border-style: dashed; }
+.ln-tableOnly .ln-col-unknown { font-family: var(--ln-ui); font-size: 12px; color: var(--ln-dim); }
+
+.ln-table { font-family: var(--ln-mono); font-size: 11px; color: var(--ln-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-col { font-family: var(--ln-mono); font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-foot { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ln-dim); min-width: 0; }
+.ln-file {
+  background: none; border: 0; padding: 0; cursor: pointer; color: var(--ln-link);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.ln-file:hover { text-decoration: underline; }
+.ln-outside { font-style: italic; }
+.ln-hop {
+  background: var(--ln-button-bg); color: var(--ln-button-fg);
+  border: 0; border-radius: 2px; padding: 0 7px; line-height: 17px; font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.ln-hop:hover { background: var(--ln-button-hover); }
+.ln-end { white-space: nowrap; }
+.ln-error { font-size: 11px; color: var(--ln-error); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-spinner {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--ln-fg) 25%, transparent); border-top-color: var(--ln-fg);
+  animation: ln-spin 700ms linear infinite;
+}
+.ln-handle { opacity: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; pointer-events: none; }
+
+/* edges: blue for a straight copy, purple for a transformation, dashed grey for a table-level link */
+.ln-edge { stroke-width: 1.5; transition: opacity 180ms ease, stroke-width 180ms ease; }
+.ln-edge-copy { stroke: var(--ln-copy); }
+.ln-edge-xform { stroke: var(--ln-xform); }
+.ln-edge-table { stroke: var(--ln-table); stroke-dasharray: 5 4; }
+.ln-edge.is-dim { opacity: 0.18; }
+.ln-edge.is-hl { stroke-width: 2.6; }
+.ln-edge-enter { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ln-draw 520ms cubic-bezier(.3,.7,.3,1) 80ms forwards; }
+
+.ln-edge-label {
+  position: absolute; pointer-events: none;
+  font-size: 10px; line-height: 15px; padding: 0 5px; border-radius: 2px;
+  background: var(--ln-bg); border: 1px solid currentColor;
+  transition: opacity 180ms ease;
+}
+.ln-edge-label-copy { color: var(--ln-copy); }
+.ln-edge-label-xform { color: var(--ln-xform); }
+.ln-edge-label.is-dim { opacity: 0.2; }
+
+/* footer */
+.ln-footer {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 18px; border-top: 1px solid var(--ln-border);
+  font-size: 11.5px; color: var(--ln-dim);
+}
+.ln-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.ln-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+/* react flow controls, themed */
+.ln-canvas .react-flow__controls { box-shadow: none; border: 1px solid var(--ln-border); border-radius: 2px; overflow: hidden; }
+.ln-canvas .react-flow__controls-button {
+  background: var(--ln-surface); border: 0; border-bottom: 1px solid var(--ln-border); color: var(--ln-fg); fill: var(--ln-fg);
+}
+.ln-canvas .react-flow__controls-button:hover { background: var(--ln-surface-hover); }
+.ln-canvas .react-flow__controls-button svg { fill: currentColor; }
+
+@keyframes ln-draw { to { stroke-dashoffset: 0; } }
+@keyframes ln-node-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes ln-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ln-node, .ln-edge-enter { animation: none; }
+  .ln-edge-enter { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .ln-spinner { animation-duration: 2s; }
+}

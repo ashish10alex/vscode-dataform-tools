@@ -28,6 +28,7 @@
 		"webviews/dependancy_graph/**/*",
 		"webviews/preview_compiled/**/*",
 		"webviews/dependency-inspector/**/*",
+		"webviews/column_lineage/**/*",
 		"src/globals.d.ts"
 	],
 	"exclude": [

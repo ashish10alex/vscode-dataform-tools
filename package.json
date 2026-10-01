@@ -222,6 +222,11 @@
                 "title": "Open Dependency Inspector"
             },
             {
+                "command": "vscode-dataform-tools.traceColumnLineage",
+                "category": "Dataform",
+                "title": "Trace Column Lineage Under Cursor (Sample Data)"
+            },
+            {
                 "command": "vscode-dataform-tools.formatDocument",
                 "category": "Dataform",
                 "title": "Format Document",
