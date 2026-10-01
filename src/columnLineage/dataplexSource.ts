@@ -102,7 +102,7 @@ export class DataplexTraceSource implements TraceSource {
             );
             return [...links, ...untracked.map((reader): ColumnLink => ({ table: reader, dependencyType: 'TABLE_ONLY' }))];
         } catch (error: any) {
-            throw new Error(describeError(error, project));
+            throw Object.assign(new Error(describeError(error, project)), { code: error?.code });
         }
     }
 

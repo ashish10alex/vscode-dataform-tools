@@ -17,9 +17,9 @@ export interface CteDefinition {
     scopeEnd: number;
 }
 
-type TokenKind = 'word' | 'quoted' | 'open' | 'close' | 'comma' | 'other';
+export type TokenKind = 'word' | 'quoted' | 'open' | 'close' | 'comma' | 'other';
 
-interface Token {
+export interface Token {
     kind: TokenKind;
     start: number;
     end: number;
@@ -29,6 +29,13 @@ interface Token {
 
 const WORD_CHAR = /[A-Za-z0-9_]/;
 const WHITESPACE = /\s/;
+
+/** Tokens of the top-level SQL. Comments are skipped; strings and `${...}` templates are single `other` tokens. */
+export function tokenizeSql(text: string): Token[] {
+    const segments: Token[][] = [];
+    scanSql(text, 0, false, segments);
+    return segments[0] ?? [];
+}
 
 export function findCtes(text: string): CteDefinition[] {
     const segments: Token[][] = [];

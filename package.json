@@ -232,6 +232,16 @@
                 "title": "Trace Column Lineage Under Cursor (Guessed From Dependency Graph)"
             },
             {
+                "command": "vscode-dataform-tools.traceImpactedColumn",
+                "category": "Dataform",
+                "title": "Trace Downstream Readers of a Changed Column"
+            },
+            {
+                "command": "vscode-dataform-tools.refreshColumnImpact",
+                "category": "Dataform",
+                "title": "Refresh Column Lineage"
+            },
+            {
                 "command": "vscode-dataform-tools.formatDocument",
                 "category": "Dataform",
                 "title": "Format Document",
@@ -402,6 +412,14 @@
         "menus": {
             "commandPalette": [
                 {
+                    "command": "vscode-dataform-tools.traceImpactedColumn",
+                    "when": "false"
+                },
+                {
+                    "command": "vscode-dataform-tools.refreshColumnImpact",
+                    "when": "false"
+                },
+                {
                     "command": "vscode-dataform-tools.runTests",
                     "when": "!vscode-dataform-tools.remoteMode"
                 },
@@ -466,6 +484,12 @@
                     "type": "string",
                     "default": "",
                     "markdownDescription": "Addition compiler options to pass to dataform cli commands e.g. --vars=someKey=someValue,a=b"
+                },
+                "vscode-dataform-tools.columnImpactCheck": {
+                    "type": "boolean",
+                    "default": true,
+                    "scope": "resource",
+                    "markdownDescription": "After a dry run, warn when a column dropped or retyped against the Prod Target is still read downstream, using Dataplex column lineage. Needs the Data Lineage API enabled and `roles/datalineage.viewer` on the prod project. Lineage covers the last 30 days of runs and arrives about two hours after a job runs."
                 },
                 "vscode-dataform-tools.deferToProd": {
                     "type": "boolean",
