@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.13.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.10...v1.13.11) (2026-10-01)
+
+
+### Features
+
+* choose which changed files Run Changed runs ([5e5abc2](https://github.com/ashish10alex/vscode-dataform-tools/commit/5e5abc23f54368906116837d257e4296ffe0f808))
+* reuse the last CLI compilation when the project has not changed ([8d23e9c](https://github.com/ashish10alex/vscode-dataform-tools/commit/8d23e9ccbdc246752c6a841d0acb37575057c682))
+* show the compiled query before defer to prod finishes its lookups ([6f9752c](https://github.com/ashish10alex/vscode-dataform-tools/commit/6f9752c2382ed51e9f5a72f13a3428bcce94d979))
+
+
+### Bug Fixes
+
+* count only picked files that still have changes in the rerun label ([411dc66](https://github.com/ashish10alex/vscode-dataform-tools/commit/411dc662460b32bc5105b8baf28ecb101106f618))
+* keep Run Changed file scope across reruns and recomputes ([6db51a8](https://github.com/ashish10alex/vscode-dataform-tools/commit/6db51a8dc1691486a2009b3f3c2c490a5b60f448))
+* show stale and built-in-dev defer hints on refs in the editor ([#393](https://github.com/ashish10alex/vscode-dataform-tools/issues/393)) ([292f38a](https://github.com/ashish10alex/vscode-dataform-tools/commit/292f38adfad29359101f23ae621217a2a0df33d9))
+* start Run Changed without recompiling an unchanged project ([8a5d0be](https://github.com/ashish10alex/vscode-dataform-tools/commit/8a5d0be2963fde423b673a4e5b140af7d228f5f9))
+* treat a CLI that fails to start as a failed compile, and ignore dotfiles ([daefd40](https://github.com/ashish10alex/vscode-dataform-tools/commit/daefd402e8f42b7c45551add51ec8a284414664f))
+* write the saved CLI compilation atomically ([4cdd7ac](https://github.com/ashish10alex/vscode-dataform-tools/commit/4cdd7ac985f79ab07e607c137aef1e7eb66604fd))
+
 ### [1.13.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.9...v1.13.10) (2026-09-30)
 
 
