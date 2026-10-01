@@ -162,7 +162,7 @@ async function findModuleVarDefinition(
     let jsFileWtSameNameUri;
 
     try {
-        const fileNames = fs.readdirSync(includesPath);
+        const fileNames = await fs.promises.readdir(includesPath);
         for (const fileName of fileNames) {
             if(fileName === jsFileName + ".js"){
                 const filePath = path.join(includesPath, fileName);
@@ -214,7 +214,7 @@ function extractFunctionName(functionString:string) {
 }
 
 
-export function findModuleDefinition(
+export async function findModuleDefinition(
         document: vscode.TextDocument,
         workspaceFolder: string,
         searchTerm: string
@@ -227,18 +227,9 @@ export function findModuleDefinition(
             return getLocationFromPath(locationPath);
         }
 
-        const files = fs.readdirSync(includesPath);
-        for (const file of files) {
-            const filePath = path.join(includesPath, file);
-            const stat = fs.statSync(filePath);
-            if (!stat.isFile()){
-                continue;
-            }
-            if (file === `${searchTerm}.js`) {
-                return getLocationFromPath(filePath);
-            }
-        }
-        return undefined;
+        const entries = await fs.promises.readdir(includesPath, { withFileTypes: true });
+        const file = entries.find((entry) => entry.isFile() && entry.name === `${searchTerm}.js`);
+        return file ? getLocationFromPath(path.join(includesPath, file.name)) : undefined;
 }
 export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(
@@ -250,19 +241,23 @@ export class DataformJsDefinitionProvider implements vscode.DefinitionProvider {
             return undefined;
         }
         const searchTerm = document.getText(wordRange);
+        const line = document.lineAt(position.line).text;
+        // Only a require() or a ${...} can lead to a definition: skip resolving the workspace for any other line
+        if (!line.includes('require("') && !line.includes('${')) {
+            return undefined;
+        }
         const workspaceFolder = await getWorkspaceFolder();
 
         // Return if no workspace folder is available
         if (!workspaceFolder) {
             return undefined;
         }
-        const line = document.lineAt(position.line).text;
         // const start = wordRange.start.character;
         // const end = wordRange.end.character;
 
         // This will often not be inside ${}, rather it will be inside js {}
         if (line.includes('require("')){
-            const position = findModuleDefinition(document, workspaceFolder, searchTerm);
+            const position = await findModuleDefinition(document, workspaceFolder, searchTerm);
             if (position){
                 return position;
             }

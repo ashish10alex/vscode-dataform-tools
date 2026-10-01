@@ -180,8 +180,18 @@ class DeferEditorHints {
 
 export function registerDeferEditorHints(context: vscode.ExtensionContext) {
     const hints = new DeferEditorHints();
-    // Refs move as the file is edited; the deferral itself only changes on a compile or setting change
-    const redecorateOnEdit = debounce((document: vscode.TextDocument) => hints.decorateDocument(document), 300);
+    // Refs move as the file is edited; the deferral itself only changes on a compile or setting change.
+    // Debounced per document, so editing one file does not swallow the redraw of another.
+    const redecorateByDocument = new Map<string, (document: vscode.TextDocument) => void>();
+    const redecorateOnEdit = (document: vscode.TextDocument) => {
+        const key = document.uri.toString();
+        let redecorate = redecorateByDocument.get(key);
+        if (!redecorate) {
+            redecorate = debounce((changed: vscode.TextDocument) => hints.decorateDocument(changed), 300);
+            redecorateByDocument.set(key, redecorate);
+        }
+        redecorate(document);
+    };
     context.subscriptions.push(
         deferredDecoration,
         warningDecoration,
@@ -189,6 +199,7 @@ export function registerDeferEditorHints(context: vscode.ExtensionContext) {
         onDeferralResolved(() => hints.refresh()),
         onDeferralUpdated(() => hints.refresh()),
         vscode.window.onDidChangeVisibleTextEditors(() => hints.decorateVisibleEditors()),
+        vscode.workspace.onDidCloseTextDocument((document) => redecorateByDocument.delete(document.uri.toString())),
         vscode.workspace.onDidChangeTextDocument((event) => {
             if (event.document.languageId === 'sqlx') {
                 redecorateOnEdit(event.document);
