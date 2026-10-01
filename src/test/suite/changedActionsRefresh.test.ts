@@ -55,6 +55,7 @@ suite('changedActions.selectChangedFiles', () => {
         assert.strictEqual(selection.actions.length, 4);
         assert.strictEqual(selection.scoped, false);
         assert.strictEqual(selection.changedFileCount, 3);
+        assert.strictEqual(selection.selectedFileCount, 3);
     });
 
     test('keeps every action of the picked files, and actions without a file under their shared key', () => {
@@ -77,6 +78,12 @@ suite('changedActions.selectChangedFiles', () => {
         const selection = selectChangedFiles(changed, ['definitions/orders.sqlx', 'definitions/gen.js', '(unknown file)'], true);
         assert.strictEqual(selection.actions.length, 4);
         assert.strictEqual(selection.scoped, true);
+    });
+
+    test('counts only the picked files that still have changes', () => {
+        const selection = selectChangedFiles(changed, ['definitions/gen.js', 'definitions/reverted.sqlx'], true);
+        assert.strictEqual(selection.selectedFileCount, 1);
+        assert.strictEqual(selection.changedFileCount, 3);
     });
 
     test('selects nothing when the picked files no longer have changes', () => {

@@ -755,6 +755,8 @@ export interface LastRunRequest {
     files?: string[];
     /** `changed` with `files`: how many files had changes when it ran. */
     changedFileCount?: number;
+    /** `changed` with `files`: how many of `files` had changes when it ran; a rerun keeps `files` whole even after some lose their changes. Absent on runs recorded before it was kept. */
+    selectedFileCount?: number;
     /** `changed`: the ref the changes were computed against, e.g. `origin/main`. */
     baseRef?: string;
     /** `changed`: the branch whose changes ran, e.g. `feat/orders`; absent on runs recorded before it was kept. */

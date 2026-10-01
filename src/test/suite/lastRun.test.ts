@@ -67,6 +67,15 @@ suite('lastRun.summarizeLastRun', () => {
         assert.ok(detail.includes('Only changes in: definitions/orders.sqlx, definitions/gen.js'));
     });
 
+    test('counts only the picked files that had changes on a rerun', () => {
+        const { label, detail } = summarizeLastRun(
+            request({ kind: 'changed', items: ['p.d.orders'], files: ['definitions/orders.sqlx', 'definitions/reverted.sqlx'], changedFileCount: 1, selectedFileCount: 1, baseRef: 'origin/main', headRef: 'feat/orders' }),
+            'cli',
+        );
+        assert.strictEqual(label, '1 changed action (1 of 1 files) in feat/orders vs origin/main · CLI');
+        assert.ok(detail.includes('Only changes in: definitions/orders.sqlx, definitions/reverted.sqlx'));
+    });
+
     test('leaves out the branch of changed-actions runs recorded without one', () => {
         const { label } = summarizeLastRun(request({ kind: 'changed', items: ['p.d.orders'], baseRef: 'origin/main' }), 'api');
         assert.strictEqual(label, '1 changed action vs origin/main · API');

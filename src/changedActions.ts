@@ -319,6 +319,8 @@ export interface ChangedFileSelection {
     scoped: boolean;
     /** How many files have changed actions */
     changedFileCount: number;
+    /** How many of those files are in `files`; equals `changedFileCount` when no files were given */
+    selectedFileCount: number;
 }
 
 /**
@@ -329,13 +331,15 @@ export interface ChangedFileSelection {
 export function selectChangedFiles(changed: ChangedAction[], files: string[] | undefined, replayed = false): ChangedFileSelection {
     const changedFiles = new Set(changed.map((action) => changedFileKey(action.fileName)));
     if (!files) {
-        return { actions: changed, scoped: false, changedFileCount: changedFiles.size };
+        return { actions: changed, scoped: false, changedFileCount: changedFiles.size, selectedFileCount: changedFiles.size };
     }
     const selected = new Set(files);
+    const selectedChangedFiles = [...changedFiles].filter((file) => selected.has(file));
     return {
         actions: changed.filter((action) => selected.has(changedFileKey(action.fileName))),
-        scoped: replayed || [...changedFiles].some((file) => !selected.has(file)),
+        scoped: replayed || selectedChangedFiles.length < changedFiles.size,
         changedFileCount: changedFiles.size,
+        selectedFileCount: selectedChangedFiles.length,
     };
 }
 
@@ -359,7 +363,7 @@ export async function dispatchChangedActions(
         vscode.window.showInformationMessage(noChangesMessage(result));
         return;
     }
-    const { actions, scoped, changedFileCount } = selectChangedFiles(result.changed, files, replayed);
+    const { actions, scoped, changedFileCount, selectedFileCount } = selectChangedFiles(result.changed, files, replayed);
     if (actions.length === 0) {
         vscode.window.showInformationMessage(`None of the selected files still have changes ${describeComparison(result.headRef, result.baseRef)}, so nothing was run.`);
         return;
@@ -367,7 +371,7 @@ export async function dispatchChangedActions(
     const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = {
         kind: 'changed',
         items: actions.map((action) => action.target),
-        ...(scoped && files ? { files, changedFileCount } : {}),
+        ...(scoped && files ? { files, changedFileCount, selectedFileCount } : {}),
         baseRef: result.baseRef,
         headRef: result.headRef,
         includeDependencies,

@@ -66,7 +66,7 @@ function selectionLabel(request: LastRunRequest, items: string[]): string {
         case 'files': return `${request.items.length} file${plural}: ${summarizeItems(items)}`;
         case 'tags': return `tag${plural} ${summarizeItems(items)}`;
         case 'changed': {
-            const files = request.files ? ` (${request.files.length} of ${request.changedFileCount ?? '?'} files)` : '';
+            const files = request.files ? ` (${request.selectedFileCount ?? request.files.length} of ${request.changedFileCount ?? '?'} files)` : '';
             return `${request.items.length} changed action${plural}${files} ${describeComparison(request.headRef, request.baseRef ?? 'default branch')}`;
         }
     }
