@@ -34,8 +34,7 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
     let dataformCompiledJson: DataformCompiledJson | undefined;
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
-        dataformCompiledJson = dataformCompiledJson;
+        ({ dataformCompiledJson } = await runCompilation(workspaceFolder)); // Takes ~1100ms
     } else {
         dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
     }
