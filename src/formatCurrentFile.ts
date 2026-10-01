@@ -9,6 +9,45 @@ import { SqlxBlockMetadata } from './types';
 import { isRemoteMode } from './utils/remoteCompiler';
 import { logger } from './logger';
 
+interface TemplateReplacement {
+    placeholder: string;
+    original: string;
+}
+
+function preprocessSqlForSqlfluff(sqlText: string): { processedSql: string; replacements: TemplateReplacement[] } {
+    const replacements: TemplateReplacement[] = [];
+    let processedSql = sqlText;
+    let placeholderCounter = 1;
+
+    const templateRegex = /\$\{[^}]+\}/g;
+    let match;
+    
+    while ((match = templateRegex.exec(sqlText)) !== null) {
+        const original = match[0];
+        const placeholder = `DATAFORM_PLACEHOLDER_${placeholderCounter}`;
+        
+        replacements.push({
+            placeholder,
+            original
+        });
+        
+        processedSql = processedSql.replace(original, placeholder);
+        placeholderCounter++;
+    }
+    
+    return { processedSql, replacements };
+}
+
+function restoreDataformSyntax(formattedSql: string, replacements: TemplateReplacement[]): string {
+    let restoredSql = formattedSql;
+    
+    for (const replacement of replacements) {
+        restoredSql = restoredSql.replace(replacement.placeholder, replacement.original);
+    }
+    
+    return restoredSql;
+}
+
 export async function formatDataformSqlxFile(document:vscode.TextDocument){
     let formattingCli = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formattingCli");
     if (formattingCli === "sqlfluff") {
@@ -52,7 +91,9 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
     let spaceBetweenSameOps = '\n\n';
 
     let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
-    writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath);
+    
+    const { processedSql, replacements } = preprocessSqlForSqlfluff(sqlBlockText);
+    writeCompiledSqlToFile(processedSql, sqlFileToFormatPath);
 
     const beautify = await loadBeautify();
 
@@ -99,6 +140,11 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
     try {
         await getStdoutFromCliRun(exec, formatCmd);
         let formattedSql = await readFile(sqlFileToFormatPath);
+        
+        if (typeof formattedSql === 'string') {
+            formattedSql = restoreDataformSyntax(formattedSql, replacements);
+        }
+        
         (formattedSql === "") ? formattedSql: formattedSql = spaceBetweenBlocks + formattedSql;
 
         if (typeof formattedSql === 'string'){
