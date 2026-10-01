@@ -109,4 +109,19 @@ suite('CLI compilation persisted across sessions', function () {
         assert.strictEqual(getCompilationInfo()?.compiledAt, compiledAt, 'no CLI compile ran');
         assert.ok(performance.now() - started < 500);
     });
+
+    test('saving again mid-compile stops the earlier compile and hands its caller the later result', async () => {
+        const definition = path.join(project, 'definitions', '0100_CLUBS.sqlx');
+        fs.utimesSync(definition, new Date(Date.now() + 180_000), new Date(Date.now() + 180_000));
+        const first = runCompilation(project);
+        await new Promise((resolve) => setTimeout(resolve, 300)); // the first CLI compile is running
+
+        fs.utimesSync(definition, new Date(Date.now() + 240_000), new Date(Date.now() + 240_000));
+        const second = runCompilation(project);
+
+        const [earlier, later] = await Promise.all([first, second]);
+        assert.ok(later.dataformCompiledJson, 'the later save is compiled');
+        assert.strictEqual(earlier.dataformCompiledJson, later.dataformCompiledJson, 'the earlier caller gets the later compilation');
+        assert.strictEqual(CACHED_COMPILED_DATAFORM_JSON, later.dataformCompiledJson);
+    });
 });

@@ -20,6 +20,32 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     };
 }
 
+/**
+ * At most this many dry runs in flight, shared by every caller, so a JS file that generates many actions or a
+ * cost estimate of a whole tag cannot flood the BigQuery API. A finished dry run hands its slot to the next.
+ */
+export const DRY_RUN_CONCURRENCY = 16;
+let dryRunsInFlight = 0;
+const dryRunQueue: (() => void)[] = [];
+
+export async function withDryRunSlot<T>(run: () => Promise<T>): Promise<T> {
+    if (dryRunsInFlight < DRY_RUN_CONCURRENCY) {
+        dryRunsInFlight++;
+    } else {
+        await new Promise<void>((resolve) => dryRunQueue.push(resolve));
+    }
+    try {
+        return await run();
+    } finally {
+        const next = dryRunQueue.shift();
+        if (next) {
+            next();
+        } else {
+            dryRunsInFlight--;
+        }
+    }
+}
+
 export async function queryDryRun(query: string, alreadyRetried: boolean = false): Promise<BigQueryDryRunResponse> {
     if (query === "" || !query) {
         return {
@@ -58,10 +84,10 @@ export async function queryDryRun(query: string, alreadyRetried: boolean = false
         currencyFoDryRunCost = "USD" as SupportedCurrency;
     }
     try {
-        const [job] = await bigqueryClient.createQueryJob({
+        const [job] = await withDryRunSlot(() => bigqueryClient.createQueryJob({
             query,
             dryRun: true
-        });
+        }));
 
         const totalBytesProcessedAccuracy = job.metadata.statistics.query?.totalBytesProcessedAccuracy;
         const rawBytesProcessed = parseFloat(job.metadata.statistics.totalBytesProcessed);
@@ -121,9 +147,8 @@ export async function getModelLastModifiedTime(targetTablesOrViews: Target[]): P
     if (!bigqueryClient) {
         return undefined;
     }
-    let lastModifiedTimeMeta: LastModifiedTimeMeta = [];
-
-    for (const targetTableOrView of targetTablesOrViews) {
+    // In parallel, in the order of the targets
+    const lastModifiedTimeMeta: LastModifiedTimeMeta = await Promise.all(targetTablesOrViews.map(async (targetTableOrView) => {
         const projectId = targetTableOrView.database;
         const datasetId = targetTableOrView.schema;
         const tableId = targetTableOrView.name;
@@ -133,24 +158,21 @@ export async function getModelLastModifiedTime(targetTablesOrViews: Target[]): P
             const [table] = await bigqueryClient.dataset(datasetId, { projectId }).table(tableId).get();
             let lastModifiedTime = table?.metadata?.lastModifiedTime;
             lastModifiedTime = new Date(parseInt(lastModifiedTime));
-            const formattedLastModifiedTime = formatTimestamp(lastModifiedTime);
-            const modelWasUpdatedToday = isModelWasUpdatedToday(lastModifiedTime);
-
-            lastModifiedTimeMeta.push({
-                lastModifiedTime: formattedLastModifiedTime,
-                modelWasUpdatedToday : modelWasUpdatedToday,
+            return {
+                lastModifiedTime: formatTimestamp(lastModifiedTime),
+                modelWasUpdatedToday: isModelWasUpdatedToday(lastModifiedTime),
                 error: { message: undefined }
-            });
+            };
         } catch (error: any) {
-            lastModifiedTimeMeta.push({
+            return {
                 lastModifiedTime: undefined,
                 modelWasUpdatedToday: undefined,
                 error: {
                     message: `Could not retrieve lastModifiedTime for ${projectId}.${datasetId}.${tableId}`
                 }
-            });
+            };
         }
-    }
+    }));
     return lastModifiedTimeMeta;
 }
 

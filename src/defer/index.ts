@@ -3,7 +3,7 @@ import { logger } from '../logger';
 import { DataformCompiledJson, DeferToProdState, DeferralView, TablesWtFullQuery, Target } from '../types';
 import { computeChangedActions, isGitRepo } from '../changedActions';
 import { applyDeferral, BuiltInDevEntry, collectCandidates, decideDeferral, DeferralEntry, findAccessDeniedTargets, indexGraphActions, prodKey, prodMatchesDev, targetId } from './deferRules';
-import { findExistingDevTargets, findProxyViews, getDevLastModified, getProdStatuses, markProdUnreadable } from './tableExistence';
+import { findExistingDevTargets, findProxyViews, getDevLastModified, getProdStatuses, getTableExistenceGeneration, markProdUnreadable } from './tableExistence';
 import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
 
@@ -104,13 +104,22 @@ export async function resolveDeferralWithStaleFlags(
     return { deferral, staleFlags };
 }
 
+type DeferralResolution = { deferral?: Deferral, error?: string, staleFlags?: Promise<boolean> };
+
+/**
+ * One save resolves the current file's deferral for the compiled query panel and again for the editor hints.
+ * The second reuses the first while the compiled graph, the prod options and the table lookups are unchanged.
+ */
+const DEFERRAL_REUSE_MS = 10_000;
+const recentDeferrals = new WeakMap<DataformCompiledJson, Map<string, { at: number, generation: number, resolution: Promise<DeferralResolution> }>>();
+
 /** Like {@link resolveDeferralForActions}, but says why defer to prod is on and still not applied */
 async function tryResolveDeferral(
     selected: SelectedActions,
     devGraph: DataformCompiledJson,
     workspaceFolder: string,
     options: ResolveOptions = {},
-): Promise<{ deferral?: Deferral, error?: string, staleFlags?: Promise<boolean> }> {
+): Promise<DeferralResolution> {
     if (!(options.enabled ?? isDeferEnabled(workspaceFolder))) {
         return {};
     }
@@ -119,15 +128,40 @@ async function tryResolveDeferral(
         return {};
     }
 
+    const key = JSON.stringify([workspaceFolder, availability.prodOptions, selected.map((action) => action.target ? targetId(action.target) : '').sort()]);
+    let byKey = recentDeferrals.get(devGraph);
+    if (!byKey) {
+        byKey = new Map();
+        recentDeferrals.set(devGraph, byKey);
+    }
+    let recent = byKey.get(key);
+    const generation = getTableExistenceGeneration();
+    if (!recent || recent.generation !== generation || Date.now() - recent.at > DEFERRAL_REUSE_MS) {
+        recent = { at: Date.now(), generation, resolution: computeDeferral(selected, devGraph, workspaceFolder, availability.prodOptions) };
+        byKey.set(key, recent);
+    }
+    const resolution = await recent.resolution;
+    if (options.awaitStale) {
+        await resolution.staleFlags;
+    }
+    return resolution;
+}
+
+async function computeDeferral(
+    selected: SelectedActions,
+    devGraph: DataformCompiledJson,
+    workspaceFolder: string,
+    prodOptions: string,
+): Promise<DeferralResolution> {
     const devActions = indexGraphActions(devGraph);
     const requiredKeys = selected
         .flatMap((action) => action.dependencyTargets ?? [])
         .map((dependency) => prodKey(devActions.get(targetId(dependency)) ?? { target: dependency }));
 
     try {
-        const prodTargets = await getProdTargets(workspaceFolder, availability.prodOptions, requiredKeys);
+        const prodTargets = await getProdTargets(workspaceFolder, prodOptions, requiredKeys);
         if (prodMatchesDev(devGraph, prodTargets)) {
-            const prod = availability.prodOptions ? `The prod compiler options (${availability.prodOptions})` : "Prod, which is the project defaults,";
+            const prod = prodOptions ? `The prod compiler options (${prodOptions})` : "Prod, which is the project defaults,";
             throw new Error(`${prod} name the same tables as dev, so there is nothing to read from prod. Point the prod compiler options at your prod project, e.g. --default-database=my-prod-project.`);
         }
         const candidates = collectCandidates(selected, devActions, prodTargets);
@@ -155,9 +189,6 @@ async function tryResolveDeferral(
         });
         lastReportedError = undefined;
         const staleFlags = flagStaleDeferrals(entries, workspaceFolder, devGraph);
-        if (options.awaitStale) {
-            await staleFlags;
-        }
         return { deferral: { entries, builtInDev }, staleFlags };
     } catch (error: any) {
         const message = error?.message ?? String(error);

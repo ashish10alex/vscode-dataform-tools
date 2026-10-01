@@ -38,6 +38,7 @@ import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
 import { watchGitHead, watchGitState } from '../gitHeadWatcher';
 import { computeApiRunGitState } from '../apiRunGitState';
+import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
@@ -103,31 +104,61 @@ async function validatePropertyGraphs(postMessage: (message: unknown) => Thenabl
     await postMessage({ "propertyGraphValidations": validations, "dryRunning": false });
 }
 
-async function updateSchemaAutoCompletions(currentFileMetadata:any) {
-    const endSpan = perfStart('schemaFetch');
-    let allSchemaCompletions: SchemaMetadata[] = [];
+/**
+ * One fetch per compiled file: the save or switch handler starts it, and the panel render (and its redraw once
+ * defer to prod resolves) reuse it. Every save or switch reads the file again, so it fetches again.
+ */
+const schemaFetches = new WeakMap<object, Promise<SchemaMetadata[]>>();
+/** The file whose schemas completions should show: a slower fetch for a file shown before must not replace them */
+let latestSchemaRequest: object | undefined;
 
-    if (currentFileMetadata?.fileMetadata?.tables) {
-        await Promise.all(currentFileMetadata.fileMetadata.tables.map(async (table:any) => {
-            const dependencyTargets = table.dependencyTargets;
-
-            if (dependencyTargets) {
-                const schemaPromises = dependencyTargets.map(async (dt:{database:string, schema:string, name:string}) => {
-                    return getTableSchema(dt.database, dt.schema, dt.name);
-                });
-                const schemas = await Promise.all(schemaPromises);
-                const allSchemas = schemas.flat();
-                allSchemaCompletions.push(...allSchemas);
-            }
-        }));
+function updateSchemaAutoCompletions(currentFileMetadata:any): Promise<void> {
+    const fileMetadata = currentFileMetadata?.fileMetadata;
+    latestSchemaRequest = fileMetadata;
+    if (!fileMetadata?.tables) {
+        schemaAutoCompletions = [];
+        return Promise.resolve();
     }
-    schemaAutoCompletions = allSchemaCompletions;
+    let fetch = schemaFetches.get(fileMetadata);
+    if (!fetch) {
+        fetch = fetchSchemaAutoCompletions(fileMetadata.tables);
+        schemaFetches.set(fileMetadata, fetch);
+    }
+    return fetch.then((columns) => {
+        if (latestSchemaRequest === fileMetadata) {
+            schemaAutoCompletions = columns;
+        }
+    });
+}
+
+async function fetchSchemaAutoCompletions(tables: any[]): Promise<SchemaMetadata[]> {
+    const endSpan = perfStart('schemaFetch');
+    // Tables of one file often share dependencies
+    const dependencies = new Map<string, {database:string, schema:string, name:string}>();
+    for (const table of tables) {
+        for (const dt of table.dependencyTargets ?? []) {
+            dependencies.set(`${dt.database}.${dt.schema}.${dt.name}`, dt);
+        }
+    }
+    const schemas = await Promise.all([...dependencies.values()].map((dt) => getTableSchema(dt.database, dt.schema, dt.name)));
+    const allSchemaCompletions: SchemaMetadata[] = schemas.flat();
     endSpan({ columns: allSchemaCompletions.length });
+    return allSchemaCompletions;
 }
 
 // The save / editor switch that is about to render: armed right before `getInstance` so that the render it
 // starts, and not one already in flight, ends the span
 let armedPreviewSpan: ((attrs?: PerfSpan['attrs']) => void) | undefined;
+
+// What an API run leaves out only changes with the working tree or the commits: it is computed again after a
+// save or a git change (coalesced, as one save can raise both), and renders post the last computation
+let apiRunGitStateGeneration = 0;
+let apiRunGitStateCache: { folder: string, generation: number, state: Promise<ApiRunGitState> } | undefined;
+const refreshApiRunGitStateSoon = debounce(() => CompiledQueryPanel.centerPanel?.postApiRunGitState(), 500);
+function apiRunGitStateChanged() {
+    apiRunGitStateGeneration++;
+    refreshApiRunGitStateSoon();
+}
 
 function getLastRunView() {
     return buildLastRunView(getLastRun(), isRemoteMode(), globalThis.compilerOptionsMap);
@@ -280,7 +311,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
         // Without the git extension this is the only signal that the uncommitted changes moved
-        CompiledQueryPanel.centerPanel?.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
+        apiRunGitStateChanged();
 
         const fileExtension = document.fileName.split('.').pop();
         const fileName = path.basename(document.fileName, '.' + fileExtension);
@@ -320,7 +351,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     // Edits, commits, pushes and fetches change what a Dataform API run leaves out
     watchGitState(context, () => {
-        CompiledQueryPanel.centerPanel?.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
+        apiRunGitStateChanged();
     });
 }
 
@@ -1344,7 +1375,7 @@ export class CompiledQueryPanel {
 
         const isJs = curFileMeta && curFileMeta.pathMeta && curFileMeta.pathMeta.extension === "js";
         
-        updateSchemaAutoCompletions(curFileMeta);
+        const schemaFetch = updateSchemaAutoCompletions(curFileMeta);
 
         if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) && isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
@@ -1640,6 +1671,8 @@ export class CompiledQueryPanel {
             compiledQuerySchema = {fields: [{"name": "", type:""}]};
         }
 
+        // The dependency schemas of this file, not of the one shown before
+        await schemaFetch.catch(() => undefined);
         // Hover matches on a column's own name, so flatten nested fields at every depth.
         columnHoverDescription = {
             fields: flattenSchemaFields(compiledQuerySchema?.fields || []),
@@ -1759,7 +1792,16 @@ export class CompiledQueryPanel {
             return;
         }
         const request = ++this.apiRunGitStateRequest;
-        const apiRunGitState = await computeApiRunGitState(folder);
+        if (apiRunGitStateCache?.folder !== folder || apiRunGitStateCache.generation !== apiRunGitStateGeneration) {
+            const cache = { folder, generation: apiRunGitStateGeneration, state: computeApiRunGitState(folder) };
+            apiRunGitStateCache = cache;
+            cache.state.catch(() => {
+                if (apiRunGitStateCache === cache) {
+                    apiRunGitStateCache = undefined; // Try again next time
+                }
+            });
+        }
+        const apiRunGitState = await apiRunGitStateCache.state;
         // A slower earlier request must not overwrite a newer answer
         if (request === this.apiRunGitStateRequest) {
             await this.postMessage({ apiRunGitState });
