@@ -1,12 +1,12 @@
 import { Target } from "./types";
-const {LineageClient} = require('@google-cloud/lineage').v1;
+import { loadLineageClient } from './lazySdk';
 
 export async function getLiniageMetadata(targetToSearch: Target, location:string) {
     const projectId = targetToSearch.database;
     const datasetId = targetToSearch.schema;
     const tableId = targetToSearch.name;
 
-    const client = new LineageClient(); // TODO: This gets created everytime this func is called. Can we use same client for longer ?
+    const client = new (await loadLineageClient())(); // TODO: This gets created everytime this func is called. Can we use same client for longer ?
 
     const request = {
         parent: `projects/${projectId}/locations/${location}`,

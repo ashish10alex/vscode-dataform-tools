@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
-import { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode, LastRunRequest } from './types';
 import { GitService } from './gitClient';
@@ -150,7 +150,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
                 return;
             }
 
-            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+            const dataformClient = new (await loadDataformTools())(projectId, gcpProjectLocation);
 
             const output = await dataformClient.runDataformRemotely(repositoryName, globalThis.compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
             if(!output){

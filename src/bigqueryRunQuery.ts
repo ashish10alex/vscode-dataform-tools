@@ -159,7 +159,7 @@ function transformBigValues(obj: any) {
     return obj;
 }
 
-export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
     await checkAuthentication();
 
     const bigquery = getBigQueryClient();
@@ -182,9 +182,9 @@ export async function runQueryInBigQuery(query: string): Promise<{rows: any[] | 
         _bigQueryJobId = localJob?.id;
     } catch (error: any) {
         try {
-            await handleBigQueryError(error);
-            //NOTE: If handleBigQueryError didn't throw, retry the query
-            return await runQueryInBigQuery(query);
+            await handleBigQueryError(error, alreadyRetried);
+            // The client was recreated after an authentication error: retry once
+            return await runQueryInBigQuery(query, true);
         } catch (finalError: any) {
             // vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
             return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};

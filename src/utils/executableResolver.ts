@@ -1,13 +1,56 @@
 import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFile, execSync } from 'child_process';
+import util from 'util';
 import { logger } from '../logger';
 import { perfCount } from '../perf';
 import { cacheDurationMs } from '../constants';
 import { ExecutablePathCache, ExecutablePathInfo } from '../types';
 
 const executablePathCache: ExecutablePathCache = new Map<string, ExecutablePathInfo>();
+const execFilePromise = util.promisify(execFile);
+
+/** A found path stays cached until a setting that affects it changes; a miss is retried after cacheDurationMs. */
+function getCachedExecutablePath(cacheKey: string): string | null | undefined {
+    const cached = executablePathCache.get(cacheKey);
+    if (cached && (cached.path !== null || (Date.now() - cached.timestamp) < cacheDurationMs)) {
+        return cached.path;
+    }
+    return undefined;
+}
+
+function rememberExecutablePath(cacheKey: string, foundPath: string | null): string | null {
+    executablePathCache.set(cacheKey, { path: foundPath, timestamp: Date.now() });
+    return foundPath;
+}
+
+/**
+ * Resolves an executable like findExecutableInPaths, but searches PATH without blocking the extension host.
+ * Called at activation so later synchronous lookups hit the cache.
+ */
+export async function prefetchExecutablePath(executableName: string): Promise<string | null> {
+    const cacheKey = `${executableName}:${process.platform}`;
+    const cached = getCachedExecutablePath(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const specificPath = getSpecificExecutablePath(executableName);
+    if (specificPath) {
+        return rememberExecutablePath(cacheKey, specificPath);
+    }
+    try {
+        const command = isRunningOnWindows ? 'where' : 'which';
+        const { stdout } = await execFilePromise(command, [executableName], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+        const firstPath = stdout.trim().split('\n')[0]?.trim();
+        if (firstPath && isValidExecutablePath(firstPath)) {
+            return rememberExecutablePath(cacheKey, firstPath);
+        }
+    } catch (error) {
+        logger.debug(`System PATH search failed for ${executableName}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return rememberExecutablePath(cacheKey, findExecutableInCommonLocations(executableName));
+}
 
 export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false, workspaceFolder?: string): boolean {
     let foundPath: string | null;
@@ -50,12 +93,10 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
 // Find executable using built-in detection + user overrides
 export function findExecutableInPaths(executableName: string): string | null {
     const cacheKey = `${executableName}:${process.platform}`;
-    const cached = executablePathCache.get(cacheKey);
-
-    // Return cached result if still valid
-    if (cached && (Date.now() - cached.timestamp) < cacheDurationMs) {
-        logger.debug(`Binary path cache hit for ${executableName}: ${cached.path}`);
-        return cached.path;
+    const cached = getCachedExecutablePath(cacheKey);
+    if (cached !== undefined) {
+        logger.debug(`Binary path cache hit for ${executableName}: ${cached}`);
+        return cached;
     }
 
     logger.debug(`Binary path cache miss for ${executableName}, searching...`);

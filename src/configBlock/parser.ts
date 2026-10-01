@@ -1,4 +1,5 @@
-import ts from 'typescript';
+import { parse as parseLoose } from 'acorn-loose';
+import type { Expression, ObjectExpression, Property, SpreadElement } from 'acorn';
 
 /**
  * Parses the `config { ... }` block of a `.sqlx` file into a small tree with document offsets.
@@ -115,85 +116,130 @@ export function parseConfigBlock(text: string): ParsedConfigBlock | undefined {
     if (!range) {
         return undefined;
     }
-    // Wrap the object in parentheses so TypeScript parses it as an expression.
+    // Wrap the object in parentheses so it parses as an expression. acorn-loose recovers from the
+    // syntax errors of a config block being typed, e.g. `type: ,` parses with a missing value.
     const source = `(${text.slice(range.start, range.end)})`;
-    const sourceFile = ts.createSourceFile('config.js', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-    const statement = sourceFile.statements[0];
-    if (!statement || !ts.isExpressionStatement(statement)) {
+    let program;
+    try {
+        program = parseLoose(source, { ecmaVersion: 'latest', sourceType: 'script' });
+    } catch {
         return undefined;
     }
-    let expression = statement.expression;
-    while (ts.isParenthesizedExpression(expression)) {
-        expression = expression.expression;
-    }
-    if (!ts.isObjectLiteralExpression(expression)) {
+    const statement = program.body[0];
+    if (!statement || statement.type !== 'ExpressionStatement' || statement.expression.type !== 'ObjectExpression') {
         return undefined;
     }
     // Maps offsets in `source` back to offsets in the document.
     const toDoc = (offset: number) => range.start + offset - 1;
-    return { root: convertObject(expression, sourceFile, toDoc), text };
+    return { root: convertObject(statement.expression, source, toDoc), text };
 }
 
-function convertObject(node: ts.ObjectLiteralExpression, sourceFile: ts.SourceFile, toDoc: (offset: number) => number): ConfigObject {
+/** acorn-loose fills in what is missing with a zero-width identifier named `✖`. */
+const isPlaceholder = (node: { type: string; start: number; end: number; name?: string }) =>
+    node.start === node.end || (node.type === 'Identifier' && node.name === '✖');
+
+function convertObject(node: ObjectExpression, source: string, toDoc: (offset: number) => number): ConfigObject {
     const object: ConfigObject = {
-        start: toDoc(node.getStart(sourceFile)),
-        end: toDoc(node.getEnd()),
+        start: toDoc(node.start),
+        end: toDoc(node.end),
         properties: [],
         hasDynamicKeys: false,
     };
-    for (const property of node.properties) {
-        if (ts.isSpreadAssignment(property) || !property.name || ts.isComputedPropertyName(property.name) || ts.isPrivateIdentifier(property.name)) {
+    for (const property of node.properties as (Property | SpreadElement)[]) {
+        if (property.type === 'SpreadElement' || property.computed) {
             object.hasDynamicKeys = true;
             continue;
         }
-        const name = property.name;
-        const nameStart = name.getStart(sourceFile);
-        const isQuoted = ts.isStringLiteral(name);
-        const keyStart = toDoc(nameStart + (isQuoted ? 1 : 0));
-        const keyEnd = toDoc(name.getEnd() - (isQuoted ? 1 : 0));
+        const name = property.key;
+        let key: string;
+        let isQuoted = false;
+        if (name.type === 'Identifier') {
+            if (isPlaceholder(name)) {
+                continue;
+            }
+            key = name.name;
+        } else if (name.type === 'Literal' && (typeof name.value === 'string' || typeof name.value === 'number')) {
+            key = String(name.value);
+            isQuoted = typeof name.value === 'string';
+        } else {
+            object.hasDynamicKeys = true;
+            continue;
+        }
         let value: ConfigValue;
-        if (ts.isPropertyAssignment(property)) {
-            value = convertValue(property.initializer, sourceFile, toDoc);
+        let end = toDoc(property.end);
+        if (property.kind === 'init' && !property.method && !property.shorthand) {
+            value = convertValue(property.value as Expression, source, toDoc);
+            if (value.kind === 'missing') {
+                // A missing value sits right after the colon, not at the token acorn-loose stopped at
+                const colon = source.indexOf(':', name.end);
+                if (colon !== -1 && colon < property.value.start) {
+                    end = toDoc(colon + 1);
+                    value = { kind: 'missing', start: end, end };
+                }
+            }
         } else {
             // Shorthand `{ foo }`, methods and accessors: the value is not a literal.
-            const end = toDoc(property.getEnd());
-            value = { kind: ts.isShorthandPropertyAssignment(property) ? 'missing' : 'dynamic', start: end, end };
+            const end = toDoc(property.end);
+            value = { kind: property.shorthand ? 'missing' : 'dynamic', start: end, end };
         }
         object.properties.push({
-            key: name.text,
-            keyStart,
-            keyEnd,
-            start: toDoc(property.getStart(sourceFile)),
-            end: toDoc(property.getEnd()),
+            key,
+            keyStart: toDoc(name.start + (isQuoted ? 1 : 0)),
+            keyEnd: toDoc(name.end - (isQuoted ? 1 : 0)),
+            start: toDoc(property.start),
+            end,
             value,
         });
     }
     return object;
 }
 
-function convertValue(node: ts.Expression, sourceFile: ts.SourceFile, toDoc: (offset: number) => number): ConfigValue {
-    const start = toDoc(node.getStart(sourceFile));
-    const end = toDoc(node.getEnd());
-    if (node.getWidth(sourceFile) === 0) {
+function convertValue(node: Expression, source: string, toDoc: (offset: number) => number): ConfigValue {
+    const start = toDoc(node.start);
+    const end = toDoc(node.end);
+    if (isPlaceholder(node)) {
         return { kind: 'missing', start, end };
     }
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-        return { kind: 'string', text: node.text, start, end };
-    }
-    if (ts.isNumericLiteral(node) || (ts.isPrefixUnaryExpression(node) && ts.isNumericLiteral(node.operand))) {
-        return { kind: 'number', start, end };
-    }
-    if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword) {
-        return { kind: 'boolean', value: node.kind === ts.SyntaxKind.TrueKeyword, start, end };
-    }
-    if (ts.isArrayLiteralExpression(node)) {
-        return { kind: 'array', elements: node.elements.map(element => convertValue(element, sourceFile, toDoc)), start, end };
-    }
-    if (ts.isObjectLiteralExpression(node)) {
-        return { kind: 'object', object: convertObject(node, sourceFile, toDoc), start, end };
-    }
-    if (ts.isParenthesizedExpression(node)) {
-        return convertValue(node.expression, sourceFile, toDoc);
+    switch (node.type) {
+        case 'Literal':
+            if (typeof node.value === 'string') {
+                return { kind: 'string', text: node.value, start, end };
+            }
+            if (typeof node.value === 'number' || typeof node.value === 'bigint') {
+                return { kind: 'number', start, end };
+            }
+            if (typeof node.value === 'boolean') {
+                return { kind: 'boolean', value: node.value, start, end };
+            }
+            break;
+        case 'TemplateLiteral':
+            if (node.expressions.length === 0) {
+                return { kind: 'string', text: node.quasis[0]?.value.cooked ?? '', start, end };
+            }
+            break;
+        case 'UnaryExpression':
+            if (['-', '+', '~', '!'].includes(node.operator) && node.argument.type === 'Literal' && typeof node.argument.value === 'number') {
+                return { kind: 'number', start, end };
+            }
+            break;
+        case 'ArrayExpression': {
+            let previousEnd = node.start + 1;
+            const elements = node.elements.map((element, index): ConfigValue => {
+                if (!element) {
+                    // A hole (`[a, , b]`) is missing, right after the comma that precedes it
+                    const at = index === 0 ? previousEnd : source.indexOf(',', previousEnd) + 1;
+                    previousEnd = at;
+                    return { kind: 'missing', start: toDoc(at), end: toDoc(at) };
+                }
+                previousEnd = element.end;
+                return element.type === 'SpreadElement'
+                    ? { kind: 'dynamic', start: toDoc(element.start), end: toDoc(element.end) }
+                    : convertValue(element, source, toDoc);
+            });
+            return { kind: 'array', elements, start, end };
+        }
+        case 'ObjectExpression':
+            return { kind: 'object', object: convertObject(node, source, toDoc), start, end };
     }
     return { kind: 'dynamic', start, end };
 }

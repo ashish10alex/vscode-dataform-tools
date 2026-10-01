@@ -3,7 +3,8 @@ import * as fs from 'fs/promises';
 import path from 'path';
 import {GitService} from "./gitClient";
 import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation, ensureFreshCompilation, isCompilationStale } from './utils';
-import { DataformTools } from "@ashishalex/dataform-tools";
+import type { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "./lazySdk";
 import { countActionTypes } from './shared/actionTypes';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
 
@@ -71,7 +72,7 @@ export async function cancelWorkflowInvocation(context: vscode.ExtensionContext,
         return false;
     }
     try {
-        const dataformClient = new DataformTools(entry.projectId, entry.location);
+        const dataformClient = new (await loadDataformTools())(entry.projectId, entry.location);
         // NOTE: calls the underlying client until a release of @ashishalex/dataform-tools with cancelWorkflowInvocation is used
         await dataformClient.client.cancelWorkflowInvocation({
             name: `projects/${entry.projectId}/locations/${entry.location}/repositories/${entry.repositoryName}/workflowInvocations/${workflowInvocationId}`
@@ -385,7 +386,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         }
 
 
-        const dataformClient = new DataformTools(gcpProjectId, gcpProjectLocation, clientOptions);
+        const dataformClient = new (await loadDataformTools())(gcpProjectId, gcpProjectLocation, clientOptions);
         if (token.isCancellationRequested) {
             vscode.window.showInformationMessage('Operation cancelled during Dataform client initialization.');
             return;

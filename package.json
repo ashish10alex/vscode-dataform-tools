@@ -38,9 +38,9 @@
         "vscode.git"
     ],
     "activationEvents": [
-        "workspaceContains:**/*.sqlx",
-        "workspaceContains:**/workflow_settings.yaml",
-        "workspaceContains:**/dataform.json"
+        "workspaceContains:workflow_settings.yaml",
+        "workspaceContains:dataform.json",
+        "onLanguage:sqlx"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -588,11 +588,6 @@
                     "default": true,
                     "markdownDescription": "Disable this to experience faster formatting, especially if you have enabled format on save. `::WARNING::` only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
                 },
-                "vscode-dataform-tools.bigqueryAuthenticationCheck": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Uses an interval of 55 minutes to validate the user's BigQuery Credentials. Set this to `false` to only validate the user's credentials when a query or dry run fails"
-                },
                 "vscode-dataform-tools.recommendErrorLensExtension": {
                     "type": "boolean",
                     "default": true,
@@ -729,6 +724,7 @@
         "rimraf": "^6.1.3",
         "tailwind-merge": "^3.4.1",
         "tailwindcss": "^3.4.19",
+        "typescript": "^5.7.3",
         "vite": "^5.0.0"
     },
     "dependencies": {
@@ -738,12 +734,13 @@
         "@google-cloud/resource-manager": "^6.2.0",
         "@radix-ui/react-tabs": "^1.1.13",
         "@vscode/codicons": "^0.0.44",
+        "acorn": "^8.18.0",
+        "acorn-loose": "^8.5.2",
         "comment-parser": "^1.4.1",
         "dompurify": "^3.3.1",
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
         "prism-react-renderer": "^2.4.1",
-        "tablemark": "^3.1.0",
-        "typescript": "^5.7.3"
+        "tablemark": "^3.1.0"
     }
 }

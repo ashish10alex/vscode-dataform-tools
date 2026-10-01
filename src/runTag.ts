@@ -1,6 +1,6 @@
 import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress, ensureFreshCompilation } from "./utils";
 import * as vscode from 'vscode';
-import { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
 import { ExecutionMode } from './types';
 import { GitService } from "./gitClient";
@@ -166,7 +166,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
             return;
         }
 
-        const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+        const dataformClient = new (await loadDataformTools())(projectId, gcpProjectLocation);
 
         const output = await dataformClient.runDataformRemotely(repositoryName, globalThis.compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
         if(!output){

@@ -1,14 +1,17 @@
 import * as vscode from 'vscode';
 import { logger } from './logger';
-import { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
+import type { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
+import { loadBigQuery } from './lazySdk';
 
 let bigquery: BigQuery | undefined;
-let authenticationCheckInterval: NodeJS.Timeout | undefined;
-let lastAuthCheck: number = 0;
 let isAuthenticated: boolean = false;
 
 let clientCreationPromise: Promise<string | undefined> | undefined;
 
+/**
+ * Creates the BigQuery client. Called on first use rather than at activation, and again after an
+ * authentication error. Credentials are checked by fetching an access token, which runs no query job.
+ */
 export async function createBigQueryClient(): Promise<string | undefined> {
     if (clientCreationPromise) {
         return clientCreationPromise;
@@ -32,16 +35,14 @@ export async function createBigQueryClient(): Promise<string | undefined> {
             }
 
             if(serviceAccountJsonPath && serviceAccountJsonPath.trim() !== ''){
-                vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);
                 options = {... options , keyFilename: serviceAccountJsonPath};
             }
 
-            bigquery = new BigQuery(options);
-            await verifyAuthentication();
-            const projectIdMessage = projectId ? `Project ID: ${projectId}` : '';
-            const gcpLocationMessage = gcpLocation ? `Location: ${gcpLocation}` : '';
-            const message = `BigQuery client created successfully. ${projectIdMessage} ${gcpLocationMessage}`;
-            vscode.window.showInformationMessage(message);
+            const client = new (await loadBigQuery())(options);
+            await client.authClient.getAccessToken();
+            bigquery = client;
+            isAuthenticated = true;
+            logger.info('BigQuery client created');
             return undefined;
         } catch (error: any) {
             bigquery = undefined;
@@ -57,38 +58,10 @@ export async function createBigQueryClient(): Promise<string | undefined> {
     return clientCreationPromise;
 }
 
-
-async function verifyAuthentication() {
-    try {
-        if (!bigquery) {
-            throw new Error('BigQuery client not initialized');
-        }
-        await bigquery.query('SELECT 1');
-        isAuthenticated = true;
-        lastAuthCheck = Date.now();
-    } catch (error) {
-        isAuthenticated = false;
-        throw error;
-    }
-}
-
+/** Makes sure a client exists, creating it on first use. Returns an error message when it cannot be created. */
 export async function checkAuthentication(): Promise<string | undefined> {
     if (!bigquery || !isAuthenticated) {
         return await createBigQueryClient();
-    }
-
-    const useIntervalCheck = vscode.workspace.getConfiguration('vscode-dataform-tools').get('bigqueryAuthenticationCheck', true);
-
-    if (useIntervalCheck) {
-        const timeSinceLastCheck = Date.now() - lastAuthCheck;
-        if (timeSinceLastCheck > 55 * 60 * 1000) { // 55 minutes in milliseconds
-            try {
-                await verifyAuthentication();
-            } catch (error) {
-                vscode.window.showWarningMessage('BigQuery authentication expired. Recreating client...');
-                return await createBigQueryClient();
-            }
-        }
     }
     return undefined;
 }
@@ -97,29 +70,21 @@ export function getBigQueryClient(): BigQuery | undefined {
     return isAuthenticated ? bigquery : undefined;
 }
 
-export function setAuthenticationCheckInterval() {
-    const useIntervalCheck = vscode.workspace.getConfiguration('vscode-dataform-tools').get('bigqueryAuthenticationCheck', true);
-
-    clearAuthenticationCheckInterval();
-
-    if (useIntervalCheck) {
-        authenticationCheckInterval = setInterval(async () => {
-            await checkAuthentication();
-        }, 60 * 60 * 1000); // Check every hour
-    }
+function isAuthenticationError(error: any): boolean {
+    return error?.code === 401 || /authenticat|credential|invalid_grant|reauth/i.test(error?.message ?? '');
 }
 
-export function clearAuthenticationCheckInterval() {
-    if (authenticationCheckInterval) {
-        clearInterval(authenticationCheckInterval);
-        authenticationCheckInterval = undefined;
-    }
-}
-
-export async function handleBigQueryError(error: any): Promise<void> {
-    if (error?.message?.includes('authentication')) {
-        vscode.window.showWarningMessage('BigQuery authentication error. Recreating client...');
-        await createBigQueryClient();
+/**
+ * After a failed BigQuery call: on an authentication error, recreates the client and returns so the caller
+ * can retry once (`alreadyRetried` false). Otherwise rethrows the error.
+ */
+export async function handleBigQueryError(error: any, alreadyRetried: boolean = false): Promise<void> {
+    if (!alreadyRetried && isAuthenticationError(error)) {
+        logger.info(`BigQuery authentication error, recreating the client: ${error?.message}`);
+        isAuthenticated = false;
+        if (await createBigQueryClient() === undefined) {
+            return;
+        }
     }
     throw error;
 }

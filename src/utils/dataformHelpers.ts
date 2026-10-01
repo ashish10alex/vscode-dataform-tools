@@ -5,7 +5,7 @@ import { load as loadYaml, YAMLException } from 'js-yaml';
 import { logger } from '../logger';
 import { perfTimed } from '../perf';
 import { GitService } from '../gitClient';
-import { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "../lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
 import { BigQueryDryRunResponse, CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
@@ -97,36 +97,21 @@ export function formatDryRunCostSummary(result: BigQueryDryRunResponse | undefin
 }
 
 export function sendNotificationToUserOnExtensionUpdate(context: vscode.ExtensionContext) {
-    const extensionPath = context.extensionPath;
-    const packageJsonPath = path.join(extensionPath, 'package.json');
-    const userConfigPath = path.join(extensionPath, 'user_config.json');
-
-    // Read the current version from package.json
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    const currentVersion = packageJson.version;
-
-    // Check if user_config.json exists, if not create it
-    if (!fs.existsSync(userConfigPath)) {
-        fs.writeFileSync(userConfigPath, JSON.stringify({ lastVersion: '0.0.0' }));
+    // Kept in globalState: the extension's install folder can be read-only, and reading files there blocked activation
+    const lastVersionKey = 'vscode-dataform-tools.lastNotifiedVersion';
+    const currentVersion: string = context.extension.packageJSON.version;
+    if (context.globalState.get<string>(lastVersionKey) === currentVersion) {
+        return;
     }
-
-    // Read the last shown version from user_config.json
-    const userConfig = JSON.parse(fs.readFileSync(userConfigPath, 'utf8'));
-    const lastVersion = userConfig.lastVersion;
-
-    if (currentVersion !== lastVersion) {
-        vscode.window.showInformationMessage(
-            `Dataform tools extension updated to version ${currentVersion}. Check out the new features!`,
-            'View Changelog'
-        ).then(selection => {
-            if (selection === 'View Changelog') {
-                // Open changelog or release notes
-                vscode.env.openExternal(vscode.Uri.parse('https://github.com/ashish10alex/vscode-dataform-tools/releases'));
-            }
-        });
-        userConfig.lastVersion = currentVersion;
-        fs.writeFileSync(userConfigPath, JSON.stringify(userConfig));
-    }
+    context.globalState.update(lastVersionKey, currentVersion);
+    vscode.window.showInformationMessage(
+        `Dataform tools extension updated to version ${currentVersion}. Check out the new features!`,
+        'View Changelog'
+    ).then(selection => {
+        if (selection === 'View Changelog') {
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/ashish10alex/vscode-dataform-tools/releases'));
+        }
+    });
 }
 
 //@ts-ignore
@@ -610,7 +595,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
                 return;
             }
 
-            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+            const dataformClient = new (await loadDataformTools())(projectId, gcpProjectLocation);
 
             const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
             if(!output){

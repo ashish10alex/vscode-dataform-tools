@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "./lazySdk";
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { bigQueryDryRunCostOneGiBByCurrency, currencySymbolMapping } from './constants';
 import { logger } from './logger';
@@ -179,7 +179,7 @@ export async function openExecutedSql(entry: WorkflowUrlEntry, target: string) {
         return;
     }
     try {
-        const dataformClient = new DataformTools(entry.projectId, entry.location);
+        const dataformClient = new (await loadDataformTools())(entry.projectId, entry.location);
         const actions = await dataformClient.queryWorkflowInvocationActions(entry.repositoryName, entry.workflowInvocationId);
         // History saved before targets included compiler overrides stores the canonical name.
         const action = (actions ?? []).find((a) => workflowActionTarget(a) === target || workflowActionTarget({ canonicalTarget: a.canonicalTarget }) === target);
