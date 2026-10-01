@@ -4,17 +4,19 @@ import { debounce } from '../debounce';
 import { Target } from '../types';
 import { findRefs } from '../documentSymbols';
 import { getRelativePath } from '../utils/workspaceUtils';
-import { indexGraphActions, matchRef, targetId } from './deferRules';
-import { findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralForActions } from './index';
+import { builtInDevHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId } from './deferRules';
+import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralWithStaleFlags } from './index';
 
 /*
- * A coloured label after each `${ref(...)}` in a .sqlx file that defer to prod reads from prod, or that a
- * leftover Proxy View makes read prod. Inlay hints all share one theme colour, so these are decorations with
+ * A coloured label after each `${ref(...)}` in a .sqlx file that defer to prod reads from prod or from its built
+ * Dev Target, or that a leftover Proxy View makes read prod. Inlay hints all share one theme colour, so these are decorations with
  * their own theme colours. Worked out from the cached compile and the shared table lookup cache, so they add no
- * compile and, while defer to prod is off and no proxy views exist, no BigQuery calls.
+ * compile and, while defer to prod is off and no proxy views exist, no BigQuery calls. Stale Deferral flags can
+ * land after the hints are drawn, so a document's hints are redrawn once they do.
  */
 
-type RefHint = { label: string, warning: boolean, hover: vscode.MarkdownString };
+/** `label` takes the time it is drawn at, so a dev table's age stays current across redraws of cached hints */
+type RefHint = { label: (now: number) => string, kind: RefHintKind, hover: vscode.MarkdownString };
 type DocumentHints = { hints: Map<string, RefHint>, dependencies: { target: Target, canonicalTarget?: Target }[] };
 
 const deferredDecoration = vscode.window.createTextEditorDecorationType({
@@ -33,10 +35,14 @@ const warningDecoration = vscode.window.createTextEditorDecorationType({
         fontWeight: "600",
     },
 });
-
-function bigQueryConsoleUrl(target: Target): string {
-    return `https://console.cloud.google.com/bigquery?project=${target.database}&ws=!1m5!1m4!4m3!1s${target.database}!2s${target.schema}!3s${target.name}`;
-}
+const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
+    after: {
+        margin: "0 0 0 0.75em",
+        color: new vscode.ThemeColor("dataformTools.builtInDevRef.foreground"),
+        backgroundColor: new vscode.ThemeColor("dataformTools.builtInDevRef.background"),
+        fontWeight: "600",
+    },
+});
 
 function hintsEnabled(): boolean {
     return vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('deferToProdEditorHints') !== false;
@@ -48,8 +54,24 @@ function markdown(text: string, trustedCommands: string[] = []): vscode.Markdown
     return hover;
 }
 
-/** What each upstream Dev Target of the document reads, keyed by target id */
-async function computeDocumentHints(document: vscode.TextDocument): Promise<DocumentHints | undefined> {
+function deferralHints(deferral: Deferral | undefined): Map<string, RefHint> {
+    const hints = new Map<string, RefHint>();
+    const add = (dev: string, { label, kind, hover }: DeferralEntryHint, labelAt: (now: number) => string = () => label) =>
+        hints.set(dev, { label: labelAt, kind, hover: markdown(hover) });
+    for (const entry of deferral?.builtInDev ?? []) {
+        add(targetId(entry.dev), builtInDevHint(entry, Date.now()), (now) => builtInDevHint(entry, now).label);
+    }
+    for (const entry of deferral?.entries ?? []) {
+        add(targetId(entry.dev), deferralEntryHint(entry));
+    }
+    return hints;
+}
+
+/**
+ * What each upstream Dev Target of the document reads, keyed by target id. `onStaleFlags` gets the hints again
+ * when Stale Deferral flags arrive after this resolves.
+ */
+async function computeDocumentHints(document: vscode.TextDocument, onStaleFlags: (hints: DocumentHints) => void): Promise<DocumentHints | undefined> {
     const workspaceFolder = globalThis.workspaceFolder;
     const graph = CACHED_COMPILED_DATAFORM_JSON;
     if (!workspaceFolder || !graph) {
@@ -64,32 +86,26 @@ async function computeDocumentHints(document: vscode.TextDocument): Promise<Docu
         .flatMap((action: any) => action.dependencyTargets ?? [])
         .map((dependency: Target) => graphActions.get(targetId(dependency)) ?? { target: dependency });
 
-    const hints = new Map<string, RefHint>();
     if (isDeferEnabled(workspaceFolder)) {
-        const deferral = await resolveDeferralForActions(actions, graph, workspaceFolder);
-        for (const entry of deferral?.entries ?? []) {
-            const route = entry.prod ? `\`${targetId(entry.dev)}\`\n\n→ \`${targetId(entry.prod)}\`` : `\`${targetId(entry.dev)}\``;
-            const openProd = entry.prod ? `\n\n[Open prod table in BigQuery](${bigQueryConsoleUrl(entry.prod)})` : "";
-            if (entry.status === "deferred" && entry.stale) {
-                hints.set(targetId(entry.dev), { label: "⚠ prod (changed on branch)", warning: true, hover: markdown(`**Defer to prod:** read from prod, but changed on this branch, so prod may be out of date.\n\n${route}${openProd}`) });
-            } else if (entry.status === "deferred") {
-                hints.set(targetId(entry.dev), { label: "→ prod", warning: false, hover: markdown(`**Defer to prod:** not built in dev, so read from prod.\n\n${route}${openProd}`) });
-            } else {
-                const why = entry.status === "unreadable" ? "not built in dev, and no read access to prod." : "not built in dev or prod.";
-                hints.set(targetId(entry.dev), { label: "⚠ not built", warning: true, hover: markdown(`**Defer to prod:** ${why}\n\n${route}`) });
+        const { deferral, staleFlags } = await resolveDeferralWithStaleFlags(actions, graph, workspaceFolder);
+        // The flags are set on the entries of this same deferral
+        staleFlags?.then((flagged) => {
+            if (flagged) {
+                onStaleFlags({ hints: deferralHints(deferral), dependencies });
             }
-        }
-    } else {
-        for (const proxy of await findLeftoverProxies(actions)) {
-            hints.set(targetId(proxy), {
-                label: "⚠ proxy → prod",
-                warning: true,
-                hover: markdown(
-                    `**Defer to prod is off**, but \`${targetId(proxy)}\` is a proxy view from an earlier deferred run, so it reads prod.\n\n[Defer to prod options](command:vscode-dataform-tools.deferToProdActions)`,
-                    ['vscode-dataform-tools.deferToProdActions'],
-                ),
-            });
-        }
+        });
+        return { hints: deferralHints(deferral), dependencies };
+    }
+    const hints = new Map<string, RefHint>();
+    for (const proxy of await findLeftoverProxies(actions)) {
+        hints.set(targetId(proxy), {
+            label: () => "⚠ prod · leftover proxy view",
+            kind: "warning",
+            hover: markdown(
+                `**Defer to prod is off**, but \`${targetId(proxy)}\` is a proxy view from an earlier deferred run, so it reads prod.\n\n[Defer to prod options](command:vscode-dataform-tools.deferToProdActions)`,
+                ['vscode-dataform-tools.deferToProdActions'],
+            ),
+        });
     }
     return { hints, dependencies };
 }
@@ -109,6 +125,12 @@ class DeferEditorHints {
         }
     }
 
+    decorateDocument(document: vscode.TextDocument) {
+        vscode.window.visibleTextEditors
+            .filter((editor) => editor.document === document)
+            .forEach((editor) => this.decorate(editor).catch(() => undefined));
+    }
+
     async decorate(editor: vscode.TextEditor) {
         const document = editor.document;
         if (document.languageId !== 'sqlx') {
@@ -119,15 +141,23 @@ class DeferEditorHints {
             const key = document.uri.toString();
             let pending = this.cache.get(key);
             if (!pending) {
-                pending = computeDocumentHints(document);
+                const computing: Promise<DocumentHints | undefined> = computeDocumentHints(document, (upgraded) => {
+                    // Dropped when a compile or setting change has since replaced these hints
+                    if (this.cache.get(key) !== computing) {
+                        return;
+                    }
+                    this.cache.set(key, Promise.resolve(upgraded));
+                    this.decorateDocument(document);
+                });
+                pending = computing;
                 this.cache.set(key, pending);
             }
             data = await pending;
         }
 
-        const deferred: vscode.DecorationOptions[] = [];
-        const warnings: vscode.DecorationOptions[] = [];
+        const byKind: Record<RefHintKind, vscode.DecorationOptions[]> = { prod: [], warning: [], dev: [] };
         if (data && data.hints.size > 0) {
+            const now = Date.now();
             for (const ref of findRefs(document.getText())) {
                 const target = matchRef(ref.args, data.dependencies);
                 const hint = target && data.hints.get(targetId(target));
@@ -137,27 +167,25 @@ class DeferEditorHints {
                 const decoration: vscode.DecorationOptions = {
                     range: new vscode.Range(document.positionAt(ref.index), document.positionAt(ref.index + ref.length)),
                     hoverMessage: hint.hover,
-                    renderOptions: { after: { contentText: ` ${hint.label} ` } },
+                    renderOptions: { after: { contentText: ` ${hint.label(now)} ` } },
                 };
-                (hint.warning ? warnings : deferred).push(decoration);
+                byKind[hint.kind].push(decoration);
             }
         }
-        editor.setDecorations(deferredDecoration, deferred);
-        editor.setDecorations(warningDecoration, warnings);
+        editor.setDecorations(deferredDecoration, byKind.prod);
+        editor.setDecorations(warningDecoration, byKind.warning);
+        editor.setDecorations(builtInDevDecoration, byKind.dev);
     }
 }
 
 export function registerDeferEditorHints(context: vscode.ExtensionContext) {
     const hints = new DeferEditorHints();
     // Refs move as the file is edited; the deferral itself only changes on a compile or setting change
-    const redecorateOnEdit = debounce((document: vscode.TextDocument) => {
-        vscode.window.visibleTextEditors
-            .filter((editor) => editor.document === document)
-            .forEach((editor) => hints.decorate(editor).catch(() => undefined));
-    }, 300);
+    const redecorateOnEdit = debounce((document: vscode.TextDocument) => hints.decorateDocument(document), 300);
     context.subscriptions.push(
         deferredDecoration,
         warningDecoration,
+        builtInDevDecoration,
         onDeferralResolved(() => hints.refresh()),
         onDeferralUpdated(() => hints.refresh()),
         vscode.window.onDidChangeVisibleTextEditors(() => hints.decorateVisibleEditors()),

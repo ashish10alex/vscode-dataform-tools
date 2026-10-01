@@ -339,6 +339,26 @@
                     "highContrast": null,
                     "highContrastLight": null
                 }
+            },
+            {
+                "id": "dataformTools.builtInDevRef.foreground",
+                "description": "Label after a ref that defer to prod reads from dev, because it is built there",
+                "defaults": {
+                    "dark": "#89D185",
+                    "light": "#388A34",
+                    "highContrast": "#89D185",
+                    "highContrastLight": "#2E7230"
+                }
+            },
+            {
+                "id": "dataformTools.builtInDevRef.background",
+                "description": "Background of the label after a ref that defer to prod reads from dev",
+                "defaults": {
+                    "dark": "#89D1851F",
+                    "light": "#388A341A",
+                    "highContrast": null,
+                    "highContrastLight": null
+                }
             }
         ],
         "languages": [
@@ -458,7 +478,7 @@
                 "vscode-dataform-tools.deferToProdEditorHints": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "Show a coloured label after each `${ref(...)}` in .sqlx files that defer to prod reads from prod (`→ prod`), or that is not built anywhere or is still a leftover proxy view. Hover the ref for the dev and prod tables and a link to the prod table. Colours: `dataformTools.deferredRef.*` in `workbench.colorCustomizations`."
+                    "markdownDescription": "Show a coloured label after each `${ref(...)}` in .sqlx files that defer to prod reads from prod (`→ deferred to prod`) or from dev because it is built there (`✓ dev · built 12 min ago`), with a warning when prod may be out of date, nothing is built or a leftover proxy view reads prod. Hover the ref for the dev and prod tables and a link to the prod table. Colours: `dataformTools.deferredRef.*`, `dataformTools.builtInDevRef.*` in `workbench.colorCustomizations`."
                 },
                 "vscode-dataform-tools.currencyFoDryRunCost": {
                     "type": "string",

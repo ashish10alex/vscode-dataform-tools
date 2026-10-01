@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, buildProdTargetMap, builtInDevHint, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, deferralEntryHint, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql } from '../../defer/deferRules';
 import { findRefs } from '../../documentSymbols';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
@@ -328,5 +328,54 @@ suite('deferRules.proxyViewAction', () => {
     test('never touches a real dev table or view', () => {
         assert.strictEqual(proxyViewAction({ view: { query: 'SELECT 1' } }, spec), 'leaveRealTable');
         assert.strictEqual(proxyViewAction({ labels: { team: 'sales' } }, spec), 'leaveRealTable');
+    });
+});
+
+suite('deferRules.deferralEntryHint', () => {
+    test('a deferred upstream action reads prod', () => {
+        const hint = deferralEntryHint(deferred('orders'));
+        assert.strictEqual(hint.label, '→ deferred to prod');
+        assert.strictEqual(hint.kind, 'prod');
+        assert.match(hint.hover, /not built in dev, so read from prod/);
+        assert.match(hint.hover, /`proj-dev\.sales_dev\.orders`\n\n→ `proj-prod\.sales\.orders`/);
+        assert.match(hint.hover, /Open prod table in BigQuery\]\(https:\/\/console\.cloud\.google\.com\/bigquery\?project=proj-prod&.*!2ssales!3sorders\)/);
+    });
+
+    test('a Stale Deferral warns that prod may be out of date', () => {
+        const hint = deferralEntryHint({ ...deferred('orders'), stale: true });
+        assert.strictEqual(hint.label, '⚠ prod · changed on this branch');
+        assert.strictEqual(hint.kind, 'warning');
+        assert.match(hint.hover, /changed on this branch, so prod may be out of date/);
+        assert.match(hint.hover, /Open prod table in BigQuery/);
+    });
+
+    test('an unreadable Prod Target is not built', () => {
+        const hint = deferralEntryHint({ dev: dev('orders'), prod: prod('orders'), status: 'unreadable' });
+        assert.strictEqual(hint.label, '⚠ not built in dev · no prod access');
+        assert.strictEqual(hint.kind, 'warning');
+        assert.match(hint.hover, /no read access to prod/);
+        assert.doesNotMatch(hint.hover, /Open prod table/);
+    });
+
+    test('an action missing everywhere has no prod route', () => {
+        const hint = deferralEntryHint({ dev: dev('orders'), status: 'missingEverywhere' });
+        assert.strictEqual(hint.label, '⚠ not built in dev or prod');
+        assert.strictEqual(hint.kind, 'warning');
+        assert.match(hint.hover, /not built in dev or prod/);
+        assert.doesNotMatch(hint.hover, /→/);
+    });
+
+    test('a built Dev Target is read from dev', () => {
+        const built = Date.UTC(2026, 9, 1, 8, 0);
+        const hint = builtInDevHint({ dev: dev('orders'), lastModified: built }, built + 12 * 60_000);
+        assert.strictEqual(hint.label, '✓ dev · built 12 min ago');
+        assert.strictEqual(builtInDevHint({ dev: dev('orders'), lastModified: built }, built + 3 * 3_600_000).label, '✓ dev · built 3 h ago');
+        assert.strictEqual(hint.kind, 'dev');
+        assert.match(hint.hover, /built in dev, so read from dev/);
+        assert.match(hint.hover, /`proj-dev\.sales_dev\.orders`/);
+        assert.match(hint.hover, /Last updated /);
+        const unknownAge = builtInDevHint({ dev: dev('orders') }, built);
+        assert.strictEqual(unknownAge.label, '✓ dev · built in dev');
+        assert.doesNotMatch(unknownAge.hover, /Last updated/);
     });
 });
