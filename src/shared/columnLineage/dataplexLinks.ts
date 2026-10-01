@@ -62,3 +62,18 @@ export function tablesFromApi(links: LineageApiLink[], direction: LineageDirecti
         .map((fqn) => fqn.slice(BIGQUERY_PREFIX.length));
     return [...new Set(tables)];
 }
+
+/**
+ * Readers that read the table but whose columns Dataplex doesn't track, e.g. a job past its 1,500 column-link
+ * limit, which keeps only table-level lineage. A reader Dataplex does track, but that has no link for this
+ * column, doesn't read the column and is left out.
+ */
+export async function untrackedReaders(
+    readers: string[],
+    readersWithLink: Set<string>,
+    hasColumnLineage: (table: string) => Promise<boolean>,
+): Promise<string[]> {
+    const candidates = readers.filter((reader) => !readersWithLink.has(reader));
+    const tracked = await Promise.all(candidates.map(hasColumnLineage));
+    return candidates.filter((_, i) => !tracked[i]);
+}

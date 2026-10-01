@@ -4,7 +4,7 @@ import { addHop, canExpand, initialTraceState, pathToFocus, removeUpstream, trac
 import { TraceController } from '../../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
-import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi } from '../../shared/columnLineage/dataplexLinks';
+import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
 import { TraceState } from '../../shared/columnLineage/types';
 
 const focus = { table: 'p.marts.fct', column: 'revenue' };
@@ -146,6 +146,16 @@ suite('Column lineage from Data Lineage API links', () => {
             { table: 'p.rpt.top_scorers', column: 'player_id', dependencyType: 'EXACT_COPY' },
             { table: 'p.rpt.league_table', column: 'goals_rank', dependencyType: 'OTHER' },
         ]);
+    });
+
+    test('keeps readers Dataplex has no column lineage for, and drops tracked readers without a link', async () => {
+        const tracked = new Set(['p.rpt.league_table']);
+        const untracked = await untrackedReaders(
+            ['p.rpt.top_scorers', 'p.rpt.league_table', 'p.rpt.season_summary'],
+            new Set(['p.rpt.top_scorers']),
+            async (table) => tracked.has(table),
+        );
+        assert.deepStrictEqual(untracked, ['p.rpt.season_summary']);
     });
 
     test('reads the source end for upstream links and dedupes table-level ends', () => {

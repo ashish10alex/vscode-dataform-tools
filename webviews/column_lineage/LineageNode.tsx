@@ -54,7 +54,7 @@ export const LineageNode: React.FC<{ id: string; data: LineageNodeData }> = ({ i
                 {dataset && <span className="ln-dataset">{dataset}.</span>}{name}
             </div>
             {node.kind === 'tableOnly'
-                ? <div className="ln-col ln-col-unknown">May read it · no column detail</div>
+                ? <div className="ln-col ln-col-unknown" title="Dataplex has a table-level link to this table but no column lineage for it, so it may read this column">May read it · no column detail</div>
                 : <div className="ln-col" title={node.column}>{node.column}</div>}
 
             <div className="ln-foot">

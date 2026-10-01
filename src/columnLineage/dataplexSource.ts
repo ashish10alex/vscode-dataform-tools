@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { loadLineageClient } from '../lazySdk';
 import { GraphAction, runsAsScript } from '../shared/columnLineage/graphLinks';
-import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi } from '../shared/columnLineage/dataplexLinks';
+import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../shared/columnLineage/dataplexLinks';
 import { ColumnLink, LineageDirection, TraceSource } from '../shared/columnLineage/types';
 import { SchemaCache } from './schemaCache';
 
@@ -32,21 +32,47 @@ function describeError(error: any, project: string): string {
  * Column lineage from Dataplex: links recorded from the jobs that built each table, kept for 30 days and
  * ingested about two hours after a job runs. Lineage is searched in the table's own project and region.
  */
+/** Columns probed to decide whether Dataplex tracks a table's column lineage at all */
+const PROBE_COLUMNS = 3;
+
 export class DataplexTraceSource implements TraceSource {
     readonly kind = 'dataplex' as const;
+    private readonly tracked = new Map<string, Promise<boolean>>();
 
     /** `prodIndex`: this project's actions keyed by Prod Target, to spot readers that get no column lineage */
     constructor(private readonly schemas: SchemaCache, private readonly prodIndex: Map<string, GraphAction>) {}
 
     resolveFile = (table: string): string | undefined => this.prodIndex.get(table)?.fileName;
 
+    private async parentOf(table: string): Promise<string | undefined> {
+        const location = await this.schemas.location(table);
+        return location ? `projects/${table.split('.')[0]}/locations/${location.toLowerCase()}` : undefined;
+    }
+
+    /** True when any of the table's first few columns has upstream column links; cached per trace */
+    private hasColumnLineage(table: string): Promise<boolean> {
+        let pending = this.tracked.get(table);
+        if (!pending) {
+            pending = (async () => {
+                const [parent, columns, api] = await Promise.all([this.parentOf(table), this.schemas.schema(table), lineageClient()]);
+                if (!parent || !columns?.length) {
+                    return false;
+                }
+                const counts = await Promise.all(columns.slice(0, PROBE_COLUMNS).map(async (field) =>
+                    (await api.searchLinks({ parent, target: { fullyQualifiedName: lineageFqn(table), field: lineageField(field.name) } }))[0].length));
+                return counts.some((count) => count > 0);
+            })();
+            this.tracked.set(table, pending);
+        }
+        return pending;
+    }
+
     async links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]> {
         const [project] = table.split('.');
-        const location = await this.schemas.location(table);
-        if (!location) {
+        const parent = await this.parentOf(table);
+        if (!parent) {
             throw new Error(`Couldn't read ${table} to find its region.`);
         }
-        const parent = `projects/${project}/locations/${location.toLowerCase()}`;
         const api = await lineageClient();
         const side = direction === 'downstream' ? 'source' : 'target';
 
@@ -64,15 +90,17 @@ export class DataplexTraceSource implements TraceSource {
                 column: link.column && await this.schemas.casing(link.table, link.column),
             })));
 
-            // Readers in this project that run as scripts get table-level lineage only: show them as "may read"
-            const withColumns = new Set(links.map((link) => link.table));
-            for (const reader of tablesFromApi(tableLinks, 'downstream')) {
-                const action = this.prodIndex.get(reader);
-                if (!withColumns.has(reader) && action && runsAsScript(action)) {
-                    links.push({ table: reader, dependencyType: 'TABLE_ONLY' });
-                }
-            }
-            return links;
+            // A reader with only a table-level link may still read this column when Dataplex doesn't track its
+            // columns: incremental tables and operations never get column lineage, other tables are probed
+            const untracked = await untrackedReaders(
+                tablesFromApi(tableLinks, 'downstream'),
+                new Set(links.map((link) => link.table)),
+                async (reader) => {
+                    const action = this.prodIndex.get(reader);
+                    return action && runsAsScript(action) ? false : this.hasColumnLineage(reader);
+                },
+            );
+            return [...links, ...untracked.map((reader): ColumnLink => ({ table: reader, dependencyType: 'TABLE_ONLY' }))];
         } catch (error: any) {
             throw new Error(describeError(error, project));
         }
@@ -80,5 +108,6 @@ export class DataplexTraceSource implements TraceSource {
 
     clearCache() {
         this.schemas.clear();
+        this.tracked.clear();
     }
 }
