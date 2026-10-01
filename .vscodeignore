@@ -56,3 +56,18 @@ release-please-config.json
 # Benchmark scripts and results
 scripts/**
 bench-results/**
+
+# Only the extension icon and the .sqlx file icon are used at runtime; README images load from GitHub
+media/images/**
+!media/images/dtools.png
+!media/images/sqlx_file_icon.png
+
+# Docs for contributors and agents
+docs/**
+plans/**
+CONTEXT.md
+CONTRIBUTING.md
+FUTURE_WORK.md
+postcss.config.js
+vite.config.ts
+snippets/README.md
