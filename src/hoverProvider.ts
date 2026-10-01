@@ -19,6 +19,7 @@ import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFun
 import { maxHoverSchemaRows, sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 import { isOnConfigKey } from "./configBlock/providers";
+import { perfCount } from "./perf";
 
 async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string, columns?: Column[]): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
@@ -188,6 +189,7 @@ export async function fetchTableMetadata(projectId: string, datasetId: string, t
   }
   const bigqueryClient = new BigQuery(options);
   const table = bigqueryClient.dataset(datasetId).table(tableId);
+  perfCount('bq.getMetadata');
   const [metadata] = await table.getMetadata();
   return metadata;
 }

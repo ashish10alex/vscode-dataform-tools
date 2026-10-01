@@ -13,6 +13,7 @@ import { compileDataform, getDataformCompilerOptions, isCompilationStale, parseC
 import { compileRemoteCommit, isRemoteMode } from './utils/remoteCompiler';
 import { runIncludedTargets } from './utils/dataformHelpers';
 import { extractSnapshot, mirrorTree } from './utils/gitSnapshot';
+import { perfCount } from './perf';
 
 /*
  * "Run changed": runs only the actions whose compiled output differs from the merge-base with the
@@ -38,6 +39,7 @@ function getStorageRoot(): string {
 }
 
 async function git(cwd: string, args: string[]): Promise<string> {
+    perfCount('git.spawn');
     const { stdout } = await execFilePromise('git', args, { cwd });
     return stdout.trim();
 }

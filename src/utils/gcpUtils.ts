@@ -5,6 +5,7 @@ import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
 import { DataformCompiledJson, SchemaMetadata } from '../types';
 import { createSelector } from './vscodeUi';
 import { gcloudComputeRegions } from '../constants';
+import { perfCount } from '../perf';
 
 export async function getCachedDataformRepositoryLocation(context: vscode.ExtensionContext, repositoryName: string): Promise<string | undefined> {
         let cachedGcpLocation = context.globalState.get<string>(`vscode_dataform_tools_${repositoryName}`);
@@ -106,6 +107,7 @@ export async function getTableSchema(projectId: string, datasetId: string, table
             return [];
         }
         const dataset = bigquery.dataset(datasetId, { projectId: projectId });
+        perfCount('bq.tableGet');
         const [table] = await dataset.table(tableId).get();
         return table.metadata.schema.fields.map((field: { name: string, type: string, description: string }) => {
             return {

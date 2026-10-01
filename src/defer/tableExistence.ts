@@ -1,5 +1,6 @@
 import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
 import { logger } from '../logger';
+import { perfCount } from '../perf';
 import { Target } from '../types';
 import { PROXY_VIEW_LABEL, ProdStatus, targetId } from './deferRules';
 
@@ -162,6 +163,7 @@ async function lookupProdTable(target: Target, routine: boolean): Promise<ProdSt
             throw new Error("BigQuery client not available");
         }
         const dataset = bigquery.dataset(target.schema, { projectId: target.database });
+        perfCount('bq.getMetadata');
         await (routine ? dataset.routine(target.name) : dataset.table(target.name)).getMetadata();
         status = "exists";
     } catch (error: any) {
@@ -210,6 +212,7 @@ export async function getDevLastModified(targets: Target[], routines: Set<string
         if (!cached || !isFresh(cached.fetchedAt)) {
             try {
                 const dataset = bigquery.dataset(target.schema, { projectId: target.database });
+                perfCount('bq.getMetadata');
                 const [metadata] = await (routines.has(id) ? dataset.routine(target.name) : dataset.table(target.name)).getMetadata();
                 const lastModified = Number(metadata?.lastModifiedTime);
                 cached = { fetchedAt: Date.now(), lastModified: Number.isFinite(lastModified) && lastModified > 0 ? lastModified : undefined };

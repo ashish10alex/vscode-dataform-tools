@@ -41,12 +41,14 @@ import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
+import { getPerfSnapshot, perfStart, resetPerf } from './perf';
 
 let lastDataformFilePath: string | undefined;
 
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
+    const endActivateSpan = perfStart('activate');
     // Initialize logger at the start
     logger.initialize();
     logger.info('Activating Dataform Tools extension');
@@ -443,6 +445,10 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     logger.info('Dataform Tools extension activated successfully');
+    endActivateSpan();
+
+    // Internal: read by `just bench` (src/bench), not a public API
+    return { __perf: { getPerfSnapshot, resetPerf } };
 }
 
 // This method is called when your extension is deactivated

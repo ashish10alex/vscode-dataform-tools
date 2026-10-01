@@ -65,6 +65,31 @@ check:
 test:
     npm run test
 
+# Set BENCH_GCP_PROJECT for real BigQuery dry runs, BENCH_ITERATIONS to change the 10 runs per loop.
+# macOS only (like `just test`) and needs the Dataform CLI on PATH.
+# Benchmark startup, save -> preview and editor switch on a generated project
+bench actions="1500":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    stamp="$(git rev-parse --short HEAD)-$(date +%Y%m%d-%H%M%S)"
+    workspace="${TMPDIR:-/tmp}/dataform-tools-bench-{{actions}}"
+    mkdir -p bench-results
+    npm run compile
+    node scripts/bench/generate-fixture.mjs --actions {{actions}} --out "$workspace"
+    node scripts/bench/bundle.mjs --json "bench-results/$stamp.bundle.json"
+    rm -rf .vscode-test/user-data
+    BENCH_WORKSPACE="$workspace" BENCH_OUT="bench-results/$stamp.json" BENCH_BUNDLE_JSON="bench-results/$stamp.bundle.json" \
+        npx vscode-test --label bench
+    rm -f "bench-results/$stamp.bundle.json"
+    echo
+    node scripts/bench/report.mjs "bench-results/$stamp.json"
+    echo
+    echo "results: bench-results/$stamp.json"
+
+# Compare two bench results (before after)
+bench-compare before after:
+    node scripts/bench/report.mjs {{before}} {{after}}
+
 # Dry-run the version bump and changelog (bump: patch | minor | major | X.Y.Z)
 preview bump="patch":
     #!/usr/bin/env bash

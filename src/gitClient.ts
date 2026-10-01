@@ -5,6 +5,7 @@ import { exec, execFile } from 'child_process';
 import util from 'util';
 import { GitFileChange, GitFileChangeRaw, GitStatusCode, GitStatusCodeHumanReadable } from './types';
 import { logger } from "./logger";
+import { perfCount } from "./perf";
 
 const execPromise = util.promisify(exec);
 const execFilePromise = util.promisify(execFile);
@@ -26,6 +27,7 @@ export class GitService {
         }
 
         try {
+            perfCount('git.spawn');
             const { stdout } = await execPromise(command, { cwd: this.projectRoot });
             return stdout.trim();
         } catch (error: any) {
@@ -38,6 +40,7 @@ export class GitService {
         if (!this.projectRoot) {
             throw new Error("No project root found (no workspace open).");
         }
+        perfCount('git.spawn');
         const { stdout } = await execFilePromise("git", args, { cwd: this.projectRoot });
         return stdout.trim();
     }

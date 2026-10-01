@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { spawn } from 'child_process';
 import path from 'path';
 import { logger } from '../logger';
+import { perfCount, perfStart, perfTimed } from '../perf';
 import { windowsDataformCliNotAvailableErrorMessage, linuxDataformCliNotAvailableErrorMessage } from '../constants';
 import { buildIndices, clearIndices } from './compiledJsonIndex';
 import { getDataformCliCmdBasedOnScope } from './executableResolver';
@@ -174,7 +175,17 @@ function describeDataformCli(workspaceFolder: string): { cliPath: string, cliSou
  * Compiles with the compiler options setting, or with `compilerOptionsOverride` (e.g. the prod options
  * used by defer to prod). An override compile leaves `compilerOptionsMap`, which API runs use, untouched.
  */
-export function compileDataform(workspaceFolder: string, compilerOptionsOverride?: string): Promise<{ compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined }> {
+type CliCompileOutput = { compiledString: string | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined };
+
+export function compileDataform(workspaceFolder: string, compilerOptionsOverride?: string): Promise<CliCompileOutput> {
+    perfCount('cli.compile');
+    const endSpan = perfStart('compile', { override: compilerOptionsOverride !== undefined });
+    const compilation = spawnDataformCompile(workspaceFolder, compilerOptionsOverride);
+    compilation.then(() => endSpan(), () => endSpan({ failed: true }));
+    return compilation;
+}
+
+function spawnDataformCompile(workspaceFolder: string, compilerOptionsOverride?: string): Promise<CliCompileOutput> {
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
     const isOverride = compilerOptionsOverride !== undefined;
     let dataformCompilerOptions = isOverride ? compilerOptionsOverride.trim() : getDataformCompilerOptions();
@@ -417,13 +428,14 @@ export async function prewarmCliCompilation(workspaceFolder: string): Promise<vo
         if (!reason) {
             logger.info('Loaded the saved compilation; compile inputs are unchanged');
             reusable = { fingerprint, result: { dataformCompiledJson: savedJson, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined } };
+            perfStart('startup.compile', { source: 'saved' })();
             return;
         }
         logger.info(`Showing the saved compilation until a fresh one finishes: ${reason}`);
         stale = true;
     }
 
-    const promise = compileWithCli(workspaceFolder, fingerprint);
+    const promise = perfTimed('startup.compile', () => compileWithCli(workspaceFolder, fingerprint), { source: 'cli' });
     const compileId = latestCompileId;
     startupCompile = { fingerprint, promise };
     // compileWithCli reports failures in its result rather than rejecting
