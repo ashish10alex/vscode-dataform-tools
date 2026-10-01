@@ -92,4 +92,21 @@ suite('CLI compilation persisted across sessions', function () {
         assert.strictEqual(dataformCompiledJson, CACHED_COMPILED_DATAFORM_JSON);
         assert.ok(compilationTimeMs !== undefined, 'the startup compile result, which did run the CLI');
     });
+
+    test('edited project: a compile of unchanged files reuses the last one instead of running the CLI', async () => {
+        const definition = path.join(project, 'definitions', '0100_CLUBS.sqlx');
+        const later = new Date(Date.now() + 120_000);
+        fs.utimesSync(definition, later, later);
+
+        const edited = await runCompilation(project);
+        assert.ok(edited.dataformCompiledJson, 'the edit is compiled');
+        const compiledAt = getCompilationInfo()?.compiledAt;
+
+        // e.g. Run Changed compiling right after the panel compiled the saved file
+        const started = performance.now();
+        const { dataformCompiledJson } = await runCompilation(project);
+        assert.strictEqual(dataformCompiledJson, edited.dataformCompiledJson);
+        assert.strictEqual(getCompilationInfo()?.compiledAt, compiledAt, 'no CLI compile ran');
+        assert.ok(performance.now() - started < 500);
+    });
 });

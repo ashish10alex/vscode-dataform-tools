@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import util from 'util';
 import { execFile } from 'child_process';
 import { logger } from './logger';
-import { describeComparison } from './shared/changeComparison';
+import { changedFileKey, describeComparison } from './shared/changeComparison';
 import { ChangedActionsView, DataformCompiledJson, ExecutionMode, LastRunRequest } from './types';
 import { ChangedAction, CompiledGraphDiff, diffCompiledGraphs } from './utils/compiledGraphDiff';
 import { compileDataform, getDataformCompilerOptions, isCompilationStale, parseCompiledString, runCompilation } from './utils/dataformCompiler';
@@ -290,22 +290,60 @@ export function noChangesMessage(result: Pick<ChangedActionsResult, 'baseRef' | 
         : `No changed actions ${describeComparison(result.headRef, result.baseRef)}`;
 }
 
-/** Compiles the project and works out the changed actions, reporting failures to the user. */
+/**
+ * Compiles the project and works out the changed actions, reporting failures to the user. Shows progress
+ * straight away, since a compile of changed files or of a new base can take seconds before anything runs.
+ */
 export async function prepareChangedActions(workspaceFolder: string): Promise<ChangedActionsResult | undefined> {
-    const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
-    if (!dataformCompiledJson) {
-        vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
-        return undefined;
-    }
-    try {
-        return await computeChangedActions(workspaceFolder, dataformCompiledJson, true);
-    } catch (error: any) {
-        vscode.window.showErrorMessage(`Could not work out changed actions: ${error.message}`);
-        return undefined;
-    }
+    return vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Working out changed actions…' },
+        async () => {
+            const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
+            if (!dataformCompiledJson) {
+                vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
+                return undefined;
+            }
+            try {
+                return await computeChangedActions(workspaceFolder, dataformCompiledJson, true);
+            } catch (error: any) {
+                vscode.window.showErrorMessage(`Could not work out changed actions: ${error.message}`);
+                return undefined;
+            }
+        },
+    );
 }
 
-/** Runs the changed actions of `result`, or says there are none. */
+export interface ChangedFileSelection {
+    actions: ChangedAction[];
+    /** A rerun must keep to the same files: some changed file was left out, or the files came from such a run */
+    scoped: boolean;
+    /** How many files have changed actions */
+    changedFileCount: number;
+}
+
+/**
+ * The changed actions in `files` (keyed by `changedFileKey`), or all of them when `files` is undefined.
+ * `replayed` marks files recorded by a run that left some out: they stay the scope even when every file
+ * with changes right now is among them, so a file left out that changes again later still does not run.
+ */
+export function selectChangedFiles(changed: ChangedAction[], files: string[] | undefined, replayed = false): ChangedFileSelection {
+    const changedFiles = new Set(changed.map((action) => changedFileKey(action.fileName)));
+    if (!files) {
+        return { actions: changed, scoped: false, changedFileCount: changedFiles.size };
+    }
+    const selected = new Set(files);
+    return {
+        actions: changed.filter((action) => selected.has(changedFileKey(action.fileName))),
+        scoped: replayed || [...changedFiles].some((file) => !selected.has(file)),
+        changedFileCount: changedFiles.size,
+    };
+}
+
+/**
+ * Runs the changed actions of `result`, or says there are none. With `files`, only the changes in those
+ * files run; files that became changed since they were picked are left out, so nothing runs unseen.
+ * `replayed` is set when `files` come from the last run, see `selectChangedFiles`.
+ */
 export async function dispatchChangedActions(
     context: vscode.ExtensionContext,
     workspaceFolder: string,
@@ -314,14 +352,22 @@ export async function dispatchChangedActions(
     includeDependents: boolean,
     fullRefresh: boolean,
     executionMode: ExecutionMode,
+    files?: string[],
+    replayed = false,
 ): Promise<void> {
     if (result.changed.length === 0) {
         vscode.window.showInformationMessage(noChangesMessage(result));
         return;
     }
+    const { actions, scoped, changedFileCount } = selectChangedFiles(result.changed, files, replayed);
+    if (actions.length === 0) {
+        vscode.window.showInformationMessage(`None of the selected files still have changes ${describeComparison(result.headRef, result.baseRef)}, so nothing was run.`);
+        return;
+    }
     const lastRunRequest: Omit<LastRunRequest, 'timestamp'> = {
         kind: 'changed',
-        items: result.changed.map((action) => action.target),
+        items: actions.map((action) => action.target),
+        ...(scoped && files ? { files, changedFileCount } : {}),
         baseRef: result.baseRef,
         headRef: result.headRef,
         includeDependencies,
@@ -330,12 +376,12 @@ export async function dispatchChangedActions(
         executionMode,
         workspaceFolder,
     };
-    await runIncludedTargets(context, workspaceFolder, result.changed.map((action) => action.targetObj), includeDependencies, includeDependents, fullRefresh, executionMode, lastRunRequest);
+    await runIncludedTargets(context, workspaceFolder, actions.map((action) => action.targetObj), includeDependencies, includeDependents, fullRefresh, executionMode, lastRunRequest);
 }
 
 /**
- * Compiles the project, works out the changed actions and runs them. Returns the result so the caller
- * can refresh its view, or undefined when it could not be worked out.
+ * Compiles the project, works out the changed actions and runs them (only those in `files` when given).
+ * Returns the result so the caller can refresh its view, or undefined when it could not be worked out.
  */
 export async function runChangedActions(
     context: vscode.ExtensionContext,
@@ -344,10 +390,12 @@ export async function runChangedActions(
     includeDependents: boolean,
     fullRefresh: boolean,
     executionMode: ExecutionMode,
+    files?: string[],
+    replayed = false,
 ): Promise<ChangedActionsResult | undefined> {
     const result = await prepareChangedActions(workspaceFolder);
     if (result) {
-        await dispatchChangedActions(context, workspaceFolder, result, includeDependencies, includeDependents, fullRefresh, executionMode);
+        await dispatchChangedActions(context, workspaceFolder, result, includeDependencies, includeDependents, fullRefresh, executionMode, files, replayed);
     }
     return result;
 }
