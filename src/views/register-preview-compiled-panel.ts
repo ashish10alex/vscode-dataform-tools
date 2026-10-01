@@ -15,7 +15,7 @@ import { PerfSpan, perfStart, perfTimed } from "../perf";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
-import { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "../lazySdk";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
 import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
@@ -899,7 +899,7 @@ export class CompiledQueryPanel {
                         const needsActionsBackfill = !item.actions;
                         if ((isNonTerminal || needsActionBackfill || needsCountsBackfill || needsActionsBackfill) && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
                             try {
-                                const dataformClient = new DataformTools(item.projectId, item.location);
+                                const dataformClient = new (await loadDataformTools())(item.projectId, item.location);
                                 const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
                                 if (invocation && invocation.state) {
                                   item.state = invocation.state as string;

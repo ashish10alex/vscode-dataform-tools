@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import path from 'path';
-import beautify from 'js-beautify';
+import { loadBeautify } from './lazySdk';
 import { exec as exec } from 'child_process';
 import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
@@ -53,6 +53,8 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
 
     let sqlBlockText = await getTextForBlock(document, sqlBlockMeta);
     writeCompiledSqlToFile(sqlBlockText, sqlFileToFormatPath);
+
+    const beautify = await loadBeautify();
 
     let [jsBlockText] = await Promise.all([ getTextForBlock(document, jsBlockMeta) ]);
     try {

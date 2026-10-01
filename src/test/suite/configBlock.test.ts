@@ -49,6 +49,22 @@ suite('configBlock.parser', () => {
         assert.deepStrictEqual(root.properties.map(p => p.value.kind), ['dynamic', 'dynamic']);
     });
 
+    test('recovers from a config block that is being typed', () => {
+        const text = 'config {\n  type: ,\n  tags: ["a", , "b"],\n  schema: "s"\n}';
+        const { root } = parse(text);
+        const [type, tags, schema] = root.properties;
+        assert.strictEqual(type.value.kind, 'missing');
+        assert.strictEqual(type.value.start, text.indexOf(':') + 1, 'a missing value sits right after the colon');
+        assert.strictEqual(tags.value.kind, 'array');
+        assert.deepStrictEqual(tags.value.kind === 'array' && tags.value.elements.map(e => e.kind), ['string', 'missing', 'string']);
+        assert.strictEqual(schema.value.kind, 'string');
+
+        const shorthand = parse('config {\n  assertions: {\n    non\n  }\n}').root.properties[0];
+        assert.ok(shorthand.value.kind === 'object');
+        assert.strictEqual(shorthand.value.object.properties[0].key, 'non');
+        assert.strictEqual(shorthand.value.object.properties[0].value.kind, 'missing');
+    });
+
     test('getLocationAt reports key and value positions and nested paths', () => {
         const text = 'config {\n  type: "incremental",\n  onSchemaChange: "EX",\n  assertions: {\n    non\n  }\n}';
         const parsed = parse(text);

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { logger } from './logger';
-import { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
+import type { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
+import { loadBigQuery } from './lazySdk';
 
 let bigquery: BigQuery | undefined;
 let authenticationCheckInterval: NodeJS.Timeout | undefined;
@@ -36,7 +37,7 @@ export async function createBigQueryClient(): Promise<string | undefined> {
                 options = {... options , keyFilename: serviceAccountJsonPath};
             }
 
-            bigquery = new BigQuery(options);
+            bigquery = new (await loadBigQuery())(options);
             await verifyAuthentication();
             const projectIdMessage = projectId ? `Project ID: ${projectId}` : '';
             const gcpLocationMessage = gcpLocation ? `Location: ${gcpLocation}` : '';

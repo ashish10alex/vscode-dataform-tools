@@ -5,7 +5,7 @@ import { load as loadYaml, YAMLException } from 'js-yaml';
 import { logger } from '../logger';
 import { perfTimed } from '../perf';
 import { GitService } from '../gitClient';
-import { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "../lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
 import { BigQueryDryRunResponse, CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
@@ -610,7 +610,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
                 return;
             }
 
-            const dataformClient = new DataformTools(projectId, gcpProjectLocation);
+            const dataformClient = new (await loadDataformTools())(projectId, gcpProjectLocation);
 
             const output = await dataformClient.runDataformRemotely(repositoryName, compilerOptionsMap, invocationConfig, undefined, gitInfo.gitBranch);
             if(!output){

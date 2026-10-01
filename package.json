@@ -729,6 +729,7 @@
         "rimraf": "^6.1.3",
         "tailwind-merge": "^3.4.1",
         "tailwindcss": "^3.4.19",
+        "typescript": "^5.7.3",
         "vite": "^5.0.0"
     },
     "dependencies": {
@@ -738,12 +739,13 @@
         "@google-cloud/resource-manager": "^6.2.0",
         "@radix-ui/react-tabs": "^1.1.13",
         "@vscode/codicons": "^0.0.44",
+        "acorn": "^8.18.0",
+        "acorn-loose": "^8.5.2",
         "comment-parser": "^1.4.1",
         "dompurify": "^3.3.1",
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
         "prism-react-renderer": "^2.4.1",
-        "tablemark": "^3.1.0",
-        "typescript": "^5.7.3"
+        "tablemark": "^3.1.0"
     }
 }

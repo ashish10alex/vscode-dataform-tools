@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import { GoogleAuth } from 'google-auth-library';
-import { ProjectsClient } from '@google-cloud/resource-manager';
+import { loadGoogleAuth, loadProjectsClient } from '../lazySdk';
 import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
 import { DataformCompiledJson, SchemaMetadata } from '../types';
 import { createSelector } from './vscodeUi';
@@ -20,7 +19,7 @@ export async function getCachedDataformRepositoryLocation(context: vscode.Extens
 
 export async function getCurrentGcpProjectId(): Promise<string | undefined> {
     try {
-        const auth = new GoogleAuth();
+        const auth = new (await loadGoogleAuth())();
         const projectId = await auth.getProjectId();
         return projectId;
     } catch (err) {
@@ -31,7 +30,7 @@ export async function getCurrentGcpProjectId(): Promise<string | undefined> {
 
 export async function getLocationOfGcpProject(projectId: string){
     try{
-        const client = new ProjectsClient();
+        const client = new (await loadProjectsClient())();
         const [project] = await client.getProject({
             name: `projects/${projectId}`
         });
@@ -81,7 +80,7 @@ export async function getGcpProjectIds(){
     let gcpProjectIds = [];
 
     try {
-        const client = new ProjectsClient();
+        const client = new (await loadProjectsClient())();
         const projects = client.searchProjectsAsync();
         vscode.window.showInformationMessage("Loading available GCP projects...");
         for await (const project of projects) {

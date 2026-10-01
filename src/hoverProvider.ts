@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-const { BigQuery } = require('@google-cloud/bigquery');
+import { loadBigQuery } from './lazySdk';
 import {
   getWorkspaceFolder,
   getTextByLineRange,
@@ -15,7 +15,8 @@ import { Assertion, Column, ColumnMetadata, Operation, Table, Target } from "./t
 import * as fs from "fs";
 import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
-import { createSourceFile, forEachChild, getJSDocTags, isClassDeclaration, isFunctionDeclaration, isIdentifier, isVariableDeclaration, Node, ScriptTarget } from "typescript";
+import { parse as parseLoose } from "acorn-loose";
+import type { Comment, Node as AcornNode } from "acorn";
 import { maxHoverSchemaRows, sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 import { isOnConfigKey } from "./configBlock/providers";
@@ -128,51 +129,76 @@ let parseJsDocBlock = (jsDocBlock: string, nodeName:string) => {
     return {functionSignature: functionSignature, hoverContent:hoverContent, descriptionOnTopOfJsDoc: descriptionOnTopOfJsDoc};
 };
 
-function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
-    const sourceFile = createSourceFile('temp.js', code, ScriptTarget.Latest, true);
+type Declaration = AcornNode & { type: 'FunctionDeclaration' | 'ClassDeclaration' | 'VariableDeclarator'; id?: { type: string; name?: string } | null };
 
-    function visit(node: Node):any {
-        let nodeType = "";
-        if (isFunctionDeclaration(node)) {
-            nodeType = "FunctionDeclaration";
-        } else if (isVariableDeclaration(node)) {
-            nodeType = "VariableDeclaration";
-        } else if (isClassDeclaration(node)) {
-            nodeType = "ClassDeclaration";
-        } else {
-            nodeType = "Unknown";
+/** The first function, class or variable declaration named `name`, in source order (outer before inner) */
+function findDeclaration(node: unknown, name: string): Declaration | undefined {
+    let found: Declaration | undefined;
+    const visit = (value: unknown) => {
+        if (!value || typeof value !== 'object') {
+            return;
         }
-
-        if (isFunctionDeclaration(node) || isVariableDeclaration(node) || isClassDeclaration(node)) {
-            const name = node.name && isIdentifier(node.name) ? node.name.text : 'anonymous';
-            // TODO: use this later for better go to definition
-            // const startPosition = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-            // const endPosition = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
-
-            if(name === searchTerm){
-                let hoverContent = `\`\`\`javascript\n var ${node.getText()}\n\`\`\``;
-                if (nodeType === "VariableDeclaration"){
-                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
-                }
-
-                const jsDocTags = getJSDocTags(node);
-
-                if (jsDocTags.length > 0) {
-                    // the comment-parser library does not have types in it so we have ignore the typescript error
-                    // @ts-ignore
-                    const jsDocFullText = jsDocTags[0].parent.parent.body.parent.getFullText();
-                    const nodeName = node.name?.getText() || "anonymous";
-                    let {functionSignature, hoverContent, descriptionOnTopOfJsDoc}  = parseJsDocBlock(jsDocFullText, nodeName);
-                    hoverContent = functionSignature + "\n\n" + descriptionOnTopOfJsDoc + '\n\n' + hoverContent;
-                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
-                } else {
-                    return new vscode.Hover(new vscode.MarkdownString(hoverContent));
-                }
+        if (Array.isArray(value)) {
+            value.forEach(visit);
+            return;
+        }
+        const candidate = value as Declaration;
+        if (typeof candidate.type !== 'string') {
+            return;
+        }
+        if ((candidate.type === 'FunctionDeclaration' || candidate.type === 'ClassDeclaration' || candidate.type === 'VariableDeclarator')
+            && candidate.id?.type === 'Identifier' && candidate.id.name === name
+            && (!found || candidate.start < found.start)) {
+            found = candidate;
+        }
+        for (const key of Object.keys(candidate)) {
+            if (key !== 'loc') {
+                visit((candidate as any)[key]);
             }
         }
-        return forEachChild(node, visit);
-   }
-   return visit(sourceFile);
+    };
+    visit(node);
+    return found;
+}
+
+function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
+    const comments: Comment[] = [];
+    let program: AcornNode;
+    try {
+        program = parseLoose(code, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true, allowImportExportEverywhere: true, onComment: comments });
+    } catch {
+        return undefined;
+    }
+    const node = findDeclaration(program, searchTerm);
+    if (!node) {
+        return undefined;
+    }
+
+    const hoverContent = `\`\`\`javascript\n var ${code.slice(node.start, node.end)}\n\`\`\``;
+    if (node.type === "VariableDeclarator") {
+        return new vscode.Hover(new vscode.MarkdownString(hoverContent));
+    }
+
+    // The comments directly above the declaration, and whether one of them is a JSDoc block with tags
+    let leadingStart = node.start;
+    let hasJsDocTags = false;
+    for (let i = comments.length - 1; i >= 0; i--) {
+        const comment = comments[i];
+        if (comment.end > leadingStart) {
+            continue;
+        }
+        if (code.slice(comment.end, leadingStart).trim() !== "") {
+            break;
+        }
+        leadingStart = comment.start;
+        hasJsDocTags ||= comment.type === "Block" && comment.value.startsWith("*") && /(^|\s)@\w/.test(comment.value);
+    }
+    if (!hasJsDocTags) {
+        return new vscode.Hover(new vscode.MarkdownString(hoverContent));
+    }
+    const jsDocFullText = code.slice(leadingStart, node.end);
+    let {functionSignature, hoverContent: tagsContent, descriptionOnTopOfJsDoc}  = parseJsDocBlock(jsDocFullText, searchTerm);
+    return new vscode.Hover(new vscode.MarkdownString(functionSignature + "\n\n" + descriptionOnTopOfJsDoc + '\n\n' + tagsContent));
 }
 
 /**
@@ -187,7 +213,7 @@ export async function fetchTableMetadata(projectId: string, datasetId: string, t
   if (serviceAccountJsonPath) {
     options = { ...options, keyFilename: serviceAccountJsonPath as string };
   }
-  const bigqueryClient = new BigQuery(options);
+  const bigqueryClient = new (await loadBigQuery())(options);
   const table = bigqueryClient.dataset(datasetId).table(tableId);
   perfCount('bq.getMetadata');
   const [metadata] = await table.getMetadata();

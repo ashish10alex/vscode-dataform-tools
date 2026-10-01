@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import fs from 'fs';
 import path from 'path';
 import { load as loadYaml } from 'js-yaml';
-import { DataformTools } from "@ashishalex/dataform-tools";
+import type { DataformTools } from "@ashishalex/dataform-tools";
+import { loadDataformTools } from "../lazySdk";
 import { GitService } from '../gitClient';
 import { logger } from '../logger';
 import { CodeCompilationConfig, DataformCompiledJson, ExecutionMode, GraphError } from '../types';
@@ -176,7 +177,7 @@ async function createDataformClient(workspaceFolder: string, repositoryName: str
     }
     const serviceAccountJsonPath = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('serviceAccountJsonPath');
     const clientOptions = serviceAccountJsonPath ? { projectId, keyFilename: serviceAccountJsonPath } : { projectId };
-    return new DataformTools(projectId, location, clientOptions);
+    return new (await loadDataformTools())(projectId, location, clientOptions);
 }
 
 /** Dataform client for the repository named after the current git repository. */
