@@ -30,6 +30,7 @@ import {
 import clsx from "clsx";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
+import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { CompilerOverrides } from "./CompilerOverrides";
 import { PropertyGraphSection } from "./PropertyGraphSection";
@@ -351,9 +352,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 key={index}
                 className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-7 pb-4 rounded-xl border border-[var(--vscode-widget-border)]/60 flex flex-col space-y-2 group"
               >
-                <span className={`absolute top-2 left-2 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
-                  {model.type}
-                </span>
+                <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                  <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                    {model.type}
+                  </span>
+                  {model.type === 'assertion' && target && describeBuiltInAssertion(target.name, model.query).map(builtIn => (
+                    <span
+                      key={builtIn.kind}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-badge-background)]/40"
+                      title={builtIn.checks.length > 0 ? `${builtIn.label}:\n${builtIn.checks.join('\n')}` : builtIn.label}
+                    >
+                      {builtIn.label}
+                    </span>
+                  ))}
+                </div>
                 {dryRunStat && !state.dryRunning && (
                   <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
                     {dryRunStat.split("<br>").map((line, i) => (
