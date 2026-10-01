@@ -3,7 +3,6 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { DataformCompiledJson, Target, WorkflowUrlEntry } from './types';
-import { createBigQueryClient, setAuthenticationCheckInterval, clearAuthenticationCheckInterval } from './bigqueryClient';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
@@ -13,6 +12,7 @@ import { defaultCdnLinks, executablesToCheck } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
 import { executableIsAvailable, isDataformWorkspace, prewarmCliCompilation } from './utils';
 import { initCliCompileCache } from './utils/cliCompileCache';
+import { clearExecutablePathCache, prefetchExecutablePath } from './utils/executableResolver';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
 import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { runChangedActionsCommand, RunChangedActionsArgs } from './runChangedActionsCommand';
@@ -96,20 +96,19 @@ export async function activate(context: vscode.ExtensionContext) {
     initProdTargets(context);
     initCliCompileCache(context);
 
+    // Searching PATH runs `which`/`where`: do it in the background, then warn about anything missing
     const activationWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    for (let i = 0; i < executablesToCheck.length; i++) {
-        let executable = executablesToCheck[i];
-        if (executable === 'dataform' && isRemoteMode()) {
-            continue; // Remote mode compiles with the Dataform API, the CLI is not needed
+    const executablesNeeded = executablesToCheck.filter((executable) => !(executable === 'dataform' && isRemoteMode())); // Remote mode compiles with the Dataform API
+    Promise.all(executablesNeeded.map(prefetchExecutablePath)).then(() => {
+        for (const executable of executablesNeeded) {
+            executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
         }
-        logger.debug(`Checking executable availability: ${executable}`);
-        executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
-    }
-
-    // Clean up on deactivation
-    context.subscriptions.push({
-        dispose: () => clearAuthenticationCheckInterval()
-    });
+    }).catch((error) => logger.error(`Failed to look up executables: ${error}`));
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (['dataformCliScope', 'dataformExecutablePath', 'gcloudExecutablePath', 'sqlfluffExecutablePath'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
+            clearExecutablePathCache();
+        }
+    }));
 
     diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
@@ -399,7 +398,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const errorLensExtensionInstalled = vscode.extensions.getExtension("usernamehw.errorlens");
     //NOTE: in wsl the extension is not visible in wsl remote by the api as it can be installed in client side (windows) if vscode thinks its is a UI based extension instead of workspace based
-    if (!errorLensExtensionInstalled && !isWsl) {
+    // Recommended once, not on every activation
+    const errorLensRecommendedKey = 'vscode-dataform-tools.errorLensRecommended';
+    if (!errorLensExtensionInstalled && !isWsl && !context.globalState.get<boolean>(errorLensRecommendedKey)) {
+        context.globalState.update(errorLensRecommendedKey, true);
         const message = "The Dataform tools extension recommends installing the Error Lens extension to show error messages inline.";
         const installButton = "Install Error Lens";
         vscode.window.showInformationMessage(message, installButton).then(selection => {
@@ -436,13 +438,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(renameProvider);
 
 
-    //TODO: check if user has multiple workspace folders open
-    //If so, prompt user to select a workspace folder ? We seem to select the first workspace folder by default
-    workspaceFolder = await getWorkspaceFolder();
-    if (workspaceFolder) {
-        createBigQueryClient();
-        setAuthenticationCheckInterval(); // This will check the setting and set up interval if needed
-    }
+    // Not awaited: with several workspace folders this can wait on a folder picker, which must not hold up
+    // activation. The BigQuery client is created when a feature first needs it.
+    getWorkspaceFolder().then((folder) => {
+        workspaceFolder ??= folder;
+    }).catch((error) => logger.error(`Failed to resolve the workspace folder: ${error}`));
 
     logger.info('Dataform Tools extension activated successfully');
     endActivateSpan();
@@ -454,6 +454,5 @@ export async function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export function deactivate() {
     logger.info('Deactivating Dataform Tools extension');
-    clearAuthenticationCheckInterval();
     logger.info('Extension "vscode-dataform-tools" is now deactivated.');
 }

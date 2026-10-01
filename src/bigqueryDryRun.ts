@@ -20,7 +20,7 @@ export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     };
 }
 
-export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse> {
+export async function queryDryRun(query: string, alreadyRetried: boolean = false): Promise<BigQueryDryRunResponse> {
     if (query === "" || !query) {
         return {
             schema: undefined,
@@ -90,8 +90,8 @@ export async function queryDryRun(query: string): Promise<BigQueryDryRunResponse
         };
     } catch (error: any) {
         try {
-            await handleBigQueryError(error);
-            return await queryDryRun(query);
+            await handleBigQueryError(error, alreadyRetried);
+            return await queryDryRun(query, true);
         } catch (finalError: any) {
             const errorLocation = getLineAndColumnNumberFromErrorMessage(finalError.message);
             return {

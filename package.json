@@ -38,9 +38,9 @@
         "vscode.git"
     ],
     "activationEvents": [
-        "workspaceContains:**/*.sqlx",
-        "workspaceContains:**/workflow_settings.yaml",
-        "workspaceContains:**/dataform.json"
+        "workspaceContains:workflow_settings.yaml",
+        "workspaceContains:dataform.json",
+        "onLanguage:sqlx"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -587,11 +587,6 @@
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Disable this to experience faster formatting, especially if you have enabled format on save. `::WARNING::` only turn this on if you are confident that your query compiles without errors. Syntax error in config/pre/post operation blocks termination can result in unexpeted results while formatting"
-                },
-                "vscode-dataform-tools.bigqueryAuthenticationCheck": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Uses an interval of 55 minutes to validate the user's BigQuery Credentials. Set this to `false` to only validate the user's credentials when a query or dry run fails"
                 },
                 "vscode-dataform-tools.recommendErrorLensExtension": {
                     "type": "boolean",
