@@ -2,12 +2,20 @@ import * as vscode from 'vscode';
 import { findCtes } from './cteScanner';
 
 export class SqlxDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
+    /** The outline, breadcrumbs and sticky scroll all ask for the symbols of the same version */
+    private cache = new WeakMap<vscode.TextDocument, { version: number; symbols: vscode.DocumentSymbol[] }>();
 
     public provideDocumentSymbols(
         document: vscode.TextDocument,
         _token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.DocumentSymbol[]> {
-        return getDocumentSymbols(document);
+        const cached = this.cache.get(document);
+        if (cached?.version === document.version) {
+            return cached.symbols;
+        }
+        const symbols = getDocumentSymbols(document);
+        this.cache.set(document, { version: document.version, symbols });
+        return symbols;
     }
 }
 
@@ -60,8 +68,9 @@ export function getDocumentSymbols(document: vscode.TextDocument): vscode.Docume
         myFoundSymbols.push({ name: match[0], line: line, type: "ref", index: matchIndex });
     }
 
-    // BigQuery table reference pattern (project.dataset.table)
-    const bqTableRegex = /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g;
+    // BigQuery table reference pattern (project.dataset.table). Matching only from the start of a run of name
+    // characters finds the same references and avoids quadratic backtracking on long runs without dots.
+    const bqTableRegex = /(?<![a-zA-Z0-9_-])[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g;
     const bqMatches = text.matchAll(bqTableRegex);
 
     for (const match of bqMatches) {
@@ -163,10 +172,10 @@ function isMatchInComment(text: string, matchIndex: number, blockComments: { sta
 }
 
 function isInsideTemplate(text: string, matchIndex: number): boolean {
-    const textBeforeMatch = text.substring(0, matchIndex);
-    const lastOpen = textBeforeMatch.lastIndexOf('${');
-    const lastClose = textBeforeMatch.lastIndexOf('}');
-    
+    // The last `${` and `}` that end before the match, without copying the text before it for every match
+    const lastOpen = matchIndex >= 2 ? text.lastIndexOf('${', matchIndex - 2) : -1;
+    const lastClose = matchIndex >= 1 ? text.lastIndexOf('}', matchIndex - 1) : -1;
+
     // If there's an open ${ after the last closing }, we're inside a template
     return lastOpen > lastClose;
 }

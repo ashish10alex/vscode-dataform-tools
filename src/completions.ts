@@ -112,11 +112,14 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
 );
 
 
-export const schemaAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
-    "*",
-    {
-      async provideCompletionItems() {
-        const completionItems = schemaAutoCompletions.map((item: SchemaMetadata) => {
+// Rebuilt only when the schemas change (a save or editor switch), not on every keystroke that asks for completions
+let schemaCompletionSource: SchemaMetadata[] | undefined;
+let schemaCompletionItems: vscode.CompletionItem[] = [];
+
+function getSchemaCompletionItems(): vscode.CompletionItem[] {
+    if (schemaCompletionSource !== schemaAutoCompletions) {
+        schemaCompletionSource = schemaAutoCompletions;
+        schemaCompletionItems = schemaAutoCompletions.map((item: SchemaMetadata) => {
             const completionItem = new vscode.CompletionItem(`${item.name}`);
             completionItem.kind = vscode.CompletionItemKind.Variable;
             completionItem.detail = `${item.metadata.fullTableId}`;
@@ -127,8 +130,16 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
             completionItem.documentation = markdownString;
             return completionItem;
         });
-        return completionItems;
+    }
+    return schemaCompletionItems;
+}
+
+export const schemaAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
+    // Column names of the current file's dependencies only make sense in .sqlx files
+    { language: 'sqlx' },
+    {
+      provideCompletionItems() {
+        return getSchemaCompletionItems();
       }
     }
 );
-

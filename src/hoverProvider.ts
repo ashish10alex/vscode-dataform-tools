@@ -161,14 +161,38 @@ function findDeclaration(node: unknown, name: string): Declaration | undefined {
     return found;
 }
 
-function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
-    const comments: Comment[] = [];
-    let program: AcornNode;
+/** Hovering over the uses of one includes file parses the same code again and again: keep the last few parses */
+const MAX_PARSED_JS = 8;
+const parsedJs = new Map<string, { program: AcornNode, comments: Comment[] } | undefined>();
+
+function parseJsForHover(code: string): { program: AcornNode, comments: Comment[] } | undefined {
+    if (parsedJs.has(code)) {
+        const parsed = parsedJs.get(code);
+        parsedJs.delete(code);
+        parsedJs.set(code, parsed); // most recently used last
+        return parsed;
+    }
+    let parsed: { program: AcornNode, comments: Comment[] } | undefined;
     try {
-        program = parseLoose(code, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true, allowImportExportEverywhere: true, onComment: comments });
+        const comments: Comment[] = [];
+        const program = parseLoose(code, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true, allowImportExportEverywhere: true, onComment: comments });
+        parsed = { program, comments };
     } catch {
+        parsed = undefined;
+    }
+    parsedJs.set(code, parsed);
+    if (parsedJs.size > MAX_PARSED_JS) {
+        parsedJs.delete(parsedJs.keys().next().value!);
+    }
+    return parsed;
+}
+
+function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vscode.Hover|undefined {
+    const parsed = parseJsForHover(code);
+    if (!parsed) {
         return undefined;
     }
+    const { program, comments } = parsed;
     const node = findDeclaration(program, searchTerm);
     if (!node) {
         return undefined;
@@ -316,7 +340,7 @@ async function findModuleVarDefinition(
   //@ts-ignore
   let jsFileWtSameNameUri;
   try {
-      const fileNames = fs.readdirSync(includesPath);
+      const fileNames = await fs.promises.readdir(includesPath);
       for (const fileName of fileNames) {
           if(fileName === jsFileName + ".js"){
               const filePath = path.join(includesPath, fileName);
