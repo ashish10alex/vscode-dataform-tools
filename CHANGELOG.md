@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.15.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.15.0...v1.15.1) (2026-10-01)
+
+
+### Features
+
+* label built-in assertions with their kind in the compiled query panel ([#401](https://github.com/ashish10alex/vscode-dataform-tools/issues/401)) ([cf5f516](https://github.com/ashish10alex/vscode-dataform-tools/commit/cf5f516b488679b34a05b3d98a89f58d3b76c2e0))
+
 ## [1.15.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.11...v1.15.0) (2026-10-01)
 
 
