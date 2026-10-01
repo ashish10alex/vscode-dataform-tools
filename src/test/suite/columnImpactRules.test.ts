@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { diffSchemas } from '../../columnLineage/impactRules';
 import { ImpactAnalysis, toImpactEntries } from '../../columnLineage/impactReport';
+import { tableActions } from '../../shared/columnLineage/tableActions';
 
 suite('Column impact: schema diff', () => {
     test('finds dropped and retyped top-level columns, case-insensitively, treating legacy type names as equal', () => {
@@ -40,5 +41,14 @@ suite('Column impact: entries for the panel', () => {
             { column: 'goals', change: { kind: 'typeChanged', from: 'INT64', to: 'STRING' }, copies: 1, derived: 1, mayRead: 1 },
             { column: 'assists', change: { kind: 'dropped' }, copies: 0, derived: 0, mayRead: 0 },
         ]);
+    });
+});
+
+suite('Column impact: which action to check', () => {
+    test('ignores built-in assertions compiled from the same file', () => {
+        const actions = [{ type: 'table', name: 'player_stats' }, { type: 'assertion', name: 'player_stats_assertions_uniqueKey_0' }];
+        assert.deepStrictEqual(tableActions(actions).map((action) => action.name), ['player_stats']);
+        assert.deepStrictEqual(tableActions([{ type: 'operations' }, { type: 'test' }]), []);
+        assert.deepStrictEqual(tableActions(undefined), []);
     });
 });

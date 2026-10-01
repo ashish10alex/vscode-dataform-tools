@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { getCurrentFileMetadata } from '../utils';
 import { indexByProdTarget } from './prodIndex';
+import { tableActions } from '../shared/columnLineage/tableActions';
 import { GraphAction, graphNeighbours, guessColumnLinks, indexGraph, targetFqn } from '../shared/columnLineage/graphLinks';
 import { ColumnLink, LineageDirection, TraceFocus, TraceSource } from '../shared/columnLineage/types';
 import { SchemaCache } from './schemaCache';
@@ -54,7 +55,7 @@ export async function focusFromEditor(prod: boolean): Promise<EditorFocus | unde
         return undefined;
     }
     const curFileMeta = await getCurrentFileMetadata(false);
-    const target = curFileMeta?.fileMetadata?.tables?.[0]?.target;
+    const target = tableActions(curFileMeta?.fileMetadata?.tables)[0]?.target;
     if (!target) {
         vscode.window.showInformationMessage('This file defines no table to trace.');
         return undefined;

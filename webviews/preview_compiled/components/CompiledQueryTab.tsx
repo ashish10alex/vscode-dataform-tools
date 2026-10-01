@@ -29,6 +29,7 @@ import {
   Tag,
 } from "lucide-react";
 import clsx from "clsx";
+import { tableActions } from "../../../src/shared/columnLineage/tableActions";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
@@ -256,9 +257,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "previewResults", value: true });
   };
 
-  // One table, view or incremental table: the actions whose schema can be compared with prod
-  const tableTargets = (state.targetTablesOrViews ?? []).filter((target: { type?: string }) => target?.type !== "test");
-  const canCheckColumnImpact = tableTargets.length === 1 && ["table", "view", "incremental"].includes(tableTargets[0]?.type);
+  // One table, view or incremental table, ignoring its built-in assertions: the action whose schema can be compared with prod
+  const canCheckColumnImpact = tableActions(state.targetTablesOrViews).length === 1;
 
   const handleColumnImpact = () => {
     vscode.postMessage({ command: "checkColumnImpact" });

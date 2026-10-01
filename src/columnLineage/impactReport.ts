@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { GraphAction, indexGraph, targetFqn } from '../shared/columnLineage/graphLinks';
 import { ColumnLink, ImpactEntry } from '../shared/columnLineage/types';
+import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
 import { ColumnImpact, SchemaField, diffSchemas } from './impactRules';
 import { indexByProdTarget } from './prodIndex';
@@ -59,9 +60,9 @@ export async function analyzeColumnImpact(document: vscode.TextDocument): Promis
     if (!record || record.uri !== document.uri.toString()) {
         throw new Error('No dry run for this file yet. Save it or refresh the compiled query panel, then check again.');
     }
-    const tables = record.curFileMeta?.fileMetadata?.tables ?? [];
+    const tables = tableActions<{ type?: string; target: { database: string; schema: string; name: string } }>(record.curFileMeta?.fileMetadata?.tables);
     const action = tables[0];
-    if (tables.length !== 1 || !['table', 'view', 'incremental'].includes(action?.type)) {
+    if (tables.length !== 1) {
         throw new Error('Column impact works for .sqlx files that define one table, view or incremental table.');
     }
     if (!CACHED_COMPILED_DATAFORM_JSON) {
