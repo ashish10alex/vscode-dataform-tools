@@ -1,4 +1,5 @@
 import { DataformCompiledJson, QueryMeta, Target } from '../types';
+import { formatRelativeTime } from '../utils/relativeTime';
 
 /*
  * Defer to prod (like dbt's `--defer`): an upstream action that is not selected and has not been built in
@@ -364,4 +365,40 @@ export function proxyViewAction(existing: { labels?: { [key: string]: string }, 
         return "leaveRealTable";
     }
     return existing.view?.query?.trim() === spec.query ? "keep" : "update";
+}
+
+/** How an editor colours the label after a ref: read from prod, a warning, or read from a built Dev Target */
+export type RefHintKind = "prod" | "warning" | "dev";
+
+/** The label and hover markdown an editor shows after a `${ref(...)}` to an upstream action */
+export interface DeferralEntryHint {
+    label: string;
+    kind: RefHintKind;
+    hover: string;
+}
+
+function bigQueryConsoleUrl(target: Target): string {
+    return `https://console.cloud.google.com/bigquery?project=${target.database}&ws=!1m5!1m4!4m3!1s${target.database}!2s${target.schema}!3s${target.name}`;
+}
+
+export function deferralEntryHint(entry: DeferralEntry): DeferralEntryHint {
+    const route = entry.prod ? `\`${targetId(entry.dev)}\`\n\n→ \`${targetId(entry.prod)}\`` : `\`${targetId(entry.dev)}\``;
+    const openProd = entry.prod ? `\n\n[Open prod table in BigQuery](${bigQueryConsoleUrl(entry.prod)})` : "";
+    if (entry.status === "deferred" && entry.stale) {
+        return { label: "⚠ prod · changed on this branch", kind: "warning", hover: `**Defer to prod:** read from prod, but changed on this branch, so prod may be out of date.\n\n${route}${openProd}` };
+    }
+    if (entry.status === "deferred") {
+        return { label: "→ deferred to prod", kind: "prod", hover: `**Defer to prod:** not built in dev, so read from prod.\n\n${route}${openProd}` };
+    }
+    if (entry.status === "unreadable") {
+        return { label: "⚠ not built in dev · no prod access", kind: "warning", hover: `**Defer to prod:** not built in dev, and no read access to prod.\n\n${route}` };
+    }
+    return { label: "⚠ not built in dev or prod", kind: "warning", hover: `**Defer to prod:** not built in dev or prod.\n\n${route}` };
+}
+
+/** An upstream action that has a Prod Target but is built in dev, so it is read from dev. `now` ages the label. */
+export function builtInDevHint(entry: BuiltInDevEntry, now: number): DeferralEntryHint {
+    const updated = entry.lastModified ? `\n\nLast updated ${new Date(entry.lastModified).toLocaleString()}` : "";
+    const label = entry.lastModified ? `✓ dev · built ${formatRelativeTime(entry.lastModified, now)}` : "✓ dev · built in dev";
+    return { label, kind: "dev", hover: `**Defer to prod:** built in dev, so read from dev.\n\n\`${targetId(entry.dev)}\`${updated}` };
 }

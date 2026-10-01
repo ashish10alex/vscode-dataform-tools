@@ -91,13 +91,26 @@ export async function resolveDeferralForActions(
     return (await tryResolveDeferral(selected, devGraph, workspaceFolder, options)).deferral;
 }
 
+/**
+ * Like {@link resolveDeferralForActions}, but returns without waiting for the Stale Deferral flags. `staleFlags`
+ * resolves once they are set on the entries, to true when any entry was flagged.
+ */
+export async function resolveDeferralWithStaleFlags(
+    selected: SelectedActions,
+    devGraph: DataformCompiledJson,
+    workspaceFolder: string,
+): Promise<{ deferral?: Deferral, staleFlags?: Promise<boolean> }> {
+    const { deferral, staleFlags } = await tryResolveDeferral(selected, devGraph, workspaceFolder);
+    return { deferral, staleFlags };
+}
+
 /** Like {@link resolveDeferralForActions}, but says why defer to prod is on and still not applied */
 async function tryResolveDeferral(
     selected: SelectedActions,
     devGraph: DataformCompiledJson,
     workspaceFolder: string,
     options: ResolveOptions = {},
-): Promise<{ deferral?: Deferral, error?: string }> {
+): Promise<{ deferral?: Deferral, error?: string, staleFlags?: Promise<boolean> }> {
     if (!(options.enabled ?? isDeferEnabled(workspaceFolder))) {
         return {};
     }
@@ -141,11 +154,11 @@ async function tryResolveDeferral(
             prodStatus: (target) => prodStatuses.get(targetId(target)) ?? "missing",
         });
         lastReportedError = undefined;
-        const stale = flagStaleDeferrals(entries, workspaceFolder, devGraph);
+        const staleFlags = flagStaleDeferrals(entries, workspaceFolder, devGraph);
         if (options.awaitStale) {
-            await stale;
+            await staleFlags;
         }
-        return { deferral: { entries, builtInDev } };
+        return { deferral: { entries, builtInDev }, staleFlags };
     } catch (error: any) {
         const message = error?.message ?? String(error);
         reportError(message);
@@ -206,12 +219,12 @@ export async function deferFileMetadata(fileMetadata: TablesWtFullQuery, devGrap
 /**
  * Marks deferred entries that are Changed Actions: reading their Prod Target ignores this branch's changes.
  * Uses the base graph Run Changed has cached; without one it is compiled in the background and the flags
- * arrive through `onDeferralUpdated`.
+ * arrive through `onDeferralUpdated`. Resolves to true when any entry was flagged.
  */
-async function flagStaleDeferrals(entries: DeferralEntry[], workspaceFolder: string, head: DataformCompiledJson) {
+async function flagStaleDeferrals(entries: DeferralEntry[], workspaceFolder: string, head: DataformCompiledJson): Promise<boolean> {
     const deferred = entries.filter((entry) => entry.status === "deferred");
     if (deferred.length === 0 || !(await isGitRepo(workspaceFolder))) {
-        return;
+        return false;
     }
     const apply = (changedTargets: Set<string>) => {
         let flagged = false;
@@ -226,15 +239,17 @@ async function flagStaleDeferrals(entries: DeferralEntry[], workspaceFolder: str
     try {
         const cached = await computeChangedActions(workspaceFolder, head, false);
         if (cached) {
-            apply(new Set(cached.changed.map((action) => action.target)));
-            return;
+            return apply(new Set(cached.changed.map((action) => action.target)));
         }
         const computed = await computeChangedActions(workspaceFolder, head, true);
         if (computed && apply(new Set(computed.changed.map((action) => action.target)))) {
             deferralUpdated.fire();
+            return true;
         }
+        return false;
     } catch (error: any) {
         logger.error(`Defer to prod: could not check for changed upstream actions: ${error?.message}`);
+        return false;
     }
 }
 
