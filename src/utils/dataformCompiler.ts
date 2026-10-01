@@ -84,9 +84,19 @@ function parseMultipleJSON(str: string) {
     const result = [];
     let startIndex = str.indexOf('{');
     let openBraces = 0;
+    let inString = false;
 
     for (let i = startIndex; i < str.length; i++) {
-        if (str[i] === '{') {
+        // Braces inside JSON strings (e.g. SQL like `select '{'`) must not change the depth
+        if (inString) {
+            if (str[i] === '\\') {
+                i++;
+            } else if (str[i] === '"') {
+                inString = false;
+            }
+        } else if (str[i] === '"') {
+            if (openBraces > 0) { inString = true; }
+        } else if (str[i] === '{') {
             if (openBraces === 0) { startIndex = i; };
             openBraces++;
         } else if (str[i] === '}') {
