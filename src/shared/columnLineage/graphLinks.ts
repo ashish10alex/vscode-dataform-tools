@@ -68,8 +68,8 @@ export function graphNeighbours(index: Map<string, GraphAction>, fqn: string, di
     return [...index.values()].filter((action) => action.dependsOn.includes(fqn));
 }
 
-/** Readers that Dataplex never records column lineage for, because they run as scripts */
-function runsAsScript(action: GraphAction): boolean {
+/** Readers that Dataplex never records column lineage for: incremental tables and operations run as procedures */
+export function runsAsScript(action: GraphAction): boolean {
     return action.type === 'incremental' || action.type === 'operations' || action.type === 'operation';
 }
 

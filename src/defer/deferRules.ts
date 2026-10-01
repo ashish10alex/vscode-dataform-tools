@@ -97,7 +97,7 @@ function fullProdKey(action: GraphAction): string {
 }
 
 /** Prod Target of an action: by {@link fullProdKey} when the database matches, else by {@link prodKey} */
-function lookupProdTarget(prodTargets: Map<string, Target>, action: GraphAction): Target | undefined {
+export function lookupProdTarget(prodTargets: Map<string, Target>, action: GraphAction): Target | undefined {
     return prodTargets.get(fullProdKey(action)) ?? prodTargets.get(prodKey(action));
 }
 

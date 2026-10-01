@@ -1,7 +1,6 @@
 import { ColumnLink, DependencyType, LineageDirection, TraceFocus, TraceSource } from './types';
 
-// Example lineage for building and previewing the trace panel. Dataplex records no column lineage for tables
-// that Dataform workflows build (they run as multi-statement scripts), so there is no real data to show yet.
+// Example lineage for previewing the trace panel in a plain browser, where there is no Dataplex to ask.
 
 const PROJECT = 'acme-prod';
 

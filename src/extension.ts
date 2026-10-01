@@ -40,7 +40,8 @@ import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
 import { ColumnLineagePanel } from './views/columnLineagePanel';
-import { focusFromEditor } from './columnLineage/graphSampleSource';
+import { GraphSampleSource, focusFromEditor } from './columnLineage/graphSampleSource';
+import { DataplexTraceSource } from './columnLineage/dataplexSource';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
@@ -160,9 +161,18 @@ export async function activate(context: vscode.ExtensionContext) {
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineage', async () => {
-        const picked = await focusFromEditor();
+        const picked = await focusFromEditor(true);
         if (picked) {
-            ColumnLineagePanel.show(context, picked.focus, picked.source, picked.source.resolveFile);
+            const source = new DataplexTraceSource(picked.schemas, picked.index);
+            ColumnLineagePanel.show(context, picked.focus, source, source.resolveFile);
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineageGuessed', async () => {
+        const picked = await focusFromEditor(false);
+        if (picked) {
+            const source = new GraphSampleSource(picked.schemas, picked.index);
+            ColumnLineagePanel.show(context, picked.focus, source, source.resolveFile);
         }
     }));
 

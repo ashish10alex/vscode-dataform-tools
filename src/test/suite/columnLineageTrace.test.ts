@@ -4,6 +4,7 @@ import { addHop, canExpand, initialTraceState, pathToFocus, removeUpstream, trac
 import { TraceController } from '../../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
+import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi } from '../../shared/columnLineage/dataplexLinks';
 import { TraceState } from '../../shared/columnLineage/types';
 
 const focus = { table: 'p.marts.fct', column: 'revenue' };
@@ -119,5 +120,41 @@ suite('Column lineage from the dependency graph', () => {
             { table: 'p.rpt.match_events', dependencyType: 'TABLE_ONLY' },
             { table: 'p.x.unknown', dependencyType: 'TABLE_ONLY' },
         ]);
+    });
+});
+
+suite('Column lineage from Data Lineage API links', () => {
+    const link = (source: string, sourceField: string | undefined, target: string, targetField: string | undefined, ...types: string[]) => ({
+        source: { fullyQualifiedName: `bigquery:${source}`, field: sourceField ? [sourceField] : [] },
+        target: { fullyQualifiedName: `bigquery:${target}`, field: targetField ? [targetField] : [] },
+        dependencyInfo: types.map((dependencyType) => ({ dependencyType })),
+    });
+
+    test('asks for lowercase field names, which is how Dataplex stores them', () => {
+        assert.deepStrictEqual(lineageField('PLAYER_ID'), ['player_id']);
+        assert.strictEqual(lineageFqn('p.mart.player_stats'), 'bigquery:p.mart.player_stats');
+    });
+
+    test('keeps one link per column, preferring a copy, and treats unspecified as a transformation', () => {
+        const links = columnLinksFromApi([
+            link('p.mart.player_stats', 'player_id', 'p.rpt.top_scorers', 'player_id', 'OTHER'),
+            link('p.mart.player_stats', 'player_id', 'p.rpt.top_scorers', 'player_id', 'EXACT_COPY', 'OTHER'),
+            link('p.mart.player_stats', 'player_id', 'p.rpt.league_table', 'goals_rank', 'DEPENDENCY_TYPE_UNSPECIFIED'),
+            link('p.mart.player_stats', 'player_id', 'p.rpt.no_field', undefined, 'OTHER'),
+        ], 'downstream');
+        assert.deepStrictEqual(links, [
+            { table: 'p.rpt.top_scorers', column: 'player_id', dependencyType: 'EXACT_COPY' },
+            { table: 'p.rpt.league_table', column: 'goals_rank', dependencyType: 'OTHER' },
+        ]);
+    });
+
+    test('reads the source end for upstream links and dedupes table-level ends', () => {
+        const upstream = columnLinksFromApi([link('p.raw.matches', 'home_team', 'p.mart.player_stats', 'team', 'OTHER')], 'upstream');
+        assert.deepStrictEqual(upstream, [{ table: 'p.raw.matches', column: 'home_team', dependencyType: 'OTHER' }]);
+        assert.deepStrictEqual(tablesFromApi([
+            link('p.mart.player_stats', undefined, 'p.rpt.top_scorers', undefined),
+            link('p.mart.player_stats', undefined, 'p.rpt.top_scorers', undefined),
+            link('p.mart.player_stats', undefined, 'p.rpt.match_events', undefined),
+        ], 'downstream'), ['p.rpt.top_scorers', 'p.rpt.match_events']);
     });
 });

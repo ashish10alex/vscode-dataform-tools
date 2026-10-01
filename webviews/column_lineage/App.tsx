@@ -12,7 +12,7 @@ const nodeTypes = { lineage: LineageNode, lane: LaneNode };
 const SOURCE_LABELS: Record<TraceState['sourceKind'], string> = {
     sample: 'Sample data',
     graph: 'Dependency graph · guessed columns',
-    dataplex: 'Dataplex run history · last 30 days',
+    dataplex: 'Dataplex · last 30 days of runs, about 2 h behind',
 };
 const edgeTypes = { lineage: LineageEdge };
 
@@ -237,14 +237,14 @@ export default function App() {
             <Toolbar state={state} bridge={bridge} />
             {state.sourceKind === 'sample' && (
                 <div className="ln-banner" role="note">
-                    <strong>Sample data.</strong> Dataplex records no column lineage for tables that Dataform workflows build, because they run as
-                    multi-statement scripts. This panel shows an example project until real data is available.
+                    <strong>Sample data.</strong> This is a made-up project for previewing the panel. Run the trace from a
+                    .sqlx file in VS Code to see your own lineage.
                 </div>
             )}
             {state.sourceKind === 'graph' && (
                 <div className="ln-banner" role="note">
                     <strong>Guessed column links.</strong> Readers and sources come from this project's dependency graph, but the column links are
-                    matched by name against each table's schema. Dataplex has no column lineage for Dataform-built tables yet.
+                    matched by name against each table's schema. Use “Trace Column Lineage Under Cursor” for real lineage from Dataplex.
                 </div>
             )}
             <ReactFlowProvider>

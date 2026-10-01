@@ -224,7 +224,12 @@
             {
                 "command": "vscode-dataform-tools.traceColumnLineage",
                 "category": "Dataform",
-                "title": "Trace Column Lineage Under Cursor (Sample Data)"
+                "title": "Trace Column Lineage Under Cursor"
+            },
+            {
+                "command": "vscode-dataform-tools.traceColumnLineageGuessed",
+                "category": "Dataform",
+                "title": "Trace Column Lineage Under Cursor (Guessed From Dependency Graph)"
             },
             {
                 "command": "vscode-dataform-tools.formatDocument",
