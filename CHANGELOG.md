@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.15.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.11...v1.15.0) (2026-10-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* The `vscode-dataform-tools.bigqueryAuthenticationCheck` setting is removed. The BigQuery client is created when a feature first needs it, and after an authentication error it is recreated and the call retried once.
+* The extension activates on `workflow_settings.yaml` or `dataform.json` at a workspace folder root, or when a `.sqlx` file is opened, instead of scanning the whole workspace.
+* `@google-cloud/bigquery` 7 → 8 and `@google-cloud/lineage` 1.3 → 2.2, which require Node 18 (VS Code 1.89 and later already provide it).
+
+### Features
+
+* add perf timing log and just bench harness ([#396](https://github.com/ashish10alex/vscode-dataform-tools/issues/396)) ([702cd06](https://github.com/ashish10alex/vscode-dataform-tools/commit/702cd06eb5f21077407434b503d91d048734b228))
+
+
+### Bug Fixes
+
+* ignore braces inside strings when splitting v2 CLI JSON output ([#395](https://github.com/ashish10alex/vscode-dataform-tools/issues/395)) ([7074acf](https://github.com/ashish10alex/vscode-dataform-tools/commit/7074acf511b18985e44034858d8dbcba89629863))
+* use the fallback compile result in go-to-definition ([#394](https://github.com/ashish10alex/vscode-dataform-tools/issues/394)) ([e01f241](https://github.com/ashish10alex/vscode-dataform-tools/commit/e01f241b948bedbc555e2df9ee7baffc0a0a2297))
+
+
+### Performance
+
+* cut per-keystroke work in editor features ([#400](https://github.com/ashish10alex/vscode-dataform-tools/issues/400)) ([714bedd](https://github.com/ashish10alex/vscode-dataform-tools/commit/714bedd0c757abdb62c6cc30ddaf4e53a1827fea))
+* drop duplicate Google Cloud dependencies and trim the VSIX ([#399](https://github.com/ashish10alex/vscode-dataform-tools/issues/399)) ([7037672](https://github.com/ashish10alex/vscode-dataform-tools/commit/7037672d0fa71075111e17f6ad0951522bea2668))
+* faster, quieter startup ([#397](https://github.com/ashish10alex/vscode-dataform-tools/issues/397)) ([228d8dd](https://github.com/ashish10alex/vscode-dataform-tools/commit/228d8dd5e3e712ffdfdcb3554ba292ac77c6e4d2))
+* stop redundant work on save and editor switch ([#398](https://github.com/ashish10alex/vscode-dataform-tools/issues/398)) ([6194142](https://github.com/ashish10alex/vscode-dataform-tools/commit/6194142b7fb2ac7052fb2089d95db5d89cce0dba))
+
 ### [1.13.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.13.10...v1.13.11) (2026-10-01)
 
 
