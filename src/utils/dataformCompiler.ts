@@ -11,6 +11,10 @@ import { getRemoteCompiledJson, isRemoteMode } from './remoteCompiler';
 import { setCompilationInfo } from './compilationInfo';
 import { CompileFingerprint, computeCompileFingerprint, fingerprintsMatch, isPersistCompilationEnabled, loadCliCompile, saveCliCompile, staleReason } from './cliCompileCache';
 
+const compileFinished = new vscode.EventEmitter<DataformCompiledJson>();
+/** Fires after a compile of the current files replaces the cached compilation */
+export const onDidCompile = compileFinished.event;
+
 //NOTE: maybe no test is needed as dataform cli compilation should catch any potential edge cases  ?
 function stripQuotes(str:string) {
   return str.replace(/^['"]|['"]$/g, '');
@@ -394,6 +398,7 @@ async function runCliCompile(workspaceFolder: string, fingerprint: CompileFinger
         CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
         buildIndices(dataformCompiledJson);
         stale = false;
+        compileFinished.fire(dataformCompiledJson);
         if (fingerprint) {
             saveCliCompile({ workspaceFolder, fingerprint, compiledAt: Date.now() }, compiledString);
             // Taken before the compile, so an edit made while it ran still forces the next one
@@ -418,6 +423,7 @@ export async function runCompilation(workspaceFolder: string): Promise<Compilati
             if (dataformCompiledJson) {
                 CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
                 buildIndices(dataformCompiledJson);
+                compileFinished.fire(dataformCompiledJson);
             }
             return { dataformCompiledJson, errors, possibleResolutions: undefined, compilationTimeMs };
         }

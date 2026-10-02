@@ -13,6 +13,7 @@ import { DeferralBanner } from "./DeferralBanner";
 import {
   Play,
   Network,
+  GitCompareArrows,
   ListTree,
   Eye,
   ShieldCheck,
@@ -28,6 +29,7 @@ import {
   Tag,
 } from "lucide-react";
 import clsx from "clsx";
+import { tableActions } from "../../../src/shared/columnLineage/tableActions";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
@@ -254,6 +256,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const handlePreviewResults = () => {
     vscode.postMessage({ command: "previewResults", value: true });
   };
+
+  // One table, view, incremental table or operation with hasOutput, ignoring built-in assertions: the action whose columns can be traced
+  const canCheckColumnImpact = tableActions(state.targetTablesOrViews).length === 1;
+
+  const handleColumnImpact = () => {
+    vscode.postMessage({ command: "columnLineage" });
+  };
+  // From a schema diff after each dry run; no lineage is read until the panel opens
+  const changedColumns = state.columnImpact?.relativeFilePath === state.relativeFilePath ? state.columnImpact?.changed ?? 0 : 0;
 
   const handleDependencyGraph = () => {
     vscode.postMessage({ command: "dependencyGraph", value: true });
@@ -624,6 +635,23 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               <button onClick={handlePreviewResults} disabled={state.recompiling} className={SECONDARY_BUTTON} title="Preview the query results">
                   <Eye className="w-4 h-4 mr-1.5" /> Preview Data
               </button>
+              {canCheckColumnImpact && (
+                  <button
+                      onClick={handleColumnImpact}
+                      disabled={state.recompiling || state.dryRunning}
+                      className={SECONDARY_BUTTON}
+                      title={changedColumns
+                          ? `This dry run drops or retypes ${changedColumns} column${changedColumns === 1 ? '' : 's'} against prod. Show every column's lineage, those first (Dataplex lineage)`
+                          : "Show the lineage of each of this table's columns, and which ones this dry run drops or retypes against prod (Dataplex lineage)"}
+                  >
+                      <GitCompareArrows className="w-4 h-4 mr-1.5" /> Column impact
+                      {changedColumns > 0 && (
+                          <span className="ml-1.5 px-1.5 rounded-full text-[11px] leading-4 bg-[var(--vscode-editorWarning-foreground)] text-[var(--vscode-editor-background)]">
+                              {changedColumns} changed
+                          </span>
+                      )}
+                  </button>
+              )}
           </div>
 
           {/* Run controls with the modifiers they consume, on their own row so they stay together however the panel wraps */}

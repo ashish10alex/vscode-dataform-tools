@@ -40,6 +40,7 @@ import { watchGitHead, watchGitState } from '../gitHeadWatcher';
 import { computeApiRunGitState } from '../apiRunGitState';
 import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
+import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -173,6 +174,22 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         onDeferralUpdated(() => {
             const panel = CompiledQueryPanel.centerPanel;
             panel?.postMessage({ deferral: toDeferralView(panel.deferral) });
+        }),
+        onDidRecordDryRunSchema(async ({ document, relativeFilePath, fields }) => {
+            if (!CompiledQueryPanel.centerPanel || !relativeFilePath) {
+                return;
+            }
+            if (!fields) {
+                CompiledQueryPanel.centerPanel.postMessage({ columnImpact: { relativeFilePath, changed: undefined } });
+                return;
+            }
+            try {
+                const changed = await changedColumnCount(document, fields);
+                CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });
+            } catch (error: any) {
+                // Not a single-table file, or not compiled yet: no hint
+                logger.debug(`Column impact hint: ${error?.message ?? error}`);
+            }
         })
     );
 
@@ -586,6 +603,9 @@ export class CompiledQueryPanel {
                 return;
               case 'dependencyInspector':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyInspector");
+                return;
+              case 'columnLineage':
+                await vscode.commands.executeCommand("vscode-dataform-tools.columnLineage");
                 return;
               case 'previewResults':
                 if(message.value){

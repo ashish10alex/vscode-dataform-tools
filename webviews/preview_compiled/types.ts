@@ -90,6 +90,8 @@ export interface WebviewState {
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
   lastRun?: LastRunView | null;
+  /** Columns the last dry run drops or retypes against prod, for the column lineage button */
+  columnImpact?: { relativeFilePath: string; changed?: number };
   changedActions?: ChangedActionsView;
   /** What a run through the Dataform API leaves out, since it runs the branch as pushed */
   apiRunGitState?: ApiRunGitState;

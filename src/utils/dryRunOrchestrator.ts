@@ -8,6 +8,7 @@ import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset 
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
 import { handleAccessDenied } from '../defer';
+import { forgetDryRunSchema, recordDryRunSchema } from '../columnLineage/impactReport';
 import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
 import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 
@@ -165,6 +166,17 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
                 }
             ]
         };
+    }
+
+    // Kept for the on-demand column impact check, so it can compare with prod without another dry run. Only for a
+    // file that defines one table, view or incremental table, whatever else (e.g. assertions in a .js file) it has;
+    // an incremental table's schema comes from its non-incremental query.
+    const impactResult = tableQueries.length + incrementalQueries.length !== 1 ? undefined
+        : tableQueries.length ? perTableDryRunResults[0] : perNonIncrementalDryRunResults[0];
+    if (!impactResult || impactResult.error.hasError || !impactResult.schema) {
+        forgetDryRunSchema(document, curFileMeta);
+    } else {
+        recordDryRunSchema(document, curFileMeta, impactResult.schema);
     }
 
     // check if we need to handle errors from non incremental query here

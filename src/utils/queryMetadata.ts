@@ -248,6 +248,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
 
                         finalTables.push({
                             type: "operations",
+                            hasOutput: operation.hasOutput,
                             tags: operation.tags,
                             fileName: relativeFilePath,
                             query: finalOperationQuery,
@@ -261,6 +262,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
                         queryMeta.error += errorString;
                         finalTables.push({
                             type: "operations",
+                            hasOutput: operation.hasOutput,
                             tags: operation.tags,
                             fileName: relativeFilePath,
                             query: undefined,
