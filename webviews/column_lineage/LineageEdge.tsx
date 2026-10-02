@@ -25,7 +25,7 @@ export const LineageEdge: React.FC<EdgeProps> = ({ id, sourceX, sourceY, targetX
 
     return (
         <>
-            <path id={id} d={path} className={classes} style={{ strokeWidth: highlighted ? width + 1.1 : width }} fill="none" />
+            <path id={id} d={path} className={classes} style={{ strokeWidth: highlighted ? width + 0.6 : width }} fill="none" />
             {label && (
                 <EdgeLabelRenderer>
                     <div

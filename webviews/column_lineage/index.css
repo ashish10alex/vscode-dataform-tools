@@ -248,8 +248,9 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
   border-radius: 3px;
   box-sizing: border-box;
 }
-.ln-card.is-dim { opacity: 0.38; }
-.ln-card.is-hl { border-color: color-mix(in srgb, var(--ln-fg) 45%, var(--ln-border)); }
+/* Hover only nudges the rest of the graph back, so the path stands out without the graph flashing */
+.ln-card.is-dim { opacity: 0.82; }
+.ln-card.is-hl { border-color: color-mix(in srgb, var(--ln-fg) 30%, var(--ln-border)); }
 .ln-card-focus {
   border-color: var(--ln-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ln-focus) 22%, transparent);
@@ -275,7 +276,7 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
   position: relative; height: 26px; box-sizing: border-box; padding: 0 10px 0 28px;
   display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ln-dim);
 }
-.ln-card-row.is-dim { opacity: 0.45; }
+.ln-card-row.is-dim { opacity: 0.85; }
 .ln-card-focus .ln-card-row { padding-left: 10px; }
 .ln-row-col {
   flex: 1; min-width: 0; font-family: var(--ln-mono); font-size: 12.5px; font-weight: 600; color: var(--ln-fg);
@@ -310,7 +311,7 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-edge-copy { stroke: var(--ln-copy); }
 .ln-edge-xform { stroke: var(--ln-xform); }
 .ln-edge-table { stroke: var(--ln-table); stroke-dasharray: 5 4; }
-.ln-edge.is-dim { opacity: 0.18; }
+.ln-edge.is-dim { opacity: 0.6; }
 
 .ln-edge-label {
   position: absolute; pointer-events: none;
@@ -319,7 +320,7 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 }
 .ln-edge-label-copy { color: var(--ln-copy); }
 .ln-edge-label-xform { color: var(--ln-xform); }
-.ln-edge-label.is-dim { opacity: 0.2; }
+.ln-edge-label.is-dim { opacity: 0.7; }
 
 /* footer */
 .ln-footer {
