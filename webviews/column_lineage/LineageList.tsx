@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useMemo, useRef, useState } from 'react';
 import type { LineageDirection, TraceNode, TraceState } from '../../src/shared/columnLineage/types';
 import { TraceRow, frontier, traceRows } from '../../src/shared/columnLineage/traceGraph';
 import type { Bridge } from './bridge';
@@ -14,7 +14,7 @@ function shortTable(table: string): string {
     return table.split('.').slice(1).join('.') || table;
 }
 
-/** Groups start expanded when there are this many tables or fewer */
+/** A group starts expanded when it first shows while there are this many tables or fewer */
 const EXPAND_UP_TO = 5;
 
 interface TableGroup {
@@ -116,9 +116,10 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
     const groups = groupByTable(rows.filter((row) => !row.node.assertion));
     const assertionRows = rows.filter((row) => row.node.assertion);
     const assertionTables = new Set(assertionRows.map((row) => row.node.table)).size;
-    // Toggled groups, by table; the rest follow the default. Cleared when the trace moves to another column.
+    // Toggled groups, by table. The section is keyed by the focus column, so both start empty for each column.
     const [toggled, setToggled] = useState<Map<string, boolean>>(new Map());
-    useEffect(() => setToggled(new Map()), [state.focus.table, state.focus.column]);
+    // Each group's default is fixed when it first shows, so a group doesn't close as later hops add tables
+    const defaults = useRef(new Map<string, boolean>());
 
     const next = frontier(state, direction);
     const onSide = (node: TraceNode) => (direction === 'downstream' ? node.hop >= 0 : node.hop <= 0);
@@ -130,8 +131,9 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
     const tables = new Set(rows.map((row) => row.node.table)).size;
     const title = direction === 'downstream' ? 'Downstream' : 'Upstream';
 
-    const isOpen = (key: string, byDefault: boolean) => toggled.get(key) ?? byDefault;
+    const isOpen = (key: string, byDefault: boolean) => toggled.get(key) ?? defaults.current.get(key) ?? byDefault;
     const groupDefault = groups.length <= EXPAND_UP_TO;
+    groups.filter((group) => !defaults.current.has(group.table)).forEach((group) => defaults.current.set(group.table, groupDefault));
     const toggle = (key: string, byDefault: boolean) => setToggled((current) => new Map(current).set(key, !isOpen(key, byDefault)));
     const allOpen = groups.every((group) => isOpen(group.table, groupDefault));
     const setAll = (open: boolean) => setToggled(new Map(groups.map((group) => [group.table, open])));
@@ -212,6 +214,7 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
 
 /** `hidden`: columns "Copies only" leaves out */
 export function LineageList({ state, bridge, hidden, onShowAll }: { state: TraceState; bridge: Bridge; hidden: number; onShowAll: () => void }) {
+    const focusKey = `${state.focus.table}#${state.focus.column}`;
     return (
         <div className="ln-list" role="region" aria-label="Lineage list">
             {hidden > 0 && (
@@ -220,8 +223,8 @@ export function LineageList({ state, bridge, hidden, onShowAll }: { state: Trace
                     <button type="button" className="ln-link" onClick={onShowAll}>Show all</button>
                 </span>
             )}
-            <Section state={state} direction="downstream" bridge={bridge} />
-            {state.upstreamShown && <Section state={state} direction="upstream" bridge={bridge} />}
+            <Section key={`down:${focusKey}`} state={state} direction="downstream" bridge={bridge} />
+            {state.upstreamShown && <Section key={`up:${focusKey}`} state={state} direction="upstream" bridge={bridge} />}
         </div>
     );
 }
