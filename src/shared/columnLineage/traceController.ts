@@ -23,6 +23,11 @@ export class TraceController {
     private state: TraceState | undefined;
     /** Bumped on open and refresh, so lookups started for an older trace are dropped */
     private generation = 0;
+    /** Set while another column is shown: lookups in flight finish, but no new ones start */
+    private paused = false;
+    /** Work a pause held back, done on resume: columns of a hop left unexpanded, and their table-level reader checks */
+    private readonly heldExpands = new Set<string>();
+    private readonly heldReaders = new Map<string, ColumnLink[]>();
 
     constructor(
         private readonly source: TraceSource,
@@ -36,6 +41,8 @@ export class TraceController {
 
     async open(focus: TraceFocus): Promise<void> {
         this.generation++;
+        this.heldExpands.clear();
+        this.heldReaders.clear();
         const state = initialTraceState(focus, this.source.kind);
         state.nodes[0].filePath = this.resolveFile(focus.table);
         this.set(state);
@@ -51,21 +58,75 @@ export class TraceController {
         const generation = this.generation;
         const ids = frontier(this.state, direction).map((node) => node.id);
         await inBatches(ids, HOP_CONCURRENCY, async (id) => {
-            if (generation === this.generation) {
+            if (generation !== this.generation) {
+                return;
+            }
+            if (this.paused) {
+                this.heldExpands.add(id);
+            } else {
                 await this.expand(id);
             }
         });
     }
 
-    /** Loads up to {@link AUTO_HOPS} hops on a side, stopping at a hop wider than {@link AUTO_FRONTIER_LIMIT} */
+    /**
+     * Stops starting lookups, e.g. when the column list shows another column. What's in flight still lands, so
+     * the trace is as far along as it got when it's shown again.
+     */
+    pause() {
+        this.paused = true;
+    }
+
+    /** Picks up where {@link pause} left off: the held-back columns and reader checks, then the automatic hops */
+    async resume(): Promise<void> {
+        if (!this.paused) {
+            return;
+        }
+        this.paused = false;
+        const generation = this.generation;
+        const readers = [...this.heldReaders];
+        this.heldReaders.clear();
+        for (const [nodeId, links] of readers) {
+            const node = this.state?.nodes.find((candidate) => candidate.id === nodeId);
+            if (node) {
+                void this.fetchTableOnlyReaders(nodeId, node.table, links, generation);
+            }
+        }
+        const expands = [...this.heldExpands];
+        this.heldExpands.clear();
+        await inBatches(expands, HOP_CONCURRENCY, async (id) => {
+            if (generation !== this.generation) {
+                return;
+            }
+            if (this.paused) {
+                this.heldExpands.add(id);
+            } else {
+                await this.expand(id);
+            }
+        });
+        await this.autoExpand('downstream');
+        if (this.state?.upstreamShown) {
+            await this.autoExpand('upstream');
+        }
+    }
+
+    /**
+     * Loads hops on a side until {@link AUTO_HOPS} are in, stopping at a hop wider than {@link AUTO_FRONTIER_LIMIT}.
+     * Safe to call again, e.g. on resume: it only loads hops still missing.
+     */
     private async autoExpand(direction: LineageDirection) {
         const generation = this.generation;
-        for (let hop = 1; hop < AUTO_HOPS && this.state && generation === this.generation; hop++) {
+        while (this.state && generation === this.generation && !this.paused) {
             const next = frontier(this.state, direction);
-            if (next.length === 0 || next.length > AUTO_FRONTIER_LIMIT) {
+            if (next.length === 0 || next.length > AUTO_FRONTIER_LIMIT || Math.abs(next[0].hop) >= AUTO_HOPS) {
                 return;
             }
             await this.expandLevel(direction);
+            const after = this.state ? frontier(this.state, direction) : [];
+            if (after.map((node) => node.id).join() === next.map((node) => node.id).join()) {
+                // Nothing moved, e.g. every lookup on the hop failed
+                return;
+            }
         }
     }
 
@@ -133,7 +194,9 @@ export class TraceController {
                 this.set(setNodeLoading(this.state, nodeId, false));
             } else {
                 this.set(addHop(this.state, nodeId, direction, links, this.resolveFile));
-                if (direction === 'downstream') {
+                if (direction === 'downstream' && this.paused) {
+                    this.heldReaders.set(nodeId, links);
+                } else if (direction === 'downstream') {
                     // Not awaited: the next hop needs only column links, and table-level readers have no column to follow
                     void this.fetchTableOnlyReaders(nodeId, node.table, links, generation);
                 }

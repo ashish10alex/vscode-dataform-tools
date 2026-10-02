@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { loadLineageClient } from '../lazySdk';
 import { logger } from '../logger';
 import { GraphAction } from '../shared/columnLineage/graphLinks';
+import { Limiter } from '../shared/columnLineage/limiter';
 import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../shared/columnLineage/dataplexLinks';
 import { ColumnLink, LineageDirection, TraceSource } from '../shared/columnLineage/types';
 import { SchemaCache } from './schemaCache';
@@ -21,14 +22,27 @@ async function lineageClient(): Promise<LineageClient> {
 
 type SearchRequest = Parameters<LineageClient['searchLinks']>[0];
 
-/** Every page of a link search, one page after another as the client would fetch them, timed for the debug log */
-async function searchLinks(api: LineageClient, request: SearchRequest, label: string): Promise<any[]> {
+/** Dataplex calls in flight at once for a panel, across every column's trace and count */
+const MAX_SEARCHES = 8;
+
+/** A column's own links go first; table-level reader searches and probes wait behind them */
+const enum Priority {
+    Readers = 0,
+    ColumnLinks = 1,
+}
+
+/**
+ * Every page of a link search, one page after another, timed for the debug log. Each page waits for a slot, so
+ * a long search doesn't hold one while more urgent searches queue.
+ */
+async function searchLinks(limiter: Limiter, priority: Priority, api: LineageClient, request: SearchRequest, label: string): Promise<any[]> {
     const started = Date.now();
     const links: any[] = [];
     let pages = 0;
     let next: SearchRequest | null | undefined = request;
     while (next) {
-        const [page, nextRequest]: [any[], SearchRequest | null, unknown] = await api.searchLinks(next, { autoPaginate: false });
+        const current: SearchRequest = next;
+        const [page, nextRequest]: [any[], SearchRequest | null, unknown] = await limiter.run(priority, () => api.searchLinks(current, { autoPaginate: false }));
         links.push(...page);
         pages++;
         next = nextRequest;
@@ -59,6 +73,7 @@ export class DataplexTraceSource implements TraceSource {
     private readonly tracked = new Map<string, Promise<boolean>>();
     /** Table-level readers per table: the same for every column of it, so looked up once */
     private readonly readers = new Map<string, Promise<any[]>>();
+    private readonly limiter = new Limiter(MAX_SEARCHES);
 
     /** `prodIndex`: this project's actions keyed by Prod Target, to spot readers that get no column lineage */
     constructor(private readonly schemas: SchemaCache, private readonly prodIndex: Map<string, GraphAction>) {}
@@ -80,7 +95,7 @@ export class DataplexTraceSource implements TraceSource {
                     return false;
                 }
                 const counts = await Promise.all(columns.slice(0, PROBE_COLUMNS).map(async (field) =>
-                    (await searchLinks(api, { parent, target: { fullyQualifiedName: lineageFqn(table), field: lineageField(field.name) } }, `probe ${table}.${field.name}`)).length));
+                    (await searchLinks(this.limiter, Priority.Readers, api, { parent, target: { fullyQualifiedName: lineageFqn(table), field: lineageField(field.name) } }, `probe ${table}.${field.name}`)).length));
                 return counts.some((count) => count > 0);
             })();
             this.tracked.set(table, pending);
@@ -91,7 +106,7 @@ export class DataplexTraceSource implements TraceSource {
     private tableReaders(api: LineageClient, parent: string, table: string): Promise<any[]> {
         let pending = this.readers.get(table);
         if (!pending) {
-            pending = searchLinks(api, { parent, source: { fullyQualifiedName: lineageFqn(table) } }, `readers of ${table}`);
+            pending = searchLinks(this.limiter, Priority.Readers, api, { parent, source: { fullyQualifiedName: lineageFqn(table) } }, `readers of ${table}`);
             const stored = pending;
             stored.catch(() => {
                 if (this.readers.get(table) === stored) {
@@ -128,7 +143,7 @@ export class DataplexTraceSource implements TraceSource {
                 this.tableReaders(api, parent, table).catch(() => undefined);
             }
             const side = direction === 'downstream' ? 'source' : 'target';
-            const columnLinks = await searchLinks(api, { parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }, `${direction} ${table}.${column}`);
+            const columnLinks = await searchLinks(this.limiter, Priority.ColumnLinks, api, { parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }, `${direction} ${table}.${column}`);
 
             // Dataplex returns lowercase names; show them as each table's schema spells them
             const links: ColumnLink[] = await Promise.all(columnLinksFromApi(columnLinks, direction).map(async (link) => ({

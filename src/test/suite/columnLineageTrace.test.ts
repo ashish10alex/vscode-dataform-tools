@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { addHop, canExpand, copiesOnly, frontier, initialTraceState, pathToFocus, removeUpstream, traceNodeId, traceRows } from '../../shared/columnLineage/traceGraph';
 import { TraceController } from '../../shared/columnLineage/traceController';
+import { Limiter } from '../../shared/columnLineage/limiter';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
 import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
@@ -152,7 +153,25 @@ suite('Column lineage trace controller', () => {
         assert.strictEqual(done.nodes.find((node) => node.id === 'p.ml.events#')?.hop, 1, 'table-level readers join the first hop');
     });
 
-    test('reports a failed table-level reader lookup on the node, keeping its column links', async () => {
+    test('a paused trace starts no lookups, and picks up the hops and reader checks it missed on resume', async () => {
+        const controller = new TraceController(new SampleTraceSource([0, 0]), () => undefined);
+        const opening = controller.open(SAMPLE_FOCUS);
+        controller.pause();
+        await opening;
+        await readersChecked(controller);
+        const paused = controller.current!;
+        assert.ok(paused.nodes.some((node) => node.hop === 1), 'the lookup in flight still lands');
+        assert.ok(!paused.nodes.some((node) => node.hop === 2), 'no next hop while paused');
+        assert.ok(!paused.nodes.some((node) => node.kind === 'tableOnly'), 'no reader checks while paused');
+
+        await controller.resume();
+        await readersChecked(controller);
+        const resumed = controller.current!;
+        assert.strictEqual(resumed.nodes.filter((node) => node.hop === 2).length, 5, 'loads the missing hops');
+        assert.ok(resumed.nodes.some((node) => node.id.endsWith('ml.customer_events#')), 'runs the held reader check');
+    });
+
+        test('reports a failed table-level reader lookup on the node, keeping its column links', async () => {
         const source: TraceSource = {
             kind: 'sample',
             links: async () => [{ table: 'p.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' }],
@@ -252,5 +271,41 @@ suite('Column lineage from Data Lineage API links', () => {
             link('p.mart.player_stats', undefined, 'p.rpt.top_scorers', undefined),
             link('p.mart.player_stats', undefined, 'p.rpt.match_events', undefined),
         ], 'downstream'), ['p.rpt.top_scorers', 'p.rpt.match_events']);
+    });
+});
+
+suite('Column lineage call limiter', () => {
+    test('runs at most the cap at once, higher priority first, then in order of arrival', async () => {
+        const limiter = new Limiter(2);
+        const started: string[] = [];
+        let running = 0;
+        let most = 0;
+        const task = (name: string) => async () => {
+            started.push(name);
+            running++;
+            most = Math.max(most, running);
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            running--;
+            return name;
+        };
+        const results = await Promise.all([
+            limiter.run(0, task('low-1')),
+            limiter.run(0, task('low-2')),
+            limiter.run(0, task('low-3')),
+            limiter.run(1, task('high-1')),
+            limiter.run(0, task('low-4')),
+            limiter.run(1, task('high-2')),
+        ]);
+        assert.strictEqual(most, 2);
+        assert.deepStrictEqual(started, ['low-1', 'low-2', 'high-1', 'high-2', 'low-3', 'low-4']);
+        assert.deepStrictEqual(results, ['low-1', 'low-2', 'low-3', 'high-1', 'low-4', 'high-2']);
+    });
+
+    test('passes a failure to its caller and keeps going', async () => {
+        const limiter = new Limiter(1);
+        const failed = limiter.run(0, async () => { throw new Error('quota exceeded'); });
+        const next = limiter.run(0, async () => 'ok');
+        await assert.rejects(failed, /quota exceeded/);
+        assert.strictEqual(await next, 'ok');
     });
 });

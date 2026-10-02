@@ -147,12 +147,17 @@ export class ColumnsController {
         if (!entry || entry.isNew || !this.input || !this.source || !this.view) {
             return;
         }
+        if (this.selected !== column) {
+            // The column no longer shown stops starting lookups, so they don't queue ahead of this one's
+            this.trace?.pause();
+        }
         this.selected = column;
         this.setView({ ...this.view, selected: column });
 
         const cached = this.traces.get(column);
         if (cached?.current) {
             this.emitTrace(cached.current);
+            void cached.resume();
             if (cached.current.upstreamShown !== this.upstream) {
                 void cached.setUpstream(this.upstream);
             }
@@ -183,6 +188,7 @@ export class ColumnsController {
         this.input = undefined;
         this.counts.clear();
         this.countErrors.clear();
+        this.traces.forEach((trace) => trace.pause());
         this.traces.clear();
         this.selected = undefined;
         this.emitTrace(null);
