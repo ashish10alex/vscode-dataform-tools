@@ -15,6 +15,7 @@
   --ln-focus: var(--vscode-focusBorder, #007fd4);
   --ln-warn: var(--vscode-editorWarning-foreground, #cca700);
   --ln-error: var(--vscode-errorForeground, #f48771);
+  --ln-critical: var(--vscode-charts-red, #f14c4c);
   --ln-link: var(--vscode-textLink-foreground, #3794ff);
   --ln-button-bg: var(--vscode-button-secondaryBackground, #3a3d41);
   --ln-button-fg: var(--vscode-button-secondaryForeground, #ffffff);
@@ -357,6 +358,16 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-impact-reader-col { font-weight: 600; }
 .ln-impact-note { font-size: 11.5px; color: var(--ln-dim); font-style: italic; margin-right: 10px; white-space: nowrap; }
 .ln-impact-outside { color: var(--ln-warn); }
+.ln-impact-change { color: var(--ln-dim); }
+/* Severity: a filled badge for what still breaks readers, outlines for the rest */
+.ln-sev {
+  flex: none; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; line-height: 16px; padding: 0 6px;
+  border-radius: 2px; border: 1px solid transparent; text-transform: uppercase; font-family: var(--ln-ui);
+}
+.ln-sev-critical { background: var(--ln-critical); color: #ffffff; }
+.ln-sev-warning { background: color-mix(in srgb, var(--ln-warn) 20%, transparent); color: var(--ln-warn); border-color: var(--ln-warn); }
+.ln-sev-unknown { color: var(--ln-dim); border: 1px dashed var(--ln-dim); }
+.ln-sev-low { color: var(--ln-dim); border-color: color-mix(in srgb, var(--ln-dim) 50%, transparent); }
 .ln-group-item.is-settled td { opacity: 0.6; }
 .ln-impact-more summary { cursor: pointer; color: var(--ln-dim); }
 .ln-impact-more summary:hover { color: var(--ln-fg); }

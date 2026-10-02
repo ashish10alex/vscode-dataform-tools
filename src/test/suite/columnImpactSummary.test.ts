@@ -1,7 +1,8 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import {
-    ImpactCandidate, ImpactView, MARKDOWN_READERS, ReaderContext, annotateReader, buildImpactSummary, impactMarkdown, impactSeverity, mentions, rankReaders, safeSummary,
+    ImpactCandidate, ImpactView, MARKDOWN_READERS, MARKDOWN_READER_LIST, ReaderContext, annotateReader, buildImpactSummary, impactMarkdown, impactSeverity, isLowImpact, mentions, rankReaders,
+    safeSummary, summaryCounts,
 } from '../../shared/columnLineage/impactSummary';
 import { changeSignature, guessProdTarget } from '../../columnLineage/changeImpact';
 import { ColumnLink, LineageDirection, TraceSource } from '../../shared/columnLineage/types';
@@ -73,6 +74,20 @@ suite('Column impact summary: readers', () => {
         ]);
         assert.deepStrictEqual(ranked.map((reader) => reader.table), ['p.fin.margins', 'p.marts.customers', 'p.marts.daily', 'p.marts.revenue']);
     });
+
+    test('folds dev runs into their Prod Target, and marks readers this branch deletes', () => {
+        const ctx: ReaderContext = {
+            ...context(),
+            toProd: (table) => ({ 'dev.marts_ashish.revenue': 'p.marts.revenue', 'dev.marts_ashish.old': 'p.marts.old' } as Record<string, string>)[table] ?? table,
+            deleted: new Set(['p.marts.old']),
+        };
+        const devRun = annotateReader({ table: 'dev.marts_ashish.revenue', column: 'net', dependencyType: 'OTHER' }, 'discount', ctx);
+        const deleted = annotateReader({ table: 'dev.marts_ashish.old', dependencyType: 'TABLE_ONLY' }, 'discount', ctx);
+        assert.deepStrictEqual(devRun, { table: 'p.marts.revenue', column: 'net', dependencyType: 'OTHER', filePath: 'definitions/revenue.sqlx' });
+        assert.deepStrictEqual(deleted, { table: 'p.marts.old', dependencyType: 'TABLE_ONLY', deletedOnBranch: true }, 'no file to open, and not outside the project');
+        const ranked = rankReaders([deleted, { table: 'p.fin.margins', dependencyType: 'OTHER' }, { ...devRun, changedOnBranch: true, probablyUpdated: true }]);
+        assert.deepStrictEqual(ranked.map((reader) => reader.table), ['p.fin.margins', 'p.marts.revenue', 'p.marts.old'], 'deleted readers last');
+    });
 });
 
 suite('Column impact summary: build', () => {
@@ -122,6 +137,37 @@ suite('Column impact summary: build', () => {
         assert.deepStrictEqual(result.safe.map((entry) => [entry.table, entry.added]), [['p.marts.daily', ['orders']]]);
         assert.deepStrictEqual(result.unchecked, [{ table: 'p.marts.ops', fileName: undefined, reason: 'operation: a dry run of a script has no schema' }]);
         assert.ok(!source.calls.some((call) => call.includes('p.marts.daily')), 'no lookups for a safe table');
+    });
+
+    test('settles a deleted table read only by an assertion the branch deletes too, in prod and in a dev run', async () => {
+        const source = fakeSource({}, {
+            'p.marts.snap': [
+                { table: 'p.marts_assertions.compare_snap', dependencyType: 'TABLE_ONLY' },
+                { table: 'dev.marts_assertions.compare_snap', dependencyType: 'TABLE_ONLY' },
+                { table: 'dev.marts_assertions.orders_nonNull', dependencyType: 'TABLE_ONLY' },
+                { table: 'dev.scratch.someone_else', dependencyType: 'TABLE_ONLY' },
+            ],
+        });
+        const ctx: ReaderContext = {
+            ...context(),
+            toProd: (table) => ({
+                'dev.marts_assertions.compare_snap': 'p.marts_assertions.compare_snap',
+                'dev.marts_assertions.orders_nonNull': 'p.marts_assertions.orders_nonNull',
+            } as Record<string, string>)[table] ?? table,
+            deleted: new Set(['p.marts.snap', 'p.marts_assertions.compare_snap']),
+            isAssertion: (table) => table === 'p.marts_assertions.orders_nonNull',
+        };
+        const result = await buildImpactSummary([{ table: 'p.marts.snap', type: 'table', deleted: true }], source, ctx);
+        const snap = result!.atRisk[0];
+        assert.deepStrictEqual(snap.readers, [
+            { table: 'dev.scratch.someone_else', dependencyType: 'TABLE_ONLY' },
+            { table: 'p.marts_assertions.compare_snap', dependencyType: 'TABLE_ONLY', deletedOnBranch: true },
+        ], 'one row for both runs of the deleted assertion; an assertion still on the branch left out; an unknown dev reader kept');
+        snap.readers = snap.readers!.filter((reader) => reader.deletedOnBranch);
+        assert.strictEqual(isLowImpact(snap), true);
+        assert.strictEqual(summaryCounts({ changedCount: 1, atRisk: [snap], unchecked: [] }), '1 changed · 0 at risk · 1 low');
+        assert.ok(impactMarkdown({ status: 'ready', changedCount: 1, atRisk: [snap], safe: [], unchecked: [] })
+            .includes('| *whole table* | **TABLE DELETED** | ℹ️ LOW | none left (+1 deleted here) | — |'));
     });
 
     test('keeps a failed lookup on its column instead of failing the summary', async () => {
@@ -189,14 +235,14 @@ suite('Column impact summary: Markdown', () => {
             '',
             '**Branch:** `feat/x` vs `origin/main` @ `52863aa` | **Evaluated against:** production schemas',
             '',
-            '3 changed · 2 at risk · 1 not checked',
+            '3 changed · 1 at risk · 1 low · 1 not checked',
         ]);
         assert.ok(lines.includes('**Target model:** `marts.orders`'));
         assert.ok(lines.includes('| Column | Change | Severity | Downstream | Direct copies |'));
         assert.ok(lines.includes('| `discount` | **DROPPED** | 🚨 **CRITICAL** | 8 models, 1 outside project (+1 probably updated) | `fin.margins` *(outside)*, `rep.r0`, `rep.r1`, `rep.r2`, `rep.r3`, +3 more |'));
         assert.ok(lines.includes('| `amount` | `FLOAT64 → NUMERIC` | ⚠️ **WARNING** | 1 model | — |'));
         assert.ok(lines.includes('| `note` | **DROPPED** | ❔ UNKNOWN | lookup failed: No access \\| denied | — |'), 'pipes escaped');
-        assert.ok(lines.includes('| *whole table* | **TABLE DELETED** | ℹ️ LOW | none found (+1 probably updated) | — |'), 'nothing left reading it');
+        assert.ok(lines.includes('| *whole table* | **TABLE DELETED** | ℹ️ LOW | none left (+1 probably updated) | — |'), 'nothing left reading it');
         assert.ok(lines.includes('<details><summary>Not checked (1)</summary>'));
     });
 
@@ -209,12 +255,54 @@ suite('Column impact summary: Markdown', () => {
         assert.strictEqual(safeSummary(1), '1 changed table keeps every prod column');
     });
 
+    test('names the project of copies outside the changed table\'s project', () => {
+        const markdown = impactMarkdown({
+            status: 'ready',
+            changedCount: 1,
+            atRisk: [{
+                table: 'p.marts.orders',
+                type: 'table',
+                columns: [{ column: 'id', change: { kind: 'dropped' }, readers: [{ table: 'dev.scratch.copy', column: 'id', dependencyType: 'EXACT_COPY' }] }],
+            }],
+            safe: [],
+            unchecked: [],
+        });
+        assert.ok(markdown.includes('| `id` | **DROPPED** | 🚨 **CRITICAL** | 1 outside project | `dev.scratch.copy` *(outside)* |'));
+        assert.ok(markdown.includes('| `id` | `dev.scratch.copy` | `id` | copy | outside project |'));
+    });
+
+    test('lists who reads each column below its model, a page of reader tables per column', () => {
+        const lines = impactMarkdown(view).split('\n');
+        const start = lines.indexOf('<details><summary>Readers (11)</summary>');
+        assert.ok(start > lines.indexOf('**Target model:** `marts.orders`') && start < lines.indexOf('**Target model:** `marts.customers`'), 'right after its model');
+        assert.deepStrictEqual(lines.slice(start + 2, start + 5), [
+            '| Column | Reader | Reads | Link | On this branch |',
+            '| --- | --- | --- | --- | --- |',
+            '| `discount` | `fin.margins` | `discount` | copy | outside project |',
+        ]);
+        assert.ok(lines.includes('| `discount` | `marts.revenue` | `net` | derived or filtered | probably updated |'));
+        assert.ok(lines.includes('| *whole table* | `marts.revenue` | — | reads the table | probably updated |'));
+
+        const many = Array.from({ length: MARKDOWN_READER_LIST + 3 }, (_, i) => ({ table: `p.rep.r${i}`, column: 'x', dependencyType: 'OTHER' as const, filePath: `r${i}.sqlx` }));
+        const wide = ['a', 'b', 'c', 'd', 'e'].map((column) => ({ table: 'p.rep.wide', column, dependencyType: 'OTHER' as const, filePath: 'w.sqlx' }));
+        const markdown = impactMarkdown({
+            status: 'ready',
+            changedCount: 1,
+            atRisk: [{ table: 'p.marts.orders', type: 'table', columns: [{ column: 'a', change: { kind: 'dropped' }, readers: [...wide, ...many] }] }],
+            safe: [],
+            unchecked: [],
+        });
+        assert.ok(markdown.includes('| `a` | `rep.wide` | `a`, `b`, `c`, +2 more | derived or filtered |  |'));
+        assert.ok(markdown.includes('| `a` | +4 more | | | |'));
+    });
+
     test('rates severity by what is still read', () => {
         const reader = { table: 'p.a.b', dependencyType: 'OTHER' as const };
         assert.strictEqual(impactSeverity({ kind: 'dropped' }, [reader]), 'critical');
         assert.strictEqual(impactSeverity('deleted', [reader]), 'critical');
         assert.strictEqual(impactSeverity({ kind: 'typeChanged', from: 'INT64', to: 'STRING' }, [reader]), 'warning');
         assert.strictEqual(impactSeverity({ kind: 'dropped' }, [{ ...reader, probablyUpdated: true }]), 'low');
+        assert.strictEqual(impactSeverity('deleted', [{ ...reader, deletedOnBranch: true }]), 'low');
         assert.strictEqual(impactSeverity({ kind: 'dropped' }, [], 'boom'), 'unknown');
     });
 });

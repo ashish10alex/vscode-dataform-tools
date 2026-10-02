@@ -8,6 +8,8 @@ import { ColumnChange, ColumnLink, DependencyType, TraceSource } from './types';
 
 /** Readers listed per column in the Markdown before "+N more" */
 export const MARKDOWN_READERS = 5;
+/** Reader tables listed when a Downstream cell is expanded, before "+N more" */
+export const MARKDOWN_READER_LIST = 20;
 
 export interface ImpactReader {
     /** Prod Target of the reader */
@@ -23,6 +25,8 @@ export interface ImpactReader {
     probablyUpdated?: boolean;
     /** Changed on this branch, and its new SQL still names the column (or the deleted table) */
     stillNamed?: boolean;
+    /** Removed on this branch, so it stops reading anything */
+    deletedOnBranch?: boolean;
 }
 
 export interface ImpactColumn {
@@ -90,6 +94,12 @@ export interface ReaderContext {
     changed: ReadonlySet<string>;
     /** Compiled SQL of a changed reader, keyed by Prod Target */
     sqlOf: (table: string) => string | undefined;
+    /** The Prod Target of a reader that is a dev run of an action in this project, or of one this branch deletes */
+    toProd?: (table: string) => string;
+    /** Prod Targets of the actions this branch deletes */
+    deleted?: ReadonlySet<string>;
+    /** Whether an action of this project is an assertion */
+    isAssertion?: (table: string) => boolean;
 }
 
 function escapeRegExp(text: string): string {
@@ -109,17 +119,22 @@ export function mentions(sql: string, identifier: string): boolean {
  * retyped column, the table name for a deleted table.
  */
 export function annotateReader(link: ColumnLink, name: string, context: ReaderContext): ImpactReader {
-    const filePath = context.resolveFile(link.table);
-    const reader: ImpactReader = { table: link.table, dependencyType: link.dependencyType };
+    const table = context.toProd?.(link.table) ?? link.table;
+    const reader: ImpactReader = { table, dependencyType: link.dependencyType };
     if (link.column) {
         reader.column = link.column;
     }
+    if (context.deleted?.has(table)) {
+        reader.deletedOnBranch = true;
+        return reader;
+    }
+    const filePath = context.resolveFile(table);
     if (filePath) {
         reader.filePath = filePath;
     }
-    if (context.changed.has(link.table)) {
+    if (context.changed.has(table)) {
         reader.changedOnBranch = true;
-        const sql = context.sqlOf(link.table);
+        const sql = context.sqlOf(table);
         if (sql !== undefined) {
             if (mentions(sql, name)) {
                 reader.stillNamed = true;
@@ -131,9 +146,29 @@ export function annotateReader(link: ColumnLink, name: string, context: ReaderCo
     return reader;
 }
 
+/**
+ * The readers of `table` as the summary shows them: dev runs folded into their action, the table itself left out,
+ * and assertions left out unless this branch deletes them.
+ */
+export function impactReaders(links: ColumnLink[], table: string, name: string, context: ReaderContext): ImpactReader[] {
+    return rankReaders(links.flatMap((link) => {
+        const reader = annotateReader(link, name, context);
+        const assertion = link.assertion || context.isAssertion?.(reader.table);
+        return reader.table === table || (assertion && !reader.deletedOnBranch) ? [] : [reader];
+    }));
+}
+
+/** Changed on this branch so it probably no longer names what was dropped, or deleted on this branch */
+export function isSettled(reader: ImpactReader): boolean {
+    return !!(reader.probablyUpdated || reader.deletedOnBranch);
+}
+
 const LINK_ORDER: Record<DependencyType, number> = { EXACT_COPY: 0, OTHER: 1, TABLE_ONLY: 2 };
 
 function readerRank(reader: ImpactReader): number {
+    if (reader.deletedOnBranch) {
+        return 4;
+    }
     if (!reader.filePath) {
         return 0; // Outside this project: can't be fixed in this change
     }
@@ -143,7 +178,7 @@ function readerRank(reader: ImpactReader): number {
     return reader.changedOnBranch ? 2 : 1;
 }
 
-/** One entry per reader table and column; readers outside the project first, those probably updated last */
+/** One entry per reader table and column; readers outside the project first, then those probably updated, then those deleted */
 export function rankReaders(readers: ImpactReader[]): ImpactReader[] {
     const seen = new Set<string>();
     return readers
@@ -158,9 +193,9 @@ export function rankReaders(readers: ImpactReader[]): ImpactReader[] {
             || (a.column ?? '').localeCompare(b.column ?? ''));
 }
 
-/** Readers that still need looking at: all but those changed on the branch that probably dropped the column */
+/** Readers that still need looking at: all but the settled ones */
 export function openReaders(readers: ImpactReader[] | undefined): number {
-    return (readers ?? []).filter((reader) => !reader.probablyUpdated).length;
+    return (readers ?? []).filter((reader) => !isSettled(reader)).length;
 }
 
 function tableWeight(table: ImpactTable): number {
@@ -189,8 +224,18 @@ export function shortTable(table: string): string {
     return table.split('.').slice(1).join('.');
 }
 
+/** The project of a reader when it isn't `of`'s, e.g. a dev run, so it can't pass for a reader in prod */
+export function otherProject(reader: string, of: string): string | undefined {
+    const project = reader.split('.')[0];
+    return project === of.split('.')[0] ? undefined : project;
+}
+
 export function summaryCounts(view: Pick<ImpactView, 'changedCount' | 'atRisk' | 'unchecked'>): string {
-    const parts = [`${view.changedCount} changed`, `${view.atRisk.length} at risk`];
+    const low = view.atRisk.filter(isLowImpact).length;
+    const parts = [`${view.changedCount} changed`, `${view.atRisk.length - low} at risk`];
+    if (low) {
+        parts.push(`${low} low`);
+    }
     if (view.unchecked.length) {
         parts.push(`${view.unchecked.length} not checked`);
     }
@@ -217,6 +262,22 @@ export function impactSeverity(change: ColumnChange | 'deleted', readers: Impact
     return change === 'deleted' || change.kind === 'dropped' ? 'critical' : 'warning';
 }
 
+const SEVERITY_ORDER: ImpactSeverity[] = ['critical', 'unknown', 'warning', 'low'];
+
+/** The most urgent severity of what the table deletes, drops or retypes */
+export function tableSeverity(table: ImpactTable): ImpactSeverity {
+    if (table.deleted) {
+        return impactSeverity('deleted', table.readers, table.readersError);
+    }
+    const severities = new Set(table.columns.map((column) => impactSeverity(column.change, column.readers, column.readersError)));
+    return SEVERITY_ORDER.find((severity) => severities.has(severity)) ?? 'low';
+}
+
+/** Nothing still reads what the table deletes, drops or retypes */
+export function isLowImpact(table: ImpactTable): boolean {
+    return tableSeverity(table) === 'low';
+}
+
 const SEVERITY_LABELS: Record<ImpactSeverity, string> = {
     critical: '🚨 **CRITICAL**',
     warning: '⚠️ **WARNING**',
@@ -229,28 +290,72 @@ function cell(text: string): string {
     return text.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
 }
 
-/** e.g. "3 models, 1 outside project (+1 probably updated)", counting reader tables rather than columns */
+/** What this branch does about a reader, or that it is outside the project */
+function readerNote(reader: ImpactReader): string {
+    if (reader.deletedOnBranch) {
+        return 'deleted here';
+    }
+    if (reader.probablyUpdated) {
+        return 'probably updated';
+    }
+    if (reader.changedOnBranch) {
+        return reader.stillNamed ? 'changed here, still names it' : 'changed here';
+    }
+    return reader.filePath ? '' : 'outside project';
+}
+
+/** How a reader reads the column, as the panel labels it */
+export const LINK_LABELS: Record<DependencyType, string> = { EXACT_COPY: 'copy', OTHER: 'derived or filtered', TABLE_ONLY: 'may read' };
+
+/** Reader columns named in the readers table before "+N more" */
+const READ_COLUMNS = 3;
+
+/**
+ * Rows of the readers table for one changed column (or a deleted table): one per reader table, with the columns it
+ * reads. `wholeTable`: readers of a deleted table, which read it whatever their link says.
+ */
+function readerRows(label: string, readers: ImpactReader[], table: string, wholeTable: boolean): string[] {
+    const byTable = new Map<string, ImpactReader[]>();
+    readers.forEach((reader) => byTable.set(reader.table, [...(byTable.get(reader.table) ?? []), reader]));
+    const rows = [...byTable.values()].map((group) => {
+        const [first] = group;
+        const name = otherProject(first.table, table) ? first.table : shortTable(first.table);
+        const columns = group.flatMap((reader) => reader.column ? [`\`${cell(reader.column)}\``] : []);
+        const more = columns.length - READ_COLUMNS;
+        const reads = columns.length ? `${columns.slice(0, READ_COLUMNS).join(', ')}${more > 0 ? `, +${more} more` : ''}` : '—';
+        const link = wholeTable ? 'reads the table' : LINK_LABELS[first.dependencyType];
+        return `| ${label} | \`${name}\` | ${reads} | ${link} | ${readerNote(first)} |`;
+    });
+    const more = rows.length - MARKDOWN_READER_LIST;
+    return more > 0 ? [...rows.slice(0, MARKDOWN_READER_LIST), `| ${label} | +${more} more | | | |`] : rows;
+}
+
+/** e.g. "3 models, 1 outside project (+1 probably updated, +1 deleted here)", counting reader tables rather than columns */
 function downstreamCell(readers: ImpactReader[] | undefined, error: string | undefined): string {
     if (error) {
         return cell(`lookup failed: ${error}`);
     }
-    const open = (readers ?? []).filter((reader) => !reader.probablyUpdated);
-    const inProject = new Set(open.filter((reader) => reader.filePath).map((reader) => reader.table)).size;
-    const outside = new Set(open.filter((reader) => !reader.filePath).map((reader) => reader.table)).size;
-    const settled = new Set((readers ?? []).filter((reader) => reader.probablyUpdated).map((reader) => reader.table)).size;
-    const parts = [inProject && plural(inProject, 'model'), outside && `${outside} outside project`].filter(Boolean).join(', ') || 'none found';
-    return settled ? `${parts} (+${settled} probably updated)` : parts;
+    const tables = (keep: (reader: ImpactReader) => boolean | undefined) => new Set((readers ?? []).filter(keep).map((reader) => reader.table)).size;
+    const inProject = tables((reader) => !isSettled(reader) && !!reader.filePath);
+    const outside = tables((reader) => !isSettled(reader) && !reader.filePath);
+    const updated = tables((reader) => reader.probablyUpdated);
+    const deleted = tables((reader) => reader.deletedOnBranch);
+    const settled = [updated && `+${updated} probably updated`, deleted && `+${deleted} deleted here`].filter(Boolean).join(', ');
+    const parts = [inProject && plural(inProject, 'model'), outside && `${outside} outside project`].filter(Boolean).join(', ')
+        || (settled ? 'none left' : 'none found');
+    return settled ? `${parts} (${settled})` : parts;
 }
 
-/** Tables that copy the column unchanged, still to look at; outside the project marked */
-function copiesCell(readers: ImpactReader[] | undefined): string {
+/** Tables that copy the column of `table` unchanged, still to look at; outside the project marked */
+function copiesCell(readers: ImpactReader[] | undefined, table: string): string {
     const copies = [...new Map((readers ?? [])
-        .filter((reader) => reader.dependencyType === 'EXACT_COPY' && !reader.probablyUpdated)
+        .filter((reader) => reader.dependencyType === 'EXACT_COPY' && !isSettled(reader))
         .map((reader) => [reader.table, reader])).values()];
     if (!copies.length) {
         return '—';
     }
-    const shown = copies.slice(0, MARKDOWN_READERS).map((reader) => `\`${shortTable(reader.table)}\`${reader.filePath ? '' : ' *(outside)*'}`);
+    const name = (reader: ImpactReader) => otherProject(reader.table, table) ? reader.table : shortTable(reader.table);
+    const shown = copies.slice(0, MARKDOWN_READERS).map((reader) => `\`${name(reader)}\`${reader.filePath ? '' : ' *(outside)*'}`);
     const more = copies.length - MARKDOWN_READERS;
     return `${shown.join(', ')}${more > 0 ? `, +${more} more` : ''}`;
 }
@@ -282,13 +387,21 @@ export function impactMarkdown(view: ImpactView): string {
     for (const table of view.atRisk) {
         lines.push('', `**Target model:** \`${shortTable(table.table)}\``, '');
         lines.push('| Column | Change | Severity | Downstream | Direct copies |', '| --- | --- | --- | --- | --- |');
-        const row = (column: string, change: ColumnChange | 'deleted', readers: ImpactReader[] | undefined, error?: string) =>
-            lines.push(`| ${column} | ${changeCell(change)} | ${SEVERITY_LABELS[impactSeverity(change, readers, error)]} | ${downstreamCell(readers, error)} | ${copiesCell(readers)} |`);
+        const readers: string[] = [];
+        const row = (column: string, change: ColumnChange | 'deleted', columnReaders: ImpactReader[] | undefined, error?: string) => {
+            lines.push(`| ${column} | ${changeCell(change)} | ${SEVERITY_LABELS[impactSeverity(change, columnReaders, error)]} | ${downstreamCell(columnReaders, error)} | ${copiesCell(columnReaders, table.table)} |`);
+            readers.push(...readerRows(column, columnReaders ?? [], table.table, change === 'deleted'));
+        };
         if (table.deleted) {
             row('*whole table*', 'deleted', table.readers, table.readersError);
-            continue;
+        } else {
+            table.columns.forEach((column) => row(`\`${cell(column.column)}\``, column.change, column.readers, column.readersError));
         }
-        table.columns.forEach((column) => row(`\`${cell(column.column)}\``, column.change, column.readers, column.readersError));
+        if (readers.length) {
+            lines.push('', `<details><summary>Readers (${readers.length})</summary>`, '');
+            lines.push('| Column | Reader | Reads | Link | On this branch |', '| --- | --- | --- | --- | --- |', ...readers);
+            lines.push('', '</details>');
+        }
     }
     if (view.safe.length) {
         lines.push('', `<details><summary>${safeSummary(view.safe.length)}</summary>`, '');
@@ -301,7 +414,8 @@ export function impactMarkdown(view: ImpactView): string {
         lines.push('', '</details>');
     }
     lines.push('', '_Downstream readers come from Dataplex lineage of prod runs in the last 30 days, about 2 h behind. '
-        + '"Probably updated": changed on this branch, and its new SQL no longer names the column._');
+        + '"Probably updated": changed on this branch, and its new SQL no longer names the column. '
+        + '"Deleted here": the reader is deleted on this branch too._');
     return lines.join('\n');
 }
 
@@ -332,12 +446,12 @@ function errorMessage(error: any): string {
     return error?.message ?? String(error);
 }
 
-/** Direct readers of a column: its column links, then readers Dataplex knows only at table level. Assertions are left out. */
+/** Direct readers of a column: its column links, then readers Dataplex knows only at table level */
 async function columnReaders(source: TraceSource, table: string, column: string): Promise<ColumnLink[]> {
     const links = await source.links(table, column, 'downstream');
     const linked = new Set(links.map((link) => link.table));
     const tableOnly = source.tableOnlyReaders ? await source.tableOnlyReaders(table, linked) : [];
-    return [...links, ...tableOnly].filter((link) => !link.assertion && link.table !== table);
+    return [...links, ...tableOnly];
 }
 
 /**
@@ -369,7 +483,7 @@ export async function buildImpactSummary(
             lookups.push(async () => {
                 try {
                     const links = source.tableReaders ? await source.tableReaders(table) : [];
-                    entry.readers = rankReaders(links.filter((link) => !link.assertion && link.table !== table).map((link) => annotateReader(link, name, context)));
+                    entry.readers = impactReaders(links, table, name, context);
                 } catch (error) {
                     entry.readersError = errorMessage(error);
                 }
@@ -387,7 +501,7 @@ export async function buildImpactSummary(
             lookups.push(async () => {
                 try {
                     const links = await columnReaders(source, table, column.column);
-                    column.readers = rankReaders(links.map((link) => annotateReader(link, column.column, context)));
+                    column.readers = impactReaders(links, table, column.column, context);
                 } catch (error) {
                     column.readersError = errorMessage(error);
                 }

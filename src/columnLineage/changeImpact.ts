@@ -173,8 +173,10 @@ export async function computeColumnImpact(
     }
 
     const devToProd: [string, string][] = [...devIndex.keys()].map((dev) => [dev, toProd(dev)]);
+    // Every deleted action, assertions and operations too, by dev target: readers may be any of them, in prod or a dev run
+    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd)]));
     for (const action of deleted) {
-        const table = guessProdTarget(action.target, devToProd);
+        const table = deletedToProd.get(action.target) ?? action.target;
         const prod = await schemas.schema(table);
         candidates.push(prod?.length
             ? { table, fileName: action.fileName, type: action.type, deleted: true }
@@ -190,7 +192,14 @@ export async function computeColumnImpact(
     const summary = await buildImpactSummary(
         candidates,
         source,
-        { resolveFile, changed: changedProd, sqlOf: (table) => sqlByProd.get(table) },
+        {
+            resolveFile,
+            changed: changedProd,
+            sqlOf: (table) => sqlByProd.get(table),
+            toProd: (table) => deletedToProd.get(table) ?? toProd(table),
+            deleted: new Set(deletedToProd.values()),
+            isAssertion: (table) => index.get(table)?.type === 'assertion',
+        },
         (lookups, of) => emit(view('running', { progress: { phase: 'Looking up readers', done: lookups, total: of } })),
         cancelled,
     );
