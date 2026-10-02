@@ -1,5 +1,5 @@
-import { addHop, canExpand, expandDirection, focusNodeId, frontier, initialTraceState, removeUpstream, setNodeError, setNodeLoading } from './traceGraph';
-import { ColumnChange, LineageDirection, TraceFocus, TraceSource, TraceState } from './types';
+import { addHop, canExpand, expandDirection, focusNodeId, frontier, initialTraceState, removeUpstream, setNodeCheckingReaders, setNodeError, setNodeLoading } from './traceGraph';
+import { ColumnChange, ColumnLink, LineageDirection, TraceFocus, TraceSource, TraceState } from './types';
 
 /** Hops loaded automatically on each side, so the list is readable without clicking through it */
 export const AUTO_HOPS = 3;
@@ -133,10 +133,32 @@ export class TraceController {
                 this.set(setNodeLoading(this.state, nodeId, false));
             } else {
                 this.set(addHop(this.state, nodeId, direction, links, this.resolveFile));
+                if (direction === 'downstream') {
+                    // Not awaited: the next hop needs only column links, and table-level readers have no column to follow
+                    void this.fetchTableOnlyReaders(nodeId, node.table, links, generation);
+                }
             }
         } catch (error: any) {
             if (generation === this.generation && this.state) {
                 this.set(setNodeError(this.state, nodeId, error?.message ?? String(error)));
+            }
+        }
+    }
+
+    /** The second phase of a downstream lookup: readers known only at table level, added when they're found */
+    private async fetchTableOnlyReaders(nodeId: string, table: string, links: ColumnLink[], generation: number) {
+        if (!this.source.tableOnlyReaders || !this.state) {
+            return;
+        }
+        this.set(setNodeCheckingReaders(this.state, nodeId, true));
+        try {
+            const readers = await this.source.tableOnlyReaders(table, new Set(links.map((link) => link.table)));
+            if (generation === this.generation && this.state) {
+                this.set(addHop(setNodeCheckingReaders(this.state, nodeId, false), nodeId, 'downstream', readers, this.resolveFile));
+            }
+        } catch (error: any) {
+            if (generation === this.generation && this.state) {
+                this.set(setNodeCheckingReaders(this.state, nodeId, false, error?.message ?? String(error)));
             }
         }
     }

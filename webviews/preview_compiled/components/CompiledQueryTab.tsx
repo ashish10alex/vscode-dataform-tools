@@ -257,7 +257,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "previewResults", value: true });
   };
 
-  // One table, view or incremental table, ignoring its built-in assertions: the action whose schema can be compared with prod
+  // One table, view, incremental table or operation with hasOutput, ignoring built-in assertions: the action whose columns can be traced
   const canCheckColumnImpact = tableActions(state.targetTablesOrViews).length === 1;
 
   const handleColumnImpact = () => {

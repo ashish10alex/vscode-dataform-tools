@@ -12,12 +12,19 @@ export interface ColumnLink {
     /** Undefined when only a table-level link exists, e.g. the reader is an incremental table */
     column?: string;
     dependencyType: DependencyType;
+    /** The other end is an assertion, e.g. a built-in uniqueKey or nonNull check */
+    assertion?: boolean;
 }
 
 export interface TraceSource {
     /** `sample`: a made-up project. `graph`: this project's dependency graph with guessed column links. */
     readonly kind: 'sample' | 'graph' | 'dataplex';
     links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]>;
+    /**
+     * Readers of `table` known only at table level, leaving out the tables in `linked` (those with a column
+     * link). Slower than {@link links}, so asked for after it; sources without it return them from `links`.
+     */
+    tableOnlyReaders?(table: string, linked: Set<string>): Promise<ColumnLink[]>;
     clearCache?(): void;
 }
 
@@ -45,7 +52,12 @@ export interface TraceNode {
     loading: boolean;
     /** Workspace-relative `.sqlx` path when the table is an action in this project */
     filePath?: string;
+    assertion?: boolean;
     error?: string;
+    /** Readers known only at table level are still being looked up, after the column links came in */
+    checkingReaders?: boolean;
+    /** Looking up the readers known only at table level failed */
+    readersError?: string;
 }
 
 /** Always points downstream: `source` is read by `target` */
@@ -73,8 +85,10 @@ export interface ReaderCounts {
     copies: number;
     /** Readers that use it in an expression, filter or join */
     derived: number;
-    /** Readers known only at table level */
-    mayRead: number;
+    /** Readers known only at table level. Undefined while they're still being looked up, or when that failed. */
+    mayRead?: number;
+    /** Looking up the readers known only at table level failed */
+    mayReadError?: string;
 }
 
 /** One row of the column list */

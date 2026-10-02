@@ -50,6 +50,11 @@ export function setNodeError(state: TraceState, nodeId: string, error: string): 
     return updateNode(state, nodeId, { error, loading: false });
 }
 
+/** Marks the lookup of a node's table-level readers as running, or as finished (with `error` when it failed) */
+export function setNodeCheckingReaders(state: TraceState, nodeId: string, checking: boolean, error?: string): TraceState {
+    return updateNode(state, nodeId, { checkingReaders: checking, readersError: error });
+}
+
 /**
  * Adds the links found one hop from `fromId`. A column already in the trace keeps its place and only gains the
  * edge, so a column reached by two paths shows once.
@@ -84,6 +89,7 @@ export function addHop(
                 expanded: false,
                 loading: false,
                 filePath: resolveFile(link.table),
+                ...(link.assertion ? { assertion: true } : {}),
             });
         }
         const [source, target] = direction === 'downstream' ? [fromId, id] : [id, fromId];

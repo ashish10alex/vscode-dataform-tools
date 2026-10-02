@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { loadLineageClient } from '../lazySdk';
-import { GraphAction, runsAsScript } from '../shared/columnLineage/graphLinks';
+import { logger } from '../logger';
+import { GraphAction } from '../shared/columnLineage/graphLinks';
 import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../shared/columnLineage/dataplexLinks';
 import { ColumnLink, LineageDirection, TraceSource } from '../shared/columnLineage/types';
 import { SchemaCache } from './schemaCache';
@@ -16,6 +17,24 @@ async function lineageClient(): Promise<LineageClient> {
         client = new (await loadLineageClient())(keyFilename ? { keyFilename } : {});
     }
     return client;
+}
+
+type SearchRequest = Parameters<LineageClient['searchLinks']>[0];
+
+/** Every page of a link search, one page after another as the client would fetch them, timed for the debug log */
+async function searchLinks(api: LineageClient, request: SearchRequest, label: string): Promise<any[]> {
+    const started = Date.now();
+    const links: any[] = [];
+    let pages = 0;
+    let next: SearchRequest | null | undefined = request;
+    while (next) {
+        const [page, nextRequest]: [any[], SearchRequest | null, unknown] = await api.searchLinks(next, { autoPaginate: false });
+        links.push(...page);
+        pages++;
+        next = nextRequest;
+    }
+    logger.debug(`Column trace: searchLinks ${label}: ${links.length} links in ${pages} page${pages === 1 ? '' : 's'}, ${Date.now() - started} ms`);
+    return links;
 }
 
 function describeError(error: any, project: string): string {
@@ -61,7 +80,7 @@ export class DataplexTraceSource implements TraceSource {
                     return false;
                 }
                 const counts = await Promise.all(columns.slice(0, PROBE_COLUMNS).map(async (field) =>
-                    (await api.searchLinks({ parent, target: { fullyQualifiedName: lineageFqn(table), field: lineageField(field.name) } }))[0].length));
+                    (await searchLinks(api, { parent, target: { fullyQualifiedName: lineageFqn(table), field: lineageField(field.name) } }, `probe ${table}.${field.name}`)).length));
                 return counts.some((count) => count > 0);
             })();
             this.tracked.set(table, pending);
@@ -72,7 +91,7 @@ export class DataplexTraceSource implements TraceSource {
     private tableReaders(api: LineageClient, parent: string, table: string): Promise<any[]> {
         let pending = this.readers.get(table);
         if (!pending) {
-            pending = api.searchLinks({ parent, source: { fullyQualifiedName: lineageFqn(table) } }).then(([links]) => links);
+            pending = searchLinks(api, { parent, source: { fullyQualifiedName: lineageFqn(table) } }, `readers of ${table}`);
             const stored = pending;
             stored.catch(() => {
                 if (this.readers.get(table) === stored) {
@@ -84,41 +103,63 @@ export class DataplexTraceSource implements TraceSource {
         return pending;
     }
 
-    async links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]> {
-        const [project] = table.split('.');
+    private isAssertion(table: string): boolean {
+        return this.prodIndex.get(table)?.type === 'assertion';
+    }
+
+    private async lookup<T>(table: string, run: (api: LineageClient, parent: string) => Promise<T>): Promise<T> {
         const parent = await this.parentOf(table);
         if (!parent) {
             throw new Error(`Couldn't read ${table} to find its region.`);
         }
         const api = await lineageClient();
-        const side = direction === 'downstream' ? 'source' : 'target';
-
         try {
-            const [columnLinks, tableLinks] = await Promise.all([
-                api.searchLinks({ parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }).then(([links]) => links),
-                direction === 'downstream' ? this.tableReaders(api, parent, table) : Promise.resolve([]),
-            ]);
+            return await run(api, parent);
+        } catch (error: any) {
+            throw Object.assign(new Error(describeError(error, table.split('.')[0])), { code: error?.code });
+        }
+    }
+
+    links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]> {
+        return this.lookup(table, async (api, parent) => {
+            const started = Date.now();
+            if (direction === 'downstream') {
+                // Started now so it overlaps the column search; tableOnlyReaders picks it up from the cache
+                this.tableReaders(api, parent, table).catch(() => undefined);
+            }
+            const side = direction === 'downstream' ? 'source' : 'target';
+            const columnLinks = await searchLinks(api, { parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }, `${direction} ${table}.${column}`);
 
             // Dataplex returns lowercase names; show them as each table's schema spells them
             const links: ColumnLink[] = await Promise.all(columnLinksFromApi(columnLinks, direction).map(async (link) => ({
                 ...link,
                 column: link.column && await this.schemas.casing(link.table, link.column),
+                ...(this.isAssertion(link.table) ? { assertion: true } : {}),
             })));
+            logger.debug(`Column trace: ${direction} ${table}.${column}: ${links.length} column links in ${Date.now() - started} ms`);
+            return links;
+        });
+    }
 
-            // A reader with only a table-level link may still read this column when Dataplex doesn't track its
-            // columns: incremental tables and operations never get column lineage, other tables are probed
-            const untracked = await untrackedReaders(
-                tablesFromApi(tableLinks, 'downstream'),
-                new Set(links.map((link) => link.table)),
-                async (reader) => {
-                    const action = this.prodIndex.get(reader);
-                    return action && runsAsScript(action) ? false : this.hasColumnLineage(reader);
-                },
-            );
-            return [...links, ...untracked.map((reader): ColumnLink => ({ table: reader, dependencyType: 'TABLE_ONLY' }))];
-        } catch (error: any) {
-            throw Object.assign(new Error(describeError(error, project)), { code: error?.code });
-        }
+    /**
+     * A reader with only a table-level link may still read a column when Dataplex doesn't track its columns:
+     * incremental tables never get column lineage, other readers are probed. Operations are probed too: some
+     * get column lineage (e.g. `CREATE TABLE ... CLONE`), others, such as procedures, don't.
+     */
+    tableOnlyReaders(table: string, linked: Set<string>): Promise<ColumnLink[]> {
+        return this.lookup(table, async (api, parent) => {
+            const started = Date.now();
+            const readers = tablesFromApi(await this.tableReaders(api, parent, table), 'downstream');
+            const untracked = await untrackedReaders(readers, linked, async (reader) => {
+                return this.prodIndex.get(reader)?.type === 'incremental' ? false : this.hasColumnLineage(reader);
+            });
+            logger.debug(`Column trace: readers of ${table} without column lineage: ${untracked.length} of ${readers.length} readers, ${Date.now() - started} ms`);
+            return untracked.map((reader): ColumnLink => ({
+                table: reader,
+                dependencyType: 'TABLE_ONLY',
+                ...(this.isAssertion(reader) ? { assertion: true } : {}),
+            }));
+        });
     }
 
     clearCache() {

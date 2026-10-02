@@ -16,7 +16,7 @@ export async function indexByProdTarget(devIndex: Map<string, GraphAction>): Pro
         return { index: devIndex, toProd: (dev) => dev };
     }
     try {
-        const actions = [...(graph.tables ?? []), ...(graph.operations ?? []), ...(graph.declarations ?? [])];
+        const actions = [...(graph.tables ?? []), ...(graph.operations ?? []), ...(graph.assertions ?? []), ...(graph.declarations ?? [])];
         const prodTargets = await getProdTargets(workspaceFolder, prodOptions, actions.map((action) => prodKey(action)));
         const devToProd = new Map<string, string>();
         for (const action of actions) {

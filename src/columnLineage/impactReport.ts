@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { getWorkspaceFolder } from '../utils';
 import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
-import { tableActions } from '../shared/columnLineage/tableActions';
+import { isOperation, tableActions } from '../shared/columnLineage/tableActions';
 import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { ColumnsInput } from '../shared/columnLineage/columnsController';
 import { indexByProdTarget } from './prodIndex';
@@ -40,7 +40,7 @@ export function forgetDryRunSchema(document: vscode.TextDocument) {
 }
 
 /** The Prod Target of the one table the file defines. Throws with a message for the panel otherwise. */
-async function locate(document: vscode.TextDocument): Promise<{ table: string; index: Map<string, GraphAction> }> {
+async function locate(document: vscode.TextDocument): Promise<{ table: string; index: Map<string, GraphAction>; operation: boolean }> {
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         throw new Error('Compile the project first.');
     }
@@ -49,10 +49,10 @@ async function locate(document: vscode.TextDocument): Promise<{ table: string; i
     const devIndex = indexGraph(CACHED_COMPILED_DATAFORM_JSON);
     const actions = tableActions([...devIndex.values()].filter((action) => action.fileName === fileName));
     if (actions.length !== 1) {
-        throw new Error('Column lineage works for files that define one table, view or incremental table.');
+        throw new Error('Column lineage works for files that define one table, view, incremental table or operation with hasOutput.');
     }
     const { index, toProd } = await indexByProdTarget(devIndex);
-    return { table: toProd(actions[0].fqn), index };
+    return { table: toProd(actions[0].fqn), index, operation: isOperation(actions[0]) };
 }
 
 export interface LoadedColumns {
@@ -64,9 +64,16 @@ export interface LoadedColumns {
 
 /** The columns to list for a file: its Prod Target's, labelled against its last dry run when there is one */
 export async function loadColumns(document: vscode.TextDocument): Promise<LoadedColumns> {
-    const { table, index } = await locate(document);
+    const { table, index, operation } = await locate(document);
     const schemas = new SchemaCache();
     const prod = await schemas.schema(table);
+    if (operation) {
+        // BigQuery's dry run of a script has no schema, so there is nothing to compare prod with
+        if (!prod?.length) {
+            throw new Error(`There is no prod table ${table} yet. Its columns get lineage once the operation is deployed and has run.`);
+        }
+        return { input: { table, prod, message: 'Operations aren’t compared with prod: a dry run of a script has no schema.' }, schemas, index };
+    }
     const dev = dryRuns.get(document.uri.toString());
     if (prod?.length) {
         return { input: { table, prod, dev }, schemas, index };

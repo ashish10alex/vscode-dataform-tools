@@ -218,7 +218,9 @@ export class ColumnsController {
             try {
                 const links = await this.source.links(this.input.table, column, 'downstream');
                 if (generation === this.generation) {
-                    this.counts.set(column, countReaders(links));
+                    const counts = countReaders(links);
+                    this.counts.set(column, this.source.tableOnlyReaders ? { ...counts, mayRead: undefined } : counts);
+                    void this.fetchMayRead(column, links, generation);
                 }
             } catch (error: any) {
                 if (generation === this.generation) {
@@ -226,5 +228,27 @@ export class ColumnsController {
                 }
             }
         });
+    }
+
+    /** Adds the readers known only at table level to a column's counts once they're found */
+    private async fetchMayRead(column: string, links: ColumnLink[], generation: number): Promise<void> {
+        const table = this.input?.table;
+        if (!table || !this.source?.tableOnlyReaders) {
+            return;
+        }
+        let update: Partial<ReaderCounts>;
+        try {
+            const readers = await this.source.tableOnlyReaders(table, new Set(links.map((link) => link.table)));
+            update = { mayRead: countReaders(links).mayRead! + readers.length };
+        } catch (error: any) {
+            update = { mayReadError: error?.message ?? String(error) };
+        }
+        const counts = this.counts.get(column);
+        if (generation === this.generation && counts) {
+            this.counts.set(column, { ...counts, ...update });
+            if (this.view?.status === 'ready') {
+                this.publish();
+            }
+        }
     }
 }

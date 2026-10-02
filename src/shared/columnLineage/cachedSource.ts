@@ -4,7 +4,12 @@ import { ColumnLink, LineageDirection, TraceSource } from './types';
 export class CachedTraceSource implements TraceSource {
     private readonly cache = new Map<string, Promise<ColumnLink[]>>();
 
-    constructor(private readonly inner: TraceSource) {}
+    /** Passed through: the inner source caches what it shares across columns, e.g. a table's readers */
+    readonly tableOnlyReaders?: TraceSource['tableOnlyReaders'];
+
+    constructor(private readonly inner: TraceSource) {
+        this.tableOnlyReaders = inner.tableOnlyReaders?.bind(inner);
+    }
 
     get kind(): TraceSource['kind'] {
         return this.inner.kind;

@@ -28,8 +28,11 @@ function readerBreakdown(entry: ColumnEntry): string | undefined {
     if (!entry.counts) {
         return undefined;
     }
-    const { copies, derived, mayRead } = entry.counts;
-    return `${copies} cop${copies === 1 ? 'y' : 'ies'} · ${derived} derived or filtered · ${mayRead} may read (Dataplex)`;
+    const { copies, derived, mayRead, mayReadError } = entry.counts;
+    const tableOnly = mayRead !== undefined
+        ? `${mayRead} may read`
+        : mayReadError ? `couldn’t check readers without column lineage: ${mayReadError}` : 'checking readers without column lineage…';
+    return `${copies} cop${copies === 1 ? 'y' : 'ies'} · ${derived} derived or filtered · ${tableOnly} (Dataplex)`;
 }
 
 /**

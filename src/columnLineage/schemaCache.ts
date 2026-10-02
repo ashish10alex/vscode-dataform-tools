@@ -15,7 +15,12 @@ export class SchemaCache {
         let pending = this.tables.get(table);
         if (!pending) {
             const [projectId, datasetId, tableId] = table.split('.');
+            const started = Date.now();
             pending = fetchTableMetadata(projectId, datasetId, tableId)
+                .then((metadata: any) => {
+                    logger.debug(`Column trace: metadata of ${table}, ${Date.now() - started} ms`);
+                    return metadata;
+                })
                 .then((metadata: any) => ({
                     columns: (metadata?.schema?.fields ?? []).map((field: any) => ({ name: String(field.name), type: String(field.type) })),
                     location: metadata?.location ? String(metadata.location) : undefined,

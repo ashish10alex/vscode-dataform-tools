@@ -45,7 +45,7 @@ export function diffSchemas(devFields: SchemaField[], prodFields: SchemaField[])
 }
 
 export function readerTotal(counts: ReaderCounts | undefined): number {
-    return counts ? counts.copies + counts.derived + counts.mayRead : 0;
+    return counts ? counts.copies + counts.derived + (counts.mayRead ?? 0) : 0;
 }
 
 /**

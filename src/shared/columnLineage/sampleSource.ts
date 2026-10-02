@@ -16,6 +16,8 @@ const READS: Record<string, [string, DependencyType][]> = {
         ['finance.monthly_close#total_revenue', 'OTHER'],
         ['ml.customer_ltv_features#ltv_90d', 'OTHER'],
         ['ml.customer_events#', 'TABLE_ONLY'],
+        ['marts_assertions.fct_daily_revenue_assertions_uniqueKey_0#revenue_usd', 'OTHER'],
+        ['marts_assertions.fct_daily_revenue_assertions_rowConditions#revenue_usd', 'OTHER'],
     ],
     'reporting.revenue_dashboard#revenue_usd': [
         ['reporting.exec_summary#revenue_usd', 'EXACT_COPY'],
@@ -34,6 +36,12 @@ const READS: Record<string, [string, DependencyType][]> = {
     ],
 };
 
+/** Built-in assertions of the sample project */
+const ASSERTIONS = new Set([
+    'marts_assertions.fct_daily_revenue_assertions_uniqueKey_0',
+    'marts_assertions.fct_daily_revenue_assertions_rowConditions',
+]);
+
 /** Tables that are actions in the sample project, with their files. The rest are outside the project. */
 const FILES: Record<string, string> = {
     'staging.raw_orders_cleaned': 'definitions/staging/raw_orders_cleaned.sqlx',
@@ -44,6 +52,8 @@ const FILES: Record<string, string> = {
     'reporting.revenue_by_region': 'definitions/reporting/revenue_by_region.sqlx',
     'ml.customer_ltv_features': 'definitions/ml/customer_ltv_features.sqlx',
     'ml.customer_events': 'definitions/ml/customer_events.sqlx',
+    'marts_assertions.fct_daily_revenue_assertions_uniqueKey_0': 'definitions/marts/fct_daily_revenue.sqlx',
+    'marts_assertions.fct_daily_revenue_assertions_rowConditions': 'definitions/marts/fct_daily_revenue.sqlx',
 };
 
 export const SAMPLE_FOCUS: TraceFocus = {
@@ -79,7 +89,7 @@ function withoutProject(table: string): string {
 
 function toLink(key: string, dependencyType: DependencyType): ColumnLink {
     const [table, column] = key.split('#');
-    return { table: `${PROJECT}.${table}`, column: column || undefined, dependencyType };
+    return { table: `${PROJECT}.${table}`, column: column || undefined, dependencyType, ...(ASSERTIONS.has(table) ? { assertion: true } : {}) };
 }
 
 export function resolveSampleFile(table: string): string | undefined {
@@ -91,15 +101,30 @@ export class SampleTraceSource implements TraceSource {
 
     constructor(private readonly latencyMs: [number, number] = [250, 650]) {}
 
-    async links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]> {
+    private wait(factor = 1) {
         const [min, max] = this.latencyMs;
-        await new Promise((resolve) => setTimeout(resolve, min + Math.random() * (max - min)));
+        return new Promise((resolve) => setTimeout(resolve, factor * (min + Math.random() * (max - min))));
+    }
+
+    async links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]> {
+        await this.wait();
         const key = `${withoutProject(table)}#${column}`;
         if (direction === 'downstream') {
-            return (READS[key] ?? []).map(([reader, type]) => toLink(reader, type));
+            return (READS[key] ?? []).filter(([, type]) => type !== 'TABLE_ONLY').map(([reader, type]) => toLink(reader, type));
         }
         return Object.entries(READS)
             .filter(([, readers]) => readers.some(([reader]) => reader === key))
             .map(([source, readers]) => toLink(source, readers.find(([reader]) => reader === key)![1]));
+    }
+
+    /** Slower than {@link links}, like Dataplex's table-level search and probes */
+    async tableOnlyReaders(table: string, linked: Set<string>): Promise<ColumnLink[]> {
+        await this.wait(3);
+        const prefix = `${withoutProject(table)}#`;
+        const readers = Object.entries(READS)
+            .filter(([key]) => key.startsWith(prefix))
+            .flatMap(([, links]) => links.filter(([, type]) => type === 'TABLE_ONLY').map(([reader]) => toLink(reader, 'TABLE_ONLY')))
+            .filter((link) => !linked.has(link.table));
+        return [...new Map(readers.map((link) => [link.table, link])).values()];
     }
 }

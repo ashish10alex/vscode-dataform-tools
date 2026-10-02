@@ -5,7 +5,7 @@ import { TraceController } from '../../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
 import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
-import { TraceState } from '../../shared/columnLineage/types';
+import { ColumnLink, LineageDirection, TraceSource, TraceState } from '../../shared/columnLineage/types';
 
 const focus = { table: 'p.marts.fct', column: 'revenue' };
 const focusId = traceNodeId(focus.table, focus.column);
@@ -87,17 +87,26 @@ suite('Column lineage trace graph', () => {
     });
 });
 
+/** Waits until no table-level reader lookups are running */
+async function readersChecked(controller: TraceController) {
+    while (controller.current?.nodes.some((node) => node.checkingReaders)) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+}
+
 suite('Column lineage trace controller', () => {
     test('opens with several hops loaded, lists them, and toggles upstream against the sample source', async () => {
         const states: TraceState[] = [];
         const controller = new TraceController(new SampleTraceSource([0, 0]), (state) => states.push(state));
         await controller.open(SAMPLE_FOCUS);
+        await readersChecked(controller);
         const opened = controller.current!;
         assert.ok(states.some((state) => state.nodes[0].loading), 'reports a loading state before the links arrive');
-        assert.strictEqual(opened.nodes.filter((node) => node.hop === 1).length, 4);
+        assert.strictEqual(opened.nodes.filter((node) => node.hop === 1 && !node.assertion).length, 4);
+        assert.strictEqual(opened.nodes.filter((node) => node.hop === 1 && node.assertion).length, 2, 'marks assertions');
         assert.strictEqual(opened.nodes.filter((node) => node.hop === 2).length, 5, 'loads the second hop without being asked');
 
-        const rows = traceRows(opened, 'downstream');
+        const rows = traceRows(opened, 'downstream').filter((row) => !row.node.assertion);
         assert.deepStrictEqual(rows.slice(0, 4).map((row) => [row.node.table.split('.').pop(), row.dependencyType]), [
             ['revenue_dashboard', 'EXACT_COPY'],
             ['monthly_close', 'OTHER'],
@@ -116,6 +125,47 @@ suite('Column lineage trace controller', () => {
         await controller.setUpstream(false);
         assert.strictEqual(controller.current!.nodes.filter((node) => node.hop < 0).length, 0);
     });
+
+    test('shows column links before readers known only at table level, and loads the next hop without waiting for them', async () => {
+        let release: (readers: ColumnLink[]) => void = () => undefined;
+        const readers = new Promise<ColumnLink[]>((resolve) => { release = resolve; });
+        const source: TraceSource = {
+            kind: 'sample',
+            links: async (table: string, _column: string, direction: LineageDirection) => (direction === 'downstream' && table === 'p.marts.fct'
+                ? [{ table: 'p.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' }]
+                : []),
+            tableOnlyReaders: (table: string) => (table === 'p.marts.fct' ? readers : Promise.resolve([])),
+        };
+        const controller = new TraceController(source, () => undefined);
+        await controller.open(focus);
+
+        const opened = controller.current!;
+        assert.ok(opened.nodes.some((node) => node.id === 'p.rep.dash#revenue'), 'column links are in');
+        assert.strictEqual(opened.nodes.find((node) => node.hop === 0)!.checkingReaders, true, 'still checking the focus table\'s readers');
+        assert.strictEqual(opened.nodes.find((node) => node.id === 'p.rep.dash#revenue')!.expanded, true, 'the next hop loaded meanwhile');
+        assert.ok(!opened.nodes.some((node) => node.loading), 'nothing is loading a hop');
+
+        release([{ table: 'p.ml.events', dependencyType: 'TABLE_ONLY' }]);
+        await readersChecked(controller);
+        const done = controller.current!;
+        assert.strictEqual(done.nodes.find((node) => node.hop === 0)!.checkingReaders, false);
+        assert.strictEqual(done.nodes.find((node) => node.id === 'p.ml.events#')?.hop, 1, 'table-level readers join the first hop');
+    });
+
+    test('reports a failed table-level reader lookup on the node, keeping its column links', async () => {
+        const source: TraceSource = {
+            kind: 'sample',
+            links: async () => [{ table: 'p.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' }],
+            tableOnlyReaders: async () => { throw new Error('quota exceeded'); },
+        };
+        const controller = new TraceController(source, () => undefined);
+        await controller.open(focus);
+        await readersChecked(controller);
+        const focusNode = controller.current!.nodes.find((node) => node.hop === 0)!;
+        assert.strictEqual(focusNode.readersError, 'quota exceeded');
+        assert.strictEqual(focusNode.error, undefined);
+        assert.ok(controller.current!.nodes.some((node) => node.id === 'p.rep.dash#revenue'));
+    });
 });
 
 suite('Column lineage from the dependency graph', () => {
@@ -126,6 +176,7 @@ suite('Column lineage from the dependency graph', () => {
             { type: 'view', target: { database: 'p', schema: 'rpt', name: 'league_table' }, fileName: 'definitions/league_table.sqlx', dependencyTargets: [{ database: 'p', schema: 'mart', name: 'player_stats' }] },
             { type: 'incremental', target: { database: 'p', schema: 'rpt', name: 'match_events' }, fileName: 'definitions/match_events.sqlx', dependencyTargets: [{ database: 'p', schema: 'mart', name: 'player_stats' }] },
         ],
+        assertions: [{ target: { database: 'p', schema: 'checks', name: 'player_stats_assertions_uniqueKey_0' }, fileName: 'definitions/player_stats.sqlx', dependencyTargets: [{ database: 'p', schema: 'mart', name: 'player_stats' }] }],
         declarations: [{ target: { database: 'p', schema: 'raw', name: 'matches' }, fileName: 'definitions/sources.js' }],
     };
     const index = indexGraph(graph);
@@ -133,6 +184,12 @@ suite('Column lineage from the dependency graph', () => {
     test('finds dependents downstream and dependencies upstream', () => {
         assert.deepStrictEqual(graphNeighbours(index, 'p.mart.player_stats', 'downstream').map((action) => action.fqn), ['p.rpt.top_scorers', 'p.rpt.league_table', 'p.rpt.match_events']);
         assert.deepStrictEqual(graphNeighbours(index, 'p.mart.player_stats', 'upstream').map((action) => action.fqn), ['p.raw.matches']);
+        assert.deepStrictEqual(index.get('p.checks.player_stats_assertions_uniqueKey_0'), {
+            fqn: 'p.checks.player_stats_assertions_uniqueKey_0',
+            type: 'assertion',
+            fileName: 'definitions/player_stats.sqlx',
+            dependsOn: ['p.mart.player_stats'],
+        }, 'indexes assertions, with the file of the table they check, but leaves them out of guessed readers');
     });
 
     test('links same-name columns, treats script readers and unknown schemas as table-level, and skips the rest', () => {

@@ -131,8 +131,9 @@ suite('Column impact: column list controller', () => {
         await settle();
 
         await columns.relabel(SAMPLE_COLUMNS.dev!.filter((field) => field.name !== 'region'));
+        await settle();
         assert.strictEqual(last().selected, 'region');
-        // region and order_count have one reader each; the drop goes first
+        // Once table-level readers are counted, region and order_count have two readers each; the drop goes first
         assert.deepStrictEqual(last().entries.filter((entry) => entry.change).map((entry) => entry.column), ['revenue_usd', 'region', 'order_count']);
         assert.deepStrictEqual(trace()?.focus, { table: SAMPLE_COLUMNS.table, column: 'region', change: { kind: 'dropped' } });
     });
@@ -163,5 +164,10 @@ suite('Column impact: which action to check', () => {
         assert.deepStrictEqual(tableActions(actions).map((action) => action.name), ['player_stats']);
         assert.deepStrictEqual(tableActions([{ type: 'operations' }, { type: 'test' }]), []);
         assert.deepStrictEqual(tableActions(undefined), []);
+    });
+
+    test('includes operations that create the table they name', () => {
+        const actions = [{ type: 'operations', hasOutput: true, name: 'order_clone' }, { type: 'operations', hasOutput: false, name: 'cleanup' }];
+        assert.deepStrictEqual(tableActions(actions).map((action) => action.name), ['order_clone']);
     });
 });

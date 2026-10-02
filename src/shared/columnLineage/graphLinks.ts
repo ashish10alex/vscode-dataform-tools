@@ -9,6 +9,8 @@ export interface GraphAction {
     /** Compiled action type, e.g. table, view, incremental, operations, declaration */
     type: string;
     fileName?: string;
+    /** An operation that creates the table it names */
+    hasOutput?: boolean;
     dependsOn: string[];
 }
 
@@ -25,6 +27,7 @@ interface CompiledTarget {
 
 interface CompiledAction {
     type?: string;
+    hasOutput?: boolean;
     target?: CompiledTarget;
     fileName?: string;
     dependencyTargets?: CompiledTarget[];
@@ -33,6 +36,7 @@ interface CompiledAction {
 interface CompiledGraph {
     tables?: CompiledAction[];
     operations?: CompiledAction[];
+    assertions?: CompiledAction[];
     declarations?: CompiledAction[];
 }
 
@@ -40,7 +44,7 @@ export function targetFqn(target: CompiledTarget): string {
     return `${target.database}.${target.schema}.${target.name}`;
 }
 
-/** Tables, operations and declarations by fully qualified name. Assertions are left out: they read whole tables. */
+/** Every action by fully qualified name. Built-in assertions have the file of the table they check. */
 export function indexGraph(graph: CompiledGraph): Map<string, GraphAction> {
     const index = new Map<string, GraphAction>();
     const add = (action: CompiledAction, fallbackType: string) => {
@@ -52,11 +56,13 @@ export function indexGraph(graph: CompiledGraph): Map<string, GraphAction> {
             fqn,
             type: action.type ?? fallbackType,
             fileName: action.fileName,
+            ...(action.hasOutput ? { hasOutput: true } : {}),
             dependsOn: (action.dependencyTargets ?? []).map(targetFqn),
         });
     };
     (graph.tables ?? []).forEach((action) => add(action, 'table'));
     (graph.operations ?? []).forEach((action) => add(action, 'operations'));
+    (graph.assertions ?? []).forEach((action) => add({ ...action, type: 'assertion' }, 'assertion'));
     (graph.declarations ?? []).forEach((action) => add(action, 'declaration'));
     return index;
 }
@@ -65,10 +71,11 @@ export function graphNeighbours(index: Map<string, GraphAction>, fqn: string, di
     if (direction === 'upstream') {
         return (index.get(fqn)?.dependsOn ?? []).map((dependency) => index.get(dependency) ?? { fqn: dependency, type: 'declaration', dependsOn: [] });
     }
-    return [...index.values()].filter((action) => action.dependsOn.includes(fqn));
+    // Assertions read whole tables, so a guessed column link to one says nothing
+    return [...index.values()].filter((action) => action.type !== 'assertion' && action.dependsOn.includes(fqn));
 }
 
-/** Readers that Dataplex never records column lineage for: incremental tables and operations run as procedures */
+/** Readers whose SQL the guess can't see through, so they get a table-level link: incremental tables and operations */
 export function runsAsScript(action: GraphAction): boolean {
     return action.type === 'incremental' || action.type === 'operations' || action.type === 'operation';
 }

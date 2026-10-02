@@ -152,15 +152,9 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-segment button + button { border-left: 1px solid var(--ln-border); }
 .ln-segment button.is-on { background: var(--ln-button-bg); color: var(--ln-button-fg); }
 .ln-list { flex: 1; min-height: 0; overflow: auto; padding: 12px 18px 24px; display: flex; flex-direction: column; gap: 22px; }
-.ln-list-filter input {
-  width: min(360px, 100%); padding: 4px 8px; font: inherit; color: var(--vscode-input-foreground, var(--ln-fg));
-  background: var(--vscode-input-background, var(--ln-surface)); border: 1px solid var(--vscode-input-border, var(--ln-border)); border-radius: 2px;
-}
-.ln-list-filter { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ln-list-hidden { font-size: 12px; color: var(--ln-dim); }
 .ln-link { background: none; border: 0; padding: 0; font: inherit; color: var(--vscode-textLink-foreground, #3794ff); cursor: pointer; }
 .ln-link:hover { text-decoration: underline; }
-.ln-list-filter input:focus { outline: 1px solid var(--ln-focus); outline-offset: -1px; }
 .ln-list-section { display: grid; gap: 8px; }
 .ln-list-heading { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
 .ln-list-count { font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 12px; color: var(--ln-dim); }
@@ -186,6 +180,28 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-list-more { display: flex; align-items: center; gap: 10px; min-height: 22px; }
 .ln-list-loading { display: inline-flex; align-items: center; gap: 8px; color: var(--ln-dim); }
 .ln-list-error { color: var(--ln-error); font-size: 12px; }
+.ln-list-checking { display: inline-flex; align-items: center; gap: 8px; color: var(--ln-dim); font-size: 12px; }
+.ln-list-toggle-all { margin-left: auto; font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+/* ---------- list groups (one per table) ---------- */
+.ln-table-list .ln-group-row th {
+  position: static; padding: 6px 10px; font-size: 12.5px; font-weight: 400; color: var(--ln-fg);
+  background: color-mix(in srgb, var(--ln-surface) 60%, transparent); white-space: normal;
+}
+.ln-table-list .ln-group + .ln-group .ln-group-row th { border-top: 1px solid var(--ln-border); }
+.ln-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ln-group-toggle {
+  background: none; border: 0; padding: 0 2px; margin-right: -4px; cursor: pointer; color: var(--ln-dim);
+  font: inherit; line-height: 1; align-self: center;
+}
+.ln-group-toggle:hover { color: var(--ln-fg); }
+.ln-group-toggle:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 1px; }
+.ln-chevron { display: inline-block; width: 12px; text-align: center; }
+.ln-group-meta { font-size: 12px; color: var(--ln-dim); }
+.ln-group-title { font-weight: 600; }
+.ln-group-assertions .ln-group-title { font-weight: 400; color: var(--ln-dim); }
+.ln-group-item .ln-col-hop { padding-left: 28px; }
+.ln-cell-sub { font-weight: 400; margin-top: 2px; }
 
 /* ---------- chips ---------- */
 .ln-chip {
