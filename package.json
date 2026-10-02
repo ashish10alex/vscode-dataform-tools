@@ -227,6 +227,11 @@
                 "title": "Show Column Lineage and Impact"
             },
             {
+                "command": "vscode-dataform-tools.columnImpactOfChanges",
+                "category": "Dataform",
+                "title": "Column Impact of Changes"
+            },
+            {
                 "command": "vscode-dataform-tools.traceColumnLineageGuessed",
                 "category": "Dataform",
                 "title": "Trace Column Lineage Under Cursor (Guessed From Dependency Graph)"

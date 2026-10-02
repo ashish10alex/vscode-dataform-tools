@@ -1,4 +1,5 @@
 import type { ColumnsInput } from './columnsController';
+import type { ImpactCandidate } from './impactSummary';
 import { ColumnLink, DependencyType, LineageDirection, TraceFocus, TraceSource } from './types';
 
 // Example lineage for previewing the trace panel in a plain browser, where there is no Dataplex to ask.
@@ -142,3 +143,32 @@ export class SampleTraceSource implements TraceSource {
         return [...new Map(readers.map((link) => [link.table, link])).values()];
     }
 }
+
+/** A sample branch for previewing the column impact summary: what it changes, deletes and couldn't check */
+export const SAMPLE_IMPACT: { candidates: ImpactCandidate[]; changed: Set<string>; sql: Record<string, string> } = {
+    candidates: [
+        { table: SAMPLE_FOCUS.table, fileName: FILES['marts.fct_daily_revenue'], type: 'table', prod: SAMPLE_COLUMNS.prod, dev: SAMPLE_COLUMNS.dev },
+        { table: `${PROJECT}.staging.raw_orders_cleaned`, fileName: FILES['staging.raw_orders_cleaned'], type: 'table', deleted: true },
+        {
+            table: `${PROJECT}.reporting.revenue_dashboard`,
+            fileName: FILES['reporting.revenue_dashboard'],
+            type: 'view',
+            prod: [{ name: 'order_date', type: 'DATE' }, { name: 'revenue_usd', type: 'NUMERIC' }],
+            dev: [{ name: 'order_date', type: 'DATE' }, { name: 'revenue_usd', type: 'NUMERIC' }, { name: 'revenue_eur', type: 'NUMERIC' }],
+        },
+        {
+            table: `${PROJECT}.reporting.exec_summary`,
+            fileName: FILES['reporting.exec_summary'],
+            type: 'table',
+            prod: [{ name: 'revenue_usd', type: 'NUMERIC' }, { name: 'orders_per_day', type: 'INT64' }],
+            dev: [{ name: 'revenue_usd', type: 'NUMERIC' }, { name: 'orders_per_day', type: 'INT64' }],
+        },
+        { table: `${PROJECT}.ml.customer_ltv_features`, fileName: FILES['ml.customer_ltv_features'], type: 'incremental', uncheckedReason: 'dry run failed: Unrecognized name: revenue_usd at [12:5]' },
+        { table: `${PROJECT}.staging.fx_backfill`, type: 'operations', uncheckedReason: 'operation: a dry run of a script has no schema' },
+    ],
+    changed: new Set([`${PROJECT}.reporting.revenue_dashboard`, `${PROJECT}.reporting.exec_summary`, `${PROJECT}.ml.customer_ltv_features`]),
+    sql: {
+        [`${PROJECT}.reporting.revenue_dashboard`]: 'SELECT order_date, revenue_usd, revenue_eur FROM `acme-prod.marts.fct_daily_revenue`',
+        [`${PROJECT}.reporting.exec_summary`]: 'SELECT revenue_usd, CAST(order_total AS INT64) AS orders_per_day FROM `acme-prod.marts.fct_daily_revenue`',
+    },
+};

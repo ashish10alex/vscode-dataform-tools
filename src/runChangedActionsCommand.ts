@@ -4,6 +4,7 @@ import { getWorkspaceFolder } from './utils';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { describeComparison } from './shared/changeComparison';
 import { ChangedActionsResult, dispatchChangedActions, noChangesMessage, prepareChangedActions } from './changedActions';
+import { ColumnLineagePanel } from './views/columnLineagePanel';
 
 /** Keybinding args; when any is given the prompts are skipped and the changed actions run straight away. */
 export interface RunChangedActionsArgs {
@@ -12,7 +13,7 @@ export interface RunChangedActionsArgs {
     fullRefresh?: boolean;
 }
 
-type RunTypeItem = vscode.QuickPickItem & { runType?: 'default' | 'dependents' | 'dependencies' };
+type RunTypeItem = vscode.QuickPickItem & { runType?: 'default' | 'dependents' | 'dependencies' | 'impact' };
 
 /**
  * Asks for the run type in a picker that also lists what will run. The action rows are a read-only
@@ -24,6 +25,7 @@ function pickRunType(result: ChangedActionsResult): Promise<RunTypeItem['runType
         { label: '$(play) Run', description: `${count} changed action${count === 1 ? '' : 's'}`, runType: 'default' },
         { label: '$(play) Run with dependents', runType: 'dependents' },
         { label: '$(play) Run with dependencies', runType: 'dependencies' },
+        { label: '$(symbol-field) Show column impact', description: 'dropped and retyped columns, and who reads them', runType: 'impact' },
     ];
     let currentFile: string | undefined;
     for (const action of result.changed) {
@@ -83,6 +85,10 @@ export async function runChangedActionsCommand(context: vscode.ExtensionContext,
 
     const runType = await pickRunType(result);
     if (!runType) {
+        return;
+    }
+    if (runType === 'impact') {
+        await ColumnLineagePanel.showImpact(context, result);
         return;
     }
     const fullRefresh = await vscode.window.showQuickPick(['no', 'yes'], { placeHolder: 'full refresh' });

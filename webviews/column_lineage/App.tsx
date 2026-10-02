@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controls, Edge, Node, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import type { ColumnsView, TraceState } from '../../src/shared/columnLineage/types';
+import type { ImpactView } from '../../src/shared/columnLineage/impactSummary';
+import { ImpactSummary } from './ImpactSummary';
 import { ColumnBar } from './ColumnBar';
 import { copiesOnly, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
 import { cardLinks, linkKind, linkLabel, opensByDefault, traceCards } from '../../src/shared/columnLineage/traceCards';
@@ -256,15 +258,16 @@ function ViewSwitch({ view, setView }: { view: View; setView: (view: View) => vo
     );
 }
 
-/** `showTable`: off under the column picker, which already names the table */
-function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView, showTable }: {
-    state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void; view: View; setView: (view: View) => void; showTable: boolean;
+/** `showTable`: off under the column picker, which already names the table. `onBack`: back to the column impact summary. */
+function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView, showTable, onBack }: {
+    state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void; view: View; setView: (view: View) => void; showTable: boolean; onBack?: () => void;
 }) {
     const { focus, upstreamShown } = state;
     const parts = focus.table.split('.');
     return (
         <header className="ln-toolbar">
             <div className="ln-title">
+                {onBack && <button type="button" className="ln-link ln-back" onClick={onBack}>← Column impact</button>}
                 <span className="ln-eyebrow">Column trace</span>
                 <div className="ln-title-row">
                     <h1 className="ln-title-col">{focus.column}</h1>
@@ -312,6 +315,7 @@ export default function App() {
     const [bridge, setBridge] = useState<Bridge>();
     const [state, setState] = useState<TraceState | null>(null);
     const [columns, setColumns] = useState<ColumnsView | null>(null);
+    const [impact, setImpact] = useState<ImpactView | null>(null);
     const [onlyCopies, setOnlyCopies] = useState(false);
     const [view, setView] = useState<View>('list');
     const now = useNow(15000);
@@ -329,6 +333,8 @@ export default function App() {
                     setState(message.state);
                 } else if (message.type === 'columns') {
                     setColumns(message.columns);
+                } else if (message.type === 'impact') {
+                    setImpact(message.impact);
                 }
             });
             setBridge(created);
@@ -346,7 +352,16 @@ export default function App() {
 
     const main = state ? (
         <>
-            <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} view={view} setView={setView} showTable={!columns} />
+            <Toolbar
+                state={state}
+                bridge={bridge}
+                onlyCopies={onlyCopies}
+                setOnlyCopies={setOnlyCopies}
+                view={view}
+                setView={setView}
+                showTable={!columns}
+                onBack={impact ? () => bridge.post({ type: 'closeImpactTrace' }) : undefined}
+            />
             {state.sourceKind === 'sample' && (
                 <div className="ln-banner" role="note">
                     <strong>Sample data.</strong> This is a made-up project for previewing the panel. Run the trace from a
@@ -371,6 +386,10 @@ export default function App() {
     ) : (
         <div className="ln-main-empty" role="status">{emptyMainText(columns)}</div>
     );
+
+    if (impact && !state) {
+        return <div className="ln-app"><ImpactSummary impact={impact} bridge={bridge} now={now} /></div>;
+    }
 
     return (
         <div className="ln-app">

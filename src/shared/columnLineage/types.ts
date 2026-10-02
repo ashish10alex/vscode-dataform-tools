@@ -1,5 +1,7 @@
 // Types shared by the column lineage trace panel's host (extension) and webview.
 
+import type { ImpactView } from './impactSummary';
+
 export type LineageDirection = 'upstream' | 'downstream';
 
 /** How a column was derived from the one it links to. TABLE_ONLY marks a table-level link with no column detail. */
@@ -130,7 +132,9 @@ export interface ColumnsView {
 export type HostToViewMessage =
     /** null clears the trace, e.g. while the column list is loading */
     | { type: 'trace'; state: TraceState | null }
-    | { type: 'columns'; columns: ColumnsView | null };
+    | { type: 'columns'; columns: ColumnsView | null }
+    /** The column impact of the branch; null outside that mode */
+    | { type: 'impact'; impact: ImpactView | null };
 
 export type ViewToHostMessage =
     | { type: 'webviewReady' }
@@ -140,4 +144,12 @@ export type ViewToHostMessage =
     | { type: 'openFile'; nodeId: string }
     | { type: 'expandLevel'; direction: LineageDirection }
     | { type: 'selectColumn'; column: string }
-    | { type: 'recheckColumns' };
+    | { type: 'recheckColumns' }
+    /** From the column impact summary: trace a dropped or retyped column */
+    | { type: 'traceImpactColumn'; table: string; column: string }
+    /** Back from that trace to the summary */
+    | { type: 'closeImpactTrace' }
+    | { type: 'refreshImpact' }
+    | { type: 'cancelImpact' }
+    | { type: 'copyImpactMarkdown' }
+    | { type: 'openTableFile'; table: string };

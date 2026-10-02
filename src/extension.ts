@@ -174,6 +174,8 @@ export async function activate(context: vscode.ExtensionContext) {
         ColumnLineagePanel.showColumns(context, document, editor && wordAtCursor(editor), column);
     }));
 
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.columnImpactOfChanges', () => ColumnLineagePanel.showImpact(context)));
+
     // For trying the panel where Dataplex has no lineage; in the palette only when developing the extension
     void vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.devMode', context.extensionMode === vscode.ExtensionMode.Development);
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineageGuessed', async () => {

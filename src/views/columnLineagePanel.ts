@@ -10,6 +10,10 @@ import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
 import { HostToViewMessage, TraceFocus, TraceSource, ViewToHostMessage } from '../shared/columnLineage/types';
 import { DataplexTraceSource } from '../columnLineage/dataplexSource';
 import { loadColumns, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
+import { changeSignature, computeColumnImpact } from '../columnLineage/changeImpact';
+import { ChangedActionsResult, computeChangedActions, noChangesMessage, prepareChangedActions } from '../changedActions';
+import { ImpactView, impactMarkdown } from '../shared/columnLineage/impactSummary';
+import { onDidCompile } from '../utils/dataformCompiler';
 
 function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'column_lineage.js'));
@@ -36,7 +40,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
 /**
  * One panel, reused. For a file it lists the columns of the file's table beside the trace of the selected one,
  * and stays on that file, relabelling the columns after each of its dry runs. It can also show a single trace
- * with no column list.
+ * with no column list, or the column impact of the branch, from which a column's trace opens.
  */
 export class ColumnLineagePanel {
     private static current: ColumnLineagePanel | undefined;
@@ -54,6 +58,15 @@ export class ColumnLineagePanel {
     private keepPreferred = false;
     /** Bumped per load, so a slow load doesn't overwrite a newer one */
     private loadRun = 0;
+
+    /** The column impact of the branch, when the panel shows it */
+    private impact: ImpactView | null = null;
+    /** Bumped per impact run and on cancel, so an abandoned run stops starting work and reporting */
+    private impactRun = 0;
+    private impactWorkspace: string | undefined;
+    private impactSource: TraceSource | undefined;
+    /** What the summary was worked out from, to tell when a compile makes it out of date */
+    private impactSignature: string | undefined;
     private readonly disposables: vscode.Disposable[] = [];
 
     private constructor(private readonly panel: vscode.WebviewPanel) {
@@ -64,6 +77,7 @@ export class ColumnLineagePanel {
                     void this.columns.relabel(event.fields);
                 }
             }),
+            onDidCompile((graph) => void this.checkImpactStale(graph)),
         );
         panel.onDidDispose(() => {
             this.disposables.forEach((disposable) => disposable.dispose());
@@ -106,6 +120,7 @@ export class ColumnLineagePanel {
         resolveFile: (table: string) => string | undefined = resolveSampleFile,
     ) {
         const panel = ColumnLineagePanel.open(context, `Trace: ${focus.column}`);
+        panel.leaveImpact();
         panel.loadRun++;
         panel.document = undefined;
         panel.columns = undefined;
@@ -121,6 +136,10 @@ export class ColumnLineagePanel {
     static showColumns(context: vscode.ExtensionContext, document: vscode.TextDocument, preferred?: string, column?: vscode.ViewColumn) {
         const title = `Columns: ${path.basename(document.uri.fsPath, path.extname(document.uri.fsPath))}`;
         const panel = ColumnLineagePanel.open(context, title, column);
+        if (panel.impact) {
+            panel.leaveImpact();
+            panel.controller = undefined;
+        }
         const columns = panel.columns;
         if (columns && panel.document?.uri.toString() === document.uri.toString() && columns.columns?.status !== 'error') {
             columns.selectDefault(preferred);
@@ -130,6 +149,100 @@ export class ColumnLineagePanel {
         panel.preferred = preferred;
         panel.keepPreferred = false;
         void panel.loadColumns();
+    }
+
+    /**
+     * The column impact of the branch against the default branch. `result`: changed actions already worked out,
+     * e.g. by Run Changed; otherwise the project is compiled and diffed first.
+     */
+    static async showImpact(context: vscode.ExtensionContext, result?: ChangedActionsResult) {
+        const workspaceFolder = await getWorkspaceFolder();
+        if (!workspaceFolder) {
+            return;
+        }
+        const panel = ColumnLineagePanel.open(context, 'Column impact');
+        panel.loadRun++;
+        panel.document = undefined;
+        panel.columns = undefined;
+        panel.controller?.pause();
+        panel.controller = undefined;
+        panel.pendingFocus = undefined;
+        panel.post({ type: 'columns', columns: null });
+        panel.post({ type: 'trace', state: null });
+        panel.impactWorkspace = workspaceFolder;
+        await panel.runImpact(result);
+    }
+
+    private setImpact(impact: ImpactView | null) {
+        this.impact = impact;
+        this.post({ type: 'impact', impact });
+    }
+
+    private leaveImpact() {
+        this.impactRun++;
+        this.impactSource = undefined;
+        this.impactSignature = undefined;
+        if (this.impact) {
+            this.setImpact(null);
+        }
+    }
+
+    private async runImpact(result?: ChangedActionsResult) {
+        const workspaceFolder = this.impactWorkspace;
+        if (!workspaceFolder) {
+            return;
+        }
+        const run = ++this.impactRun;
+        const current = () => run === this.impactRun;
+        const empty = { changedCount: 0, atRisk: [], safe: [], unchecked: [] };
+        this.impactSource = undefined;
+        this.setImpact({ ...empty, status: 'running', progress: { phase: 'Working out changed actions', done: 0, total: 0 } });
+        try {
+            result ??= await prepareChangedActions(workspaceFolder);
+            const head = CACHED_COMPILED_DATAFORM_JSON;
+            if (!current()) {
+                return;
+            }
+            if (!result || !head) {
+                this.setImpact({ ...empty, status: 'error', message: 'The changed actions could not be worked out. The notification says why.' });
+                return;
+            }
+            const comparison = { headRef: result.headRef, baseRef: result.baseRef, mergeBaseSha: result.mergeBaseSha, headLabel: result.headLabel };
+            this.impactSignature = changeSignature(result, head);
+            if (!result.changed.length && !result.deleted.length) {
+                this.setImpact({ ...empty, status: 'ready', comparison, message: noChangesMessage(result), checkedAt: Date.now() });
+                return;
+            }
+            const outcome = await computeColumnImpact(workspaceFolder, result, head, (view) => current() && this.setImpact(view), () => !current());
+            if (!current()) {
+                return;
+            }
+            this.impactSource = outcome.source;
+            this.resolveFile = outcome.resolveFile;
+            this.setImpact(outcome.view);
+        } catch (error: any) {
+            logger.error(`Column impact failed: ${error?.message ?? error}`);
+            if (current()) {
+                this.setImpact({ ...empty, status: 'error', message: error?.message ?? String(error) });
+            }
+        }
+    }
+
+    /** Marks the summary out of date when a compile changes what the branch changes. Only diffs against a cached base. */
+    private async checkImpactStale(graph: Parameters<typeof changeSignature>[1]) {
+        const workspaceFolder = this.impactWorkspace;
+        const signature = this.impactSignature;
+        if (this.impact?.status !== 'ready' || this.impact.stale || !workspaceFolder || !signature) {
+            return;
+        }
+        try {
+            const result = await computeChangedActions(workspaceFolder, graph, false);
+            if (result && changeSignature(result, graph) !== signature && this.impactSignature === signature && this.impact?.status === 'ready') {
+                this.setImpact({ ...this.impact, stale: true });
+            }
+        } catch (error: any) {
+            logger.debug(`Column impact: could not check whether the summary is out of date: ${error?.message ?? error}`);
+        }
     }
 
     private post(message: HostToViewMessage) {
@@ -190,6 +303,7 @@ export class ColumnLineagePanel {
             case 'webviewReady': {
                 this.ready = true;
                 this.post({ type: 'columns', columns: this.columns?.columns ?? null });
+                this.post({ type: 'impact', impact: this.impact });
                 const state = this.activeTrace?.current;
                 if (this.pendingFocus) {
                     const focus = this.pendingFocus;
@@ -224,12 +338,50 @@ export class ColumnLineagePanel {
                 this.keepPreferred = true;
                 await this.loadColumns();
                 break;
+            case 'traceImpactColumn':
+                this.traceImpactColumn(message.table, message.column);
+                break;
+            case 'closeImpactTrace':
+                this.controller?.pause();
+                this.controller = undefined;
+                this.post({ type: 'trace', state: null });
+                break;
+            case 'refreshImpact':
+                await this.runImpact();
+                break;
+            case 'cancelImpact':
+                if (this.impact?.status === 'running') {
+                    this.impactRun++;
+                    this.setImpact({ ...this.impact, status: 'cancelled', progress: undefined });
+                }
+                break;
+            case 'copyImpactMarkdown':
+                if (this.impact?.status === 'ready') {
+                    await vscode.env.clipboard.writeText(impactMarkdown(this.impact));
+                    vscode.window.showInformationMessage('Copied the column impact as Markdown.');
+                }
+                break;
+            case 'openTableFile':
+                await this.openPath(this.resolveFile(message.table));
+                break;
         }
+    }
+
+    private traceImpactColumn(table: string, column: string) {
+        const entry = this.impact?.atRisk.find((candidate) => candidate.table === table)?.columns.find((candidate) => candidate.column === column);
+        if (!entry || !this.impactSource) {
+            return;
+        }
+        this.controller?.pause();
+        this.trace({ table, column, change: entry.change }, this.impactSource, this.resolveFile);
     }
 
     private async openFile(nodeId: string) {
         const node = this.activeTrace?.current?.nodes.find((candidate) => candidate.id === nodeId);
-        const filePath = node && this.resolveFile(node.table);
+        await this.openPath(node && this.resolveFile(node.table));
+    }
+
+    private async openPath(filePath: string | undefined) {
         if (!filePath) {
             return;
         }

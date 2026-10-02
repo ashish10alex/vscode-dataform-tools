@@ -344,3 +344,19 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 @media (prefers-reduced-motion: reduce) {
   .ln-spinner { animation-duration: 2s; }
 }
+
+/* Column impact of the branch */
+.ln-impact-table { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.ln-impact-table .ln-file, .ln-impact-table > span:first-child { font-family: var(--ln-mono); font-weight: 600; }
+.ln-impact-list .ln-group-head { align-items: center; }
+.ln-impact-col { font-family: var(--ln-mono); font-weight: 600; }
+.ln-impact-list .ln-group-item td:first-child { padding-left: 28px; }
+.ln-impact-reader-col { font-weight: 600; }
+.ln-impact-note { font-size: 11.5px; color: var(--ln-dim); font-style: italic; margin-right: 10px; white-space: nowrap; }
+.ln-impact-outside { color: var(--ln-warn); }
+.ln-group-item.is-settled td { opacity: 0.6; }
+.ln-impact-more summary { cursor: pointer; color: var(--ln-dim); }
+.ln-impact-more summary:hover { color: var(--ln-fg); }
+.ln-impact-more ul { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 4px; font-family: var(--ln-mono); font-size: 12px; }
+.ln-back { margin-bottom: 4px; justify-self: start; }
+.ln-rel-whole { color: var(--ln-fg); }
