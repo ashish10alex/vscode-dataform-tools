@@ -86,6 +86,8 @@ export class ColumnLineagePanel {
             title,
             column,
             {
+                // Ctrl/Cmd+F searches the panel, as in the compiled query panel
+                enableFindWidget: true,
                 enableScripts: true,
                 retainContextWhenHidden: true,
                 localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'dist')],
