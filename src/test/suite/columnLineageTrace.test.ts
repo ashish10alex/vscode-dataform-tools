@@ -5,7 +5,7 @@ import { TraceController } from '../../shared/columnLineage/traceController';
 import { Limiter } from '../../shared/columnLineage/limiter';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
-import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
+import { columnLinksFromApi, isTempTable, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
 import { ColumnLink, LineageDirection, TraceSource, TraceState } from '../../shared/columnLineage/types';
 
 const focus = { table: 'p.marts.fct', column: 'revenue' };
@@ -271,6 +271,23 @@ suite('Column lineage from Data Lineage API links', () => {
             link('p.mart.player_stats', undefined, 'p.rpt.top_scorers', undefined),
             link('p.mart.player_stats', undefined, 'p.rpt.match_events', undefined),
         ], 'downstream'), ['p.rpt.top_scorers', 'p.rpt.match_events']);
+    });
+    test("leaves out tables a script creates and drops while it runs", () => {
+        const scriptTemp = 'p._script0f722b7f7e49b6fa.df_5c096741839c6473eb_table_temp';
+        const emptyTemp = 'p.daily.df_5c096741839c6473eb_table_empty';
+        assert.ok(isTempTable(scriptTemp));
+        assert.ok(isTempTable(emptyTemp));
+        assert.ok(!isTempTable('p.daily.0100_DPR_ACTUALS'));
+        assert.ok(!isTempTable('p.daily.df_metrics'), 'a table only starting with df_ is kept');
+
+        assert.deepStrictEqual(columnLinksFromApi([
+            link('p.mart.orders', 'order_id', scriptTemp, 'order_id', 'EXACT_COPY'),
+            link('p.mart.orders', 'order_id', 'p.rpt.daily', 'order_id', 'EXACT_COPY'),
+        ], 'downstream'), [{ table: 'p.rpt.daily', column: 'order_id', dependencyType: 'EXACT_COPY' }]);
+        assert.deepStrictEqual(tablesFromApi([
+            link('p.mart.orders', undefined, emptyTemp, undefined),
+            link('p.mart.orders', undefined, 'p.rpt.daily', undefined),
+        ], 'downstream'), ['p.rpt.daily']);
     });
 });
 

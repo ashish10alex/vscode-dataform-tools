@@ -23,6 +23,25 @@ export function lineageFqn(table: string): string {
     return `${BIGQUERY_PREFIX}${table}`;
 }
 
+/**
+ * Tables a script creates and drops while it runs: BigQuery's hidden `_script…` datasets, and Dataform's
+ * `df_<hash>_table_temp` and `df_<hash>_table_empty`. Dataplex records links to them, but they're gone by the
+ * time anyone looks.
+ */
+export function isTempTable(table: string): boolean {
+    const [, dataset = '', name = ''] = table.split('.');
+    return dataset.startsWith('_script') || /^df_[0-9a-f]+_table_(temp|empty)$/i.test(name);
+}
+
+/** `project.dataset.table` of a BigQuery entity, or undefined for anything else, including temp tables */
+function bigQueryTable(fqn: string | null | undefined): string | undefined {
+    if (!fqn?.startsWith(BIGQUERY_PREFIX)) {
+        return undefined;
+    }
+    const table = fqn.slice(BIGQUERY_PREFIX.length);
+    return isTempTable(table) ? undefined : table;
+}
+
 /** EXACT_COPY when any part of the link is a straight copy; anything else (OTHER, unspecified) is a transformation */
 function dependencyOf(link: LineageApiLink): DependencyType {
     return (link.dependencyInfo ?? []).some((info) => info.dependencyType === 'EXACT_COPY' || info.dependencyType === 1)
@@ -38,12 +57,11 @@ export function columnLinksFromApi(links: LineageApiLink[], direction: LineageDi
     const byColumn = new Map<string, ColumnLink>();
     for (const link of links) {
         const end = direction === 'downstream' ? link.target : link.source;
-        const fqn = end?.fullyQualifiedName ?? '';
+        const table = bigQueryTable(end?.fullyQualifiedName);
         const column = end?.field?.[0];
-        if (!fqn.startsWith(BIGQUERY_PREFIX) || !column) {
+        if (!table || !column) {
             continue;
         }
-        const table = fqn.slice(BIGQUERY_PREFIX.length);
         const key = `${table}#${column}`;
         const dependencyType = dependencyOf(link);
         const existing = byColumn.get(key);
@@ -57,9 +75,8 @@ export function columnLinksFromApi(links: LineageApiLink[], direction: LineageDi
 /** Tables at the far end of table-level links */
 export function tablesFromApi(links: LineageApiLink[], direction: LineageDirection): string[] {
     const tables = links
-        .map((link) => (direction === 'downstream' ? link.target : link.source)?.fullyQualifiedName ?? '')
-        .filter((fqn) => fqn.startsWith(BIGQUERY_PREFIX))
-        .map((fqn) => fqn.slice(BIGQUERY_PREFIX.length));
+        .map((link) => bigQueryTable((direction === 'downstream' ? link.target : link.source)?.fullyQualifiedName))
+        .filter((table): table is string => !!table);
     return [...new Set(tables)];
 }
 
