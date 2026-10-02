@@ -1,17 +1,25 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
-import type { ColumnChange, TraceNode } from '../../src/shared/columnLineage/types';
+import type { ColumnChange, DependencyType, TraceNode } from '../../src/shared/columnLineage/types';
 import { canExpand, expandDirection } from '../../src/shared/columnLineage/traceGraph';
+import { cardSummary, TraceCard } from '../../src/shared/columnLineage/traceCards';
 
-export interface LineageNodeData extends Record<string, unknown> {
-    node: TraceNode;
+export interface CardNodeData extends Record<string, unknown> {
+    card: TraceCard;
+    /** The lane's card width, set by its longest table name */
+    width: number;
+    open: boolean;
+    /** The focus column's change against prod, shown on the focus card */
     change?: ColumnChange;
-    /** Expanded, but nothing was found further out */
-    endOfLine: boolean;
-    dimmed: boolean;
-    highlighted: boolean;
-    onExpand: (id: string) => void;
-    onOpenFile: (id: string) => void;
+    /** Node ids on the hovered path; undefined when nothing is hovered */
+    highlight?: Set<string>;
+    /** Rows with links further from the focus, so an expanded row without them shows it found nothing */
+    hasNext: Set<string>;
+    onToggle: (cardId: string) => void;
+    onExpand: (nodeIds: string[]) => void;
+    onOpenFile: (nodeId: string) => void;
+    /** A card id when the header is hovered, a node id for a row */
+    onHover: (id: string) => void;
 }
 
 export interface LaneNodeData extends Record<string, unknown> {
@@ -20,6 +28,12 @@ export interface LaneNodeData extends Record<string, unknown> {
     height: number;
     focus: boolean;
 }
+
+const RELATION: Record<DependencyType, { label: string; className: string }> = {
+    EXACT_COPY: { label: 'copy', className: 'ln-rel-copy' },
+    OTHER: { label: 'derived', className: 'ln-rel-xform' },
+    TABLE_ONLY: { label: 'may read', className: 'ln-rel-table' },
+};
 
 function splitTable(table: string): { dataset: string; name: string } {
     const parts = table.split('.');
@@ -32,55 +46,112 @@ function ChangeChip({ change }: { change: ColumnChange }) {
         : <span className="ln-chip ln-chip-warn">{change.from} → {change.to}</span>;
 }
 
-export const LineageNode: React.FC<{ id: string; data: LineageNodeData }> = ({ id, data }) => {
-    const { node, change, endOfLine, dimmed, highlighted, onExpand, onOpenFile } = data;
-    const { dataset, name } = splitTable(node.table);
-    const direction = expandDirection(node);
-    const expandable = node.kind === 'column' && canExpand(node);
-    const fileName = node.filePath?.split('/').pop();
+function hopLabel(node: TraceNode, count?: number): string {
+    const arrow = expandDirection(node) === 'upstream' ? '← hop' : 'hop →';
+    return count === undefined ? arrow : `${arrow} (${count})`;
+}
+
+function Row({ row, data }: { row: TraceNode; data: CardNodeData }) {
+    const { card, change, highlight, hasNext, onExpand, onHover } = data;
+    const relation = card.relation.get(row.id);
+    const direction = expandDirection(row);
+    const endOfLine = row.expanded && !hasNext.has(row.id) && row.kind !== 'focus';
+    return (
+        <div
+            className={['ln-card-row', highlight && !highlight.has(row.id) ? 'is-dim' : ''].join(' ')}
+            onMouseEnter={() => onHover(row.id)}
+            title={row.error}
+        >
+            <Handle type="target" position={Position.Left} id={`in:${row.id}`} isConnectable={false} className="ln-handle" />
+            <span className="ln-row-col" title={row.column ? `${row.table}.${row.column}` : row.table}>
+                {row.column ?? <span className="ln-cell-none">no column detail</span>}
+                {card.assertions && <span className="ln-row-table">{splitTable(row.table).name}</span>}
+            </span>
+            {row.kind === 'focus' && change && <ChangeChip change={change} />}
+            {relation && <span className={`ln-rel ${RELATION[relation].className}`}>{RELATION[relation].label}</span>}
+            {row.error && <span className="ln-row-error" role="alert" aria-label={row.error}>!</span>}
+            {row.loading && <span className="ln-spinner" role="status" aria-label="Looking up lineage" />}
+            {row.kind === 'column' && canExpand(row) && (
+                <button
+                    type="button"
+                    className="ln-hop nodrag nopan"
+                    onClick={() => onExpand([row.id])}
+                    aria-label={`Show ${direction === 'upstream' ? 'sources' : 'readers'} of ${row.column}`}
+                >
+                    {hopLabel(row)}
+                </button>
+            )}
+            {endOfLine && <span className="ln-end">{direction === 'upstream' ? 'no sources' : 'no readers'}</span>}
+            <Handle type="source" position={Position.Right} id={`out:${row.id}`} isConnectable={false} className="ln-handle" />
+        </div>
+    );
+}
+
+/** One table on one hop, its columns as rows. Collapsed it's the header only, and edges meet the header. */
+export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
+    const { card, width, open, highlight, onToggle, onExpand, onOpenFile, onHover } = data;
+    const focus = card.hop === 0;
+    const { dataset, name } = card.table ? splitTable(card.table) : { dataset: '', name: 'Assertions' };
+    const fileName = card.filePath?.split('/').pop();
+    const expandable = card.rows.filter((row) => row.kind === 'column' && canExpand(row));
+    const loading = card.rows.some((row) => row.loading);
+    const onPath = !!highlight && card.rows.some((row) => highlight.has(row.id));
 
     return (
         <div
             className={[
-                'ln-node',
-                `ln-${node.kind}`,
-                dimmed ? 'is-dim' : '',
-                highlighted ? 'is-hl' : '',
+                'ln-card',
+                focus ? 'ln-card-focus' : '',
+                card.assertions ? 'ln-card-assertions' : '',
+                highlight && !onPath ? 'is-dim' : '',
+                onPath ? 'is-hl' : '',
             ].join(' ')}
+            style={{ width }}
         >
-            <Handle type="target" position={Position.Left} isConnectable={false} className="ln-handle" />
-
-            <div className="ln-table" title={node.table}>
-                {dataset && <span className="ln-dataset">{dataset}.</span>}{name}
-            </div>
-            {node.kind === 'tableOnly'
-                ? <div className="ln-col ln-col-unknown" title="Dataplex has a table-level link to this table but no column lineage for it, so it may read this column">May read it · no column detail</div>
-                : <div className="ln-col" title={node.column}>{node.column}</div>}
-
-            <div className="ln-foot">
-                {fileName
-                    ? <button type="button" className="ln-file nodrag nopan" title={`Open ${node.filePath}`} onClick={() => onOpenFile(id)}>{fileName}</button>
-                    : <span className="ln-outside">outside project</span>}
-                <span className="ln-grow" />
-                {change && <ChangeChip change={change} />}
-                {node.loading && <span className="ln-spinner" role="status" aria-label="Looking up lineage" />}
-                {expandable && (
+            <div className="ln-card-head" onMouseEnter={() => onHover(card.id)}>
+                <Handle type="target" position={Position.Left} id="in" isConnectable={false} className="ln-handle" />
+                {focus ? (
+                    <div className="ln-card-title">
+                        <span className="ln-table" title={card.table}>{dataset && <span className="ln-dataset">{dataset}.</span>}{name}</span>
+                    </div>
+                ) : (
+                    // The whole title toggles, so the target isn't just the chevron when the graph is zoomed out
                     <button
                         type="button"
-                        className="ln-hop nodrag nopan"
-                        onClick={() => onExpand(id)}
-                        aria-label={`Show ${direction === 'upstream' ? 'sources' : 'readers'} of ${node.column}`}
+                        className="ln-card-title ln-card-toggle nodrag nopan"
+                        aria-expanded={open}
+                        title={`${open ? 'Collapse' : 'Expand'} · ${card.table ?? 'assertions that read this column'}`}
+                        onClick={() => onToggle(card.id)}
                     >
-                        {direction === 'upstream' ? '← hop' : 'hop →'}
+                        <span className="ln-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
+                        <span className="ln-table">{dataset && <span className="ln-dataset">{dataset}.</span>}{name}</span>
                     </button>
                 )}
-                {endOfLine && node.kind !== 'focus' && (
-                    <span className="ln-end">{direction === 'upstream' ? 'no sources' : 'no readers'}</span>
-                )}
+                <div className="ln-card-meta">
+                    {card.assertions ? null : fileName
+                        ? <button type="button" className="ln-file nodrag nopan" title={`Open ${card.filePath}`} onClick={() => onOpenFile(card.rows[0].id)}>{fileName}</button>
+                        : <span className="ln-outside">outside project</span>}
+                    {!focus && <span className="ln-card-summary">{cardSummary(card)}</span>}
+                    <span className="ln-grow" />
+                    {!open && loading && <span className="ln-spinner" role="status" aria-label="Looking up lineage" />}
+                    {!open && expandable.length > 0 && (
+                        <button
+                            type="button"
+                            className="ln-hop nodrag nopan"
+                            onClick={() => onExpand(expandable.map((row) => row.id))}
+                            aria-label={`Show the next hop for ${expandable.length} column${expandable.length === 1 ? '' : 's'} of ${name}`}
+                        >
+                            {hopLabel(expandable[0], expandable.length)}
+                        </button>
+                    )}
+                </div>
+                <Handle type="source" position={Position.Right} id="out" isConnectable={false} className="ln-handle" />
             </div>
-            {node.error && <div className="ln-error" role="alert">{node.error}</div>}
-
-            <Handle type="source" position={Position.Right} isConnectable={false} className="ln-handle" />
+            {open && (
+                <div className="ln-card-rows">
+                    {card.rows.map((row) => <Row key={row.id} row={row} data={data} />)}
+                </div>
+            )}
         </div>
     );
 };

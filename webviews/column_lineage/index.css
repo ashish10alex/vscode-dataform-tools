@@ -240,43 +240,64 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
   font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ln-dim);
 }
 
-/* nodes */
-.ln-node {
-  width: 248px; height: 74px;
-  display: grid; grid-template-rows: auto auto 1fr; gap: 1px;
-  padding: 7px 10px 6px;
+/* table cards: one per table per hop, its columns as rows. No transitions or entry animations: highlighting
+   on hover is instant, so moving the pointer across the graph doesn't flicker. */
+.ln-card {
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: 3px;
-  transition: opacity 180ms ease, border-color 180ms ease, background 180ms ease;
-  animation: ln-node-in 260ms ease-out backwards;
+  box-sizing: border-box;
 }
-.ln-node:hover { background: var(--ln-surface-hover); }
-.ln-node.is-dim { opacity: 0.32; }
-.ln-node.is-hl { border-color: color-mix(in srgb, var(--ln-fg) 45%, var(--ln-border)); }
-.ln-focus {
+.ln-card.is-dim { opacity: 0.38; }
+.ln-card.is-hl { border-color: color-mix(in srgb, var(--ln-fg) 45%, var(--ln-border)); }
+.ln-card-focus {
   border-color: var(--ln-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ln-focus) 22%, transparent);
 }
-.ln-tableOnly { background: transparent; border-style: dashed; }
-.ln-tableOnly .ln-col-unknown { font-family: var(--ln-ui); font-size: 12px; color: var(--ln-dim); }
+.ln-card-assertions { background: transparent; border-style: dashed; }
+.ln-card-head {
+  position: relative; height: 50px; box-sizing: border-box; padding: 7px 10px 6px;
+  display: grid; grid-template-rows: auto 1fr; gap: 3px;
+}
+.ln-card-head:hover, .ln-card-row:hover { background: var(--ln-surface-hover); }
+.ln-card-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ln-card-toggle {
+  background: none; border: 0; padding: 0; margin: 0; width: 100%; text-align: left; cursor: pointer;
+  color: inherit; font: inherit;
+}
+.ln-card-toggle .ln-chevron { width: 12px; flex: none; color: var(--ln-dim); font-size: 11px; line-height: 1; }
+.ln-card-toggle:hover .ln-chevron, .ln-card-toggle:hover .ln-table { color: var(--ln-link); }
+.ln-card-toggle:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 1px; }
+.ln-card-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ln-dim); min-width: 0; }
+.ln-card-summary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ln-card-rows { border-top: 1px solid var(--ln-border); padding: 3px 0; }
+.ln-card-row {
+  position: relative; height: 26px; box-sizing: border-box; padding: 0 10px 0 28px;
+  display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ln-dim);
+}
+.ln-card-row.is-dim { opacity: 0.45; }
+.ln-card-focus .ln-card-row { padding-left: 10px; }
+.ln-row-col {
+  flex: 1; min-width: 0; font-family: var(--ln-mono); font-size: 12.5px; font-weight: 600; color: var(--ln-fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ln-row-table { font-weight: 400; font-size: 11px; color: var(--ln-dim); margin-left: 6px; }
+.ln-row-error { color: var(--ln-error); font-weight: 700; }
+.ln-card-row .ln-rel { line-height: 15px; }
 
-.ln-table { font-family: var(--ln-mono); font-size: 11px; color: var(--ln-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ln-col { font-family: var(--ln-mono); font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ln-foot { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ln-dim); min-width: 0; }
+.ln-table { font-family: var(--ln-mono); font-size: 11.5px; color: var(--ln-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ln-file {
   background: none; border: 0; padding: 0; cursor: pointer; color: var(--ln-link);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
 .ln-file:hover { text-decoration: underline; }
-.ln-outside { font-style: italic; }
+.ln-outside { font-style: italic; white-space: nowrap; }
 .ln-hop {
   background: var(--ln-button-bg); color: var(--ln-button-fg);
   border: 0; border-radius: 2px; padding: 0 7px; line-height: 17px; font-size: 11px; cursor: pointer; white-space: nowrap;
 }
 .ln-hop:hover { background: var(--ln-button-hover); }
 .ln-end { white-space: nowrap; }
-.ln-error { font-size: 11px; color: var(--ln-error); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ln-spinner {
   width: 11px; height: 11px; border-radius: 50%;
   border: 1.5px solid color-mix(in srgb, var(--ln-fg) 25%, transparent); border-top-color: var(--ln-fg);
@@ -285,19 +306,16 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-handle { opacity: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; pointer-events: none; }
 
 /* edges: blue for a straight copy, purple for a transformation, dashed grey for a table-level link */
-.ln-edge { stroke-width: 1.5; transition: opacity 180ms ease, stroke-width 180ms ease; }
+.ln-edge { stroke-width: 1.5; }
 .ln-edge-copy { stroke: var(--ln-copy); }
 .ln-edge-xform { stroke: var(--ln-xform); }
 .ln-edge-table { stroke: var(--ln-table); stroke-dasharray: 5 4; }
 .ln-edge.is-dim { opacity: 0.18; }
-.ln-edge.is-hl { stroke-width: 2.6; }
-.ln-edge-enter { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ln-draw 520ms cubic-bezier(.3,.7,.3,1) 80ms forwards; }
 
 .ln-edge-label {
   position: absolute; pointer-events: none;
   font-size: 10px; line-height: 15px; padding: 0 5px; border-radius: 2px;
-  background: var(--ln-bg); border: 1px solid currentColor;
-  transition: opacity 180ms ease;
+  background: var(--ln-bg); border: 1px solid currentColor; white-space: nowrap;
 }
 .ln-edge-label-copy { color: var(--ln-copy); }
 .ln-edge-label-xform { color: var(--ln-xform); }
@@ -320,12 +338,8 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-canvas .react-flow__controls-button:hover { background: var(--ln-surface-hover); }
 .ln-canvas .react-flow__controls-button svg { fill: currentColor; }
 
-@keyframes ln-draw { to { stroke-dashoffset: 0; } }
-@keyframes ln-node-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 @keyframes ln-spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ln-node, .ln-edge-enter { animation: none; }
-  .ln-edge-enter { stroke-dasharray: none; stroke-dashoffset: 0; }
   .ln-spinner { animation-duration: 2s; }
 }

@@ -1,9 +1,19 @@
-import type { TraceState } from '../../src/shared/columnLineage/types';
+import type { CardLink, TraceCard } from '../../src/shared/columnLineage/traceCards';
 
-export const NODE_WIDTH = 248;
-export const NODE_HEIGHT = 74;
-const ROW_GAP = 18;
-const HOP_STEP = NODE_WIDTH + 104;
+/** Narrowest and widest a lane's cards get; each lane is as wide as its longest table name needs */
+const MIN_CARD_WIDTH = 288;
+const MAX_CARD_WIDTH = 640;
+/** Width of one character of the monospace table name, at the card title's font size */
+const TITLE_CHAR_WIDTH = 7;
+/** Card padding, chevron and border around the title */
+const TITLE_CHROME = 46;
+/** Horizontal space between lanes, where the edges and their labels go */
+const LANE_GAP = 120;
+/** Table name and summary line */
+export const CARD_HEADER_HEIGHT = 52;
+export const CARD_ROW_HEIGHT = 26;
+const CARD_PADDING = 6;
+const CARD_GAP = 16;
 
 export interface Placed {
     x: number;
@@ -15,42 +25,73 @@ export interface Lane {
     x: number;
     top: number;
     height: number;
+    /** Width of the lane's cards */
+    cardWidth: number;
+}
+
+/** `dataset.table`, as a card's title shows it */
+export function cardTitle(card: TraceCard): string {
+    if (!card.table) {
+        return 'Assertions';
+    }
+    return card.table.split('.').slice(-2).join('.');
+}
+
+function laneWidth(cards: TraceCard[]): number {
+    const longest = Math.max(0, ...cards.map((card) => cardTitle(card).length));
+    return Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_WIDTH, Math.ceil(longest * TITLE_CHAR_WIDTH + TITLE_CHROME)));
+}
+
+export function cardHeight(card: TraceCard, open: boolean): number {
+    return CARD_HEADER_HEIGHT + (open ? card.rows.length * CARD_ROW_HEIGHT + CARD_PADDING : 0);
 }
 
 /**
- * Lays the trace out in vertical lanes, one per hop. Lanes fill outward from the focus so each column sits
- * near the columns it links to, which keeps edges short and mostly horizontal.
+ * Lays the cards out in vertical lanes, one per hop. Lanes fill outward from the focus so each card sits near
+ * the cards it links to, which keeps edges short and mostly horizontal. Positions are top-left corners.
  */
-export function layoutTrace(state: TraceState): { positions: Map<string, Placed>; lanes: Lane[] } {
-    const byHop = new Map<number, string[]>();
-    for (const node of state.nodes) {
-        byHop.set(node.hop, [...(byHop.get(node.hop) ?? []), node.id]);
+export function layoutCards(cards: TraceCard[], links: CardLink[], isOpen: (cardId: string) => boolean): { positions: Map<string, Placed>; lanes: Lane[] } {
+    const byHop = new Map<number, TraceCard[]>();
+    for (const card of cards) {
+        byHop.set(card.hop, [...(byHop.get(card.hop) ?? []), card]);
     }
-    const kindOf = new Map(state.nodes.map((node) => [node.id, node.kind]));
-    const labelOf = new Map(state.nodes.map((node) => [node.id, `${node.table}.${node.column ?? ''}`]));
+    // Lanes sit side by side outward from the focus at x = 0, each as wide as its cards
+    const widths = new Map([...byHop].map(([hop, lane]) => [hop, laneWidth(lane)]));
+    const xs = new Map<number, number>([[0, 0]]);
+    const hopList = [...byHop.keys()];
+    for (let hop = 1; hop <= Math.max(0, ...hopList); hop++) {
+        xs.set(hop, xs.get(hop - 1)! + (widths.get(hop - 1) ?? MIN_CARD_WIDTH) + LANE_GAP);
+    }
+    for (let hop = -1; hop >= Math.min(0, ...hopList); hop--) {
+        xs.set(hop, xs.get(hop + 1)! - (widths.get(hop) ?? MIN_CARD_WIDTH) - LANE_GAP);
+    }
+    const centres = new Map<string, number>();
     const positions = new Map<string, Placed>();
 
-    const neighboursTowardFocus = (id: string, hop: number): string[] => hop > 0
-        ? state.edges.filter((edge) => edge.target === id).map((edge) => edge.source)
-        : state.edges.filter((edge) => edge.source === id).map((edge) => edge.target);
+    const neighboursTowardFocus = (card: TraceCard): string[] => card.hop > 0
+        ? links.filter((link) => link.target === card.id).map((link) => link.source)
+        : links.filter((link) => link.source === card.id).map((link) => link.target);
 
     const placeLane = (hop: number) => {
-        const ids = byHop.get(hop);
-        if (!ids) {
+        const lane = byHop.get(hop);
+        if (!lane) {
             return;
         }
-        const anchor = (id: string) => {
-            const ys = neighboursTowardFocus(id, hop).map((n) => positions.get(n)?.y).filter((y): y is number => y !== undefined);
+        const anchor = (card: TraceCard) => {
+            const ys = neighboursTowardFocus(card).map((id) => centres.get(id)).filter((y): y is number => y !== undefined);
             return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
         };
-        const ordered = [...ids].sort((a, b) =>
-            anchor(a) - anchor(b)
-            || Number(kindOf.get(a) === 'tableOnly') - Number(kindOf.get(b) === 'tableOnly')
-            || labelOf.get(a)!.localeCompare(labelOf.get(b)!));
-        const span = ordered.length * NODE_HEIGHT + (ordered.length - 1) * ROW_GAP;
-        const centre = hop === 0 ? 0 : ordered.reduce((sum, id) => sum + anchor(id), 0) / ordered.length;
-        ordered.forEach((id, i) => {
-            positions.set(id, { x: hop * HOP_STEP, y: centre - span / 2 + i * (NODE_HEIGHT + ROW_GAP) + NODE_HEIGHT / 2 });
+        const ordered = [...lane].sort((a, b) => Number(a.assertions) - Number(b.assertions)
+            || anchor(a) - anchor(b)
+            || (a.table ?? '').localeCompare(b.table ?? ''));
+        const heights = ordered.map((card) => cardHeight(card, isOpen(card.id)));
+        const span = heights.reduce((a, b) => a + b, 0) + (ordered.length - 1) * CARD_GAP;
+        const centre = hop === 0 ? 0 : ordered.reduce((sum, card) => sum + anchor(card), 0) / ordered.length;
+        let y = centre - span / 2;
+        ordered.forEach((card, i) => {
+            positions.set(card.id, { x: xs.get(hop)!, y });
+            centres.set(card.id, y + heights[i] / 2);
+            y += heights[i] + CARD_GAP;
         });
     };
 
@@ -63,18 +104,11 @@ export function layoutTrace(state: TraceState): { positions: Map<string, Placed>
         placeLane(hop);
     }
 
-    // Positions so far are node centres; convert to top-left corners for React Flow
-    const ys = [...positions.values()].map((p) => p.y);
-    const top = Math.min(...ys) - NODE_HEIGHT / 2 - 64;
-    const bottom = Math.max(...ys) + NODE_HEIGHT / 2 + 28;
-    positions.forEach((p, id) => positions.set(id, { x: p.x, y: p.y - NODE_HEIGHT / 2 }));
-
-    const lanes = hops.sort((a, b) => a - b).map((hop) => ({
-        hop,
-        x: hop * HOP_STEP - 26,
-        top,
-        height: bottom - top,
-    }));
+    const tops = cards.map((card) => positions.get(card.id)!.y);
+    const bottoms = cards.map((card) => positions.get(card.id)!.y + cardHeight(card, isOpen(card.id)));
+    const top = Math.min(...tops) - 64;
+    const bottom = Math.max(...bottoms) + 28;
+    const lanes = hops.sort((a, b) => a - b).map((hop) => ({ hop, x: xs.get(hop)! - 26, top, height: bottom - top, cardWidth: widths.get(hop)! }));
     return { positions, lanes };
 }
 

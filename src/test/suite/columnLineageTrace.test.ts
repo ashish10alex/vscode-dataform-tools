@@ -3,6 +3,7 @@ import { suite, test } from 'mocha';
 import { addHop, canExpand, copiesOnly, frontier, initialTraceState, pathToFocus, removeUpstream, traceNodeId, traceRows } from '../../shared/columnLineage/traceGraph';
 import { TraceController } from '../../shared/columnLineage/traceController';
 import { Limiter } from '../../shared/columnLineage/limiter';
+import { cardLinks, cardSummary, linkKind, linkLabel, opensByDefault, traceCards } from '../../shared/columnLineage/traceCards';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
 import { columnLinksFromApi, isTempTable, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
@@ -324,5 +325,44 @@ suite('Column lineage call limiter', () => {
         const next = limiter.run(0, async () => 'ok');
         await assert.rejects(failed, /quota exceeded/);
         assert.strictEqual(await next, 'ok');
+    });
+});
+
+suite('Column lineage graph cards', () => {
+    // The focus feeds five columns of one wide table, one of a small table, and an assertion
+    const state = addHop(initialTraceState(focus, 'sample'), focusId, 'downstream', [
+        ...['a', 'b', 'c', 'd'].map((column) => ({ table: 'p.wide.features', column, dependencyType: 'OTHER' as const })),
+        { table: 'p.wide.features', column: 'revenue', dependencyType: 'EXACT_COPY' },
+        { table: 'p.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+        { table: 'p.checks.fct_assertions_uniqueKey_0', column: 'revenue', dependencyType: 'OTHER', assertion: true },
+    ]);
+
+    test('makes one card per table per hop, with assertions in one card, and copies first', () => {
+        const cards = traceCards(state);
+        assert.deepStrictEqual(cards.map((card) => card.id), ['card:0:p.marts.fct', 'card:1:p.wide.features', 'card:1:p.rep.dash', 'card:1:assertions']);
+        const wide = cards[1];
+        assert.deepStrictEqual(wide.rows.map((row) => row.column), ['revenue', 'a', 'b', 'c', 'd']);
+        assert.strictEqual(cardSummary(wide), '5 columns · 1 copy, 4 derived');
+        assert.strictEqual(cardSummary(cards[3]), '1 assertion · 1 column · 1 derived');
+        assert.deepStrictEqual(cards.map(opensByDefault), [true, false, true, false], 'the focus and small tables open; wide tables and assertions start collapsed');
+    });
+
+    test('bundles the edges that meet a collapsed card, and draws one per row between open ones', () => {
+        const cards = traceCards(state);
+        const open = new Set(cards.filter(opensByDefault).map((card) => card.id));
+        const links = cardLinks(state, (id) => open.has(id));
+        const wide = links.find((link) => link.target === 'card:1:p.wide.features')!;
+        assert.strictEqual(wide.sourceRow, focusId);
+        assert.strictEqual(wide.targetRow, undefined);
+        assert.strictEqual(wide.edgeIds.length, 5);
+        assert.strictEqual(linkLabel(wide), '4 derived · 1 copy');
+        assert.strictEqual(linkKind(wide), 'OTHER');
+        const dash = links.find((link) => link.target === 'card:1:p.rep.dash')!;
+        assert.strictEqual(dash.targetRow, 'p.rep.dash#revenue');
+        assert.strictEqual(linkLabel(dash), 'copy');
+        assert.strictEqual(linkKind(dash), 'EXACT_COPY');
+
+        open.add('card:1:p.wide.features');
+        assert.strictEqual(cardLinks(state, (id) => open.has(id)).filter((link) => link.target === 'card:1:p.wide.features').length, 5, 'one edge per column once expanded');
     });
 });

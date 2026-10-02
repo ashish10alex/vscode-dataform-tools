@@ -3,14 +3,15 @@ import { Controls, Edge, Node, ReactFlow, ReactFlowProvider, useReactFlow } from
 import '@xyflow/react/dist/base.css';
 import type { ColumnsView, TraceState } from '../../src/shared/columnLineage/types';
 import { ColumnBar } from './ColumnBar';
-import { copiesOnly, expandDirection, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
+import { copiesOnly, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
+import { cardLinks, linkKind, linkLabel, opensByDefault, traceCards } from '../../src/shared/columnLineage/traceCards';
 import { Bridge, createBridge } from './bridge';
-import { layoutTrace, laneLabel, NODE_WIDTH } from './layout';
-import { LaneNode, LaneNodeData, LineageNode, LineageNodeData } from './LineageNode';
+import { layoutCards, laneLabel } from './layout';
+import { CardNode, CardNodeData, LaneNode, LaneNodeData } from './LineageNode';
 import { LineageEdge, LineageEdgeData } from './LineageEdge';
 import { LineageList } from './LineageList';
 
-const nodeTypes = { lineage: LineageNode, lane: LaneNode };
+const nodeTypes = { card: CardNode, lane: LaneNode };
 const SOURCE_LABELS: Record<TraceState['sourceKind'], string> = {
     sample: 'Sample data',
     graph: 'Dependency graph · guessed columns',
@@ -57,70 +58,125 @@ function Legend() {
     );
 }
 
+/** How long the highlight stays after the pointer leaves a card, so crossing the gap to the next one doesn't flash */
+const HOVER_LINGER_MS = 120;
+
 function Trace({ state: fullState, bridge, onlyCopies }: { state: TraceState; bridge: Bridge; onlyCopies: boolean }) {
     const [hovered, setHovered] = useState<string | undefined>();
+    const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const state = useMemo(() => (onlyCopies ? copiesOnly(fullState) : fullState), [fullState, onlyCopies]);
     const { fitView } = useReactFlow();
-    const seenEdges = useRef(new Set<string>());
     const now = useNow(15000);
 
-    const { positions, lanes } = useMemo(() => layoutTrace(state), [state]);
-    const highlight = useMemo(() => (hovered ? pathToFocus(state, hovered) : undefined), [state, hovered]);
+    // Cards the user toggled; the rest keep the state they started in, fixed when they first appeared
+    const [toggled, setToggled] = useState<Map<string, boolean>>(new Map());
+    const defaults = useRef(new Map<string, boolean>());
+    const cards = useMemo(() => traceCards(state), [state]);
+    cards.filter((card) => !defaults.current.has(card.id)).forEach((card) => defaults.current.set(card.id, opensByDefault(card)));
+    const isOpen = useCallback((cardId: string) => toggled.get(cardId) ?? defaults.current.get(cardId) ?? false, [toggled]);
 
-    const onExpand = useCallback((nodeId: string) => bridge.post({ type: 'expand', nodeId }), [bridge]);
+    const links = useMemo(() => cardLinks(state, isOpen), [state, isOpen]);
+    const { positions, lanes } = useMemo(() => layoutCards(cards, links, isOpen), [cards, links, isOpen]);
+
+    const highlight = useMemo(() => {
+        if (!hovered) {
+            return undefined;
+        }
+        const ids = cards.find((card) => card.id === hovered)?.rows.map((row) => row.id) ?? [hovered];
+        const nodes = new Set<string>();
+        const edges = new Set<string>();
+        for (const id of ids) {
+            const path = pathToFocus(state, id);
+            path.nodes.forEach((node) => nodes.add(node));
+            path.edges.forEach((edge) => edges.add(edge));
+        }
+        return { nodes, edges };
+    }, [state, cards, hovered]);
+
+    const onExpand = useCallback((nodeIds: string[]) => nodeIds.forEach((nodeId) => bridge.post({ type: 'expand', nodeId })), [bridge]);
     const onOpenFile = useCallback((nodeId: string) => bridge.post({ type: 'openFile', nodeId }), [bridge]);
+    const onToggle = useCallback((cardId: string) => setToggled((current) => new Map(current).set(cardId, !isOpen(cardId))), [isOpen]);
+    const onHover = useCallback((id: string) => {
+        clearTimeout(leaveTimer.current);
+        setHovered(id);
+    }, []);
+    const onLeave = useCallback(() => {
+        clearTimeout(leaveTimer.current);
+        leaveTimer.current = setTimeout(() => setHovered(undefined), HOVER_LINGER_MS);
+    }, []);
+    useEffect(() => () => clearTimeout(leaveTimer.current), []);
+
+    const hasNext = useMemo(() => {
+        const byId = new Map(state.nodes.map((node) => [node.id, node]));
+        const ids = new Set<string>();
+        for (const edge of state.edges) {
+            const source = byId.get(edge.source);
+            const target = byId.get(edge.target);
+            // Away from the focus: downstream from the source, upstream from the target
+            if (source && source.hop >= 0) {
+                ids.add(source.id);
+            }
+            if (target && target.hop <= 0) {
+                ids.add(target.id);
+            }
+        }
+        return ids;
+    }, [state]);
 
     const nodes: Node[] = useMemo(() => {
         const laneNodes: Node<LaneNodeData>[] = lanes.map((lane) => ({
             id: `lane:${lane.hop}`,
             type: 'lane',
             position: { x: lane.x, y: lane.top },
-            data: { label: laneLabel(lane.hop), width: NODE_WIDTH + 52, height: lane.height, focus: lane.hop === 0 },
+            data: { label: laneLabel(lane.hop), width: lane.cardWidth + 52, height: lane.height, focus: lane.hop === 0 },
             selectable: false,
             draggable: false,
             focusable: false,
             zIndex: -1,
             style: { pointerEvents: 'none' },
         }));
-        const traceNodes: Node<LineageNodeData>[] = state.nodes.map((node) => {
-            const direction = expandDirection(node);
-            const hasNext = state.edges.some((edge) => (direction === 'downstream' ? edge.source === node.id : edge.target === node.id));
-            return {
-                id: node.id,
-                type: 'lineage',
-                position: positions.get(node.id) ?? { x: 0, y: 0 },
-                data: {
-                    node,
-                    change: node.kind === 'focus' ? state.focus.change : undefined,
-                    endOfLine: node.expanded && !hasNext,
-                    dimmed: !!highlight && !highlight.nodes.has(node.id),
-                    highlighted: !!highlight?.nodes.has(node.id) && hovered !== undefined,
-                    onExpand,
-                    onOpenFile,
-                },
-                draggable: false,
-                selectable: false,
-            };
-        });
-        return [...laneNodes, ...traceNodes];
-    }, [state, positions, lanes, highlight, hovered, onExpand, onOpenFile]);
+        const laneWidths = new Map(lanes.map((lane) => [lane.hop, lane.cardWidth]));
+        const cardNodes: Node<CardNodeData>[] = cards.map((card) => ({
+            id: card.id,
+            type: 'card',
+            position: positions.get(card.id) ?? { x: 0, y: 0 },
+            data: {
+                card,
+                width: laneWidths.get(card.hop) ?? 288,
+                open: isOpen(card.id),
+                change: card.hop === 0 ? state.focus.change : undefined,
+                highlight: highlight?.nodes,
+                hasNext,
+                onToggle,
+                onExpand,
+                onOpenFile,
+                onHover,
+            },
+            draggable: false,
+            selectable: false,
+        }));
+        return [...laneNodes, ...cardNodes];
+    }, [lanes, cards, positions, isOpen, state.focus.change, highlight, hasNext, onToggle, onExpand, onOpenFile, onHover]);
 
-    const edges: Edge<LineageEdgeData>[] = useMemo(() => state.edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        type: 'lineage',
-        data: {
-            dependencyType: edge.dependencyType,
-            dimmed: !!highlight && !highlight.edges.has(edge.id),
-            highlighted: !!highlight?.edges.has(edge.id),
-            entering: !seenEdges.current.has(edge.id),
-        },
-    })), [state, highlight]);
-
-    useEffect(() => {
-        state.edges.forEach((edge) => seenEdges.current.add(edge.id));
-    }, [state]);
+    const edges: Edge<LineageEdgeData>[] = useMemo(() => links.map((link) => {
+        const onPath = !!highlight && link.edgeIds.some((id) => highlight.edges.has(id));
+        return {
+            id: link.id,
+            source: link.source,
+            target: link.target,
+            sourceHandle: link.sourceRow ? `out:${link.sourceRow}` : 'out',
+            targetHandle: link.targetRow ? `in:${link.targetRow}` : 'in',
+            type: 'lineage',
+            data: {
+                dependencyType: linkKind(link),
+                label: linkLabel(link),
+                count: link.edgeIds.length,
+                toCard: !link.targetRow,
+                dimmed: !!highlight && !onPath,
+                highlighted: onPath,
+            },
+        };
+    }), [links, highlight]);
 
     // Refit when a lane appears or disappears, not on every hop inside an existing lane
     useEffect(() => {
@@ -145,9 +201,10 @@ function Trace({ state: fullState, bridge, onlyCopies }: { state: TraceState; br
                 minZoom={0.3}
                 maxZoom={1.6}
                 proOptions={{ hideAttribution: true }}
-                // Hover handlers also make React Flow give non-selectable nodes pointer events, so their buttons work
-                onNodeMouseEnter={(_, node) => setHovered(node.type === 'lineage' ? node.id : undefined)}
-                onNodeMouseLeave={() => setHovered(undefined)}
+                // Hover handlers also make React Flow give non-selectable nodes pointer events, so their buttons work.
+                // Cards and their rows report what's hovered; leaving a card only clears it after a moment.
+                onNodeMouseEnter={() => clearTimeout(leaveTimer.current)}
+                onNodeMouseLeave={onLeave}
                 fitView
             >
                 <Controls showInteractive={false} position="bottom-right" />
@@ -306,7 +363,8 @@ export default function App() {
                 ? <LineageList state={listState} bridge={bridge} hidden={state.nodes.length - listState.nodes.length} onShowAll={() => setOnlyCopies(false)} />
                 : (
                     <ReactFlowProvider>
-                        <Trace state={state} bridge={bridge} onlyCopies={onlyCopies} />
+                        {/* Keyed by the focus column, so each column's cards start in their default state */}
+                        <Trace key={`${state.focus.table}#${state.focus.column}`} state={state} bridge={bridge} onlyCopies={onlyCopies} />
                     </ReactFlowProvider>
                 )}
         </>
