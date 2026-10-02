@@ -197,6 +197,7 @@ function Header({ impact, bridge, now, toggleAll }: { impact: ImpactView; bridge
                         {comparison.headRef} <span className="ln-dataset">vs</span> {comparison.baseRef} <span className="ln-dataset">@ {comparison.mergeBaseSha.slice(0, 7)}</span>
                     </span>
                 )}
+                {impact.against?.length ? <span className="ln-dataset" title="The projects of the tables the changes were compared with">against tables in {impact.against.join(', ')}</span> : null}
                 <span className="ln-grow" />
                 {impact.stale && <span className="ln-chip ln-chip-warn" role="status">Out of date</span>}
                 {!running && <span className="ln-bar-checked">{formatChecked(impact.checkedAt, now)}</span>}
@@ -240,7 +241,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                 <div className="ln-list">
                     {impact.atRisk.length === 0 && (
                         <div className="ln-banner" role="note">
-                            <strong>Nothing at risk.</strong> No changed table drops or retypes a column against prod, and no table is deleted.
+                            <strong>Nothing at risk.</strong> No changed table drops or retypes a column against {impact.against?.length ? `the tables in ${impact.against.join(', ')}` : 'prod'}, and no table is deleted.
                         </div>
                     )}
                     {impact.atRisk.map((entry) => (
@@ -254,7 +255,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                     ))}
                     {impact.safe.length > 0 && (
                         <details className="ln-impact-more" open={isOpen(SAFE_KEY)} onToggle={(event) => setOpen(SAFE_KEY, event.currentTarget.open)}>
-                            <summary>{safeSummary(impact.safe.length)}</summary>
+                            <summary>{safeSummary(impact.safe.length, impact.against).replace(/`/g, '')}</summary>
                             <ul>
                                 {impact.safe.map((entry) => (
                                     <li key={entry.table}>

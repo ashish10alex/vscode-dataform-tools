@@ -81,6 +81,8 @@ export interface ImpactView {
     /** Changed tables whose columns all survive */
     safe: ImpactTable[];
     unchecked: UncheckedTable[];
+    /** Projects of the tables the changes were compared with, sorted; candidates with no Prod Target left out */
+    against?: string[];
     /** A later compile changed what the branch changes, so the summary may be out of date */
     stale?: boolean;
     message?: string;
@@ -367,16 +369,33 @@ function changeCell(change: ColumnChange | 'deleted'): string {
     return change.kind === 'dropped' ? '**DROPPED**' : `\`${change.from} → ${change.to}\``;
 }
 
-/** e.g. "2 changed tables keep every prod column" */
-export function safeSummary(count: number): string {
-    return count === 1 ? '1 changed table keeps every prod column' : `${count} changed tables keep every prod column`;
+/** The projects of `tables`, sorted and without duplicates */
+export function projectsOf(tables: string[]): string[] {
+    return [...new Set(tables.map((table) => table.split('.')[0]).filter(Boolean))].sort();
+}
+
+/** "`a`, `b`" */
+function codeList(items: string[]): string {
+    return items.map((item) => `\`${item}\``).join(', ');
+}
+
+/**
+ * e.g. "2 changed tables keep every prod column", or with the projects compared with, "2 changed tables keep every
+ * column they have in `acme-prod`"
+ */
+export function safeSummary(count: number, against?: string[]): string {
+    const one = count === 1;
+    if (!against?.length) {
+        return `${plural(count, 'changed table')} ${one ? 'keeps' : 'keep'} every prod column`;
+    }
+    return `${plural(count, 'changed table')} ${one ? 'keeps' : 'keep'} every column ${one ? 'it has' : 'they have'} in ${codeList(against)}`;
 }
 
 /** The summary as Markdown for a pull request: one table per changed model, then the tables that keep every column and what wasn't checked */
 export function impactMarkdown(view: ImpactView): string {
     const lines: string[] = ['### Dataform Column Lineage Impact Report', ''];
     const comparison = view.comparison;
-    const against = '**Evaluated against:** production schemas';
+    const against = view.against?.length ? `**Evaluated against:** tables in ${codeList(view.against)}` : '**Evaluated against:** production schemas';
     lines.push(comparison
         ? `**Branch:** \`${comparison.headRef}\` vs \`${comparison.baseRef}\` @ \`${comparison.mergeBaseSha.slice(0, 7)}\` | ${against}`
         : against);
@@ -404,7 +423,7 @@ export function impactMarkdown(view: ImpactView): string {
         }
     }
     if (view.safe.length) {
-        lines.push('', `<details><summary>${safeSummary(view.safe.length)}</summary>`, '');
+        lines.push('', `<details><summary>${safeSummary(view.safe.length, view.against)}</summary>`, '');
         view.safe.forEach((entry) => lines.push(`- \`${shortTable(entry.table)}\`${entry.added?.length ? `: adds ${entry.added.map((column) => `\`${column}\``).join(', ')}` : ''}`));
         lines.push('', '</details>');
     }

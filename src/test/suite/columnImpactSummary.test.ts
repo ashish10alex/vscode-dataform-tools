@@ -2,9 +2,10 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import {
     ImpactCandidate, ImpactView, MARKDOWN_READERS, MARKDOWN_READER_LIST, ReaderContext, annotateReader, buildImpactSummary, impactMarkdown, impactSeverity, isLowImpact, mentions, rankReaders,
-    safeSummary, summaryCounts,
+    projectsOf, safeSummary, summaryCounts,
 } from '../../shared/columnLineage/impactSummary';
-import { changeSignature, guessProdTarget } from '../../columnLineage/changeImpact';
+import { CheckDeps, UNKNOWN_PROD_TARGET, changeSignature, checkChanged, checkDeleted, guessProdTarget } from '../../columnLineage/changeImpact';
+import { matchProdTargets, prodIndexOf } from '../../columnLineage/prodIndex';
 import { ColumnLink, LineageDirection, TraceSource } from '../../shared/columnLineage/types';
 import { DataformCompiledJson } from '../../types';
 
@@ -296,6 +297,19 @@ suite('Column impact summary: Markdown', () => {
         assert.ok(markdown.includes('| `a` | +4 more | | | |'));
     });
 
+    test('names the projects it compared with, when it knows them', () => {
+        const one = impactMarkdown({ ...view, against: ['acme-prod'] }).split('\n');
+        assert.strictEqual(one[2], '**Branch:** `feat/x` vs `origin/main` @ `52863aa` | **Evaluated against:** tables in `acme-prod`');
+        assert.ok(one.includes('<details><summary>2 changed tables keep every column they have in `acme-prod`</summary>'));
+        const two = impactMarkdown({ ...view, comparison: undefined, against: ['acme-dev', 'acme-prod'] }).split('\n');
+        assert.strictEqual(two[2], '**Evaluated against:** tables in `acme-dev`, `acme-prod`');
+        assert.strictEqual(impactMarkdown({ ...view, against: [] }).split('\n')[2], '**Branch:** `feat/x` vs `origin/main` @ `52863aa` | **Evaluated against:** production schemas');
+        assert.strictEqual(safeSummary(1, ['acme-prod']), '1 changed table keeps every column it has in `acme-prod`');
+        assert.strictEqual(safeSummary(2, ['acme-dev', 'acme-prod']), '2 changed tables keep every column they have in `acme-dev`, `acme-prod`');
+        assert.strictEqual(safeSummary(2, []), '2 changed tables keep every prod column');
+        assert.deepStrictEqual(projectsOf(['b.marts.x', 'a.marts.y', 'b.marts.z']), ['a', 'b']);
+    });
+
     test('rates severity by what is still read', () => {
         const reader = { table: 'p.a.b', dependencyType: 'OTHER' as const };
         assert.strictEqual(impactSeverity({ kind: 'dropped' }, [reader]), 'critical');
@@ -311,7 +325,72 @@ suite('Column impact summary: host helpers', () => {
     test('guesses a deleted table\'s prod dataset from a table that shared its dev dataset', () => {
         const devToProd: [string, string][] = [['dev-proj.marts_ashish.orders', 'prod-proj.marts.orders']];
         assert.strictEqual(guessProdTarget('dev-proj.marts_ashish.customers', devToProd), 'prod-proj.marts.customers');
-        assert.strictEqual(guessProdTarget('dev-proj.other.customers', devToProd), 'dev-proj.other.customers');
+        assert.strictEqual(guessProdTarget('dev-proj.other.customers', devToProd), undefined, 'no table shared its dev dataset');
+    });
+
+    const target = (database: string, schema: string, name: string) => ({ database, schema, name });
+    const devIndex = new Map(['dev.marts.orders', 'dev.marts.scratch'].map((fqn) => [fqn, { fqn, type: 'table', dependsOn: [] }]));
+    const devToProd = matchProdTargets(
+        [{ target: target('dev', 'marts', 'orders') }, { target: target('dev', 'marts', 'scratch') }],
+        new Map([['marts.orders', target('prod', 'marts', 'orders')]]),
+    );
+
+    test('has no Prod Target for an action the prodCompilerOptions compile doesn\'t match', () => {
+        const strict = prodIndexOf(devIndex, devToProd, true);
+        assert.strictEqual(strict.prodTarget('dev.marts.orders'), 'prod.marts.orders');
+        assert.strictEqual(strict.prodTarget('dev.marts.scratch'), undefined);
+        assert.strictEqual(strict.toProd('dev.marts.scratch'), 'dev.marts.scratch', 'readers still fold by dev target');
+        assert.deepStrictEqual([...strict.index.keys()], ['prod.marts.orders', 'dev.marts.scratch']);
+        const defaults = prodIndexOf(devIndex, devToProd, false);
+        assert.strictEqual(defaults.prodTarget('dev.marts.scratch'), 'dev.marts.scratch', 'without prodCompilerOptions dev is prod, as before');
+    });
+
+    const deps = (prodTarget: CheckDeps['prodTarget'], tables: Record<string, { columns?: { name: string; type: string }[]; error?: string }>): CheckDeps & { reads: string[] } => {
+        const reads: string[] = [];
+        return {
+            reads,
+            prodTarget,
+            read: async (table) => {
+                reads.push(table);
+                return tables[table] ?? {};
+            },
+            dryRun: async () => ({ fields: [{ name: 'order_id', type: 'INT64' }] }),
+        };
+    };
+    const orders = { target: 'dev.marts.orders', fileName: 'definitions/orders.sqlx', type: 'table' };
+    const scratch = { target: 'dev.marts.scratch', fileName: 'definitions/scratch.sqlx', type: 'table' };
+    const action = { type: 'table', query: 'SELECT 1 AS order_id' };
+
+    test('leaves an action with no Prod Target unchecked instead of comparing it with its dev table', async () => {
+        const strict = prodIndexOf(devIndex, devToProd, true);
+        const fake = deps(strict.prodTarget, {
+            'prod.marts.orders': { columns: [{ name: 'order_id', type: 'INT64' }, { name: 'discount', type: 'NUMERIC' }] },
+            'dev.marts.scratch': { columns: [{ name: 'order_id', type: 'INT64' }] },
+        });
+        const candidates = [
+            await checkChanged(orders, action, fake),
+            await checkChanged(scratch, action, fake),
+            await checkDeleted({ target: 'dev.other.gone', type: 'table' }, undefined, fake.read),
+        ];
+        assert.deepStrictEqual(fake.reads, ['prod.marts.orders'], 'the dev table is never read');
+        assert.deepStrictEqual(candidates[1], { table: 'dev.marts.scratch', fileName: 'definitions/scratch.sqlx', type: 'table', uncheckedReason: UNKNOWN_PROD_TARGET });
+        assert.strictEqual(candidates[2].uncheckedReason, 'deleted, and its prod table is unknown: nothing in the compile with prodCompilerOptions matches it');
+
+        const result = await buildImpactSummary(candidates, fakeSource({}), context());
+        assert.deepStrictEqual(result!.atRisk.map((entry) => entry.table), ['prod.marts.orders']);
+        assert.deepStrictEqual(result!.safe, []);
+        assert.deepStrictEqual(result!.unchecked.map((entry) => entry.table), ['dev.marts.scratch', 'dev.other.gone']);
+        const markdown = impactMarkdown({ status: 'ready', changedCount: 3, ...result!, against: projectsOf(['prod.marts.orders']) });
+        assert.ok(markdown.includes('**Evaluated against:** tables in `prod`'));
+        assert.ok(markdown.includes('- `marts.scratch`: its prod table is unknown: nothing in the compile with prodCompilerOptions matches it'));
+    });
+
+    test('names the project with no such table, and why a table could not be read', async () => {
+        const fake = deps((dev) => dev.replace(/^dev\./, 'prod.'), { 'prod.marts.scratch': { error: 'Access Denied: Table prod:marts.scratch' } });
+        assert.strictEqual((await checkChanged(orders, action, fake)).uncheckedReason, 'no table in prod yet');
+        assert.strictEqual((await checkChanged(scratch, action, fake)).uncheckedReason, 'prod.marts.scratch could not be read: Access Denied: Table prod:marts.scratch');
+        assert.strictEqual((await checkDeleted(orders, 'prod.marts.orders', fake.read)).uncheckedReason, 'deleted, and no table in prod');
+        assert.strictEqual((await checkDeleted(scratch, 'prod.marts.scratch', fake.read)).uncheckedReason, 'deleted, and prod.marts.scratch could not be read: Access Denied: Table prod:marts.scratch');
     });
 
     test('changes signature when a changed action\'s SQL does, not when an unchanged one does', () => {

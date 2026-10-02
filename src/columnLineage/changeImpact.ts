@@ -11,10 +11,10 @@ import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
 import { inBatches } from '../shared/columnLineage/traceController';
 import { SchemaField } from '../shared/columnLineage/impactRules';
 import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
-import { ImpactCandidate, ImpactView, buildImpactSummary } from '../shared/columnLineage/impactSummary';
+import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf } from '../shared/columnLineage/impactSummary';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
-import { indexByProdTarget } from './prodIndex';
+import { resolveProdIndex } from './prodIndex';
 import { SchemaCache } from './schemaCache';
 
 /*
@@ -26,7 +26,7 @@ import { SchemaCache } from './schemaCache';
 const DRY_RUN_BATCH = 6;
 const TABLE_TYPES = new Set(['table', 'view', 'incremental']);
 
-interface CompiledAction {
+export interface CompiledAction {
     target?: Target;
     type?: string;
     fileName?: string;
@@ -64,19 +64,86 @@ function dryRunQuery(action: CompiledAction, skipPreOps: boolean): string {
 
 /**
  * A deleted action has no Prod Target, since prod is compiled from this branch. Its prod dataset is taken from
- * another action that shared its dev dataset, which covers schema suffixes and dev databases.
+ * another action that shared its dev dataset, which covers schema suffixes and dev databases. Undefined when no
+ * action did.
  */
-export function guessProdTarget(deleted: string, devToProd: [string, string][]): string {
+export function guessProdTarget(deleted: string, devToProd: [string, string][]): string | undefined {
     const [database, schema, name] = deleted.split('.');
     const sibling = devToProd.find(([dev]) => {
         const [devDatabase, devSchema] = dev.split('.');
         return devDatabase === database && devSchema === schema;
     });
     if (!sibling) {
-        return deleted;
+        return undefined;
     }
     const [prodDatabase, prodSchema] = sibling[1].split('.');
     return `${prodDatabase}.${prodSchema}.${name}`;
+}
+
+/** Why an action with no Prod Target isn't compared */
+export const UNKNOWN_PROD_TARGET = 'its prod table is unknown: nothing in the compile with prodCompilerOptions matches it';
+
+function project(table: string): string {
+    return table.split('.')[0];
+}
+
+/** A table's columns in BigQuery, or why it couldn't be read; neither when there is no such table */
+export type TableRead = { columns?: SchemaField[]; error?: string };
+
+export interface CheckDeps {
+    /** The Prod Target of a dev target; undefined when it has none */
+    prodTarget: (dev: string) => string | undefined;
+    read: (table: string) => Promise<TableRead>;
+    /** The dry run's columns, or why it failed */
+    dryRun: (action: CompiledAction) => Promise<{ fields: SchemaField[]; error?: string }>;
+}
+
+type ActionRef = { target: string; fileName?: string; type: string };
+
+/** Reads a changed table's Prod Target and dry runs it. `action`: the changed action in the head compile. */
+export async function checkChanged(change: ActionRef, action: CompiledAction | undefined, deps: CheckDeps): Promise<ImpactCandidate> {
+    const type = action?.type ?? change.type;
+    const table = deps.prodTarget(change.target);
+    if (!table) {
+        return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET };
+    }
+    const candidate: ImpactCandidate = { table, fileName: change.fileName, type };
+    const prod = await deps.read(table);
+    if (prod.error) {
+        candidate.uncheckedReason = `${table} could not be read: ${prod.error}`;
+    } else if (!prod.columns?.length) {
+        candidate.uncheckedReason = `no table in ${project(table)} yet`;
+    } else if (type === 'operations' || type === 'operation') {
+        candidate.uncheckedReason = 'operation: a dry run of a script has no schema';
+    } else if (!action) {
+        candidate.uncheckedReason = 'not in the compiled project';
+    } else {
+        const dryRun = await deps.dryRun(action);
+        if (dryRun.error) {
+            candidate.uncheckedReason = `dry run failed: ${dryRun.error}`;
+        } else if (!dryRun.fields.length) {
+            candidate.uncheckedReason = 'the dry run returned no schema';
+        } else {
+            candidate.prod = prod.columns;
+            candidate.dev = dryRun.fields;
+        }
+    }
+    return candidate;
+}
+
+/** Reads a deleted table's guessed Prod Target, `table`; undefined when it has none */
+export async function checkDeleted(action: ActionRef, table: string | undefined, read: CheckDeps['read']): Promise<ImpactCandidate> {
+    const { fileName, type } = action;
+    if (!table) {
+        return { table: action.target, fileName, type, uncheckedReason: `deleted, and ${UNKNOWN_PROD_TARGET}` };
+    }
+    const prod = await read(table);
+    if (prod.error) {
+        return { table, fileName, type, uncheckedReason: `deleted, and ${table} could not be read: ${prod.error}` };
+    }
+    return prod.columns?.length
+        ? { table, fileName, type, deleted: true }
+        : { table, fileName, type, uncheckedReason: `deleted, and no table in ${project(table)}` };
 }
 
 /** Changes when the branch's changed actions or their compiled SQL do, so a summary can tell it's out of date */
@@ -111,10 +178,7 @@ export async function computeColumnImpact(
     const comparison = { headRef: result.headRef, baseRef: result.baseRef, mergeBaseSha: result.mergeBaseSha, headLabel: result.headLabel };
     const base: Omit<ImpactView, 'status'> = { comparison, changedCount: 0, atRisk: [], safe: [], unchecked: [] };
     const devIndex = indexGraph(head);
-    const { index, toProd } = await indexByProdTarget(devIndex);
-    const resolveFile = (table: string) => index.get(table)?.fileName;
     const actions = compiledActions(head);
-
     const changed = result.changed.filter((change) => {
         const action = devIndex.get(change.target);
         return !!action && tableActions([action as GraphAction & { hasOutput?: boolean }]).length > 0;
@@ -122,6 +186,18 @@ export async function computeColumnImpact(
     const deleted = result.deleted.filter((action) => TABLE_TYPES.has(action.type));
     const total = changed.length + deleted.length;
     const view = (status: ImpactView['status'], extra: Partial<ImpactView> = {}): ImpactView => ({ ...base, changedCount: total, status, ...extra });
+
+    let prodIndex: Awaited<ReturnType<typeof resolveProdIndex>>;
+    try {
+        prodIndex = await resolveProdIndex(devIndex);
+    } catch (error: any) {
+        // Comparing with the dev tables instead would pass them off as prod
+        const message = error?.message ?? String(error);
+        logger.error(`Column impact: could not resolve Prod Targets: ${message}`);
+        return { view: view('error', { message: `Nothing was checked: the prod tables to compare with are unknown. ${message}` }), resolveFile: () => undefined };
+    }
+    const { index, toProd, prodTarget } = prodIndex;
+    const resolveFile = (table: string) => index.get(table)?.fileName;
 
     const schemas = new SchemaCache();
     const skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('skipPreOpsInDryRun') === true;
@@ -133,6 +209,15 @@ export async function computeColumnImpact(
     } catch (error: any) {
         logger.error(`Column impact: defer to prod not applied: ${error?.message ?? error}`);
     }
+    const deps: CheckDeps = {
+        prodTarget,
+        read: (table) => schemas.read(table),
+        dryRun: async (action) => {
+            const dryRun = await queryDryRun(rewriteSql(dryRunQuery(action, skipPreOps), deferral?.entries ?? []));
+            const fields: SchemaField[] = (dryRun.schema?.fields ?? []).filter((field: SchemaField) => field.name);
+            return dryRun.error?.hasError ? { fields, error: dryRun.error.message } : { fields };
+        },
+    };
 
     const candidates: ImpactCandidate[] = [];
     let done = 0;
@@ -141,50 +226,29 @@ export async function computeColumnImpact(
         if (cancelled()) {
             return;
         }
-        const table = toProd(change.target);
-        const action = actions.get(change.target);
-        const type = action?.type ?? change.type;
-        const candidate: ImpactCandidate = { table, fileName: change.fileName, type };
-        const prod = await schemas.schema(table);
-        if (!prod?.length) {
-            candidate.uncheckedReason = 'no prod table yet';
-        } else if (type === 'operations' || type === 'operation') {
-            candidate.uncheckedReason = 'operation: a dry run of a script has no schema';
-        } else if (!action) {
-            candidate.uncheckedReason = 'not in the compiled project';
-        } else {
-            const query = rewriteSql(dryRunQuery(action, skipPreOps), deferral?.entries ?? []);
-            const dryRun = await queryDryRun(query);
-            const fields: SchemaField[] = (dryRun.schema?.fields ?? []).filter((field: SchemaField) => field.name);
-            if (dryRun.error?.hasError) {
-                candidate.uncheckedReason = `dry run failed: ${dryRun.error.message}`;
-            } else if (!fields.length) {
-                candidate.uncheckedReason = 'the dry run returned no schema';
-            } else {
-                candidate.prod = prod;
-                candidate.dev = fields;
-            }
-        }
-        candidates.push(candidate);
+        candidates.push(await checkChanged(change, actions.get(change.target), deps));
         emit(view('running', { progress: { phase: 'Dry running', done: ++done, total: changed.length } }));
     });
     if (cancelled()) {
         return { view: view('cancelled'), resolveFile };
     }
 
-    const devToProd: [string, string][] = [...devIndex.keys()].map((dev) => [dev, toProd(dev)]);
+    const devToProd = [...devIndex.keys()].flatMap((dev): [string, string][] => {
+        const prod = prodTarget(dev);
+        return prod ? [[dev, prod]] : [];
+    });
     // Every deleted action, assertions and operations too, by dev target: readers may be any of them, in prod or a dev run
-    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd)]));
+    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd) ?? prodTarget(action.target)]));
     for (const action of deleted) {
-        const table = deletedToProd.get(action.target) ?? action.target;
-        const prod = await schemas.schema(table);
-        candidates.push(prod?.length
-            ? { table, fileName: action.fileName, type: action.type, deleted: true }
-            : { table, fileName: action.fileName, type: action.type, uncheckedReason: 'deleted, and no prod table found' });
+        candidates.push(await checkDeleted(action, deletedToProd.get(action.target), deps.read));
     }
+    // What the candidates were compared with: those with no Prod Target weren't
+    const compared = [...changed.map((change) => prodTarget(change.target)), ...deleted.map((action) => deletedToProd.get(action.target))]
+        .filter((table): table is string => !!table);
 
     // Readers may be dev runs of any action, deleted ones too
     const readerToProd = (table: string) => deletedToProd.get(table) ?? toProd(table);
+    const deletedTables = new Set(result.deleted.map((action) => deletedToProd.get(action.target) ?? action.target));
     const changedProd = new Set(changed.map((change) => toProd(change.target)));
     const sqlByProd = new Map(changed.map((change) => {
         const action = actions.get(change.target);
@@ -199,7 +263,7 @@ export async function computeColumnImpact(
             changed: changedProd,
             sqlOf: (table) => sqlByProd.get(table),
             toProd: readerToProd,
-            deleted: new Set(deletedToProd.values()),
+            deleted: deletedTables,
             isAssertion: (table) => index.get(table)?.type === 'assertion',
         },
         (lookups, of) => emit(view('running', { progress: { phase: 'Looking up readers', done: lookups, total: of } })),
@@ -208,5 +272,5 @@ export async function computeColumnImpact(
     if (!summary) {
         return { view: view('cancelled'), resolveFile };
     }
-    return { view: view('ready', { ...summary, checkedAt: Date.now() }), source, resolveFile };
+    return { view: view('ready', { ...summary, against: projectsOf(compared), checkedAt: Date.now() }), source, resolveFile };
 }

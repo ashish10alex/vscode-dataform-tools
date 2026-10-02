@@ -4,7 +4,7 @@ import { TraceController } from '../../src/shared/columnLineage/traceController'
 import { ColumnsController } from '../../src/shared/columnLineage/columnsController';
 import { CachedTraceSource } from '../../src/shared/columnLineage/cachedSource';
 import { SAMPLE_COLUMNS, SAMPLE_FOCUS, SAMPLE_IMPACT, SampleTraceSource, resolveSampleFile } from '../../src/shared/columnLineage/sampleSource';
-import { ImpactView, buildImpactSummary, impactMarkdown } from '../../src/shared/columnLineage/impactSummary';
+import { ImpactView, buildImpactSummary, impactMarkdown, projectsOf } from '../../src/shared/columnLineage/impactSummary';
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
@@ -82,7 +82,7 @@ function standaloneBridge(): Bridge {
             () => run !== impactRun,
         );
         if (summary && run === impactRun) {
-            setImpact({ ...base, ...summary, status: 'ready', checkedAt: Date.now() });
+            setImpact({ ...base, ...summary, status: 'ready', against: projectsOf(candidates.map((candidate) => candidate.table)), checkedAt: Date.now() });
         }
     };
     const impactActive = () => impactTrace;

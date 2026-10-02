@@ -86,6 +86,10 @@ Officially recommended [VS Code extension for Dataform](https://marketplace.visu
       <td>Run only the actions whose compiled SQL or materialization settings changed vs the merge-base with your default branch (set with <code>vscode-dataform-tools.defaultBranch</code>), like dbt's <code>state:modified</code>. Catches changes made through <code>includes/</code>, and shows what will run before running it</td>
     </tr>
     <tr>
+      <td>Column impact of branch changes</td>
+      <td>For every table the branch changes, the columns it drops or retypes against the table in BigQuery and who reads them, from Dataplex lineage, as a report you can paste into a pull request. It compares with the tables compiled with <code>vscode-dataform-tools.prodCompilerOptions</code>; if your project's defaults (e.g. <code>defaultProject</code> in <code>workflow_settings.yaml</code>) point at dev, set it, e.g. <code>--default-database=my-prod-project</code>, or the report compares with your dev tables</td>
+    </tr>
+    <tr>
       <td><a href="#hover">BigQuery hover provider</a></td>
       <td>Hover definition for tables, columns, column descriptions, types and common BigQuery functions</td>
     </tr>

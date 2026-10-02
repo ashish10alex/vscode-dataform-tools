@@ -26,11 +26,14 @@ interface TableInfo {
 /** BigQuery schemas and locations of the tables a trace touches, fetched once per trace */
 export class SchemaCache {
     private readonly tables = new Map<string, Promise<TableInfo | undefined>>();
+    /** Why a table couldn't be read, when it wasn't because there is no such table */
+    private readonly failures = new Map<string, string>();
 
     private info(table: string): Promise<TableInfo | undefined> {
         let pending = this.tables.get(table);
         if (!pending) {
             const [projectId, datasetId, tableId] = table.split('.');
+            this.failures.delete(table);
             pending = metadataReads.run(0, () => {
                 const started = Date.now();
                 return withTimeout(fetchTableMetadata(projectId, datasetId, tableId), METADATA_TIMEOUT_MS, 'Reading the table')
@@ -46,6 +49,9 @@ export class SchemaCache {
                 }))
                 .catch((error: any) => {
                     logger.debug(`Column trace: no metadata for ${table}: ${error?.message ?? error}`);
+                    if (error?.code !== 404) {
+                        this.failures.set(table, error?.message ?? String(error));
+                    }
                     if (error instanceof TimeoutError && this.tables.get(table) === stored) {
                         // Unlike a missing table, a slow read is worth trying again next time
                         this.tables.delete(table);
@@ -62,6 +68,12 @@ export class SchemaCache {
         return (await this.info(table))?.columns;
     }
 
+    /** The table's columns, or why it couldn't be read; neither when there is no such table */
+    async read(table: string): Promise<{ columns?: SchemaColumn[]; error?: string }> {
+        const columns = await this.schema(table);
+        return { columns, error: this.failures.get(table) };
+    }
+
     async location(table: string): Promise<string | undefined> {
         return (await this.info(table))?.location;
     }
@@ -74,5 +86,6 @@ export class SchemaCache {
 
     clear() {
         this.tables.clear();
+        this.failures.clear();
     }
 }
