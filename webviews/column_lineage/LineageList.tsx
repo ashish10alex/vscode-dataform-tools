@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useRef, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import type { LineageDirection, TraceNode, TraceState } from '../../src/shared/columnLineage/types';
 import { TraceRow, frontier, traceRows } from '../../src/shared/columnLineage/traceGraph';
 import type { Bridge } from './bridge';
@@ -13,9 +13,6 @@ const RELATION: Record<TraceRow['dependencyType'], { label: string; className: s
 function shortTable(table: string): string {
     return table.split('.').slice(1).join('.') || table;
 }
-
-/** A group starts expanded when it first shows while there are this many tables or fewer */
-const EXPAND_UP_TO = 5;
 
 interface TableGroup {
     table: string;
@@ -116,10 +113,8 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
     const groups = groupByTable(rows.filter((row) => !row.node.assertion));
     const assertionRows = rows.filter((row) => row.node.assertion);
     const assertionTables = new Set(assertionRows.map((row) => row.node.table)).size;
-    // Toggled groups, by table. The section is keyed by the focus column, so both start empty for each column.
+    // Groups toggled open, by table; every group starts collapsed. The section is keyed by the focus column, so this starts empty for each column.
     const [toggled, setToggled] = useState<Map<string, boolean>>(new Map());
-    // Each group's default is fixed when it first shows, so a group doesn't close as later hops add tables
-    const defaults = useRef(new Map<string, boolean>());
 
     const next = frontier(state, direction);
     const onSide = (node: TraceNode) => (direction === 'downstream' ? node.hop >= 0 : node.hop <= 0);
@@ -131,11 +126,9 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
     const tables = new Set(rows.map((row) => row.node.table)).size;
     const title = direction === 'downstream' ? 'Downstream' : 'Upstream';
 
-    const isOpen = (key: string, byDefault: boolean) => toggled.get(key) ?? defaults.current.get(key) ?? byDefault;
-    const groupDefault = groups.length <= EXPAND_UP_TO;
-    groups.filter((group) => !defaults.current.has(group.table)).forEach((group) => defaults.current.set(group.table, groupDefault));
-    const toggle = (key: string, byDefault: boolean) => setToggled((current) => new Map(current).set(key, !isOpen(key, byDefault)));
-    const allOpen = groups.every((group) => isOpen(group.table, groupDefault));
+    const isOpen = (key: string) => toggled.get(key) ?? false;
+    const toggle = (key: string) => setToggled((current) => new Map(current).set(key, !isOpen(key)));
+    const allOpen = groups.every((group) => isOpen(group.table));
     const setAll = (open: boolean) => setToggled(new Map(groups.map((group) => [group.table, open])));
 
     return (
@@ -164,10 +157,10 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
                             </tr>
                         </thead>
                         {groups.map((group) => {
-                            const open = isOpen(group.table, groupDefault);
+                            const open = isOpen(group.table);
                             return (
                                 <tbody key={group.table} className="ln-group">
-                                    <GroupHeader open={open} label={shortTable(group.table)} onToggle={() => toggle(group.table, groupDefault)}>
+                                    <GroupHeader open={open} label={shortTable(group.table)} onToggle={() => toggle(group.table)}>
                                         <span className="ln-cell-table"><TableName table={group.table} filePath={group.filePath} nodeId={group.rows[0].node.id} bridge={bridge} /></span>
                                         <span className="ln-group-meta">{groupSummary(group)}</span>
                                     </GroupHeader>
@@ -177,11 +170,11 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
                         })}
                         {assertionRows.length > 0 && (
                             <tbody className="ln-group ln-group-assertions">
-                                <GroupHeader open={isOpen(ASSERTIONS_KEY, false)} label="assertions" onToggle={() => toggle(ASSERTIONS_KEY, false)}>
+                                <GroupHeader open={isOpen(ASSERTIONS_KEY)} label="assertions" onToggle={() => toggle(ASSERTIONS_KEY)}>
                                     <span className="ln-group-title">{plural(assertionTables, 'assertion')}</span>
                                     <span className="ln-group-meta">{plural(assertionRows.length, 'column')} · checks only, not models</span>
                                 </GroupHeader>
-                                {isOpen(ASSERTIONS_KEY, false) && <Rows rows={assertionRows} showTable bridge={bridge} />}
+                                {isOpen(ASSERTIONS_KEY) && <Rows rows={assertionRows} showTable bridge={bridge} />}
                             </tbody>
                         )}
                     </table>
