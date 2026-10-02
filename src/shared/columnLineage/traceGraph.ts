@@ -34,8 +34,9 @@ export function expandDirection(node: TraceNode): LineageDirection {
     return node.hop < 0 ? 'upstream' : 'downstream';
 }
 
+/** A table-level reader expands too, to the tables that read it, but only when asked: see {@link frontier} */
 export function canExpand(node: TraceNode): boolean {
-    return node.kind !== 'tableOnly' && !node.expanded && !node.loading;
+    return !node.expanded && !node.loading;
 }
 
 function updateNode(state: TraceState, nodeId: string, update: Partial<TraceNode>): TraceState {
@@ -182,14 +183,18 @@ export function copiesOnly(state: TraceState): TraceState {
     };
 }
 
-/** Columns on the outermost hop of one side that can still be expanded: what "load next hop" would fetch */
+/**
+ * Columns on the outermost hop of one side that can still be expanded: what "load next hop" would fetch. Readers
+ * known only at table level are left out: their own readers can fan out to dozens of tables, so they load only
+ * when the reader is expanded by itself.
+ */
 export function frontier(state: TraceState, direction: LineageDirection): TraceNode[] {
     const side = state.nodes.filter((node) => (direction === 'downstream' ? node.hop > 0 : node.hop < 0));
     if (side.length === 0) {
         return [];
     }
     const outer = direction === 'downstream' ? Math.max(...side.map((node) => node.hop)) : Math.min(...side.map((node) => node.hop));
-    return side.filter((node) => node.hop === outer && canExpand(node));
+    return side.filter((node) => node.hop === outer && node.kind !== 'tableOnly' && canExpand(node));
 }
 
 export interface TraceRow {

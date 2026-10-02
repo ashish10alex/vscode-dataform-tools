@@ -1,5 +1,5 @@
 import { addHop, canExpand, expandDirection, focusNodeId, frontier, initialTraceState, removeUpstream, setNodeCheckingReaders, setNodeError, setNodeLoading } from './traceGraph';
-import { ColumnChange, ColumnLink, LineageDirection, TraceFocus, TraceSource, TraceState } from './types';
+import { ColumnChange, ColumnLink, LineageDirection, TraceFocus, TraceNode, TraceSource, TraceState } from './types';
 
 /** Hops loaded automatically on each side, so the list is readable without clicking through it */
 export const AUTO_HOPS = 3;
@@ -177,15 +177,24 @@ export class TraceController {
         this.emit(state);
     }
 
+    /** A column's links, or for a reader known only at table level, the tables that read it */
+    private async lookup(node: TraceNode, direction: LineageDirection): Promise<ColumnLink[]> {
+        if (node.column) {
+            return this.source.links(node.table, node.column, direction);
+        }
+        // A table that reads itself, e.g. an incremental one, isn't a hop further out
+        return (await this.source.tableReaders!(node.table)).filter((link) => link.table !== node.table);
+    }
+
     private async fetch(nodeId: string, direction: 'upstream' | 'downstream') {
         const generation = this.generation;
         const node = this.state?.nodes.find((candidate) => candidate.id === nodeId);
-        if (!this.state || !node?.column) {
+        if (!this.state || !node || (!node.column && (direction !== 'downstream' || !this.source.tableReaders))) {
             return;
         }
         this.set(setNodeLoading(this.state, nodeId, true));
         try {
-            const links = await this.source.links(node.table, node.column, direction);
+            const links = await this.lookup(node, direction);
             if (generation !== this.generation || !this.state) {
                 return;
             }
@@ -194,9 +203,10 @@ export class TraceController {
                 this.set(setNodeLoading(this.state, nodeId, false));
             } else {
                 this.set(addHop(this.state, nodeId, direction, links, this.resolveFile));
-                if (direction === 'downstream' && this.paused) {
+                // A table-level reader's readers are all table-level already, so only a column has more to look for
+                if (direction === 'downstream' && node.column && this.paused) {
                     this.heldReaders.set(nodeId, links);
-                } else if (direction === 'downstream') {
+                } else if (direction === 'downstream' && node.column) {
                     // Not awaited: the next hop needs only column links, and table-level readers have no column to follow
                     void this.fetchTableOnlyReaders(nodeId, node.table, links, generation);
                 }

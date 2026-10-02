@@ -106,10 +106,11 @@ export class DataplexTraceSource implements TraceSource {
         return pending;
     }
 
-    private tableReaders(api: LineageClient, parent: string, table: string): Promise<any[]> {
+    /** `priority`: how urgent the search is, when it isn't cached yet */
+    private readerLinks(api: LineageClient, parent: string, table: string, priority = Priority.Readers): Promise<any[]> {
         let pending = this.readers.get(table);
         if (!pending) {
-            pending = searchLinks(this.limiter, Priority.Readers, api, { parent, source: { fullyQualifiedName: lineageFqn(table) } }, `readers of ${table}`);
+            pending = searchLinks(this.limiter, priority, api, { parent, source: { fullyQualifiedName: lineageFqn(table) } }, `readers of ${table}`);
             const stored = pending;
             stored.catch(() => {
                 if (this.readers.get(table) === stored) {
@@ -123,6 +124,10 @@ export class DataplexTraceSource implements TraceSource {
 
     private isAssertion(table: string): boolean {
         return this.prodIndex.get(table)?.type === 'assertion';
+    }
+
+    private tableLink(reader: string): ColumnLink {
+        return { table: reader, dependencyType: 'TABLE_ONLY', ...(this.isAssertion(reader) ? { assertion: true } : {}) };
     }
 
     private async lookup<T>(table: string, run: (api: LineageClient, parent: string) => Promise<T>): Promise<T> {
@@ -143,7 +148,7 @@ export class DataplexTraceSource implements TraceSource {
             const started = Date.now();
             if (direction === 'downstream') {
                 // Started now so it overlaps the column search; tableOnlyReaders picks it up from the cache
-                this.tableReaders(api, parent, table).catch(() => undefined);
+                this.readerLinks(api, parent, table).catch(() => undefined);
             }
             const side = direction === 'downstream' ? 'source' : 'target';
             const columnLinks = await searchLinks(this.limiter, Priority.ColumnLinks, api, { parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }, `${direction} ${table}.${column}`);
@@ -169,17 +174,19 @@ export class DataplexTraceSource implements TraceSource {
     tableOnlyReaders(table: string, linked: Set<string>): Promise<ColumnLink[]> {
         return this.lookup(table, async (api, parent) => {
             const started = Date.now();
-            const readers = tablesFromApi(await this.tableReaders(api, parent, table), 'downstream');
+            const readers = tablesFromApi(await this.readerLinks(api, parent, table), 'downstream');
             const untracked = await untrackedReaders(readers, linked, async (reader) => {
                 return this.prodIndex.get(reader)?.type === 'incremental' ? false : this.hasColumnLineage(reader);
             });
             logger.debug(`Column trace: readers of ${table} without column lineage: ${untracked.length} of ${readers.length} readers, ${Date.now() - started} ms`);
-            return untracked.map((reader): ColumnLink => ({
-                table: reader,
-                dependencyType: 'TABLE_ONLY',
-                ...(this.isAssertion(reader) ? { assertion: true } : {}),
-            }));
+            return untracked.map((reader) => this.tableLink(reader));
         });
+    }
+
+    /** Asked for when the user expands a reader, so it goes ahead of the background reader checks */
+    tableReaders(table: string): Promise<ColumnLink[]> {
+        return this.lookup(table, async (api, parent) =>
+            tablesFromApi(await this.readerLinks(api, parent, table, Priority.ColumnLinks), 'downstream').map((reader) => this.tableLink(reader)));
     }
 
     clearCache() {

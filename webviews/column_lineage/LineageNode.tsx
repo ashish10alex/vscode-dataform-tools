@@ -47,8 +47,21 @@ function ChangeChip({ change }: { change: ColumnChange }) {
 }
 
 function hopLabel(node: TraceNode, count?: number): string {
-    const arrow = expandDirection(node) === 'upstream' ? '← hop' : 'hop →';
+    // A table-level reader expands to the tables that read it, not to columns
+    const arrow = node.kind === 'tableOnly' ? 'readers →' : expandDirection(node) === 'upstream' ? '← hop' : 'hop →';
     return count === undefined ? arrow : `${arrow} (${count})`;
+}
+
+/** Rows a hop button can load more for. The focus loads through the toolbar and lists. */
+function expandable(row: TraceNode): boolean {
+    return row.kind !== 'focus' && canExpand(row);
+}
+
+function expandLabel(row: TraceNode): string {
+    if (row.kind === 'tableOnly') {
+        return `Show the tables that read ${row.table}`;
+    }
+    return `Show ${expandDirection(row) === 'upstream' ? 'sources' : 'readers'} of ${row.column}`;
 }
 
 function Row({ row, data }: { row: TraceNode; data: CardNodeData }) {
@@ -71,12 +84,12 @@ function Row({ row, data }: { row: TraceNode; data: CardNodeData }) {
             {relation && <span className={`ln-rel ${RELATION[relation].className}`}>{RELATION[relation].label}</span>}
             {row.error && <span className="ln-row-error" role="alert" aria-label={row.error}>!</span>}
             {row.loading && <span className="ln-spinner" role="status" aria-label="Looking up lineage" />}
-            {row.kind === 'column' && canExpand(row) && (
+            {expandable(row) && (
                 <button
                     type="button"
                     className="ln-hop nodrag nopan"
                     onClick={() => onExpand([row.id])}
-                    aria-label={`Show ${direction === 'upstream' ? 'sources' : 'readers'} of ${row.column}`}
+                    aria-label={expandLabel(row)}
                 >
                     {hopLabel(row)}
                 </button>
@@ -93,7 +106,7 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
     const focus = card.hop === 0;
     const { dataset, name } = card.table ? splitTable(card.table) : { dataset: '', name: 'Assertions' };
     const fileName = card.filePath?.split('/').pop();
-    const expandable = card.rows.filter((row) => row.kind === 'column' && canExpand(row));
+    const toExpand = card.rows.filter(expandable);
     const loading = card.rows.some((row) => row.loading);
     const onPath = !!highlight && card.rows.some((row) => highlight.has(row.id));
 
@@ -134,14 +147,14 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
                     {!focus && <span className="ln-card-summary">{cardSummary(card)}</span>}
                     <span className="ln-grow" />
                     {!open && loading && <span className="ln-spinner" role="status" aria-label="Looking up lineage" />}
-                    {!open && expandable.length > 0 && (
+                    {!open && toExpand.length > 0 && (
                         <button
                             type="button"
                             className="ln-hop nodrag nopan"
-                            onClick={() => onExpand(expandable.map((row) => row.id))}
-                            aria-label={`Show the next hop for ${expandable.length} column${expandable.length === 1 ? '' : 's'} of ${name}`}
+                            onClick={() => onExpand(toExpand.map((row) => row.id))}
+                            aria-label={`Show the next hop for ${toExpand.length} column${toExpand.length === 1 ? '' : 's'} of ${name}`}
                         >
-                            {hopLabel(expandable[0], expandable.length)}
+                            {hopLabel(toExpand[0], toExpand.length)}
                         </button>
                     )}
                 </div>

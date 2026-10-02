@@ -34,6 +34,11 @@ const READS: Record<string, [string, DependencyType][]> = {
         ['ml.churn_training_set#ltv_90d', 'EXACT_COPY'],
         ['ml.ltv_scoring_daily#', 'TABLE_ONLY'],
     ],
+    // Readers of a table-level reader, reached by expanding it
+    'ml.customer_events#user_id': [
+        ['ml.session_rollup#user_id', 'EXACT_COPY'],
+        ['ml.engagement_scores#events_7d', 'OTHER'],
+    ],
 };
 
 /** Built-in assertions of the sample project */
@@ -125,6 +130,15 @@ export class SampleTraceSource implements TraceSource {
             .filter(([key]) => key.startsWith(prefix))
             .flatMap(([, links]) => links.filter(([, type]) => type === 'TABLE_ONLY').map(([reader]) => toLink(reader, 'TABLE_ONLY')))
             .filter((link) => !linked.has(link.table));
+        return [...new Map(readers.map((link) => [link.table, link])).values()];
+    }
+
+    async tableReaders(table: string): Promise<ColumnLink[]> {
+        await this.wait();
+        const prefix = `${withoutProject(table)}#`;
+        const readers = Object.entries(READS)
+            .filter(([key]) => key.startsWith(prefix))
+            .flatMap(([, links]) => links.map(([reader]) => toLink(reader.split('#')[0], 'TABLE_ONLY')));
         return [...new Map(readers.map((link) => [link.table, link])).values()];
     }
 }

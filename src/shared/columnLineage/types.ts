@@ -25,6 +25,11 @@ export interface TraceSource {
      * link). Slower than {@link links}, so asked for after it; sources without it return them from `links`.
      */
     tableOnlyReaders?(table: string, linked: Set<string>): Promise<ColumnLink[]>;
+    /**
+     * Every reader of `table`, as table-level links: the next hop from a reader known only at table level, which
+     * has no column to follow. Sources whose traces never hold such readers can leave it out.
+     */
+    tableReaders?(table: string): Promise<ColumnLink[]>;
     clearCache?(): void;
 }
 
@@ -47,7 +52,10 @@ export interface TraceNode {
     /** 0 for the focus column, negative upstream, positive downstream */
     hop: number;
     kind: TraceNodeKind;
-    /** The next hop away from the focus has been fetched. For the focus node this means downstream. */
+    /**
+     * The next hop away from the focus has been fetched. For the focus node this means downstream; for a
+     * table-level reader, the tables that read it.
+     */
     expanded: boolean;
     loading: boolean;
     /** Workspace-relative `.sqlx` path when the table is an action in this project */

@@ -24,7 +24,8 @@ suite('Column lineage trace graph', () => {
         assert.strictEqual(dash.hop, 1);
         assert.strictEqual(dash.filePath, 'definitions/dash.sqlx');
         assert.strictEqual(events.kind, 'tableOnly');
-        assert.strictEqual(canExpand(events), false);
+        assert.strictEqual(canExpand(events), true, 'expands to the tables that read it, when asked');
+        assert.deepStrictEqual(frontier(state, 'downstream').map((node) => node.id), ['p.rep.dash#revenue'], 'but not with the rest of the hop');
         assert.deepStrictEqual(state.edges.map((edge) => [edge.source, edge.target]), [[focusId, 'p.rep.dash#revenue'], [focusId, 'p.ml.events#']]);
         assert.strictEqual(state.nodes[0].expanded, true);
         assert.strictEqual(state.lookups, 1);
@@ -126,6 +127,36 @@ suite('Column lineage trace controller', () => {
 
         await controller.setUpstream(false);
         assert.strictEqual(controller.current!.nodes.filter((node) => node.hop < 0).length, 0);
+    });
+
+    test('expands a reader known only at table level to the tables that read it', async () => {
+        const controller = new TraceController(new SampleTraceSource([0, 0]), () => undefined);
+        await controller.open(SAMPLE_FOCUS);
+        await readersChecked(controller);
+        const eventsId = 'acme-prod.ml.customer_events#';
+        assert.strictEqual(controller.current!.nodes.find((node) => node.id === eventsId)?.expanded, false, 'not expanded with the automatic hops');
+
+        await controller.expand(eventsId);
+        const state = controller.current!;
+        const readers = state.edges.filter((edge) => edge.source === eventsId);
+        assert.deepStrictEqual(readers.map((edge) => [edge.target, edge.dependencyType]).sort(), [
+            ['acme-prod.ml.engagement_scores#', 'TABLE_ONLY'],
+            ['acme-prod.ml.session_rollup#', 'TABLE_ONLY'],
+        ]);
+        assert.ok(state.nodes.filter((node) => readers.some((edge) => edge.target === node.id)).every((node) => node.hop === 2 && node.kind === 'tableOnly'));
+        assert.strictEqual(state.nodes.find((node) => node.id === eventsId)?.expanded, true);
+    });
+
+    test('a table reading itself is not its own next hop', async () => {
+        const source: TraceSource = {
+            kind: 'sample',
+            links: async () => [{ table: 'p.a.inc', dependencyType: 'TABLE_ONLY' }],
+            tableReaders: async (table) => [{ table, dependencyType: 'TABLE_ONLY' }, { table: 'p.a.rpt', dependencyType: 'TABLE_ONLY' }],
+        };
+        const controller = new TraceController(source, () => undefined);
+        await controller.open(focus);
+        await controller.expand('p.a.inc#');
+        assert.deepStrictEqual(controller.current!.edges.filter((edge) => edge.source === 'p.a.inc#').map((edge) => edge.target), ['p.a.rpt#']);
     });
 
     test('shows column links before readers known only at table level, and loads the next hop without waiting for them', async () => {

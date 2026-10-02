@@ -84,7 +84,7 @@ function Rows({ rows, showTable, bridge }: { rows: TraceRow[]; showTable?: boole
                         </td>
                         <td><span className={`ln-rel ${relation.className}`}>{relation.label}</span></td>
                         <td className="ln-cell-via">
-                            {row.via.map((via) => (via.hop === 0 ? via.column : `${shortTable(via.table)}.${via.column}`)).join(', ')}
+                            {row.via.map((via) => (via.hop === 0 ? via.column : via.column ? `${shortTable(via.table)}.${via.column}` : shortTable(via.table))).join(', ')}
                         </td>
                     </tr>
                 );
@@ -188,7 +188,7 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
                 </div>
             )}
 
-            {errors.map((node) => <div key={node.id} className="ln-list-error" role="alert">{node.column}: {node.error}</div>)}
+            {errors.map((node) => <div key={node.id} className="ln-list-error" role="alert">{node.column ?? shortTable(node.table)}: {node.error}</div>)}
             {readerErrors.map((node) => (
                 <div key={`${node.id}-readers`} className="ln-list-error" role="alert">
                     Couldn’t check readers of {shortTable(node.table)} without column lineage: {node.readersError}
