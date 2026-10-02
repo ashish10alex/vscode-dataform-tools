@@ -83,14 +83,17 @@ export function tablesFromApi(links: LineageApiLink[], direction: LineageDirecti
 /**
  * Readers that read the table but whose columns Dataplex doesn't track, e.g. a job past its 1,500 column-link
  * limit, which keeps only table-level lineage. A reader Dataplex does track, but that has no link for this
- * column, doesn't read the column and is left out.
+ * column, doesn't read the column and is left out. So is a dev run of an action whose prod run has a link, and the
+ * other way round: `toProd` folds each into its action's Prod Target.
  */
 export async function untrackedReaders(
     readers: string[],
     readersWithLink: Set<string>,
     hasColumnLineage: (table: string) => Promise<boolean>,
+    toProd: (table: string) => string = (table) => table,
 ): Promise<string[]> {
-    const candidates = readers.filter((reader) => !readersWithLink.has(reader));
+    const linked = new Set([...readersWithLink].map(toProd));
+    const candidates = readers.filter((reader) => !linked.has(toProd(reader)));
     const tracked = await Promise.all(candidates.map(hasColumnLineage));
     return candidates.filter((_, i) => !tracked[i]);
 }

@@ -40,7 +40,7 @@ export function forgetDryRunSchema(document: vscode.TextDocument) {
 }
 
 /** The Prod Target of the one table the file defines. Throws with a message for the panel otherwise. */
-async function locate(document: vscode.TextDocument): Promise<{ table: string; index: Map<string, GraphAction>; operation: boolean }> {
+async function locate(document: vscode.TextDocument): Promise<{ table: string; index: Map<string, GraphAction>; toProd: (table: string) => string; operation: boolean }> {
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         throw new Error('Compile the project first.');
     }
@@ -52,7 +52,7 @@ async function locate(document: vscode.TextDocument): Promise<{ table: string; i
         throw new Error('Column lineage works for files that define one table, view, incremental table or operation with hasOutput.');
     }
     const { index, toProd } = await indexByProdTarget(devIndex);
-    return { table: toProd(actions[0].fqn), index, operation: isOperation(actions[0]) };
+    return { table: toProd(actions[0].fqn), index, toProd, operation: isOperation(actions[0]) };
 }
 
 export interface LoadedColumns {
@@ -60,11 +60,13 @@ export interface LoadedColumns {
     schemas: SchemaCache;
     /** Actions keyed by Prod Target */
     index: Map<string, GraphAction>;
+    /** The Prod Target of a dev run of one of them */
+    toProd: (table: string) => string;
 }
 
 /** The columns to list for a file: its Prod Target's, labelled against its last dry run when there is one */
 export async function loadColumns(document: vscode.TextDocument): Promise<LoadedColumns> {
-    const { table, index, operation } = await locate(document);
+    const { table, index, toProd, operation } = await locate(document);
     const schemas = new SchemaCache();
     const prod = await schemas.schema(table);
     if (operation) {
@@ -72,11 +74,11 @@ export async function loadColumns(document: vscode.TextDocument): Promise<Loaded
         if (!prod?.length) {
             throw new Error(`There is no prod table ${table} yet. Its columns get lineage once the operation is deployed and has run.`);
         }
-        return { input: { table, prod, message: 'Operations aren’t compared with prod: a dry run of a script has no schema.' }, schemas, index };
+        return { input: { table, prod, message: 'Operations aren’t compared with prod: a dry run of a script has no schema.' }, schemas, index, toProd };
     }
     const dev = dryRuns.get(document.uri.toString());
     if (prod?.length) {
-        return { input: { table, prod, dev }, schemas, index };
+        return { input: { table, prod, dev }, schemas, index, toProd };
     }
     if (!dev) {
         throw new Error(`There is no prod table ${table} yet, and no dry run of this file to list columns from. Save the file or refresh the compiled query panel.`);
@@ -85,6 +87,7 @@ export async function loadColumns(document: vscode.TextDocument): Promise<Loaded
         input: { table, dev, message: `There is no prod table ${table} yet. Its columns get lineage once it is deployed and has run.` },
         schemas,
         index,
+        toProd,
     };
 }
 

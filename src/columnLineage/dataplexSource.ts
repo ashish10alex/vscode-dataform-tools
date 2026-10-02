@@ -78,8 +78,19 @@ export class DataplexTraceSource implements TraceSource {
     private readonly readers = new Map<string, Promise<any[]>>();
     private readonly limiter = new Limiter(MAX_SEARCHES);
 
-    /** `prodIndex`: this project's actions keyed by Prod Target, to spot readers that get no column lineage */
-    constructor(private readonly schemas: SchemaCache, private readonly prodIndex: Map<string, GraphAction>) {}
+    /**
+     * `prodIndex`: this project's actions keyed by Prod Target, to spot readers that get no column lineage.
+     * `toProd`: the Prod Target of a dev run of one of them, so a dev run is known for the action it runs.
+     */
+    constructor(
+        private readonly schemas: SchemaCache,
+        private readonly prodIndex: Map<string, GraphAction>,
+        readonly toProd: (table: string) => string = (table) => table,
+    ) {}
+
+    private actionOf(table: string): GraphAction | undefined {
+        return this.prodIndex.get(this.toProd(table));
+    }
 
     resolveFile = (table: string): string | undefined => this.prodIndex.get(table)?.fileName;
 
@@ -123,7 +134,7 @@ export class DataplexTraceSource implements TraceSource {
     }
 
     private isAssertion(table: string): boolean {
-        return this.prodIndex.get(table)?.type === 'assertion';
+        return this.actionOf(table)?.type === 'assertion';
     }
 
     private tableLink(reader: string): ColumnLink {
@@ -176,8 +187,8 @@ export class DataplexTraceSource implements TraceSource {
             const started = Date.now();
             const readers = tablesFromApi(await this.readerLinks(api, parent, table), 'downstream');
             const untracked = await untrackedReaders(readers, linked, async (reader) => {
-                return this.prodIndex.get(reader)?.type === 'incremental' ? false : this.hasColumnLineage(reader);
-            });
+                return this.actionOf(reader)?.type === 'incremental' ? false : this.hasColumnLineage(reader);
+            }, this.toProd);
             logger.debug(`Column trace: readers of ${table} without column lineage: ${untracked.length} of ${readers.length} readers, ${Date.now() - started} ms`);
             return untracked.map((reader) => this.tableLink(reader));
         });

@@ -7,10 +7,12 @@ export class CachedTraceSource implements TraceSource {
     /** Passed through: the inner source caches what it shares across columns, e.g. a table's readers */
     readonly tableOnlyReaders?: TraceSource['tableOnlyReaders'];
     readonly tableReaders?: TraceSource['tableReaders'];
+    readonly toProd?: TraceSource['toProd'];
 
     constructor(private readonly inner: TraceSource) {
         this.tableOnlyReaders = inner.tableOnlyReaders?.bind(inner);
         this.tableReaders = inner.tableReaders?.bind(inner);
+        this.toProd = inner.toProd?.bind(inner);
     }
 
     get kind(): TraceSource['kind'] {

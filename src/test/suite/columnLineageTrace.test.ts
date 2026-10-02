@@ -1,9 +1,10 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { addHop, canExpand, copiesOnly, frontier, initialTraceState, pathToFocus, removeUpstream, traceNodeId, traceRows } from '../../shared/columnLineage/traceGraph';
+import { addHop, canExpand, copiesOnly, foldLinks, frontier, initialTraceState, pathToFocus, removeUpstream, traceNodeId, traceRows } from '../../shared/columnLineage/traceGraph';
 import { TraceController } from '../../shared/columnLineage/traceController';
 import { Limiter } from '../../shared/columnLineage/limiter';
-import { cardLinks, cardSummary, linkKind, linkLabel, opensByDefault, traceCards } from '../../shared/columnLineage/traceCards';
+import { cardLinks, cardSummary, linkKind, linkLabel, opensByDefault, shownProject, traceCards } from '../../shared/columnLineage/traceCards';
+import { countReaders } from '../../shared/columnLineage/columnsController';
 import { SAMPLE_FOCUS, SampleTraceSource } from '../../shared/columnLineage/sampleSource';
 import { graphNeighbours, guessColumnLinks, indexGraph } from '../../shared/columnLineage/graphLinks';
 import { columnLinksFromApi, isTempTable, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../../shared/columnLineage/dataplexLinks';
@@ -395,5 +396,122 @@ suite('Column lineage graph cards', () => {
 
         open.add('card:1:p.wide.features');
         assert.strictEqual(cardLinks(state, (id) => open.has(id)).filter((link) => link.target === 'card:1:p.wide.features').length, 5, 'one edge per column once expanded');
+    });
+});
+
+suite('Column lineage dev runs folded into their Prod Target', () => {
+    // Dev runs of this project's actions, which defer to prod and so read the prod table the trace starts from
+    const devRuns = new Map([
+        ['dev.rep.dash', 'p.rep.dash'],
+        ['dev.rep.draft', 'p.rep.draft'],
+        ['dev.checks.dash_assertions_rowConditions', 'p.checks.dash_assertions_rowConditions'],
+    ]);
+    const toProd = (table: string) => devRuns.get(table) ?? table;
+    const files = new Map([['p.rep.dash', 'definitions/dash.sqlx'], ['p.rep.draft', 'definitions/draft.sqlx'], ['other.shared.lookup', 'definitions/lookup.sqlx']]);
+    const resolveFile = (table: string) => files.get(table);
+
+    test('shows a column read by the prod run and a dev run of one action once, with the stronger link', () => {
+        const state = addHop(initialTraceState(focus, 'dataplex'), focusId, 'downstream', [
+            { table: 'p.rep.dash', column: 'revenue', dependencyType: 'OTHER' },
+            { table: 'dev.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+        ], resolveFile, toProd);
+
+        assert.deepStrictEqual(state.nodes.slice(1).map((node) => [node.id, node.filePath, node.lineageTable]), [
+            ['p.rep.dash#revenue', 'definitions/dash.sqlx', undefined],
+        ], 'its lineage is searched on the prod run');
+        assert.deepStrictEqual(state.edges.map((edge) => [edge.target, edge.dependencyType]), [['p.rep.dash#revenue', 'EXACT_COPY']]);
+        assert.deepStrictEqual(traceRows(state, 'downstream').map((row) => row.node.id), ['p.rep.dash#revenue']);
+    });
+
+    test('follows a reader only a dev run has on that dev run, until its prod run turns up', () => {
+        const draft = (table: string): ColumnLink => ({ table, column: 'revenue', dependencyType: 'OTHER' });
+        const devOnly = addHop(initialTraceState(focus, 'dataplex'), focusId, 'downstream', [draft('dev.rep.draft')], resolveFile, toProd);
+        const node = devOnly.nodes.find((candidate) => candidate.id === 'p.rep.draft#revenue')!;
+        assert.strictEqual(node.lineageTable, 'dev.rep.draft', 'not deployed yet, so prod has no lineage for it');
+        assert.strictEqual(node.filePath, 'definitions/draft.sqlx');
+
+        const both = addHop(devOnly, focusId, 'downstream', [draft('p.rep.draft')], resolveFile, toProd);
+        assert.strictEqual(both.nodes.find((candidate) => candidate.id === 'p.rep.draft#revenue')!.lineageTable, undefined);
+        assert.strictEqual(both.nodes.length, 2);
+    });
+
+    test('a dev run reading its own prod table is not a hop further out', () => {
+        const state = addHop(initialTraceState({ table: 'p.rep.dash', column: 'revenue' }, 'dataplex'), 'p.rep.dash#revenue', 'downstream', [
+            { table: 'dev.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+        ], resolveFile, toProd);
+        assert.strictEqual(state.nodes.length, 1);
+        assert.strictEqual(state.edges.length, 0);
+    });
+
+    test('the controller folds what the source finds, and looks a dev-only reader up on its dev run', async () => {
+        const searched: string[] = [];
+        const source: TraceSource = {
+            kind: 'dataplex',
+            toProd,
+            links: async (table, column, direction) => {
+                searched.push(`${direction} ${table}.${column}`);
+                if (direction === 'downstream' && table === focus.table) {
+                    return [
+                        { table: 'p.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+                        { table: 'dev.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+                        { table: 'dev.rep.draft', column: 'revenue', dependencyType: 'OTHER' },
+                        { table: 'dev.checks.dash_assertions_rowConditions', column: 'revenue', dependencyType: 'OTHER', assertion: true },
+                    ];
+                }
+                return table === 'dev.rep.draft' ? [{ table: 'dev.rep.final', column: 'revenue', dependencyType: 'EXACT_COPY' }] : [];
+            },
+        };
+        const controller = new TraceController(source, () => undefined, resolveFile);
+        await controller.open(focus);
+        const state = controller.current!;
+
+        assert.deepStrictEqual(state.nodes.filter((node) => node.hop === 1).map((node) => [node.id, !!node.assertion]), [
+            ['p.rep.dash#revenue', false],
+            ['p.rep.draft#revenue', false],
+            ['p.checks.dash_assertions_rowConditions#revenue', true],
+        ]);
+        assert.ok(searched.includes('downstream p.rep.dash.revenue'));
+        assert.ok(!searched.includes('downstream dev.rep.dash.revenue'), 'the prod run is searched, not the dev run');
+        assert.ok(searched.includes('downstream dev.rep.draft.revenue'));
+        assert.ok(!searched.includes('downstream p.rep.draft.revenue'), 'there is no prod table to search yet');
+        assert.ok(state.nodes.some((node) => node.id === 'dev.rep.final#revenue' && node.hop === 2), 'what the dev run feeds is the next hop');
+    });
+
+    test('counts a dev run and the prod run of one action as one reader', () => {
+        const links: ColumnLink[] = [
+            { table: 'p.rep.dash', column: 'revenue', dependencyType: 'OTHER' },
+            { table: 'dev.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+            { table: 'dev.rep.draft', column: 'revenue', dependencyType: 'OTHER' },
+            { table: 'p.rep.draft', column: 'revenue', dependencyType: 'OTHER' },
+            { table: 'dev.rep.dash', dependencyType: 'TABLE_ONLY' },
+        ];
+        assert.deepStrictEqual(countReaders(links, toProd), { copies: 1, derived: 1, mayRead: 1 });
+        assert.deepStrictEqual(countReaders(links), { copies: 1, derived: 3, mayRead: 1 }, 'without dev runs to fold, each table counts');
+        assert.deepStrictEqual(foldLinks(links, toProd).map((link) => link.table), ['p.rep.dash', 'p.rep.draft', 'p.rep.dash']);
+    });
+
+    test('a dev run with only a table-level link is not a reader to check when its prod run has a column link', async () => {
+        const untracked = await untrackedReaders(
+            ['dev.rep.dash', 'p.rep.draft', 'dev.rep.other'],
+            new Set(['p.rep.dash', 'dev.rep.draft']),
+            async () => false,
+            toProd,
+        );
+        assert.deepStrictEqual(untracked, ['dev.rep.other']);
+    });
+
+    test('names the project of a reader in another project that matches no action', () => {
+        const state = addHop(initialTraceState(focus, 'dataplex'), focusId, 'downstream', [
+            { table: 'dev.rep.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+            { table: 'dev.scratch.dash', column: 'revenue', dependencyType: 'EXACT_COPY' },
+            { table: 'p.bi.extract', column: 'revenue', dependencyType: 'EXACT_COPY' },
+            { table: 'other.shared.lookup', column: 'revenue', dependencyType: 'OTHER' },
+        ], resolveFile, toProd);
+        const project = (id: string) => shownProject(state.nodes.find((node) => node.id === id)!, focus.table);
+        assert.strictEqual(project('p.rep.dash#revenue'), undefined, 'folded into its Prod Target');
+        assert.strictEqual(project('dev.scratch.dash#revenue'), 'dev', 'a dev table no action matches');
+        assert.strictEqual(project('p.bi.extract#revenue'), undefined, 'outside this project, but in the same GCP project');
+        assert.strictEqual(project('other.shared.lookup#revenue'), undefined, 'an action of this project');
+        assert.deepStrictEqual(traceCards(state).map((card) => card.project), [undefined, undefined, 'dev', undefined, undefined]);
     });
 });

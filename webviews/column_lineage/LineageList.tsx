@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from 'react';
 import type { LineageDirection, TraceNode, TraceState } from '../../src/shared/columnLineage/types';
 import { TraceRow, frontier, traceRows } from '../../src/shared/columnLineage/traceGraph';
+import { shownProject } from '../../src/shared/columnLineage/traceCards';
 import type { Bridge } from './bridge';
 
 const RELATION: Record<TraceRow['dependencyType'], { label: string; className: string }> = {
@@ -12,6 +13,12 @@ const RELATION: Record<TraceRow['dependencyType'], { label: string; className: s
 /** `dataset.table`, leaving out the project */
 function shortTable(table: string): string {
     return table.split('.').slice(1).join('.') || table;
+}
+
+/** `dataset.table`, with the project in front when it is shown: see {@link shownProject} */
+function tableLabel(node: Pick<TraceNode, 'table' | 'filePath'>, focusTable: string): string {
+    const project = shownProject(node, focusTable);
+    return project ? `${project}.${shortTable(node.table)}` : shortTable(node.table);
 }
 
 interface TableGroup {
@@ -61,13 +68,19 @@ function groupSummary(group: TableGroup): string {
     return [hops, columns && plural(columns, 'column'), links].filter(Boolean).join(' · ');
 }
 
-function TableName({ table, filePath, nodeId, bridge }: { table: string; filePath?: string; nodeId: string; bridge: Bridge }) {
-    return filePath
-        ? <button type="button" className="ln-file" title={`Open ${filePath}`} onClick={() => bridge.post({ type: 'openFile', nodeId })}>{shortTable(table)}</button>
-        : <span title={`${table} (outside this project)`}>{shortTable(table)} <span className="ln-outside">outside project</span></span>;
+function TableName({ table, filePath, nodeId, focusTable, bridge }: { table: string; filePath?: string; nodeId: string; focusTable: string; bridge: Bridge }) {
+    if (filePath) {
+        return <button type="button" className="ln-file" title={`Open ${filePath}`} onClick={() => bridge.post({ type: 'openFile', nodeId })}>{shortTable(table)}</button>;
+    }
+    const project = shownProject({ table }, focusTable);
+    return (
+        <span title={`${table} (outside this project)`}>
+            {project && <span className="ln-dataset">{project}.</span>}{shortTable(table)} <span className="ln-outside">outside project</span>
+        </span>
+    );
 }
 
-function Rows({ rows, showTable, bridge }: { rows: TraceRow[]; showTable?: boolean; bridge: Bridge }) {
+function Rows({ rows, showTable, focusTable, bridge }: { rows: TraceRow[]; showTable?: boolean; focusTable: string; bridge: Bridge }) {
     return (
         <>
             {rows.map((row) => {
@@ -77,11 +90,11 @@ function Rows({ rows, showTable, bridge }: { rows: TraceRow[]; showTable?: boole
                         <td className="ln-col-hop">{Math.abs(row.node.hop)}</td>
                         <td className="ln-cell-col">
                             {row.node.column ?? <span className="ln-cell-none">no column detail</span>}
-                            {showTable && <div className="ln-cell-table ln-cell-sub"><TableName table={row.node.table} filePath={row.node.filePath} nodeId={row.node.id} bridge={bridge} /></div>}
+                            {showTable && <div className="ln-cell-table ln-cell-sub"><TableName table={row.node.table} filePath={row.node.filePath} nodeId={row.node.id} focusTable={focusTable} bridge={bridge} /></div>}
                         </td>
                         <td><span className={`ln-rel ${relation.className}`}>{relation.label}</span></td>
                         <td className="ln-cell-via">
-                            {row.via.map((via) => (via.hop === 0 ? via.column : via.column ? `${shortTable(via.table)}.${via.column}` : shortTable(via.table))).join(', ')}
+                            {row.via.map((via) => (via.hop === 0 ? via.column : via.column ? `${tableLabel(via, focusTable)}.${via.column}` : tableLabel(via, focusTable))).join(', ')}
                         </td>
                     </tr>
                 );
@@ -125,6 +138,7 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
     const hops = rows.length ? Math.max(...rows.map((row) => Math.abs(row.node.hop))) : 0;
     const tables = new Set(rows.map((row) => row.node.table)).size;
     const title = direction === 'downstream' ? 'Downstream' : 'Upstream';
+    const focusTable = state.focus.table;
 
     const isOpen = (key: string) => toggled.get(key) ?? false;
     const toggle = (key: string) => setToggled((current) => new Map(current).set(key, !isOpen(key)));
@@ -160,11 +174,11 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
                             const open = isOpen(group.table);
                             return (
                                 <tbody key={group.table} className="ln-group">
-                                    <GroupHeader open={open} label={shortTable(group.table)} onToggle={() => toggle(group.table)}>
-                                        <span className="ln-cell-table"><TableName table={group.table} filePath={group.filePath} nodeId={group.rows[0].node.id} bridge={bridge} /></span>
+                                    <GroupHeader open={open} label={tableLabel(group, focusTable)} onToggle={() => toggle(group.table)}>
+                                        <span className="ln-cell-table"><TableName table={group.table} filePath={group.filePath} nodeId={group.rows[0].node.id} focusTable={focusTable} bridge={bridge} /></span>
                                         <span className="ln-group-meta">{groupSummary(group)}</span>
                                     </GroupHeader>
-                                    {open && <Rows rows={group.rows} bridge={bridge} />}
+                                    {open && <Rows rows={group.rows} focusTable={focusTable} bridge={bridge} />}
                                 </tbody>
                             );
                         })}
@@ -174,17 +188,17 @@ function Section({ state, direction, bridge }: { state: TraceState; direction: L
                                     <span className="ln-group-title">{plural(assertionTables, 'assertion')}</span>
                                     <span className="ln-group-meta">{plural(assertionRows.length, 'column')} · checks only, not models</span>
                                 </GroupHeader>
-                                {isOpen(ASSERTIONS_KEY) && <Rows rows={assertionRows} showTable bridge={bridge} />}
+                                {isOpen(ASSERTIONS_KEY) && <Rows rows={assertionRows} showTable focusTable={focusTable} bridge={bridge} />}
                             </tbody>
                         )}
                     </table>
                 </div>
             )}
 
-            {errors.map((node) => <div key={node.id} className="ln-list-error" role="alert">{node.column ?? shortTable(node.table)}: {node.error}</div>)}
+            {errors.map((node) => <div key={node.id} className="ln-list-error" role="alert">{node.column ?? tableLabel(node, focusTable)}: {node.error}</div>)}
             {readerErrors.map((node) => (
                 <div key={`${node.id}-readers`} className="ln-list-error" role="alert">
-                    Couldn’t check readers of {shortTable(node.table)} without column lineage: {node.readersError}
+                    Couldn’t check readers of {tableLabel(node, focusTable)} without column lineage: {node.readersError}
                 </div>
             ))}
 

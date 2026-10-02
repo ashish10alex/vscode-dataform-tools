@@ -137,7 +137,7 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
                         onClick={() => onToggle(card.id)}
                     >
                         <span className="ln-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
-                        <span className="ln-table">{dataset && <span className="ln-dataset">{dataset}.</span>}{name}</span>
+                        <span className="ln-table">{card.project && <span className="ln-dataset">{card.project}.</span>}{dataset && <span className="ln-dataset">{dataset}.</span>}{name}</span>
                     </button>
                 )}
                 <div className="ln-card-meta">

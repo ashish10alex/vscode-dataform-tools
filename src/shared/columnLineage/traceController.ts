@@ -8,6 +8,11 @@ export const AUTO_FRONTIER_LIMIT = 25;
 /** Lineage lookups in flight at once while loading a hop */
 const HOP_CONCURRENCY = 6;
 
+/** The table a node's lineage is searched in: its dev run while the prod run of its action hasn't turned up */
+function lineageTableOf(node: TraceNode): string {
+    return node.lineageTable ?? node.table;
+}
+
 export async function inBatches<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
     for (let i = 0; i < items.length; i += size) {
         await Promise.all(items.slice(i, i + size).map(run));
@@ -89,7 +94,7 @@ export class TraceController {
         for (const [nodeId, links] of readers) {
             const node = this.state?.nodes.find((candidate) => candidate.id === nodeId);
             if (node) {
-                void this.fetchTableOnlyReaders(nodeId, node.table, links, generation);
+                void this.fetchTableOnlyReaders(nodeId, lineageTableOf(node), links, generation);
             }
         }
         const expands = [...this.heldExpands];
@@ -177,13 +182,15 @@ export class TraceController {
         this.emit(state);
     }
 
-    /** A column's links, or for a reader known only at table level, the tables that read it */
-    private async lookup(node: TraceNode, direction: LineageDirection): Promise<ColumnLink[]> {
-        if (node.column) {
-            return this.source.links(node.table, node.column, direction);
-        }
-        // A table that reads itself, e.g. an incremental one, isn't a hop further out
-        return (await this.source.tableReaders!(node.table)).filter((link) => link.table !== node.table);
+    /** A column's links, or for a reader known only at table level, the tables that read it. A table that reads itself is left out by {@link addHop}. */
+    private lookup(node: TraceNode, direction: LineageDirection): Promise<ColumnLink[]> {
+        const table = lineageTableOf(node);
+        return node.column ? this.source.links(table, node.column, direction) : this.source.tableReaders!(table);
+    }
+
+    /** {@link addHop} with this trace's files and dev runs folded into their Prod Target */
+    private withHop(state: TraceState, nodeId: string, direction: LineageDirection, links: ColumnLink[]): TraceState {
+        return addHop(state, nodeId, direction, links, this.resolveFile, this.source.toProd?.bind(this.source));
     }
 
     private async fetch(nodeId: string, direction: 'upstream' | 'downstream') {
@@ -202,13 +209,13 @@ export class TraceController {
                 // Upstream was switched off while this lookup ran
                 this.set(setNodeLoading(this.state, nodeId, false));
             } else {
-                this.set(addHop(this.state, nodeId, direction, links, this.resolveFile));
+                this.set(this.withHop(this.state, nodeId, direction, links));
                 // A table-level reader's readers are all table-level already, so only a column has more to look for
                 if (direction === 'downstream' && node.column && this.paused) {
                     this.heldReaders.set(nodeId, links);
                 } else if (direction === 'downstream' && node.column) {
                     // Not awaited: the next hop needs only column links, and table-level readers have no column to follow
-                    void this.fetchTableOnlyReaders(nodeId, node.table, links, generation);
+                    void this.fetchTableOnlyReaders(nodeId, lineageTableOf(node), links, generation);
                 }
             }
         } catch (error: any) {
@@ -227,7 +234,7 @@ export class TraceController {
         try {
             const readers = await this.source.tableOnlyReaders(table, new Set(links.map((link) => link.table)));
             if (generation === this.generation && this.state) {
-                this.set(addHop(setNodeCheckingReaders(this.state, nodeId, false), nodeId, 'downstream', readers, this.resolveFile));
+                this.set(this.withHop(setNodeCheckingReaders(this.state, nodeId, false), nodeId, 'downstream', readers));
             }
         } catch (error: any) {
             if (generation === this.generation && this.state) {

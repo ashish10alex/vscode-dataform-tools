@@ -1,3 +1,4 @@
+import { otherProject } from './impactSummary';
 import { traceRows } from './traceGraph';
 import { DependencyType, TraceNode, TraceState } from './types';
 
@@ -13,6 +14,8 @@ export interface TraceCard {
     /** Undefined for a hop's assertions card, which holds every assertion on that hop */
     table?: string;
     filePath?: string;
+    /** Shown before the table name: see {@link shownProject} */
+    project?: string;
     assertions: boolean;
     /** The card's columns: copies first, then derived, then table-level ("may read") ones */
     rows: TraceNode[];
@@ -35,6 +38,14 @@ export interface CardLink {
 
 const STRENGTH: Record<DependencyType, number> = { EXACT_COPY: 0, OTHER: 1, TABLE_ONLY: 2 };
 
+/**
+ * The project of a table that matches no action in this project and is in another GCP project than the focus, e.g. a
+ * dev run of another repository's table: without it, it would look like the prod table of the same name
+ */
+export function shownProject(node: Pick<TraceNode, 'table' | 'filePath'>, focusTable: string): string | undefined {
+    return node.filePath ? undefined : otherProject(node.table, focusTable);
+}
+
 export function cardIdOf(node: Pick<TraceNode, 'hop' | 'table' | 'assertion'>): string {
     return node.assertion ? `card:${node.hop}:assertions` : `card:${node.hop}:${node.table}`;
 }
@@ -49,11 +60,13 @@ export function traceCards(state: TraceState): TraceCard[] {
         const id = cardIdOf(node);
         let card = cards.get(id);
         if (!card) {
+            const project = node.assertion ? undefined : shownProject(node, state.focus.table);
             card = {
                 id,
                 hop: node.hop,
                 table: node.assertion ? undefined : node.table,
                 filePath: node.assertion ? undefined : node.filePath,
+                ...(project ? { project } : {}),
                 assertions: !!node.assertion,
                 rows: [],
                 relation: new Map(),

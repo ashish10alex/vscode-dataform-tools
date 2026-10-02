@@ -277,7 +277,7 @@ export class ColumnLineagePanel {
             if (run !== this.loadRun) {
                 return;
             }
-            const source = new DataplexTraceSource(loaded.schemas, loaded.index);
+            const source = new DataplexTraceSource(loaded.schemas, loaded.index, loaded.toProd);
             this.resolveFile = source.resolveFile;
             await columns.load(loaded.input, new CachedTraceSource(source), source.resolveFile, this.preferred, this.keepPreferred);
         } catch (error: any) {

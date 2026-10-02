@@ -56,9 +56,31 @@ export function setNodeCheckingReaders(state: TraceState, nodeId: string, checki
     return updateNode(state, nodeId, { checkingReaders: checking, readersError: error });
 }
 
+const STRENGTH: Record<DependencyType, number> = { EXACT_COPY: 0, OTHER: 1, TABLE_ONLY: 2 };
+
+const asIs = (table: string) => table;
+
+/**
+ * Links with dev runs folded into their action's Prod Target (see {@link TraceSource.toProd}): one per table and
+ * column, keeping the strongest link
+ */
+export function foldLinks(links: ColumnLink[], toProd: (table: string) => string = asIs): ColumnLink[] {
+    const folded = new Map<string, ColumnLink>();
+    for (const link of links) {
+        const table = toProd(link.table);
+        const id = traceNodeId(table, link.column);
+        const seen = folded.get(id);
+        if (!seen || STRENGTH[link.dependencyType] < STRENGTH[seen.dependencyType]) {
+            folded.set(id, { ...link, table });
+        }
+    }
+    return [...folded.values()];
+}
+
 /**
  * Adds the links found one hop from `fromId`. A column already in the trace keeps its place and only gains the
- * edge, so a column reached by two paths shows once.
+ * edge, so a column reached by two paths shows once. Dev runs fold into their action's Prod Target through
+ * `toProd`, so a column the prod run and a dev run of one action both read shows once too.
  */
 export function addHop(
     state: TraceState,
@@ -66,6 +88,7 @@ export function addHop(
     direction: LineageDirection,
     links: ColumnLink[],
     resolveFile: (table: string) => string | undefined = () => undefined,
+    toProd: (table: string) => string = asIs,
 ): TraceState {
     const from = state.nodes.find((node) => node.id === fromId);
     if (!from) {
@@ -73,31 +96,46 @@ export function addHop(
     }
     const nodes = [...state.nodes];
     const edges = [...state.edges];
-    const nodeIds = new Set(nodes.map((node) => node.id));
-    const edgeIds = new Set(edges.map((edge) => edge.id));
+    const nodeAt = new Map(nodes.map((node, i) => [node.id, i]));
+    const edgeAt = new Map(edges.map((edge, i) => [edge.id, i]));
     const hop = from.hop + (direction === 'downstream' ? 1 : -1);
 
     for (const link of links) {
-        const id = traceNodeId(link.table, link.column);
-        if (!nodeIds.has(id)) {
-            nodeIds.add(id);
+        const table = toProd(link.table);
+        const id = traceNodeId(table, link.column);
+        if (id === fromId) {
+            // e.g. an incremental table reading itself, or a dev run reading its own prod table: not a hop further out
+            continue;
+        }
+        const devRun = link.table !== table;
+        const at = nodeAt.get(id);
+        if (at === undefined) {
+            nodeAt.set(id, nodes.length);
             nodes.push({
                 id,
-                table: link.table,
+                table,
                 column: link.column,
                 hop,
                 kind: link.column ? 'column' : 'tableOnly',
                 expanded: false,
                 loading: false,
-                filePath: resolveFile(link.table),
+                filePath: resolveFile(table),
+                ...(devRun ? { lineageTable: link.table } : {}),
                 ...(link.assertion ? { assertion: true } : {}),
             });
+        } else if (!devRun && nodes[at].lineageTable && !nodes[at].expanded && !nodes[at].loading) {
+            // The prod run turned up too: its lineage is the one to follow
+            nodes[at] = { ...nodes[at], lineageTable: undefined };
         }
         const [source, target] = direction === 'downstream' ? [fromId, id] : [id, fromId];
         const edgeId = `${source}->${target}`;
-        if (!edgeIds.has(edgeId)) {
-            edgeIds.add(edgeId);
+        const edgeIndex = edgeAt.get(edgeId);
+        if (edgeIndex === undefined) {
+            edgeAt.set(edgeId, edges.length);
             edges.push({ id: edgeId, source, target, dependencyType: link.dependencyType });
+        } else if (STRENGTH[link.dependencyType] < STRENGTH[edges[edgeIndex].dependencyType]) {
+            // A dev run and the prod run can link differently, e.g. one with column lineage and one without
+            edges[edgeIndex] = { ...edges[edgeIndex], dependencyType: link.dependencyType };
         }
     }
 
@@ -204,8 +242,6 @@ export interface TraceRow {
     /** The columns one hop closer to the focus that it links to */
     via: TraceNode[];
 }
-
-const STRENGTH: Record<DependencyType, number> = { EXACT_COPY: 0, OTHER: 1, TABLE_ONLY: 2 };
 
 /** One row per column on a side, by hop, then copies first, then table and column name */
 export function traceRows(state: TraceState, direction: LineageDirection): TraceRow[] {

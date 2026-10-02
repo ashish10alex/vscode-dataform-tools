@@ -183,12 +183,14 @@ export async function computeColumnImpact(
             : { table, fileName: action.fileName, type: action.type, uncheckedReason: 'deleted, and no prod table found' });
     }
 
+    // Readers may be dev runs of any action, deleted ones too
+    const readerToProd = (table: string) => deletedToProd.get(table) ?? toProd(table);
     const changedProd = new Set(changed.map((change) => toProd(change.target)));
     const sqlByProd = new Map(changed.map((change) => {
         const action = actions.get(change.target);
         return [toProd(change.target), action ? actionSql(action) : undefined] as const;
     }));
-    const source = new CachedTraceSource(new DataplexTraceSource(schemas, index));
+    const source = new CachedTraceSource(new DataplexTraceSource(schemas, index, readerToProd));
     const summary = await buildImpactSummary(
         candidates,
         source,
@@ -196,7 +198,7 @@ export async function computeColumnImpact(
             resolveFile,
             changed: changedProd,
             sqlOf: (table) => sqlByProd.get(table),
-            toProd: (table) => deletedToProd.get(table) ?? toProd(table),
+            toProd: readerToProd,
             deleted: new Set(deletedToProd.values()),
             isAssertion: (table) => index.get(table)?.type === 'assertion',
         },

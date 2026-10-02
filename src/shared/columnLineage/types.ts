@@ -32,6 +32,11 @@ export interface TraceSource {
      * has no column to follow. Sources whose traces never hold such readers can leave it out.
      */
     tableReaders?(table: string): Promise<ColumnLink[]>;
+    /**
+     * The Prod Target of a table that is a dev run of an action in this project, other tables as they are. Readers
+     * are folded into it, so a dev run and the prod run of one action show once. Sources without dev runs leave it out.
+     */
+    toProd?(table: string): string;
     clearCache?(): void;
 }
 
@@ -49,7 +54,13 @@ export type TraceNodeKind = 'focus' | 'column' | 'tableOnly';
 
 export interface TraceNode {
     id: string;
+    /** The action's Prod Target when the column was found on a dev run of it */
     table: string;
+    /**
+     * Where the column's lineage is searched when that isn't `table`: the dev run it was found on, while the
+     * prod run of its action isn't among the links found, e.g. a table not deployed yet
+     */
+    lineageTable?: string;
     column?: string;
     /** 0 for the focus column, negative upstream, positive downstream */
     hop: number;

@@ -29,12 +29,13 @@ export interface Lane {
     cardWidth: number;
 }
 
-/** `dataset.table`, as a card's title shows it */
+/** `dataset.table`, as a card's title shows it, with the project in front when the card shows it */
 export function cardTitle(card: TraceCard): string {
     if (!card.table) {
         return 'Assertions';
     }
-    return card.table.split('.').slice(-2).join('.');
+    const title = card.table.split('.').slice(-2).join('.');
+    return card.project ? `${card.project}.${title}` : title;
 }
 
 function laneWidth(cards: TraceCard[]): number {

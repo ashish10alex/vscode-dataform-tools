@@ -1,5 +1,6 @@
 import { SchemaField, columnEntries } from './impactRules';
 import { TraceController, inBatches } from './traceController';
+import { foldLinks } from './traceGraph';
 import { ColumnEntry, ColumnLink, ColumnsView, ReaderCounts, TraceSource, TraceState } from './types';
 
 /** Reader counts looked up at once for the changed columns */
@@ -16,7 +17,9 @@ export interface ColumnsInput {
     message?: string;
 }
 
-export function countReaders(links: ColumnLink[]): ReaderCounts {
+/** Readers by how they use the column, a dev run and the prod run of one action counted once (see {@link TraceSource.toProd}) */
+export function countReaders(found: ColumnLink[], toProd?: (table: string) => string): ReaderCounts {
+    const links = foldLinks(found, toProd);
     return {
         copies: links.filter((link) => link.dependencyType === 'EXACT_COPY').length,
         derived: links.filter((link) => link.dependencyType === 'OTHER').length,
@@ -195,6 +198,10 @@ export class ColumnsController {
         return ++this.generation;
     }
 
+    private get toProd(): ((table: string) => string) | undefined {
+        return this.source?.toProd?.bind(this.source);
+    }
+
     private setView(view: ColumnsView) {
         this.view = view;
         this.emitColumns(view);
@@ -224,7 +231,7 @@ export class ColumnsController {
             try {
                 const links = await this.source.links(this.input.table, column, 'downstream');
                 if (generation === this.generation) {
-                    const counts = countReaders(links);
+                    const counts = countReaders(links, this.toProd);
                     this.counts.set(column, this.source.tableOnlyReaders ? { ...counts, mayRead: undefined } : counts);
                     void this.fetchMayRead(column, links, generation);
                 }
@@ -245,7 +252,7 @@ export class ColumnsController {
         let update: Partial<ReaderCounts>;
         try {
             const readers = await this.source.tableOnlyReaders(table, new Set(links.map((link) => link.table)));
-            update = { mayRead: countReaders(links).mayRead! + readers.length };
+            update = { mayRead: countReaders([...links, ...readers], this.toProd).mayRead };
         } catch (error: any) {
             update = { mayReadError: error?.message ?? String(error) };
         }
