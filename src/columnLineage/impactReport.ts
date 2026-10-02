@@ -17,26 +17,28 @@ export interface DryRunSchemaEvent {
     document: vscode.TextDocument;
     /** Workspace-relative path, as the compiled query panel shows it */
     relativeFilePath?: string;
-    fields: SchemaField[];
+    /** Undefined when the last dry run failed or returned no schema, so labels from an earlier one are dropped */
+    fields?: SchemaField[];
 }
 
 const dryRuns = new Map<string, SchemaField[]>();
 const recorded = new vscode.EventEmitter<DryRunSchemaEvent>();
-/** Fires after each successful dry run of a table, view or incremental table */
+/** Fires after each dry run of a file: with its schema when it defines one table, view or incremental table and the dry run passed */
 export const onDidRecordDryRunSchema = recorded.event;
 
 export function recordDryRunSchema(document: vscode.TextDocument, curFileMeta: any, schema: { fields?: SchemaField[] } | undefined) {
     const fields = (schema?.fields ?? []).filter((field) => field.name);
     if (!fields.length) {
-        dryRuns.delete(document.uri.toString());
+        forgetDryRunSchema(document, curFileMeta);
         return;
     }
     dryRuns.set(document.uri.toString(), fields);
     recorded.fire({ document, relativeFilePath: curFileMeta?.pathMeta?.relativeFilePath, fields });
 }
 
-export function forgetDryRunSchema(document: vscode.TextDocument) {
+export function forgetDryRunSchema(document: vscode.TextDocument, curFileMeta: any) {
     dryRuns.delete(document.uri.toString());
+    recorded.fire({ document, relativeFilePath: curFileMeta?.pathMeta?.relativeFilePath });
 }
 
 /** The Prod Target of the one table the file defines. Throws with a message for the panel otherwise. */

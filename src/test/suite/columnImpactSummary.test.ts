@@ -405,4 +405,14 @@ suite('Column impact summary: host helpers', () => {
         assert.strictEqual(changeSignature(diff, graph('SELECT 1 AS a', 'SELECT 2')), before);
         assert.notStrictEqual(changeSignature(diff, graph('SELECT 1 AS b', 'SELECT 1')), before);
     });
+
+    test('changes signature when only an incremental table\'s incremental query or post operations do', () => {
+        const graph = (extra: object) => ({
+            tables: [{ type: 'incremental', target: { database: 'p', schema: 'marts', name: 'orders' }, query: 'SELECT 1 AS a', ...extra }],
+        }) as unknown as DataformCompiledJson;
+        const diff = { changed: [{ target: 'p.marts.orders', reasons: ['sql'] }], deleted: [] } as any;
+        const before = changeSignature(diff, graph({ incrementalQuery: 'SELECT 1 AS a WHERE x', postOps: ['SELECT 1'] }));
+        assert.notStrictEqual(changeSignature(diff, graph({ incrementalQuery: 'SELECT 1 AS b WHERE x', postOps: ['SELECT 1'] })), before);
+        assert.notStrictEqual(changeSignature(diff, graph({ incrementalQuery: 'SELECT 1 AS a WHERE x', postOps: ['SELECT 2'] })), before);
+    });
 });

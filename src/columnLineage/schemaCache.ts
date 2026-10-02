@@ -33,7 +33,6 @@ export class SchemaCache {
         let pending = this.tables.get(table);
         if (!pending) {
             const [projectId, datasetId, tableId] = table.split('.');
-            this.failures.delete(table);
             pending = metadataReads.run(0, () => {
                 const started = Date.now();
                 return withTimeout(fetchTableMetadata(projectId, datasetId, tableId), METADATA_TIMEOUT_MS, 'Reading the table')
@@ -43,17 +42,23 @@ export class SchemaCache {
                     logger.debug(`Column trace: metadata of ${table}, ${ms} ms`);
                     return metadata;
                 })
+                .then((metadata: any) => {
+                    this.failures.delete(table);
+                    return metadata;
+                })
                 .then((metadata: any) => ({
                     columns: (metadata?.schema?.fields ?? []).map((field: any) => ({ name: String(field.name), type: String(field.type) })),
                     location: metadata?.location ? String(metadata.location) : undefined,
                 }))
                 .catch((error: any) => {
                     logger.debug(`Column trace: no metadata for ${table}: ${error?.message ?? error}`);
-                    if (error?.code !== 404) {
-                        this.failures.set(table, error?.message ?? String(error));
+                    if (error?.code === 404) {
+                        this.failures.delete(table);
+                        return undefined;
                     }
-                    if (error instanceof TimeoutError && this.tables.get(table) === stored) {
-                        // Unlike a missing table, a slow read is worth trying again next time
+                    this.failures.set(table, error?.message ?? String(error));
+                    if (this.tables.get(table) === stored) {
+                        // Unlike a missing table, a slow, rate-limited or unauthorised read is worth trying again next time
                         this.tables.delete(table);
                     }
                     return undefined;

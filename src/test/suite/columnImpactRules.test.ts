@@ -22,6 +22,10 @@ suite('Column impact: schema diff', () => {
     test('reports nothing when the dry run matches prod', () => {
         assert.deepStrictEqual(diffSchemas([{ name: 'player_id', type: 'INT64' }], [{ name: 'PLAYER_ID', type: 'INTEGER' }]), []);
     });
+
+    test('treats DECIMAL and BIGDECIMAL as NUMERIC and BIGNUMERIC', () => {
+        assert.deepStrictEqual(diffSchemas([{ name: 'price', type: 'DECIMAL' }, { name: 'total', type: 'BIGDECIMAL' }], [{ name: 'price', type: 'NUMERIC' }, { name: 'total', type: 'BIGNUMERIC' }]), []);
+    });
 });
 
 suite('Column impact: column list order', () => {
@@ -64,6 +68,23 @@ class CountingSource implements TraceSource {
     links(table: string, column: string, direction: LineageDirection) {
         this.calls.push(`${table}#${column}:${direction}`);
         return this.inner.links(table, column, direction);
+    }
+}
+
+/** Fails the first count of `column`, as a rate-limited lookup would */
+class FlakySource extends CountingSource {
+    private failed = false;
+
+    constructor(private readonly column: string) {
+        super();
+    }
+
+    links(table: string, column: string, direction: LineageDirection) {
+        if (column === this.column && !this.failed) {
+            this.failed = true;
+            return Promise.reject(new Error('Quota exceeded'));
+        }
+        return super.links(table, column, direction);
     }
 }
 
@@ -122,6 +143,26 @@ suite('Column impact: column list controller', () => {
         columns.select('region');
         await columns.relabel(SAMPLE_COLUMNS.dev!);
         assert.strictEqual(last().selected, 'region', 'later dry runs keep the selection');
+    });
+
+    test('drops the labels when the dry run fails, rather than keeping the last one\'s', async () => {
+        const { columns, last, trace } = controller();
+        await columns.load(SAMPLE_COLUMNS, new CachedTraceSource(new SampleTraceSource([0, 0])));
+        assert.ok(last().entries.some((entry) => entry.change));
+        await columns.relabel(undefined);
+        assert.ok(last().unchecked);
+        assert.ok(last().entries.every((entry) => !entry.change));
+        assert.strictEqual(trace()?.focus.change, undefined);
+    });
+
+    test('clears a column\'s count error once a later count of it succeeds', async () => {
+        const { columns, last } = controller();
+        await columns.load(SAMPLE_COLUMNS, new FlakySource('revenue_usd'));
+        assert.strictEqual(last().entries.find((entry) => entry.column === 'revenue_usd')?.countsError, 'Quota exceeded');
+        await columns.relabel(SAMPLE_COLUMNS.dev!);
+        const entry = last().entries.find((candidate) => candidate.column === 'revenue_usd');
+        assert.strictEqual(entry?.countsError, undefined);
+        assert.ok(entry?.counts);
     });
 
     test('relabels after a new dry run, keeping the selection and relabelling its trace', async () => {

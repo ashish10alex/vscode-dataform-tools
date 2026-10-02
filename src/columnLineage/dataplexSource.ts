@@ -112,6 +112,13 @@ export class DataplexTraceSource implements TraceSource {
                     (await searchLinks(this.limiter, Priority.Readers, api, { parent, target: { fullyQualifiedName: lineageFqn(table), field: lineageField(field.name) } }, `probe ${table}.${field.name}`)).length));
                 return counts.some((count) => count > 0);
             })();
+            const stored = pending;
+            // A failed probe, e.g. rate limited, is asked again next time rather than kept
+            stored.catch(() => {
+                if (this.tracked.get(table) === stored) {
+                    this.tracked.delete(table);
+                }
+            });
             this.tracked.set(table, pending);
         }
         return pending;

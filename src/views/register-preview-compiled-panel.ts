@@ -179,6 +179,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             if (!CompiledQueryPanel.centerPanel || !relativeFilePath) {
                 return;
             }
+            if (!fields) {
+                CompiledQueryPanel.centerPanel.postMessage({ columnImpact: { relativeFilePath, changed: undefined } });
+                return;
+            }
             try {
                 const changed = await changedColumnCount(document, fields);
                 CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });

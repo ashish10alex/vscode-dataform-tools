@@ -115,9 +115,10 @@ export class ColumnsController {
 
     /**
      * Labels the columns against a new dry run, keeping the selection, counts and traces. The first dry run after
-     * the list opened unlabelled moves the selection to a changed column, as opening with it would have.
+     * the list opened unlabelled moves the selection to a changed column, as opening with it would have. With no
+     * `dev`, e.g. after a failed dry run, the list goes back to unchecked rather than keeping stale labels.
      */
-    async relabel(dev: SchemaField[]): Promise<void> {
+    async relabel(dev: SchemaField[] | undefined): Promise<void> {
         if (!this.input || this.view?.status !== 'ready') {
             return;
         }
@@ -231,6 +232,7 @@ export class ColumnsController {
             try {
                 const links = await this.source.links(this.input.table, column, 'downstream');
                 if (generation === this.generation) {
+                    this.countErrors.delete(column);
                     const counts = countReaders(links, this.toProd);
                     this.counts.set(column, this.source.tableOnlyReaders ? { ...counts, mayRead: undefined } : counts);
                     void this.fetchMayRead(column, links, generation);

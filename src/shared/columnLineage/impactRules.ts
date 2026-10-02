@@ -13,12 +13,14 @@ export interface ColumnImpact {
     change: ColumnChange;
 }
 
-/** Legacy and standard SQL names for the same type */
+/** Legacy, standard SQL and alias names for the same type */
 const TYPE_ALIASES: Record<string, string> = {
     INTEGER: 'INT64',
     FLOAT: 'FLOAT64',
     BOOLEAN: 'BOOL',
     RECORD: 'STRUCT',
+    DECIMAL: 'NUMERIC',
+    BIGDECIMAL: 'BIGNUMERIC',
 };
 
 function normaliseType(type: string): string {

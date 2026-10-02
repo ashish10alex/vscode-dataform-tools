@@ -214,7 +214,9 @@ function Trace({ state: fullState, bridge, onlyCopies }: { state: TraceState; br
             {noReaders && (
                 <div className="ln-empty" role="status">
                     <strong>No downstream readers found.</strong>
-                    <span>Dataplex keeps 30 days of run history and can't see BI tools or notebooks, so this doesn't prove the column is unused.</span>
+                    {state.sourceKind === 'dataplex' && (
+                        <span>Dataplex keeps 30 days of run history and can't see BI tools or notebooks, so this doesn't prove the column is unused.</span>
+                    )}
                 </div>
             )}
             {onlyCopies && hiddenByFilter > 0 && (

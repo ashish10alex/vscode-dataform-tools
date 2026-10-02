@@ -32,7 +32,11 @@ export interface CompiledAction {
     fileName?: string;
     hasOutput?: boolean;
     query?: string;
+    incrementalQuery?: string;
     preOps?: string[];
+    postOps?: string[];
+    incrementalPreOps?: string[];
+    incrementalPostOps?: string[];
     queries?: string[];
     dependencyTargets?: Target[];
 }
@@ -47,9 +51,17 @@ function compiledActions(graph: DataformCompiledJson): Map<string, CompiledActio
     return actions;
 }
 
-/** Everything the action runs, for checking whether it still names a column */
+/** Everything the action runs, incremental runs included, for checking whether it still names a column */
 function actionSql(action: CompiledAction): string {
-    return [...(action.preOps ?? []), action.query ?? '', ...(action.queries ?? [])].join('\n');
+    return [
+        ...(action.preOps ?? []),
+        action.query ?? '',
+        ...(action.postOps ?? []),
+        ...(action.incrementalPreOps ?? []),
+        action.incrementalQuery ?? '',
+        ...(action.incrementalPostOps ?? []),
+        ...(action.queries ?? []),
+    ].join('\n');
 }
 
 /** The query whose schema the table gets: an incremental table's is its non-incremental query */

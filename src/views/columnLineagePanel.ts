@@ -80,6 +80,11 @@ export class ColumnLineagePanel {
             onDidCompile((graph) => void this.checkImpactStale(graph)),
         );
         panel.onDidDispose(() => {
+            // Stops abandoned loads, impact runs and traces from starting more BigQuery and Dataplex work
+            this.loadRun++;
+            this.impactRun++;
+            this.controller?.pause();
+            this.columns?.trace?.pause();
             this.disposables.forEach((disposable) => disposable.dispose());
             if (ColumnLineagePanel.current === this) {
                 ColumnLineagePanel.current = undefined;
@@ -138,6 +143,7 @@ export class ColumnLineagePanel {
         const panel = ColumnLineagePanel.open(context, title, column);
         if (panel.impact) {
             panel.leaveImpact();
+            panel.controller?.pause();
             panel.controller = undefined;
         }
         const columns = panel.columns;
@@ -265,6 +271,7 @@ export class ColumnLineagePanel {
             return;
         }
         const run = ++this.loadRun;
+        this.controller?.pause();
         this.controller = undefined;
         this.pendingFocus = undefined;
         const columns: ColumnsController = this.columns ??= new ColumnsController(
@@ -288,12 +295,15 @@ export class ColumnLineagePanel {
     }
 
     private trace(focus: TraceFocus, source: TraceSource, resolveFile: (table: string) => string | undefined) {
+        this.controller?.pause();
         this.resolveFile = resolveFile;
-        this.controller = new TraceController(
+        // A trace that was replaced or closed keeps finishing hops it started: they mustn't reach the view
+        const controller: TraceController = new TraceController(
             source,
-            (state) => this.post({ type: 'trace', state }),
+            (state) => this.controller === controller && !this.columns && this.post({ type: 'trace', state }),
             resolveFile,
         );
+        this.controller = controller;
         if (!this.ready) {
             this.pendingFocus = focus;
             return;
@@ -387,7 +397,6 @@ export class ColumnLineagePanel {
         if (!entry || !this.impactSource) {
             return;
         }
-        this.controller?.pause();
         this.trace({ table, column, change: entry.change }, this.impactSource, this.resolveFile);
     }
 
