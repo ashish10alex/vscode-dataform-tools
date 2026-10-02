@@ -146,7 +146,9 @@ export class DataplexTraceSource implements TraceSource {
             const columnLinks = await searchLinks(this.limiter, Priority.ColumnLinks, api, { parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }, `${direction} ${table}.${column}`);
 
             // Dataplex returns lowercase names; show them as each table's schema spells them
-            const links: ColumnLink[] = await Promise.all(columnLinksFromApi(columnLinks, direction).map(async (link) => ({
+            const found = columnLinksFromApi(columnLinks, direction);
+            logger.debug(`Column trace: ${direction} ${table}.${column}: reading ${new Set(found.map((link) => link.table)).size} tables to spell ${found.length} columns`);
+            const links: ColumnLink[] = await Promise.all(found.map(async (link) => ({
                 ...link,
                 column: link.column && await this.schemas.casing(link.table, link.column),
                 ...(this.isAssertion(link.table) ? { assertion: true } : {}),

@@ -1,6 +1,22 @@
 import { logger } from '../logger';
 import { fetchTableMetadata } from '../hoverProvider';
 import { SchemaColumn } from '../shared/columnLineage/graphLinks';
+import { Limiter } from '../shared/columnLineage/limiter';
+
+/** Metadata reads in flight at once across every trace; a wide hop would otherwise start one per linked table */
+const metadataReads = new Limiter(6);
+/** A read that takes longer is given up on, so one stuck call can't hold a trace on "Loading hop…" */
+const METADATA_TIMEOUT_MS = 15_000;
+
+class TimeoutError extends Error {}
+
+function withTimeout<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new TimeoutError(`${what} took longer than ${ms / 1000} s`)), ms);
+    });
+    return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
 
 interface TableInfo {
     columns: SchemaColumn[];
@@ -15,10 +31,13 @@ export class SchemaCache {
         let pending = this.tables.get(table);
         if (!pending) {
             const [projectId, datasetId, tableId] = table.split('.');
-            const started = Date.now();
-            pending = fetchTableMetadata(projectId, datasetId, tableId)
-                .then((metadata: any) => {
-                    logger.debug(`Column trace: metadata of ${table}, ${Date.now() - started} ms`);
+            pending = metadataReads.run(0, () => {
+                const started = Date.now();
+                return withTimeout(fetchTableMetadata(projectId, datasetId, tableId), METADATA_TIMEOUT_MS, 'Reading the table')
+                    .then((metadata: any) => [metadata, Date.now() - started] as const);
+            })
+                .then(([metadata, ms]) => {
+                    logger.debug(`Column trace: metadata of ${table}, ${ms} ms`);
                     return metadata;
                 })
                 .then((metadata: any) => ({
@@ -27,8 +46,13 @@ export class SchemaCache {
                 }))
                 .catch((error: any) => {
                     logger.debug(`Column trace: no metadata for ${table}: ${error?.message ?? error}`);
+                    if (error instanceof TimeoutError && this.tables.get(table) === stored) {
+                        // Unlike a missing table, a slow read is worth trying again next time
+                        this.tables.delete(table);
+                    }
                     return undefined;
                 });
+            const stored = pending;
             this.tables.set(table, pending);
         }
         return pending;
