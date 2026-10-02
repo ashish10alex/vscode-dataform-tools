@@ -22,6 +22,9 @@ async function lineageClient(): Promise<LineageClient> {
 
 type SearchRequest = Parameters<LineageClient['searchLinks']>[0];
 
+/** The most links a search page can hold; the API returns 10 a page unless asked for more */
+const PAGE_SIZE = 100;
+
 /** Dataplex calls in flight at once for a panel, across every column's trace and count */
 const MAX_SEARCHES = 8;
 
@@ -39,7 +42,7 @@ async function searchLinks(limiter: Limiter, priority: Priority, api: LineageCli
     const started = Date.now();
     const links: any[] = [];
     let pages = 0;
-    let next: SearchRequest | null | undefined = request;
+    let next: SearchRequest | null | undefined = { ...request, pageSize: PAGE_SIZE };
     while (next) {
         const current: SearchRequest = next;
         const [page, nextRequest]: [any[], SearchRequest | null, unknown] = await limiter.run(priority, () => api.searchLinks(current, { autoPaginate: false }));
