@@ -222,19 +222,14 @@
                 "title": "Open Dependency Inspector"
             },
             {
-                "command": "vscode-dataform-tools.traceColumnLineage",
+                "command": "vscode-dataform-tools.columnLineage",
                 "category": "Dataform",
-                "title": "Trace Column Lineage Under Cursor"
+                "title": "Show Column Lineage and Impact"
             },
             {
                 "command": "vscode-dataform-tools.traceColumnLineageGuessed",
                 "category": "Dataform",
                 "title": "Trace Column Lineage Under Cursor (Guessed From Dependency Graph)"
-            },
-            {
-                "command": "vscode-dataform-tools.checkColumnImpact",
-                "category": "Dataform",
-                "title": "Check Column Impact"
             },
             {
                 "command": "vscode-dataform-tools.formatDocument",
@@ -407,8 +402,8 @@
         "menus": {
             "commandPalette": [
                 {
-                    "command": "vscode-dataform-tools.checkColumnImpact",
-                    "when": "false"
+                    "command": "vscode-dataform-tools.traceColumnLineageGuessed",
+                    "when": "vscode-dataform-tools.devMode"
                 },
                 {
                     "command": "vscode-dataform-tools.runTests",

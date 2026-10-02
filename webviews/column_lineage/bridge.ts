@@ -1,8 +1,9 @@
 import type { WebviewApi } from 'vscode-webview';
 import type { HostToViewMessage, ViewToHostMessage } from '../../src/shared/columnLineage/types';
 import { TraceController } from '../../src/shared/columnLineage/traceController';
-import { SAMPLE_FOCUS, SAMPLE_IMPACT, SampleTraceSource, resolveSampleFile } from '../../src/shared/columnLineage/sampleSource';
-import type { ImpactView } from '../../src/shared/columnLineage/types';
+import { ColumnsController } from '../../src/shared/columnLineage/columnsController';
+import { CachedTraceSource } from '../../src/shared/columnLineage/cachedSource';
+import { SAMPLE_COLUMNS, SAMPLE_FOCUS, SampleTraceSource, resolveSampleFile } from '../../src/shared/columnLineage/sampleSource';
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
@@ -25,49 +26,43 @@ function vscodeBridge(api: WebviewApi<unknown>): Bridge {
 }
 
 /**
- * Outside VS Code (a plain browser, for previewing the UI) the trace runs in the page against the sample
- * source, through the same controller the extension host uses.
+ * Outside VS Code (a plain browser, for previewing the UI) the panel runs in the page against the sample
+ * source, through the same controllers the extension host uses. `#trace` previews a single trace with no
+ * column list; `#unchecked` a column list with no dry run to label it; `#many` one where most columns changed.
  */
 function standaloneBridge(): Bridge {
     const listeners = new Set<(message: HostToViewMessage) => void>();
-    const controller = new TraceController(
-        new SampleTraceSource(),
-        (state) => listeners.forEach((listener) => listener({ type: 'trace', state })),
-        resolveSampleFile,
-    );
     const emit = (message: HostToViewMessage) => listeners.forEach((listener) => listener(message));
-    // `#impact` previews impact mode: a short "checking" state, then the sample changes with the first one traced
-    let impact: ImpactView | null = null;
-    const select = (column: string) => {
-        const entry = SAMPLE_IMPACT.entries.find((candidate) => candidate.column === column);
-        if (!entry || !impact) {
-            return;
-        }
-        impact = { ...impact, selected: column };
-        emit({ type: 'impact', impact });
-        void controller.open({ table: SAMPLE_IMPACT.table, column, change: entry.change });
-    };
-    const checkImpact = () => {
-        impact = { status: 'loading', entries: [] };
-        emit({ type: 'trace', state: null });
-        emit({ type: 'impact', impact });
+    const trace = new TraceController(new SampleTraceSource(), (state) => emit({ type: 'trace', state }), resolveSampleFile);
+    const columns = new ColumnsController(
+        (view) => emit({ type: 'columns', columns: view }),
+        (state) => emit({ type: 'trace', state }),
+    );
+    const traceOnly = location.hash === '#trace';
+    const active = () => (traceOnly ? trace : columns.trace);
+    const load = () => {
+        columns.loading();
+        // A short pause, as reading the schemas would take
         setTimeout(() => {
-            impact = { status: 'ready', table: SAMPLE_IMPACT.table, entries: SAMPLE_IMPACT.entries, checkedAt: Date.now() };
-            emit({ type: 'impact', impact });
-            select(SAMPLE_IMPACT.entries[0].column);
-        }, 700);
+            const input = location.hash === '#unchecked'
+                ? { ...SAMPLE_COLUMNS, dev: undefined }
+                : location.hash === '#many'
+                    ? { ...SAMPLE_COLUMNS, dev: [{ name: 'region', type: 'INT64' }, { name: 'revenue_eur', type: 'NUMERIC' }] }
+                    : SAMPLE_COLUMNS;
+            void columns.load(input, new CachedTraceSource(new SampleTraceSource()), resolveSampleFile);
+        }, 500);
     };
     return {
         hosted: false,
         post(message) {
             switch (message.type) {
-                case 'webviewReady': location.hash === '#impact' ? checkImpact() : void controller.open(SAMPLE_FOCUS); break;
-                case 'selectImpact': select(message.column); break;
-                case 'recheckImpact': checkImpact(); break;
-                case 'expand': void controller.expand(message.nodeId); break;
-                case 'expandLevel': void controller.expandLevel(message.direction); break;
-                case 'setUpstream': void controller.setUpstream(message.on); break;
-                case 'refresh': void controller.refresh(); break;
+                case 'webviewReady': traceOnly ? void trace.open(SAMPLE_FOCUS) : load(); break;
+                case 'selectColumn': columns.select(message.column); break;
+                case 'recheckColumns': load(); break;
+                case 'expand': void active()?.expand(message.nodeId); break;
+                case 'expandLevel': void active()?.expandLevel(message.direction); break;
+                case 'setUpstream': void (traceOnly ? trace.setUpstream(message.on) : columns.setUpstream(message.on)); break;
+                case 'refresh': void active()?.refresh(); break;
                 case 'openFile': console.log('Would open the file for', message.nodeId); break;
             }
         },

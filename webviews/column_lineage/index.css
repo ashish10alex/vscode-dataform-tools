@@ -81,31 +81,69 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
 .ln-banner strong { color: var(--ln-fg); font-weight: 600; }
 
 /* ---------- impact mode: changed columns beside the trace ---------- */
-.ln-split { flex: 1; min-height: 0; display: flex; }
-.ln-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ln-stack { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ln-main { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .ln-main-empty { flex: 1; display: grid; place-items: center; color: var(--ln-dim); padding: 24px; text-align: center; }
-.ln-sidebar {
-  width: 290px; flex: none; display: flex; flex-direction: column; min-height: 0;
-  border-right: 1px solid var(--ln-border); background: var(--ln-surface);
-}
-.ln-side-head { display: grid; gap: 3px; padding: 14px 14px 10px; border-bottom: 1px solid var(--ln-border); }
-.ln-side-table { font-family: var(--ln-mono); font-size: 12px; overflow-wrap: anywhere; }
-.ln-side-status { padding: 12px 14px; color: var(--ln-dim); line-height: 1.5; display: flex; gap: 8px; align-items: flex-start; }
-.ln-side-status .ln-spinner { margin-top: 3px; flex: none; }
+
+/* ---------- column picker bar ---------- */
+.ln-bar { display: grid; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--ln-border); background: var(--ln-surface); }
+.ln-bar-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.ln-bar-table { font-family: var(--ln-mono); font-size: 12px; overflow-wrap: anywhere; min-width: 0; }
+.ln-bar-checked { font-size: 11.5px; color: var(--ln-dim); display: inline-flex; align-items: center; gap: 6px; }
+.ln-bar-status { color: var(--ln-dim); line-height: 1.5; }
 .ln-side-error { color: var(--ln-error); }
-.ln-impact-list { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
-.ln-impact {
-  width: 100%; display: grid; gap: 3px; text-align: left; cursor: pointer;
-  background: none; border: 0; border-left: 2px solid transparent; padding: 7px 12px 7px 12px;
+/* Labels share one column, as wide as the longest */
+.ln-bar-lines { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; gap: 8px 14px; }
+.ln-bar-line { display: contents; }
+.ln-bar-label { font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ln-dim); padding-top: 5px; }
+.ln-bar-new .ln-bar-label { padding-top: 1px; }
+.ln-bar-new-list { font-family: var(--ln-mono); font-size: 12px; color: var(--ln-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) {
+  .ln-bar-lines { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .ln-bar-label { padding-top: 6px; }
 }
-.ln-impact:hover { background: var(--ln-surface-hover); }
-.ln-impact.is-selected { background: var(--vscode-list-activeSelectionBackground, rgba(4, 57, 94, 0.6)); color: var(--vscode-list-activeSelectionForeground, inherit); border-left-color: var(--ln-focus); }
-.ln-impact.is-unread .ln-impact-col { color: var(--ln-dim); }
-.ln-impact-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.ln-impact-col { font-family: var(--ln-mono); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.ln-impact-counts { font-size: 11.5px; color: var(--ln-dim); }
-.ln-impact.is-selected .ln-impact-counts { color: inherit; opacity: 0.8; }
-.ln-side-foot { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--ln-border); font-size: 11.5px; color: var(--ln-dim); }
+
+/* Two rows of chips at most; the rest are clipped and counted in "+N more" */
+.ln-chips-row { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.ln-chips { position: relative; display: flex; flex-wrap: wrap; gap: 6px; max-height: calc(2 * 26px + 6px); overflow: hidden; min-width: 0; flex: 0 1 auto; }
+.ln-col-chip {
+  height: 26px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
+  padding: 0 9px; border: 1px solid var(--ln-border); border-radius: 13px; background: var(--ln-bg); color: var(--ln-fg);
+  cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+.ln-col-chip:hover { background: var(--ln-surface-hover); }
+.ln-col-chip.is-selected { border-color: var(--ln-focus); background: var(--vscode-list-activeSelectionBackground, rgba(4, 57, 94, 0.6)); color: var(--vscode-list-activeSelectionForeground, inherit); }
+.ln-col-chip-name { font-family: var(--ln-mono); font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ln-col-chip-change { color: var(--ln-warn); font-size: 11.5px; }
+.ln-col-chip-readers { color: var(--ln-dim); font-size: 11.5px; }
+.ln-col-chip.is-selected .ln-col-chip-readers { color: inherit; opacity: 0.8; }
+.ln-col-chip.is-unread .ln-col-chip-name, .ln-col-chip.is-unread .ln-col-chip-change { opacity: 0.7; }
+.ln-col-chip-more { flex: none; color: var(--ln-link); }
+
+/* Column search: a combobox with its list below */
+.ln-search { position: relative; width: min(420px, 100%); }
+.ln-search input {
+  width: 100%; box-sizing: border-box; padding: 4px 8px; font: inherit; color: var(--vscode-input-foreground, var(--ln-fg));
+  background: var(--vscode-input-background, var(--ln-bg)); border: 1px solid var(--vscode-input-border, var(--ln-border)); border-radius: 2px;
+}
+.ln-search input::placeholder { color: var(--vscode-input-placeholderForeground, var(--ln-dim)); }
+.ln-search input:focus { outline: 1px solid var(--ln-focus); outline-offset: -1px; }
+.ln-search-list {
+  position: absolute; z-index: 20; top: calc(100% + 2px); left: 0; right: 0; max-height: min(360px, 60vh); overflow-y: auto;
+  margin: 0; padding: 4px 0; list-style: none; background: var(--vscode-editorSuggestWidget-background, var(--ln-surface));
+  border: 1px solid var(--vscode-editorSuggestWidget-border, var(--ln-border)); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.ln-search-option { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 6px; cursor: pointer; min-width: 0; }
+.ln-search-option:hover { background: var(--ln-surface-hover); }
+.ln-search-option.is-active { background: var(--vscode-list-activeSelectionBackground, rgba(4, 57, 94, 0.6)); color: var(--vscode-list-activeSelectionForeground, inherit); }
+.ln-search-option.is-new { cursor: default; opacity: 0.6; }
+.ln-search-option.is-new:hover { background: none; }
+.ln-search-check { width: 12px; flex: none; color: var(--ln-link); text-align: center; }
+.ln-search-col { font-family: var(--ln-mono); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ln-search-type { font-family: var(--ln-mono); font-size: 11px; color: var(--ln-dim); flex: none; }
+.ln-search-readers { margin-left: auto; font-size: 11.5px; color: var(--ln-dim); flex: none; }
+.ln-search-option .ln-chip { flex: none; }
+.ln-search-note { padding: 4px 10px; font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ln-dim); }
 .ln-button:disabled { opacity: 0.5; cursor: default; }
 
 /* ---------- list view ---------- */
@@ -118,6 +156,10 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
   width: min(360px, 100%); padding: 4px 8px; font: inherit; color: var(--vscode-input-foreground, var(--ln-fg));
   background: var(--vscode-input-background, var(--ln-surface)); border: 1px solid var(--vscode-input-border, var(--ln-border)); border-radius: 2px;
 }
+.ln-list-filter { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ln-list-hidden { font-size: 12px; color: var(--ln-dim); }
+.ln-link { background: none; border: 0; padding: 0; font: inherit; color: var(--vscode-textLink-foreground, #3794ff); cursor: pointer; }
+.ln-link:hover { text-decoration: underline; }
 .ln-list-filter input:focus { outline: 1px solid var(--ln-focus); outline-offset: -1px; }
 .ln-list-section { display: grid; gap: 8px; }
 .ln-list-heading { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }

@@ -261,8 +261,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const canCheckColumnImpact = tableActions(state.targetTablesOrViews).length === 1;
 
   const handleColumnImpact = () => {
-    vscode.postMessage({ command: "checkColumnImpact" });
+    vscode.postMessage({ command: "columnLineage" });
   };
+  // From a schema diff after each dry run; no lineage is read until the panel opens
+  const changedColumns = state.columnImpact?.relativeFilePath === state.relativeFilePath ? state.columnImpact?.changed ?? 0 : 0;
 
   const handleDependencyGraph = () => {
     vscode.postMessage({ command: "dependencyGraph", value: true });
@@ -638,9 +640,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       onClick={handleColumnImpact}
                       disabled={state.recompiling || state.dryRunning}
                       className={SECONDARY_BUTTON}
-                      title="Compare this dry run with prod and show which downstream columns still read a dropped or retyped column (Dataplex lineage)"
+                      title={changedColumns
+                          ? `This dry run drops or retypes ${changedColumns} column${changedColumns === 1 ? '' : 's'} against prod. Show every column's lineage, those first (Dataplex lineage)`
+                          : "Show the lineage of each of this table's columns, and which ones this dry run drops or retypes against prod (Dataplex lineage)"}
                   >
                       <GitCompareArrows className="w-4 h-4 mr-1.5" /> Column impact
+                      {changedColumns > 0 && (
+                          <span className="ml-1.5 px-1.5 rounded-full text-[11px] leading-4 bg-[var(--vscode-editorWarning-foreground)] text-[var(--vscode-editor-background)]">
+                              {changedColumns} changed
+                          </span>
+                      )}
                   </button>
               )}
           </div>

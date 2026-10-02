@@ -1,4 +1,5 @@
-import { ColumnLink, DependencyType, ImpactEntry, LineageDirection, TraceFocus, TraceSource } from './types';
+import type { ColumnsInput } from './columnsController';
+import { ColumnLink, DependencyType, LineageDirection, TraceFocus, TraceSource } from './types';
 
 // Example lineage for previewing the trace panel in a plain browser, where there is no Dataplex to ask.
 
@@ -20,6 +21,12 @@ const READS: Record<string, [string, DependencyType][]> = {
         ['reporting.exec_summary#revenue_usd', 'EXACT_COPY'],
         ['reporting.revenue_by_region#revenue_usd', 'OTHER'],
     ],
+    'marts.fct_daily_revenue#order_date': [
+        ['reporting.revenue_dashboard#order_date', 'EXACT_COPY'],
+        ['finance.monthly_close#close_month', 'OTHER'],
+    ],
+    'marts.fct_daily_revenue#region': [['reporting.revenue_by_region#region', 'EXACT_COPY']],
+    'marts.fct_daily_revenue#order_count': [['reporting.exec_summary#orders_per_day', 'OTHER']],
     'finance.monthly_close#total_revenue': [['finance.board_pack#q_revenue', 'OTHER']],
     'ml.customer_ltv_features#ltv_90d': [
         ['ml.churn_training_set#ltv_90d', 'EXACT_COPY'],
@@ -45,12 +52,24 @@ export const SAMPLE_FOCUS: TraceFocus = {
     change: { kind: 'dropped' },
 };
 
-/** A sample impact check on the focus table: one dropped column with readers, one retyped column with none */
-export const SAMPLE_IMPACT: { table: string; entries: ImpactEntry[] } = {
+/** Sample columns of the focus table: prod's schema, and a dry run that drops one, retypes one and adds one */
+export const SAMPLE_COLUMNS: ColumnsInput = {
     table: SAMPLE_FOCUS.table,
-    entries: [
-        { column: 'revenue_usd', change: { kind: 'dropped' }, copies: 1, derived: 2, mayRead: 1 },
-        { column: 'order_count', change: { kind: 'typeChanged', from: 'INT64', to: 'STRING' }, copies: 0, derived: 0, mayRead: 0 },
+    prod: [
+        { name: 'order_date', type: 'DATE' },
+        { name: 'region', type: 'STRING' },
+        { name: 'revenue_usd', type: 'NUMERIC' },
+        { name: 'order_count', type: 'INT64' },
+        { name: 'avg_basket_usd', type: 'NUMERIC' },
+        { name: 'loaded_at', type: 'TIMESTAMP' },
+    ],
+    dev: [
+        { name: 'order_date', type: 'DATE' },
+        { name: 'region', type: 'STRING' },
+        { name: 'order_count', type: 'STRING' },
+        { name: 'avg_basket_usd', type: 'NUMERIC' },
+        { name: 'loaded_at', type: 'TIMESTAMP' },
+        { name: 'revenue_eur', type: 'NUMERIC' },
     ],
 };
 

@@ -40,9 +40,7 @@ import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
 import { ColumnLineagePanel } from './views/columnLineagePanel';
-import { GraphSampleSource, focusFromEditor } from './columnLineage/graphSampleSource';
-import { DataplexTraceSource } from './columnLineage/dataplexSource';
-import { analyzeColumnImpact } from './columnLineage/impactReport';
+import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineage/graphSampleSource';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
@@ -161,28 +159,28 @@ export async function activate(context: vscode.ExtensionContext) {
         createDependencyInspectorPanel(context, activeFilePath ?? lastDataformFilePath);
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineage', async () => {
-        const picked = await focusFromEditor(true);
-        if (picked) {
-            const source = new DataplexTraceSource(picked.schemas, picked.index);
-            ColumnLineagePanel.show(context, picked.focus, source, source.resolveFile);
-        }
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.checkColumnImpact', () => {
-        const document = vscode.window.activeTextEditor?.document ?? activeDocumentObj;
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.columnLineage', () => {
+        // From the compiled query panel no text editor is active, so find the one showing its file
+        const editor = vscode.window.activeTextEditor
+            ?? vscode.window.visibleTextEditors.find((visible) => visible.document === activeDocumentObj);
+        const document = editor?.document ?? activeDocumentObj;
         if (!document) {
-            vscode.window.showInformationMessage('Open a .sqlx file to check its column impact.');
+            vscode.window.showInformationMessage('Open a .sqlx file to see the lineage of its columns.');
             return;
         }
-        ColumnLineagePanel.showImpact(context, () => analyzeColumnImpact(document));
+        // Open as a tab beside the compiled query panel when it sits in another group, rather than splitting again
+        const compiledColumn = CompiledQueryPanel.centerPanel?.webviewPanel?.viewColumn;
+        const column = compiledColumn !== undefined && compiledColumn !== editor?.viewColumn ? compiledColumn : vscode.ViewColumn.Beside;
+        ColumnLineagePanel.showColumns(context, document, editor && wordAtCursor(editor), column);
     }));
 
+    // For trying the panel where Dataplex has no lineage; in the palette only when developing the extension
+    void vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.devMode', context.extensionMode === vscode.ExtensionMode.Development);
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.traceColumnLineageGuessed', async () => {
-        const picked = await focusFromEditor(false);
+        const picked = await focusFromEditor();
         if (picked) {
             const source = new GraphSampleSource(picked.schemas, picked.index);
-            ColumnLineagePanel.show(context, picked.focus, source, source.resolveFile);
+            ColumnLineagePanel.showTrace(context, picked.focus, source, source.resolveFile);
         }
     }));
 

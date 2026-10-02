@@ -1,90 +1,98 @@
 import * as vscode from 'vscode';
-import { GraphAction, indexGraph, targetFqn } from '../shared/columnLineage/graphLinks';
-import { ColumnLink, ImpactEntry } from '../shared/columnLineage/types';
+import path from 'path';
+import { getWorkspaceFolder } from '../utils';
+import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
 import { tableActions } from '../shared/columnLineage/tableActions';
-import { DataplexTraceSource } from './dataplexSource';
-import { ColumnImpact, SchemaField, diffSchemas } from './impactRules';
+import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
+import { ColumnsInput } from '../shared/columnLineage/columnsController';
 import { indexByProdTarget } from './prodIndex';
 import { SchemaCache } from './schemaCache';
 
 /*
- * The column impact check, run on demand: compares the schema of the file's last dry run with its Prod
- * Target's, and asks Dataplex which columns still read each dropped or retyped one.
+ * Where the column list gets its columns: the schema of the file's Prod Target, and the schema its last dry run
+ * returned, kept here so labelling changes against prod doesn't need another dry run.
  */
 
-interface DryRunRecord {
-    uri: string;
-    curFileMeta: any;
+export interface DryRunSchemaEvent {
+    document: vscode.TextDocument;
+    /** Workspace-relative path, as the compiled query panel shows it */
+    relativeFilePath?: string;
     fields: SchemaField[];
 }
 
-let lastDryRun: DryRunRecord | undefined;
+const dryRuns = new Map<string, SchemaField[]>();
+const recorded = new vscode.EventEmitter<DryRunSchemaEvent>();
+/** Fires after each successful dry run of a table, view or incremental table */
+export const onDidRecordDryRunSchema = recorded.event;
 
-/** Keeps the schema a dry run returned, so the check doesn't need another dry run */
 export function recordDryRunSchema(document: vscode.TextDocument, curFileMeta: any, schema: { fields?: SchemaField[] } | undefined) {
     const fields = (schema?.fields ?? []).filter((field) => field.name);
-    lastDryRun = fields.length ? { uri: document.uri.toString(), curFileMeta, fields } : undefined;
+    if (!fields.length) {
+        dryRuns.delete(document.uri.toString());
+        return;
+    }
+    dryRuns.set(document.uri.toString(), fields);
+    recorded.fire({ document, relativeFilePath: curFileMeta?.pathMeta?.relativeFilePath, fields });
 }
 
 export function forgetDryRunSchema(document: vscode.TextDocument) {
-    if (lastDryRun?.uri === document.uri.toString()) {
-        lastDryRun = undefined;
-    }
+    dryRuns.delete(document.uri.toString());
 }
 
-export interface ImpactAnalysis {
-    /** Prod Target compared with */
-    table: string;
-    results: { impact: ColumnImpact; links: ColumnLink[] }[];
-    /** Set when there is nothing to compare, e.g. no prod table yet */
-    note?: string;
-    schemas: SchemaCache;
-    index: Map<string, GraphAction>;
-}
-
-export function toImpactEntries(analysis: ImpactAnalysis): ImpactEntry[] {
-    return analysis.results
-        .map(({ impact, links }) => ({
-            column: impact.column,
-            change: impact.change,
-            copies: links.filter((link) => link.dependencyType === 'EXACT_COPY').length,
-            derived: links.filter((link) => link.dependencyType === 'OTHER').length,
-            mayRead: links.filter((link) => link.dependencyType === 'TABLE_ONLY').length,
-        }))
-        .sort((a, b) => (b.copies + b.derived + b.mayRead) - (a.copies + a.derived + a.mayRead) || a.column.localeCompare(b.column));
-}
-
-/** Throws with a message for the panel when the file can't be checked */
-export async function analyzeColumnImpact(document: vscode.TextDocument): Promise<ImpactAnalysis> {
-    const record = lastDryRun;
-    if (!record || record.uri !== document.uri.toString()) {
-        throw new Error('No dry run for this file yet. Save it or refresh the compiled query panel, then check again.');
-    }
-    const tables = tableActions<{ type?: string; target: { database: string; schema: string; name: string } }>(record.curFileMeta?.fileMetadata?.tables);
-    const action = tables[0];
-    if (tables.length !== 1) {
-        throw new Error('Column impact works for .sqlx files that define one table, view or incremental table.');
-    }
+/** The Prod Target of the one table the file defines. Throws with a message for the panel otherwise. */
+async function locate(document: vscode.TextDocument): Promise<{ table: string; index: Map<string, GraphAction> }> {
     if (!CACHED_COMPILED_DATAFORM_JSON) {
         throw new Error('Compile the project first.');
     }
-
-    const { index, toProd } = await indexByProdTarget(indexGraph(CACHED_COMPILED_DATAFORM_JSON));
-    const table = toProd(targetFqn(action.target));
-    const schemas = new SchemaCache();
-    const prodFields = await schemas.schema(table);
-    if (!prodFields?.length) {
-        return { table, results: [], note: `There is no prod table ${table} to compare with yet.`, schemas, index };
+    const workspaceFolder = await getWorkspaceFolder();
+    const fileName = workspaceFolder && path.relative(workspaceFolder, document.uri.fsPath).split(path.sep).join('/');
+    const devIndex = indexGraph(CACHED_COMPILED_DATAFORM_JSON);
+    const actions = tableActions([...devIndex.values()].filter((action) => action.fileName === fileName));
+    if (actions.length !== 1) {
+        throw new Error('Column lineage works for files that define one table, view or incremental table.');
     }
+    const { index, toProd } = await indexByProdTarget(devIndex);
+    return { table: toProd(actions[0].fqn), index };
+}
 
-    const impacts = diffSchemas(record.fields, prodFields);
-    const source = new DataplexTraceSource(schemas, index);
-    const results = await Promise.all(impacts.map(async (impact) => ({ impact, links: await source.links(table, impact.column, 'downstream') })));
+export interface LoadedColumns {
+    input: ColumnsInput;
+    schemas: SchemaCache;
+    /** Actions keyed by Prod Target */
+    index: Map<string, GraphAction>;
+}
+
+/** The columns to list for a file: its Prod Target's, labelled against its last dry run when there is one */
+export async function loadColumns(document: vscode.TextDocument): Promise<LoadedColumns> {
+    const { table, index } = await locate(document);
+    const schemas = new SchemaCache();
+    const prod = await schemas.schema(table);
+    const dev = dryRuns.get(document.uri.toString());
+    if (prod?.length) {
+        return { input: { table, prod, dev }, schemas, index };
+    }
+    if (!dev) {
+        throw new Error(`There is no prod table ${table} yet, and no dry run of this file to list columns from. Save the file or refresh the compiled query panel.`);
+    }
     return {
-        table,
-        results,
-        note: impacts.length ? undefined : 'No columns were dropped or changed type against prod.',
+        input: { table, dev, message: `There is no prod table ${table} yet. Its columns get lineage once it is deployed and has run.` },
         schemas,
         index,
     };
+}
+
+/** Prod schemas for the "N changed" hint, re-read every few minutes so a hint doesn't cost a call per dry run */
+const HINT_SCHEMA_TTL_MS = 10 * 60 * 1000;
+let hintSchemas = new SchemaCache();
+let hintSchemasAt = Date.now();
+
+/** How many columns a dry run drops or retypes against prod; undefined when there is no prod table to compare */
+export async function changedColumnCount(document: vscode.TextDocument, fields: SchemaField[]): Promise<number | undefined> {
+    if (Date.now() - hintSchemasAt > HINT_SCHEMA_TTL_MS) {
+        hintSchemas = new SchemaCache();
+        hintSchemasAt = Date.now();
+    }
+    const { table } = await locate(document);
+    const prod = await hintSchemas.schema(table);
+    return prod?.length ? diffSchemas(fields, prod).length : undefined;
 }

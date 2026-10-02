@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { getCurrentFileMetadata } from '../utils';
-import { indexByProdTarget } from './prodIndex';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { GraphAction, graphNeighbours, guessColumnLinks, indexGraph, targetFqn } from '../shared/columnLineage/graphLinks';
 import { ColumnLink, LineageDirection, TraceFocus, TraceSource } from '../shared/columnLineage/types';
@@ -35,16 +34,21 @@ export class GraphSampleSource implements TraceSource {
 export interface EditorFocus {
     focus: TraceFocus;
     schemas: SchemaCache;
-    /** Actions keyed by the targets the focus table is named in: Prod Targets for Dataplex, dev targets otherwise */
+    /** Actions keyed by their dev targets */
     index: Map<string, GraphAction>;
+}
+
+/** The identifier under the cursor, which may be a column name */
+export function wordAtCursor(editor: vscode.TextEditor): string | undefined {
+    const range = editor.document.getWordRangeAtPosition(editor.selection.active, /[A-Za-z_][A-Za-z0-9_]*/);
+    return range ? editor.document.getText(range) : undefined;
 }
 
 /**
  * The column under the cursor in the active `.sqlx` file, or one picked from the table's columns when the
- * cursor is not on one. With `prod`, the trace starts from the action's Prod Target, where Dataplex has
- * lineage. Undefined when there is nothing to trace or the user cancels.
+ * cursor is not on one. Undefined when there is nothing to trace or the user cancels.
  */
-export async function focusFromEditor(prod: boolean): Promise<EditorFocus | undefined> {
+export async function focusFromEditor(): Promise<EditorFocus | undefined> {
     const editor = vscode.window.activeTextEditor;
     if (!editor || !editor.document.uri.fsPath.endsWith('.sqlx')) {
         vscode.window.showInformationMessage('Open a .sqlx file and put the cursor on a column to trace it.');
@@ -61,13 +65,11 @@ export async function focusFromEditor(prod: boolean): Promise<EditorFocus | unde
         return undefined;
     }
 
-    const devIndex = indexGraph(CACHED_COMPILED_DATAFORM_JSON);
-    const { index, toProd } = prod ? await indexByProdTarget(devIndex) : { index: devIndex, toProd: (dev: string) => dev };
-    const table = toProd(targetFqn(target));
+    const index = indexGraph(CACHED_COMPILED_DATAFORM_JSON);
+    const table = targetFqn(target);
     const schemas = new SchemaCache();
 
-    const wordRange = editor.document.getWordRangeAtPosition(editor.selection.active, /[A-Za-z_][A-Za-z0-9_]*/);
-    const word = wordRange ? editor.document.getText(wordRange) : undefined;
+    const word = wordAtCursor(editor);
     const columns = await schemas.schema(table);
     if (!columns?.length) {
         if (!word) {

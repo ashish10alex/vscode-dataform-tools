@@ -38,6 +38,8 @@ const PROBE_COLUMNS = 3;
 export class DataplexTraceSource implements TraceSource {
     readonly kind = 'dataplex' as const;
     private readonly tracked = new Map<string, Promise<boolean>>();
+    /** Table-level readers per table: the same for every column of it, so looked up once */
+    private readonly readers = new Map<string, Promise<any[]>>();
 
     /** `prodIndex`: this project's actions keyed by Prod Target, to spot readers that get no column lineage */
     constructor(private readonly schemas: SchemaCache, private readonly prodIndex: Map<string, GraphAction>) {}
@@ -67,6 +69,21 @@ export class DataplexTraceSource implements TraceSource {
         return pending;
     }
 
+    private tableReaders(api: LineageClient, parent: string, table: string): Promise<any[]> {
+        let pending = this.readers.get(table);
+        if (!pending) {
+            pending = api.searchLinks({ parent, source: { fullyQualifiedName: lineageFqn(table) } }).then(([links]) => links);
+            const stored = pending;
+            stored.catch(() => {
+                if (this.readers.get(table) === stored) {
+                    this.readers.delete(table);
+                }
+            });
+            this.readers.set(table, pending);
+        }
+        return pending;
+    }
+
     async links(table: string, column: string, direction: LineageDirection): Promise<ColumnLink[]> {
         const [project] = table.split('.');
         const parent = await this.parentOf(table);
@@ -79,9 +96,7 @@ export class DataplexTraceSource implements TraceSource {
         try {
             const [columnLinks, tableLinks] = await Promise.all([
                 api.searchLinks({ parent, [side]: { fullyQualifiedName: lineageFqn(table), field: lineageField(column) } }).then(([links]) => links),
-                direction === 'downstream'
-                    ? api.searchLinks({ parent, source: { fullyQualifiedName: lineageFqn(table) } }).then(([links]) => links)
-                    : Promise.resolve([]),
+                direction === 'downstream' ? this.tableReaders(api, parent, table) : Promise.resolve([]),
             ]);
 
             // Dataplex returns lowercase names; show them as each table's schema spells them
@@ -109,5 +124,6 @@ export class DataplexTraceSource implements TraceSource {
     clearCache() {
         this.schemas.clear();
         this.tracked.clear();
+        this.readers.clear();
     }
 }

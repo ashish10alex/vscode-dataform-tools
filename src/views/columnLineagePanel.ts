@@ -5,9 +5,11 @@ import { logger } from '../logger';
 import { getNonce, getWorkspaceFolder, openFileOnLeftEditorPane } from '../utils';
 import { TraceController } from '../shared/columnLineage/traceController';
 import { SAMPLE_FOCUS, SampleTraceSource, resolveSampleFile } from '../shared/columnLineage/sampleSource';
-import { HostToViewMessage, ImpactView, TraceFocus, TraceSource, ViewToHostMessage } from '../shared/columnLineage/types';
+import { ColumnsController } from '../shared/columnLineage/columnsController';
+import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
+import { HostToViewMessage, TraceFocus, TraceSource, ViewToHostMessage } from '../shared/columnLineage/types';
 import { DataplexTraceSource } from '../columnLineage/dataplexSource';
-import { ImpactAnalysis, toImpactEntries } from '../columnLineage/impactReport';
+import { loadColumns, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 
 function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'column_lineage.js'));
@@ -21,7 +23,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${webview.cspSource} 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} data:;">
         <link href="${styleUri}" rel="stylesheet">
-        <title>Column trace</title>
+        <title>Column lineage</title>
       </head>
       <body>
         <div id="root"></div>
@@ -31,41 +33,58 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     `;
 }
 
-/** One trace panel, reused for each column traced. In impact mode it also lists the columns changed against prod. */
+/**
+ * One panel, reused. For a file it lists the columns of the file's table beside the trace of the selected one,
+ * and stays on that file, relabelling the columns after each of its dry runs. It can also show a single trace
+ * with no column list.
+ */
 export class ColumnLineagePanel {
     private static current: ColumnLineagePanel | undefined;
 
     private controller: TraceController | undefined;
+    private columns: ColumnsController | undefined;
     private resolveFile: (table: string) => string | undefined = () => undefined;
     private ready = false;
     private pendingFocus: TraceFocus | undefined;
 
-    private impact: ImpactView | null = null;
-    private runImpact: (() => Promise<ImpactAnalysis>) | undefined;
-    private analysis: ImpactAnalysis | undefined;
-    /** Bumped per impact check, so a slow check doesn't overwrite a newer one */
-    private impactRun = 0;
+    /** The file the column list is for */
+    private document: vscode.TextDocument | undefined;
+    private preferred: string | undefined;
+    /** Select `preferred` on the next load even when other columns changed: a recheck keeps the selection */
+    private keepPreferred = false;
+    /** Bumped per load, so a slow load doesn't overwrite a newer one */
+    private loadRun = 0;
+    private readonly disposables: vscode.Disposable[] = [];
 
     private constructor(private readonly panel: vscode.WebviewPanel) {
-        panel.webview.onDidReceiveMessage((message: ViewToHostMessage) => this.handle(message));
+        this.disposables.push(
+            panel.webview.onDidReceiveMessage((message: ViewToHostMessage) => this.handle(message)),
+            onDidRecordDryRunSchema((event) => {
+                if (this.columns && event.document.uri.toString() === this.document?.uri.toString()) {
+                    void this.columns.relabel(event.fields);
+                }
+            }),
+        );
         panel.onDidDispose(() => {
+            this.disposables.forEach((disposable) => disposable.dispose());
             if (ColumnLineagePanel.current === this) {
                 ColumnLineagePanel.current = undefined;
             }
         });
     }
 
-    private static open(context: vscode.ExtensionContext, title: string): ColumnLineagePanel {
+    /** `column`: the editor group a new panel opens in. An open panel stays in its group, wherever the user put it. */
+    private static open(context: vscode.ExtensionContext, title: string, column: vscode.ViewColumn = vscode.ViewColumn.Beside): ColumnLineagePanel {
         const existing = ColumnLineagePanel.current;
         if (existing) {
             existing.panel.title = title;
-            existing.panel.reveal(vscode.ViewColumn.Beside);
+            existing.panel.reveal(existing.panel.viewColumn);
             return existing;
         }
         const panel = vscode.window.createWebviewPanel(
             'dataformColumnTrace',
             title,
-            vscode.ViewColumn.Beside,
+            column,
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,
@@ -77,24 +96,38 @@ export class ColumnLineagePanel {
         return ColumnLineagePanel.current;
     }
 
-    /** Traces `focus`, by default the made-up sample project */
-    static show(
+    /** Traces one column with no column list, by default in the made-up sample project */
+    static showTrace(
         context: vscode.ExtensionContext,
         focus: TraceFocus = SAMPLE_FOCUS,
         source: TraceSource = new SampleTraceSource(),
         resolveFile: (table: string) => string | undefined = resolveSampleFile,
     ) {
         const panel = ColumnLineagePanel.open(context, `Trace: ${focus.column}`);
-        panel.runImpact = undefined;
-        panel.setImpact(null);
+        panel.loadRun++;
+        panel.document = undefined;
+        panel.columns = undefined;
+        panel.post({ type: 'columns', columns: null });
         panel.trace(focus, source, resolveFile);
     }
 
-    /** Runs a column impact check and shows its changed columns, tracing the first one with readers */
-    static showImpact(context: vscode.ExtensionContext, run: () => Promise<ImpactAnalysis>) {
-        const panel = ColumnLineagePanel.open(context, 'Column impact');
-        panel.runImpact = run;
-        void panel.checkImpact();
+    /**
+     * Lists the columns of the file's table and traces a changed column if there is one, else `preferred` (the
+     * column under the cursor) or the top one. On the file the panel is already showing, only the selection moves.
+     * `column`: the editor group to open in the first time, e.g. the compiled query panel's.
+     */
+    static showColumns(context: vscode.ExtensionContext, document: vscode.TextDocument, preferred?: string, column?: vscode.ViewColumn) {
+        const title = `Columns: ${path.basename(document.uri.fsPath, path.extname(document.uri.fsPath))}`;
+        const panel = ColumnLineagePanel.open(context, title, column);
+        const columns = panel.columns;
+        if (columns && panel.document?.uri.toString() === document.uri.toString() && columns.columns?.status !== 'error') {
+            columns.selectDefault(preferred);
+            return;
+        }
+        panel.document = document;
+        panel.preferred = preferred;
+        panel.keepPreferred = false;
+        void panel.loadColumns();
     }
 
     private post(message: HostToViewMessage) {
@@ -103,47 +136,32 @@ export class ColumnLineagePanel {
         }
     }
 
-    private setImpact(impact: ImpactView | null) {
-        this.impact = impact;
-        this.post({ type: 'impact', impact });
-    }
-
-    private async checkImpact() {
-        if (!this.runImpact) {
+    private async loadColumns() {
+        const document = this.document;
+        if (!document) {
             return;
         }
-        const run = ++this.impactRun;
+        const run = ++this.loadRun;
         this.controller = undefined;
         this.pendingFocus = undefined;
-        this.post({ type: 'trace', state: null });
-        this.setImpact({ status: 'loading', entries: [] });
+        const columns: ColumnsController = this.columns ??= new ColumnsController(
+            (view) => this.columns === columns && this.post({ type: 'columns', columns: view }),
+            (state) => this.columns === columns && this.post({ type: 'trace', state }),
+        );
+        columns.loading();
         try {
-            const analysis = await this.runImpact();
-            if (run !== this.impactRun) {
+            const loaded = await loadColumns(document);
+            if (run !== this.loadRun) {
                 return;
             }
-            this.analysis = analysis;
-            const entries = toImpactEntries(analysis);
-            const first = entries.find((entry) => entry.copies + entry.derived + entry.mayRead > 0) ?? entries[0];
-            this.setImpact({ status: 'ready', table: analysis.table, entries, message: analysis.note, checkedAt: Date.now() });
-            if (first) {
-                this.selectImpact(first.column);
-            }
+            const source = new DataplexTraceSource(loaded.schemas, loaded.index);
+            this.resolveFile = source.resolveFile;
+            await columns.load(loaded.input, new CachedTraceSource(source), source.resolveFile, this.preferred, this.keepPreferred);
         } catch (error: any) {
-            if (run === this.impactRun) {
-                this.setImpact({ status: 'error', entries: [], message: error?.message ?? String(error), checkedAt: Date.now() });
+            if (run === this.loadRun) {
+                columns.fail(error?.message ?? String(error));
             }
         }
-    }
-
-    private selectImpact(column: string) {
-        const entry = this.impact?.entries.find((candidate) => candidate.column === column);
-        if (!entry || !this.analysis || !this.impact) {
-            return;
-        }
-        this.setImpact({ ...this.impact, selected: column });
-        const source = new DataplexTraceSource(this.analysis.schemas, this.analysis.index);
-        this.trace({ table: this.analysis.table, column, change: entry.change }, source, source.resolveFile);
     }
 
     private trace(focus: TraceFocus, source: TraceSource, resolveFile: (table: string) => string | undefined) {
@@ -160,12 +178,17 @@ export class ColumnLineagePanel {
         void this.controller.open(focus);
     }
 
+    /** The trace on screen: the selected column's when there is a column list */
+    private get activeTrace(): TraceController | undefined {
+        return this.columns ? this.columns.trace : this.controller;
+    }
+
     private async handle(message: ViewToHostMessage) {
         switch (message.type) {
             case 'webviewReady': {
                 this.ready = true;
-                this.post({ type: 'impact', impact: this.impact });
-                const state = this.controller?.current;
+                this.post({ type: 'columns', columns: this.columns?.columns ?? null });
+                const state = this.activeTrace?.current;
                 if (this.pendingFocus) {
                     const focus = this.pendingFocus;
                     this.pendingFocus = undefined;
@@ -177,31 +200,33 @@ export class ColumnLineagePanel {
                 break;
             }
             case 'expand':
-                await this.controller?.expand(message.nodeId);
+                await this.activeTrace?.expand(message.nodeId);
                 break;
             case 'expandLevel':
-                await this.controller?.expandLevel(message.direction);
+                await this.activeTrace?.expandLevel(message.direction);
                 break;
             case 'setUpstream':
-                await this.controller?.setUpstream(message.on);
+                await (this.columns ? this.columns.setUpstream(message.on) : this.controller?.setUpstream(message.on));
                 break;
             case 'refresh':
-                await this.controller?.refresh();
+                await this.activeTrace?.refresh();
                 break;
             case 'openFile':
                 await this.openFile(message.nodeId);
                 break;
-            case 'selectImpact':
-                this.selectImpact(message.column);
+            case 'selectColumn':
+                this.columns?.select(message.column);
                 break;
-            case 'recheckImpact':
-                await this.checkImpact();
+            case 'recheckColumns':
+                this.preferred = this.columns?.columns?.selected ?? this.preferred;
+                this.keepPreferred = true;
+                await this.loadColumns();
                 break;
         }
     }
 
     private async openFile(nodeId: string) {
-        const node = this.controller?.current?.nodes.find((candidate) => candidate.id === nodeId);
+        const node = this.activeTrace?.current?.nodes.find((candidate) => candidate.id === nodeId);
         const filePath = node && this.resolveFile(node.table);
         if (!filePath) {
             return;

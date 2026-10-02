@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controls, Edge, Node, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import type { ImpactEntry, ImpactView, TraceState } from '../../src/shared/columnLineage/types';
+import type { ColumnsView, TraceState } from '../../src/shared/columnLineage/types';
+import { ColumnBar } from './ColumnBar';
 import { copiesOnly, expandDirection, focusNodeId, pathToFocus } from '../../src/shared/columnLineage/traceGraph';
 import { Bridge, createBridge } from './bridge';
 import { layoutTrace, laneLabel, NODE_WIDTH } from './layout';
@@ -198,8 +199,9 @@ function ViewSwitch({ view, setView }: { view: View; setView: (view: View) => vo
     );
 }
 
-function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView }: {
-    state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void; view: View; setView: (view: View) => void;
+/** `showTable`: off under the column picker, which already names the table */
+function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView, showTable }: {
+    state: TraceState; bridge: Bridge; onlyCopies: boolean; setOnlyCopies: (on: boolean) => void; view: View; setView: (view: View) => void; showTable: boolean;
 }) {
     const { focus, upstreamShown } = state;
     const parts = focus.table.split('.');
@@ -215,9 +217,11 @@ function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView }: {
                         </span>
                     )}
                 </div>
-                <span className="ln-title-table">
-                    <span className="ln-dataset">{parts.slice(0, -1).join('.')}.</span>{parts[parts.length - 1]}
-                </span>
+                {showTable && (
+                    <span className="ln-title-table">
+                        <span className="ln-dataset">{parts.slice(0, -1).join('.')}.</span>{parts[parts.length - 1]}
+                    </span>
+                )}
             </div>
             <div className="ln-actions">
                 <ViewSwitch view={view} setView={setView} />
@@ -234,85 +238,26 @@ function Toolbar({ state, bridge, onlyCopies, setOnlyCopies, view, setView }: {
     );
 }
 
-function changeLabel(entry: ImpactEntry): string {
-    return entry.change.kind === 'dropped' ? 'dropped' : `${entry.change.from} → ${entry.change.to}`;
-}
-
-function readerSummary(entry: ImpactEntry): string {
-    const parts = [
-        entry.copies ? `${entry.copies} cop${entry.copies === 1 ? 'y' : 'ies'}` : '',
-        entry.derived ? `${entry.derived} derived or filtered` : '',
-        entry.mayRead ? `${entry.mayRead} may read` : '',
-    ].filter(Boolean);
-    return parts.length ? parts.join(' · ') : 'No readers in Dataplex';
-}
-
-function ImpactSidebar({ impact, bridge }: { impact: ImpactView; bridge: Bridge }) {
-    const now = useNow(15000);
-    const table = impact.table?.split('.').slice(1).join('.');
-    return (
-        <aside className="ln-sidebar" aria-label="Columns changed against prod">
-            <div className="ln-side-head">
-                <span className="ln-eyebrow">Changes against prod</span>
-                {table && <span className="ln-side-table" title={impact.table}>{table}</span>}
-            </div>
-            {impact.status === 'loading' && (
-                <div className="ln-side-status" role="status"><span className="ln-spinner" aria-hidden="true" /> Comparing with prod and reading lineage…</div>
-            )}
-            {impact.status === 'error' && <div className="ln-side-status ln-side-error" role="alert">{impact.message}</div>}
-            {impact.status === 'ready' && impact.entries.length === 0 && <div className="ln-side-status">{impact.message}</div>}
-            {impact.entries.length > 0 && (
-                <ul className="ln-impact-list">
-                    {impact.entries.map((entry) => {
-                        const unread = entry.copies + entry.derived + entry.mayRead === 0;
-                        return (
-                            <li key={entry.column}>
-                                <button
-                                    type="button"
-                                    className={`ln-impact ${entry.column === impact.selected ? 'is-selected' : ''} ${unread ? 'is-unread' : ''}`}
-                                    aria-pressed={entry.column === impact.selected}
-                                    onClick={() => bridge.post({ type: 'selectImpact', column: entry.column })}
-                                >
-                                    <span className="ln-impact-row">
-                                        <span className="ln-impact-col">{entry.column}</span>
-                                        <span className="ln-chip ln-chip-warn">{changeLabel(entry)}</span>
-                                    </span>
-                                    <span className="ln-impact-counts">{readerSummary(entry)}</span>
-                                </button>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
-            <div className="ln-side-foot">
-                <button type="button" className="ln-button" disabled={impact.status === 'loading'} onClick={() => bridge.post({ type: 'recheckImpact' })}>
-                    Check again
-                </button>
-                {impact.checkedAt && <span>{formatAgo(impact.checkedAt, now).replace('updated', 'checked')}</span>}
-            </div>
-        </aside>
-    );
-}
-
-function emptyMainText(impact: ImpactView | null): string {
-    if (!impact) {
+function emptyMainText(columns: ColumnsView | null): string {
+    if (!columns) {
         return 'Loading column trace…';
     }
-    if (impact.status === 'loading') {
-        return 'Comparing the dry run with prod…';
+    if (columns.status === 'loading') {
+        return 'Reading columns and comparing with prod…';
     }
-    if (impact.status === 'error') {
-        return 'The column impact check could not run.';
+    if (columns.status === 'error') {
+        return 'The columns could not be read.';
     }
-    return impact.entries.length ? 'Pick a column to trace its readers.' : 'Nothing to trace.';
+    return columns.entries.some((entry) => !entry.isNew) ? 'Pick a column to trace its lineage.' : 'Nothing to trace.';
 }
 
 export default function App() {
     const [bridge, setBridge] = useState<Bridge>();
     const [state, setState] = useState<TraceState | null>(null);
-    const [impact, setImpact] = useState<ImpactView | null>(null);
+    const [columns, setColumns] = useState<ColumnsView | null>(null);
     const [onlyCopies, setOnlyCopies] = useState(false);
     const [view, setView] = useState<View>('list');
+    const now = useNow(15000);
     const listState = useMemo(() => (state && onlyCopies ? copiesOnly(state) : state), [state, onlyCopies]);
 
     useEffect(() => {
@@ -325,8 +270,8 @@ export default function App() {
             unsubscribe = created.subscribe((message) => {
                 if (message.type === 'trace') {
                     setState(message.state);
-                } else if (message.type === 'impact') {
-                    setImpact(message.impact);
+                } else if (message.type === 'columns') {
+                    setColumns(message.columns);
                 }
             });
             setBridge(created);
@@ -344,7 +289,7 @@ export default function App() {
 
     const main = state ? (
         <>
-            <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} view={view} setView={setView} />
+            <Toolbar state={state} bridge={bridge} onlyCopies={onlyCopies} setOnlyCopies={setOnlyCopies} view={view} setView={setView} showTable={!columns} />
             {state.sourceKind === 'sample' && (
                 <div className="ln-banner" role="note">
                     <strong>Sample data.</strong> This is a made-up project for previewing the panel. Run the trace from a
@@ -354,11 +299,11 @@ export default function App() {
             {state.sourceKind === 'graph' && (
                 <div className="ln-banner" role="note">
                     <strong>Guessed column links.</strong> Readers and sources come from this project's dependency graph, but the column links are
-                    matched by name against each table's schema. Use “Trace Column Lineage Under Cursor” for real lineage from Dataplex.
+                    matched by name against each table's schema. Use “Show Column Lineage and Impact” for real lineage from Dataplex.
                 </div>
             )}
             {view === 'list' && listState
-                ? <LineageList state={listState} bridge={bridge} />
+                ? <LineageList state={listState} bridge={bridge} hidden={state.nodes.length - listState.nodes.length} onShowAll={() => setOnlyCopies(false)} />
                 : (
                     <ReactFlowProvider>
                         <Trace state={state} bridge={bridge} onlyCopies={onlyCopies} />
@@ -366,14 +311,14 @@ export default function App() {
                 )}
         </>
     ) : (
-        <div className="ln-main-empty" role="status">{emptyMainText(impact)}</div>
+        <div className="ln-main-empty" role="status">{emptyMainText(columns)}</div>
     );
 
     return (
         <div className="ln-app">
-            {impact ? (
-                <div className="ln-split">
-                    <ImpactSidebar impact={impact} bridge={bridge} />
+            {columns ? (
+                <div className="ln-stack">
+                    <ColumnBar columns={columns} bridge={bridge} now={now} />
                     <div className="ln-main">{main}</div>
                 </div>
             ) : main}

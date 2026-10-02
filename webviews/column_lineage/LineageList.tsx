@@ -96,7 +96,8 @@ function Section({ state, direction, query, bridge }: { state: TraceState; direc
     );
 }
 
-export function LineageList({ state, bridge }: { state: TraceState; bridge: Bridge }) {
+/** `hidden`: columns "Copies only" leaves out */
+export function LineageList({ state, bridge, hidden, onShowAll }: { state: TraceState; bridge: Bridge; hidden: number; onShowAll: () => void }) {
     const [query, setQuery] = useState('');
     return (
         <div className="ln-list" role="region" aria-label="Lineage list">
@@ -109,6 +110,12 @@ export function LineageList({ state, bridge }: { state: TraceState; bridge: Brid
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                 />
+                {hidden > 0 && (
+                    <span className="ln-list-hidden" role="status">
+                        Copies only: hiding {hidden} column{hidden === 1 ? '' : 's'} linked as derived or filtered.{' '}
+                        <button type="button" className="ln-link" onClick={onShowAll}>Show all</button>
+                    </span>
+                )}
             </div>
             <Section state={state} direction="downstream" query={query} bridge={bridge} />
             {state.upstreamShown && <Section state={state} direction="upstream" query={query} bridge={bridge} />}

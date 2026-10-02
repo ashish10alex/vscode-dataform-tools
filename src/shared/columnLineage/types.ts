@@ -67,10 +67,8 @@ export interface TraceState {
     fetchedAt?: number;
 }
 
-/** One column that changed against prod, with what Dataplex shows still reads it */
-export interface ImpactEntry {
-    column: string;
-    change: ColumnChange;
+/** Readers Dataplex shows for a column, by how they use it */
+export interface ReaderCounts {
     /** Readers that copy the column */
     copies: number;
     /** Readers that use it in an expression, filter or join */
@@ -79,21 +77,38 @@ export interface ImpactEntry {
     mayRead: number;
 }
 
-export interface ImpactView {
+/** One row of the column list */
+export interface ColumnEntry {
+    /** As prod spells it, or as the dry run does for a new column */
+    column: string;
+    type?: string;
+    /** Set when the dry run drops or retypes the column against prod */
+    change?: ColumnChange;
+    /** Only the dry run has it, so there is no prod lineage to trace */
+    isNew?: boolean;
+    /** Undefined until looked up */
+    counts?: ReaderCounts;
+    /** The lookup for counts failed */
+    countsError?: string;
+}
+
+export interface ColumnsView {
     status: 'loading' | 'ready' | 'error';
-    /** Prod Target the dry run was compared with */
+    /** Prod Target the columns and lineage come from */
     table?: string;
-    entries: ImpactEntry[];
+    entries: ColumnEntry[];
     selected?: string;
-    /** Why there is nothing to list, or what went wrong */
+    /** No dry run of the file yet, so changes against prod aren't labelled */
+    unchecked?: boolean;
+    /** Why there is nothing to trace, or what went wrong */
     message?: string;
     checkedAt?: number;
 }
 
 export type HostToViewMessage =
-    /** null clears the trace, e.g. while an impact check has nothing to trace */
+    /** null clears the trace, e.g. while the column list is loading */
     | { type: 'trace'; state: TraceState | null }
-    | { type: 'impact'; impact: ImpactView | null };
+    | { type: 'columns'; columns: ColumnsView | null };
 
 export type ViewToHostMessage =
     | { type: 'webviewReady' }
@@ -102,5 +117,5 @@ export type ViewToHostMessage =
     | { type: 'refresh' }
     | { type: 'openFile'; nodeId: string }
     | { type: 'expandLevel'; direction: LineageDirection }
-    | { type: 'selectImpact'; column: string }
-    | { type: 'recheckImpact' };
+    | { type: 'selectColumn'; column: string }
+    | { type: 'recheckColumns' };

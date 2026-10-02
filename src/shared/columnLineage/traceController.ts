@@ -1,5 +1,5 @@
 import { addHop, canExpand, expandDirection, focusNodeId, frontier, initialTraceState, removeUpstream, setNodeError, setNodeLoading } from './traceGraph';
-import { LineageDirection, TraceFocus, TraceSource, TraceState } from './types';
+import { ColumnChange, LineageDirection, TraceFocus, TraceSource, TraceState } from './types';
 
 /** Hops loaded automatically on each side, so the list is readable without clicking through it */
 export const AUTO_HOPS = 3;
@@ -8,7 +8,7 @@ export const AUTO_FRONTIER_LIMIT = 25;
 /** Lineage lookups in flight at once while loading a hop */
 const HOP_CONCURRENCY = 6;
 
-async function inBatches<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
+export async function inBatches<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
     for (let i = 0; i < items.length; i += size) {
         await Promise.all(items.slice(i, i + size).map(run));
     }
@@ -89,6 +89,13 @@ export class TraceController {
         await this.fetch(focusNodeId(this.state), 'upstream');
         if (this.state?.upstreamShown) {
             await this.autoExpand('upstream');
+        }
+    }
+
+    /** Updates the focus column's change against prod, e.g. after a new dry run */
+    relabel(change: ColumnChange | undefined) {
+        if (this.state) {
+            this.set({ ...this.state, focus: { ...this.state.focus, change } });
         }
     }
 
