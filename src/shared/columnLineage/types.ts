@@ -145,6 +145,8 @@ export type ViewToHostMessage =
     | { type: 'expandLevel'; direction: LineageDirection }
     | { type: 'selectColumn'; column: string }
     | { type: 'recheckColumns' }
+    /** Switch to the column impact summary of the whole branch */
+    | { type: 'showImpact' }
     /** From the column impact summary: trace a dropped or retyped column */
     | { type: 'traceImpactColumn'; table: string; column: string }
     /** Back from that trace to the summary */

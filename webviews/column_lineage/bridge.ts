@@ -125,6 +125,10 @@ function standaloneBridge(): Bridge {
                 case 'webviewReady': traceOnly ? void trace.open(SAMPLE_FOCUS) : load(); break;
                 case 'selectColumn': columns.select(message.column); break;
                 case 'recheckColumns': load(); break;
+                case 'showImpact':
+                    location.hash = '#impact';
+                    location.reload();
+                    break;
                 case 'expand': void active()?.expand(message.nodeId); break;
                 case 'expandLevel': void active()?.expandLevel(message.direction); break;
                 case 'setUpstream': void (traceOnly ? trace.setUpstream(message.on) : columns.setUpstream(message.on)); break;

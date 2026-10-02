@@ -242,6 +242,14 @@ export function ColumnBar({ columns, bridge, now }: { columns: ColumnsView; brid
                 <button type="button" className="ln-button" disabled={columns.status === 'loading'} onClick={() => bridge.post({ type: 'recheckColumns' })}>
                     Check again
                 </button>
+                <button
+                    type="button"
+                    className="ln-button ln-button-primary"
+                    title="Dropped and retyped columns, and who reads them, for every table this branch changes"
+                    onClick={() => bridge.post({ type: 'showImpact' })}
+                >
+                    Branch impact
+                </button>
             </div>
             {status && (
                 <div className={`ln-bar-status ${columns.status === 'error' ? 'ln-side-error' : ''}`} role={columns.status === 'error' ? 'alert' : 'status'}>

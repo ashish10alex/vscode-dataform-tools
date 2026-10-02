@@ -56,6 +56,9 @@ button:focus-visible { outline: 1px solid var(--ln-focus); outline-offset: 2px; 
   border: 0; border-radius: 2px; padding: 4px 12px; cursor: pointer;
 }
 .ln-button:hover { background: var(--ln-button-hover); }
+/* The main action, in VS Code's primary button colours like the run buttons */
+.ln-button-primary { background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); }
+.ln-button-primary:hover { background: var(--vscode-button-hoverBackground, #1177bb); }
 
 .ln-switch { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 2px 4px; cursor: pointer; }
 .ln-switch-track {

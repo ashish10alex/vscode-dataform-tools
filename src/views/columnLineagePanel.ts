@@ -161,16 +161,24 @@ export class ColumnLineagePanel {
             return;
         }
         const panel = ColumnLineagePanel.open(context, 'Column impact');
-        panel.loadRun++;
-        panel.document = undefined;
-        panel.columns = undefined;
-        panel.controller?.pause();
-        panel.controller = undefined;
-        panel.pendingFocus = undefined;
-        panel.post({ type: 'columns', columns: null });
-        panel.post({ type: 'trace', state: null });
-        panel.impactWorkspace = workspaceFolder;
-        await panel.runImpact(result);
+        await panel.startImpact(workspaceFolder, result);
+    }
+
+    /** Switches this panel to the column impact summary, leaving the file's column list or trace */
+    private async startImpact(workspaceFolder: string, result?: ChangedActionsResult) {
+        this.panel.title = 'Column impact';
+        this.loadRun++;
+        this.document = undefined;
+        // Stops the selected column's lookups from queueing ahead of the summary's
+        this.columns?.trace?.pause();
+        this.columns = undefined;
+        this.controller?.pause();
+        this.controller = undefined;
+        this.pendingFocus = undefined;
+        this.post({ type: 'columns', columns: null });
+        this.post({ type: 'trace', state: null });
+        this.impactWorkspace = workspaceFolder;
+        await this.runImpact(result);
     }
 
     private setImpact(impact: ImpactView | null) {
@@ -338,6 +346,13 @@ export class ColumnLineagePanel {
                 this.keepPreferred = true;
                 await this.loadColumns();
                 break;
+            case 'showImpact': {
+                const workspaceFolder = await getWorkspaceFolder();
+                if (workspaceFolder) {
+                    await this.startImpact(workspaceFolder);
+                }
+                break;
+            }
             case 'traceImpactColumn':
                 this.traceImpactColumn(message.table, message.column);
                 break;
