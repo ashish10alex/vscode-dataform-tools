@@ -229,7 +229,7 @@
             {
                 "command": "vscode-dataform-tools.columnImpactOfChanges",
                 "category": "Dataform",
-                "title": "Column Impact of Changes"
+                "title": "Column Impact of Branch Changes"
             },
             {
                 "command": "vscode-dataform-tools.traceColumnLineageGuessed",
