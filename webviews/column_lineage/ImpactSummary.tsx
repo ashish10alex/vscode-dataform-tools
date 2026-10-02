@@ -186,7 +186,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                     )}
                     {impact.atRisk.map((entry) => <AtRiskTable key={entry.table} entry={entry} bridge={bridge} />)}
                     {impact.safe.length > 0 && (
-                        <details className="ln-impact-more">
+                        <details className="ln-impact-more" open>
                             <summary>{safeSummary(impact.safe.length)}</summary>
                             <ul>
                                 {impact.safe.map((entry) => (
@@ -199,7 +199,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                         </details>
                     )}
                     {impact.unchecked.length > 0 && (
-                        <details className="ln-impact-more">
+                        <details className="ln-impact-more" open>
                             <summary>Not checked ({impact.unchecked.length})</summary>
                             <ul>
                                 {impact.unchecked.map((entry) => (
