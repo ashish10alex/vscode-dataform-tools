@@ -1,0 +1,245 @@
+import { addHop, canExpand, expandDirection, focusNodeId, frontier, initialTraceState, removeUpstream, setNodeCheckingReaders, setNodeError, setNodeLoading } from './traceGraph';
+import { ColumnChange, ColumnLink, LineageDirection, TraceFocus, TraceNode, TraceSource, TraceState } from './types';
+
+/** Hops loaded automatically on each side, so the list is readable without clicking through it */
+export const AUTO_HOPS = 3;
+/** A hop wider than this isn't loaded automatically; "load next hop" fetches it */
+export const AUTO_FRONTIER_LIMIT = 25;
+/** Lineage lookups in flight at once while loading a hop */
+const HOP_CONCURRENCY = 6;
+
+/** The table a node's lineage is searched in: its dev run while the prod run of its action hasn't turned up */
+function lineageTableOf(node: TraceNode): string {
+    return node.lineageTable ?? node.table;
+}
+
+export async function inBatches<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
+    for (let i = 0; i < items.length; i += size) {
+        await Promise.all(items.slice(i, i + size).map(run));
+    }
+}
+
+/**
+ * Drives a column trace: fetches hops from a {@link TraceSource} and reports each new state. Opening loads a
+ * few hops downstream on its own; more come one level at a time. Has no VS Code dependency, so the extension
+ * host and the webview's standalone preview share it.
+ */
+export class TraceController {
+    private state: TraceState | undefined;
+    /** Bumped on open and refresh, so lookups started for an older trace are dropped */
+    private generation = 0;
+    /** Set while another column is shown: lookups in flight finish, but no new ones start */
+    private paused = false;
+    /** Work a pause held back, done on resume: columns of a hop left unexpanded, and their table-level reader checks */
+    private readonly heldExpands = new Set<string>();
+    private readonly heldReaders = new Map<string, ColumnLink[]>();
+
+    constructor(
+        private readonly source: TraceSource,
+        private readonly emit: (state: TraceState) => void,
+        private readonly resolveFile: (table: string) => string | undefined = () => undefined,
+    ) {}
+
+    get current(): TraceState | undefined {
+        return this.state;
+    }
+
+    async open(focus: TraceFocus): Promise<void> {
+        this.generation++;
+        this.heldExpands.clear();
+        this.heldReaders.clear();
+        const state = initialTraceState(focus, this.source.kind);
+        state.nodes[0].filePath = this.resolveFile(focus.table);
+        this.set(state);
+        await this.fetch(focusNodeId(state), 'downstream');
+        await this.autoExpand('downstream');
+    }
+
+    /** Loads the next hop on one side: every column on its outermost hop that hasn't been expanded */
+    async expandLevel(direction: LineageDirection): Promise<void> {
+        if (!this.state) {
+            return;
+        }
+        const generation = this.generation;
+        const ids = frontier(this.state, direction).map((node) => node.id);
+        await inBatches(ids, HOP_CONCURRENCY, async (id) => {
+            if (generation !== this.generation) {
+                return;
+            }
+            if (this.paused) {
+                this.heldExpands.add(id);
+            } else {
+                await this.expand(id);
+            }
+        });
+    }
+
+    /**
+     * Stops starting lookups, e.g. when the column list shows another column. What's in flight still lands, so
+     * the trace is as far along as it got when it's shown again.
+     */
+    pause() {
+        this.paused = true;
+    }
+
+    /** Picks up where {@link pause} left off: the held-back columns and reader checks, then the automatic hops */
+    async resume(): Promise<void> {
+        if (!this.paused) {
+            return;
+        }
+        this.paused = false;
+        const generation = this.generation;
+        const readers = [...this.heldReaders];
+        this.heldReaders.clear();
+        for (const [nodeId, links] of readers) {
+            const node = this.state?.nodes.find((candidate) => candidate.id === nodeId);
+            if (node) {
+                void this.fetchTableOnlyReaders(nodeId, lineageTableOf(node), links, generation);
+            }
+        }
+        const expands = [...this.heldExpands];
+        this.heldExpands.clear();
+        await inBatches(expands, HOP_CONCURRENCY, async (id) => {
+            if (generation !== this.generation) {
+                return;
+            }
+            if (this.paused) {
+                this.heldExpands.add(id);
+            } else {
+                await this.expand(id);
+            }
+        });
+        await this.autoExpand('downstream');
+        if (this.state?.upstreamShown) {
+            await this.autoExpand('upstream');
+        }
+    }
+
+    /**
+     * Loads hops on a side until {@link AUTO_HOPS} are in, stopping at a hop wider than {@link AUTO_FRONTIER_LIMIT}.
+     * Safe to call again, e.g. on resume: it only loads hops still missing.
+     */
+    private async autoExpand(direction: LineageDirection) {
+        const generation = this.generation;
+        while (this.state && generation === this.generation && !this.paused) {
+            const next = frontier(this.state, direction);
+            if (next.length === 0 || next.length > AUTO_FRONTIER_LIMIT || Math.abs(next[0].hop) >= AUTO_HOPS) {
+                return;
+            }
+            await this.expandLevel(direction);
+            const after = this.state ? frontier(this.state, direction) : [];
+            if (after.map((node) => node.id).join() === next.map((node) => node.id).join()) {
+                // Nothing moved, e.g. every lookup on the hop failed
+                return;
+            }
+        }
+    }
+
+    async expand(nodeId: string): Promise<void> {
+        const node = this.state?.nodes.find((candidate) => candidate.id === nodeId);
+        if (!node || !canExpand(node)) {
+            return;
+        }
+        await this.fetch(nodeId, expandDirection(node));
+    }
+
+    async setUpstream(on: boolean): Promise<void> {
+        if (!this.state || on === this.state.upstreamShown) {
+            return;
+        }
+        if (!on) {
+            this.set(removeUpstream(this.state));
+            return;
+        }
+        this.set({ ...this.state, upstreamShown: true });
+        await this.fetch(focusNodeId(this.state), 'upstream');
+        if (this.state?.upstreamShown) {
+            await this.autoExpand('upstream');
+        }
+    }
+
+    /** Updates the focus column's change against prod, e.g. after a new dry run */
+    relabel(change: ColumnChange | undefined) {
+        if (this.state) {
+            this.set({ ...this.state, focus: { ...this.state.focus, change } });
+        }
+    }
+
+    async refresh(): Promise<void> {
+        if (!this.state) {
+            return;
+        }
+        const { focus, upstreamShown } = this.state;
+        this.source.clearCache?.();
+        await this.open(focus);
+        if (upstreamShown) {
+            await this.setUpstream(true);
+        }
+    }
+
+    private set(state: TraceState) {
+        this.state = state;
+        this.emit(state);
+    }
+
+    /** A column's links, or for a reader known only at table level, the tables that read it. A table that reads itself is left out by {@link addHop}. */
+    private lookup(node: TraceNode, direction: LineageDirection): Promise<ColumnLink[]> {
+        const table = lineageTableOf(node);
+        return node.column ? this.source.links(table, node.column, direction) : this.source.tableReaders!(table);
+    }
+
+    /** {@link addHop} with this trace's files and dev runs folded into their Prod Target */
+    private withHop(state: TraceState, nodeId: string, direction: LineageDirection, links: ColumnLink[]): TraceState {
+        return addHop(state, nodeId, direction, links, this.resolveFile, this.source.toProd?.bind(this.source));
+    }
+
+    private async fetch(nodeId: string, direction: 'upstream' | 'downstream') {
+        const generation = this.generation;
+        const node = this.state?.nodes.find((candidate) => candidate.id === nodeId);
+        if (!this.state || !node || (!node.column && (direction !== 'downstream' || !this.source.tableReaders))) {
+            return;
+        }
+        this.set(setNodeLoading(this.state, nodeId, true));
+        try {
+            const links = await this.lookup(node, direction);
+            if (generation !== this.generation || !this.state) {
+                return;
+            }
+            if (node.hop === 0 && direction === 'upstream' && !this.state.upstreamShown) {
+                // Upstream was switched off while this lookup ran
+                this.set(setNodeLoading(this.state, nodeId, false));
+            } else {
+                this.set(this.withHop(this.state, nodeId, direction, links));
+                // A table-level reader's readers are all table-level already, so only a column has more to look for
+                if (direction === 'downstream' && node.column && this.paused) {
+                    this.heldReaders.set(nodeId, links);
+                } else if (direction === 'downstream' && node.column) {
+                    // Not awaited: the next hop needs only column links, and table-level readers have no column to follow
+                    void this.fetchTableOnlyReaders(nodeId, lineageTableOf(node), links, generation);
+                }
+            }
+        } catch (error: any) {
+            if (generation === this.generation && this.state) {
+                this.set(setNodeError(this.state, nodeId, error?.message ?? String(error)));
+            }
+        }
+    }
+
+    /** The second phase of a downstream lookup: readers known only at table level, added when they're found */
+    private async fetchTableOnlyReaders(nodeId: string, table: string, links: ColumnLink[], generation: number) {
+        if (!this.source.tableOnlyReaders || !this.state) {
+            return;
+        }
+        this.set(setNodeCheckingReaders(this.state, nodeId, true));
+        try {
+            const readers = await this.source.tableOnlyReaders(table, new Set(links.map((link) => link.table)));
+            if (generation === this.generation && this.state) {
+                this.set(this.withHop(setNodeCheckingReaders(this.state, nodeId, false), nodeId, 'downstream', readers));
+            }
+        } catch (error: any) {
+            if (generation === this.generation && this.state) {
+                this.set(setNodeCheckingReaders(this.state, nodeId, false, error?.message ?? String(error)));
+            }
+        }
+    }
+}

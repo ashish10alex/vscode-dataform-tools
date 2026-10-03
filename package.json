@@ -222,6 +222,21 @@
                 "title": "Open Dependency Inspector"
             },
             {
+                "command": "vscode-dataform-tools.columnLineage",
+                "category": "Dataform",
+                "title": "Show Column Lineage and Impact"
+            },
+            {
+                "command": "vscode-dataform-tools.columnImpactOfChanges",
+                "category": "Dataform",
+                "title": "Column Impact of Branch Changes"
+            },
+            {
+                "command": "vscode-dataform-tools.traceColumnLineageGuessed",
+                "category": "Dataform",
+                "title": "Trace Column Lineage Under Cursor (Guessed From Dependency Graph)"
+            },
+            {
                 "command": "vscode-dataform-tools.formatDocument",
                 "category": "Dataform",
                 "title": "Format Document",
@@ -392,6 +407,10 @@
         "menus": {
             "commandPalette": [
                 {
+                    "command": "vscode-dataform-tools.traceColumnLineageGuessed",
+                    "when": "vscode-dataform-tools.devMode"
+                },
+                {
                     "command": "vscode-dataform-tools.runTests",
                     "when": "!vscode-dataform-tools.remoteMode"
                 },
@@ -467,7 +486,7 @@
                     "type": "string",
                     "default": "",
                     "scope": "resource",
-                    "markdownDescription": "Compiler options that point at your prod tables, used by `#vscode-dataform-tools.deferToProd#`, e.g. `--default-database=my-prod-project --vars=env=prod`. When empty, prod is the project defaults compiled without `#vscode-dataform-tools.compilerOptions#`."
+                    "markdownDescription": "Compiler options that point at your prod tables, e.g. `--default-database=my-prod-project --vars=env=prod`. Used by `#vscode-dataform-tools.deferToProd#`, and by column impact (**Column Impact of Branch Changes**), which compares each changed table with its table in this compile and lists it as not checked when nothing in the compile matches it. When empty, prod is the project defaults compiled without `#vscode-dataform-tools.compilerOptions#`, so set it when your project's defaults point at dev."
                 },
                 "vscode-dataform-tools.deferPreviewScanWarningGiB": {
                     "type": "number",

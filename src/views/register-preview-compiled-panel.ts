@@ -40,6 +40,7 @@ import { watchGitHead, watchGitState } from '../gitHeadWatcher';
 import { computeApiRunGitState } from '../apiRunGitState';
 import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
+import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -164,6 +165,9 @@ function getLastRunView() {
     return buildLastRunView(getLastRun(), isRemoteMode(), globalThis.compilerOptionsMap);
 }
 
+/** The latest dry run per file, so only its "N changed" hint is shown */
+const impactHintSeq = new Map<string, number>();
+
 export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
@@ -173,6 +177,30 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         onDeferralUpdated(() => {
             const panel = CompiledQueryPanel.centerPanel;
             panel?.postMessage({ deferral: toDeferralView(panel.deferral) });
+        }),
+        onDidRecordDryRunSchema(async ({ document, relativeFilePath, fields }) => {
+            if (!CompiledQueryPanel.centerPanel || !relativeFilePath) {
+                return;
+            }
+            // A count for an older dry run that resolves late mustn't overwrite the newer one's
+            const seq = (impactHintSeq.get(relativeFilePath) ?? 0) + 1;
+            impactHintSeq.set(relativeFilePath, seq);
+            const post = (changed: number | undefined) => {
+                if (impactHintSeq.get(relativeFilePath) === seq) {
+                    CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });
+                }
+            };
+            if (!fields) {
+                post(undefined);
+                return;
+            }
+            try {
+                post(await changedColumnCount(document, fields));
+            } catch (error: any) {
+                // Not a single-table file, not compiled yet, or no known prod table: no hint
+                logger.debug(`Column impact hint: ${error?.message ?? error}`);
+                post(undefined);
+            }
         })
     );
 
@@ -586,6 +614,9 @@ export class CompiledQueryPanel {
                 return;
               case 'dependencyInspector':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyInspector");
+                return;
+              case 'columnLineage':
+                await vscode.commands.executeCommand("vscode-dataform-tools.columnLineage");
                 return;
               case 'previewResults':
                 if(message.value){
