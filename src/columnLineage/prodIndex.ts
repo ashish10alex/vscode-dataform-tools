@@ -1,4 +1,3 @@
-import { logger } from '../logger';
 import { getWorkspaceFolder } from '../utils';
 import { getProdCompilerOptions, getProdTargets } from '../defer/prodTargets';
 import { GraphAction as CompiledAction, lookupProdTarget, prodKey } from '../defer/deferRules';
@@ -61,14 +60,4 @@ export async function resolveProdIndex(devIndex: Map<string, GraphAction>): Prom
     const actions = [...(graph.tables ?? []), ...(graph.operations ?? []), ...(graph.assertions ?? []), ...(graph.declarations ?? [])];
     const prodTargets = await getProdTargets(workspaceFolder, prodOptions, actions.map((action) => prodKey(action)));
     return prodIndexOf(devIndex, matchProdTargets(actions, prodTargets), prodOptions !== '');
-}
-
-/** Like {@link resolveProdIndex}, but falls back to the dev targets when the prod compile fails */
-export async function indexByProdTarget(devIndex: Map<string, GraphAction>): Promise<ProdIndex> {
-    try {
-        return await resolveProdIndex(devIndex);
-    } catch (error: any) {
-        logger.error(`Column trace: could not resolve Prod Targets, using dev targets: ${error?.message ?? error}`);
-        return devIndexOnly(devIndex);
-    }
 }

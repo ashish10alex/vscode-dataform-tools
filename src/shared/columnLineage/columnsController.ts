@@ -138,6 +138,11 @@ export class ColumnsController {
         }
     }
 
+    /** Stops every count and trace lookup, e.g. when the panel closes */
+    stop() {
+        this.reset();
+    }
+
     /** Selects the column the list would open on, for when the panel is shown again for the same file */
     selectDefault(preferred?: string) {
         const pick = this.view?.status === 'ready' ? defaultColumn(this.view.entries, preferred) : undefined;

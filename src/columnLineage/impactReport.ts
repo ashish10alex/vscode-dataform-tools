@@ -5,7 +5,7 @@ import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
 import { isOperation, tableActions } from '../shared/columnLineage/tableActions';
 import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { ColumnsInput } from '../shared/columnLineage/columnsController';
-import { indexByProdTarget } from './prodIndex';
+import { resolveProdIndex } from './prodIndex';
 import { SchemaCache } from './schemaCache';
 
 /*
@@ -53,8 +53,19 @@ async function locate(document: vscode.TextDocument): Promise<{ table: string; i
     if (actions.length !== 1) {
         throw new Error('Column lineage works for files that define one table, view, incremental table or operation with hasOutput.');
     }
-    const { index, toProd } = await indexByProdTarget(devIndex);
-    return { table: toProd(actions[0].fqn), index, toProd, operation: isOperation(actions[0]) };
+    let prodIndex: Awaited<ReturnType<typeof resolveProdIndex>>;
+    try {
+        prodIndex = await resolveProdIndex(devIndex);
+    } catch (error: any) {
+        // Comparing with the dev table instead would pass it off as prod
+        throw new Error(`The prod table to compare with is unknown: ${error?.message ?? error}`);
+    }
+    const { index, toProd, prodTarget } = prodIndex;
+    const table = prodTarget(actions[0].fqn);
+    if (!table) {
+        throw new Error(`The prod table of ${actions[0].fqn} is unknown: nothing in the compile with prodCompilerOptions matches it.`);
+    }
+    return { table, index, toProd, operation: isOperation(actions[0]) };
 }
 
 export interface LoadedColumns {

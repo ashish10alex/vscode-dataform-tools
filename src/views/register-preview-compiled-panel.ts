@@ -165,6 +165,9 @@ function getLastRunView() {
     return buildLastRunView(getLastRun(), isRemoteMode(), globalThis.compilerOptionsMap);
 }
 
+/** The latest dry run per file, so only its "N changed" hint is shown */
+const impactHintSeq = new Map<string, number>();
+
 export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
@@ -179,16 +182,24 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             if (!CompiledQueryPanel.centerPanel || !relativeFilePath) {
                 return;
             }
+            // A count for an older dry run that resolves late mustn't overwrite the newer one's
+            const seq = (impactHintSeq.get(relativeFilePath) ?? 0) + 1;
+            impactHintSeq.set(relativeFilePath, seq);
+            const post = (changed: number | undefined) => {
+                if (impactHintSeq.get(relativeFilePath) === seq) {
+                    CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });
+                }
+            };
             if (!fields) {
-                CompiledQueryPanel.centerPanel.postMessage({ columnImpact: { relativeFilePath, changed: undefined } });
+                post(undefined);
                 return;
             }
             try {
-                const changed = await changedColumnCount(document, fields);
-                CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });
+                post(await changedColumnCount(document, fields));
             } catch (error: any) {
-                // Not a single-table file, or not compiled yet: no hint
+                // Not a single-table file, not compiled yet, or no known prod table: no hint
                 logger.debug(`Column impact hint: ${error?.message ?? error}`);
+                post(undefined);
             }
         })
     );

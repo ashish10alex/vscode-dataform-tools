@@ -80,11 +80,13 @@ export class ColumnLineagePanel {
             onDidCompile((graph) => void this.checkImpactStale(graph)),
         );
         panel.onDidDispose(() => {
-            // Stops abandoned loads, impact runs and traces from starting more BigQuery and Dataplex work
+            // Stops abandoned loads, impact runs, counts and traces from starting more BigQuery and Dataplex work, and
+            // lookups already in flight from posting to the disposed webview
+            this.ready = false;
             this.loadRun++;
             this.impactRun++;
             this.controller?.pause();
-            this.columns?.trace?.pause();
+            this.columns?.stop();
             this.disposables.forEach((disposable) => disposable.dispose());
             if (ColumnLineagePanel.current === this) {
                 ColumnLineagePanel.current = undefined;
