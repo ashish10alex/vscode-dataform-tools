@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Settings,
   GitCompare,
+  GitCompareArrows,
 } from 'lucide-react';
 
 interface SkeletonLoaderProps {
@@ -113,6 +114,9 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ type = 'default'
           </div>
           <div className="px-3 py-1.5 rounded text-sm flex items-center bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)]">
             <Eye className="w-4 h-4 mr-1.5" /> Preview Data
+          </div>
+          <div className="px-3 py-1.5 rounded text-sm flex items-center bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)]">
+            <GitCompareArrows className="w-4 h-4 mr-1.5" /> Column impact
           </div>
         </div>
 
