@@ -94,10 +94,6 @@ Officially recommended [VS Code extension for Dataform](https://marketplace.visu
       <td>Inspect column-level lineage and downstream impact directly from the compiled view. Highlights columns dropped or retyped against prod and maps downstream consumers via Dataplex lineage, with PR markdown export</td>
     </tr>
     <tr>
-      <td>Assertion kind badges</td>
-      <td>Labels built-in assertions with their specific kind (unique key, non-null, or row conditions) directly in the compiled query panel</td>
-    </tr>
-    <tr>
       <td><a href="#hover">BigQuery hover provider</a></td>
       <td>Hover definition for tables, columns, column descriptions, types and common BigQuery functions</td>
     </tr>
