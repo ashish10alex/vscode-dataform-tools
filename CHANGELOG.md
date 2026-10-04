@@ -4,21 +4,32 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [1.18.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.17.0...v1.18.0) (2026-10-04)
 
-Stable graduation release consolidating features and optimizations from the 1.13–1.17 series:
+Stable graduation release consolidating features, performance overhauls, and community contributions from the 1.13–1.17 series:
 
 ### Features
 
-* **Column Level Lineage & Impact Analysis** ([#402](https://github.com/ashish10alex/vscode-dataform-tools/issues/402))
+* **Defer to Production** ([#378](https://github.com/ashish10alex/vscode-dataform-tools/issues/378), [#379](https://github.com/ashish10alex/vscode-dataform-tools/issues/379), [#382](https://github.com/ashish10alex/vscode-dataform-tools/issues/382), [#385](https://github.com/ashish10alex/vscode-dataform-tools/issues/385), [#393](https://github.com/ashish10alex/vscode-dataform-tools/issues/393)):
+  * Like dbt's `--defer`: automatically reads unbuilt upstream dependencies from production tables/views instead of requiring full builds in your dev dataset.
+  * Works across dry runs, previews, the compiled query view, and full runs (via temporary labelled proxy views).
+  * Editor decorations on `${ref(...)}`: displays `→ prod`, warnings for branch-modified dependencies (`⚠ prod`), unbuilt tables, or leftover proxy views.
+  * UDF/routine deferral: seamlessly resolves functions and procedures across dev and prod.
+  * Configurable via `vscode-dataform-tools.deferToProd` and `vscode-dataform-tools.prodCompilerOptions`.
+* **Column Level Lineage & Impact Analysis** ([#402](https://github.com/ashish10alex/vscode-dataform-tools/issues/402)):
   * Inspect column-level lineage and downstream impact directly from the compiled query view.
   * Compare modified schemas against production tables (via `vscode-dataform-tools.prodCompilerOptions`) to flag dropped or retyped columns.
   * Integration with Google Cloud Dataplex Data Lineage API with interactive graph exploration and pull request markdown report generation.
-* **Built-in Assertion Kind Badges** ([#401](https://github.com/ashish10alex/vscode-dataform-tools/issues/401))
-  * Identify assertion kinds (unique key, non-null, or row conditions) in the compiled query panel.
-* **Interactive Run Changed Actions** ([#393](https://github.com/ashish10alex/vscode-dataform-tools/issues/393))
+* **Built-in Assertion Kind Badges** ([#401](https://github.com/ashish10alex/vscode-dataform-tools/issues/401)):
+  * Clearly label built-in assertions with their specific kind (unique key, non-null, or row conditions) in the compiled query panel.
+* **Interactive Run Changed Actions** ([#393](https://github.com/ashish10alex/vscode-dataform-tools/issues/393)):
   * Choose which changed files to execute with interactive multi-select.
   * Caches merge base compilation by UTC day for fast reruns.
-* **Session-Persistent CLI Compilation**
+* **Session-Persistent CLI Compilation** ([#388](https://github.com/ashish10alex/vscode-dataform-tools/issues/388)):
   * Fingerprints and persists CLI compilations across VS Code sessions to avoid cold-start compilation delays.
+
+### Bug Fixes & Improvements
+
+* **Local CLI Scope Resolution** ([#386](https://github.com/ashish10alex/vscode-dataform-tools/issues/386)): Respect `dataformCliScope: local` when Dataform CLI is installed in project `node_modules` instead of global PATH. Special thanks to [@bjoernpollex-sc](https://github.com/bjoernpollex-sc)!
+* **BigQuery Auth Auto-Recovery**: Automatically refreshes expired Google Cloud tokens and retries failed calls without crashing.
 
 ### Performance & Reliability
 
@@ -26,7 +37,10 @@ Stable graduation release consolidating features and optimizations from the 1.13
 * **Keystroke Latency Reduction** ([#400](https://github.com/ashish10alex/vscode-dataform-tools/issues/400)): Optimized per-keystroke diagnostic and symbol processing.
 * **Debounced Save & Tab Switching** ([#398](https://github.com/ashish10alex/vscode-dataform-tools/issues/398)): Removed redundant compilation triggers when saving or switching tabs.
 * **VSIX Bundle Trimming** ([#399](https://github.com/ashish10alex/vscode-dataform-tools/issues/399)): Deduplicated Google Cloud dependencies and reduced extension package size.
-* **BigQuery Auth Auto-Recovery**: Automatically refreshes expired Google Cloud tokens and retries failed calls.
+
+### Community Contributors
+
+* Special thanks to [@bjoernpollex-sc](https://github.com/bjoernpollex-sc) for contributing the local Dataform CLI scope fix ([#386](https://github.com/ashish10alex/vscode-dataform-tools/issues/386)).
 
 ## [1.17.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.15.1...v1.17.0) (2026-10-03)
 
