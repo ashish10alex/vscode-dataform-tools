@@ -13,15 +13,18 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
   },
+  allowedDevOrigins: [
+    "localhost:3000",
+    "127.0.0.1:3000",
+    "100.110.67.23:3000",
+    "ashishs-macbook-pro:3000",
+  ],
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
