@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.18.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.17.0...v1.18.0) (2026-10-04)
+
+Stable graduation release consolidating features and optimizations from the 1.13–1.17 series:
+
+### Features
+
+* **Column Level Lineage & Impact Analysis** ([#402](https://github.com/ashish10alex/vscode-dataform-tools/issues/402))
+  * Inspect column-level lineage and downstream impact directly from the compiled query view.
+  * Compare modified schemas against production tables (via `vscode-dataform-tools.prodCompilerOptions`) to flag dropped or retyped columns.
+  * Integration with Google Cloud Dataplex Data Lineage API with interactive graph exploration and pull request markdown report generation.
+* **Built-in Assertion Kind Badges** ([#401](https://github.com/ashish10alex/vscode-dataform-tools/issues/401))
+  * Identify assertion kinds (unique key, non-null, or row conditions) in the compiled query panel.
+* **Interactive Run Changed Actions** ([#393](https://github.com/ashish10alex/vscode-dataform-tools/issues/393))
+  * Choose which changed files to execute with interactive multi-select.
+  * Caches merge base compilation by UTC day for fast reruns.
+* **Session-Persistent CLI Compilation**
+  * Fingerprints and persists CLI compilations across VS Code sessions to avoid cold-start compilation delays.
+
+### Performance & Reliability
+
+* **Sub-Second Quiet Startup** ([#397](https://github.com/ashish10alex/vscode-dataform-tools/issues/397)): Eliminated redundant initializations and intrusive startup popups.
+* **Keystroke Latency Reduction** ([#400](https://github.com/ashish10alex/vscode-dataform-tools/issues/400)): Optimized per-keystroke diagnostic and symbol processing.
+* **Debounced Save & Tab Switching** ([#398](https://github.com/ashish10alex/vscode-dataform-tools/issues/398)): Removed redundant compilation triggers when saving or switching tabs.
+* **VSIX Bundle Trimming** ([#399](https://github.com/ashish10alex/vscode-dataform-tools/issues/399)): Deduplicated Google Cloud dependencies and reduced extension package size.
+* **BigQuery Auth Auto-Recovery**: Automatically refreshes expired Google Cloud tokens and retries failed calls.
+
 ## [1.17.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.15.1...v1.17.0) (2026-10-03)
 
 
