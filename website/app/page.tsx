@@ -1,5 +1,6 @@
 import { Hero } from "@/components/landing/hero";
 import { TrustStrip } from "@/components/landing/trust-strip";
+import { ReleaseHighlight } from "@/components/landing/release-highlight";
 import { FeatureSpotlight } from "@/components/landing/feature-spotlight";
 import { RecentlyShipped } from "@/components/landing/recently-shipped";
 import { AboutAuthor } from "@/components/landing/about-author";
@@ -9,6 +10,7 @@ export default function Home() {
     <main className="flex-1">
       <Hero />
       <TrustStrip />
+      <ReleaseHighlight />
       <FeatureSpotlight
         theme="compile"
         index={1}

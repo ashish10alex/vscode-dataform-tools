@@ -21,15 +21,26 @@ export function RecentlyShipped() {
 
       <ul className="mt-8 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {recent.map((feature) => {
+          const descriptionText = feature.title && feature.text.startsWith(feature.title)
+            ? feature.text.slice(feature.title.length + 2).trim()
+            : feature.text;
+
           const body = (
             <>
               <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                <span className="rounded border px-1.5 py-0.5 text-foreground">v{feature.version}</span>
+                <span className="rounded border px-1.5 py-0.5 text-foreground font-medium">v{feature.version}</span>
                 <time dateTime={feature.date}>{formatReleaseDate(feature.date)}</time>
               </div>
-              <p className="text-sm leading-relaxed">
-                <InlineCode text={feature.text} />
-              </p>
+              <div className="space-y-1">
+                {feature.title && (
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                    {feature.title}
+                  </h3>
+                )}
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <InlineCode text={descriptionText} />
+                </p>
+              </div>
             </>
           );
           const cardClass = "flex h-full flex-col gap-3 p-5";
@@ -50,7 +61,6 @@ export function RecentlyShipped() {
                   </span>
                 </a>
               ) : (
-                // Older changelog entries can lack a commit/PR link; show them without a dead link.
                 <div className={cardClass}>{body}</div>
               )}
             </li>

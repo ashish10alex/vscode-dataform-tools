@@ -1,4 +1,4 @@
-import { ArrowUpRight, Github } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditorFrame } from "@/components/editor-frame";
 import { site } from "@/lib/site";
@@ -16,16 +16,27 @@ export function Hero() {
       <div className="glow-brand absolute inset-0 -z-10" aria-hidden />
 
       <div className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-center sm:px-6 md:pt-16">
-        <a
-          href={site.googleRecommendationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="reveal group inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-brand/40 hover:text-foreground"
-        >
-          <span className="text-brand" aria-hidden>✦</span>
-          Recommended by Google&apos;s Dataform team
-          <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
-        </a>
+        <div className="reveal flex flex-wrap items-center justify-center gap-2.5">
+          <a
+            href="#v1-18-0"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3.5 py-1 text-xs font-medium text-brand shadow-sm backdrop-blur transition-all hover:bg-brand/20 hover:border-brand/60"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
+            <span>v1.18.0 Shipped: Defer to Prod &amp; Column Lineage</span>
+            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          </a>
+
+          <a
+            href={site.googleRecommendationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-brand/40 hover:text-foreground"
+          >
+            <span className="text-brand" aria-hidden>✦</span>
+            Recommended by Google&apos;s Dataform team
+            <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
+          </a>
+        </div>
 
         <h1
           className="reveal mx-auto mt-5 max-w-5xl text-balance text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl md:text-wrap lg:text-[3.25rem]"
