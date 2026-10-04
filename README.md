@@ -82,12 +82,20 @@ Officially recommended [VS Code extension for Dataform](https://marketplace.visu
       <td>Preview query results in a table by running the file</td>
     </tr>
     <tr>
-      <td>Run changed actions</td>
-      <td>Run only the actions whose compiled SQL or materialization settings changed vs the merge-base with your default branch (set with <code>vscode-dataform-tools.defaultBranch</code>), like dbt's <code>state:modified</code>. Catches changes made through <code>includes/</code>, and shows what will run before running it</td>
+      <td>Defer to production</td>
+      <td>Develop without rebuilding upstream tables in dev. Like dbt's <code>--defer</code>, automatically resolves unbuilt dependencies against production tables (via <code>vscode-dataform-tools.prodCompilerOptions</code>) for dry runs, previews, and runs (via proxy views), with in-editor hints on <code>${ref()}</code></td>
     </tr>
     <tr>
-      <td>Column impact of branch changes</td>
-      <td>For every table the branch changes, the columns it drops or retypes against the table in BigQuery and who reads them, from Dataplex lineage, as a report you can paste into a pull request. It compares with the tables compiled with <code>vscode-dataform-tools.prodCompilerOptions</code>; if your project's defaults (e.g. <code>defaultProject</code> in <code>workflow_settings.yaml</code>) point at dev, set it, e.g. <code>--default-database=my-prod-project</code>, or the report compares with your dev tables</td>
+      <td>Run changed actions</td>
+      <td>Run only the actions whose compiled SQL or materialization changed vs the default branch, like dbt's <code>state:modified</code>. Includes interactive file selection and daily-cached merge-base compiles</td>
+    </tr>
+    <tr>
+      <td>Column impact &amp; lineage</td>
+      <td>Inspect column-level lineage and downstream impact directly from the compiled view. Highlights columns dropped or retyped against prod and maps downstream consumers via Dataplex lineage, with PR markdown export</td>
+    </tr>
+    <tr>
+      <td>Assertion kind badges</td>
+      <td>Labels built-in assertions with their specific kind (unique key, non-null, or row conditions) directly in the compiled query panel</td>
     </tr>
     <tr>
       <td><a href="#hover">BigQuery hover provider</a></td>
@@ -292,6 +300,22 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
     <tr>
       <td><code>vscode-dataform-tools.runChangedActionsApi</code></td>
       <td>Same as above, using the Dataform API</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.toggleDeferToProd</code></td>
+      <td>Toggle defer to prod</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.removeProxyViews</code></td>
+      <td>Remove defer to prod proxy views</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.columnLineage</code></td>
+      <td>Show column lineage and impact</td>
+    </tr>
+    <tr>
+      <td><code>vscode-dataform-tools.columnImpactOfChanges</code></td>
+      <td>Show column impact of branch changes</td>
     </tr>
   </tbody>
 </table>
