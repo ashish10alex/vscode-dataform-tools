@@ -58,6 +58,21 @@ export const features: Feature[] = [
     media: { light: "/compiled_query_preview_light.png", dark: "/compiled_query_preview_dark.png" },
   },
   {
+    id: "assertion_badges",
+    theme: "compile",
+    title: "Built-in assertion kind badges",
+    summary:
+      "Built-in assertions in the compiled query panel are distinctly labeled by kind (`uniqueKey`, `nonNull`, `rowConditions`) for fast visual triage.",
+    mediaTodo: "Compiled query panel displaying colored assertion kind badges",
+  },
+  {
+    id: "session_cache",
+    theme: "compile",
+    title: "Session-persistent compilation cache",
+    summary:
+      "Fingerprints and persists CLI compilations across VS Code sessions, slashing cold-start compilation delays down to sub-second speeds.",
+  },
+  {
     id: "diagnostics",
     theme: "compile",
     title: "Inline diagnostics",
@@ -106,6 +121,20 @@ export const features: Feature[] = [
   },
 
   // ── graph ──────────────────────────────────────────────────
+  {
+    id: "column_lineage",
+    theme: "graph",
+    title: "Column-level lineage & change impact",
+    summary:
+      "Inspect column lineage and downstream impact directly from the compiled view. Flags dropped or retyped columns against production and maps downstream consumers via Google Cloud Dataplex Lineage, with PR markdown export.",
+    links: [
+      {
+        label: "Google Cloud Dataplex Lineage API",
+        href: "https://cloud.google.com/data-catalog/docs/concepts/about-data-lineage",
+      },
+    ],
+    mediaTodo: "Column lineage view showing impact summary and Dataplex trace",
+  },
   {
     id: "depgraph",
     theme: "graph",
@@ -194,6 +223,26 @@ export const features: Feature[] = [
   },
 
   // ── run ────────────────────────────────────────────────────
+  {
+    id: "defer_to_prod",
+    theme: "run",
+    title: "Defer to production",
+    summary:
+      "Develop in dev without rebuilding upstream tables. Like dbt's `--defer`, automatically resolves unbuilt dependencies against production tables/views in dry runs, previews, and runs (via proxy views), with inline `${ref()}` decorations.",
+    links: [
+      {
+        label: "ADR: Defer via SQL Rewrite & Proxy Views",
+        href: "https://github.com/ashish10alex/vscode-dataform-tools/blob/main/docs/adr/0001-defer-via-sql-rewrite-and-proxy-views.md",
+      },
+    ],
+  },
+  {
+    id: "run_changed_actions",
+    theme: "run",
+    title: "Interactive run changed actions",
+    summary:
+      "Run only the actions whose compiled SQL or materialization changed vs default branch (`state:modified`), with interactive file selection and daily-cached merge-base compiles.",
+  },
   {
     id: "cost_estimator",
     theme: "run",

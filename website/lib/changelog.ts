@@ -3,8 +3,10 @@ import path from "node:path";
 
 export interface ChangelogFeature {
   scope?: string;
+  title?: string;
   text: string;
   href?: string;
+  details?: string[];
 }
 
 export interface Release {
@@ -16,7 +18,13 @@ export interface Release {
 
 // The website is deployed from `website/`, the changelog lives at the repo root
 // and is maintained by standard-version on every release.
-const CHANGELOG_PATH = path.join(process.cwd(), "..", "CHANGELOG.md");
+function resolveChangelogPath(): string {
+  const rootCandidate = path.join(process.cwd(), "CHANGELOG.md");
+  if (fs.existsSync(rootCandidate)) {
+    return rootCandidate;
+  }
+  return path.join(process.cwd(), "..", "CHANGELOG.md");
+}
 
 const RELEASE_HEADING = /^#{2,3} \[(\d+\.\d+\.\d+)\]\(([^)]+)\) \((\d{4}-\d{2}-\d{2})\)\s*$/gm;
 const MD_LINK = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -51,10 +59,43 @@ function parseFeatureBlock(releaseBody: string): ChangelogFeature[] {
   if (!block) {
     return [];
   }
-  return block[1]
-    .split("\n")
-    .filter((line) => line.startsWith("* "))
-    .map(parseBullet);
+
+  const lines = block[1].split("\n");
+  const items: ChangelogFeature[] = [];
+  let current: ChangelogFeature | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith("* ")) {
+      if (current) {
+        items.push(current);
+      }
+      current = parseBullet(line);
+    } else if (line.trim().startsWith("* ") && current) {
+      const subText = line.trim().slice(2).trim();
+      current.details = current.details || [];
+      current.details.push(subText);
+    }
+  }
+  if (current) {
+    items.push(current);
+  }
+
+  return items.map((item) => {
+    let cleanText = item.text;
+    const boldHeaderMatch = cleanText.match(/^\*\*([^*]+)\*\*\s*$/);
+    if (boldHeaderMatch) {
+      item.title = boldHeaderMatch[1];
+      if (item.details && item.details.length > 0) {
+        cleanText = `${item.title}: ${item.details[0]}`;
+      } else {
+        cleanText = item.title;
+      }
+    }
+    return {
+      ...item,
+      text: cleanText,
+    };
+  });
 }
 
 function parseBullet(line: string): ChangelogFeature {
@@ -65,10 +106,12 @@ function parseBullet(line: string): ChangelogFeature {
     links.find((url) => /\/(issues|pull)\/\d+/.test(url)) ??
     links.find((url) => url.includes("/commit/"));
 
-  // Drop standard-version's trailing references: "([#123](…)) ([abc1234](…)), closes [#99](…)"
+  // Drop standard-version's trailing references or grouped link references
   text = text
     .replace(/,?\s*closes\s+.*$/i, "")
+    .replace(/\s*\(\s*(\[[^\]]+\]\([^)]+\)\s*,?\s*)+\)/g, "")
     .replace(/\s*\(\[[^\]]+\]\([^)]+\)\)/g, "")
+    .replace(/:\s*$/, "")
     .trim();
 
   const scopeMatch = text.match(/^\*\*([^*]+):\*\*\s*/);
@@ -90,12 +133,13 @@ let cached: Release[] | undefined;
 
 function loadReleases(): Release[] {
   if (!cached) {
-    if (!fs.existsSync(CHANGELOG_PATH)) {
+    const changelogPath = resolveChangelogPath();
+    if (!fs.existsSync(changelogPath)) {
       throw new Error(
-        `CHANGELOG.md not found at ${CHANGELOG_PATH}. The website build needs the repository root to be available.`
+        `CHANGELOG.md not found at ${changelogPath}. The website build needs the repository root to be available.`
       );
     }
-    cached = parseChangelog(fs.readFileSync(CHANGELOG_PATH, "utf8"));
+    cached = parseChangelog(fs.readFileSync(changelogPath, "utf8"));
   }
   return cached;
 }
