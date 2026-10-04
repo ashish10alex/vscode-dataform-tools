@@ -6,9 +6,6 @@
       "include": "#comments"
     },
     {
-      "include": "#dataform-functions"
-    },
-    {
       "name": "meta.section.operations",
       "begin": "\\b(pre_operations|post_operations)\\s*({)",
       "beginCaptures": {
@@ -28,12 +25,6 @@
       "patterns": [
         {
           "include": "#comments"
-        },
-        {
-          "include": "#dataform-functions"
-        },
-        {
-          "include": "#inlinejs"
         },
         {
           "include": "#strings"
@@ -102,9 +93,6 @@
       },
       "patterns": [
         {
-          "include": "#dataform-functions"
-        },
-        {
           "include": "source.js"
         }
       ]
@@ -125,9 +113,6 @@
         }
       },
       "patterns": [
-        {
-          "include": "#dataform-functions"
-        },
         {
           "include": "source.js"
         }
@@ -357,6 +342,27 @@
     "comments": {
       "patterns": [
         {
+          "begin": "(^[ \\t]+)?(?=#)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.whitespace.comment.leading.sql"
+            }
+          },
+          "end": "(?!\\G)",
+          "patterns": [
+            {
+              "name": "comment.line.number-sign.sql",
+              "begin": "#",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.comment.sql"
+                }
+              },
+              "end": "$"
+            }
+          ]
+        },
+        {
           "name": "comment.line.number-sign.sql",
           "begin": "#",
           "beginCaptures": {
@@ -365,6 +371,27 @@
             }
           },
           "end": "$"
+        },
+        {
+          "begin": "(^[ \\t]+)?(?=--)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.whitespace.comment.leading.sql"
+            }
+          },
+          "end": "(?!\\G)",
+          "patterns": [
+            {
+              "name": "comment.line.double-dash.sql",
+              "begin": "--",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.comment.sql"
+                }
+              },
+              "end": "$"
+            }
+          ]
         },
         {
           "name": "comment.line.double-dash.sql",
@@ -590,7 +617,7 @@
             }
           },
           "comment": "this is faster than the next begin/end rule since sub-pattern will match till end-of-line and SQL files tend to have very long lines.",
-          "match": "(`)(?:[^`\\\\$]|\\\\.)*(`)",
+          "match": "(`)(?:[^`\\\\]|\\\\.)*(`)",
           "name": "string.quoted.other.backtick.sql"
         },
         {
@@ -608,12 +635,6 @@
           },
           "name": "string.quoted.other.backtick.sql",
           "patterns": [
-            {
-              "include": "#inlinejs"
-            },
-            {
-              "include": "#dataform-functions"
-            },
             {
               "include": "#string_escape"
             }
@@ -783,38 +804,6 @@
         {
           "match": "(?i)\\b(EVERY|HASH|POSITION|SOME)(?=\\s*\\()",
           "name": "invalid.deprecated.legacy.other.sql"
-        }
-      ]
-    },
-    "dataform-functions": {
-      "patterns": [
-        {
-          "match": "\\b(ref|resolve|self|when|incremental|name|schema|database)\\b(?=\\s*\\()",
-          "name": "support.function.dataform.sqlx"
-        }
-      ]
-    },
-    "inlinejs": {
-      "name": "meta.section.inlinejs",
-      "contentName": "markup.other.section.example",
-      "begin": "\\${",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.function.example"
-        }
-      },
-      "end": "}",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.end.example"
-        }
-      },
-      "patterns": [
-        {
-          "include": "#dataform-functions"
-        },
-        {
-          "include": "source.js"
         }
       ]
     }
