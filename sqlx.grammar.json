@@ -1,343 +1,395 @@
 {
-    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-    "name": "sqlx",
-    "patterns": [
-      {
-        "include": "#strings"
-      },
-      {
-        "include": "source.sql"
-      },
-      {
-        "include": "#functions"
-      },
-      {
-        "name": "meta.section.configblock",
-        "contentName": "markup.other.section.example",
-        "begin": "(config)\\s+({)",
-        "beginCaptures": {
-          "1": { "name": "keyword.function" },
-          "2": { "name": "punctuation.definition.function.example" }
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "sqlx",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#dataform-functions"
+    },
+    {
+      "name": "meta.section.operations",
+      "begin": "\\b(pre_operations|post_operations)\\s*({)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.function"
         },
-        "end": "}",
-        "endCaptures": {
-          "0": { "name": "punctuation.definition.end.example" }
+        "2": {
+          "name": "punctuation.definition.function.example"
+        }
+      },
+      "end": "}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.end.example"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#comments"
         },
-        "patterns": [
-          {
-            "include": "source.js#object-member"
-          }
-        ]
-      },
-      {
-        "name": "meta.section.jsblock",
-        "contentName": "markup.other.section.example",
-        "begin": "(js)\\s+({)",
-        "beginCaptures": {
-          "1": { "name": "keyword.function" },
-          "2": { "name": "punctuation.definition.function.example" }
+        {
+          "include": "#dataform-functions"
         },
-        "end": "}",
-        "endCaptures": {
-          "0": { "name": "punctuation.definition.end.example" }
+        {
+          "include": "#inlinejs"
         },
-        "patterns": [
-          {
-            "include": "source.js"
-          }
-        ]
-      },
-      {
-        "name": "meta.section.inlinejs",
-        "contentName": "markup.other.section.example",
-        "begin": "\\${",
-        "beginCaptures": {
-          "0": { "name": "punctuation.definition.function.example" }
+        {
+          "include": "#strings"
         },
-        "end": "}",
-        "endCaptures": {
-          "0": { "name": "punctuation.definition.end.example" }
+        {
+          "include": "source.sql"
         },
-        "patterns": [
-          {
-            "include": "source.js"
-          }
-        ]
-      },
-      {
-        "captures": {
-          "1": {
-            "name": "keyword.other.create.sql"
-          },
-          "2": {
-            "name": "keyword.other.sql"
-          },
-          "3": {
-            "name": "keyword.other.DML.sql"
-          },
-          "5": {
-            "name": "entity.name.function.sql"
-          },
-          "6": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          }
+        {
+          "include": "#functions"
         },
-        "match": "(?i:^\\s*(create(?:\\s+or\\s+replace)?(?:\\s+temporary|\\s+temp)?|drop|alter)\\s+(schema|table(?:\\s+function)?|view|materialized\\s+view|(?:external|snapshot)\\s+table|model|function|procedure|column)\\b(?:\\s+(if(?:\\s+not)?\\s+exists)\\b)?)(?:\\s+(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:[\\w\\{\\}]+|\\{\\{\\s*[\\w]+\\s*\\}\\}))\\4)?",
-        "name": "meta.create.sql"
-      },
-      {
-        "captures": {
-          "1": {
-            "name": "keyword.other.insert.sql"
-          },
-          "3": {
-            "name": "entity.name.function.table.standard.sql"
-          },
-          "4": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          },
-          "5": {
-            "name": "variable.parameter.table.partition_decorator.sql"
-          }
+        {
+          "include": "$self"
+        }
+      ]
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "source.sql"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "name": "meta.section.configblock",
+      "contentName": "markup.other.section.example",
+      "begin": "(config)\\s+({)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.function"
         },
-        "match": "(?i:^\\b((?:insert|merge)(?:\\s+into)?|truncate\\s+table)(?:\\s+(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\2)?)",
-        "name": "meta.create.DML.insert.sql"
+        "2": {
+          "name": "punctuation.definition.function.example"
+        }
       },
-      {
-        "captures": {
-          "1": {
-            "name": "keyword.other.select.sql"
-          },
-          "4": {
-            "name": "entity.name.function.table.standard.sql"
-          },
-          "5": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          },
-          "6": {
-            "name": "variable.parameter.table.partition_decorator.sql"
-          },
-          "7": {
-            "name": "entity.name.function.table.legacy.sql"
-          },
-          "8": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          },
-          "9": {
-            "name": "variable.parameter.table.partition_decorator.legacy.sql"
-          }
+      "end": "}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.end.example"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.js#object-member"
+        }
+      ]
+    },
+    {
+      "name": "meta.section.jsblock",
+      "contentName": "markup.other.section.example",
+      "begin": "(js)\\s+({)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.function"
         },
-        "match": "(?i)(from|join|delete\\s+from|delete(?!\\s+from)|update|using(?!\\s+message)|clone|on\\s+(?:schema|table|view))\\s+((`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:INFORMATION_SCHEMA\\.\\w+|\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\3?|\\[((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\:|(\\.)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\])",
-        "name": "meta.create.from.sql"
+        "2": {
+          "name": "punctuation.definition.function.example"
+        }
       },
-      {
-        "captures": {
-          "1": {
-            "name": "keyword.other.insert.sql"
-          },
-          "3": {
-            "name": "entity.name.function.table.standard.sql"
-          },
-          "4": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          },
-          "5": {
-            "name": "variable.parameter.table.partition_decorator.sql"
-          }
+      "end": "}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.end.example"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#dataform-functions"
         },
-        "match": "(?i:\\b(model|call)\\s+(?:(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\2)?)",
-        "name": "meta.other.table.ml_procedure.sql"
+        {
+          "include": "source.js"
+        }
+      ]
+    },
+    {
+      "name": "meta.section.inlinejs",
+      "contentName": "markup.other.section.example",
+      "begin": "\\${",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.function.example"
+        }
       },
-      {
-        "captures": {
-          "2": {
-            "name": "entity.name.function.table.standard.sql"
-          },
-          "3": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          },
-          "4": {
-            "name": "variable.parameter.table.partition_decorator.sql"
-          },
-          "5": {
-            "name": "entity.name.function.table.legacy.sql"
-          },
-          "6": {
-            "name": "invalid.illegal.table.delimiter.sql"
-          },
-          "7": {
-            "name": "variable.parameter.table.partition_decorator.legacy.sql"
-          }
+      "end": "}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.end.example"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#dataform-functions"
         },
-        "match": "^\\s*(?:(`)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:INFORMATION_SCHEMA\\.\\w+|(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)))(\\*|\\$\\w+)?\\1|\\[((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\:|(\\.)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\])",
-        "name": "meta.other.table.sql"
-      },
-      {
-        "captures": {
-          "1": {
-            "name": "keyword.other.merge.sql"
-          }
+        {
+          "include": "source.js"
+        }
+      ]
+    },
+    {
+      "captures": {
+        "1": {
+          "name": "keyword.other.create.sql"
         },
-        "match": "(?i)(\\b(?:by)\\s+(?:target|source)\\b)",
-        "name": "meta.create.DML.merge.sql"
-      },
-      {
-        "match": "(?i)\\b(array|boolean|bytes|date(?!\\s*\\()|datetime(?!\\s*\\()|geography|numeric|decimal|bignumeric|bigdecimal|float|float64|int64|int|smallint|integer|bigint|tinyint|byteint|bool|record|any\\s+type|string(?!\\s*\\()|struct|time(?!\\s*\\(|\\s+as\\s+of|\\s+zone)|timestamp(?!\\s*\\())\\b",
-        "name": "storage.type.sql"
-      },
-      {
-        "match": "\\b(\\d+\\.\\d+)|(\\d+\\.)|(\\.\\d+)|\\b(\\d+)|(?i:(true|false))\\b",
-        "name": "constant.numeric.sql"
-      },
-      {
-        "match": "(?i)\\bAS\\b",
-        "name": "keyword.other.alias.sql"
-      },
-      {
-        "match": "(?i)\\b(desc|asc)\\b",
-        "name": "keyword.other.order.sql"
-      },
-      {
-        "match": "(?i)\\b(case|when|then|else|end)\\b",
-        "name": "keyword.other.case.sql"
-      },
-      {
-        "match": "\\*",
-        "name": "keyword.operator.star.sql"
-      },
-      {
-        "match": "[!<>]?=|<>|<|>",
-        "name": "keyword.operator.comparison.sql"
-      },
-      {
-        "match": "-|\\+|/|~",
-        "name": "keyword.operator.math.sql"
-      },
-      {
-        "match": "\\|\\|",
-        "name": "keyword.operator.concatenator.sql"
-      },
-      {
-        "match": "<<|>>|\\&|\\^|\\|",
-        "name": "keyword.operator.byte.sql"
-      },
-      {
-        "match": "%",
-        "name": "invalid.deprecated.legacy.operator.sql"
-      },
-      {
-        "match": "(?i:\\b(select|all|distinct|except|replace|from|where|in|is|null|like|between|and|or|with|group|by|rollup|order|limit|having|window)\\b)",
-        "name": "keyword.other.select.sql"
-      },
-      {
-        "match": "(?i:\\b(union|intersect|for|system|time|of|offset|system_time|tablesample|percent)\\b)",
-        "name": "keyword.other.select.set_op.sql"
-      },
-      {
-        "match": "(?i:\\b(inner|cross|full|left|right|outer|join|on|using)\\b)",
-        "name": "keyword.other.select.join.sql"
-      },
-      {
-        "match": "(?i:\\bfor\\s+system\\s+time\\s+as\\s+of\\b)",
-        "name": "keyword.other.select.other.sql"
-      },
-      {
-        "match": "(?i:\\b(insert|into|values|delete|update|set)\\b)",
-        "name": "keyword.other.DML.sql"
-      },
-      {
-        "match": "(?i:\\b(create(\\s+(temporary|temp))?|drop(\\s+column)?|schema|table(?:\\s+function)?|view|materialized(\\s+view)?|external\\s+table|snapshot|clone|if|not|exists|partition|cluster|options|data\\s+type|rows|range|unbounded|preceding|following|current|row|returns|language|deterministic|(\\s*or\\s+replace\\s+)?(function|procedure|model)(\\s*if\\s+not\\s+exists\\s+)?|(add|drop)\\s+column|cascade|restrict|rename|to)\\b)",
-        "name": "keyword.other.DDL.sql"
-      },
-      {
-        "match": "(?i:\\b(grant|revoke)\\b)",
-        "name": "keyword.other.DCL.sql"
-      },
-      {
-        "match": "(?i:\\b(merge|matched|default|truncate)\\b)",
-        "name": "keyword.other.DML.merge.sql"
-      },
-      {
-        "match": "(?i:\\b(assert|export\\s+data|pivot|unpivot|qualify|include|exclude)\\b)",
-        "name": "keyword.other.statement.sql"
-      },
-      {
-        "match": "(?i:\\b(over|ignore|respect|nulls|first|last|interval|at|zone|at\\s+time\\s+zone)\\b)",
-        "name": "keyword.other.function.sql"
-      },
-      {
-        "match": "(?i:\\b(procedure|begin|exception|error[^\\.\\(]|out|inout|call|declare|if|elseif|end\\s+if|loop|while|do|break|leave|continue|iterate|return|execute|immediate|raise|message)\\b)",
-        "name": "keyword.other.procedure.sql"
-      },
-      {
-        "captures": {
-          "1": {
-            "name": "constant.other.database-name.sql"
-          },
-          "2": {
-            "name": "punctuation.separator.period.sql"
-          },
-          "3": {
-            "name": "constant.other.table-name.sql"
-          }
+        "2": {
+          "name": "keyword.other.sql"
         },
-        "match": "(\\w+?)(\\.)(\\w+)"
-      }
-    ],
+        "3": {
+          "name": "keyword.other.DML.sql"
+        },
+        "5": {
+          "name": "entity.name.function.sql"
+        },
+        "6": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        }
+      },
+      "match": "(?i:^\\s*(create(?:\\s+or\\s+replace)?(?:\\s+temporary|\\s+temp)?|drop|alter)\\s+(schema|table(?:\\s+function)?|view|materialized\\s+view|(?:external|snapshot)\\s+table|model|function|procedure|column)\\b(?:\\s+(if(?:\\s+not)?\\s+exists)\\b)?)(?:\\s+(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:[\\w\\{\\}]+|\\{\\{\\s*[\\w]+\\s*\\}\\}))\\4)?",
+      "name": "meta.create.sql"
+    },
+    {
+      "captures": {
+        "1": {
+          "name": "keyword.other.insert.sql"
+        },
+        "3": {
+          "name": "entity.name.function.table.standard.sql"
+        },
+        "4": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        },
+        "5": {
+          "name": "variable.parameter.table.partition_decorator.sql"
+        }
+      },
+      "match": "(?i:^\\b((?:insert|merge)(?:\\s+into)?|truncate\\s+table)(?:\\s+(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\2)?)",
+      "name": "meta.create.DML.insert.sql"
+    },
+    {
+      "captures": {
+        "1": {
+          "name": "keyword.other.select.sql"
+        },
+        "4": {
+          "name": "entity.name.function.table.standard.sql"
+        },
+        "5": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        },
+        "6": {
+          "name": "variable.parameter.table.partition_decorator.sql"
+        },
+        "7": {
+          "name": "entity.name.function.table.legacy.sql"
+        },
+        "8": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        },
+        "9": {
+          "name": "variable.parameter.table.partition_decorator.legacy.sql"
+        }
+      },
+      "match": "(?i)(from|join|delete\\s+from|delete(?!\\s+from)|update|using(?!\\s+message)|clone|on\\s+(?:schema|table|view))\\s+((`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:INFORMATION_SCHEMA\\.\\w+|\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\3?|\\[((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\:|(\\.)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\])",
+      "name": "meta.create.from.sql"
+    },
+    {
+      "captures": {
+        "1": {
+          "name": "keyword.other.insert.sql"
+        },
+        "3": {
+          "name": "entity.name.function.table.standard.sql"
+        },
+        "4": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        },
+        "5": {
+          "name": "variable.parameter.table.partition_decorator.sql"
+        }
+      },
+      "match": "(?i:\\b(model|call)\\s+(?:(`?)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\2)?)",
+      "name": "meta.other.table.ml_procedure.sql"
+    },
+    {
+      "captures": {
+        "2": {
+          "name": "entity.name.function.table.standard.sql"
+        },
+        "3": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        },
+        "4": {
+          "name": "variable.parameter.table.partition_decorator.sql"
+        },
+        "5": {
+          "name": "entity.name.function.table.legacy.sql"
+        },
+        "6": {
+          "name": "invalid.illegal.table.delimiter.sql"
+        },
+        "7": {
+          "name": "variable.parameter.table.partition_decorator.legacy.sql"
+        }
+      },
+      "match": "^\\s*(?:(`)((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\.|(\\:)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:INFORMATION_SCHEMA\\.\\w+|(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)))(\\*|\\$\\w+)?\\1|\\[((?:(?:[\\w\\-]*(?:\\{+\\s*[\\w\\-]+\\s*\\}+[\\w\\-]*)?)(?:\\:|(\\.)))?(?:(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?)\\.)?(?:\\w*(?:\\{+\\s*[\\w\\-]+\\s*\\}+\\w*)?))(\\*|\\$\\w+)?\\])",
+      "name": "meta.other.table.sql"
+    },
+    {
+      "captures": {
+        "1": {
+          "name": "keyword.other.merge.sql"
+        }
+      },
+      "match": "(?i)(\\b(?:by)\\s+(?:target|source)\\b)",
+      "name": "meta.create.DML.merge.sql"
+    },
+    {
+      "match": "(?i)\\b(array|boolean|bytes|date(?!\\s*\\()|datetime(?!\\s*\\()|geography|numeric|decimal|bignumeric|bigdecimal|float|float64|int64|int|smallint|integer|bigint|tinyint|byteint|bool|record|any\\s+type|string(?!\\s*\\()|struct|time(?!\\s*\\(|\\s+as\\s+of|\\s+zone)|timestamp(?!\\s*\\())\\b",
+      "name": "storage.type.sql"
+    },
+    {
+      "match": "\\b(\\d+\\.\\d+)|(\\d+\\.)|(\\.\\d+)|\\b(\\d+)|(?i:(true|false))\\b",
+      "name": "constant.numeric.sql"
+    },
+    {
+      "match": "(?i)\\bAS\\b",
+      "name": "keyword.other.alias.sql"
+    },
+    {
+      "match": "(?i)\\b(desc|asc)\\b",
+      "name": "keyword.other.order.sql"
+    },
+    {
+      "match": "(?i)\\b(case|when|then|else|end)\\b",
+      "name": "keyword.other.case.sql"
+    },
+    {
+      "match": "\\*",
+      "name": "keyword.operator.star.sql"
+    },
+    {
+      "match": "[!<>]?=|<>|<|>",
+      "name": "keyword.operator.comparison.sql"
+    },
+    {
+      "match": "-|\\+|/|~",
+      "name": "keyword.operator.math.sql"
+    },
+    {
+      "match": "\\|\\|",
+      "name": "keyword.operator.concatenator.sql"
+    },
+    {
+      "match": "<<|>>|\\&|\\^|\\|",
+      "name": "keyword.operator.byte.sql"
+    },
+    {
+      "match": "%",
+      "name": "invalid.deprecated.legacy.operator.sql"
+    },
+    {
+      "match": "(?i:\\b(select|all|distinct|except|replace|from|where|in|is|null|like|between|and|or|with|group|by|rollup|order|limit|having|window)\\b)",
+      "name": "keyword.other.select.sql"
+    },
+    {
+      "match": "(?i:\\b(union|intersect|for|system|time|of|offset|system_time|tablesample|percent)\\b)",
+      "name": "keyword.other.select.set_op.sql"
+    },
+    {
+      "match": "(?i:\\b(inner|cross|full|left|right|outer|join|on|using)\\b)",
+      "name": "keyword.other.select.join.sql"
+    },
+    {
+      "match": "(?i:\\bfor\\s+system\\s+time\\s+as\\s+of\\b)",
+      "name": "keyword.other.select.other.sql"
+    },
+    {
+      "match": "(?i:\\b(insert|into|values|delete|update|set)\\b)",
+      "name": "keyword.other.DML.sql"
+    },
+    {
+      "match": "(?i:\\b(create(\\s+(temporary|temp))?|drop(\\s+column)?|schema|table(?:\\s+function)?|view|materialized(\\s+view)?|external\\s+table|snapshot|clone|if|not|exists|partition|cluster|options|data\\s+type|rows|range|unbounded|preceding|following|current|row|returns|language|deterministic|(\\s*or\\s+replace\\s+)?(function|procedure|model)(\\s*if\\s+not\\s+exists\\s+)?|(add|drop)\\s+column|cascade|restrict|rename|to)\\b)",
+      "name": "keyword.other.DDL.sql"
+    },
+    {
+      "match": "(?i:\\b(grant|revoke)\\b)",
+      "name": "keyword.other.DCL.sql"
+    },
+    {
+      "match": "(?i:\\b(merge|matched|default|truncate)\\b)",
+      "name": "keyword.other.DML.merge.sql"
+    },
+    {
+      "match": "(?i:\\b(assert|export\\s+data|pivot|unpivot|qualify|include|exclude)\\b)",
+      "name": "keyword.other.statement.sql"
+    },
+    {
+      "match": "(?i:\\b(over|ignore|respect|nulls|first|last|interval|at|zone|at\\s+time\\s+zone)\\b)",
+      "name": "keyword.other.function.sql"
+    },
+    {
+      "match": "(?i:\\b(procedure|begin|exception|error[^\\.\\(]|out|inout|call|declare|if|elseif|end\\s+if|loop|while|do|break|leave|continue|iterate|return|execute|immediate|raise|message)\\b)",
+      "name": "keyword.other.procedure.sql"
+    },
+    {
+      "captures": {
+        "1": {
+          "name": "constant.other.database-name.sql"
+        },
+        "2": {
+          "name": "punctuation.separator.period.sql"
+        },
+        "3": {
+          "name": "constant.other.table-name.sql"
+        }
+      },
+      "match": "(\\w+?)(\\.)(\\w+)"
+    }
+  ],
   "repository": {
     "comments": {
       "patterns": [
         {
-          "begin": "(^[ \\t]+)?(?=--)",
+          "name": "comment.line.number-sign.sql",
+          "begin": "#",
           "beginCaptures": {
-            "1": {
-              "name": "punctuation.whitespace.comment.leading.sql"
+            "0": {
+              "name": "punctuation.definition.comment.sql"
             }
           },
-          "end": "(?!\\G)",
-          "patterns": [
-            {
-              "begin": "--",
-              "beginCaptures": {
-                "0": {
-                  "name": "punctuation.definition.comment.sql"
-                }
-              },
-              "end": "\\n",
-              "name": "comment.line.double-dash.sql"
-            }
-          ]
+          "end": "$"
         },
         {
-          "begin": "(^[ \\t]+)?(?=#)",
+          "name": "comment.line.double-dash.sql",
+          "begin": "--",
           "beginCaptures": {
-            "1": {
-              "name": "punctuation.whitespace.comment.leading.sql"
+            "0": {
+              "name": "punctuation.definition.comment.sql"
             }
           },
-          "end": "(?!\\G)",
-          "patterns": [
-            {
-              "begin": "#",
-              "beginCaptures": {
-                "0": {
-                  "name": "punctuation.definition.comment.sql"
-                }
-              },
-              "end": "\\n",
-              "name": "comment.line.number-sign.sql"
-            }
-          ]
+          "end": "$"
         },
         {
+          "name": "comment.block.sql",
           "begin": "/\\*",
-          "captures": {
+          "beginCaptures": {
             "0": {
               "name": "punctuation.definition.comment.sql"
             }
           },
           "end": "\\*/",
-          "name": "comment.block.c"
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.sql"
+            }
+          }
         }
       ]
     },
@@ -538,7 +590,7 @@
             }
           },
           "comment": "this is faster than the next begin/end rule since sub-pattern will match till end-of-line and SQL files tend to have very long lines.",
-          "match": "(`)(?:[^`\\\\]|\\\\.)*(`)",
+          "match": "(`)(?:[^`\\\\$]|\\\\.)*(`)",
           "name": "string.quoted.other.backtick.sql"
         },
         {
@@ -556,6 +608,12 @@
           },
           "name": "string.quoted.other.backtick.sql",
           "patterns": [
+            {
+              "include": "#inlinejs"
+            },
+            {
+              "include": "#dataform-functions"
+            },
             {
               "include": "#string_escape"
             }
@@ -727,7 +785,39 @@
           "name": "invalid.deprecated.legacy.other.sql"
         }
       ]
+    },
+    "dataform-functions": {
+      "patterns": [
+        {
+          "match": "\\b(ref|resolve|self|when|incremental|name|schema|database)\\b(?=\\s*\\()",
+          "name": "support.function.dataform.sqlx"
+        }
+      ]
+    },
+    "inlinejs": {
+      "name": "meta.section.inlinejs",
+      "contentName": "markup.other.section.example",
+      "begin": "\\${",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.function.example"
+        }
+      },
+      "end": "}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.end.example"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#dataform-functions"
+        },
+        {
+          "include": "source.js"
+        }
+      ]
     }
   },
-    "scopeName": "source.sqlx"
-  }
+  "scopeName": "source.sqlx"
+}
