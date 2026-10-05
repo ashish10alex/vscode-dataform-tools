@@ -115,19 +115,24 @@ export function getLineUnderCursor(): string | undefined {
 
 }
 
-export function runCommandInTerminal(command: string) {
+/** The terminal the extension runs Dataform CLI commands in. */
+let cliTerminal: vscode.Terminal | undefined;
+
+/**
+ * Runs a Dataform CLI command in the extension's own "dataform" terminal, made on first use and
+ * again if the user closes it. Never the active terminal: that may be running another program,
+ * such as a TUI, which would read the command as keystrokes.
+ */
+export function runCommandInTerminal(command: string): vscode.Terminal {
     if(isRunningOnWindows){
         command = "cmd /C " + command;
     }
-    if (vscode.window.activeTerminal === undefined) {
-        const terminal = vscode.window.createTerminal('dataform');
-        terminal.sendText(command);
-        terminal.show();
-    } else {
-        const terminal = vscode.window.activeTerminal;
-        vscode.window.activeTerminal.sendText(command);
-        terminal.show();
+    if (!cliTerminal || cliTerminal.exitStatus !== undefined || !vscode.window.terminals.includes(cliTerminal)) {
+        cliTerminal = vscode.window.createTerminal('dataform');
     }
+    cliTerminal.sendText(command);
+    cliTerminal.show();
+    return cliTerminal;
 }
 
 export async function openFileOnLeftEditorPane(filePath: string, position: vscode.Position){
