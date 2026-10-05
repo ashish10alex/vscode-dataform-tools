@@ -26,7 +26,7 @@ One thing a Project defines in its Compiled Graph, whichever Backend it comes fr
 _Avoid_: node, resource, model (as the general word)
 
 **Kind**:
-What sort of thing an action is, from one list shared by both Backends, e.g. table, view, incremental, assertion, declaration, seed, snapshot, test, source. Each Backend's own word is kept where two Kinds play the same part: assertion and test, declaration and source.
+What sort of thing an action is, from one list shared by both Backends, e.g. table, view, incremental, assertion, declaration, seed, snapshot, test, unit test, source. Each Backend's own word is kept where two Kinds play the same part: assertion and test, declaration and source. A unit test is one Kind in both Backends.
 _Avoid_: type, action type, resource type, materialization
 
 **Target**:
