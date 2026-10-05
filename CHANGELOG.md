@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.18.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.18.0...v1.18.1) (2026-10-05)
+
+
+### Features
+
+* **website:** highlight 1.18.0 release features with defer to prod and column lineage ([d04733c](https://github.com/ashish10alex/vscode-dataform-tools/commit/d04733cc6bdd6c8b011a85de4419eab1ece0361a))
+
+
+### Bug Fixes
+
+* run CLI commands in the extension's own terminal, not the active one ([c42b83b](https://github.com/ashish10alex/vscode-dataform-tools/commit/c42b83bbb9fd03a6b20ab70d596d37ddab2069be))
+* **website:** configure allowedDevOrigins for Tailscale in next.config.mjs ([6b48938](https://github.com/ashish10alex/vscode-dataform-tools/commit/6b489383893f7c7cb606ea543dab466985365e5c))
+
+
+### Documentation
+
+* include defer to prod and contributor credit in 1.18.0 changelog ([6571ae4](https://github.com/ashish10alex/vscode-dataform-tools/commit/6571ae42b4112ffec86b4b83dc2059a7e0f8eca8))
+* update README with defer to prod and column impact ([#403](https://github.com/ashish10alex/vscode-dataform-tools/issues/403)) ([413ef62](https://github.com/ashish10alex/vscode-dataform-tools/commit/413ef629c8ef7afa16216b58de3bd68c09946011))
+
 ## [1.18.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.17.0...v1.18.0) (2026-10-04)
 
 Stable graduation release consolidating features, performance overhauls, and community contributions from the 1.13–1.17 series:
