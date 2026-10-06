@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import { queryDryRun } from '../bigqueryDryRun';
 import { setDiagnostics } from '../setDiagnostics';
 import { getMetadataForSqlxFileBlocks } from '../sqlxFileParser';
@@ -32,15 +33,16 @@ export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
 }
 
 export async function gatherQueryAutoCompletionMeta() {
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    const compiled = compiledJson();
+    if (!compiled) {
         logger.debug('No cached compilation available for autocompletion');
         return;
     }
     logger.debug('Using cached compilation for autocompletion metadata');
     // all 2 of these together take approx less than 0.35ms (Dataform repository with 285 nodes)
     let [declarationsAndTargets, dataformTags] = await Promise.all([
-        getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
-        getDataformTags(CACHED_COMPILED_DATAFORM_JSON),
+        getDependenciesAutoCompletionItems(compiled),
+        getDataformTags(compiled),
     ]);
     return {
         declarationsAndTargets: declarationsAndTargets, dataformTags: dataformTags
@@ -269,7 +271,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let curFileMeta = await getCurrentFileMetadata(true);
 
-    if (!CACHED_COMPILED_DATAFORM_JSON || !curFileMeta) {
+    if (!compiledJson() || !curFileMeta) {
         return;
     }
 

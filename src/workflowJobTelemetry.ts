@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from './project';
 import { loadDataformTools } from "./lazySdk";
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { bigQueryDryRunCostOneGiBByCurrency, currencySymbolMapping } from './constants';
@@ -79,7 +80,7 @@ function getCurrency(): SupportedCurrency {
 
 /** BigQuery requires the job location for jobs outside the US / EU multi-regions; the project's default location is the best guess. */
 function defaultJobLocation(): string | undefined {
-    return CACHED_COMPILED_DATAFORM_JSON?.projectConfig?.defaultLocation || undefined;
+    return compiledJson()?.projectConfig?.defaultLocation || undefined;
 }
 
 async function fetchJobStats(ref: BigQueryJobRef, currency: SupportedCurrency): Promise<WorkflowActionJobStats | undefined> {

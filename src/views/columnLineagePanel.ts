@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../logger';
@@ -215,7 +216,7 @@ export class ColumnLineagePanel {
         this.setImpact({ ...empty, status: 'running', progress: { phase: 'Working out changed actions', done: 0, total: 0 } });
         try {
             result ??= await prepareChangedActions(workspaceFolder);
-            const head = CACHED_COMPILED_DATAFORM_JSON;
+            const head = compiledJson();
             if (!current()) {
                 return;
             }

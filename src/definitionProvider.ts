@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledIndices, compiledJson } from './project';
 import { findCteDefinition } from './cteScanner';
 import { getPostionOfSourceDeclaration, getPostionOfVariableInJsFileOrBlock, getWorkspaceFolder, runCompilation } from './utils';
 import { DataformCompiledJson } from './types';
@@ -32,11 +33,11 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
     let workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder){return;}
     let dataformCompiledJson: DataformCompiledJson | undefined;
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    if (!compiledJson()) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
         ({ dataformCompiledJson } = await runCompilation(workspaceFolder)); // Takes ~1100ms
     } else {
-        dataformCompiledJson = CACHED_COMPILED_DATAFORM_JSON;
+        dataformCompiledJson = compiledJson();
     }
 
     let declarations = dataformCompiledJson?.declarations;
@@ -62,7 +63,7 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
         searchTerm = tablePrefix + "_" + searchTerm;
     }
 
-    const mapNodes = global.TARGET_NAME_MAP?.get(searchTerm);
+    const mapNodes = compiledIndices().targetNameMap.get(searchTerm);
     if (mapNodes && mapNodes.length > 0) {
         let fullSourcePath = path.join(workspaceFolder, mapNodes[0].fileName);
         let sourcesJsUri = vscode.Uri.file(fullSourcePath);

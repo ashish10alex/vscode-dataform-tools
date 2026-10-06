@@ -14,7 +14,7 @@ import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
-import { clearCompiled } from '../project';
+import { clearCompiled, compiledIndices, compiledJson } from '../project';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
@@ -127,9 +127,9 @@ function getTreeRootFromWordInStruct(struct: Table[] | Operation[] | Assertion[]
     }
 }
 
-export async function getDependentsOfTarget(targetToSearch: Target) {
+export async function getDependentsOfTarget(targetToSearch: Target, workspaceFolder?: string) {
     const targetKey = `${targetToSearch.database}.${targetToSearch.schema}.${targetToSearch.name}`;
-    const dependents = TARGET_DEPENDENTS_MAP.get(targetKey) || [];
+    const dependents = compiledIndices(workspaceFolder).targetDependentsMap.get(targetKey) || [];
     logger.debug(`Found ${dependents.length} dependents for ${targetKey} from cache`);
     return dependents;
 }
@@ -194,7 +194,7 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
         }
     }
 
-    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+    if (freshCompilation || !compiledJson(workspaceFolder)) {
         if (freshCompilation) {
             logger.debug('Fresh compilation requested, ignoring cache');
         } else {
@@ -237,7 +237,7 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
             const targetToSearch = fileMetadata?.tables[0]?.target;
             let dependents = undefined;
             if (targetToSearch) {
-                dependents = await getDependentsOfTarget(targetToSearch);
+                dependents = await getDependentsOfTarget(targetToSearch, workspaceFolder);
             }
             const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, dataformCompiledJson, workspaceFolder, deferralInBackground);
 
@@ -286,7 +286,8 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
+        const compiled = compiledJson(workspaceFolder)!;
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, compiled, workspaceFolder);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -303,10 +304,10 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
         const targetToSearch = fileMetadata?.tables[0]?.target;
         let dependents = undefined;
         if (targetToSearch) {
-            dependents = await getDependentsOfTarget(targetToSearch);
+            dependents = await getDependentsOfTarget(targetToSearch, workspaceFolder);
         }
         const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
-        const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder, deferralInBackground);
+        const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, compiled, workspaceFolder, deferralInBackground);
 
         return {
             isDataformWorkspace: true,
@@ -320,8 +321,8 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
                 relativeFilePath: relativeFilePath
             },
             document: document,
-            projectConfig: CACHED_COMPILED_DATAFORM_JSON!.projectConfig,
-            dataformCoreVersion: CACHED_COMPILED_DATAFORM_JSON!.dataformCoreVersion,
+            projectConfig: compiled.projectConfig,
+            dataformCoreVersion: compiled.dataformCoreVersion,
             packageJsonContent: packageJsonContent
         };
     }
@@ -577,7 +578,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         if (!(await beginRun(lastRunRequest))) { return; }
 
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
+        const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
             return;

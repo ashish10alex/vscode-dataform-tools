@@ -1,4 +1,5 @@
 import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress, ensureFreshCompilation } from "./utils";
+import { compiledJson } from './project';
 import * as vscode from 'vscode';
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
@@ -138,13 +139,13 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
     await ensureFreshCompilation(workspaceFolder);
 
     const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-    const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
+    const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
     if(!projectId){
         vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
         return;
     }
 
-    if(!CACHED_COMPILED_DATAFORM_JSON){
+    if(!compiledJson()){
         vscode.window.showErrorMessage(`Unable to compile dataform project. Run "dataform compile" in the terminal to check`);
         return;
     }

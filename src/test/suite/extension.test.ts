@@ -4,7 +4,8 @@ globalThis.errorInPreOpsDenyList = false;
 globalThis.compilerOptionsMap = {};
 import path from 'path';
 import * as vscode from 'vscode';
-import { compileDataform, formatBytes, formatDryRunCostSummary, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, buildIndices, getDataformTags } from '../../utils';
+import { compileDataform, formatBytes, formatDryRunCostSummary, getQueryMetaForCurrentFile, handleSemicolonPrePostOps, getDataformTags } from '../../utils';
+import { setCompiled } from '../../project';
 import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset, incrementalTableOffset } from '../../constants';
@@ -36,7 +37,7 @@ function compileTestWorkspace(): Promise<DataformCompiledJson> {
             throw new Error('Compilation failed');
         }
         const dataformCompiledJson: DataformCompiledJson = JSON.parse(compiledString);
-        buildIndices(dataformCompiledJson);
+        setCompiled(workspaceFolder, dataformCompiledJson);
         return dataformCompiledJson;
     });
     return compiledTestWorkspace;

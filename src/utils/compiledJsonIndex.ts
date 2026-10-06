@@ -1,4 +1,3 @@
-import { logger } from '../logger';
 import { DataformCompiledJson, Table, Assertion, Operation, Notebook, Target } from '../types';
 
 export let declarationsAndTargets: string[] = [];
@@ -17,26 +16,6 @@ export interface CompiledIndices {
 
 export function emptyIndices(): CompiledIndices {
     return { fileNodeMap: new Map(), targetDependentsMap: new Map(), targetNameMap: new Map() };
-}
-
-/** Makes `indices` the ones the window-wide lookups read */
-export function useIndices(indices: CompiledIndices) {
-    global.FILE_NODE_MAP = indices.fileNodeMap;
-    global.TARGET_DEPENDENTS_MAP = indices.targetDependentsMap;
-    global.TARGET_NAME_MAP = indices.targetNameMap;
-}
-
-// Cache maps for O(1) lookups
-useIndices(emptyIndices());
-
-export function clearIndices() {
-    declarationsAndTargets = [];
-    useIndices(emptyIndices());
-}
-
-export function buildIndices(compiledJson: DataformCompiledJson) {
-    useIndices(computeIndices(compiledJson));
-    logger.debug(`Built indices: ${global.FILE_NODE_MAP.size} files, ${global.TARGET_DEPENDENTS_MAP.size} targets with dependents`);
 }
 
 /** Builds the lookups for a compiled graph. Fills in each action's `type` on the way, as the rest of the extension expects */

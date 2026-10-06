@@ -4,8 +4,8 @@ import os from 'os';
 import path from 'path';
 import { setup, suite, suiteSetup, suiteTeardown, test } from 'mocha';
 import { ProjectRegistry } from '../../project/registry';
-import { clearCompiled, projects, setCompiled } from '../../project';
-import { emptyIndices, useIndices } from '../../utils/compiledJsonIndex';
+import { clearCompiled, compiledIndices, compiledJson, projects, setCompiled } from '../../project';
+import { emptyIndices } from '../../utils/compiledJsonIndex';
 import { DataformCompiledJson } from '../../types';
 
 const target = (name: string) => ({ database: 'p', schema: 'd', name });
@@ -128,47 +128,48 @@ suite('project registry', () => {
     });
 
     suite('storing a compile result', () => {
-        // The window's own registry and lookups, which other suites also fill: put back what was there
-        const before = { compiled: globalThis.CACHED_COMPILED_DATAFORM_JSON, fileNodeMap: globalThis.FILE_NODE_MAP, targetDependentsMap: globalThis.TARGET_DEPENDENTS_MAP, targetNameMap: globalThis.TARGET_NAME_MAP };
-        suiteSetup(() => {
-            before.compiled = globalThis.CACHED_COMPILED_DATAFORM_JSON;
-            before.fileNodeMap = globalThis.FILE_NODE_MAP;
-            before.targetDependentsMap = globalThis.TARGET_DEPENDENTS_MAP;
-            before.targetNameMap = globalThis.TARGET_NAME_MAP;
-        });
+        // The window's own registry, which other suites also fill: only these folders are touched
         setup(() => {
-            clearCompiled();
-        });
-        suiteTeardown(() => {
-            globalThis.CACHED_COMPILED_DATAFORM_JSON = before.compiled;
-            useIndices(before);
+            clearCompiled(dataformRoot);
         });
 
-        test('setCompiled records it on the Project and makes it what the window-wide lookups read', () => {
+        test('setCompiled records the result and its lookups on the Project', () => {
             const compiled = compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' }, { name: 'report', fileName: 'definitions/report.sqlx', dependsOn: ['orders'] });
             setCompiled(dataformRoot, compiled);
-            const state = projects.find(dataformRoot, 'dataform');
-            assert.strictEqual(state?.compiled, compiled);
-            assert.strictEqual(globalThis.CACHED_COMPILED_DATAFORM_JSON, compiled);
-            assert.strictEqual(state?.indices?.fileNodeMap, globalThis.FILE_NODE_MAP);
-            assert.deepStrictEqual(globalThis.TARGET_DEPENDENTS_MAP.get('p.d.orders'), [target('report')]);
-            assert.strictEqual(globalThis.TARGET_NAME_MAP.get('report')?.length, 1);
+            assert.strictEqual(projects.find(dataformRoot, 'dataform')?.compiled, compiled);
+            assert.strictEqual(compiledJson(dataformRoot), compiled);
+            const indices = compiledIndices(dataformRoot);
+            assert.strictEqual(indices.fileNodeMap.get('definitions/report.sqlx')?.length, 1);
+            assert.deepStrictEqual(indices.targetDependentsMap.get('p.d.orders'), [target('report')]);
+            assert.strictEqual(indices.targetNameMap.get('report')?.length, 1);
         });
 
-        test('clearCompiled forgets it in both places', () => {
+        test('clearCompiled forgets it', () => {
             setCompiled(dataformRoot, compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' }));
             clearCompiled(dataformRoot);
-            assert.strictEqual(projects.find(dataformRoot, 'dataform')?.compiled, undefined);
-            assert.strictEqual(globalThis.CACHED_COMPILED_DATAFORM_JSON, undefined);
-            assert.strictEqual(globalThis.FILE_NODE_MAP.size, 0);
+            assert.strictEqual(compiledJson(dataformRoot), undefined);
+            assert.strictEqual(compiledIndices(dataformRoot).fileNodeMap.size, 0);
         });
 
-        test('a folder that is not a Dataform Project still feeds the window-wide lookups', () => {
-            const compiled = compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' });
-            setCompiled(plainRoot, compiled);
-            assert.strictEqual(projects.find(plainRoot, 'dataform'), undefined);
-            assert.strictEqual(globalThis.CACHED_COMPILED_DATAFORM_JSON, compiled);
-            assert.strictEqual(globalThis.FILE_NODE_MAP.size, 1);
+        test('each Project keeps its own result', () => {
+            const one = compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' });
+            const other = compiledWith({ name: 'customers', fileName: 'definitions/customers.sqlx' });
+            setCompiled(dataformRoot, one);
+            setCompiled(sharedRoot, other);
+            assert.strictEqual(compiledJson(dataformRoot), one);
+            assert.strictEqual(compiledJson(sharedRoot), other);
+            assert.ok(compiledIndices(dataformRoot).targetNameMap.has('orders'));
+            assert.ok(!compiledIndices(dataformRoot).targetNameMap.has('customers'));
+            clearCompiled(sharedRoot);
+            assert.strictEqual(compiledJson(dataformRoot), one);
+        });
+
+        test('nothing is kept for a folder that is not a Dataform Project', () => {
+            setCompiled(plainRoot, compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' }));
+            setCompiled(dbtRoot, compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' }));
+            assert.strictEqual(compiledJson(plainRoot), undefined);
+            assert.strictEqual(compiledJson(dbtRoot), undefined);
+            assert.strictEqual(compiledIndices(plainRoot).fileNodeMap.size, 0);
         });
     });
 });

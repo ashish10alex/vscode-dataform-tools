@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { compiledIndices } from './project';
 import { loadBigQuery } from './lazySdk';
 import {
   getWorkspaceFolder,
@@ -488,8 +489,8 @@ export async function resolveTableReferenceAtPosition(
     searchTerm = tablePrefix + "_" + searchTerm;
   }
 
-  // Declarations are not in TARGET_NAME_MAP yet, which is why they are matched above.
-  const node: any = (global.TARGET_NAME_MAP?.get(searchTerm) || [])[0];
+  // Declarations are not in the target name lookup yet, which is why they are matched above.
+  const node: any = (compiledIndices().targetNameMap.get(searchTerm) || [])[0];
   if (node?.target) {
     return {
       target: node.target,

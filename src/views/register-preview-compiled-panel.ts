@@ -1,4 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
+import { compiledJson } from '../project';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
@@ -516,15 +517,15 @@ export class CompiledQueryPanel {
                 const datasetId = message.value.split(".")[1];
                 const tableId = message.value.split(".")[2];
 
-                if(!CACHED_COMPILED_DATAFORM_JSON){
+                if(!compiledJson()){
                     // this should never happen as the view exposing the dependents can only be created when compilation is done;
                     vscode.window.showWarningMessage(`compile Dataform project before navigating to dependencies & dependents`);
                 }
 
-                let tables = CACHED_COMPILED_DATAFORM_JSON?.tables;
-                let operations = CACHED_COMPILED_DATAFORM_JSON?.operations;
-                let assertions = CACHED_COMPILED_DATAFORM_JSON?.assertions;
-                let declarations = CACHED_COMPILED_DATAFORM_JSON?.declarations;
+                let tables = compiledJson()?.tables;
+                let operations = compiledJson()?.operations;
+                let assertions = compiledJson()?.assertions;
+                let declarations = compiledJson()?.declarations;
 
                 const modelTypes = [tables, operations, assertions];
                 for (const model of modelTypes) {
@@ -747,9 +748,10 @@ export class CompiledQueryPanel {
                 if (costWorkspaceFolder) {
                     await ensureFreshCompilation(costWorkspaceFolder);
                 }
-                if(CACHED_COMPILED_DATAFORM_JSON){
+                const compiledForCost = compiledJson(costWorkspaceFolder);
+                if(compiledForCost){
                     logger.debug('Using cached compilation for tag cost estimation');
-                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTags, includeDependenciesCost, includeDependentsCost);
+                    const tagDryRunStatsMeta = await costEstimator(compiledForCost, selectedTags, includeDependenciesCost, includeDependentsCost);
                     let currency = "USD" as SupportedCurrency;
                     let currencySymbol = "$";
                     if(tagDryRunStatsMeta?.tagDryRunStatsList){
@@ -830,7 +832,7 @@ export class CompiledQueryPanel {
                 const _lineageNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
                 const locationLineage = this.centerPanel?._cachedResults?.location ||
                     curFileMeta?.projectConfig?.defaultLocation ||
-                    CACHED_COMPILED_DATAFORM_JSON?.projectConfig?.defaultLocation;
+                    compiledJson()?.projectConfig?.defaultLocation;
 
                 if (!locationLineage) {
                     vscode.window.showErrorMessage("Location for lineage metadata not found. Please set 'defaultLocation' in your Dataform configuration.");
@@ -1334,7 +1336,7 @@ export class CompiledQueryPanel {
         // an empty panel.
         const relativeFilePathForGraphs = curFileMeta.pathMeta?.relativeFilePath;
         if (isPropertyGraphCandidateFile(relativeFilePathForGraphs)) {
-            const propertyGraphs = getPropertyGraphsForFile(relativeFilePathForGraphs, CACHED_COMPILED_DATAFORM_JSON);
+            const propertyGraphs = getPropertyGraphsForFile(relativeFilePathForGraphs, compiledJson());
 
             if (propertyGraphs.length > 0) {
                 if (diagnosticCollection) {
@@ -1386,7 +1388,7 @@ export class CompiledQueryPanel {
                 return;
             }
 
-            const coreVersion = curFileMeta.dataformCoreVersion ?? CACHED_COMPILED_DATAFORM_JSON?.dataformCoreVersion;
+            const coreVersion = curFileMeta.dataformCoreVersion ?? compiledJson()?.dataformCoreVersion;
             if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
                 await this.postMessage({
                     "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
@@ -1415,9 +1417,10 @@ export class CompiledQueryPanel {
 
         if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) && isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
-                if(CACHED_COMPILED_DATAFORM_JSON){
-                    if (CACHED_COMPILED_DATAFORM_JSON?.declarations) { 
-                        const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
+                const compiled = compiledJson();
+                if(compiled){
+                    if (compiled.declarations) { 
+                        const filteredDeclarations = compiled.declarations
                             .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
 
                         if (filteredDeclarations.length > 0) {
@@ -1805,7 +1808,7 @@ export class CompiledQueryPanel {
     }
 
     public async postChangedActions(allowCompile: boolean) {
-        if (this.centerPanelDisposed || (!allowCompile && !CACHED_COMPILED_DATAFORM_JSON)) {
+        if (this.centerPanelDisposed || (!allowCompile && !compiledJson())) {
             return; // Nothing compiled yet, e.g. not a Dataform workspace, which the compile has already reported
         }
         if (allowCompile) {

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { DataformCompiledJson, Target, WorkflowUrlEntry } from './types';
+import { Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
@@ -63,8 +63,6 @@ export async function activate(context: vscode.ExtensionContext) {
         dispose: () => logger.dispose()
     });
 
-    globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
-    logger.debug('Extension activated - initialized global cache (CACHED_COMPILED_DATAFORM_JSON = undefined)');
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
@@ -84,9 +82,6 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.workspaceFolder = undefined;
     globalThis.errorInPreOpsDenyList = false;
     globalThis.compilerOptionsMap = {};
-    globalThis.FILE_NODE_MAP = new Map();
-    globalThis.TARGET_DEPENDENTS_MAP = new Map();
-    globalThis.TARGET_NAME_MAP = new Map();
     globalThis.DEBOUNCE_WAIT = 750;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
