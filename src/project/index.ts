@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { logger } from '../logger';
+import type { CompiledGraph } from '../shared/compiledGraph';
 import type { DataformCompiledJson } from '../types';
 import { CompiledIndices, emptyIndices } from '../utils/compiledJsonIndex';
 import { createDataformBackend } from './dataformBackend';
@@ -99,6 +100,14 @@ function dataformProject(root?: string): ProjectState | undefined {
  */
 export function compiledJson(root?: string): DataformCompiledJson | undefined {
     return dataformProject(root)?.dataformBackend?.rawResult;
+}
+
+/**
+ * The Compiled Graph of what a Dataform Project last compiled to; see `dataformProject` for which one. Undefined
+ * before the first compile result.
+ */
+export function compiledGraph(root?: string): CompiledGraph | undefined {
+    return dataformProject(root)?.dataformBackend?.graph;
 }
 
 const noIndices = emptyIndices();
