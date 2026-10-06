@@ -1,23 +1,48 @@
 import { logger } from '../logger';
-import { DataformCompiledJson, Table, Assertion, Operation, Notebook } from '../types';
+import { DataformCompiledJson, Table, Assertion, Operation, Notebook, Target } from '../types';
 
 export let declarationsAndTargets: string[] = [];
 
+type CompiledNode = Table | Assertion | Operation | Notebook;
+
+/** Lookups over a compiled graph, built once per compile */
+export interface CompiledIndices {
+    /** Actions by the file that defines them */
+    fileNodeMap: Map<string, CompiledNode[]>;
+    /** For a target (`database.schema.name`), the targets of the actions that depend on it */
+    targetDependentsMap: Map<string, Target[]>;
+    /** Actions by their target's name alone, for resolving a ref from its text */
+    targetNameMap: Map<string, CompiledNode[]>;
+}
+
+export function emptyIndices(): CompiledIndices {
+    return { fileNodeMap: new Map(), targetDependentsMap: new Map(), targetNameMap: new Map() };
+}
+
+/** Makes `indices` the ones the window-wide lookups read */
+export function useIndices(indices: CompiledIndices) {
+    global.FILE_NODE_MAP = indices.fileNodeMap;
+    global.TARGET_DEPENDENTS_MAP = indices.targetDependentsMap;
+    global.TARGET_NAME_MAP = indices.targetNameMap;
+}
+
 // Cache maps for O(1) lookups
-global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
-global.TARGET_DEPENDENTS_MAP = new Map<string, import('../types').Target[]>();
-global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+useIndices(emptyIndices());
 
 export function clearIndices() {
     declarationsAndTargets = [];
-    global.FILE_NODE_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
-    global.TARGET_DEPENDENTS_MAP = new Map<string, import('../types').Target[]>();
-    global.TARGET_NAME_MAP = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
+    useIndices(emptyIndices());
 }
 
 export function buildIndices(compiledJson: DataformCompiledJson) {
+    useIndices(computeIndices(compiledJson));
+    logger.debug(`Built indices: ${global.FILE_NODE_MAP.size} files, ${global.TARGET_DEPENDENTS_MAP.size} targets with dependents`);
+}
+
+/** Builds the lookups for a compiled graph. Fills in each action's `type` on the way, as the rest of the extension expects */
+export function computeIndices(compiledJson: DataformCompiledJson): CompiledIndices {
     const newFileNodeMap = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
-    const newTargetDependentsMap = new Map<string, import('../types').Target[]>();
+    const newTargetDependentsMap = new Map<string, Target[]>();
     const newTargetNameMap = new Map<string, (Table | Assertion | Operation | Notebook)[]>();
 
     const { tables, assertions, operations, notebooks } = compiledJson;
@@ -95,10 +120,5 @@ export function buildIndices(compiledJson: DataformCompiledJson) {
         addNodeToFileMap(test as any);
     });
 
-    // Atomic replacement of global cache maps
-    global.FILE_NODE_MAP = newFileNodeMap;
-    global.TARGET_DEPENDENTS_MAP = newTargetDependentsMap;
-    global.TARGET_NAME_MAP = newTargetNameMap;
-
-    logger.debug(`Built indices: ${global.FILE_NODE_MAP.size} files, ${global.TARGET_DEPENDENTS_MAP.size} targets with dependents`);
+    return { fileNodeMap: newFileNodeMap, targetDependentsMap: newTargetDependentsMap, targetNameMap: newTargetNameMap };
 }

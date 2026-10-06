@@ -12,7 +12,7 @@ import { toDataformCompiledJson, ApiCompilationResult, ApiCompilationResultActio
 import { DEFAULT_CONFIG_KEY, getRemoteCompile, initRemoteCompileCache, saveRemoteCompile, RemoteCompileEntry } from './remoteCompileCache';
 import { initRemoteModeStatusBar, refreshRemoteModeStatusBar, updateRemoteModeStatusBar } from './remoteModeStatusBar';
 import { createCompilerOptionsObjectForApi, getDataformCompilerOptions } from './dataformCompiler';
-import { buildIndices } from './compiledJsonIndex';
+import { clearCompiled, setCompiled } from '../project';
 import { setCompilationInfo } from './compilationInfo';
 
 /*
@@ -113,7 +113,7 @@ export function initRemoteCompiler(context: vscode.ExtensionContext) {
             if (event.affectsConfiguration('vscode-dataform-tools.compilationBackend')) {
                 syncRemoteModeContext();
                 // Force the next compile to go through the newly selected backend
-                CACHED_COMPILED_DATAFORM_JSON = undefined;
+                clearCompiled(undefined, { keepIndices: true });
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.compileRemotely', async () => {
@@ -498,8 +498,7 @@ async function compileRemotelyAndReport() {
             return;
         }
         if (outcome.dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = outcome.dataformCompiledJson;
-            buildIndices(outcome.dataformCompiledJson);
+            setCompiled(workspaceFolder, outcome.dataformCompiledJson);
             vscode.window.showInformationMessage(`Compiled remotely: ${outcome.dataformCompiledJson.targets.length} actions`);
         } else if (outcome.errors?.length) {
             vscode.window.showErrorMessage(`Remote compilation failed: ${outcome.errors[0].error}`);

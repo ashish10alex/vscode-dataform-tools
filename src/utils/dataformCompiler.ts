@@ -4,7 +4,7 @@ import path from 'path';
 import { logger } from '../logger';
 import { perfCount, perfStart, perfTimed } from '../perf';
 import { windowsDataformCliNotAvailableErrorMessage, linuxDataformCliNotAvailableErrorMessage } from '../constants';
-import { buildIndices, clearIndices } from './compiledJsonIndex';
+import { clearCompiled, setCompiled } from '../project';
 import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { DataformCompiledJson, GraphError } from '../types';
 import { getRemoteCompiledJson, isRemoteMode } from './remoteCompiler';
@@ -395,8 +395,7 @@ async function runCliCompile(workspaceFolder: string, fingerprint: CompileFinger
             logger.debug('Discarding a compilation that finished after a later one started');
             return { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs };
         }
-        CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        buildIndices(dataformCompiledJson);
+        setCompiled(workspaceFolder, dataformCompiledJson);
         stale = false;
         compileFinished.fire(dataformCompiledJson);
         if (fingerprint) {
@@ -409,8 +408,7 @@ async function runCliCompile(workspaceFolder: string, fingerprint: CompileFinger
     }
     if (stale && !superseded) {
         // The saved compilation must not outlive a failed compile of the current files
-        CACHED_COMPILED_DATAFORM_JSON = undefined;
-        clearIndices();
+        clearCompiled(workspaceFolder);
         stale = false;
     }
     return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
@@ -421,8 +419,7 @@ export async function runCompilation(workspaceFolder: string): Promise<Compilati
         if (isRemoteMode()) {
             const { dataformCompiledJson, errors, compilationTimeMs } = await getRemoteCompiledJson(workspaceFolder);
             if (dataformCompiledJson) {
-                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-                buildIndices(dataformCompiledJson);
+                setCompiled(workspaceFolder, dataformCompiledJson);
                 compileFinished.fire(dataformCompiledJson);
             }
             return { dataformCompiledJson, errors, possibleResolutions: undefined, compilationTimeMs };
@@ -475,8 +472,7 @@ export async function prewarmCliCompilation(workspaceFolder: string): Promise<vo
     }
     if (saved && savedJson) {
         const reason = staleReason(saved.meta.fingerprint, fingerprint);
-        CACHED_COMPILED_DATAFORM_JSON = savedJson;
-        buildIndices(savedJson);
+        setCompiled(workspaceFolder, savedJson);
         const compilerOptions = getDataformCompilerOptions();
         globalThis.compilerOptionsMap = compilerOptions ? createCompilerOptionsObjectForApi([compilerOptions]) : {};
         setCompilationInfo({ backend: "cli", compiledAt: saved.meta.compiledAt, fromCache: true, stale: !!reason, staleReason: reason, ...describeDataformCli(workspaceFolder) });

@@ -14,7 +14,7 @@ import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
-import { clearIndices } from './compiledJsonIndex';
+import { clearCompiled } from '../project';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
@@ -262,8 +262,7 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
             };
         }
         else if (errors?.length !== 0) {
-            CACHED_COMPILED_DATAFORM_JSON = undefined;
-            clearIndices();
+            clearCompiled(workspaceFolder);
             logger.debug('Clearing compilation cache due to errors');
             logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
