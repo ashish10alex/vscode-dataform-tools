@@ -13,6 +13,12 @@ export class ProjectState implements Project {
      * has none until the dbt Backend exists.
      */
     constructor(public readonly root: string, public readonly backend: BackendName, public readonly dataformBackend?: DataformBackend) {}
+
+    /**
+     * How many compile results the Project has had. What is shown of a Project names the compile it came from, so
+     * that something worked out from an earlier one can be told apart and dropped. 0 before the first.
+     */
+    compileNumber = 0;
 }
 
 /** A Dataform Backend that holds a compile result and cannot compile, for a registry made without the host */

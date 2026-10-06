@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { setup, suite, suiteSetup, suiteTeardown, test } from 'mocha';
 import { ProjectRegistry } from '../../project/registry';
-import { clearCompiled, compiledIndices, compiledJson, projects, setCompiled } from '../../project';
+import { clearCompiled, compileNumber, compiledIndices, compiledJson, projects, setCompiled } from '../../project';
 import { DataformCompiledJson } from '../../types';
 
 const target = (name: string) => ({ database: 'p', schema: 'd', name });
@@ -167,6 +167,21 @@ suite('project registry', () => {
             assert.strictEqual(indices.fileNodeMap.get('definitions/report.sqlx')?.length, 1);
             assert.deepStrictEqual(indices.targetDependentsMap.get('p.d.orders'), [target('report')]);
             assert.strictEqual(indices.targetNameMap.get('report')?.length, 1);
+        });
+
+        test('each new compile result gets the next number, for its Project alone', () => {
+            const before = compileNumber(dataformRoot);
+            const otherBefore = compileNumber(sharedRoot);
+            const first = compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' });
+            setCompiled(dataformRoot, first);
+            assert.strictEqual(compileNumber(dataformRoot), before + 1);
+            // Handing the same result over again is not another compile
+            setCompiled(dataformRoot, first);
+            assert.strictEqual(compileNumber(dataformRoot), before + 1);
+            setCompiled(dataformRoot, compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' }));
+            assert.strictEqual(compileNumber(dataformRoot), before + 2);
+            assert.strictEqual(compileNumber(sharedRoot), otherBefore);
+            assert.strictEqual(compileNumber(plainRoot), 0);
         });
 
         test('clearCompiled forgets it', () => {
