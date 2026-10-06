@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import path from 'path';
 import type { API, GitExtension, Repository } from './api/git';
 import { logger } from './logger';
 
@@ -44,12 +45,28 @@ export function watchGitHead(context: vscode.ExtensionContext, onChange: (reposi
     });
 }
 
+/** Whether `filePath` is one of `repositoryRoots` or inside one */
+export function isInsideRepository(repositoryRoots: Iterable<string>, filePath: string): boolean {
+    for (const root of repositoryRoots) {
+        const relative = path.relative(root, filePath);
+        if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /**
  * Calls `onChange` with the repository root once its state settles after any change the git extension
  * notices: edits in the working tree, staging, commits, checkouts, pushes and fetches.
+ *
+ * Returns a function that says whether a file is in a repository being watched, i.e. whether a change to it
+ * will reach `onChange` without the caller doing anything.
  */
-export function watchGitState(context: vscode.ExtensionContext, onChange: (repositoryRoot: string) => void) {
+export function watchGitState(context: vscode.ExtensionContext, onChange: (repositoryRoot: string) => void): (filePath: string) => boolean {
+    const watchedRoots = new Set<string>();
     forEachGitRepository(context, (repository) => {
+        watchedRoots.add(repository.rootUri.fsPath);
         let timer: ReturnType<typeof setTimeout> | undefined;
         context.subscriptions.push(
             repository.state.onDidChange(() => {
@@ -59,6 +76,7 @@ export function watchGitState(context: vscode.ExtensionContext, onChange: (repos
             { dispose: () => clearTimeout(timer) },
         );
     });
+    return (filePath) => isInsideRepository(watchedRoots, filePath);
 }
 
 /** Calls `watch` once for every repository the built-in git extension opens; when it is disabled nothing is watched. */
