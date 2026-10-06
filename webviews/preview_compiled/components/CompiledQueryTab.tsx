@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
-import { ExecutionMode, WebviewState, WorkflowUrlEntry } from "../types";
+import { ExecutionMode, Target, WebviewState, WorkflowUrlEntry } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
@@ -149,15 +149,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   const handleRunModel = (api: boolean) => {
     setRunningModel(true);
-    vscode.postMessage({
-      command: api ? "runModelApi" : "runModel",
-      value: {
-        runMode: true,
-        includeDependents,
-        includeDependencies,
-        fullRefresh,
-      },
-    });
+    // The open file's actions; the host runs the open file until it reads them from here (piece 4.4)
+    const actions: Target[] = (state.targetTablesOrViews ?? []).map((action: { target?: Target }) => action.target).filter((target): target is Target => !!target);
+    const scope = { includeDependents, includeDependencies, fullRefresh };
+    vscode.postMessage(api ? { command: "dataform.runApi", actions, workspace: false, ...scope } : { command: "run", actions, ...scope });
     setTimeout(() => setRunningModel(false), api ? 3000 : 10000);
   };
 
@@ -166,13 +161,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     setRunningModel(true);
     setSubmittingSince(Date.now());
     vscode.postMessage({
-      command: "runTagApi",
-      value: {
-        selectedTags: selectedTagsForRun,
-        includeDependencies,
-        includeDependents,
-        fullRefresh,
-      },
+      command: "dataform.runTagsApi",
+      tags: selectedTagsForRun,
+      includeDependencies,
+      includeDependents,
+      fullRefresh,
     });
     setTimeout(() => setRunningModel(false), 3000);
   };
@@ -234,53 +227,54 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   const handleFormat = () => {
     setFormatting(true);
-    vscode.postMessage({ command: "formatCurrentFile", value: true });
+    vscode.postMessage({ command: "formatFile" });
     setTimeout(() => setFormatting(false), 100);
   };
 
   const handleLint = () => {
-    vscode.postMessage({ command: "lintCurrentFile", value: true });
+    vscode.postMessage({ command: "lintFile" });
   };
   
   const handleRunTest = () => {
     if (state.workspaceFolder) {
-        vscode.postMessage({
-            command: "runTests",
-            value: {
-                workspaceFolder: state.workspaceFolder
-            }
-        });
+        vscode.postMessage({ command: "dataform.runTests" });
     }
   };
 
   const handlePreviewResults = () => {
-    vscode.postMessage({ command: "previewResults", value: true });
+    // The open file's first action. A unit test builds nothing, so its Target is made up from its name, as in the
+    // Compiled Graph. The host previews the open file until it reads the action and section from here (piece 4.4).
+    const first = state.models?.[0] ?? state.targetTablesOrViews?.[0];
+    const action: Target = first?.target ?? { database: "", schema: "unit test", name: first?.name ?? "" };
+    vscode.postMessage({ command: "preview", action, section: first?.type === "test" ? "test query" : "query" });
   };
 
   // One table, view, incremental table or operation with hasOutput, ignoring built-in assertions: the action whose columns can be traced
   const canCheckColumnImpact = tableActions(state.targetTablesOrViews).length === 1;
 
   const handleColumnImpact = () => {
-    vscode.postMessage({ command: "columnLineage" });
+    vscode.postMessage({ command: "dataform.showColumnLineage" });
   };
   // From a schema diff after each dry run; no lineage is read until the panel opens
   const changedColumns = state.columnImpact?.relativeFilePath === state.relativeFilePath ? state.columnImpact?.changed ?? 0 : 0;
 
   const handleDependencyGraph = () => {
-    vscode.postMessage({ command: "dependencyGraph", value: true });
+    vscode.postMessage({ command: "showDependencyGraph" });
   };
 
   const handleDependencyInspector = () => {
-    vscode.postMessage({ command: "dependencyInspector" });
+    vscode.postMessage({ command: "dataform.showDependencyInspector" });
   };
 
   const handleLineageNavigation = (id: string) => {
-    vscode.postMessage({ command: "lineageNavigation", value: id });
+    // `id` is the action's Target written database.schema.name
+    const [database, schema, name] = id.split(".");
+    vscode.postMessage({ command: "openAction", action: { database, schema, name } });
   };
 
   const handleLineageMetadata = () => {
     setLoadingLineage(true);
-    vscode.postMessage({ command: "lineageMetadata", value: true });
+    vscode.postMessage({ command: "dataform.loadLineage" });
     // Reset loading state after a timeout or when data triggers a re-render (handled via effect if strictly needed, but simple timeout/state update from parent is okay for now)
     // Actually, better to let the App's state update trigger a re-render. 
     // Since we don't have a direct "lineage loaded" event here easily without complex effect, 

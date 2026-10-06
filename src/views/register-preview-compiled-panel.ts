@@ -1,11 +1,12 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { compiledJson, requiredTools } from '../project';
+import { compiledJson, currentDataformRoot, requiredTools } from '../project';
+import type { PanelMessage } from '../shared/panelContract';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
-import { runTagWtApi } from "../runTag";
+import { runMultipleTagsFromSelection, runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
 import { ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
 import { currencySymbolMapping } from "../constants";
@@ -533,18 +534,16 @@ export class CompiledQueryPanel {
             );
 
         panel.webviewPanel.webview.onDidReceiveMessage(
-          async message => {
+          async (message: PanelMessage) => {
             switch (message.command) {
-              case 'startSnooze':
+              case 'dataform.startSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
                 return;
-              case 'stopSnooze':
+              case 'dataform.stopSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.stopSnoozeCompilation');
                 return;
-              case 'lineageNavigation':
-                const projectId = message.value.split(".")[0];
-                const datasetId = message.value.split(".")[1];
-                const tableId = message.value.split(".")[2];
+              case 'openAction':
+                const { database: projectId, schema: datasetId, name: tableId } = message.action;
 
                 if(!compiledJson()){
                     // this should never happen as the view exposing the dependents can only be created when compilation is done;
@@ -591,13 +590,13 @@ export class CompiledQueryPanel {
 
                 return;
               case 'copyToClipboard':
-                const textToCopy = message.value;
+                const textToCopy = message.text;
                 await vscode.env.clipboard.writeText(textToCopy);
                 vscode.window.showInformationMessage('Schema copied to clipboard!');
                 return;
               case 'exportSchema':
-                const schemaData = message.value;
-                const defaultFilename = message.filename || 'schema.json';
+                const schemaData = message.content;
+                const defaultFilename = message.fileName || 'schema.json';
                 const uri = await vscode.window.showSaveDialog({
                     defaultUri: vscode.Uri.file(defaultFilename),
                     filters: {
@@ -610,9 +609,9 @@ export class CompiledQueryPanel {
                     vscode.window.showInformationMessage('Schema exported successfully!');
                 }
                 return;
-              case 'exportCostEstimateCsv':
-                const csvData = message.value;
-                const defaultCsvFilename = message.filename || 'cost_estimate.csv';
+              case 'dataform.exportTagCostCsv':
+                const csvData = message.content;
+                const defaultCsvFilename = message.fileName || 'cost_estimate.csv';
                 const csvUri = await vscode.window.showSaveDialog({
                     defaultUri: vscode.Uri.file(defaultCsvFilename),
                     filters: {
@@ -624,12 +623,12 @@ export class CompiledQueryPanel {
                     vscode.window.showInformationMessage('Cost estimate exported successfully!');
                 }
                 return;
-              case 'selectWorkspaceFolder':
+              case 'selectProject':
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
                 return;
-              case 'updateCompilerOptions': {
-                const compilerOptions = message.value;
+              case 'dataform.updateCompilerOptions': {
+                const compilerOptions = message.compilerOptions;
                 const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
                 // Respect where the user has already configured `compilerOptions`.
                 // VS Code's `update()` default writes to Workspace settings, which
@@ -644,37 +643,36 @@ export class CompiledQueryPanel {
                 config.update('compilerOptions', compilerOptions, target);
                 return;
               }
-              case 'dependencyGraph':
+              case 'showDependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
-              case 'dependencyInspector':
+              case 'dataform.showDependencyInspector':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyInspector");
                 return;
-              case 'columnLineage':
+              case 'dataform.showColumnLineage':
                 await vscode.commands.executeCommand("vscode-dataform-tools.columnLineage");
                 return;
-              case 'previewResults':
-                if(message.value){
-                    await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
-                }
+              case 'preview':
+                // Until the panel reads SQL sections (piece 4.4) a preview is of the open file, as the runQuery command does it
+                await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
                 return;
-              case 'compileRemotely':
+              case 'dataform.compileRemotely':
                 await vscode.commands.executeCommand('vscode-dataform-tools.compileRemotely');
                 return;
-              case 'deferToProdActions':
+              case 'dataform.deferToProdActions':
                 await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
                 return;
-              case 'removeProxyViews':
-                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews', message.value);
+              case 'dataform.removeProxyViews':
+                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews', message.targets);
                 await refreshCompiledQueryPanel();
                 return;
-              case 'toggleDeferToProd':
-                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.value);
+              case 'dataform.toggleDeferToProd':
+                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.on);
                 return;
-              case 'openDeferToProdSettings':
+              case 'dataform.openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
-              case 'retryDeferral':
+              case 'dataform.retryDeferral':
                 try {
                   await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
                 } catch (error: any) {
@@ -686,30 +684,33 @@ export class CompiledQueryPanel {
               case 'showLogs':
                 logger.show();
                 return;
-              case 'switchCompilationBackend': {
+              case 'dataform.switchCompilationMode': {
                 try {
-                  await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
+                  await setCompilationBackend(message.compilationMode === 'api' ? 'api' : 'cli');
                   await recompileActiveDocument?.();
                 } catch (error: any) {
                   vscode.window.showErrorMessage(`Unable to switch the compilation backend: ${error.message}`);
                 }
                 return;
               }
-              case 'runTests': {
-                const _workspaceFolder = message.value.workspaceFolder;
-                await runTests(_workspaceFolder);
+              case 'dataform.runTests': {
+                await runTests(currentDataformRoot());
                 return;
               }
-              case 'runModel':
-                const includeDependencies = message.value.includeDependencies;
-                const includeDependents = message.value.includeDependents;
-                const fullRefresh = message.value.fullRefresh;
-                await runCurrentFile(extensionContext, includeDependencies, includeDependents, fullRefresh, "cli");
+              case 'run':
+                // Until the panel reads SQL sections (piece 4.4) the actions it names are those of the open file, which is what runs
+                await runCurrentFile(extensionContext, message.includeDependencies, message.includeDependents, message.fullRefresh, "cli");
                 return;
-              case 'runModelApi':
-                const _includeDependencies = message.value.includeDependencies;
-                const _includeDependents = message.value.includeDependents;
-                const _fullRefresh = message.value.fullRefresh;
+              case 'runTags': {
+                const tagsWorkspaceFolder = await getWorkspaceFolder();
+                if (!tagsWorkspaceFolder || message.tags.length === 0) { return; }
+                await runMultipleTagsFromSelection(tagsWorkspaceFolder, message.tags, message.includeDependencies, message.includeDependents, message.fullRefresh);
+                return;
+              }
+              case 'dataform.runApi':
+                const _includeDependencies = message.includeDependencies;
+                const _includeDependents = message.includeDependents;
+                const _fullRefresh = message.fullRefresh;
                 // FIXME: there must be a way to avoid double calls before and after function invocation ?
                 const _runModelApiNodeMaps = deriveNodeMapsFromQueryMeta(this.centerPanel?._cachedResults?.fileMetadata?.queryMeta);
                 let messageDict: WebviewMessage = {
@@ -741,7 +742,7 @@ export class CompiledQueryPanel {
                     "apiUrlLoading": true,
                 };
                 this.centerPanel?.postMessage(messageDict);
-                const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, "api");
+                const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, message.workspace ? "api_workspace" : "api");
                 if(!result){
                     return;
                 }
@@ -750,14 +751,14 @@ export class CompiledQueryPanel {
                 messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
                 this.centerPanel?.postMessage(messageDict);
                 return;
-              case 'runTagApi': {
-                const tagsToRun: string[] = Array.isArray(message.value.selectedTags)
-                    ? message.value.selectedTags.filter((t: unknown): t is string => typeof t === 'string' && t.trim() !== '')
+              case 'dataform.runTagsApi': {
+                const tagsToRun: string[] = Array.isArray(message.tags)
+                    ? message.tags.filter((t: unknown): t is string => typeof t === 'string' && t.trim() !== '')
                     : [];
                 if (tagsToRun.length === 0) { return; }
-                const includeDependencies = !!message.value.includeDependencies;
-                const includeDependents = !!message.value.includeDependents;
-                const fullRefresh = !!message.value.fullRefresh;
+                const includeDependencies = !!message.includeDependencies;
+                const includeDependents = !!message.includeDependents;
+                const fullRefresh = !!message.fullRefresh;
                 await runTagWtApi(
                     extensionContext,
                     tagsToRun,
@@ -768,11 +769,11 @@ export class CompiledQueryPanel {
                 );
                 return;
               }
-              case 'costEstimator': {
+              case 'dataform.estimateTagCost': {
 
-                const selectedTags: string[] = message.value.selectedTags;
-                const includeDependenciesCost = message.value.includeDependencies;
-                const includeDependentsCost = message.value.includeDependents;
+                const selectedTags: string[] = message.tags;
+                const includeDependenciesCost = message.includeDependencies;
+                const includeDependentsCost = message.includeDependents;
                 const costWorkspaceFolder = await getWorkspaceFolder();
                 if (costWorkspaceFolder) {
                     await ensureFreshCompilation(costWorkspaceFolder, resolveDataformOptions(costWorkspaceFolder));
@@ -835,7 +836,7 @@ export class CompiledQueryPanel {
                 }
                 return;
               }
-              case 'formatCurrentFile':
+              case 'formatFile':
                 const formattedText:any = await formatCurrentFile(diagnosticCollection);
                 const activeEditorFilePath = activeDocumentObj?.uri.fsPath;
                 if(activeEditorFilePath){
@@ -846,10 +847,10 @@ export class CompiledQueryPanel {
                     });
                 }
                 return;
-              case 'lintCurrentFile':
+              case 'lintFile':
                 await vscode.commands.executeCommand('vscode-dataform-tools.lintCurrentFile');
                 return;
-              case 'lineageMetadata': {
+              case 'dataform.loadLineage': {
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
                 const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
@@ -904,42 +905,43 @@ export class CompiledQueryPanel {
                 });
                 return;
               }
-              case 'getWorkflowUrls':
+              case 'dataform.loadWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                 this.centerPanel?.postMessage({
                     workflowUrls: currentWorkflowUrls
                 });
                 return;
-              case 'clearWorkflowUrls':
+              case 'dataform.clearWorkflowUrls':
                 await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
                 this.centerPanel?.postMessage({
                     workflowUrls: []
                 });
                 return;
-              case 'cancelWorkflowInvocation':
-                if (message.value?.workflowInvocationId && this.centerPanel) {
-                    const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.value.workflowInvocationId);
+              case 'dataform.cancelWorkflowInvocation':
+                if (message.workflowInvocationId && this.centerPanel) {
+                    const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
                     if (!cancelled) {
-                        this.centerPanel?.postMessage({ cancelWorkflowInvocationFailed: message.value.workflowInvocationId });
+                        this.centerPanel?.postMessage({ cancelWorkflowInvocationFailed: message.workflowInvocationId });
                     }
                 }
                 return;
-              case 'loadWorkflowJobStats':
-              case 'exportWorkflowActionsCsv':
-              case 'openExecutedSql':
-              case 'openBigQueryJob': {
+              case 'dataform.loadWorkflowJobStats':
+              case 'dataform.exportWorkflowActionsCsv':
+              case 'dataform.openExecutedSql':
+              case 'dataform.openBigQueryJob': {
                 const context = this.centerPanel?.extensionContext;
                 const storedUrls = context?.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                const entry = storedUrls.find((item) => item.workflowInvocationId === message.value?.workflowInvocationId);
+                const entry = storedUrls.find((item) => item.workflowInvocationId === message.workflowInvocationId);
                 if (!context || !entry) {
                     return;
                 }
-                if (message.command === 'openExecutedSql') {
-                    await openExecutedSql(entry, message.value.target);
-                } else if (message.command === 'exportWorkflowActionsCsv') {
+                if (message.command === 'dataform.openExecutedSql') {
+                    await openExecutedSql(entry, message.action);
+                } else if (message.command === 'dataform.exportWorkflowActionsCsv') {
                     await exportWorkflowActionsCsv(entry);
-                } else if (message.command === 'openBigQueryJob') {
-                    const action = entry.actions?.find((a) => a.target === message.value.target);
+                } else if (message.command === 'dataform.openBigQueryJob') {
+                    const jobAction = message.action;
+                    const action = entry.actions?.find((a) => a.target === jobAction);
                     if (action) {
                         openBigQueryJobInConsole(entry, action);
                     }
@@ -949,7 +951,7 @@ export class CompiledQueryPanel {
                 }
                 return;
               }
-              case 'rerunLastExecution': {
+              case 'repeatLastRun': {
                 const previousTimestamp = getLastRun()?.timestamp;
                 await vscode.commands.executeCommand('vscode-dataform-tools.rerunLastExecution');
                 // Every runner records the run just before dispatching it, so an unchanged timestamp means
@@ -959,33 +961,30 @@ export class CompiledQueryPanel {
                 }
                 return;
               }
-              case 'computeChangedActions':
+              case 'dataform.computeChangedActions':
                 await this.centerPanel?.postChangedActions(true);
                 return;
-              case 'runChangedActions': {
+              case 'dataform.runChangedActions': {
                 const _workspaceFolder = await getWorkspaceFolder();
                 if (!_workspaceFolder) { return; }
                 const result = await runChangedActions(
                     extensionContext,
                     _workspaceFolder,
-                    !!message.value.includeDependencies,
-                    !!message.value.includeDependents,
-                    !!message.value.fullRefresh,
-                    message.value.api ? 'api' : 'cli',
-                    Array.isArray(message.value.files) ? message.value.files : undefined,
+                    !!message.includeDependencies,
+                    !!message.includeDependents,
+                    !!message.fullRefresh,
+                    message.api ? 'api' : 'cli',
+                    Array.isArray(message.files) ? message.files : undefined,
                 );
                 if (result) {
                     this.centerPanel?.postMessage({ changedActions: toChangedActionsView(result) });
                 }
                 return;
               }
-              case 'runFilesTagsWtOptionsApi':
-                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
+              case 'dataform.runWithOptions':
+                await vscode.commands.executeCommand(message.workspace ? 'vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace' : 'vscode-dataform-tools.runFilesTagsWtOptionsApi');
                 return;
-              case 'runFilesTagsWtOptionsInRemoteWorkspace':
-                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace');
-                return;
-              case 'refreshWorkflowStatuses':
+              case 'dataform.refreshWorkflowStatuses':
                 const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
                 if (urlsToRefresh.length > 0) {
@@ -1080,8 +1079,8 @@ export class CompiledQueryPanel {
                     });
                 }
                 return;
-              case 'propertyGraphElementSchema': {
-                const { elementName, target } = message.value ?? {};
+              case 'dataform.loadPropertyGraphElementSchema': {
+                const { elementName, table: target } = message;
                 if (!elementName || !target) {
                     return;
                 }
@@ -1104,11 +1103,11 @@ export class CompiledQueryPanel {
                 });
                 return;
               }
-              case 'runGeneratedQuery':
+              case 'dataform.runGeneratedQuery':
                 await vscode.commands.executeCommand(
                     'vscode-dataform-tools.runGeneratedQuery',
-                    message.value?.query,
-                    message.value?.type ?? "table",
+                    message.query,
+                    message.kind ?? "table",
                 );
                 return;
               case 'openExternal':
@@ -1116,6 +1115,17 @@ export class CompiledQueryPanel {
                     vscode.env.openExternal(vscode.Uri.parse(message.url));
                 }
                 return;
+              case 'dbt.setTarget':
+              case 'dbt.compileWithHooks':
+              case 'dbt.chooseExecutable':
+              case 'dbt.lookForDbtAgain':
+                // A dbt Project's panel sends these; it has none until Step 5
+                return;
+              default: {
+                // Every message of the contract has a case above: this line fails the type-check when one is added without
+                const unhandled: never = message;
+                logger.error(`Unhandled message from the compiled query panel: ${JSON.stringify(unhandled)}`);
+              }
             }
             return;
           },

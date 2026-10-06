@@ -309,7 +309,8 @@ export type DataformPanelMessage =
     | { command: 'dataform.showDependencyInspector' }
     | { command: 'dataform.showColumnLineage' }
     | { command: 'dataform.loadLineage' }
-    | { command: 'dataform.loadPropertyGraphElementSchema'; graph: Target; elementName: string; table: Target }
+    /** `elementName` is the panel's key for the element, `<graph target>::<element name>`; `table` is what backs it */
+    | { command: 'dataform.loadPropertyGraphElementSchema'; elementName: string; table: Target }
     | { command: 'dataform.runGeneratedQuery'; query: string; kind?: string };
 
 /** Messages only a dbt Project's panel sends. Each is named as dbt's */

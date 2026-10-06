@@ -19,21 +19,21 @@ const isBlockingError = (errorType?: CompilationErrorType) => {
 
 export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabProps) {
     useEffect(() => {
-        vscode.postMessage({ command: 'getWorkflowUrls' });
+        vscode.postMessage({ command: 'dataform.loadWorkflowUrls' });
     }, []);
 
     const urls = state.workflowUrls || [];
 
     const handleClearUrls = () => {
-        vscode.postMessage({ command: 'clearWorkflowUrls' });
+        vscode.postMessage({ command: 'dataform.clearWorkflowUrls' });
     };
 
     const handleRunApi = () => {
-        vscode.postMessage({ command: 'runFilesTagsWtOptionsApi' });
+        vscode.postMessage({ command: 'dataform.runWithOptions', workspace: false });
     };
 
     const handleRunWorkspace = () => {
-        vscode.postMessage({ command: 'runFilesTagsWtOptionsInRemoteWorkspace' });
+        vscode.postMessage({ command: 'dataform.runWithOptions', workspace: true });
     };
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -49,7 +49,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
 
     const handleRefreshStatuses = () => {
         setIsRefreshing(true);
-        vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+        vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
         setTimeout(() => setIsRefreshing(false), 1000);
     };
 

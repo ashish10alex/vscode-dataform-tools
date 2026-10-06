@@ -116,16 +116,16 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   const toggle = (checked: boolean) => {
     setOn(checked);
     setExpanded(false);
-    vscode.postMessage({ command: "toggleDeferToProd", value: checked });
+    vscode.postMessage({ command: "dataform.toggleDeferToProd", on: checked });
   };
   const retry = () => {
     setRetrying(true);
     setAttempt((count) => count + 1);
-    vscode.postMessage({ command: "retryDeferral" });
+    vscode.postMessage({ command: "dataform.retryDeferral" });
   };
   const deferSwitch = <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
   const setProdOptionsButton = (label: string, primary: boolean) => (
-    <button onClick={() => vscode.postMessage({ command: "openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
+    <button onClick={() => vscode.postMessage({ command: "dataform.openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
       <Settings2 className="w-3 h-3" /> {label}
     </button>
   );
@@ -151,7 +151,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
             {leftoverProxies.length} upstream table{leftoverProxies.length === 1 ? " is a proxy view" : "s are proxy views"} from an earlier deferred run, so {leftoverProxies.length === 1 ? "it reads" : "they read"} prod
           </span>
           <div className="flex-grow" />
-          <button onClick={() => vscode.postMessage({ command: "removeProxyViews", value: leftoverProxies })} className={SECONDARY_BUTTON}>
+          <button onClick={() => vscode.postMessage({ command: "dataform.removeProxyViews", targets: leftoverProxies })} className={SECONDARY_BUTTON}>
             <Trash2 className="w-3 h-3" /> Remove proxy views
           </button>
         </div>
@@ -254,7 +254,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
         {pending && slow && logsButton}
         {noneInProd && setProdOptionsButton("Check prod options", false)}
         <button
-          onClick={() => vscode.postMessage({ command: "deferToProdActions" })}
+          onClick={() => vscode.postMessage({ command: "dataform.deferToProdActions" })}
           title="Refresh, remove proxy views or configure defer to prod"
           className={SECONDARY_BUTTON}
         >

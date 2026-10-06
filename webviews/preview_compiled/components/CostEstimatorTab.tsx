@@ -97,8 +97,10 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
     }
     setLoading(true);
     vscode.postMessage({
-        command: 'costEstimator',
-        value: { selectedTags, includeDependencies, includeDependents }
+        command: 'dataform.estimateTagCost',
+        tags: selectedTags,
+        includeDependencies,
+        includeDependents,
     });
   };
 
@@ -128,9 +130,9 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       const csvString = csvRows.join('\n');
       
       vscode.postMessage({
-          command: 'exportCostEstimateCsv',
-          value: csvString,
-          filename: `cost_estimate_${selectedTags.join('_')}.csv`
+          command: 'dataform.exportTagCostCsv',
+          content: csvString,
+          fileName: `cost_estimate_${selectedTags.join('_')}.csv`
       });
   };
 

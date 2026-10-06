@@ -74,8 +74,8 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
 
     const timer = setTimeout(() => {
       vscode.postMessage({
-        command: "updateCompilerOptions",
-        value: compilerOptions,
+        command: "dataform.updateCompilerOptions",
+        compilerOptions,
       });
     }, 1000);
     return () => clearTimeout(timer);

@@ -41,7 +41,9 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
         <button
             onClick={() => {
                 setRequested(true);
-                vscode.postMessage({ command: 'cancelWorkflowInvocation', value: { workflowInvocationId: entry.workflowInvocationId } });
+                if (entry.workflowInvocationId) {
+                    vscode.postMessage({ command: 'dataform.cancelWorkflowInvocation', workflowInvocationId: entry.workflowInvocationId });
+                }
             }}
             className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-[var(--vscode-errorForeground)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--vscode-errorForeground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
             title="Stop the run: running actions are cancelled and pending ones skipped (cancels the Dataform workflow invocation)"

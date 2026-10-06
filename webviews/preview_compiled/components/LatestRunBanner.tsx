@@ -205,7 +205,7 @@ function buildActionColumns(workflowInvocationId: string | undefined, summary: W
         cell: ({ row }) => row.original.jobId ? (
             <span className="inline-flex items-center gap-1">
                 <button
-                    onClick={() => vscode.postMessage({ command: 'openExecutedSql', value: { workflowInvocationId, target: row.original.target } })}
+                    onClick={() => workflowInvocationId && vscode.postMessage({ command: 'dataform.openExecutedSql', workflowInvocationId, action: row.original.target })}
                     className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
                     title="View executed SQL"
                     aria-label="View executed SQL"
@@ -213,7 +213,7 @@ function buildActionColumns(workflowInvocationId: string | undefined, summary: W
                     <FileCode className="w-3.5 h-3.5" />
                 </button>
                 <button
-                    onClick={() => vscode.postMessage({ command: 'openBigQueryJob', value: { workflowInvocationId, target: row.original.target } })}
+                    onClick={() => workflowInvocationId && vscode.postMessage({ command: 'dataform.openBigQueryJob', workflowInvocationId, action: row.original.target })}
                     className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
                     title={`Open BigQuery job ${row.original.jobId}`}
                     aria-label="Open BigQuery job in the Cloud Console"
@@ -250,7 +250,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
         const isFinished = !!latest?.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
         if (needsStats && isFinished) {
             statsRequestedFor.current.add(invocationId);
-            vscode.postMessage({ command: 'loadWorkflowJobStats', value: { workflowInvocationId: invocationId } });
+            vscode.postMessage({ command: 'dataform.loadWorkflowJobStats', workflowInvocationId: invocationId });
         }
     }, [showDetails, latest?.workflowInvocationId, latest?.state, actionRows]);
 
@@ -416,7 +416,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                             <div className="flex items-center gap-2 text-xs font-medium text-[var(--vscode-foreground)]">
                                 Actions ({actionRows.length})
                                 <button
-                                    onClick={() => vscode.postMessage({ command: 'exportWorkflowActionsCsv', value: { workflowInvocationId: latest.workflowInvocationId } })}
+                                    onClick={() => latest.workflowInvocationId && vscode.postMessage({ command: 'dataform.exportWorkflowActionsCsv', workflowInvocationId: latest.workflowInvocationId })}
                                     className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-normal text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
                                     title="Export every action with its timing, slot time, bytes billed and cost to a CSV file"
                                 >

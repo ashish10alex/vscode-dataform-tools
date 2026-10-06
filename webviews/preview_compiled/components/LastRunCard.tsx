@@ -107,7 +107,7 @@ export function LastRunCard({ lastRun, latestApiRun, disabled, onRerunDispatched
     const starting = rerunFromTimestamp !== null;
     const handleRerun = () => {
         setRerunFromTimestamp(lastRun.timestamp);
-        vscode.postMessage({ command: 'rerunLastExecution' });
+        vscode.postMessage({ command: 'repeatLastRun' });
     };
 
     const status = starting ? 'starting' : resolveStatus(lastRun, latestApiRun);
