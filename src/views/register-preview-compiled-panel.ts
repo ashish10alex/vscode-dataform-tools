@@ -1,6 +1,8 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { compiledJson, currentDataformRoot, requiredTools } from '../project';
-import type { PanelMessage } from '../shared/panelContract';
+import { compileNumber, compiledJson, currentDataformRoot, requiredTools } from '../project';
+import type { DataformBlock, PanelMessage } from '../shared/panelContract';
+import { MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
+import { SliceSender } from '../panel/sliceSender';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
@@ -200,7 +202,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
         onDidChangeLastRun(() => {
-            CompiledQueryPanel.centerPanel?.postMessage({ lastRun: getLastRunView() });
+            CompiledQueryPanel.centerPanel?.updateDataformBlock({ lastRun: getLastRunView() });
         }),
         onDeferralUpdated(() => {
             const panel = CompiledQueryPanel.centerPanel;
@@ -215,7 +217,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             impactHintSeq.set(relativeFilePath, seq);
             const post = (changed: number | undefined) => {
                 if (impactHintSeq.get(relativeFilePath) === seq) {
-                    CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });
+                    CompiledQueryPanel.centerPanel?.updateDataformBlock({ columnImpact: { file: relativeFilePath, changed } });
                 }
             };
             if (!fields) {
@@ -243,9 +245,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
                 const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                CompiledQueryPanel.centerPanel.postMessage({
-                    workflowUrls: workflowUrls
-                });
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls });
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.snoozeCompilation', async () => {
@@ -396,7 +396,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             return; // A different repository from the Dataform project being shown
         }
         // The count belongs to the previous branch; drop it now rather than after the recompile
-        CompiledQueryPanel.centerPanel?.postMessage({ changedActions: { status: 'idle' } });
+        CompiledQueryPanel.centerPanel?.updateDataformBlock({ changedActions: { status: 'idle' } });
         if (snoozeManager.isSnoozeActive()) {
             snoozeManager.markDirtyDuringSnooze();
             return;
@@ -444,6 +444,24 @@ export class CompiledQueryPanel {
         }
         panelMessagePosted.fire(message);
         return this.webviewPanel.webview.postMessage(message);
+    }
+
+    /** Sends the panel a slice of the contract only when it differs from what the panel was last sent */
+    private readonly slices = new SliceSender((message) => this.postMessage(message));
+
+    /**
+     * What only a Dataform Project has, as the panel was last told. Only the fields of `MIGRATED_DATAFORM_FIELDS` are
+     * kept here so far; the rest still travel as flat fields and hold a placeholder.
+     */
+    private dataformBlock: DataformBlock = {
+        compile: 0, compilerOptions: '', compilationMode: 'cli', snoozeEndTime: null, deferral: null, leftoverProxies: null,
+        lastRun: null, propertyGraphs: null, propertyGraphValidations: null, propertyGraphElementSchemas: {},
+    };
+
+    /** Changes fields of the `dataform` block and sends the block if that changed it */
+    public updateDataformBlock(fields: Partial<Pick<DataformBlock, (typeof MIGRATED_DATAFORM_FIELDS)[number]>>) {
+        this.dataformBlock = { ...this.dataformBlock, ...fields, compile: compileNumber() };
+        this.slices.send('dataform', this.dataformBlock);
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
@@ -748,8 +766,9 @@ export class CompiledQueryPanel {
                 }
                 const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
                 const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
+                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
                 this.centerPanel?.postMessage(messageDict);
+                this.centerPanel?.updateDataformBlock({ workflowUrls: updatedWorkflowUrls });
                 return;
               case 'dataform.runTagsApi': {
                 const tagsToRun: string[] = Array.isArray(message.tags)
@@ -907,15 +926,11 @@ export class CompiledQueryPanel {
               }
               case 'dataform.loadWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                this.centerPanel?.postMessage({
-                    workflowUrls: currentWorkflowUrls
-                });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls });
                 return;
               case 'dataform.clearWorkflowUrls':
                 await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
-                this.centerPanel?.postMessage({
-                    workflowUrls: []
-                });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: [] });
                 return;
               case 'dataform.cancelWorkflowInvocation':
                 if (message.workflowInvocationId && this.centerPanel) {
@@ -947,7 +962,7 @@ export class CompiledQueryPanel {
                     }
                 } else if (await loadJobStatsForInvocation(entry)) {
                     await context.workspaceState.update('dataform_workflow_urls', storedUrls);
-                    this.centerPanel?.postMessage({ workflowUrls: storedUrls });
+                    this.centerPanel?.updateDataformBlock({ workflowUrls: storedUrls });
                 }
                 return;
               }
@@ -977,7 +992,7 @@ export class CompiledQueryPanel {
                     Array.isArray(message.files) ? message.files : undefined,
                 );
                 if (result) {
-                    this.centerPanel?.postMessage({ changedActions: toChangedActionsView(result) });
+                    this.centerPanel?.updateDataformBlock({ changedActions: toChangedActionsView(result) });
                 }
                 return;
               }
@@ -1074,9 +1089,7 @@ export class CompiledQueryPanel {
                         return refreshedUrls[index];
                     });
                     await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
-                    this.centerPanel?.postMessage({
-                        workflowUrls: updatedUrls
-                    });
+                    this.centerPanel?.updateDataformBlock({ workflowUrls: updatedUrls });
                 }
                 return;
               case 'dataform.loadPropertyGraphElementSchema': {
@@ -1156,7 +1169,6 @@ export class CompiledQueryPanel {
         const renderId = ++this.renderSeq;
         const webview = this.webviewPanel.webview;
         const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
-        const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
         const workspaceFolder = await getWorkspaceFolder();
         let dataformCoreVersion = undefined;
@@ -1195,6 +1207,14 @@ export class CompiledQueryPanel {
         if(this.webviewPanel.webview.html === ""){
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
         }
+
+        // Every render sends the `dataform` block whole, as every render used to send these fields; between renders
+        // it is sent only when it changes
+        this.slices.reset();
+        this.updateDataformBlock({
+            workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
+            lastRun: getLastRunView(),
+        });
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
@@ -1380,8 +1400,6 @@ export class CompiledQueryPanel {
                     "dataformTags": dataformTags,
                     "dataformCoreVersion": curFileMeta.dataformCoreVersion,
                     "compilerOptions": compilerOptions,
-                    "workflowUrls": workflowUrls,
-                    "lastRun": getLastRunView(),
                     "workspaceFolder": workspaceFolder,
                     "recompiling": false,
                     "dryRunning": true,
@@ -1546,8 +1564,6 @@ export class CompiledQueryPanel {
             "dryRunning": true,
             "declarations": null,
             "compilerOptions": compilerOptions,
-            "workflowUrls": workflowUrls,
-            "lastRun": getLastRunView(),
             "errorType": null,
             "errorMessage": null,
             "dataformCoreVersion": curFileMeta.dataformCoreVersion,
@@ -1802,8 +1818,6 @@ export class CompiledQueryPanel {
                 "dryRunning": false,
                 "declarations": null,
                 "compilerOptions": compilerOptions,
-                "workflowUrls": workflowUrls,
-                "lastRun": getLastRunView(),
                 "errorType": null,
                 "projectConfig": curFileMeta.projectConfig,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
@@ -1842,10 +1856,10 @@ export class CompiledQueryPanel {
             return; // Nothing compiled yet, e.g. not a Dataform workspace, which the compile has already reported
         }
         if (allowCompile) {
-            await this.postMessage({ changedActions: { status: 'computing' } });
+            this.updateDataformBlock({ changedActions: { status: 'computing' } });
         }
         const changedActions = await getChangedActionsView(await getWorkspaceFolder(), allowCompile);
-        await this.postMessage({ changedActions });
+        this.updateDataformBlock({ changedActions });
     }
 
     private apiRunGitStateRequest = 0;
@@ -1873,7 +1887,7 @@ export class CompiledQueryPanel {
         const apiRunGitState = await apiRunGitStateCache.state;
         // A slower earlier request must not overwrite a newer answer
         if (request === this.apiRunGitStateRequest) {
-            await this.postMessage({ apiRunGitState });
+            this.updateDataformBlock({ apiRunGitState });
         }
     }
 
