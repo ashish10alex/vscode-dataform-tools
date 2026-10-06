@@ -33,7 +33,7 @@ export async function rerunLastExecution(context: vscode.ExtensionContext) {
         return;
     }
 
-    const workspaceFolder = await getWorkspaceFolder();
+    const workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) {
         return;
     }

@@ -1197,10 +1197,8 @@ export class CompiledQueryPanel {
 
 
         if (curFileMeta.isDataformWorkspace===false){
-            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-            const currentDirectory = workspaceFolder?.uri.fsPath;
             await this.postMessage({
-                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
+                "errorMessage": `This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root`,
                 "recompiling": false,
                 "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
                 "isHelperFile": false,

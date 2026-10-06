@@ -44,7 +44,7 @@ import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineag
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
-import { initProjects } from './project';
+import { currentDataformRoot, initProjects } from './project';
 
 let lastDataformFilePath: string | undefined;
 
@@ -91,11 +91,12 @@ export async function activate(context: vscode.ExtensionContext) {
     initRemoteCompiler(context);
     initLastRun(context);
     initChangedActions(context);
+    initProjects(context);
     initProdTargets(context);
     initCliCompileCache(context);
 
     // Searching PATH runs `which`/`where`: do it in the background, then warn about anything missing
-    const activationWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const activationWorkspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const executablesNeeded = executablesToCheck.filter((executable) => !(executable === 'dataform' && isRemoteMode())); // Remote mode compiles with the Dataform API
     Promise.all(executablesNeeded.map(prefetchExecutablePath)).then(() => {
         for (const executable of executablesNeeded) {
@@ -111,7 +112,6 @@ export async function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
-    initProjects(context);
     registerCompiledQueryPanel(context);
     initDeferToProd(context, refreshCompiledQueryPanel);
 

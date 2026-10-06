@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { currentDataformRoot } from '../project';
 import { pickBackendConfigurationTarget } from '../utils/remoteCompiler';
 import { getDeferAvailability, isDeferEnabled } from './index';
 import { clearProdTargetCache } from './prodTargets';
@@ -16,7 +17,7 @@ const DEFER_SETTINGS = ['deferToProd', 'prodCompilerOptions', 'compilerOptions']
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 function currentWorkspaceFolder(): string | undefined {
-    return globalThis.workspaceFolder || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    return currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
 function refreshStatusBar() {

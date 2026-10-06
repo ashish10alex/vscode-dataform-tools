@@ -27,7 +27,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         }
         relativeFilePath = result.value[1];
     }
-    let workspaceFolder = await getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) {
         return;
     }

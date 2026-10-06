@@ -298,10 +298,36 @@ function spawnDataformCompile(workspaceFolder: string, compilerOptionsOverride?:
 
 type CompilationResult = { dataformCompiledJson: DataformCompiledJson | undefined, errors: GraphError[] | undefined, possibleResolutions: string[] | undefined, compilationTimeMs: number | undefined };
 
-/** Bumped by every CLI compile, so a slower earlier compile cannot replace the result of a later one */
-let latestCompileId = 0;
-/** The CLI compile of the project in flight. A later one kills it and hands its callers the later result */
-let cliCompileInFlight: { child?: ChildProcess, handOver?: Promise<CompilationResult> } | undefined;
+type InFlightCompile = { child?: ChildProcess, handOver?: Promise<CompilationResult> };
+
+/** The CLI compile bookkeeping of one Project, so that Projects in the same window never share a compile */
+interface CliCompileState {
+    /** Bumped by every CLI compile, so a slower earlier compile cannot replace the result of a later one */
+    latestCompileId: number;
+    /** The CLI compile of the project in flight. A later one kills it and hands its callers the later result */
+    inFlight?: InFlightCompile;
+    /**
+     * Answers a compile whose inputs have not changed since without running the CLI: the compilation loaded
+     * from disk on startup, the outcome of the startup compile, or the last successful compile. A failure is
+     * only handed out once.
+     */
+    reusable?: { fingerprint: CompileFingerprint, result: CompilationResult };
+    /** The startup compile, which a compile of the same inputs joins instead of starting another */
+    startupCompile?: { fingerprint: CompileFingerprint, promise: Promise<CompilationResult> };
+    /** The cached JSON is a saved compilation of inputs that have changed since, shown until the startup compile replaces it */
+    stale: boolean;
+}
+
+const cliCompileStates = new Map<string, CliCompileState>();
+
+function cliCompileState(workspaceFolder: string): CliCompileState {
+    let state = cliCompileStates.get(workspaceFolder);
+    if (!state) {
+        state = { latestCompileId: 0, stale: false };
+        cliCompileStates.set(workspaceFolder, state);
+    }
+    return state;
+}
 
 /** Stops a CLI compile and the compile worker it forked */
 function killProcessTree(child: ChildProcess) {
@@ -318,20 +344,14 @@ function killProcessTree(child: ChildProcess) {
         logger.debug(`Could not stop a superseded compilation: ${error}`);
     }
 }
-/**
- * Answers a compile whose inputs have not changed since without running the CLI: the compilation loaded
- * from disk on startup, the outcome of the startup compile, or the last successful compile. A failure is
- * only handed out once.
- */
-let reusable: { fingerprint: CompileFingerprint, result: CompilationResult } | undefined;
-/** The startup compile, which a compile of the same inputs joins instead of starting another */
-let startupCompile: { fingerprint: CompileFingerprint, promise: Promise<CompilationResult> } | undefined;
-/** The cached JSON is a saved compilation of inputs that have changed since, shown until the startup compile replaces it */
-let stale = false;
 let onStartupCompileSettled: (() => void) | undefined;
 
-export function isCompilationStale(): boolean {
-    return stale;
+/** Whether the compile result of the Project at `workspaceFolder` is an outdated saved one; of any Project without it */
+export function isCompilationStale(workspaceFolder?: string): boolean {
+    if (workspaceFolder) {
+        return cliCompileStates.get(workspaceFolder)?.stale ?? false;
+    }
+    return [...cliCompileStates.values()].some((state) => state.stale);
 }
 
 export function setOnStartupCompileSettled(callback: () => void) {
@@ -343,15 +363,16 @@ function currentFingerprint(workspaceFolder: string): Promise<CompileFingerprint
 }
 
 function compileWithCli(workspaceFolder: string, fingerprint?: CompileFingerprint): Promise<CompilationResult> {
-    const previous = cliCompileInFlight;
-    const current: NonNullable<typeof cliCompileInFlight> = {};
-    cliCompileInFlight = current;
+    const state = cliCompileState(workspaceFolder);
+    const previous = state.inFlight;
+    const current: InFlightCompile = {};
+    state.inFlight = current;
     const result = runCliCompile(workspaceFolder, fingerprint, current).then((compiled) => {
         // Killed or overtaken by a later compile: its callers get the later, more current result
         return current.handOver ?? compiled;
     }).finally(() => {
-        if (cliCompileInFlight === current) {
-            cliCompileInFlight = undefined;
+        if (state.inFlight === current) {
+            state.inFlight = undefined;
         }
     });
     if (previous) {
@@ -364,9 +385,10 @@ function compileWithCli(workspaceFolder: string, fingerprint?: CompileFingerprin
     return result;
 }
 
-async function runCliCompile(workspaceFolder: string, fingerprint: CompileFingerprint | undefined, inFlight: NonNullable<typeof cliCompileInFlight>): Promise<CompilationResult> {
-    const compileId = ++latestCompileId;
-    reusable = undefined;
+async function runCliCompile(workspaceFolder: string, fingerprint: CompileFingerprint | undefined, inFlight: InFlightCompile): Promise<CompilationResult> {
+    const state = cliCompileState(workspaceFolder);
+    const compileId = ++state.latestCompileId;
+    state.reusable = undefined;
     let compiled: Awaited<ReturnType<typeof compileDataform>>;
     let dataformCompiledJson: DataformCompiledJson | undefined;
     try {
@@ -386,7 +408,7 @@ async function runCliCompile(workspaceFolder: string, fingerprint: CompileFinger
         compiled = { compiledString: undefined, errors: [{ error: `Error compiling Dataform: ${error?.message ?? error}`, fileName: "" }], possibleResolutions: undefined, compilationTimeMs: undefined };
     }
     const { compiledString, errors, possibleResolutions, compilationTimeMs } = compiled;
-    const superseded = compileId !== latestCompileId;
+    const superseded = compileId !== state.latestCompileId;
     if (!superseded) {
         setCompilationInfo({ backend: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !dataformCompiledJson, ...describeDataformCli(workspaceFolder) });
     }
@@ -396,25 +418,26 @@ async function runCliCompile(workspaceFolder: string, fingerprint: CompileFinger
             return { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs };
         }
         setCompiled(workspaceFolder, dataformCompiledJson);
-        stale = false;
+        state.stale = false;
         compileFinished.fire(dataformCompiledJson);
         if (fingerprint) {
             saveCliCompile({ workspaceFolder, fingerprint, compiledAt: Date.now() }, compiledString);
             // Taken before the compile, so an edit made while it ran still forces the next one
-            reusable = { fingerprint, result: { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } };
+            state.reusable = { fingerprint, result: { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } };
         }
         logger.debug(`Successfully cached compiled dataform JSON. Targets: ${dataformCompiledJson.targets?.length || 0}, Declarations: ${dataformCompiledJson.declarations?.length || 0}`);
         return { dataformCompiledJson: dataformCompiledJson, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
     }
-    if (stale && !superseded) {
+    if (state.stale && !superseded) {
         // The saved compilation must not outlive a failed compile of the current files
         clearCompiled(workspaceFolder);
-        stale = false;
+        state.stale = false;
     }
     return { dataformCompiledJson: undefined, errors: errors, possibleResolutions: possibleResolutions, compilationTimeMs };
 }
 
 export async function runCompilation(workspaceFolder: string): Promise<CompilationResult> {
+    const state = cliCompileState(workspaceFolder);
     try {
         if (isRemoteMode()) {
             const { dataformCompiledJson, errors, compilationTimeMs } = await getRemoteCompiledJson(workspaceFolder);
@@ -429,17 +452,17 @@ export async function runCompilation(workspaceFolder: string): Promise<Compilati
             return await compileWithCli(workspaceFolder);
         }
         const fingerprint = await currentFingerprint(workspaceFolder);
-        if (reusable && fingerprintsMatch(reusable.fingerprint, fingerprint)) {
+        if (state.reusable && fingerprintsMatch(state.reusable.fingerprint, fingerprint)) {
             logger.debug('Compile inputs unchanged since the last compilation, reusing it');
-            const { result } = reusable;
+            const { result } = state.reusable;
             if (!result.dataformCompiledJson) {
-                reusable = undefined;
+                state.reusable = undefined;
             }
             return result;
         }
-        if (startupCompile && fingerprintsMatch(startupCompile.fingerprint, fingerprint)) {
+        if (state.startupCompile && fingerprintsMatch(state.startupCompile.fingerprint, fingerprint)) {
             logger.debug('Joining the startup compilation');
-            return await startupCompile.promise;
+            return await state.startupCompile.promise;
         }
         return await compileWithCli(workspaceFolder, fingerprint);
     } catch (error: any) {
@@ -454,11 +477,12 @@ export async function runCompilation(workspaceFolder: string): Promise<Compilati
  * changed project's saved compilation is shown as outdated meanwhile.
  */
 export async function prewarmCliCompilation(workspaceFolder: string): Promise<void> {
+    const state = cliCompileState(workspaceFolder);
     if (isRemoteMode() || !isPersistCompilationEnabled()) {
         return;
     }
     const [fingerprint, saved] = await Promise.all([currentFingerprint(workspaceFolder), loadCliCompile(workspaceFolder)]);
-    if (latestCompileId !== 0 || compiledJson(workspaceFolder)) {
+    if (state.latestCompileId !== 0 || compiledJson(workspaceFolder)) {
         return; // Something compiled while the saved compilation was being read
     }
 
@@ -478,24 +502,24 @@ export async function prewarmCliCompilation(workspaceFolder: string): Promise<vo
         setCompilationInfo({ backend: "cli", compiledAt: saved.meta.compiledAt, fromCache: true, stale: !!reason, staleReason: reason, ...describeDataformCli(workspaceFolder) });
         if (!reason) {
             logger.info('Loaded the saved compilation; compile inputs are unchanged');
-            reusable = { fingerprint, result: { dataformCompiledJson: savedJson, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined } };
+            state.reusable = { fingerprint, result: { dataformCompiledJson: savedJson, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined } };
             perfStart('startup.compile', { source: 'saved' })();
             return;
         }
         logger.info(`Showing the saved compilation until a fresh one finishes: ${reason}`);
-        stale = true;
+        state.stale = true;
     }
 
     const promise = perfTimed('startup.compile', () => compileWithCli(workspaceFolder, fingerprint), { source: 'cli' });
-    const compileId = latestCompileId;
-    startupCompile = { fingerprint, promise };
+    const compileId = state.latestCompileId;
+    state.startupCompile = { fingerprint, promise };
     // compileWithCli reports failures in its result rather than rejecting
     promise.then((result) => {
-        if (startupCompile?.promise === promise) {
-            startupCompile = undefined;
+        if (state.startupCompile?.promise === promise) {
+            state.startupCompile = undefined;
         }
-        if (compileId === latestCompileId) {
-            reusable = { fingerprint, result };
+        if (compileId === state.latestCompileId) {
+            state.reusable = { fingerprint, result };
             onStartupCompileSettled?.();
         }
     }).catch((error) => logger.error(`Failed to finish the startup compilation: ${error}`));
@@ -503,7 +527,8 @@ export async function prewarmCliCompilation(workspaceFolder: string): Promise<vo
 
 /** Waits for a fresh compilation when the cached JSON is an outdated saved one, so nothing is run or estimated from it. */
 export async function ensureFreshCompilation(workspaceFolder: string): Promise<void> {
-    if (stale && !isRemoteMode()) {
+    const state = cliCompileState(workspaceFolder);
+    if (state.stale && !isRemoteMode()) {
         await runCompilation(workspaceFolder);
     }
 }

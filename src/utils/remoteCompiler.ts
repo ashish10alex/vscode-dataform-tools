@@ -12,7 +12,7 @@ import { toDataformCompiledJson, ApiCompilationResult, ApiCompilationResultActio
 import { DEFAULT_CONFIG_KEY, getRemoteCompile, initRemoteCompileCache, saveRemoteCompile, RemoteCompileEntry } from './remoteCompileCache';
 import { initRemoteModeStatusBar, refreshRemoteModeStatusBar, updateRemoteModeStatusBar } from './remoteModeStatusBar';
 import { createCompilerOptionsObjectForApi, getDataformCompilerOptions } from './dataformCompiler';
-import { clearCompiled, setCompiled } from '../project';
+import { clearCompiled, currentDataformRoot, setCompiled } from '../project';
 import { setCompilationInfo } from './compilationInfo';
 
 /*
@@ -42,7 +42,8 @@ export type RemoteCompileOutcome = {
 export type CompilationBackend = "cli" | "api";
 
 function backendConfig() {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.workspace.workspaceFolders?.[0]?.uri);
+    const root = currentDataformRoot();
+    return vscode.workspace.getConfiguration('vscode-dataform-tools', root ? vscode.Uri.file(root) : vscode.workspace.workspaceFolders?.[0]?.uri);
 }
 
 export function isRemoteMode(): boolean {
@@ -182,7 +183,7 @@ async function createDataformClient(workspaceFolder: string, repositoryName: str
 
 /** Dataform client for the repository named after the current git repository. */
 export async function createDataformClientForCurrentRepository(): Promise<{ dataformClient: DataformTools, repositoryName: string }> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceFolder) {
         throw new Error("No workspace folder open");
     }
@@ -487,7 +488,7 @@ export async function getRemoteCompiledJson(workspaceFolder: string): Promise<Re
 
 /** Explicit compile from the command palette or status bar; always calls the API. */
 async function compileRemotelyAndReport() {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceFolder) {
         vscode.window.showErrorMessage("No workspace folder open");
         return;
@@ -510,7 +511,7 @@ async function compileRemotelyAndReport() {
 }
 
 async function pickReleaseConfig() {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceFolder) {
         return;
     }

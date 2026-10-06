@@ -33,10 +33,21 @@ function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.acti
     if (description !== knownProjects) {
         knownProjects = description;
         logger.debug(`Projects: ${description}`);
+        // The Project picker is only worth listing when there is something to pick
+        vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.multipleProjects', found.length > 1);
     }
     if (editor?.document.uri.scheme === 'file') {
         projects.noteActiveFile(editor.document.uri.fsPath);
     }
+    if (projects.active !== before) {
+        activeProjectChanged.fire(projects.active);
+    }
+}
+
+/** Makes `project` the active one, e.g. because the user picked it */
+export function activateProject(project: ProjectState) {
+    const before = projects.active;
+    projects.activate(project);
     if (projects.active !== before) {
         activeProjectChanged.fire(projects.active);
     }
@@ -55,12 +66,28 @@ export function initProjects(context: vscode.ExtensionContext) {
 let lastCompiled: ProjectState | undefined;
 
 /**
- * The Dataform Project a read is about: the one rooted at `root` when the caller knows it, else the one that compiled
- * last. The second is what the window-wide compile result used to mean; it becomes the active Project once the
- * workspace folder follows the editor in focus too.
+ * The Dataform Project a read or a command is about when the caller has no root in hand: the active Project, which
+ * follows the editor in focus, else the one that compiled last, else the only one there is.
  */
+function currentDataformProject(): ProjectState | undefined {
+    const active = projects.active;
+    if (active?.backend === 'dataform') {
+        return active;
+    }
+    if (lastCompiled && projects.find(lastCompiled.root, 'dataform') === lastCompiled) {
+        return lastCompiled;
+    }
+    const dataformProjects = projects.projects.filter((project) => project.backend === 'dataform');
+    return dataformProjects.length === 1 ? dataformProjects[0] : undefined;
+}
+
+/** The root of the Dataform Project to act on, see `currentDataformProject`. Never asks the user */
+export function currentDataformRoot(): string | undefined {
+    return currentDataformProject()?.root;
+}
+
 function dataformProject(root?: string): ProjectState | undefined {
-    return root ? projects.find(root, 'dataform') : lastCompiled;
+    return root ? projects.find(root, 'dataform') : currentDataformProject();
 }
 
 /** What a Dataform Project last compiled to, see `dataformProject` for which one */

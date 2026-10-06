@@ -118,6 +118,23 @@ suite('project registry', () => {
             assert.strictEqual(registry.active, dataform);
         });
 
+        test('picking a Project makes it the active one', () => {
+            const registry = new ProjectRegistry();
+            const [dataform, dbt] = registry.refresh([dataformRoot, dbtRoot]);
+            registry.activate(dbt);
+            assert.strictEqual(registry.active, dbt);
+            registry.activate(dataform);
+            assert.strictEqual(registry.active, dataform);
+        });
+
+        test('a Project the registry does not hold cannot be made active', () => {
+            const registry = new ProjectRegistry();
+            const [dataform] = registry.refresh([dataformRoot, dbtRoot]);
+            registry.activate(dataform);
+            registry.activate(new ProjectRegistry().refresh([sharedRoot])[0]);
+            assert.strictEqual(registry.active, dataform);
+        });
+
         test('is forgotten when its Project is gone', () => {
             const registry = new ProjectRegistry();
             registry.refresh([dataformRoot, dbtRoot, sharedRoot]);
