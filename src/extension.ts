@@ -44,6 +44,7 @@ import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineag
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
+import { initProjects } from './project';
 
 let lastDataformFilePath: string | undefined;
 
@@ -115,6 +116,7 @@ export async function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('myDiagnostics');
     context.subscriptions.push(diagnosticCollection);
 
+    initProjects(context);
     registerCompiledQueryPanel(context);
     initDeferToProd(context, refreshCompiledQueryPanel);
 
