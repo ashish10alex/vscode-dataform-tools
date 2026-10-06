@@ -110,6 +110,11 @@ export function compiledGraph(root?: string): CompiledGraph | undefined {
     return dataformProject(root)?.dataformBackend?.graph;
 }
 
+/** The number of the compile result `compiledJson(root)` and `compiledGraph(root)` give; 0 before the first */
+export function compileNumber(root?: string): number {
+    return dataformProject(root)?.compileNumber ?? 0;
+}
+
 const noIndices = emptyIndices();
 
 /** The lookups over `compiledJson(root)`: empty ones when there is no compile result */
@@ -123,6 +128,9 @@ export function setCompiled(root: string, compiled: DataformCompiledJson) {
     if (!project?.dataformBackend) {
         logger.debug(`Not keeping a compile result for ${root}: it is not the root of a Dataform Project`);
         return;
+    }
+    if (project.dataformBackend.rawResult !== compiled) {
+        project.compileNumber++;
     }
     project.dataformBackend.keep(compiled);
     const indices = project.dataformBackend.rawIndices ?? noIndices;
