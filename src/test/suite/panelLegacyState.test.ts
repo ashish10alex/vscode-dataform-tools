@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { SliceSender } from '../../panel/sliceSender';
 import type { DataformBlock, HostMessage } from '../../shared/panelContract';
 import { MIGRATED_DATAFORM_FIELDS, isSliceMessage, legacyStateFromSlice, toLegacyState } from '../../shared/panelLegacyState';
 
@@ -40,31 +39,26 @@ suite('panel: slices as the flat state the components still read', () => {
         assert.deepStrictEqual(toLegacyState(status as unknown as Record<string, unknown>), {});
     });
 
-    test('a slice the panel acts on the arrival of can be sent though it is the same', () => {
-        const posted: HostMessage[] = [];
-        const sender = new SliceSender((message) => posted.push(message));
-        const running = block({ workflowUrls: [{ url: 'https://console.cloud.google.com/x', timestamp: 1, state: 'RUNNING' }] as DataformBlock['workflowUrls'] });
-        // Two refreshes of a run that is still running give the same links: the panel must hear of both to go on polling
-        assert.strictEqual(sender.send('dataform', running, true), true);
-        assert.strictEqual(sender.send('dataform', running, true), true);
-        assert.strictEqual(sender.send('dataform', running), false);
-        assert.strictEqual(posted.length, 2);
+    test('a send carries only the fields it is about, so nothing else looks to have arrived', () => {
+        const value = block({ lastRun: null, workflowUrls: [], changedActions: { status: 'idle' } });
+        // A refresh of the workflow links: the polling of workflow statuses must see them arrive, and the last run card must not
+        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['workflowUrls'] }), { workflowUrls: [] });
+        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['changedActions', 'lastRun'] }), { changedActions: { status: 'idle' }, lastRun: null });
+        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: [] }), {});
+        // A field that has not been moved is not passed on even when a send names it
+        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['compilerOptions'] }), {});
     });
 
-    test('the block is sent once per change, and whole again after a render', () => {
-        const merged: Record<string, unknown> = {};
-        const sender = new SliceSender((message) => Object.assign(merged, toLegacyState(message as unknown as Record<string, unknown>)));
-        let state = block();
-        const update = (fields: Partial<DataformBlock>) => {
-            state = { ...state, ...fields };
-            return sender.send('dataform', state);
-        };
-        assert.strictEqual(update({ changedActions: { status: 'computing' } }), true);
-        assert.strictEqual(update({ changedActions: { status: 'computing' } }), false);
-        assert.strictEqual(update({ workflowUrls: [] }), true);
-        assert.deepStrictEqual([merged.changedActions, merged.workflowUrls, merged.lastRun], [{ status: 'computing' }, [], null]);
-        // A render starts from nothing known, so the same block goes again
-        sender.reset();
-        assert.strictEqual(update({}), true);
+    test('the same links sent twice arrive twice, as two flat messages did', () => {
+        const arrivals: unknown[] = [];
+        const value = block({ workflowUrls: [] });
+        for (let refresh = 0; refresh < 2; refresh++) {
+            // What posting does: the panel gets a copy
+            const received = JSON.parse(JSON.stringify({ slice: 'dataform', value, touched: ['workflowUrls'] }));
+            arrivals.push(toLegacyState(received).workflowUrls);
+        }
+        assert.strictEqual(arrivals.length, 2);
+        assert.notStrictEqual(arrivals[0], arrivals[1]);
+        assert.deepStrictEqual(arrivals[0], arrivals[1]);
     });
 });

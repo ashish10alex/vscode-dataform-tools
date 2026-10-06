@@ -13,21 +13,34 @@ import type { DataformBlock, HostMessage } from './panelContract';
  */
 export const MIGRATED_DATAFORM_FIELDS = ['lastRun', 'workflowUrls', 'changedActions', 'apiRunGitState', 'columnImpact'] as const satisfies ReadonlyArray<keyof DataformBlock>;
 
+type MigratedDataformField = (typeof MIGRATED_DATAFORM_FIELDS)[number];
+
+/**
+ * A `dataform` block as the host sends it for now: with the fields this send is about. The components act on a field
+ * arriving, not only on its value: the polling of workflow statuses asks again each time the workflow links arrive,
+ * and the defer banner stops waiting when a deferral does. So a send must look to them as the old flat message did,
+ * carrying the fields it is about and no others, and it is sent every time, changed or not.
+ */
+export type DataformBlockMessage = Extract<HostMessage, { slice: 'dataform' }> & { touched: MigratedDataformField[] };
+
+/** How each moved field is named and shaped in the flat state */
+const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => Record<string, unknown> } = {
+    lastRun: (block) => ({ lastRun: block.lastRun }),
+    workflowUrls: (block) => ({ workflowUrls: block.workflowUrls }),
+    changedActions: (block) => ({ changedActions: block.changedActions }),
+    apiRunGitState: (block) => ({ apiRunGitState: block.apiRunGitState }),
+    // The flat state names the file `relativeFilePath`
+    columnImpact: (block) => ({ columnImpact: block.columnImpact && { relativeFilePath: block.columnImpact.file, changed: block.columnImpact.changed } }),
+};
+
 /** The flat state's fields for a slice the host sent: what the panel merges into its state */
-export function legacyStateFromSlice(message: HostMessage): Record<string, unknown> {
+export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage): Record<string, unknown> {
     if (message.slice !== 'dataform') {
         // No component reads the other slices yet, and the host does not send them
         return {};
     }
-    const block = message.value;
-    return {
-        lastRun: block.lastRun,
-        workflowUrls: block.workflowUrls,
-        changedActions: block.changedActions,
-        apiRunGitState: block.apiRunGitState,
-        // The flat state names the file `relativeFilePath`
-        columnImpact: block.columnImpact && { relativeFilePath: block.columnImpact.file, changed: block.columnImpact.changed },
-    };
+    const touched: readonly MigratedDataformField[] = 'touched' in message ? message.touched : MIGRATED_DATAFORM_FIELDS;
+    return Object.assign({}, ...touched.filter((field) => field in FLAT_FIELD).map((field) => FLAT_FIELD[field](message.value)));
 }
 
 /** Whether a message from the host is a slice of the contract, as opposed to flat fields */

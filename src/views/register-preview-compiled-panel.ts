@@ -1,8 +1,7 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { compileNumber, compiledJson, currentDataformRoot, requiredTools } from '../project';
 import type { DataformBlock, PanelMessage } from '../shared/panelContract';
-import { MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
-import { SliceSender } from '../panel/sliceSender';
+import { DataformBlockMessage, MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
@@ -446,9 +445,6 @@ export class CompiledQueryPanel {
         return this.webviewPanel.webview.postMessage(message);
     }
 
-    /** Sends the panel a slice of the contract only when it differs from what the panel was last sent */
-    private readonly slices = new SliceSender((message) => this.postMessage(message));
-
     /**
      * What only a Dataform Project has, as the panel was last told. Only the fields of `MIGRATED_DATAFORM_FIELDS` are
      * kept here so far; the rest still travel as flat fields and hold a placeholder.
@@ -459,13 +455,14 @@ export class CompiledQueryPanel {
     };
 
     /**
-     * Changes fields of the `dataform` block and sends the block if that changed it. The workflow links are the
-     * exception: the panel polls workflow statuses by asking again each time they arrive, so an answer that is the
-     * same as the last must still be sent, or the polling stops.
+     * Changes fields of the `dataform` block and sends the block, saying which fields this send is about. It is sent
+     * every time, as the flat message it replaces was: the panel acts on these fields arriving (see
+     * `DataformBlockMessage`). Sending a slice only when it changes waits until the components read slices.
      */
     public updateDataformBlock(fields: Partial<Pick<DataformBlock, (typeof MIGRATED_DATAFORM_FIELDS)[number]>>) {
         this.dataformBlock = { ...this.dataformBlock, ...fields, compile: compileNumber() };
-        this.slices.send('dataform', this.dataformBlock, 'workflowUrls' in fields);
+        const message: DataformBlockMessage = { slice: 'dataform', value: this.dataformBlock, touched: Object.keys(fields) as DataformBlockMessage['touched'] };
+        this.postMessage(message);
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
@@ -1212,9 +1209,7 @@ export class CompiledQueryPanel {
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
         }
 
-        // Every render sends the `dataform` block whole, as every render used to send these fields; between renders
-        // it is sent only when it changes
-        this.slices.reset();
+        // Every render that gets this far sends these, as the payloads of a compiled file used to
         this.updateDataformBlock({
             workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
             lastRun: getLastRunView(),
