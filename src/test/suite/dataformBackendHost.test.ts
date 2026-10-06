@@ -52,6 +52,6 @@ suite('Dataform Backend: compiling the test workspace with the CLI', function ()
 
         const incremental = Object.values(graph.actions).find((action) => action.kind === 'incremental')!;
         assert.ok(actionsInFile(graph, incremental.fileName).includes(incremental));
-        assert.deepStrictEqual(dryRunScripts(incremental).map((script) => script.label), ['full', 'incremental']);
+        assert.deepStrictEqual(dryRunScripts(incremental).filter((script) => script.name === 'query').map((script) => script.incremental), [false, true]);
     });
 });

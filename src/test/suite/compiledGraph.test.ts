@@ -19,6 +19,7 @@ import {
     joinScript,
     kindHasTable,
     madeUpTarget,
+    positionInSection,
     sectionsFor,
     siblingsOf,
     slashPath,
@@ -45,7 +46,7 @@ function action(kind: Kind, name: string, rest: Partial<Action> & { deps?: strin
 }
 
 const names = (actions: Action[]) => actions.map((a) => a.target.name);
-const COMPILED = { compiled: true, dryRun: true };
+const COMPILED = { compiled: true, dryRun: ['query'] };
 
 suite('compiled graph: targets and kinds', () => {
     test('an ID is database.schema.name, as the Dataform CLI writes a target', () => {
@@ -221,13 +222,14 @@ suite('compiled graph: SQL sections', () => {
 
     // What the Dataform Backend will build for an incremental table with pre- and post-operations
     const incrementalTable = () => {
-        const post = { compiled: true, dryRun: false };
+        const pre = { compiled: true, dryRun: ['query', 'post_operations'] };
+        const post = { compiled: true, dryRun: ['post_operations'] };
         return action('incremental', 'orders', {
             sections: [
-                ...titledSections('pre_operations', ['  declare d date'], COMPILED),
+                ...titledSections('pre_operations', ['  declare d date'], pre),
                 ...titledSections('query', ['\nselect 1 as id'], COMPILED),
                 ...titledSections('post_operations', ['grant select on t to x'], post),
-                ...titledSections('incremental pre_operations', ['declare d date default current_date()'], { ...COMPILED, incremental: true }),
+                ...titledSections('incremental pre_operations', ['declare d date default current_date()'], { ...pre, incremental: true }),
                 ...titledSections('incremental query', ['select 1 as id where day > d'], { ...COMPILED, incremental: true }),
                 ...titledSections('incremental post_operations', ['grant select on t to x'], { ...post, incremental: true }),
             ],
@@ -251,13 +253,15 @@ suite('compiled graph: SQL sections', () => {
         assert.strictEqual(new Set(all).size, all.length);
     });
 
-    test('both variants of an incremental table are dry-run, without their post-operations', () => {
+    test('each variant of an incremental table has a script for its query and one for its post-operations', () => {
         const scripts = dryRunScripts(incrementalTable());
         assert.deepStrictEqual(
-            scripts.map((s) => [s.label, s.sql]),
+            scripts.map((s) => [s.name, s.incremental, s.sql]),
             [
-                ['full', 'declare d date;\nselect 1 as id;'],
-                ['incremental', 'declare d date default current_date();\nselect 1 as id where day > d;'],
+                ['query', false, 'declare d date;\nselect 1 as id;'],
+                ['post_operations', false, 'declare d date;\ngrant select on t to x;'],
+                ['query', true, 'declare d date default current_date();\nselect 1 as id where day > d;'],
+                ['post_operations', true, 'declare d date default current_date();\ngrant select on t to x;'],
             ]
         );
         assert.deepStrictEqual(scripts[0].parts, [
@@ -266,15 +270,35 @@ suite('compiled graph: SQL sections', () => {
         ]);
     });
 
-    test('an action with one variant has one unlabelled script', () => {
+    test('a position in a script is found in the section it came from', () => {
+        const table = action('table', 't', {
+            sections: [
+                ...titledSections('pre_operations', ['  declare d date', 'set d =\n  current_date()'], { compiled: true, dryRun: ['query'] }),
+                ...titledSections('query', ['\n\nselect id,\n  nope\nfrom t'], COMPILED),
+            ],
+        });
+        const [script] = dryRunScripts(table);
+        assert.strictEqual(script.sql, 'declare d date;\nset d =\n  current_date();\nselect id,\n  nope\nfrom t;');
+        // The section keeps its own leading spaces, which the script dropped
+        assert.deepStrictEqual(positionInSection(table, script, 1, 9), { section: 'pre_operations 1/2', line: 1, column: 11 });
+        assert.deepStrictEqual(positionInSection(table, script, 3, 3), { section: 'pre_operations 2/2', line: 2, column: 3 });
+        assert.deepStrictEqual(positionInSection(table, script, 5, 3), { section: 'query', line: 2, column: 3 });
+        assert.deepStrictEqual(positionInSection(table, script, 6, 1), { section: 'query', line: 3, column: 1 });
+        // On the semicolon the script added: the end of the section
+        assert.deepStrictEqual(positionInSection(table, script, 6, 7), { section: 'query', line: 3, column: 7 });
+        assert.strictEqual(positionInSection(table, script, 9, 1), undefined);
+        assert.strictEqual(positionInSection(table, script, 0, 1), undefined);
+    });
+
+    test('an action with one variant and one script', () => {
         const view = action('view', 'v', { sections: titledSections('query', ['select 1'], COMPILED) });
-        assert.deepStrictEqual(dryRunScripts(view), [{ label: '', sql: 'select 1', parts: [{ source: 'query', start: 0, origin: 0 }] }]);
+        assert.deepStrictEqual(dryRunScripts(view), [{ name: 'query', incremental: false, sql: 'select 1', parts: [{ source: 'query', start: 0, origin: 0 }] }]);
     });
 
     test('hooks shown as written are not dry-run, and an action with nothing marked has no script', () => {
         const model = action('table', 'm', {
             sections: [
-                ...titledSections('pre-hook', ['{{ log("start") }}'], { compiled: false, dryRun: false }),
+                ...titledSections('pre-hook', ['{{ log("start") }}'], { compiled: false, dryRun: [] }),
                 ...titledSections('query', ['select 1'], COMPILED),
             ],
         });
@@ -283,7 +307,7 @@ suite('compiled graph: SQL sections', () => {
             ['select 1']
         );
         assert.deepStrictEqual(dryRunScripts(action('seed', 's')), []);
-        const parsedOnly = action('table', 'p', { sqlPresent: false, sections: titledSections('query', ['select {{ x }}'], { compiled: false, dryRun: false }) });
+        const parsedOnly = action('table', 'p', { sqlPresent: false, sections: titledSections('query', ['select {{ x }}'], { compiled: false, dryRun: [] }) });
         assert.deepStrictEqual(dryRunScripts(parsedOnly), []);
     });
 });
