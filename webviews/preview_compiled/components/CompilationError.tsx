@@ -17,7 +17,7 @@ interface CompilationErrorProps {
 const SwitchBackendButton: React.FC<{ to: 'cli' | 'api' }> = ({ to }) => (
   <button
     type="button"
-    onClick={() => vscode.postMessage({ command: 'switchCompilationBackend', value: to })}
+    onClick={() => vscode.postMessage({ command: 'dataform.switchCompilationMode', compilationMode: to })}
     className="mt-3 flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)]"
   >
     {to === 'api'
@@ -229,7 +229,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    vscode.postMessage({ command: 'selectWorkspaceFolder' });
+                    vscode.postMessage({ command: 'selectProject' });
                   }}
                   className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium cursor-pointer"
                 >

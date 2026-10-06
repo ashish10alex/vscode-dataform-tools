@@ -83,11 +83,11 @@ function App() {
   const timeLeftFormatted = `${minutesLeft}m ${secondsLeft.toString().padStart(2, "0")}s`;
 
   const handleStartSnooze = () => {
-    vscode.postMessage({ command: "startSnooze" });
+    vscode.postMessage({ command: "dataform.startSnooze" });
   };
 
   const handleStopSnooze = () => {
-    vscode.postMessage({ command: "stopSnooze" });
+    vscode.postMessage({ command: "dataform.stopSnooze" });
   };
   const [isPolling, setIsPolling] = useState(false);
   const pollStartedAtRef = useRef<number | null>(null);
@@ -120,14 +120,14 @@ function App() {
     }
 
     if (justStarted) {
-      vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+      vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
       return;
     }
 
     const isCanceling = items.some(i => i.state === 'CANCELING');
     const delay = isCanceling ? POLL_CANCELING_MS : elapsed < POLL_FAST_DURATION_MS ? POLL_FAST_MS : POLL_SLOW_MS;
     pollTimerRef.current = setTimeout(() => {
-      vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+      vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
     }, delay);
 
     return () => {

@@ -408,8 +408,9 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
     if (needsSchema) {
       setRequestedSchemas((current) => ({ ...current, [schemaKey]: true }));
       vscode.postMessage({
-        command: "propertyGraphElementSchema",
-        value: { elementName: schemaKey, target: element.dataSource },
+        command: "dataform.loadPropertyGraphElementSchema",
+        elementName: schemaKey,
+        table: element.dataSource,
       });
     }
   }, [elementByName, schemaKeyFor, requestedSchemas, state.propertyGraphElementSchemas]);
@@ -477,8 +478,11 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
           type="button"
           disabled={graph.disabled}
           onClick={() => vscode.postMessage({
-            command: "runModel",
-            value: { includeDependencies: false, includeDependents: false, fullRefresh: false },
+            command: "run",
+            actions: [graph.target],
+            includeDependencies: false,
+            includeDependents: false,
+            fullRefresh: false,
           })}
           className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:brightness-110 rounded text-[var(--vscode-button-foreground)] disabled:opacity-50"
         >
@@ -559,8 +563,9 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
             <button
               type="button"
               onClick={() => vscode.postMessage({
-                command: "runGeneratedQuery",
-                value: { query: starterQuery, type: "table" },
+                command: "dataform.runGeneratedQuery",
+                query: starterQuery,
+                kind: "table",
               })}
               className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)]"
             >

@@ -139,7 +139,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   const handleCopyJson = () => {
     vscode.postMessage({
       command: 'copyToClipboard',
-      value: columnsConfigText()
+      text: columnsConfigText()
     });
     
     setIsCopied(true);
@@ -155,8 +155,8 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
     vscode.postMessage({
       command: 'exportSchema',
-      value: columnsConfigText(),
-      filename: filename
+      content: columnsConfigText(),
+      fileName: filename
     });
   };
 

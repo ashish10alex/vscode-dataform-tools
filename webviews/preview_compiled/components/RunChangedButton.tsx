@@ -272,7 +272,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const runLabel = status === "ready" && selectedActions.length > 0 ? `Run ${selectedActions.length}` : "Run";
   const runTitle = status === "ready" && changed.length > 0 && noneSelected ? "Select at least one file to run" : undefined;
 
-  const compute = () => vscode.postMessage({ command: "computeChangedActions" });
+  const compute = () => vscode.postMessage({ command: "dataform.computeChangedActions" });
 
   const toggle = () => {
     const next = !open;
@@ -288,8 +288,12 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
 
   const run = (api: boolean) => {
     vscode.postMessage({
-      command: "runChangedActions",
-      value: { api, includeDependencies, includeDependents, fullRefresh, files: selectedGroups.map(([fileName]) => fileName) },
+      command: "dataform.runChangedActions",
+      api,
+      includeDependencies,
+      includeDependents,
+      fullRefresh,
+      files: selectedGroups.map(([fileName]) => fileName),
     });
     if (api) { onApiRunDispatched(); }
     setOpen(false);
