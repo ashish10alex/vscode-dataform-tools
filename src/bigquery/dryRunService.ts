@@ -7,8 +7,11 @@ import type { BigQueryDryRunResponse, CompiledQuerySchema } from '../types';
  * it keeps no result: every call asks BigQuery again.
  */
 
-/** Asks BigQuery to dry-run one script. The extension's `queryDryRun`, which goes through the shared pool, fits it */
-export type RunDryRun = (sql: string) => Promise<BigQueryDryRunResponse>;
+/**
+ * Asks BigQuery to dry-run one script of `action`. The host makes it from the extension's `queryDryRun`, which goes
+ * through the shared pool, and from `jobPlace`, which says where the action's jobs run.
+ */
+export type RunDryRun = (sql: string, action: Action) => Promise<BigQueryDryRunResponse>;
 
 /** What BigQuery said about one dry-run script of an action */
 export interface DryRunResult {
@@ -86,7 +89,7 @@ export async function dryRunAction(action: Action, compile: number, run: RunDryR
     return Promise.all(dryRunScripts(action).map(async (script) => {
         let response: BigQueryDryRunResponse;
         try {
-            response = await run(script.sql);
+            response = await run(script.sql, action);
         } catch (error) {
             response = { error: { hasError: true, message: error instanceof Error ? error.message : String(error) } };
         }
