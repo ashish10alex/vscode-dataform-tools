@@ -2,11 +2,17 @@ import * as vscode from 'vscode';
 import { logger } from './logger';
 import type { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
 import { loadBigQuery } from './lazySdk';
+import type { JobPlace, JobSettings } from './bigquery/jobPlace';
 
 let bigquery: BigQuery | undefined;
 let isAuthenticated: boolean = false;
 
 let clientCreationPromise: Promise<string | undefined> | undefined;
+
+/** What the client was made with, so that a client for another project can be made the same way */
+let clientOptions: BigQueryOptions = {};
+/** Clients for jobs that run in a project other than the client's own, by project. Emptied when the client is remade */
+const clientsByProject = new Map<string, BigQuery>();
 
 /**
  * Creates the BigQuery client. Called on first use rather than at activation, and again after an
@@ -41,6 +47,8 @@ export async function createBigQueryClient(): Promise<string | undefined> {
             const client = new (await loadBigQuery())(options);
             await client.authClient.getAccessToken();
             bigquery = client;
+            clientOptions = options;
+            clientsByProject.clear();
             isAuthenticated = true;
             logger.info('BigQuery client created');
             return undefined;
@@ -70,6 +78,30 @@ export async function checkAuthentication(): Promise<string | undefined> {
 
 export function getBigQueryClient(): BigQuery | undefined {
     return isAuthenticated ? bigquery : undefined;
+}
+
+/** The `gcpProjectId` and `gcpLocation` settings, for `jobPlace` */
+export function getJobSettings(): JobSettings {
+    const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+    return { gcpProjectId: config.get<string>('gcpProjectId') || undefined, gcpLocation: config.get<string>('gcpLocation') || undefined };
+}
+
+/**
+ * The client for a job that runs at `place`. The BigQuery client sends every job to its own project, so a job for
+ * another project needs a client of its own, made with the same credentials. Without a project, or with the client's
+ * own, it is the one client there has always been.
+ */
+export async function getBigQueryClientFor(place: JobPlace | undefined): Promise<BigQuery | undefined> {
+    const client = getBigQueryClient();
+    if (!client || !place?.projectId || place.projectId === client.projectId) {
+        return client;
+    }
+    let forProject = clientsByProject.get(place.projectId);
+    if (!forProject) {
+        forProject = new (await loadBigQuery())({ ...clientOptions, projectId: place.projectId });
+        clientsByProject.set(place.projectId, forProject);
+    }
+    return forProject;
 }
 
 function isAuthenticationError(error: any): boolean {

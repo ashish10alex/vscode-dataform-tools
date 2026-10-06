@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { getBigQueryClient, getBigQueryClientFor, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import type { JobPlace } from './bigquery/jobPlace';
 import { bigQueryDryRunCostOneGiBByCurrency } from './constants';
 import { formatTimestamp } from './utils';
 import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency, Target } from './types';
@@ -46,7 +47,8 @@ export async function withDryRunSlot<T>(run: () => Promise<T>): Promise<T> {
     }
 }
 
-export async function queryDryRun(query: string, alreadyRetried: boolean = false): Promise<BigQueryDryRunResponse> {
+/** Dry-runs `query`. `place` says where the job runs when that is not the client's own project and location, see `jobPlace` */
+export async function queryDryRun(query: string, alreadyRetried: boolean = false, place?: JobPlace): Promise<BigQueryDryRunResponse> {
     if (query === "" || !query) {
         return {
             schema: undefined,
@@ -59,7 +61,7 @@ export async function queryDryRun(query: string, alreadyRetried: boolean = false
     perfCount('bq.dryRun');
     const errorMessage = await checkAuthentication();
 
-    const bigqueryClient = getBigQueryClient();
+    const bigqueryClient = await getBigQueryClientFor(place);
     if (!bigqueryClient) {
         return {
             schema: undefined,
@@ -86,7 +88,8 @@ export async function queryDryRun(query: string, alreadyRetried: boolean = false
     try {
         const [job] = await withDryRunSlot(() => bigqueryClient.createQueryJob({
             query,
-            dryRun: true
+            dryRun: true,
+            ...(place?.location ? { location: place.location } : {}),
         }));
 
         const totalBytesProcessedAccuracy = job.metadata.statistics.query?.totalBytesProcessedAccuracy;
@@ -117,7 +120,7 @@ export async function queryDryRun(query: string, alreadyRetried: boolean = false
     } catch (error: any) {
         try {
             await handleBigQueryError(error, alreadyRetried);
-            return await queryDryRun(query, true);
+            return await queryDryRun(query, true, place);
         } catch (finalError: any) {
             const errorLocation = getLineAndColumnNumberFromErrorMessage(finalError.message);
             return {
