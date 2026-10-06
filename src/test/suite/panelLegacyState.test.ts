@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import type { DataformBlock, HostMessage } from '../../shared/panelContract';
+import type { CompileStatus, DataformBlock, HostMessage } from '../../shared/panelContract';
 import { MIGRATED_DATAFORM_FIELDS, isSliceMessage, legacyStateFromSlice, toLegacyState } from '../../shared/panelLegacyState';
 
 const block = (fields: Partial<DataformBlock> = {}): DataformBlock => ({
@@ -39,13 +39,32 @@ suite('panel: slices as the flat state the components still read', () => {
         }
     });
 
+    test('the compile status gives the compiling flag, and the other flat fields only where it has something to say of them', () => {
+        const flat = (value: CompileStatus) => legacyStateFromSlice({ slice: 'compile status', value });
+        assert.deepStrictEqual(flat({ compile: 2, status: 'compiling', showingPrevious: false, startedAt: 1 }), { recompiling: true });
+        assert.deepStrictEqual(flat({ compile: 2, status: 'compiled', compiledAt: 1, errors: [] }), { recompiling: false });
+        assert.deepStrictEqual(flat({ compile: 2, status: 'no project' }), { recompiling: false });
+        assert.deepStrictEqual(flat({ compile: 2, status: 'tool not found', tool: 'dataform', lookedIn: [] }), { recompiling: false, missingExecutables: ['dataform'] });
+        // A compile that left errors: the flat state names them its own way, with the source lines the tool printed
+        const error = { message: 'Unexpected token', fileName: 'definitions/a.sqlx', line: 10, sourceContext: '  oops\n  ^^^^' };
+        assert.deepStrictEqual(flat({ compile: 2, status: 'compiled', compiledAt: 1, errors: [error] }), {
+            recompiling: false,
+            compilationErrors: [{ error: 'Unexpected token', fileName: 'definitions/a.sqlx', lineNumber: 10, sourceContext: '  oops\n  ^^^^' }],
+        });
+        assert.deepStrictEqual(flat({ compile: 2, status: 'failed', errors: [{ message: 'dataform: command not found' }] }).compilationErrors, [
+            { error: 'dataform: command not found', fileName: '', lineNumber: undefined, sourceContext: undefined },
+        ]);
+        // What the file itself has wrong is not the compile's to say
+        assert.ok(!('errorType' in flat({ compile: 2, status: 'failed', errors: [error] })));
+    });
+
     test('a message sent the old way passes through untouched; a slice no component reads yet adds nothing', () => {
         const flatMessage = { recompiling: true, relativeFilePath: 'definitions/orders.sqlx' };
         assert.strictEqual(isSliceMessage(flatMessage), false);
         assert.strictEqual(toLegacyState(flatMessage), flatMessage);
-        const status: HostMessage = { slice: 'compile status', value: { compile: 1, status: 'no project' } };
-        assert.strictEqual(isSliceMessage(status), true);
-        assert.deepStrictEqual(toLegacyState(status as unknown as Record<string, unknown>), {});
+        const unread: HostMessage = { slice: 'run status', value: { compile: 1 } };
+        assert.strictEqual(isSliceMessage(unread), true);
+        assert.deepStrictEqual(toLegacyState(unread as unknown as Record<string, unknown>), {});
     });
 
     test('a send carries only the fields it is about, so nothing else looks to have arrived', () => {

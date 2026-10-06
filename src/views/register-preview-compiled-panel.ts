@@ -1,6 +1,8 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { compileNumber, compiledJson, currentDataformRoot, requiredTools } from '../project';
-import type { DataformBlock, PanelMessage } from '../shared/panelContract';
+import type { DataformBlock, HostMessage, PanelMessage } from '../shared/panelContract';
+import { CompileState, compileStatusSlice } from '../panel/slices';
+import type { Tool } from '../project/tools';
 import { DataformBlockMessage, MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
@@ -314,8 +316,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 if (workspaceFolder) {
                     dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
                 }
+                CompiledQueryPanel?.centerPanel?.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now() } });
                 CompiledQueryPanel?.centerPanel?.postMessage({
-                    "recompiling": true,
                     "compilationBackend": isRemoteMode() ? "api" : "cli",
                     "dataformCoreVersion": dataformCoreVersion,
                     "relativeFilePath": getRelativePath(document.fileName),
@@ -454,6 +456,18 @@ export class CompiledQueryPanel {
         compile: 0, compilerOptions: '', compilationMode: 'cli', snoozeEndTime: null, deferral: null, leftoverProxies: null,
         lastRun: null, propertyGraphs: null, propertyGraphValidations: null, propertyGraphElementSchemas: {},
     };
+
+    /**
+     * Tells the panel how the Project's compile stands: one of the seven values of the contract. Called wherever the
+     * flat state's `recompiling` used to be set, with what is special about that place; the rest is what the last
+     * compile left. Sent every time, as `recompiling` was.
+     */
+    public sendCompileStatus(state: Partial<CompileState> = {}) {
+        const info = getCompilationInfo();
+        const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
+        const message: HostMessage = { slice: 'compile status', value: compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()) };
+        this.postMessage(message);
+    }
 
     /**
      * Changes fields of the `dataform` block and sends the block, saying which fields this send is about. It is sent
@@ -1191,9 +1205,8 @@ export class CompiledQueryPanel {
             if(this.webviewPanel.webview.html === ""){
                 this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
             } else {
+                this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
                 await this.postMessage({
-                    "missingExecutables": missingExecutables,
-                    "recompiling": false,
                     "errorType": CompilationErrorType.MISSING_EXECUTABLE,
                     "isHelperFile": false,
                     "tableOrViewQuery": null,
@@ -1217,8 +1230,8 @@ export class CompiledQueryPanel {
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
+            this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now() } });
             await this.postMessage({
-                "recompiling": true,
                 "compilationBackend": isRemoteMode() ? "api" : "cli",
                 "compilerOptions": compilerOptions,
                 "dataformCoreVersion": dataformCoreVersion,
@@ -1232,9 +1245,9 @@ export class CompiledQueryPanel {
         }
 
         if(!curFileMeta){
+            this.sendCompileStatus();
             await this.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
-                "recompiling": false,
                 "errorType": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
                 "isHelperFile": false,
                 "declarations": null,
@@ -1247,9 +1260,9 @@ export class CompiledQueryPanel {
 
 
         if (curFileMeta.isDataformWorkspace===false){
+            this.sendCompileStatus({ inProject: false });
             await this.postMessage({
                 "errorMessage": `This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root`,
-                "recompiling": false,
                 "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
@@ -1259,9 +1272,9 @@ export class CompiledQueryPanel {
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
+            this.sendCompileStatus();
             await this.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
-                "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
@@ -1272,11 +1285,11 @@ export class CompiledQueryPanel {
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
+            this.sendCompileStatus();
             await this.postMessage({
                 "errorType": CompilationErrorType.FILE_NOT_FOUND,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
-                "recompiling": false,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
                 "declarations": null
@@ -1284,9 +1297,9 @@ export class CompiledQueryPanel {
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
+            this.sendCompileStatus();
             await this.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
-                "recompiling": false,
                 "errorType": CompilationErrorType.QUERY_META_ERROR,
                 "isHelperFile": false,
                 "declarations": null,
@@ -1300,7 +1313,7 @@ export class CompiledQueryPanel {
         if(curFileMeta.errors?.dataformCompilationErrors){
             let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
-                await this.postMessage({ "recompiling": false });
+                this.sendCompileStatus();
                 return;
             }
 
@@ -1317,13 +1330,14 @@ export class CompiledQueryPanel {
                 }
             }
 
-            await this.postMessage({
-                "compilationErrors": curFileMeta.errors.dataformCompilationErrors?.map((compilationError: { error: string; fileName: string; stack?: string }) => {
+            this.sendCompileStatus({
+                errors: curFileMeta.errors.dataformCompilationErrors.map((compilationError: { error: string; fileName: string; stack?: string }) => {
                     const { lineNumber, sourceContext } = parseCompilationStack(compilationError.stack);
-                    return { error: compilationError.error, fileName: compilationError.fileName, lineNumber, sourceContext };
+                    return { message: compilationError.error, fileName: compilationError.fileName, line: lineNumber, sourceContext };
                 }),
+            });
+            await this.postMessage({
                 "errorMessage": null,
-                "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
                 "declarations": null,
@@ -1351,10 +1365,10 @@ export class CompiledQueryPanel {
         );
 
         if (isConfigFile) {
+            this.sendCompileStatus();
             await this.postMessage({
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "recompiling": false,
                 "isHelperFile": false,
                 "declarations": null,
                 "errorType": null,
@@ -1383,6 +1397,7 @@ export class CompiledQueryPanel {
                 if (diagnosticCollection) {
                     diagnosticCollection.clear();
                 }
+                this.sendCompileStatus();
                 await this.postMessage({
                     "propertyGraphs": propertyGraphs,
                     "propertyGraphValidations": null,
@@ -1392,7 +1407,6 @@ export class CompiledQueryPanel {
                     "dataformCoreVersion": curFileMeta.dataformCoreVersion,
                     "compilerOptions": compilerOptions,
                     "workspaceFolder": workspaceFolder,
-                    "recompiling": false,
                     "dryRunning": true,
                     "errorType": null,
                     "errorMessage": null,
@@ -1428,12 +1442,12 @@ export class CompiledQueryPanel {
 
             const coreVersion = curFileMeta.dataformCoreVersion ?? compiledJson()?.dataformCoreVersion;
             if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
+                this.sendCompileStatus();
                 await this.postMessage({
                     "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
                     "errorType": CompilationErrorType.COMPILATION_ERROR,
                     "relativeFilePath": relativeFilePathForGraphs,
                     "dataformCoreVersion": coreVersion,
-                    "recompiling": false,
                     "dryRunning": false,
                     "isHelperFile": false,
                     "propertyGraphs": null,
@@ -1464,10 +1478,10 @@ export class CompiledQueryPanel {
                             if(diagnosticCollection){
                                 diagnosticCollection.clear();
                             }
+                            this.sendCompileStatus();
                             await this.postMessage({
                                 "declarations": filteredDeclarations,
                                 "propertyGraphs": null,
-                                "recompiling": false,
                                 "errorType": null,
                                 "errorMessage": null,
                                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
@@ -1479,10 +1493,10 @@ export class CompiledQueryPanel {
                     }
                     
                     // If it's a JS file but has no tables and no declarations, it's a helper file
+                    this.sendCompileStatus();
                     await this.postMessage({
                         "isHelperFile": true,
                         "propertyGraphs": null,
-                        "recompiling": false,
                         "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "errorType": null,
                         "errorMessage": null,
@@ -1505,9 +1519,9 @@ export class CompiledQueryPanel {
 
         const fm = curFileMeta.fileMetadata;
         if (!fm) {
+            this.sendCompileStatus();
             await this.postMessage({
                 "errorMessage": `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.`,
-                "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
@@ -1523,6 +1537,7 @@ export class CompiledQueryPanel {
         let targetTablesOrViews = fm.tables;
         this.deferral = curFileMeta.deferral;
 
+        this.sendCompileStatus();
         await this.postMessage({
             "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
             "deferToProd": getDeferToProdState(workspaceFolder),
@@ -1548,7 +1563,6 @@ export class CompiledQueryPanel {
             "actionTypes": [...new Set((fm.tables || []).map((m: any) => m.type).filter(Boolean))],
             "models": fm.tables,
             "propertyGraphs": null,
-            "recompiling": false,
             "dryRunning": true,
             "declarations": null,
             "compilerOptions": compilerOptions,
@@ -1583,8 +1597,8 @@ export class CompiledQueryPanel {
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
+            this.sendCompileStatus();
             await this.postMessage({
-                "recompiling": false,
                 "dryRunning": false,
             });
             return;
@@ -1761,6 +1775,7 @@ export class CompiledQueryPanel {
 
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
+            this.sendCompileStatus();
             await this.postMessage({
                 "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
                 "deferToProd": getDeferToProdState(workspaceFolder),
@@ -1801,7 +1816,6 @@ export class CompiledQueryPanel {
                 "modelType": fileMetadata.queryMeta.type,
                 "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
-                "recompiling": false,
                 "dryRunning": false,
                 "declarations": null,
                 "compilerOptions": compilerOptions,
