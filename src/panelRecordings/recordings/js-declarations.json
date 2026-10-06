@@ -1,0 +1,89 @@
+{
+  "declarations": [
+    {
+      "canonicalTarget": {
+        "database": "drawingfire-b72a8",
+        "name": "PLAYERS",
+        "schema": "football_data"
+      },
+      "fileName": "definitions/sources.js",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "PLAYERS",
+        "schema": "football_data"
+      }
+    },
+    {
+      "canonicalTarget": {
+        "database": "drawingfire-b72a8",
+        "name": "CLUBS",
+        "schema": "football_data"
+      },
+      "fileName": "definitions/sources.js",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "CLUBS",
+        "schema": "football_data"
+      }
+    },
+    {
+      "canonicalTarget": {
+        "database": "drawingfire-b72a8",
+        "name": "GAMES",
+        "schema": "football_data"
+      },
+      "fileName": "definitions/sources.js",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "GAMES",
+        "schema": "football_data"
+      }
+    },
+    {
+      "canonicalTarget": {
+        "database": "drawingfire-b72a8",
+        "name": "GAME_EVENTS",
+        "schema": "football_data"
+      },
+      "fileName": "definitions/sources.js",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "GAME_EVENTS",
+        "schema": "football_data"
+      }
+    },
+    {
+      "canonicalTarget": {
+        "database": "drawingfire-b72a8",
+        "name": "PLAYER_VALUATIONS",
+        "schema": "football_data"
+      },
+      "fileName": "definitions/sources.js",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "PLAYER_VALUATIONS",
+        "schema": "football_data"
+      }
+    },
+    {
+      "canonicalTarget": {
+        "database": "drawingfire-b72a8",
+        "name": "TRANSFERS",
+        "schema": "football_data"
+      },
+      "fileName": "definitions/sources.js",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "TRANSFERS",
+        "schema": "football_data"
+      }
+    }
+  ],
+  "errorMessage": null,
+  "errorType": null,
+  "isHelperFile": false,
+  "propertyGraphs": null,
+  "recompiling": false,
+  "relativeFilePath": "definitions/sources.js",
+  "workspaceFolder": "<workspace>"
+}

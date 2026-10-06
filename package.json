@@ -701,7 +701,7 @@
         "generate:config-schema": "node scripts/generate-config-schema.mjs",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "rimraf .vscode-test/user-data && vscode-test --label unit",
+        "test": "rimraf .vscode-test/user-data && vscode-test --label unit && vscode-test --label panel",
         "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {

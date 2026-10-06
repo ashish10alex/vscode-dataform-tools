@@ -1,0 +1,82 @@
+{
+  "actionTypes": [
+    "table"
+  ],
+  "assertionQuery": "",
+  "compilerOptions": "",
+  "dataformCoreVersion": "3.0.39",
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
+  "declarations": null,
+  "dependents": [],
+  "errorMessage": null,
+  "errorType": null,
+  "expectedOutputQuery": "",
+  "incrementalPreOpsQuery": "",
+  "incrementalQuery": "",
+  "isHelperFile": false,
+  "lineageMetadata": null,
+  "models": [
+    {
+      "fileName": "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "postOps": [
+        "\n  select 66 as someNumber\n"
+      ],
+      "preOps": [
+        "\n  select 44 as someNumber\n"
+      ],
+      "query": "\n\n\n\n\n\n\n\n\n\n\n\n\nSELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0100_MULTIPLE_PRE_POST_OPS",
+        "schema": "dataform"
+      },
+      "type": "table"
+    }
+  ],
+  "modelType": "table",
+  "nonIncrementalQuery": "",
+  "operationsQuery": "",
+  "packageJsonContent": null,
+  "postOperations": "\n  select 66 as someNumber;\n",
+  "preOperations": "\n  select 44 as someNumber;\n",
+  "projectConfig": {
+    "assertionSchema": "dataform_assertions",
+    "defaultDatabase": "drawingfire-b72a8",
+    "defaultLocation": "europe-west2",
+    "defaultSchema": "dataform",
+    "warehouse": "bigquery"
+  },
+  "propertyGraphs": null,
+  "recompiling": false,
+  "relativeFilePath": "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx",
+  "tableOrViewQuery": "SELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n\n;",
+  "targetTablesOrViews": [
+    {
+      "fileName": "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "postOps": [
+        "\n  select 66 as someNumber\n"
+      ],
+      "preOps": [
+        "\n  select 44 as someNumber\n"
+      ],
+      "query": "\n\n\n\n\n\n\n\n\n\n\n\n\nSELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0100_MULTIPLE_PRE_POST_OPS",
+        "schema": "dataform"
+      },
+      "type": "table"
+    }
+  ],
+  "testQuery": "",
+  "workspaceFolder": "<workspace>"
+}

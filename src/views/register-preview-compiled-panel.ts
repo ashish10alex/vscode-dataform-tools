@@ -384,6 +384,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 }
 
 
+const panelMessagePosted = new vscode.EventEmitter<unknown>();
+/** Every message the compiled query panel is sent. For the recorded panel output tests, see src/panelRecordings */
+export const onDidPostPanelMessage = panelMessagePosted.event;
+
 export class CompiledQueryPanel {
     public static centerPanel: CompiledQueryPanel | undefined;
     public centerPanelDisposed: boolean = false;
@@ -407,6 +411,7 @@ export class CompiledQueryPanel {
         if (this.centerPanelDisposed) {
             return Promise.resolve(false);
         }
+        panelMessagePosted.fire(message);
         return this.webviewPanel.webview.postMessage(message);
     }
 
