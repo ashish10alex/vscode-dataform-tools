@@ -157,6 +157,31 @@ let armedPreviewSpan: ((attrs?: PerfSpan['attrs']) => void) | undefined;
 let apiRunGitStateGeneration = 0;
 let apiRunGitStateCache: { folder: string, generation: number, state: Promise<ApiRunGitState> } | undefined;
 const refreshApiRunGitStateSoon = debounce(() => CompiledQueryPanel.centerPanel?.postApiRunGitState(), 500);
+/** Whether the git extension will report a change to this file, see `watchGitState` */
+let gitStateIsWatchedFor: (filePath: string) => boolean = () => false;
+/** How long a save waits for the git extension to report the change before reporting it itself */
+const GIT_EVENT_GRACE_MS = 3000;
+let saveFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * A save changes the uncommitted files, and so does the git extension's report of that same save. Counting both made
+ * the state be computed twice whenever they landed more than the refresh debounce apart. So a save in a repository
+ * the git extension watches gives it a moment to report first, and only speaks up itself when it does not: the git
+ * extension stops refreshing while its window is unfocused or with `git.autorefresh` off. Without the git
+ * extension, or outside its repositories, the save is the only signal there is.
+ */
+function apiRunGitStateChangedBySave(filePath: string) {
+    if (!gitStateIsWatchedFor(filePath)) {
+        apiRunGitStateChanged();
+        return;
+    }
+    clearTimeout(saveFallbackTimer);
+    saveFallbackTimer = setTimeout(() => {
+        saveFallbackTimer = undefined;
+        apiRunGitStateChanged();
+    }, GIT_EVENT_GRACE_MS);
+}
+
 function apiRunGitStateChanged() {
     apiRunGitStateGeneration++;
     refreshApiRunGitStateSoon();
@@ -339,8 +364,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
-        // Without the git extension this is the only signal that the uncommitted changes moved
-        apiRunGitStateChanged();
+        apiRunGitStateChangedBySave(document.uri.fsPath);
 
         const fileExtension = document.fileName.split('.').pop();
         const fileName = path.basename(document.fileName, '.' + fileExtension);
@@ -379,9 +403,13 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     // Edits, commits, pushes and fetches change what a Dataform API run leaves out
-    watchGitState(context, () => {
+    gitStateIsWatchedFor = watchGitState(context, () => {
+        // This is the save's own change arriving through the git extension: the save need not report it as well
+        clearTimeout(saveFallbackTimer);
+        saveFallbackTimer = undefined;
         apiRunGitStateChanged();
     });
+    context.subscriptions.push({ dispose: () => clearTimeout(saveFallbackTimer) });
 }
 
 
