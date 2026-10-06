@@ -1,5 +1,5 @@
 import type { Action } from './graph';
-import { hasIncrementalVariant, sectionsFor } from './sql';
+import { hasIncrementalVariant, sectionsFor, SqlSection } from './sql';
 
 /*
  * What to dry-run for an action: what BigQuery would plan when its tool runs it. Which sections take part is the
@@ -19,8 +19,11 @@ export interface ScriptPart<Source> {
 }
 
 export interface DryRunScript {
-    /** Tells the two variants of an incremental table apart; empty for every other action */
-    label: '' | 'full' | 'incremental';
+    /**
+     * Tells an action's scripts apart: "full" and "incremental" for the two variants of an incremental table, the
+     * section's title for a section that is dry-run alone. Empty for an action with one script.
+     */
+    label: string;
     sql: string;
     /** Where each section sits in `sql`, so an error's position can be given within its section */
     parts: ScriptPart<string>[];
@@ -52,16 +55,21 @@ export function joinScript(statements: string[]): { sql: string; parts: ScriptPa
 
 /**
  * The scripts to dry-run for the action: one made of its sections marked `dryRun`, in order, or one for each
- * variant of an action that has an incremental one. Empty when it has nothing to dry-run.
+ * variant of an action that has an incremental one; and one for each section marked `dryRunAlone`. Empty when it
+ * has nothing to dry-run.
  */
 export function dryRunScripts(action: Action): DryRunScript[] {
     const scripts: DryRunScript[] = [];
-    const add = (label: DryRunScript['label'], incremental: boolean) => {
-        const sections = sectionsFor(action, incremental).filter((section) => section.dryRun);
+    const push = (label: string, sections: SqlSection[]) => {
         const { sql, parts } = joinScript(sections.map((section) => section.sql));
         if (sql !== '') {
             scripts.push({ label, sql, parts: parts.map((part) => ({ ...part, source: sections[part.source].title })) });
         }
+    };
+    const add = (label: string, incremental: boolean) => {
+        const sections = sectionsFor(action, incremental).filter((section) => section.dryRun);
+        push(label, sections.filter((section) => !section.dryRunAlone));
+        sections.filter((section) => section.dryRunAlone).forEach((section) => push(section.title, [section]));
     };
     if (hasIncrementalVariant(action)) {
         add('full', false);
