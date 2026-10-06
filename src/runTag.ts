@@ -68,7 +68,7 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
             return;
         }
 
-        let workspaceFolder = await getWorkspaceFolder();
+        let workspaceFolder = await getWorkspaceFolder({ explain: true });
         if (!workspaceFolder) { return; }
 
         if(executionMode === "cli"){
@@ -114,7 +114,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
     };
 
     if(executionMode === "api_workspace"){
-        const runFolder = await getWorkspaceFolder();
+        const runFolder = await getWorkspaceFolder({ explain: true });
         if (runFolder && !(await recordThisRun(runFolder))) {
             return;
         }
@@ -133,7 +133,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
         return;
     }
 
-    let workspaceFolder = await getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) { return; }
     if (!(await recordThisRun(workspaceFolder))) { return; }
     await ensureFreshCompilation(workspaceFolder);

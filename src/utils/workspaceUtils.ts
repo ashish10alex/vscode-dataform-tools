@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { logger } from '../logger';
 import { FileNameMetadataResult, FileNameMetadata } from '../types';
-import { detectProjects } from '../project/detection';
+import { activateProject, detectProjects, projects } from '../project';
 
 const supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
@@ -19,38 +19,27 @@ export function getRelativePath(filePath: string) {
     return relativePath;
 }
 
-export async function selectWorkspaceFolder() {
-    const availableFolders = vscode.workspace.workspaceFolders;
-
-    if (availableFolders) {
-        let folderOptions = availableFolders.map(folder => {
-            return {
-                label: folder.name,
-                description: folder.uri.fsPath,
-                value: folder.uri.fsPath
-            };
-        });
-
-        if (folderOptions.length === 1) {
-            workspaceFolder = folderOptions[0].value;
-            return workspaceFolder;
-        }
-
-        folderOptions = folderOptions.filter(folder => isDataformWorkspace(folder.description));
-
-        if (folderOptions.length === 1) {
-            workspaceFolder = folderOptions[0].value;
-            return workspaceFolder;
-        }
-
-        const selectedFolder = await vscode.window.showQuickPick(folderOptions, { placeHolder: "Select the Dataform workspace which this file belongs to" });
-        if (selectedFolder) {
-            workspaceFolder = selectedFolder.value;
-            return workspaceFolder;
-        }
+/**
+ * The Project picker: asks which Dataform Project to work in when the window holds several, and makes it the active
+ * Project. With one there is nothing to ask. Returns its root.
+ */
+export async function selectWorkspaceFolder(): Promise<string | undefined> {
+    const dataformProjects = projects.projects.filter((project) => project.backend === 'dataform');
+    if (dataformProjects.length === 0) {
         return undefined;
     }
-    return undefined;
+    let picked = dataformProjects[0];
+    if (dataformProjects.length > 1) {
+        const options = dataformProjects.map((project) => ({ label: path.basename(project.root), description: project.root, project }));
+        const selection = await vscode.window.showQuickPick(options, { placeHolder: "Select the Dataform Project to work in" });
+        if (!selection) {
+            return undefined;
+        }
+        picked = selection.project;
+    }
+    activateProject(picked);
+    workspaceFolder = picked.root;
+    return workspaceFolder;
 }
 
 export function getFileNameFromDocument(
@@ -75,28 +64,30 @@ export function getFileNameFromDocument(
     return { success: true, value: [rawFileName, relativeFilePath, extension] };
 }
 
-//
-//WARN: What if user has multiple workspaces open in the same window
-//TODO: we are taking the first workspace from the active workspaces. Is it possible to handle cases where there are multiple workspaces in the same window ?
-//
-//TODO: What if user has no workspaces open ?
-//
-export async function getWorkspaceFolder(): Promise<string | undefined> {
-    if (!workspaceFolder) {
-        workspaceFolder = await selectWorkspaceFolder();
-    }
-    if (workspaceFolder === undefined) {
-        logger.debug(`Workspace could not be determined. Please open folder with your dataform project`);
-        vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
-        return undefined;
-    }
-    if (isDataformWorkspace(workspaceFolder)) {
-        logger.debug(`Workspace: ${workspaceFolder} is a Dataform workspace`);
+/**
+ * The root of the Dataform Project to work in: the active Project, which follows the editor in focus, else the one
+ * used last, else the one the user picks. Undefined when the window has no Dataform Project.
+ *
+ * Says nothing when there is none: this is also called for hovers and for every editor switch. `explain` is for a
+ * command the user ran, which should say why it did nothing.
+ */
+export async function getWorkspaceFolder(options: { explain?: boolean } = {}): Promise<string | undefined> {
+    const active = projects.active;
+    if (active?.backend === 'dataform') {
+        workspaceFolder = active.root;
         return workspaceFolder;
     }
-    logger.debug(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
-    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
-    return undefined;
+    if (workspaceFolder && projects.find(workspaceFolder, 'dataform')) {
+        return workspaceFolder;
+    }
+    workspaceFolder = await selectWorkspaceFolder();
+    if (workspaceFolder === undefined) {
+        logger.debug('No Dataform Project to work in');
+        if (options.explain) {
+            vscode.window.showInformationMessage('No Dataform project found. Open a folder that has workflow_settings.yaml or dataform.json at its root.');
+        }
+    }
+    return workspaceFolder;
 }
 
 export function isDataformWorkspace(workspacePath: string) {

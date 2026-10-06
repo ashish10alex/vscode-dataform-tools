@@ -31,7 +31,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
     }
 
     let multipleFileSelection: string[] | undefined;
-    let workspaceFolder = await getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder){ return; }
     if (firstStageSelection === "run multiple files"){
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);

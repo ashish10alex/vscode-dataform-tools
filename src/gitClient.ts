@@ -1,4 +1,5 @@
 import fs from "fs";
+import { currentDataformRoot } from './project';
 import path from 'path';
 import * as vscode from 'vscode';
 import { exec, execFile } from 'child_process';
@@ -14,11 +15,11 @@ export class GitService {
     private projectRoot: string;
 
     constructor() {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders?.length) {
+        const root = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!root) {
             throw new Error("No workspace folder open.");
         }
-        this.projectRoot = workspaceFolders ? workspaceFolders[0].uri.fsPath : "";
+        this.projectRoot = root;
     }
 
     private async execCmd(command: string): Promise<string> {

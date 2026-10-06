@@ -256,7 +256,7 @@
             {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
                 "category": "Dataform",
-                "title": "Select workspace folder"
+                "title": "Select project"
             },
             {
                 "command": "vscode-dataform-tools.clearExtensionCache",
@@ -406,6 +406,10 @@
         ],
         "menus": {
             "commandPalette": [
+                {
+                    "command": "vscode-dataform-tools.selectWorkspaceFolder",
+                    "when": "vscode-dataform-tools.multipleProjects"
+                },
                 {
                     "command": "vscode-dataform-tools.traceColumnLineageGuessed",
                     "when": "vscode-dataform-tools.devMode"

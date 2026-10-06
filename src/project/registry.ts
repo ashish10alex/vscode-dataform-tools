@@ -96,6 +96,13 @@ export class ProjectRegistry {
         return this.active !== before;
     }
 
+    /** Makes `project` the active one, as the user picking it does */
+    activate(project: ProjectState) {
+        if (this.states.get(keyOf(project)) === project) {
+            this.lastActive = project;
+        }
+    }
+
     /**
      * The Project commands act on: the one whose file last had focus, or the only Project when there is just one.
      * Undefined when there are several and none has had focus yet, or when there are none.

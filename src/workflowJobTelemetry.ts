@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { compiledJson } from './project';
+import { compiledJson, currentDataformRoot } from './project';
 import { loadDataformTools } from "./lazySdk";
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { bigQueryDryRunCostOneGiBByCurrency, currencySymbolMapping } from './constants';
@@ -153,7 +153,8 @@ export async function exportWorkflowActionsCsv(entry: WorkflowUrlEntry) {
         return;
     }
     const filename = `workflow_actions_${entry.workflowInvocationId ?? 'run'}.csv`;
-    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+    const root = currentDataformRoot();
+    const folder = root ? vscode.Uri.file(root) : vscode.workspace.workspaceFolders?.[0]?.uri;
     const uri = await vscode.window.showSaveDialog({
         defaultUri: folder ? vscode.Uri.joinPath(folder, filename) : vscode.Uri.file(filename),
         filters: { 'CSV': ['csv'] },
