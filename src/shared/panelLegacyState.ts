@@ -1,4 +1,4 @@
-import type { DataformBlock, HostMessage } from './panelContract';
+import type { CompileStatus, DataformBlock, HostMessage } from './panelContract';
 
 /*
  * While the compiled-query panel moves from one flat state to the slices of the contract (piece 4.4 of the build
@@ -45,12 +45,35 @@ const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => 
 
 /** The flat state's fields for a slice the host sent: what the panel merges into its state */
 export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage): Record<string, unknown> {
+    if (message.slice === 'compile status') {
+        return legacyStateFromCompileStatus(message.value);
+    }
     if (message.slice !== 'dataform') {
         // No component reads the other slices yet, and the host does not send them
         return {};
     }
     const touched: readonly MigratedDataformField[] = 'touched' in message ? message.touched : MIGRATED_DATAFORM_FIELDS;
     return Object.assign({}, ...touched.filter((field) => field in FLAT_FIELD).map((field) => FLAT_FIELD[field](message.value)));
+}
+
+/**
+ * The flat fields that say how the compile stands. Each is given only by the status that used to set it, so that a
+ * status with nothing to say of a field leaves the field as it is, as a flat message without it did:
+ * - `recompiling`, by every status;
+ * - `missingExecutables`, when the tool was not found;
+ * - `compilationErrors`, when the compile left errors.
+ * The flat state's `errorType` and `errorMessage` also carry problems with the file itself, which are not the
+ * compile's; they stay flat until the file slice moves.
+ */
+function legacyStateFromCompileStatus(status: CompileStatus): Record<string, unknown> {
+    const flat: Record<string, unknown> = { recompiling: status.status === 'compiling' };
+    if (status.status === 'tool not found') {
+        flat.missingExecutables = [status.tool];
+    }
+    if ((status.status === 'compiled' || status.status === 'parsed only' || status.status === 'failed') && status.errors.length > 0) {
+        flat.compilationErrors = status.errors.map((error) => ({ error: error.message, fileName: error.fileName ?? '', lineNumber: error.line, sourceContext: error.sourceContext }));
+    }
+    return flat;
 }
 
 /** Whether a message from the host is a slice of the contract, as opposed to flat fields */

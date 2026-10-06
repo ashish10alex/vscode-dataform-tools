@@ -38,6 +38,8 @@ export interface CompileError {
     line?: number;
     /** The tool's own code for the error, where it has one */
     code?: string;
+    /** The lines of source the tool printed with the error, where it printed any */
+    sourceContext?: string;
 }
 
 /**
