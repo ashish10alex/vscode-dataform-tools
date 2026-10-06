@@ -47,7 +47,9 @@ export async function createBigQueryClient(): Promise<string | undefined> {
         } catch (error: any) {
             bigquery = undefined;
             isAuthenticated = false;
-            const errorMessage = `Error creating BigQuery client: ${error?.message}`;
+            // Nothing checks for gcloud up front any more, so this is where a missing sign-in is explained
+            const signInAdvice = isAuthenticationError(error) ? ' Sign in with `gcloud auth application-default login`, or set `vscode-dataform-tools.serviceAccountJsonPath`.' : '';
+            const errorMessage = `Error creating BigQuery client: ${error?.message}${signInAdvice}`;
             vscode.window.showErrorMessage(errorMessage);
             return errorMessage;
         } finally {

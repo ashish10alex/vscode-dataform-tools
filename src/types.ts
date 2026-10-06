@@ -548,8 +548,13 @@ export type ErrorMeta = {
     expectedOutputError?: DryRunError;
 };
 
+/** Which step of the lookup found an executable */
+export type ExecutableSource = 'setting' | 'projectLocal' | 'path' | 'commonLocation';
+
 export type ExecutablePathInfo = {
     path: string | null;
+    /** Undefined when it was not found */
+    foundBy?: ExecutableSource;
     timestamp: number;
 };
 

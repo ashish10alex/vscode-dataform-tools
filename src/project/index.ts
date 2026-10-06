@@ -6,6 +6,7 @@ import { ProjectRegistry, ProjectState } from './registry';
 
 export { ProjectRegistry, ProjectState } from './registry';
 export * from './detection';
+export * from './tools';
 
 /** The Projects of this window */
 export const projects = new ProjectRegistry();

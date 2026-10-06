@@ -1,5 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { compiledJson } from '../project';
+import { compiledJson, requiredTools } from '../project';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
@@ -8,7 +8,7 @@ import { runCurrentFile } from "../runCurrentFile";
 import { runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
 import { ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
-import { currencySymbolMapping, executablesToCheck } from "../constants";
+import { currencySymbolMapping } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -1125,16 +1125,9 @@ export class CompiledQueryPanel {
             dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
         }
 
-        const missingExecutables: string[] = [];
-        for (let i = 0; i < executablesToCheck.length; i++) {
-            let executable = executablesToCheck[i];
-            if (executable === 'dataform' && isRemoteMode()) {
-                continue; // Remote mode compiles with the Dataform API, the CLI is not needed
-            }
-            if (!executableIsAvailable(executable, false, workspaceFolder)) {
-                missingExecutables.push(executable);
-            }
-        }
+        // Only the Backend's own tool gates the panel. Signing in to Google Cloud is not checked: a BigQuery call says so
+        const missingExecutables: string[] = requiredTools('dataform', { compilationMode: isRemoteMode() ? 'api' : 'cli' })
+            .filter((executable) => !executableIsAvailable(executable, false, workspaceFolder));
 
         // Setting html on a panel closed during the awaits above would throw
         if (this.centerPanelDisposed) {
