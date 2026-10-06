@@ -17,13 +17,13 @@ export interface SqlSection {
     incremental?: boolean;
     /** False for SQL shown as written, which its tool compiles only when it runs it: a dbt pre- or post-hook */
     compiled: boolean;
-    /** Whether the section is part of what is dry-run for the action, see `dryRunScripts` */
-    dryRun: boolean;
     /**
-     * Set on a section that is dry-run by itself, not joined to the others: the two queries of a Dataform unit test,
-     * which never run as one script.
+     * The dry-run scripts the section is part of, by name; empty for a section that is never dry-run. Sections that
+     * name the same script are dry-run together, in order: a Dataform table's pre-operations are part of the script
+     * of its query and of the script of its post-operations, so that what they declare resolves in both. See
+     * `dryRunScripts`.
      */
-    dryRunAlone?: boolean;
+    dryRun: string[];
 }
 
 export type SectionFlags = Omit<SqlSection, 'title' | 'sql'>;
@@ -39,7 +39,7 @@ export function titledSections(title: string, statements: Array<string | undefin
         if (sql.trim() === '') {
             return;
         }
-        sections.push({ title: statements.length > 1 ? `${title} ${index + 1}/${statements.length}` : title, sql, ...flags });
+        sections.push({ title: statements.length > 1 ? `${title} ${index + 1}/${statements.length}` : title, sql, ...flags, dryRun: [...flags.dryRun] });
     });
     return sections;
 }

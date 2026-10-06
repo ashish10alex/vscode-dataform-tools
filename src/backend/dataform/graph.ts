@@ -33,29 +33,33 @@ interface RawAction {
     actionDescriptor?: { description?: string; columns?: Array<{ path: string[]; description?: string }> };
 }
 
-// A statement that runs before the query, so that what it declares resolves, is dry-run with it
-const DRY_RUN = { compiled: true, dryRun: true };
-// Shown, never dry-run: post-operations are left out of the cost, as the extension has always left them out
-const SHOWN = { compiled: true, dryRun: false };
+/*
+ * The dry-run scripts of a table, as the extension has always had them: its query after its pre-operations, which is
+ * what its cost and schema come from, and its post-operations after its pre-operations, which is only looked at for
+ * errors. What the pre-operations declare resolves in both.
+ */
+const QUERY = { compiled: true, dryRun: ['query'] };
+const PRE_OPERATIONS = { compiled: true, dryRun: ['query', 'post_operations'] };
+const POST_OPERATIONS = { compiled: true, dryRun: ['post_operations'] };
+const SHOWN = { compiled: true, dryRun: [] };
 
 function tableKind(raw: RawAction): Kind {
     return raw.type === 'view' || raw.type === 'incremental' ? raw.type : 'table';
 }
 
 function tableSections(raw: RawAction, kind: Kind): SqlSection[] {
-    const sections = [
-        ...titledSections('pre_operations', raw.preOps ?? [], DRY_RUN),
-        ...titledSections('query', [raw.query], DRY_RUN),
-        ...titledSections('post_operations', raw.postOps ?? [], SHOWN),
+    const hasText = (statements: string[] | undefined) => (statements ?? []).some((statement) => statement?.trim());
+    // The pre-operations join the post-operations' script only when there are post-operations to dry-run
+    const variant = (prefix: string, preOps: string[] | undefined, query: string | undefined, postOps: string[] | undefined, flags: { incremental?: boolean }) => [
+        ...titledSections(`${prefix}pre_operations`, preOps ?? [], { ...(hasText(postOps) ? PRE_OPERATIONS : QUERY), ...flags }),
+        ...titledSections(`${prefix}query`, [query], { ...QUERY, ...flags }),
+        ...titledSections(`${prefix}post_operations`, postOps ?? [], { ...POST_OPERATIONS, ...flags }),
     ];
+    const sections = variant('', raw.preOps, raw.query, raw.postOps, {});
     // An incremental table has a second variant, for the run that updates the table once it exists
     if (kind === 'incremental' && (raw.incrementalQuery || raw.incrementalPreOps?.length)) {
-        const postOps = raw.incrementalPostOps?.length ? raw.incrementalPostOps : raw.postOps ?? [];
-        sections.push(
-            ...titledSections('incremental pre_operations', raw.incrementalPreOps ?? [], { ...DRY_RUN, incremental: true }),
-            ...titledSections('incremental query', [raw.incrementalQuery], { ...DRY_RUN, incremental: true }),
-            ...titledSections('incremental post_operations', postOps, { ...SHOWN, incremental: true }),
-        );
+        const postOps = raw.incrementalPostOps?.length ? raw.incrementalPostOps : raw.postOps;
+        sections.push(...variant('incremental ', raw.incrementalPreOps, raw.incrementalQuery, postOps, { incremental: true }));
     }
     return sections;
 }
@@ -63,9 +67,9 @@ function tableSections(raw: RawAction, kind: Kind): SqlSection[] {
 function sectionsOf(raw: RawAction, kind: Kind): SqlSection[] {
     switch (kind) {
         case 'operation':
-            return titledSections('operation', raw.queries ?? [], DRY_RUN);
+            return titledSections('operation', raw.queries ?? [], { compiled: true, dryRun: ['operation'] });
         case 'assertion':
-            return titledSections('query', [raw.query], DRY_RUN);
+            return titledSections('query', [raw.query], QUERY);
         case 'notebook':
             return titledSections('notebook', [raw.notebookContents], SHOWN);
         case 'property graph':
@@ -109,18 +113,20 @@ function toAction(raw: RawAction, kind: Kind): Action {
 
 /**
  * A unit test builds nothing, so its Target is made up from its name. Its two queries never run as one script: each
- * is dry-run alone. `dataform run` cannot run it; `dataform test` does.
+ * is a dry-run script of its own. `dataform run` cannot run it; `dataform test` does.
  */
 function unitTest(test: DataformCompiledJson['tests'][number]): Action {
     const target = madeUpTarget('unit test', test.name);
-    const alone = { ...DRY_RUN, dryRunAlone: true };
     return {
         id: targetId(target),
         target,
         kind: 'unit test',
         fileName: slashPath(test.fileName ?? ''),
         tags: [],
-        sections: [...titledSections('test query', [test.testQuery], alone), ...titledSections('expected output', [test.expectedOutputQuery], alone)],
+        sections: [
+            ...titledSections('test query', [test.testQuery], { compiled: true, dryRun: ['test query'] }),
+            ...titledSections('expected output', [test.expectedOutputQuery], { compiled: true, dryRun: ['expected output'] }),
+        ],
         sqlPresent: true,
         dependencyTargets: [],
         noRun: true,

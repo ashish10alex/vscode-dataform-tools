@@ -44,7 +44,7 @@ suite('Dataform Backend: the Compiled Graph of the example Project', () => {
         assert.ok(customers.description);
         assert.ok(customers.columns?.length);
         assert.deepStrictEqual(titles(customers.sections), ['pre_operations', 'query', 'post_operations']);
-        assert.deepStrictEqual(customers.sections.map((section) => section.dryRun), [true, true, false]);
+        assert.deepStrictEqual(customers.sections.map((section) => section.dryRun), [['query', 'post_operations'], ['query'], ['post_operations']]);
         assert.strictEqual(get('xf_example.legacy_orders').disabled, true);
         assert.strictEqual(customers.disabled, undefined);
     });
@@ -61,10 +61,12 @@ suite('Dataform Backend: the Compiled Graph of the example Project', () => {
         assert.deepStrictEqual(titles(sectionsFor(orders, false)), ['pre_operations', 'query']);
         assert.deepStrictEqual(titles(sectionsFor(orders, true)), ['incremental pre_operations', 'incremental query']);
         const [full, incremental] = dryRunScripts(orders);
-        assert.deepStrictEqual([full.label, incremental.label], ['full', 'incremental']);
+        assert.deepStrictEqual([[full.name, full.incremental], [incremental.name, incremental.incremental]], [['query', false], ['query', true]]);
         assert.ok(full.sql.startsWith('DECLARE since DATE') && !full.sql.includes('WHERE o.order_date > since'));
         assert.ok(incremental.sql.includes('SELECT MAX(order_date)') && incremental.sql.includes('WHERE o.order_date > since'));
         assert.deepStrictEqual(full.parts.map((part) => part.source), ['pre_operations', 'query']);
+        // It has no post-operations, so its pre-operations are dry-run once per variant, with the query
+        assert.strictEqual(dryRunScripts(orders).length, 2);
     });
 
     test('an operation lists its statements and says whether it creates its table', () => {
@@ -144,14 +146,17 @@ suite('Dataform Backend: what xf leaves out', () => {
 
     test("a unit test's two queries are dry-run apart, as they are today", () => {
         const scripts = dryRunScripts(graph.actions['unit test.events_total']);
-        assert.deepStrictEqual(scripts.map((script) => [script.label, script.sql]), [['test query', 'select 1 as n'], ['expected output', 'select 1 as n']]);
+        assert.deepStrictEqual(scripts.map((script) => [script.name, script.sql]), [['test query', 'select 1 as n'], ['expected output', 'select 1 as n']]);
     });
 
-    test('post-operations are shown and not dry-run, and the incremental run falls back to them', () => {
+    test('post-operations have a script of their own, and the incremental run falls back to them', () => {
         const events = graph.actions['p.ds.events'];
         assert.strictEqual(events.fileName, 'definitions/events.sqlx');
         assert.deepStrictEqual(titles(sectionsFor(events, true)), ['incremental query', 'incremental post_operations']);
-        assert.deepStrictEqual(dryRunScripts(events).map((script) => script.sql), ['select 1', 'select 1 where true']);
+        assert.deepStrictEqual(
+            dryRunScripts(events).map((script) => [script.name, script.incremental, script.sql]),
+            [['query', false, 'select 1'], ['post_operations', false, 'grant select on t to x'], ['query', true, 'select 1 where true'], ['post_operations', true, 'grant select on t to x']]
+        );
     });
 
     test('a notebook and a property graph show their contents and have nothing to dry-run', () => {
