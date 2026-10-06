@@ -5,6 +5,7 @@ import type { Backend, BackendRequest, CompileResult } from '../backend';
 import type { CompileFiles } from '../compileFiles';
 import { RawCompileError, buildDataformGraph, toCompileError } from './graph';
 import type { DataformOptions } from './options';
+import { dataformRunner } from './run';
 
 /** What affects a Dataform compile: definitions/ and includes/, and the Project's settings files */
 export const DATAFORM_COMPILE_FILES: CompileFiles = {
@@ -33,6 +34,7 @@ export type RawCompiler = (request: BackendRequest<DataformOptions>) => Promise<
 export class DataformBackend implements Backend<DataformOptions> {
     readonly name = 'dataform';
     readonly compileFiles = DATAFORM_COMPILE_FILES;
+    readonly runner = dataformRunner;
     private raw: DataformCompiledJson | undefined;
     private indices: CompiledIndices | undefined;
     private builtGraph: CompiledGraph | undefined;

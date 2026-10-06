@@ -8,7 +8,7 @@ import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 import { beginRun } from './defer/deferRun';
-import { getDataformCompilationTimeoutFromConfig, resolveDataformOptions } from './project/dataformOptions';
+import { resolveDataformOptions } from './project/dataformOptions';
 
 /** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
@@ -33,7 +33,6 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         return;
     }
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     let currFileMetadata;
     await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
@@ -81,7 +80,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         let dataformActionCmd = "";
 
         // create the dataform run command for the list of actions from actionsList
-        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includDependencies, includeDependents, fullRefresh);
         if (!(await beginRun(lastRunRequest))) { return; }
         runCommandInTerminal(dataformActionCmd);
         return;

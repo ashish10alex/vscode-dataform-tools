@@ -5,11 +5,9 @@ import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { beginRun } from './defer/deferRun';
-import { getDataformCompilationTimeoutFromConfig } from './project/dataformOptions';
 
 export function getRunSingleTagCommand(workspaceFolder: string, tag: string, includeDependencies: boolean, includeDependents: boolean, fullRefresh: boolean): string {
-    const defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-    return getRunTagsWtOptsCommand(workspaceFolder, [tag], defaultDataformCompileTime, includeDependencies, includeDependents, fullRefresh);
+    return getRunTagsWtOptsCommand(workspaceFolder, [tag], includeDependencies, includeDependents, fullRefresh);
 }
 
 export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, executionMode: ExecutionMode) {

@@ -1,5 +1,8 @@
 import { DataformBackend } from '../backend/dataform/backend';
+import type { RunOptions } from '../shared/compiledGraph';
 import { runCompilation } from '../utils/dataformCompiler';
+import { resolveDataformOptions } from './dataformOptions';
+import { projects } from './index';
 
 /*
  * The host's side of the Dataform Backend: gives it the extension's CLI and API compile paths, which still report
@@ -16,4 +19,13 @@ export function createDataformBackend(): DataformBackend {
             errors: errors?.map((error) => ({ message: error.error, fileName: error.fileName, stack: error.stack })),
         };
     });
+}
+
+/**
+ * The command line that runs `run` in the Dataform Project at `root` with the Dataform CLI, from the Project's Backend.
+ * The caller sends it to the terminal.
+ */
+export function dataformRunCommand(root: string, run: Pick<RunOptions, 'includeDependencies' | 'includeDependents' | 'fullRefresh'> & Partial<Pick<RunOptions, 'actions' | 'tags'>>): string {
+    const backend = projects.find(root, 'dataform')?.dataformBackend ?? createDataformBackend();
+    return backend.runner.command({ root, options: resolveDataformOptions(root, 'cli'), run: { actions: [], tags: [], ...run } });
 }

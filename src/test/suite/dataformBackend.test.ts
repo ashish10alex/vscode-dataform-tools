@@ -7,6 +7,7 @@ import { affectsCompile, backendParts } from '../../backend';
 import { DataformBackend } from '../../backend/dataform/backend';
 import { buildDataformGraph } from '../../backend/dataform/graph';
 import type { DataformOptions } from '../../backend/dataform/options';
+import type { RunOptions } from '../../shared/compiledGraph';
 import { actionsInFile, dependenciesOf, dryRunScripts, hasIncrementalVariant, homeAction, isMadeUpTarget, isRunnable, sectionsFor } from '../../shared/compiledGraph';
 import type { DataformCompiledJson } from '../../types';
 import { findProjectRoot } from './helper';
@@ -240,7 +241,51 @@ suite('Dataform Backend: compile', () => {
         assert.strictEqual(affectsCompile(compileFiles, 'definitions/marts/orders.sqlx'), true);
         assert.strictEqual(affectsCompile(compileFiles, 'workflow_settings.yaml'), true);
         assert.strictEqual(affectsCompile(compileFiles, 'README.md'), false);
-        // The runner is piece 2.6, Changed Actions piece 2.5
-        assert.deepStrictEqual(backendParts(backend), { runner: false, changes: false });
+        assert.deepStrictEqual(backendParts(backend), { runner: true, changes: false });
+    });
+});
+
+suite('Dataform Backend: the run command', () => {
+    const root = '/repo/analytics';
+    const options = (rest: Partial<DataformOptions> = {}): DataformOptions => ({
+        compilationMode: 'cli',
+        compilerOptions: '',
+        compileTimeout: '5m',
+        cli: { path: '/usr/local/bin/dataform', source: 'path' },
+        persistCompilation: true,
+        api: {},
+        ...rest,
+    });
+    const run = (rest: Partial<RunOptions>): RunOptions => ({ actions: [], tags: [], includeDependencies: false, includeDependents: false, fullRefresh: false, ...rest });
+    const { runner } = new DataformBackend(async () => ({}));
+
+    // Each expected line is what the extension wrote before the runner existed, character for character
+    test('actions: the flags come before the actions, each action quoted', () => {
+        assert.strictEqual(
+            runner.command({ root, options: options(), run: run({ actions: ['p.ds.orders', 'p.ds.orders_assertions_uniqueKey_0'] }) }),
+            '/usr/local/bin/dataform run "/repo/analytics"  --timeout=5m --actions "p.ds.orders" --actions "p.ds.orders_assertions_uniqueKey_0"'
+        );
+        assert.strictEqual(
+            runner.command({ root, options: options(), run: run({ actions: ['p.ds.orders'], includeDependencies: true, includeDependents: true, fullRefresh: true }) }),
+            '/usr/local/bin/dataform run "/repo/analytics"  --timeout=5m --include-deps --include-dependents --full-refresh --actions "p.ds.orders"'
+        );
+    });
+
+    test('tags: the flags come after the tags', () => {
+        assert.strictEqual(
+            runner.command({ root, options: options(), run: run({ tags: ['daily', 'finance'], includeDependencies: true }) }),
+            '/usr/local/bin/dataform run "/repo/analytics"  --timeout=5m --tags=daily --tags=finance --include-deps'
+        );
+        assert.strictEqual(
+            runner.command({ root, options: options(), run: run({ tags: ['daily'], includeDependents: true, fullRefresh: true }) }),
+            '/usr/local/bin/dataform run "/repo/analytics"  --timeout=5m --tags=daily --include-dependents --full-refresh'
+        );
+    });
+
+    test('compiler options and the execution timeout are passed on', () => {
+        assert.strictEqual(
+            runner.command({ root, options: options({ compilerOptions: '--schema-suffix=dev --vars=env=dev', compileTimeout: '10m', executionTimeout: '1h' }), run: run({ actions: ['p.ds.orders'] }) }),
+            '/usr/local/bin/dataform run "/repo/analytics" --schema-suffix=dev --vars=env=dev --timeout=10m --execution-timeout=1h --actions "p.ds.orders"'
+        );
     });
 });
