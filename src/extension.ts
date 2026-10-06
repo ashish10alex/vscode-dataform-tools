@@ -8,7 +8,7 @@ import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMes
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformColumnHoverProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { registerConfigBlockFeatures } from './configBlock/providers';
-import { defaultCdnLinks, executablesToCheck } from './constants';
+import { defaultCdnLinks } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
 import { executableIsAvailable, isDataformWorkspace, prewarmCliCompilation } from './utils';
 import { initCliCompileCache } from './utils/cliCompileCache';
@@ -44,7 +44,7 @@ import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineag
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
-import { currentDataformRoot, initProjects } from './project';
+import { currentDataformRoot, initProjects, projects, requiredTools } from './project';
 
 let lastDataformFilePath: string | undefined;
 
@@ -95,14 +95,17 @@ export async function activate(context: vscode.ExtensionContext) {
     initProdTargets(context);
     initCliCompileCache(context);
 
-    // Searching PATH runs `which`/`where`: do it in the background, then warn about anything missing
-    const activationWorkspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const executablesNeeded = executablesToCheck.filter((executable) => !(executable === 'dataform' && isRemoteMode())); // Remote mode compiles with the Dataform API
-    Promise.all(executablesNeeded.map(prefetchExecutablePath)).then(() => {
-        for (const executable of executablesNeeded) {
-            executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
-        }
-    }).catch((error) => logger.error(`Failed to look up executables: ${error}`));
+    // Searching PATH runs `which`/`where`: do it in the background, then warn about anything missing.
+    // Only for a Dataform Project, and only its own tool: a window without one is left alone.
+    const activationWorkspaceFolder = currentDataformRoot() ?? projects.projects.find((project) => project.backend === 'dataform')?.root;
+    if (activationWorkspaceFolder) {
+        const executablesNeeded = requiredTools('dataform', { compilationMode: isRemoteMode() ? 'api' : 'cli' });
+        Promise.all(executablesNeeded.map((executable) => prefetchExecutablePath(executable, activationWorkspaceFolder))).then(() => {
+            for (const executable of executablesNeeded) {
+                executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
+            }
+        }).catch((error) => logger.error(`Failed to look up executables: ${error}`));
+    }
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (['dataformCliScope', 'dataformExecutablePath', 'gcloudExecutablePath', 'sqlfluffExecutablePath'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
             clearExecutablePathCache();
