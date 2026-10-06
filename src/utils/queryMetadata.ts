@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledIndices } from '../project';
 import path from 'path';
 import { logger } from '../logger';
 import { DataformCompiledJson, TablesWtFullQuery, Table, Operation, Assertion, Notebook } from '../types';
@@ -77,7 +78,7 @@ function parseNotebookFilenames(content: string): string[] {
   return filenames;
 }
 
-// Optimized getQueryMetaForCurrentFile using FILE_NODE_MAP cache
+// Optimized getQueryMetaForCurrentFile using the file lookup
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson, workspaceFolder:string): Promise<TablesWtFullQuery> {
 
     const { notebooks } = compiledJson;
@@ -108,7 +109,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
 
     // O(1) Lookup from cache
-    const fileNodes = FILE_NODE_MAP.get(relativeFilePath) || [];
+    const fileNodes = compiledIndices(workspaceFolder).fileNodeMap.get(relativeFilePath) || [];
 
     if (fileNodes.length > 0) {
         // 1. Tables/Views/Incremental

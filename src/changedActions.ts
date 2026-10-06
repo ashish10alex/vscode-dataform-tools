@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from './project';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import path from 'path';
@@ -272,7 +273,7 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
     if (!workspaceFolder || !(await isGitRepo(workspaceFolder))) {
         return { status: 'unavailable' };
     }
-    const head = CACHED_COMPILED_DATAFORM_JSON;
+    const head = compiledJson();
     if (!head || isCompilationStale()) {
         return { status: 'idle' };
     }

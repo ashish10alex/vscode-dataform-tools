@@ -8,11 +8,11 @@ import { findProjectRoot } from './helper';
 
 globalThis.isRunningOnWindows = process.platform === 'win32';
 globalThis.compilerOptionsMap = {};
-globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined;
 
 import { compileDataform, ensureFreshCompilation, getDataformCliCmdBasedOnScope, getDataformCompilerOptions, isCompilationStale, prewarmCliCompilation, runCompilation } from '../../utils';
 import { computeCompileFingerprint, initCliCompileCache, loadCliCompile, saveCliCompile } from '../../utils/cliCompileCache';
 import { getCompilationInfo } from '../../utils/compilationInfo';
+import { clearCompiled, compiledJson } from '../../project';
 
 async function waitFor(condition: () => Promise<boolean>, timeoutMs = 10_000) {
     const start = Date.now();
@@ -53,27 +53,27 @@ suite('CLI compilation persisted across sessions', function () {
 
     test('unchanged project: the saved compilation is used without running the CLI', async () => {
         await prewarmCliCompilation(project);
-        assert.ok(CACHED_COMPILED_DATAFORM_JSON, 'saved compilation loaded');
+        assert.ok(compiledJson(project), 'saved compilation loaded');
         assert.strictEqual(isCompilationStale(), false);
         assert.strictEqual(getCompilationInfo()?.fromCache, true);
 
         const started = performance.now();
         const { dataformCompiledJson, compilationTimeMs } = await runCompilation(project);
-        assert.strictEqual(dataformCompiledJson, CACHED_COMPILED_DATAFORM_JSON);
+        assert.strictEqual(dataformCompiledJson, compiledJson(project));
         assert.strictEqual(compilationTimeMs, undefined, 'no CLI compile ran');
         assert.ok(performance.now() - started < 500);
     });
 
     test('changed project: the saved compilation is shown as outdated until the startup compile replaces it', async () => {
         // Next session, after a definition changed while VS Code was closed
-        globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined;
+        clearCompiled(project);
         const definition = path.join(project, 'definitions', '0100_CLUBS.sqlx');
         const later = new Date(Date.now() + 60_000);
         fs.utimesSync(definition, later, later);
         const savedAt = (await loadCliCompile(project))!.meta.compiledAt;
 
         await prewarmCliCompilation(project);
-        const outdated = CACHED_COMPILED_DATAFORM_JSON;
+        const outdated = compiledJson(project);
         assert.ok(outdated, 'outdated compilation shown straight away');
         assert.strictEqual(isCompilationStale(), true);
         assert.match(getCompilationInfo()?.staleReason ?? '', /Project files changed/);
@@ -81,7 +81,7 @@ suite('CLI compilation persisted across sessions', function () {
         // A run waits for, and joins, the compile started on activation
         await ensureFreshCompilation(project);
         assert.strictEqual(isCompilationStale(), false);
-        assert.notStrictEqual(CACHED_COMPILED_DATAFORM_JSON, outdated);
+        assert.notStrictEqual(compiledJson(project), outdated);
         assert.strictEqual(getCompilationInfo()?.fromCache, false);
 
         // The fresh compilation replaces the saved one for the next session
@@ -89,7 +89,7 @@ suite('CLI compilation persisted across sessions', function () {
 
         // Opening the panel now reuses the startup compile instead of compiling again
         const { dataformCompiledJson, compilationTimeMs } = await runCompilation(project);
-        assert.strictEqual(dataformCompiledJson, CACHED_COMPILED_DATAFORM_JSON);
+        assert.strictEqual(dataformCompiledJson, compiledJson(project));
         assert.ok(compilationTimeMs !== undefined, 'the startup compile result, which did run the CLI');
     });
 
@@ -122,6 +122,6 @@ suite('CLI compilation persisted across sessions', function () {
         const [earlier, later] = await Promise.all([first, second]);
         assert.ok(later.dataformCompiledJson, 'the later save is compiled');
         assert.strictEqual(earlier.dataformCompiledJson, later.dataformCompiledJson, 'the earlier caller gets the later compilation');
-        assert.strictEqual(CACHED_COMPILED_DATAFORM_JSON, later.dataformCompiledJson);
+        assert.strictEqual(compiledJson(project), later.dataformCompiledJson);
     });
 });

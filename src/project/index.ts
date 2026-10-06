@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { logger } from '../logger';
 import type { DataformCompiledJson } from '../types';
-import { clearIndices, computeIndices, useIndices } from '../utils/compiledJsonIndex';
+import { CompiledIndices, computeIndices, emptyIndices } from '../utils/compiledJsonIndex';
 import { ProjectRegistry, ProjectState } from './registry';
 
 export { ProjectRegistry, ProjectState } from './registry';
@@ -52,24 +52,44 @@ export function initProjects(context: vscode.ExtensionContext) {
     );
 }
 
+let lastCompiled: ProjectState | undefined;
+
 /**
- * Records what the Dataform Project at `root` compiled to, and makes it what the window-wide lookups read.
- * The one place a compile result is stored.
+ * The Dataform Project a read is about: the one rooted at `root` when the caller knows it, else the one that compiled
+ * last. The second is what the window-wide compile result used to mean; it becomes the active Project once the
+ * workspace folder follows the editor in focus too.
  */
+function dataformProject(root?: string): ProjectState | undefined {
+    return root ? projects.find(root, 'dataform') : lastCompiled;
+}
+
+/** What a Dataform Project last compiled to, see `dataformProject` for which one */
+export function compiledJson(root?: string): DataformCompiledJson | undefined {
+    return dataformProject(root)?.compiled;
+}
+
+const noIndices = emptyIndices();
+
+/** The lookups over `compiledJson(root)`: empty ones when there is no compile result */
+export function compiledIndices(root?: string): CompiledIndices {
+    return dataformProject(root)?.indices ?? noIndices;
+}
+
+/** Records what the Dataform Project at `root` compiled to. The one place a compile result is stored. */
 export function setCompiled(root: string, compiled: DataformCompiledJson) {
     const indices = computeIndices(compiled);
-    projects.ensure(root, 'dataform')?.setCompiled(compiled, indices);
-    globalThis.CACHED_COMPILED_DATAFORM_JSON = compiled;
-    useIndices(indices);
+    const project = projects.ensure(root, 'dataform');
+    if (!project) {
+        logger.debug(`Not keeping a compile result for ${root}: it is not the root of a Dataform Project`);
+        return;
+    }
+    project.setCompiled(compiled, indices);
+    lastCompiled = project;
     logger.debug(`Built indices: ${indices.fileNodeMap.size} files, ${indices.targetDependentsMap.size} targets with dependents`);
 }
 
 /** Forgets what the Dataform Project at `root` compiled to, or every Dataform Project without a `root` */
-export function clearCompiled(root?: string, options: { keepIndices?: boolean } = {}) {
+export function clearCompiled(root?: string) {
     const cleared = root ? [projects.find(root, 'dataform')] : projects.projects.filter((project) => project.backend === 'dataform');
     cleared.forEach((project) => project?.clearCompiled());
-    globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined;
-    if (!options.keepIndices) {
-        clearIndices();
-    }
 }

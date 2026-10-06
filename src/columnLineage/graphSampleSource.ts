@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import { getCurrentFileMetadata } from '../utils';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { GraphAction, graphNeighbours, guessColumnLinks, indexGraph, targetFqn } from '../shared/columnLineage/graphLinks';
@@ -54,7 +55,8 @@ export async function focusFromEditor(): Promise<EditorFocus | undefined> {
         vscode.window.showInformationMessage('Open a .sqlx file and put the cursor on a column to trace it.');
         return undefined;
     }
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    const compiled = compiledJson();
+    if (!compiled) {
         vscode.window.showInformationMessage('Compile the project first, so the trace can use its dependency graph.');
         return undefined;
     }
@@ -65,7 +67,7 @@ export async function focusFromEditor(): Promise<EditorFocus | undefined> {
         return undefined;
     }
 
-    const index = indexGraph(CACHED_COMPILED_DATAFORM_JSON);
+    const index = indexGraph(compiled);
     const table = targetFqn(target);
     const schemas = new SchemaCache();
 

@@ -113,7 +113,7 @@ export function initRemoteCompiler(context: vscode.ExtensionContext) {
             if (event.affectsConfiguration('vscode-dataform-tools.compilationBackend')) {
                 syncRemoteModeContext();
                 // Force the next compile to go through the newly selected backend
-                clearCompiled(undefined, { keepIndices: true });
+                clearCompiled();
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.compileRemotely', async () => {

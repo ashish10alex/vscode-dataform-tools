@@ -1,4 +1,5 @@
 import { getWorkspaceFolder } from '../utils';
+import { compiledJson } from '../project';
 import { getProdCompilerOptions, getProdTargets } from '../defer/prodTargets';
 import { GraphAction as CompiledAction, lookupProdTarget, prodKey } from '../defer/deferRules';
 import { GraphAction, targetFqn } from '../shared/columnLineage/graphLinks';
@@ -51,7 +52,7 @@ function devIndexOnly(devIndex: Map<string, GraphAction>): ProdIndex {
  * are no Prod Options; throws when the prod compile fails.
  */
 export async function resolveProdIndex(devIndex: Map<string, GraphAction>): Promise<ProdIndex> {
-    const graph = CACHED_COMPILED_DATAFORM_JSON;
+    const graph = compiledJson();
     const workspaceFolder = await getWorkspaceFolder();
     const prodOptions = workspaceFolder ? getProdCompilerOptions(workspaceFolder) : undefined;
     if (!graph || !workspaceFolder || prodOptions === undefined) {

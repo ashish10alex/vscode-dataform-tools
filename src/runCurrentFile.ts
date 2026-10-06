@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from './project';
 import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
@@ -35,20 +36,19 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
     let currFileMetadata;
     await ensureFreshCompilation(workspaceFolder);
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    let compiled = compiledJson(workspaceFolder);
+    if (!compiled) {
 
         let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
         if(errors && errors.length > 0){
             vscode.window.showErrorMessage("Error compiling Dataform. Run `dataform compile` to see more details");
             return;
         }
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
+        compiled = dataformCompiledJson;
     }
 
-    if (CACHED_COMPILED_DATAFORM_JSON) {
-        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
+    if (compiled) {
+        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, compiled, workspaceFolder);
     }
     if(!currFileMetadata){
         vscode.window.showErrorMessage(`Unable to get metadata for the current file`);
@@ -57,7 +57,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
     // PropertyGraph actions produce no queries, so they are absent from `tables` and have to be
     // picked up from the compiled output directly for the file to be runnable at all.
-    const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON)
+    const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, compiled)
         .filter((graph) => !graph.disabled);
 
     // Saved only once the run is about to dispatch, so a cancelled or non-runnable run does not replace the last one.
@@ -86,7 +86,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
+        const projectId = (gcpProjectIdOveride || compiled?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
             return;

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledIndices, compiledJson } from '../project';
 import { logger } from '../logger';
 import { debounce } from '../debounce';
 import { Target } from '../types';
@@ -73,11 +74,11 @@ function deferralHints(deferral: Deferral | undefined): Map<string, RefHint> {
  */
 async function computeDocumentHints(document: vscode.TextDocument, onStaleFlags: (hints: DocumentHints) => void): Promise<DocumentHints | undefined> {
     const workspaceFolder = globalThis.workspaceFolder;
-    const graph = CACHED_COMPILED_DATAFORM_JSON;
+    const graph = compiledJson();
     if (!workspaceFolder || !graph) {
         return undefined;
     }
-    const actions = (FILE_NODE_MAP.get(getRelativePath(document.uri.fsPath)) ?? []).filter((action: any) => action?.target && action.type !== "test");
+    const actions = (compiledIndices().fileNodeMap.get(getRelativePath(document.uri.fsPath)) ?? []).filter((action: any) => action?.target && action.type !== "test");
     if (actions.length === 0) {
         return undefined;
     }

@@ -4,7 +4,7 @@ import path from 'path';
 import { logger } from '../logger';
 import { perfCount, perfStart, perfTimed } from '../perf';
 import { windowsDataformCliNotAvailableErrorMessage, linuxDataformCliNotAvailableErrorMessage } from '../constants';
-import { clearCompiled, setCompiled } from '../project';
+import { clearCompiled, compiledJson, setCompiled } from '../project';
 import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { DataformCompiledJson, GraphError } from '../types';
 import { getRemoteCompiledJson, isRemoteMode } from './remoteCompiler';
@@ -458,7 +458,7 @@ export async function prewarmCliCompilation(workspaceFolder: string): Promise<vo
         return;
     }
     const [fingerprint, saved] = await Promise.all([currentFingerprint(workspaceFolder), loadCliCompile(workspaceFolder)]);
-    if (latestCompileId !== 0 || CACHED_COMPILED_DATAFORM_JSON) {
+    if (latestCompileId !== 0 || compiledJson(workspaceFolder)) {
         return; // Something compiled while the saved compilation was being read
     }
 
@@ -512,9 +512,10 @@ export async function getOrCompileDataformJson(
     workspaceFolder: string
 ): Promise<DataformCompiledJson | undefined> {
     await ensureFreshCompilation(workspaceFolder);
-    if (CACHED_COMPILED_DATAFORM_JSON) {
+    const compiled = compiledJson(workspaceFolder);
+    if (compiled) {
         logger.debug('Returning cached compiled dataform JSON');
-        return CACHED_COMPILED_DATAFORM_JSON;
+        return compiled;
     }
     logger.debug('No cached compilation found, compiling dataform project...');
     const backend = isRemoteMode() ? "API" : "CLI";

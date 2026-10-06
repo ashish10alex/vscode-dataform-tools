@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from './project';
 import * as fs from 'fs/promises'; 
 import path from 'path';
 import {GitService} from "./gitClient";
@@ -37,7 +38,7 @@ export async function sendWorkflowInvocationNotification(
             state: 'RUNNING',
             includedTags: invocationConfig?.includedTags,
             includedTargets: invocationConfig?.includedTargets,
-            includedTargetTypes: invocationConfig?.includedTargets ? countActionTypes(invocationConfig.includedTargets, CACHED_COMPILED_DATAFORM_JSON) : undefined,
+            includedTargetTypes: invocationConfig?.includedTargets ? countActionTypes(invocationConfig.includedTargets, compiledJson()) : undefined,
         });
 
         if (storedUrls.length > 20) {
@@ -302,7 +303,8 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                 await ensureFreshCompilation(staleWorkspaceFolder);
             }
         }
-        if (!CACHED_COMPILED_DATAFORM_JSON) {
+        let compiled = compiledJson();
+        if (!compiled) {
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during compilation check.');
                 return;
@@ -322,12 +324,11 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
                 return;
             }
 
-            if (dataformCompiledJson) {
-                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            } else {
+            if (!dataformCompiledJson) {
                 vscode.window.showErrorMessage(`Unable to compile Dataform project. Run "dataform compile" in the terminal to check`);
                 return;
             }
+            compiled = dataformCompiledJson;
         } 
 
         if (token.isCancellationRequested) {
@@ -336,7 +337,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
         }
 
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const gcpProjectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase) as string;
+        const gcpProjectId = (gcpProjectIdOveride || compiled.projectConfig.defaultDatabase) as string;
         if (!gcpProjectId) {
             vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
             return;

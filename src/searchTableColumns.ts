@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { compiledIndices } from './project';
 import { Column, Target } from "./types";
 import { fetchTableMetadata, resolveTableReferenceAtPosition } from "./hoverProvider";
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
@@ -24,7 +25,7 @@ const fullTableId = (target: Target) => `${target.database}.${target.schema}.${t
  * so pull them off the compiled action when we have one for this target.
  */
 function columnsForTarget(target: Target): Column[] | undefined {
-    const nodes = global.TARGET_NAME_MAP?.get(target.name) ?? [];
+    const nodes = compiledIndices().targetNameMap.get(target.name) ?? [];
     const match = nodes.find((node: any) => node?.target && fullTableId(node.target) === fullTableId(target));
     return (match as any)?.actionDescriptor?.columns;
 }

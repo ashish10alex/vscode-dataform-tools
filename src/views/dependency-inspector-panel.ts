@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import { Uri } from 'vscode';
 import { randomUUID } from 'crypto';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
@@ -91,7 +92,7 @@ function getAllNodes(compiledJson: DataformCompiledJson) {
 /** Resolve the full table ID for the given source file path using compiled JSON. */
 function getModelIdForFile(filePath: string, compiledJson: DataformCompiledJson): string | undefined {
     const nodes = getAllNodes(compiledJson);
-    // FILE_NODE_MAP keys use the relative path stored in node.fileName
+    // The file lookup's keys use the relative path stored in node.fileName
     const normalizedFilePath = filePath.replace(/\\/g, '/');
     const match = nodes.find(n => n.fileName && normalizedFilePath.endsWith(n.fileName.replace(/\\/g, '/').replace(/^\//, '')));
     return match ? getFullTableId(match.target) : undefined;
@@ -115,8 +116,8 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
         switch (message.command) {
             case 'appLoaded':
             case 'getModels': {
-                let compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
-                if (!compiledJson) {
+                let compiled: DataformCompiledJson | undefined = compiledJson();
+                if (!compiled) {
                     panel.webview.postMessage({ type: 'compiling', value: true, backend: isRemoteMode() ? 'api' : 'cli' });
                     const workspaceFolder = await getWorkspaceFolder();
                     if (!workspaceFolder) {
@@ -126,8 +127,8 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         });
                         return;
                     }
-                    compiledJson = await getOrCompileDataformJson(workspaceFolder);
-                    if (!compiledJson) {
+                    compiled = await getOrCompileDataformJson(workspaceFolder);
+                    if (!compiled) {
                         panel.webview.postMessage({
                             type: 'error',
                             value: 'Compilation failed. Check that your Dataform project is valid.',
@@ -136,13 +137,13 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     }
                     panel.webview.postMessage({ type: 'compiling', value: false });
                 }
-                const models = getAllNodes(compiledJson).map(node => ({
+                const models = getAllNodes(compiled).map(node => ({
                     fullId: getFullTableId(node.target),
                     name: node.target.name,
                     type: (node as any).type ?? 'table',
                 }));
                 const initialModelId = initialFilePath
-                    ? getModelIdForFile(initialFilePath, compiledJson)
+                    ? getModelIdForFile(initialFilePath, compiled)
                     : undefined;
                 panel.webview.postMessage({ type: 'models', value: models, initialModelId });
                 return;
@@ -151,8 +152,8 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
             case 'fetchDependencies': {
                 const modelFullId: string = message.value?.modelFullId ?? '';
                 const maxDepth: number = Math.max(1, Math.min(message.value?.depth ?? 5, 20));
-                const compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
-                if (!compiledJson) {
+                const compiled: DataformCompiledJson | undefined = compiledJson();
+                if (!compiled) {
                     panel.webview.postMessage({
                         type: 'error',
                         value: 'No compiled Dataform JSON found.',
@@ -161,9 +162,9 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 }
 
                 // Build a fast lookup map: fullId → node, and a set of assertion IDs to exclude
-                const allNodes = getAllNodes(compiledJson);
+                const allNodes = getAllNodes(compiled);
                 const assertionIds = new Set<string>(
-                    (compiledJson.assertions ?? []).map(a => getFullTableId(a.target))
+                    (compiled.assertions ?? []).map(a => getFullTableId(a.target))
                 );
                 const nodeMap = new Map<string, Table | Assertion | Operation>();
                 for (const n of allNodes) {
