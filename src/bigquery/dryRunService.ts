@@ -44,7 +44,8 @@ export interface DryRunResult {
     };
 }
 
-function toResult(action: Action, script: DryRunScript, compile: number, response: BigQueryDryRunResponse): DryRunResult {
+/** What one script's dry run gave, as a `DryRunResult` */
+export function toDryRunResult(action: Action, script: DryRunScript, compile: number, response: BigQueryDryRunResponse): DryRunResult {
     const result: DryRunResult = {
         action: action.id,
         script: script.name,
@@ -86,6 +87,21 @@ function toResult(action: Action, script: DryRunScript, compile: number, respons
  * error, so that one failure does not lose the others.
  */
 export async function dryRunAction(action: Action, compile: number, run: RunDryRun): Promise<DryRunResult[]> {
+    return (await dryRunScriptsOf(action, run)).map(({ script, response }) => toDryRunResult(action, script, compile, response));
+}
+
+/** One script of an action with BigQuery's own answer to its dry run */
+export interface ScriptDryRun {
+    action: Action;
+    script: DryRunScript;
+    response: BigQueryDryRunResponse;
+}
+
+/**
+ * As `dryRunAction`, but gives BigQuery's answers as they came. For the Dataform panel, which is still sent them in
+ * that form; everything else wants `dryRunAction`.
+ */
+export async function dryRunScriptsOf(action: Action, run: RunDryRun): Promise<ScriptDryRun[]> {
     return Promise.all(dryRunScripts(action).map(async (script) => {
         let response: BigQueryDryRunResponse;
         try {
@@ -93,7 +109,7 @@ export async function dryRunAction(action: Action, compile: number, run: RunDryR
         } catch (error) {
             response = { error: { hasError: true, message: error instanceof Error ? error.message : String(error) } };
         }
-        return toResult(action, script, compile, response);
+        return { action, script, response };
     }));
 }
 

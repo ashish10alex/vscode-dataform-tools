@@ -4,14 +4,10 @@ import path from 'path';
 import { SupportedCurrency as SupportedCurrencies } from './types';
 const tempDir = os.tmpdir();
 export const sqlFileToFormatPath = path.join(tempDir, "format.sql");
-export const tableQueryOffset = 2;
-export const incrementalTableOffset = 1;
-export const assertionQueryOffset = 4;
 export const windowsDataformCliNotAvailableErrorMessage = "'dataform.cmd' is not recognized as an internal or external command";
 export const linuxDataformCliNotAvailableErrorMessage = "dataform: command not found";
 export const getBigQueryTimeoutMs = () => vscode.workspace.getConfiguration("vscode-dataform-tools").get<number>("bigQueryTimeoutMs") ?? 20000;
 
-export const errorDenylist = ["CREATE TEMPORARY FUNCTION statements must be followed by an actual query."];
 
 /** BigQuery on-demand query pricing: https://cloud.google.com/bigquery/pricing#on_demand_pricing */
 const bigQueryOnDemandUsdPerTiB = 6.25;
