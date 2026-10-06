@@ -102,6 +102,11 @@ export function compiledJson(root?: string): DataformCompiledJson | undefined {
     return dataformProject(root)?.dataformBackend?.rawResult;
 }
 
+/** The Dataform Backend of a Project; see `dataformProject` for which one */
+export function dataformBackend(root?: string) {
+    return dataformProject(root)?.dataformBackend;
+}
+
 /**
  * The Compiled Graph of what a Dataform Project last compiled to; see `dataformProject` for which one. Undefined
  * before the first compile result.

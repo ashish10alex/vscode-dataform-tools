@@ -32,7 +32,7 @@
       "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n\nWITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
+      "query": "WITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "0100_CLUBS_ASSER",
@@ -70,7 +70,7 @@
       "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n\nWITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
+      "query": "WITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "0100_CLUBS_ASSER",

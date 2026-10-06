@@ -26,12 +26,12 @@
       "incrementalPreOps": [],
       "incrementalQuery": "",
       "postOps": [
-        "\n  select 66 as someNumber\n"
+        "  select 66 as someNumber"
       ],
       "preOps": [
-        "\n  select 44 as someNumber\n"
+        "  select 44 as someNumber"
       ],
-      "query": "\n\n\n\n\n\n\n\n\n\n\n\n\nSELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n",
+      "query": "SELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "0100_MULTIPLE_PRE_POST_OPS",
@@ -44,8 +44,8 @@
   "nonIncrementalQuery": "",
   "operationsQuery": "",
   "packageJsonContent": null,
-  "postOperations": "\n  select 66 as someNumber;\n",
-  "preOperations": "\n  select 44 as someNumber;\n",
+  "postOperations": "  select 66 as someNumber;\n",
+  "preOperations": "  select 44 as someNumber;\n",
   "projectConfig": {
     "assertionSchema": "dataform_assertions",
     "defaultDatabase": "drawingfire-b72a8",
@@ -56,19 +56,19 @@
   "propertyGraphs": null,
   "recompiling": false,
   "relativeFilePath": "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx",
-  "tableOrViewQuery": "SELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n\n;",
+  "tableOrViewQuery": "SELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n;",
   "targetTablesOrViews": [
     {
       "fileName": "definitions/tests_for_vscode_extension/0100_MULTIPLE_PRE_POST_OPS.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
       "postOps": [
-        "\n  select 66 as someNumber\n"
+        "  select 66 as someNumber"
       ],
       "preOps": [
-        "\n  select 44 as someNumber\n"
+        "  select 44 as someNumber"
       ],
-      "query": "\n\n\n\n\n\n\n\n\n\n\n\n\nSELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP\n",
+      "query": "SELECT CURRENT_TIMESTAMP() AS LAST_UPDATED_TIMESTAMP",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "0100_MULTIPLE_PRE_POST_OPS",

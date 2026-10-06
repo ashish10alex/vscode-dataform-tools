@@ -4,7 +4,7 @@
     "assertion",
     "operations"
   ],
-  "assertionQuery": "\n -- Assertions: [1] \nselect 14 as b\n    ; \n",
+  "assertionQuery": "\n -- Assertions: [1] \n    select 14 as b\n    ; \n",
   "compilerOptions": "",
   "dataformCoreVersion": "3.0.39",
   "dataformTags": [
@@ -39,7 +39,7 @@
       "fileName": "definitions/010_JS_MULTIPLE.js",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n    select 12 as a\n    ",
+      "query": "    select 12 as a\n    ",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "test_js_table_2",
@@ -51,7 +51,7 @@
       "fileName": "definitions/010_JS_MULTIPLE.js",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n    select 14 as b\n    ",
+      "query": "    select 14 as b\n    ",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "test_js_assert",
@@ -63,7 +63,7 @@
       "fileName": "definitions/010_JS_MULTIPLE.js",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n -- Operations: [1] \n\n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
+      "query": "\n -- Operations: [1] \n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "test_js_ops",
@@ -74,7 +74,7 @@
   ],
   "modelType": "js",
   "nonIncrementalQuery": "",
-  "operationsQuery": "\n -- Operations: [1] \n\n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
+  "operationsQuery": "\n -- Operations: [1] \n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
   "packageJsonContent": null,
   "postOperations": "",
   "preOperations": "",
@@ -88,7 +88,7 @@
   "propertyGraphs": null,
   "recompiling": false,
   "relativeFilePath": "definitions/010_JS_MULTIPLE.js",
-  "tableOrViewQuery": "select 1 as a\n;\nselect 12 as a\n    \n;",
+  "tableOrViewQuery": "select 1 as a\n;\n    select 12 as a\n    \n;",
   "targetTablesOrViews": [
     {
       "fileName": "definitions/010_JS_MULTIPLE.js",
@@ -106,7 +106,7 @@
       "fileName": "definitions/010_JS_MULTIPLE.js",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n    select 12 as a\n    ",
+      "query": "    select 12 as a\n    ",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "test_js_table_2",
@@ -118,7 +118,7 @@
       "fileName": "definitions/010_JS_MULTIPLE.js",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n    select 14 as b\n    ",
+      "query": "    select 14 as b\n    ",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "test_js_assert",
@@ -130,7 +130,7 @@
       "fileName": "definitions/010_JS_MULTIPLE.js",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n -- Operations: [1] \n\n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
+      "query": "\n -- Operations: [1] \n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "test_js_ops",
