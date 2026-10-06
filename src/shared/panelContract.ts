@@ -205,7 +205,7 @@ export interface DataformBlock extends Slice {
     /** Columns the last dry run drops or retypes against prod */
     columnImpact?: { file: string; changed?: number };
     /** The cost estimate across tags */
-    tagCostEstimate?: { rows?: unknown[]; error?: { message: string } };
+    tagCostEstimate?: { rows?: unknown[]; /** Why there are no rows, as the host has always sent it: text */ error?: string };
 }
 
 /** What only a dbt Project has */

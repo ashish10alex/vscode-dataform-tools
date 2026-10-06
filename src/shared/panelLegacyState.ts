@@ -11,7 +11,10 @@ import type { DataformBlock, HostMessage } from './panelContract';
  * The fields of the `dataform` block that arrive only as a slice. A field joins this list when every place that
  * sent it the old way has been moved; until then the block's value for it is a placeholder and is not passed on.
  */
-export const MIGRATED_DATAFORM_FIELDS = ['lastRun', 'workflowUrls', 'changedActions', 'apiRunGitState', 'columnImpact'] as const satisfies ReadonlyArray<keyof DataformBlock>;
+export const MIGRATED_DATAFORM_FIELDS = [
+    'lastRun', 'workflowUrls', 'changedActions', 'apiRunGitState', 'columnImpact',
+    'projectConfig', 'packageJson', 'possibleResolutions', 'snoozeEndTime', 'tagCostEstimate', 'compilationInfo',
+] as const satisfies ReadonlyArray<keyof DataformBlock>;
 
 type MigratedDataformField = (typeof MIGRATED_DATAFORM_FIELDS)[number];
 
@@ -31,6 +34,13 @@ const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => 
     apiRunGitState: (block) => ({ apiRunGitState: block.apiRunGitState }),
     // The flat state names the file `relativeFilePath`
     columnImpact: (block) => ({ columnImpact: block.columnImpact && { relativeFilePath: block.columnImpact.file, changed: block.columnImpact.changed } }),
+    // The flat state clears these two with null
+    projectConfig: (block) => ({ projectConfig: block.projectConfig ?? null }),
+    packageJson: (block) => ({ packageJsonContent: block.packageJson ?? null }),
+    possibleResolutions: (block) => ({ possibleResolutions: block.possibleResolutions }),
+    snoozeEndTime: (block) => ({ snoozeEndTime: block.snoozeEndTime }),
+    tagCostEstimate: (block) => ({ tagDryRunStatsMeta: block.tagCostEstimate && { tagDryRunStatsList: block.tagCostEstimate.rows, error: block.tagCostEstimate.error } }),
+    compilationInfo: (block) => ({ compilationInfo: block.compilationInfo }),
 };
 
 /** The flat state's fields for a slice the host sent: what the panel merges into its state */

@@ -12,20 +12,29 @@ suite('panel: slices as the flat state the components still read', () => {
     test('a dataform block gives the flat fields that have been moved to it, and only those', () => {
         const lastRun = { label: 'orders', detail: 'with dependencies', timestamp: 5, fullRefresh: false, executionMode: 'cli' as const };
         const flat = legacyStateFromSlice({ slice: 'dataform', value: block({ lastRun, workflowUrls: [], changedActions: { status: 'idle' }, columnImpact: { file: 'definitions/orders.sqlx', changed: 2 } }) });
-        assert.deepStrictEqual(flat, {
-            lastRun,
-            workflowUrls: [],
-            changedActions: { status: 'idle' },
-            apiRunGitState: undefined,
-            columnImpact: { relativeFilePath: 'definitions/orders.sqlx', changed: 2 },
+        assert.deepStrictEqual([flat.lastRun, flat.workflowUrls, flat.changedActions, flat.apiRunGitState], [lastRun, [], { status: 'idle' }, undefined]);
+        assert.deepStrictEqual(flat.columnImpact, { relativeFilePath: 'definitions/orders.sqlx', changed: 2 });
+        // Every moved field gives exactly one flat field
+        assert.strictEqual(Object.keys(flat).length, MIGRATED_DATAFORM_FIELDS.length);
+    });
+
+    test('the fields of part 2 keep their flat names and their way of saying "none"', () => {
+        const flat = legacyStateFromSlice({
+            slice: 'dataform',
+            value: block({ packageJson: { name: 'shop' }, possibleResolutions: ['run dataform install'], snoozeEndTime: 99, tagCostEstimate: { rows: [{ targetName: 't' }], error: undefined } }),
         });
-        // Each moved field has its flat name here; `columnImpact` is the only one that changes inside
-        assert.deepStrictEqual(Object.keys(flat).sort(), [...MIGRATED_DATAFORM_FIELDS].sort());
+        assert.deepStrictEqual(flat.packageJsonContent, { name: 'shop' });
+        // The flat state clears the project config with null, not by leaving it out
+        assert.strictEqual(flat.projectConfig, null);
+        assert.deepStrictEqual(flat.possibleResolutions, ['run dataform install']);
+        assert.strictEqual(flat.snoozeEndTime, 99);
+        assert.deepStrictEqual(flat.tagDryRunStatsMeta, { tagDryRunStatsList: [{ targetName: 't' }], error: undefined });
+        assert.strictEqual(legacyStateFromSlice({ slice: 'dataform', value: block() }).tagDryRunStatsMeta, undefined);
     });
 
     test('a field not yet moved is not passed on, so its placeholder cannot overwrite what was sent the old way', () => {
         const flat = legacyStateFromSlice({ slice: 'dataform', value: block({ compilerOptions: '', deferral: null, propertyGraphs: null }) });
-        for (const field of ['compilerOptions', 'compilationMode', 'deferral', 'leftoverProxies', 'propertyGraphs', 'snoozeEndTime', 'compile']) {
+        for (const field of ['compilerOptions', 'compilationMode', 'compilationBackend', 'deferral', 'leftoverProxies', 'propertyGraphs', 'dataformCoreVersion', 'compile']) {
             assert.ok(!(field in flat), field);
         }
     });
