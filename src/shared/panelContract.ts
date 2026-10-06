@@ -1,0 +1,326 @@
+import type { BackendPart, CompileError } from '../backend/backend';
+import type { DryRunResult } from '../bigquery/dryRunService';
+import type { BackendName } from '../project/detection';
+import type { CompilationMode, Tool } from '../project/tools';
+import type {
+    ChangedActionsView,
+    DeferToProdState,
+    DeferralView,
+    LastRunView,
+    ProjectConfig,
+    PropertyGraph,
+    PropertyGraphElementSchema,
+    PropertyGraphValidation,
+    WorkflowUrlEntry,
+} from '../types';
+import type { CompilationInfo } from '../utils/compilationInfo';
+import type { ApiRunGitState } from './apiRunGitState';
+import type { ActionId, ColumnDescription, Kind, RunOptions, SqlSection, Target } from './compiledGraph';
+
+/*
+ * What the compiled-query panel and the extension host say to each other (decided in xf#51). Host and panel both
+ * import this file and nothing else describes their messages. Types only: importing it pulls no code into either.
+ *
+ * The host sends the panel slices. Each slice is built by one function, sent only when it changes, and names the
+ * compile it belongs to. What both Backends have is in the neutral slices; what only one has is in its own block,
+ * so that a component shared by both cannot reach into it by accident.
+ *
+ * The panel sends the host the messages of `PanelMessage`, which name an action by its Target.
+ */
+
+/**
+ * Compiles of a Project are numbered from 1. A slice carries the number of the compile its content came from, and
+ * the panel drops anything older than the SQL it is showing.
+ */
+export type CompileNumber = number;
+
+interface Slice {
+    compile: CompileNumber;
+}
+
+// ---- Project
+
+/** The Project the panel's file belongs to */
+export interface ProjectSlice extends Slice {
+    /** Absolute path of the Project's root */
+    root: string;
+    backend: BackendName;
+    /** Which optional parts the Backend has. The panel hides the controls of a part that is absent */
+    parts: Record<BackendPart, boolean>;
+    /** Every tag an action of the Project has, sorted */
+    tags: string[];
+}
+
+// ---- File and actions
+
+/** An action as a neighbour of another: enough to name it, link to it and open its file */
+export interface ActionReference {
+    target: Target;
+    kind: Kind;
+    /** Relative to the Project root with forward slashes; empty when the action has no file */
+    fileName: string;
+}
+
+/** An action shown in the panel: one the file defines, or a test shown with one of those */
+export interface PanelAction extends ActionReference {
+    id: ActionId;
+    /** The action builds nothing and its Target is made up: it is never shown as a BigQuery link */
+    buildsNothing: boolean;
+    tags: string[];
+    disabled: boolean;
+    description?: string;
+    columns?: ColumnDescription[];
+    /** The action's SQL in execution order */
+    sections: SqlSection[];
+    /** False when this compile left the action's SQL out, which is not the same as an action with no SQL */
+    sqlPresent: boolean;
+    /** Whether a run can execute the action. The panel offers Run only then */
+    runnable: boolean;
+    dependencies: ActionReference[];
+    dependents: ActionReference[];
+}
+
+/** What the file is to its Project */
+export type FileRole =
+    /** It defines the actions listed */
+    | 'actions'
+    /** It is the Project's settings file */
+    | 'project settings'
+    /** It affects a compile and defines no action: a Dataform include, a dbt macro file or YAML with no action */
+    | 'helper'
+    /** It is in the Project and nothing in the Compiled Graph comes from it */
+    | 'not compiled';
+
+/** The file the panel is showing and the actions shown for it. Only these and their neighbours cross */
+export interface FileSlice extends Slice {
+    /** Relative to the Project root with forward slashes */
+    file: string;
+    role: FileRole;
+    /** In display order. A model's tests follow it, though they are defined in other files */
+    actions: PanelAction[];
+}
+
+// ---- Compile status
+
+/** Exactly one of seven. Each carries only its own details */
+export type CompileStatus = Slice & (
+    /** The file is in no Project */
+    | { status: 'no project' }
+    | { status: 'tool not found'; tool: Tool; /** Where it was looked for, in order */ lookedIn: string[] }
+    | { status: 'version unsupported'; tool: Tool; version: string; message: string }
+    | {
+        status: 'compiling';
+        /** The SQL of the last compile is still on show, marked outdated */
+        showingPrevious: boolean;
+        /** Epoch ms, for the elapsed time */
+        startedAt: number;
+        /** The command line of the compile, where there is one */
+        command?: string;
+    }
+    /** Errors travel with a compiled Project: a compile can give a graph and errors together */
+    | { status: 'compiled'; compiledAt: number; durationMs?: number; errors: CompileError[] }
+    /** The Project was parsed and its SQL is as written, e.g. a dbt v2 Project with on-run hooks */
+    | { status: 'parsed only'; compiledAt: number; notice: string; errors: CompileError[] }
+    | { status: 'failed'; errors: CompileError[] }
+);
+
+// ---- BigQuery results
+
+/** One dry-run script of an action, see `DryRunScript` */
+export interface DryRunKey {
+    action: ActionId;
+    script: string;
+    incremental: boolean;
+}
+
+/** What BigQuery knows of the table an action builds */
+export interface TableState {
+    /** As shown, already formatted in the user's time zone */
+    lastModified?: string;
+    modifiedToday?: boolean;
+    error?: string;
+}
+
+/**
+ * What BigQuery said of the actions on show. A result is keyed by its action, script and variant; it places an
+ * error within a section. This replaces the eleven maps keyed by node name or node type.
+ */
+export interface BigQuerySlice extends Slice {
+    results: DryRunResult[];
+    /** The dry runs still out */
+    dryRunning: DryRunKey[];
+    /** By action, for the actions that build a table */
+    tables: Record<ActionId, TableState>;
+    /** For costs, e.g. "$" */
+    currencySymbol: string;
+}
+
+// ---- Run status
+
+/** The last run started from the extension through the Backend's runner */
+export interface RunStatusSlice extends Slice {
+    lastRun?: {
+        request: RunOptions;
+        /** The command line that was sent to the terminal */
+        command: string;
+        /** Epoch ms */
+        startedAt: number;
+    };
+}
+
+// ---- The Backends' own blocks
+
+/** What only a Dataform Project has */
+export interface DataformBlock extends Slice {
+    projectConfig?: ProjectConfig;
+    dataformCoreVersion?: string;
+    packageJson?: { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    /** The compiler options setting, as typed */
+    compilerOptions: string;
+    compilationMode: CompilationMode;
+    /** Which CLI or commit the result on show came from, and how fresh it is */
+    compilationInfo?: CompilationInfo;
+    /** What the user can try after a compile that gave no result */
+    possibleResolutions?: string[];
+    /** When a pause of compile-on-save ends, epoch ms. Null when not paused */
+    snoozeEndTime: number | null;
+
+    /** Null when defer to prod is off */
+    deferral: DeferralView | null;
+    deferToProd?: DeferToProdState;
+    /** With defer to prod off: upstream tables still read from prod through leftover Proxy Views */
+    leftoverProxies: string[] | null;
+
+    workflowUrls?: WorkflowUrlEntry[];
+    /** The last run through the CLI or the Dataform API, for repeating */
+    lastRun: LastRunView | null;
+    /** What a run through the Dataform API leaves out, since it runs the branch as pushed */
+    apiRunGitState?: ApiRunGitState;
+    changedActions?: ChangedActionsView;
+
+    propertyGraphs: PropertyGraph[] | null;
+    propertyGraphValidations: PropertyGraphValidation[] | null;
+    /** Keyed by `<graph target>::<element name>`, filled in as elements are expanded */
+    propertyGraphElementSchemas: Record<string, PropertyGraphElementSchema>;
+    /** Columns the last dry run drops or retypes against prod */
+    columnImpact?: { file: string; changed?: number };
+    /** The cost estimate across tags */
+    tagCostEstimate?: { rows?: unknown[]; error?: { message: string } };
+}
+
+/** What only a dbt Project has */
+export interface DbtBlock extends Slice {
+    /** The dbt found. Unset while it is being looked for, and when there is none */
+    dbt?: {
+        path: string;
+        /** Which step of the search found it, e.g. "the dbtExecutablePath setting", "the Project's .venv" */
+        foundBy: string;
+        flavour: 'dbt-core' | 'dbt v2';
+        version: string;
+    };
+    target: {
+        /** The active dbt target. Unset until dbt has reported it */
+        name?: string;
+        /** A private override of the `dbtTarget` setting is in force */
+        overridden: boolean;
+        /** The dbt targets of the Project's profile, where they could be read */
+        names: string[];
+    };
+    /** Shown read-only */
+    vars?: string;
+    profilesDir?: string;
+    /** The Project has on-run hooks and was only parsed: the panel offers to compile with hooks */
+    hooksNotice: boolean;
+    /** False for a Project of another warehouse: no dry run, cost, schema, preview or run */
+    bigQuery: boolean;
+}
+
+// ---- Host to panel
+
+export type HostMessage =
+    | { slice: 'project'; value: ProjectSlice }
+    | { slice: 'file'; value: FileSlice }
+    | { slice: 'compile status'; value: CompileStatus }
+    | { slice: 'bigquery'; value: BigQuerySlice }
+    | { slice: 'run status'; value: RunStatusSlice }
+    | { slice: 'dataform'; value: DataformBlock }
+    | { slice: 'dbt'; value: DbtBlock };
+
+export type SliceName = HostMessage['slice'];
+
+// ---- Panel to host
+
+/** How a run reaches from an action */
+export interface RunScope {
+    includeDependencies: boolean;
+    includeDependents: boolean;
+    fullRefresh: boolean;
+}
+
+/** Messages either Backend's panel can send */
+export type SharedPanelMessage =
+    /** Open the file that defines the action */
+    | { command: 'openAction'; action: Target }
+    /** Run a section's query and show its rows; `alone` leaves out what runs before it */
+    | { command: 'preview'; action: Target; section: string; alone?: boolean }
+    /** Run the actions with the Backend's runner, in the terminal */
+    | ({ command: 'run'; actions: Target[] } & RunScope)
+    | ({ command: 'runTags'; tags: string[] } & RunScope)
+    | { command: 'repeatLastRun' }
+    | { command: 'copyToClipboard'; text: string }
+    /** Save an action's schema to a file */
+    | { command: 'exportSchema'; fileName: string; content: string }
+    | { command: 'selectProject' }
+    | { command: 'showDependencyGraph' }
+    | { command: 'formatFile' }
+    | { command: 'lintFile' }
+    | { command: 'showLogs' }
+    | { command: 'openExternal'; url: string };
+
+/** Messages only a Dataform Project's panel sends. Each is named as Dataform's */
+export type DataformPanelMessage =
+    | { command: 'dataform.updateCompilerOptions'; compilerOptions: string }
+    | { command: 'dataform.switchCompilationMode'; compilationMode: CompilationMode }
+    | { command: 'dataform.compileRemotely' }
+    | { command: 'dataform.startSnooze' }
+    | { command: 'dataform.stopSnooze' }
+    | { command: 'dataform.runTests' }
+    /** Run through the Dataform API, on the pushed branch or in a remote workspace */
+    | ({ command: 'dataform.runApi'; actions: Target[]; workspace: boolean } & RunScope)
+    | ({ command: 'dataform.runTagsApi'; tags: string[] } & RunScope)
+    | { command: 'dataform.runWithOptions'; workspace: boolean }
+    | { command: 'dataform.toggleDeferToProd'; on: boolean }
+    | { command: 'dataform.deferToProdActions' }
+    | { command: 'dataform.openDeferToProdSettings' }
+    | { command: 'dataform.retryDeferral' }
+    | { command: 'dataform.removeProxyViews'; targets?: string[] }
+    | { command: 'dataform.computeChangedActions' }
+    | ({ command: 'dataform.runChangedActions'; api: boolean; files?: string[] } & RunScope)
+    | { command: 'dataform.estimateTagCost'; tags: string[]; includeDependencies: boolean; includeDependents: boolean }
+    | { command: 'dataform.exportTagCostCsv'; fileName: string; content: string }
+    | { command: 'dataform.loadWorkflowUrls' }
+    | { command: 'dataform.clearWorkflowUrls' }
+    | { command: 'dataform.refreshWorkflowStatuses' }
+    | { command: 'dataform.cancelWorkflowInvocation'; workflowInvocationId: string }
+    | { command: 'dataform.loadWorkflowJobStats'; workflowInvocationId: string }
+    | { command: 'dataform.exportWorkflowActionsCsv'; workflowInvocationId: string }
+    | { command: 'dataform.openExecutedSql'; workflowInvocationId: string; action: string }
+    | { command: 'dataform.openBigQueryJob'; workflowInvocationId: string; action: string }
+    | { command: 'dataform.showDependencyInspector' }
+    | { command: 'dataform.showColumnLineage' }
+    | { command: 'dataform.loadLineage' }
+    | { command: 'dataform.loadPropertyGraphElementSchema'; graph: Target; elementName: string; table: Target }
+    | { command: 'dataform.runGeneratedQuery'; query: string; kind?: string };
+
+/** Messages only a dbt Project's panel sends. Each is named as dbt's */
+export type DbtPanelMessage =
+    /** Use this dbt target for the workspace; null goes back to the `dbtTarget` setting */
+    | { command: 'dbt.setTarget'; name: string | null }
+    /** Compile with on-run hooks from now on, or stop */
+    | { command: 'dbt.compileWithHooks'; on: boolean }
+    | { command: 'dbt.chooseExecutable' }
+    | { command: 'dbt.lookForDbtAgain' };
+
+export type PanelMessage = SharedPanelMessage | DataformPanelMessage | DbtPanelMessage;
+
+export type PanelCommand = PanelMessage['command'];
