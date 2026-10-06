@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { logger } from '../logger';
 import type { DataformCompiledJson } from '../types';
 import { clearIndices, computeIndices, useIndices } from '../utils/compiledJsonIndex';
-import { BACKENDS, SETTINGS_FILES } from './detection';
 import { ProjectRegistry, ProjectState } from './registry';
 
 export { ProjectRegistry, ProjectState } from './registry';
@@ -19,38 +18,37 @@ function workspaceFolderPaths(): string[] {
     return (vscode.workspace.workspaceFolders ?? []).filter((folder) => folder.uri.scheme === 'file').map((folder) => folder.uri.fsPath);
 }
 
-function refreshProjects() {
+let knownProjects = '';
+
+/**
+ * Looks for Projects at the workspace-folder roots again and notes which one the editor in focus belongs to.
+ * Cheap (a few `stat` calls per folder), so it runs on every editor switch: that is how a settings file created or
+ * deleted since the last look is noticed. A file watcher for them is not used, as it shifts when other extensions'
+ * file events arrive and made the git state be computed twice on some saves.
+ */
+function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.activeTextEditor) {
     const before = projects.active;
     const found = projects.refresh(workspaceFolderPaths());
-    logger.debug(`Projects: ${found.length === 0 ? 'none' : found.map((project) => `${project.backend} at ${project.root}`).join(', ')}`);
-    noteActiveEditor(vscode.window.activeTextEditor);
-    if (projects.active !== before) {
-        activeProjectChanged.fire(projects.active);
+    const description = found.length === 0 ? 'none' : found.map((project) => `${project.backend} at ${project.root}`).join(', ');
+    if (description !== knownProjects) {
+        knownProjects = description;
+        logger.debug(`Projects: ${description}`);
     }
-}
-
-function noteActiveEditor(editor: vscode.TextEditor | undefined) {
-    if (editor?.document.uri.scheme === 'file' && projects.noteActiveFile(editor.document.uri.fsPath)) {
+    if (editor?.document.uri.scheme === 'file') {
+        projects.noteActiveFile(editor.document.uri.fsPath);
+    }
+    if (projects.active !== before) {
         activeProjectChanged.fire(projects.active);
     }
 }
 
 /** Finds the window's Projects and keeps the list and the active Project current */
 export function initProjects(context: vscode.ExtensionContext) {
-    refreshProjects();
-    const settingsFiles = BACKENDS.flatMap((backend) => SETTINGS_FILES[backend]).join(',');
-    const watchers = (vscode.workspace.workspaceFolders ?? []).map((folder) => {
-        // A settings file created or deleted at a root makes or unmakes a Project
-        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, `{${settingsFiles}}`), false, true, false);
-        watcher.onDidCreate(refreshProjects);
-        watcher.onDidDelete(refreshProjects);
-        return watcher;
-    });
+    syncProjects();
     context.subscriptions.push(
         activeProjectChanged,
-        ...watchers,
-        vscode.workspace.onDidChangeWorkspaceFolders(refreshProjects),
-        vscode.window.onDidChangeActiveTextEditor(noteActiveEditor),
+        vscode.workspace.onDidChangeWorkspaceFolders(() => syncProjects()),
+        vscode.window.onDidChangeActiveTextEditor((editor) => syncProjects(editor)),
     );
 }
 
