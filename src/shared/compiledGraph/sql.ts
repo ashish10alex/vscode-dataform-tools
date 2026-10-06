@@ -19,6 +19,11 @@ export interface SqlSection {
     compiled: boolean;
     /** Whether the section is part of what is dry-run for the action, see `dryRunScripts` */
     dryRun: boolean;
+    /**
+     * Set on a section that is dry-run by itself, not joined to the others: the two queries of a Dataform unit test,
+     * which never run as one script.
+     */
+    dryRunAlone?: boolean;
 }
 
 export type SectionFlags = Omit<SqlSection, 'title' | 'sql'>;
