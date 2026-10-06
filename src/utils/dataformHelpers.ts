@@ -10,7 +10,6 @@ import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "
 import { BigQueryDryRunResponse, CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
 import { runCompilation, getOrCompileDataformJson } from './dataformCompiler';
-import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
@@ -19,7 +18,8 @@ import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
 import { proxyViewsMayExist } from '../defer/proxyViews';
-import { getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, resolveDataformOptions } from '../project/dataformOptions';
+import { resolveDataformOptions } from '../project/dataformOptions';
+import { dataformRunCommand } from '../project/dataformBackend';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -457,32 +457,8 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     return undefined;
 }
 
-export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
-    let dataformCompilerOptions = getDataformCompilerOptions();
-    const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-    let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
-    const dataformExecutionTimeoutVal = getDataformExecutionTimeoutFromConfig();
-    if (dataformExecutionTimeoutVal) {
-        cmd += ` --execution-timeout=${dataformExecutionTimeoutVal}`;
-    }
-    for (let i = 0; i < actionsList.length; i++) {
-        let fullTableName = actionsList[i];
-        if (i === 0) {
-            if (includDependencies) {
-                cmd += ` --include-deps`;
-            }
-            if (includeDownstreamDependents) {
-                cmd += ` --include-dependents`;
-            }
-            if (fullRefresh) {
-                cmd += ` --full-refresh`;
-            }
-            cmd += ` --actions "${fullTableName}"`;
-        } else {
-            cmd += ` --actions "${fullTableName}"`;
-        }
-    }
-    return cmd;
+export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    return dataformRunCommand(workspaceFolder, { actions: actionsList, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
 }
 
 export async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta: { startLine: number, endLine: number, exists: boolean }): Promise<string> {
@@ -622,9 +598,8 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         }
     } else if (executionMode === "cli") {
         const actionsList = includedTargets.map((target) => `${target.database}.${target.schema}.${target.name}`);
-        let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
         let dataformActionCmd = "";
-        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includeDependencies, includeDownstreamDependents, fullRefresh);
         if (!(await beginRun(lastRunRequest))) { return; }
         runCommandInTerminal(dataformActionCmd);
     }

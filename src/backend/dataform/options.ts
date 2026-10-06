@@ -10,6 +10,8 @@ export interface DataformOptions {
     compilerOptions: string;
     /** How long a CLI compile may take, as `--timeout` takes it */
     compileTimeout: string;
+    /** The deadline for a whole `dataform run`, as `--execution-timeout` takes it. Unset means none, as the CLI has it */
+    executionTimeout?: string;
     /** The Dataform CLI to run and where it was found. Not resolved in API mode, which needs no CLI */
     cli?: { path: string; source: 'path' | 'setting' | 'local' };
     /** Whether CLI compile results are kept across sessions */

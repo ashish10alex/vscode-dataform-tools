@@ -124,6 +124,7 @@ export function resolveDataformOptions(root: string, compilationMode: Compilatio
         compilationMode,
         compilerOptions: getDataformCompilerOptions(),
         compileTimeout: getDataformCompilationTimeoutFromConfig(),
+        executionTimeout: getDataformExecutionTimeoutFromConfig(),
         cli: compilationMode === 'cli' ? describeDataformCli(root) : undefined,
         persistCompilation: isPersistCompilationEnabled(),
         api: {
