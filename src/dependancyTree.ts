@@ -1,6 +1,7 @@
 import { Assertion, Declarations, DeclarationsLegendMetadata, DependancyTreeMetadata, Operation, Table, Target } from "./types";
 import { compiledJson } from './project';
 import { getWorkspaceFolder, runCompilation } from "./utils";
+import { resolveDataformOptions } from './project/dataformOptions';
 
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict: any, schemaIdx: number) {
     let declarationsLegendMetadata: DeclarationsLegendMetadata[] = [];
@@ -89,7 +90,7 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
             return;
         }
 
-        compiled = (await runCompilation(workspaceFolder)).dataformCompiledJson; // Takes ~1100ms
+        compiled = (await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder))).dataformCompiledJson; // Takes ~1100ms
     }
 
     let output;

@@ -4,7 +4,7 @@ import path from 'path';
 import { gcloudComputeRegions } from './constants';
 import fs from 'fs';
 import { logger } from './logger';
-import { isRemoteMode } from './utils/remoteCompiler';
+import { isRemoteMode } from './project/dataformOptions';
 
 export async function createNewDataformProject(){
 

@@ -1,4 +1,4 @@
-import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress, ensureFreshCompilation } from "./utils";
+import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress, ensureFreshCompilation } from "./utils";
 import { compiledJson } from './project';
 import * as vscode from 'vscode';
 import { loadDataformTools } from "./lazySdk";
@@ -7,6 +7,7 @@ import { ExecutionMode } from './types';
 import { GitService } from "./gitClient";
 import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
 import { beginRun } from './defer/deferRun';
+import { getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, resolveDataformOptions } from './project/dataformOptions';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     if (!(await beginRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
@@ -136,7 +137,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
     let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) { return; }
     if (!(await recordThisRun(workspaceFolder))) { return; }
-    await ensureFreshCompilation(workspaceFolder);
+    await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
     const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
     const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;

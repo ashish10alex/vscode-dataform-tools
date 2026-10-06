@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { compiledJson } from './project';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
+import { getDataformActionCmdFromActionList, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode, LastRunRequest } from './types';
@@ -8,6 +8,7 @@ import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 import { beginRun } from './defer/deferRun';
+import { getDataformCompilationTimeoutFromConfig, resolveDataformOptions } from './project/dataformOptions';
 
 /** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
@@ -35,11 +36,11 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
     let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     let currFileMetadata;
-    await ensureFreshCompilation(workspaceFolder);
+    await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
     let compiled = compiledJson(workspaceFolder);
     if (!compiled) {
 
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder)); // Takes ~1100ms
         if(errors && errors.length > 0){
             vscode.window.showErrorMessage("Error compiling Dataform. Run `dataform compile` to see more details");
             return;

@@ -10,6 +10,7 @@ import { computeRunSet, DeferralEntry, targetId } from './deferRules';
 import { findLeftoverProxies, getDeferAvailability, isDeferEnabled, resolveDeferralForActions } from './index';
 import { ensureProxyViews, proxyViewsMayExist } from './proxyViews';
 import { clearTableExistenceCache, findMissingDevDatasets } from './tableExistence';
+import { resolveDataformOptions } from '../project/dataformOptions';
 
 /*
  * Defer to prod for runs. Dataform executes its own compiled SQL, so before a deferred run the extension
@@ -79,7 +80,7 @@ async function confirmLeftoverProxies(request: RunRequest): Promise<boolean> {
     if (!proxyViewsMayExist()) {
         return true;
     }
-    const graph = await getOrCompileDataformJson(request.workspaceFolder);
+    const graph = await getOrCompileDataformJson(request.workspaceFolder, resolveDataformOptions(request.workspaceFolder));
     if (!graph) {
         return true;
     }
@@ -157,7 +158,7 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
         return record(false);
     }
 
-    const graph = await getOrCompileDataformJson(workspaceFolder);
+    const graph = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
     if (!graph) {
         return record(false);
     }

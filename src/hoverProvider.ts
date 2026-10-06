@@ -22,6 +22,7 @@ import { maxHoverSchemaRows, sqlKeywordsToExcludeFromHoverDefinition } from "./c
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 import { isOnConfigKey } from "./configBlock/providers";
 import { perfCount } from "./perf";
+import { resolveDataformOptions } from './project/dataformOptions';
 
 async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string, columns?: Column[]): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
@@ -437,7 +438,7 @@ export async function resolveTableReferenceAtPosition(
   let searchTerm = document.getText(wordRange);
 
   if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
-    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
     if (!dataformCompiledJson) {
       return undefined;
     }
@@ -464,7 +465,7 @@ export async function resolveTableReferenceAtPosition(
     return undefined;
   }
 
-  const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+  const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
   if (!dataformCompiledJson) {
     return undefined;
   }

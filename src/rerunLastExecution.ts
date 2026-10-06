@@ -4,11 +4,11 @@ import * as path from 'path';
 import { ExecutionMode, LastRunRequest } from './types';
 import { findMissingItems, getLastRun, isFromOtherFolder, planReplay, summarizeLastRun, describeOverrides } from './lastRun';
 import { getDataformTags, getOrCompileDataformJson, getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
-import { isRemoteMode } from './utils/remoteCompiler';
 import { runCurrentFile } from './runCurrentFile';
 import { runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { runChangedActions } from './changedActions';
 import { withDeferOverride } from './defer/deferRun';
+import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 const CHOOSE_WHAT_TO_RUN = 'Choose what to run';
 
@@ -55,7 +55,7 @@ export async function rerunLastExecution(context: vscode.ExtensionContext) {
     // The tag list is only populated once the panel has compiled, so read it from the compiled project instead.
     let knownTags: string[] | undefined;
     if (request.kind === 'tags') {
-        const compiledJson = await getOrCompileDataformJson(workspaceFolder);
+        const compiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
         knownTags = compiledJson ? await getDataformTags(compiledJson) : undefined;
     }
     const missing = findMissingItems(request, knownTags, (relativePath) => fs.existsSync(path.join(workspaceFolder, relativePath)));

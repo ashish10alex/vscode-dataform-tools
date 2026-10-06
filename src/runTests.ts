@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal } from "./utils";
-import { isRemoteMode } from "./utils/remoteCompiler";
+import { getDataformCliCmdBasedOnScope, getWorkspaceFolder, runCommandInTerminal } from "./utils";
+import { getDataformCompilationTimeoutFromConfig, isRemoteMode } from './project/dataformOptions';
 
 export async function runTests(workspaceFolder?: string) {
     if (isRemoteMode()) {
