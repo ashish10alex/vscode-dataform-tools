@@ -40,6 +40,17 @@ suite('panel: slices as the flat state the components still read', () => {
         assert.deepStrictEqual(toLegacyState(status as unknown as Record<string, unknown>), {});
     });
 
+    test('a slice the panel acts on the arrival of can be sent though it is the same', () => {
+        const posted: HostMessage[] = [];
+        const sender = new SliceSender((message) => posted.push(message));
+        const running = block({ workflowUrls: [{ url: 'https://console.cloud.google.com/x', timestamp: 1, state: 'RUNNING' }] as DataformBlock['workflowUrls'] });
+        // Two refreshes of a run that is still running give the same links: the panel must hear of both to go on polling
+        assert.strictEqual(sender.send('dataform', running, true), true);
+        assert.strictEqual(sender.send('dataform', running, true), true);
+        assert.strictEqual(sender.send('dataform', running), false);
+        assert.strictEqual(posted.length, 2);
+    });
+
     test('the block is sent once per change, and whole again after a render', () => {
         const merged: Record<string, unknown> = {};
         const sender = new SliceSender((message) => Object.assign(merged, toLegacyState(message as unknown as Record<string, unknown>)));

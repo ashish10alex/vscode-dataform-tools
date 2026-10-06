@@ -13,10 +13,15 @@ export class SliceSender {
     /** @param post Posts one message to the panel, e.g. `webview.postMessage` */
     constructor(private readonly post: (message: HostMessage) => unknown) {}
 
-    /** Sends the slice unless what the panel has is the same. Returns whether it was sent */
-    send<Name extends SliceName>(slice: Name, value: SliceValue<Name>): boolean {
+    /**
+     * Sends the slice unless what the panel has is the same. Returns whether it was sent.
+     *
+     * @param always Send it even when it is the same. For a slice whose arrival the panel acts on: its polling of
+     * workflow statuses asks again each time the workflow links arrive, changed or not.
+     */
+    send<Name extends SliceName>(slice: Name, value: SliceValue<Name>, always = false): boolean {
         const serialised = JSON.stringify(value);
-        if (this.sent.get(slice) === serialised) {
+        if (!always && this.sent.get(slice) === serialised) {
             return false;
         }
         this.sent.set(slice, serialised);

@@ -458,10 +458,14 @@ export class CompiledQueryPanel {
         lastRun: null, propertyGraphs: null, propertyGraphValidations: null, propertyGraphElementSchemas: {},
     };
 
-    /** Changes fields of the `dataform` block and sends the block if that changed it */
+    /**
+     * Changes fields of the `dataform` block and sends the block if that changed it. The workflow links are the
+     * exception: the panel polls workflow statuses by asking again each time they arrive, so an answer that is the
+     * same as the last must still be sent, or the polling stops.
+     */
     public updateDataformBlock(fields: Partial<Pick<DataformBlock, (typeof MIGRATED_DATAFORM_FIELDS)[number]>>) {
         this.dataformBlock = { ...this.dataformBlock, ...fields, compile: compileNumber() };
-        this.slices.send('dataform', this.dataformBlock);
+        this.slices.send('dataform', this.dataformBlock, 'workflowUrls' in fields);
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
