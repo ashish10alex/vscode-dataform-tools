@@ -14,6 +14,7 @@ import type { CompileStatus, DataformBlock, HostMessage } from './panelContract'
 export const MIGRATED_DATAFORM_FIELDS = [
     'lastRun', 'workflowUrls', 'changedActions', 'apiRunGitState', 'columnImpact',
     'projectConfig', 'packageJson', 'possibleResolutions', 'snoozeEndTime', 'tagCostEstimate', 'compilationInfo',
+    'compilerOptions', 'compilationMode', 'dataformCoreVersion',
 ] as const satisfies ReadonlyArray<keyof DataformBlock>;
 
 type MigratedDataformField = (typeof MIGRATED_DATAFORM_FIELDS)[number];
@@ -41,6 +42,10 @@ const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => 
     snoozeEndTime: (block) => ({ snoozeEndTime: block.snoozeEndTime }),
     tagCostEstimate: (block) => ({ tagDryRunStatsMeta: block.tagCostEstimate && { tagDryRunStatsList: block.tagCostEstimate.rows, error: block.tagCostEstimate.error } }),
     compilationInfo: (block) => ({ compilationInfo: block.compilationInfo }),
+    compilerOptions: (block) => ({ compilerOptions: block.compilerOptions }),
+    // The flat state calls the Compilation Mode the compilation backend, as the setting does
+    compilationMode: (block) => ({ compilationBackend: block.compilationMode }),
+    dataformCoreVersion: (block) => ({ dataformCoreVersion: block.dataformCoreVersion }),
 };
 
 /** The flat state's fields for a slice the host sent: what the panel merges into its state */
