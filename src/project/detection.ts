@@ -7,13 +7,13 @@ import path from 'path';
  */
 
 /** The tool a Project is written for and compiled with */
-export type Backend = 'dataform' | 'dbt';
+export type BackendName = 'dataform' | 'dbt';
 
 /** In the order they are listed to users */
-export const BACKENDS: readonly Backend[] = ['dataform', 'dbt'];
+export const BACKENDS: readonly BackendName[] = ['dataform', 'dbt'];
 
 /** A settings file at the root of a directory makes it a Project of that Backend */
-export const SETTINGS_FILES: Readonly<Record<Backend, readonly string[]>> = {
+export const SETTINGS_FILES: Readonly<Record<BackendName, readonly string[]>> = {
     dataform: ['workflow_settings.yaml', 'dataform.json'],
     dbt: ['dbt_project.yml'],
 };
@@ -21,10 +21,10 @@ export const SETTINGS_FILES: Readonly<Record<Backend, readonly string[]>> = {
 export interface Project {
     /** Absolute path of the directory holding the settings file */
     root: string;
-    backend: Backend;
+    backend: BackendName;
 }
 
-function hasSettingsFile(directory: string, backend: Backend): boolean {
+function hasSettingsFile(directory: string, backend: BackendName): boolean {
     return SETTINGS_FILES[backend].some((file) => {
         try {
             return fs.statSync(path.join(directory, file)).isFile();
@@ -54,7 +54,7 @@ function isWithin(root: string, filePath: string): boolean {
 }
 
 /** File types only one Backend has */
-const BACKEND_BY_EXTENSION: Readonly<Record<string, Backend>> = {
+const BACKEND_BY_EXTENSION: Readonly<Record<string, BackendName>> = {
     '.sqlx': 'dataform',
     '.sql': 'dbt',
     '.csv': 'dbt',
@@ -63,9 +63,9 @@ const BACKEND_BY_EXTENSION: Readonly<Record<string, Backend>> = {
 
 export interface FileBackendHints {
     /** Whether that Backend's Compiled Graph lists the file (path relative to the root, with forward slashes) as defining an action */
-    isListed?: (backend: Backend, relativePath: string) => boolean;
+    isListed?: (backend: BackendName, relativePath: string) => boolean;
     /** The Backend the user chose for files neither Backend claims */
-    preferred?: Backend;
+    preferred?: BackendName;
 }
 
 /**
@@ -73,7 +73,7 @@ export interface FileBackendHints {
  * one Backend has that type, else the one Compiled Graph that lists it, else the user's choice. Undefined when none of
  * these settles it, and the caller has to ask.
  */
-export function backendForSharedRootFile(root: string, filePath: string, hints: FileBackendHints = {}): Backend | undefined {
+export function backendForSharedRootFile(root: string, filePath: string, hints: FileBackendHints = {}): BackendName | undefined {
     const byExtension = BACKEND_BY_EXTENSION[path.extname(filePath).toLowerCase()];
     if (byExtension) {
         return byExtension;

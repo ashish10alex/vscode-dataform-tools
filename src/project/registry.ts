@@ -1,6 +1,6 @@
 import type { DataformCompiledJson } from '../types';
 import type { CompiledIndices } from '../utils/compiledJsonIndex';
-import { Backend, detectProjects, detectWorkspaceProjects, FileBackendHints, Project, projectForFile, ProjectForFile } from './detection';
+import { BackendName, detectProjects, detectWorkspaceProjects, FileBackendHints, Project, projectForFile, ProjectForFile } from './detection';
 
 /*
  * The Projects of a window and what each one last compiled to. No `vscode` import: the host (./index.ts) feeds it the
@@ -14,7 +14,7 @@ export class ProjectState implements Project {
     /** Lookups over `compiled` */
     indices: CompiledIndices | undefined;
 
-    constructor(public readonly root: string, public readonly backend: Backend) {}
+    constructor(public readonly root: string, public readonly backend: BackendName) {}
 
     setCompiled(compiled: DataformCompiledJson, indices: CompiledIndices) {
         this.compiled = compiled;
@@ -55,7 +55,7 @@ export class ProjectRegistry {
     }
 
     /** The Project of `backend` rooted at `root`, if there is one */
-    find(root: string, backend: Backend): ProjectState | undefined {
+    find(root: string, backend: BackendName): ProjectState | undefined {
         return this.states.get(keyOf({ root, backend }));
     }
 
@@ -63,7 +63,7 @@ export class ProjectRegistry {
      * As `find`, but looks at `root` itself when the Project is not known yet, e.g. a settings file created since the
      * last refresh, or a folder compiled before any refresh.
      */
-    ensure(root: string, backend: Backend): ProjectState | undefined {
+    ensure(root: string, backend: BackendName): ProjectState | undefined {
         const known = this.find(root, backend);
         if (known) {
             return known;
