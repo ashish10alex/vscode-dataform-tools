@@ -32,9 +32,14 @@ suite('panel: slices as the flat state the components still read', () => {
         assert.strictEqual(legacyStateFromSlice({ slice: 'dataform', value: block() }).tagDryRunStatsMeta, undefined);
     });
 
+    test('the Compilation Mode keeps the flat name the setting gave it', () => {
+        const flat = legacyStateFromSlice({ slice: 'dataform', value: block({ compilationMode: 'api', compilerOptions: '--schema-suffix=dev', dataformCoreVersion: '3.0.39' }), touched: ['compilationMode', 'compilerOptions', 'dataformCoreVersion'] });
+        assert.deepStrictEqual(flat, { compilationBackend: 'api', compilerOptions: '--schema-suffix=dev', dataformCoreVersion: '3.0.39' });
+    });
+
     test('a field not yet moved is not passed on, so its placeholder cannot overwrite what was sent the old way', () => {
         const flat = legacyStateFromSlice({ slice: 'dataform', value: block({ compilerOptions: '', deferral: null, propertyGraphs: null }) });
-        for (const field of ['compilerOptions', 'compilationMode', 'compilationBackend', 'deferral', 'leftoverProxies', 'propertyGraphs', 'dataformCoreVersion', 'compile']) {
+        for (const field of ['deferral', 'deferToProd', 'leftoverProxies', 'propertyGraphs', 'propertyGraphValidations', 'compile']) {
             assert.ok(!(field in flat), field);
         }
     });
@@ -74,7 +79,7 @@ suite('panel: slices as the flat state the components still read', () => {
         assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['changedActions', 'lastRun'] }), { changedActions: { status: 'idle' }, lastRun: null });
         assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: [] }), {});
         // A field that has not been moved is not passed on even when a send names it
-        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['compilerOptions'] }), {});
+        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['deferral'] }), {});
     });
 
     test('the same links sent twice arrive twice, as two flat messages did', () => {

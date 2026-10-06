@@ -318,10 +318,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 }
                 CompiledQueryPanel?.centerPanel?.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now() } });
                 CompiledQueryPanel?.centerPanel?.postMessage({
-                    "compilationBackend": isRemoteMode() ? "api" : "cli",
-                    "dataformCoreVersion": dataformCoreVersion,
                     "relativeFilePath": getRelativePath(document.fileName),
                 });
+                CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationMode: isRemoteMode() ? "api" : "cli", dataformCoreVersion: dataformCoreVersion ?? undefined });
                 let currentFileMetadata = await getCurrentFileMetadata(true, { deferralInBackground: true });
                 updateSchemaAutoCompletions(currentFileMetadata);
                 armedPreviewSpan = endPreviewSpan;
@@ -1232,12 +1231,10 @@ export class CompiledQueryPanel {
         if (freshCompilation) {
             this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now() } });
             await this.postMessage({
-                "compilationBackend": isRemoteMode() ? "api" : "cli",
-                "compilerOptions": compilerOptions,
-                "dataformCoreVersion": dataformCoreVersion,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', compilationMode: isRemoteMode() ? "api" : "cli", dataformCoreVersion: dataformCoreVersion ?? undefined });
         }
 
         if(!curFileMeta){
@@ -1368,7 +1365,6 @@ export class CompiledQueryPanel {
             this.sendCompileStatus();
             await this.postMessage({
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
                 "isHelperFile": false,
                 "declarations": null,
                 "errorType": null,
@@ -1383,6 +1379,7 @@ export class CompiledQueryPanel {
                 "operationsQuery": null,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
             this.updateDataformBlock({ projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             return;
         }
@@ -1404,8 +1401,6 @@ export class CompiledQueryPanel {
                     "relativeFilePath": relativeFilePathForGraphs,
                     "compilationTimeMs": curFileMeta.compilationTimeMs,
                     "dataformTags": dataformTags,
-                    "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                    "compilerOptions": compilerOptions,
                     "workspaceFolder": workspaceFolder,
                     "dryRunning": true,
                     "errorType": null,
@@ -1425,6 +1420,7 @@ export class CompiledQueryPanel {
                     "expectedOutputQuery": null,
                     "compiledQuerySchema": null,
                 });
+                this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
 
                 if (isCompilationStale()) {
@@ -1447,7 +1443,6 @@ export class CompiledQueryPanel {
                     "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
                     "errorType": CompilationErrorType.COMPILATION_ERROR,
                     "relativeFilePath": relativeFilePathForGraphs,
-                    "dataformCoreVersion": coreVersion,
                     "dryRunning": false,
                     "isHelperFile": false,
                     "propertyGraphs": null,
@@ -1457,6 +1452,7 @@ export class CompiledQueryPanel {
                     "compiledQuerySchema": null,
                     "workspaceFolder": workspaceFolder,
                 });
+                this.updateDataformBlock({ dataformCoreVersion: coreVersion ?? undefined });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
                 return;
             }
@@ -1565,13 +1561,12 @@ export class CompiledQueryPanel {
             "propertyGraphs": null,
             "dryRunning": true,
             "declarations": null,
-            "compilerOptions": compilerOptions,
             "errorType": null,
             "errorMessage": null,
-            "dataformCoreVersion": curFileMeta.dataformCoreVersion,
             "isHelperFile": false,
             "workspaceFolder": workspaceFolder,
     });
+        this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
 
         logger.debug(`Compiled query panel rendered ${curFileMeta.pathMeta?.relativeFilePath}${curFileMeta.deferralPending ? ", waiting for defer to prod" : ""}`);
         if (curFileMeta.deferralPending) {
@@ -1818,11 +1813,10 @@ export class CompiledQueryPanel {
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "dryRunning": false,
                 "declarations": null,
-                "compilerOptions": compilerOptions,
                 "errorType": null,
-                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
                 "isHelperFile": false
             });
+            this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
             this.updateDataformBlock({ snoozeEndTime: snoozeManager.getSnoozeEndTime(), projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             this._cachedResults = {
                 fileMetadata,
