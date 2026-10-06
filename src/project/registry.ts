@@ -1,5 +1,4 @@
-import type { DataformCompiledJson } from '../types';
-import type { CompiledIndices } from '../utils/compiledJsonIndex';
+import { DataformBackend } from '../backend/dataform/backend';
 import { BackendName, detectProjects, detectWorkspaceProjects, FileBackendHints, Project, projectForFile, ProjectForFile } from './detection';
 
 /*
@@ -9,29 +8,28 @@ import { BackendName, detectProjects, detectWorkspaceProjects, FileBackendHints,
 
 /** A Project and the state the extension keeps for it */
 export class ProjectState implements Project {
-    /** What the Project last compiled to. Dataform's own compile result for now */
-    compiled: DataformCompiledJson | undefined;
-    /** Lookups over `compiled` */
-    indices: CompiledIndices | undefined;
-
-    constructor(public readonly root: string, public readonly backend: BackendName) {}
-
-    setCompiled(compiled: DataformCompiledJson, indices: CompiledIndices) {
-        this.compiled = compiled;
-        this.indices = indices;
-    }
-
-    clearCompiled() {
-        this.compiled = undefined;
-        this.indices = undefined;
-    }
+    /**
+     * @param dataformBackend The Backend of a Dataform Project, which holds what it last compiled to. A dbt Project
+     * has none until the dbt Backend exists.
+     */
+    constructor(public readonly root: string, public readonly backend: BackendName, public readonly dataformBackend?: DataformBackend) {}
 }
+
+/** A Dataform Backend that holds a compile result and cannot compile, for a registry made without the host */
+const holdOnly = () => new DataformBackend(() => Promise.reject(new Error('This registry was given no way to compile')));
 
 const keyOf = (project: Project) => `${project.backend}:${project.root}`;
 
 export class ProjectRegistry {
     private states = new Map<string, ProjectState>();
     private lastActive: ProjectState | undefined;
+
+    /** @param createDataformBackend Makes the Backend of each Dataform Project found */
+    constructor(private readonly createDataformBackend: () => DataformBackend = holdOnly) {}
+
+    private newState(project: Project): ProjectState {
+        return new ProjectState(project.root, project.backend, project.backend === 'dataform' ? this.createDataformBackend() : undefined);
+    }
 
     /** Every Project of the window, in workspace-folder order */
     get projects(): ProjectState[] {
@@ -45,7 +43,7 @@ export class ProjectRegistry {
     refresh(workspaceFolders: readonly string[]): ProjectState[] {
         const next = new Map<string, ProjectState>();
         for (const project of detectWorkspaceProjects(workspaceFolders)) {
-            next.set(keyOf(project), this.states.get(keyOf(project)) ?? new ProjectState(project.root, project.backend));
+            next.set(keyOf(project), this.states.get(keyOf(project)) ?? this.newState(project));
         }
         this.states = next;
         if (this.lastActive && !next.has(keyOf(this.lastActive))) {
@@ -72,7 +70,7 @@ export class ProjectRegistry {
         if (!detected) {
             return undefined;
         }
-        const state = new ProjectState(detected.root, detected.backend);
+        const state = this.newState(detected);
         this.states.set(keyOf(detected), state);
         return state;
     }

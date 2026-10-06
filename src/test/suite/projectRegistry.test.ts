@@ -5,7 +5,6 @@ import path from 'path';
 import { setup, suite, suiteSetup, suiteTeardown, test } from 'mocha';
 import { ProjectRegistry } from '../../project/registry';
 import { clearCompiled, compiledIndices, compiledJson, projects, setCompiled } from '../../project';
-import { emptyIndices } from '../../utils/compiledJsonIndex';
 import { DataformCompiledJson } from '../../types';
 
 const target = (name: string) => ({ database: 'p', schema: 'd', name });
@@ -48,13 +47,22 @@ suite('project registry', () => {
             assert.strictEqual(registry.find(dataformRoot, 'dbt'), undefined);
         });
 
+        test('a Dataform Project has its own Dataform Backend, a dbt Project has none yet', () => {
+            const registry = new ProjectRegistry();
+            const [dataform, dbt] = registry.refresh([dataformRoot, dbtRoot]);
+            const [shared] = registry.refresh([dataformRoot, sharedRoot, dbtRoot]).filter((project) => project.root === sharedRoot && project.backend === 'dataform');
+            assert.strictEqual(dataform.dataformBackend?.name, 'dataform');
+            assert.notStrictEqual(shared.dataformBackend, dataform.dataformBackend);
+            assert.strictEqual(dbt.dataformBackend, undefined);
+        });
+
         test('a Project that is still there keeps its state, one that is gone is dropped', () => {
             const registry = new ProjectRegistry();
             const [dataform] = registry.refresh([dataformRoot, dbtRoot]);
-            dataform.setCompiled(compiledWith(), emptyIndices());
+            dataform.dataformBackend!.keep(compiledWith());
             registry.refresh([dataformRoot]);
             assert.strictEqual(registry.find(dataformRoot, 'dataform'), dataform);
-            assert.ok(dataform.compiled);
+            assert.ok(dataform.dataformBackend!.rawResult);
             assert.strictEqual(registry.find(dbtRoot, 'dbt'), undefined);
         });
     });
@@ -153,7 +161,7 @@ suite('project registry', () => {
         test('setCompiled records the result and its lookups on the Project', () => {
             const compiled = compiledWith({ name: 'orders', fileName: 'definitions/orders.sqlx' }, { name: 'report', fileName: 'definitions/report.sqlx', dependsOn: ['orders'] });
             setCompiled(dataformRoot, compiled);
-            assert.strictEqual(projects.find(dataformRoot, 'dataform')?.compiled, compiled);
+            assert.strictEqual(projects.find(dataformRoot, 'dataform')?.dataformBackend?.rawResult, compiled);
             assert.strictEqual(compiledJson(dataformRoot), compiled);
             const indices = compiledIndices(dataformRoot);
             assert.strictEqual(indices.fileNodeMap.get('definitions/report.sqlx')?.length, 1);
