@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { WebviewState } from "../types";
+import { toLegacyState } from "../../../src/shared/panelLegacyState";
 
 declare global {
   interface Window {
@@ -12,7 +13,8 @@ export const useVSCodeMessage = () => {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
+      // Some of the state arrives as slices of the panel contract; the components still read flat fields
+      const message: any = toLegacyState(event.data);
       setState((prevState) => {
         const nextState = {
           ...prevState,
