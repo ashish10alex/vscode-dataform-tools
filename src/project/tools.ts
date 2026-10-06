@@ -1,4 +1,4 @@
-import type { Backend } from './detection';
+import type { BackendName } from './detection';
 
 /*
  * Which command-line tools a Project needs before its panel can compile. Only a Backend's own tool is ever required:
@@ -11,7 +11,7 @@ export type CompilationMode = 'cli' | 'api';
 export type Tool = 'dataform' | 'dbt';
 
 /** The tools the Project's panel cannot work without */
-export function requiredTools(backend: Backend, options: { compilationMode?: CompilationMode } = {}): Tool[] {
+export function requiredTools(backend: BackendName, options: { compilationMode?: CompilationMode } = {}): Tool[] {
     if (backend === 'dbt') {
         return ['dbt'];
     }
