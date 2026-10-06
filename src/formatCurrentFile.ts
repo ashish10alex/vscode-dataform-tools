@@ -2,12 +2,12 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { loadBeautify } from './lazySdk';
 import { exec as exec } from 'child_process';
-import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
+import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder, writeCompiledSqlToFile, getStdoutFromCliRun, readFile, getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
-import { isRemoteMode } from './utils/remoteCompiler';
 import { logger } from './logger';
+import { isRemoteMode } from './project/dataformOptions';
 
 export async function formatDataformSqlxFile(document:vscode.TextDocument){
     let formattingCli = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formattingCli");

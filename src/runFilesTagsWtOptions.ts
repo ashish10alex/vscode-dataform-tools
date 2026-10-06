@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
+import { getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { beginRun } from './defer/deferRun';
+import { getDataformCompilationTimeoutFromConfig } from './project/dataformOptions';
 
 export function getRunSingleTagCommand(workspaceFolder: string, tag: string, includeDependencies: boolean, includeDependents: boolean, fullRefresh: boolean): string {
     const defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();

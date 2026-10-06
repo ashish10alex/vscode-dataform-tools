@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { currentDataformRoot } from '../project';
-import { pickBackendConfigurationTarget } from '../utils/remoteCompiler';
 import { getDeferAvailability, isDeferEnabled } from './index';
 import { clearProdTargetCache } from './prodTargets';
 import { clearTableExistenceCache } from './tableExistence';
 import { removeProxyViews } from './proxyViews';
 import { getOrCompileDataformJson } from '../utils/dataformCompiler';
+import { pickBackendConfigurationTarget, resolveDataformOptions } from '../project/dataformOptions';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -77,7 +77,7 @@ async function removeProxyViewsCommand(ids?: string[]) {
         return;
     }
     const workspaceFolder = currentWorkspaceFolder();
-    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder) : undefined);
+    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder)) : undefined);
 }
 
 async function deferToProdActions(refreshPanel: () => Promise<void> | void) {

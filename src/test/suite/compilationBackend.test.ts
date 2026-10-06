@@ -1,9 +1,10 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
-import { isTransientGitRemoteError, pickBackendConfigurationTarget } from '../../utils/remoteCompiler';
+import { isTransientGitRemoteError } from '../../utils/remoteCompiler';
+import { pickBackendConfigurationTarget, resolveDataformOptions } from '../../project/dataformOptions';
 
-suite('remoteCompiler.pickBackendConfigurationTarget', () => {
+suite('pickBackendConfigurationTarget', () => {
     test('updates the workspace value that shadows the user setting', () => {
         // User settings "api" + workspace "cli": writing to user settings would have no effect
         assert.strictEqual(
@@ -40,5 +41,26 @@ suite('remoteCompiler.isTransientGitRemoteError', () => {
         assert.ok(!isTransientGitRemoteError({ code: 3, details: 'Error during remote operation: `Couldn\'t find remote ref feature/x`.' }));
         assert.ok(!isTransientGitRemoteError({ code: 3, details: 'Invalid compilation config' }));
         assert.ok(!isTransientGitRemoteError({ code: 7, details: 'Permission denied' }));
+    });
+});
+
+suite('resolveDataformOptions', () => {
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+
+    test('gives a compile everything it reads from settings, with their defaults', () => {
+        const options = resolveDataformOptions(root);
+        assert.strictEqual(options.compilationMode, 'cli');
+        assert.strictEqual(options.compilerOptions, '');
+        assert.strictEqual(options.compileTimeout, '5m');
+        assert.strictEqual(options.persistCompilation, true);
+        assert.ok(options.cli?.path, 'the Dataform CLI is resolved for a CLI compile');
+        assert.deepStrictEqual(options.api, { gcpProjectId: undefined, serviceAccountJsonPath: undefined, releaseConfig: undefined });
+    });
+
+    test('a caller that has chosen the Compilation Mode gets it, and no CLI is looked for in API mode', () => {
+        const options = resolveDataformOptions(root, 'api');
+        assert.strictEqual(options.compilationMode, 'api');
+        assert.strictEqual(options.cli, undefined);
+        assert.ok(resolveDataformOptions(root, 'cli').cli);
     });
 });

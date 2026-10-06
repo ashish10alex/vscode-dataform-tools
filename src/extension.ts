@@ -21,7 +21,7 @@ import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './c
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
-import { initRemoteCompiler, isRemoteMode } from './utils/remoteCompiler';
+import { initRemoteCompiler } from './utils/remoteCompiler';
 import { clearRemoteCompileCache } from './utils/remoteCompileCache';
 import { getQueryStringForPreview, previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
@@ -45,6 +45,7 @@ import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
 import { currentDataformRoot, initProjects, projects, requiredTools } from './project';
+import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
 
@@ -121,7 +122,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Only when the project is unambiguous: the compiled JSON is shared by the whole window
     const dataformFolders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath).filter(isDataformWorkspace);
     if (dataformFolders.length === 1) {
-        prewarmCliCompilation(dataformFolders[0]).catch((error) => logger.error(`Failed to prepare the saved compilation: ${error}`));
+        prewarmCliCompilation(dataformFolders[0], resolveDataformOptions(dataformFolders[0])).catch((error) => logger.error(`Failed to prepare the saved compilation: ${error}`));
     }
     registerDeferEditorHints(context);
     registerExecutedSqlProvider(context);

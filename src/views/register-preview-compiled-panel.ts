@@ -34,7 +34,7 @@ import {
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../types";
 import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTree";
 import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compilationInfo';
-import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
+import { setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
 import { watchGitHead, watchGitState } from '../gitHeadWatcher';
@@ -42,6 +42,7 @@ import { computeApiRunGitState } from '../apiRunGitState';
 import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
+import { isRemoteMode, resolveDataformOptions, setCompilationBackend } from '../project/dataformOptions';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -774,7 +775,7 @@ export class CompiledQueryPanel {
                 const includeDependentsCost = message.value.includeDependents;
                 const costWorkspaceFolder = await getWorkspaceFolder();
                 if (costWorkspaceFolder) {
-                    await ensureFreshCompilation(costWorkspaceFolder);
+                    await ensureFreshCompilation(costWorkspaceFolder, resolveDataformOptions(costWorkspaceFolder));
                 }
                 const compiledForCost = compiledJson(costWorkspaceFolder);
                 if(compiledForCost){

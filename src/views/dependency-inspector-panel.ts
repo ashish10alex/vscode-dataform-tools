@@ -3,11 +3,11 @@ import { compiledJson } from '../project';
 import { Uri } from 'vscode';
 import { randomUUID } from 'crypto';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
-import { isRemoteMode } from '../utils/remoteCompiler';
 import { queryDryRun } from '../bigqueryDryRun';
 import { queryBigQuery } from '../bigqueryRunQuery';
 import { fetchTableMetadata } from '../hoverProvider';
 import { DataformCompiledJson, Target, Table, Assertion, Operation } from '../types';
+import { isRemoteMode, resolveDataformOptions } from '../project/dataformOptions';
 
 type FilterPreset = {
     id: string;
@@ -127,7 +127,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         });
                         return;
                     }
-                    compiled = await getOrCompileDataformJson(workspaceFolder);
+                    compiled = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
                     if (!compiled) {
                         panel.webview.postMessage({
                             type: 'error',

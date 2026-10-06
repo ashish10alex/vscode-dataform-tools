@@ -6,6 +6,7 @@ import { DataformCompiledJson } from './types';
 import path from 'path';
 import * as fs from 'fs';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
+import { resolveDataformOptions } from './project/dataformOptions';
 
 
 
@@ -35,7 +36,7 @@ async function getLocationForRefsAndResolve(document: vscode.TextDocument, searc
     let dataformCompiledJson: DataformCompiledJson | undefined;
     if (!compiledJson()) {
         vscode.window.showWarningMessage('Compile the Dataform project once for faster go to definition');
-        ({ dataformCompiledJson } = await runCompilation(workspaceFolder)); // Takes ~1100ms
+        ({ dataformCompiledJson } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder))); // Takes ~1100ms
     } else {
         dataformCompiledJson = compiledJson();
     }

@@ -9,7 +9,7 @@ import { loadDataformTools } from "../lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
 import { BigQueryDryRunResponse, CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
 import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
-import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig } from './dataformCompiler';
+import { runCompilation, getOrCompileDataformJson } from './dataformCompiler';
 import { getDataformCliCmdBasedOnScope } from './executableResolver';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
@@ -19,6 +19,7 @@ import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
 import { proxyViewsMayExist } from '../defer/proxyViews';
+import { getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, resolveDataformOptions } from '../project/dataformOptions';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -201,7 +202,7 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
             logger.debug('No cached compilation found, performing fresh compilation');
         }
         prepareDeferral(workspaceFolder);
-        let { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder)); // Takes ~1100ms
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
@@ -421,7 +422,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     if (!workspaceFolder) {
         return;
     }
-    let dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    let dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
     let declarations = dataformCompiledJson?.declarations;
     let tables = dataformCompiledJson?.tables;
@@ -518,7 +519,7 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
 export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    let dataformCompiledJson = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
     if (selectedFiles && dataformCompiledJson.dataformCompiledJson !== undefined) {
         for (let i = 0; i < selectedFiles.length; i++) {

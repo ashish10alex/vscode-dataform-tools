@@ -8,6 +8,7 @@ import type { DataformTools } from "@ashishalex/dataform-tools";
 import { loadDataformTools } from "./lazySdk";
 import { countActionTypes } from './shared/actionTypes';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
+import { resolveDataformOptions } from './project/dataformOptions';
 
 export async function sendWorkflowInvocationNotification(
     url: string,
@@ -300,7 +301,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             const staleWorkspaceFolder = await getWorkspaceFolder();
             if (staleWorkspaceFolder) {
                 progress.report({ message: 'Waiting for the Dataform project to finish compiling...' });
-                await ensureFreshCompilation(staleWorkspaceFolder);
+                await ensureFreshCompilation(staleWorkspaceFolder, resolveDataformOptions(staleWorkspaceFolder));
             }
         }
         let compiled = compiledJson();
@@ -318,7 +319,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
             // 1
             progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 14.28 });
-            let { dataformCompiledJson } = await runCompilation(workspaceFolder); // ~1100ms
+            let { dataformCompiledJson } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder)); // ~1100ms
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during compilation.');
                 return;

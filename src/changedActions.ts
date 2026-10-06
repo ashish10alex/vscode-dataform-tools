@@ -10,11 +10,12 @@ import { logger } from './logger';
 import { changedFileKey, describeComparison } from './shared/changeComparison';
 import { ChangedActionsView, DataformCompiledJson, ExecutionMode, LastRunRequest } from './types';
 import { ChangedAction, CompiledGraphDiff, diffCompiledGraphs } from './utils/compiledGraphDiff';
-import { compileDataform, getDataformCompilerOptions, isCompilationStale, parseCompiledString, runCompilation } from './utils/dataformCompiler';
-import { compileRemoteCommit, isRemoteMode } from './utils/remoteCompiler';
+import { compileDataform, isCompilationStale, parseCompiledString, runCompilation } from './utils/dataformCompiler';
+import { compileRemoteCommit } from './utils/remoteCompiler';
 import { runIncludedTargets } from './utils/dataformHelpers';
 import { extractSnapshot, mirrorTree } from './utils/gitSnapshot';
 import { perfCount } from './perf';
+import { getDataformCompilerOptions, isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 /*
  * "Run changed": runs only the actions whose compiled output differs from the merge-base with the
@@ -147,7 +148,7 @@ async function compileLocalBase(workspaceFolder: string, sha: string): Promise<D
         if (fs.existsSync(path.join(snapshotDir, 'package.json')) && fs.existsSync(nodeModules)) {
             await mirrorTree(nodeModules, path.join(snapshotDir, 'node_modules'));
         }
-        const { compiledString, errors } = await compileDataform(snapshotDir);
+        const { compiledString, errors } = await compileDataform(snapshotDir, resolveDataformOptions(snapshotDir, 'cli'));
         if (!compiledString) {
             const details = (errors ?? []).slice(0, 3).map((e) => (e.fileName ? `${e.fileName}: ${e.error}` : e.error)).join('\n');
             throw new Error(`Could not compile ${sha.slice(0, 7)}: ${details || 'unknown error'}`);
@@ -205,7 +206,7 @@ async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowComp
 
     if (base.remote) {
         if (!allowCompile) {
-            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, true, day);
+            return compileRemoteCommit(workspaceFolder, resolveDataformOptions(workspaceFolder, 'api'), base.mergeBaseSha, true, day);
         }
     } else {
         const cached = await readLocalBase(key);
@@ -216,7 +217,7 @@ async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowComp
 
     const compile = (async () => {
         if (base.remote) {
-            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, false, day);
+            return compileRemoteCommit(workspaceFolder, resolveDataformOptions(workspaceFolder, 'api'), base.mergeBaseSha, false, day);
         }
         const graph = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Compiling ${base.baseRef} @ ${base.mergeBaseSha.slice(0, 7)}` },
@@ -301,7 +302,7 @@ export async function prepareChangedActions(workspaceFolder: string): Promise<Ch
     return vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Working out changed actions…' },
         async () => {
-            const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
+            const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
             if (!dataformCompiledJson) {
                 vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
                 return undefined;

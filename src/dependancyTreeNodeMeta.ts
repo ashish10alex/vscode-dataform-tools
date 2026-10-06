@@ -2,6 +2,7 @@ import { DependancyModelMetadata } from "./types";
 import { compiledJson } from './project';
 import { GraphEdge, buildDependencyGraph } from "./shared/buildDependencyGraph";
 import { getRelativePath, getVSCodeDocument, getWorkspaceFolder, runCompilation } from "./utils";
+import { resolveDataformOptions } from './project/dataformOptions';
 
 export async function generateDependancyTreeMetadata(): Promise<{
     dependancyTreeMetadata: DependancyModelMetadata[];
@@ -16,7 +17,7 @@ export async function generateDependancyTreeMetadata(): Promise<{
             return;
         }
 
-        compiled = (await runCompilation(workspaceFolder)).dataformCompiledJson; // Takes ~1100ms
+        compiled = (await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder))).dataformCompiledJson; // Takes ~1100ms
     }
 
     if (!compiled) {

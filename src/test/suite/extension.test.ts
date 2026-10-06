@@ -10,6 +10,7 @@ import { DataformCompiledJson } from '../../types';
 import { getMetadataForSqlxFileBlocks } from '../../sqlxFileParser';
 import { tableQueryOffset, incrementalTableOffset } from '../../constants';
 import { setDiagnostics } from '../../setDiagnostics';
+import { resolveDataformOptions } from '../../project/dataformOptions';
 import { calculateIncrementalSkipPreOpsOffset } from '../../offsetCalculations';
 import { getDocumentSymbols } from '../../documentSymbols';
 import { getQueryStringForPreview } from '../../previewQueryResults';
@@ -29,7 +30,7 @@ const workspaceFolder = path.join(projectRoot, 'src', 'test', 'test-workspace');
 // Compiling the test workspace takes ~1s, so every test that needs the compiled json shares one compile
 let compiledTestWorkspace: Promise<DataformCompiledJson> | undefined;
 function compileTestWorkspace(): Promise<DataformCompiledJson> {
-    compiledTestWorkspace ??= compileDataform(workspaceFolder).then(({ compiledString, errors }) => {
+    compiledTestWorkspace ??= compileDataform(workspaceFolder, resolveDataformOptions(workspaceFolder)).then(({ compiledString, errors }) => {
         if (errors) {
             throw new Error(JSON.stringify(errors, null, 2));
         }
