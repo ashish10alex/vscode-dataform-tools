@@ -298,7 +298,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                     <div>
                         <div className="font-semibold mb-0.5">Estimation Failed</div>
                         <div className="opacity-90">
-                            {state.errorMessage || state.tagDryRunStatsMeta?.error?.message}
+                            {state.errorMessage || state.tagDryRunStatsMeta?.error}
                         </div>
                     </div>
                 </div>
