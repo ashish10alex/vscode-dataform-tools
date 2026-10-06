@@ -216,6 +216,23 @@ suite('Dataform Backend: compile', () => {
         assert.strictEqual(backend.rawResult, undefined);
     });
 
+    test('a result handed over outside a compile is kept the same way, and can be forgotten', () => {
+        const backend = new DataformBackend(async () => ({}));
+        assert.deepStrictEqual([backend.rawResult, backend.rawIndices, backend.graph], [undefined, undefined, undefined]);
+        const compiled = fixture('dataform');
+        backend.keep(compiled);
+        assert.strictEqual(backend.rawResult, compiled);
+        assert.strictEqual(backend.rawIndices?.fileNodeMap.get('definitions/marts/dim_customers.sqlx')?.length, 3);
+        const graph = backend.graph;
+        assert.strictEqual(Object.keys(graph!.actions).length, 20);
+        assert.strictEqual(backend.graph, graph, 'the graph is built once per result');
+
+        backend.keep(fixture('dataform-broken'));
+        assert.notStrictEqual(backend.graph, graph);
+        backend.forget();
+        assert.deepStrictEqual([backend.rawResult, backend.rawIndices, backend.graph], [undefined, undefined, undefined]);
+    });
+
     test('it names the files that affect a compile', () => {
         const backend = new DataformBackend(async () => ({}));
         const { compileFiles, name } = backend;

@@ -1,5 +1,6 @@
-import { buildCompiledGraph } from '../../shared/compiledGraph';
+import { CompiledGraph, buildCompiledGraph } from '../../shared/compiledGraph';
 import type { DataformCompiledJson } from '../../types';
+import { CompiledIndices, computeIndices } from '../../utils/compiledJsonIndex';
 import type { Backend, BackendRequest, CompileResult } from '../backend';
 import type { CompileFiles } from '../compileFiles';
 import { RawCompileError, buildDataformGraph, toCompileError } from './graph';
@@ -26,12 +27,15 @@ export type RawCompiler = (request: BackendRequest<DataformOptions>) => Promise<
 
 /**
  * The Dataform Backend of one Project. Besides the Compiled Graph it keeps the raw compile result, which Dataform-only
- * features (defer, column lineage, config block, Dataform API runs) read through `rawResult`.
+ * features (defer, column lineage, config block, Changed Actions, Dataform API runs) read through `rawResult` and
+ * `rawIndices`. Nothing else holds a compile result.
  */
 export class DataformBackend implements Backend<DataformOptions> {
     readonly name = 'dataform';
     readonly compileFiles = DATAFORM_COMPILE_FILES;
     private raw: DataformCompiledJson | undefined;
+    private indices: CompiledIndices | undefined;
+    private builtGraph: CompiledGraph | undefined;
 
     constructor(private readonly compileRaw: RawCompiler) {}
 
@@ -43,15 +47,48 @@ export class DataformBackend implements Backend<DataformOptions> {
         return this.raw;
     }
 
+    /** Lookups over `rawResult`, built once per result */
+    get rawIndices(): CompiledIndices | undefined {
+        return this.indices;
+    }
+
+    /** The Compiled Graph of `rawResult`, built when first asked for */
+    get graph(): CompiledGraph | undefined {
+        if (this.raw && !this.builtGraph) {
+            this.builtGraph = buildDataformGraph(this.raw);
+        }
+        return this.builtGraph;
+    }
+
+    /**
+     * Makes `compiled` the Project's compile result. For the compile paths, which also produce a result outside
+     * `compile`: the saved one loaded at startup, and a compile the user starts from the remote mode menu.
+     */
+    keep(compiled: DataformCompiledJson) {
+        if (compiled === this.raw) {
+            return;
+        }
+        this.indices = computeIndices(compiled);
+        this.raw = compiled;
+        this.builtGraph = undefined;
+    }
+
+    /** Drops the compile result, so that the next read compiles again */
+    forget() {
+        this.raw = undefined;
+        this.indices = undefined;
+        this.builtGraph = undefined;
+    }
+
     async compile(request: BackendRequest<DataformOptions>): Promise<CompileResult> {
         const { compiled, errors = [] } = await this.compileRaw(request);
         request.signal.throwIfAborted();
         if (compiled) {
-            this.raw = compiled;
+            this.keep(compiled);
         }
         const graphErrors = compiled?.graphErrors?.compilationErrors ?? [];
         return {
-            graph: compiled ? buildDataformGraph(compiled) : buildCompiledGraph([]),
+            graph: (compiled && this.graph) || buildCompiledGraph([]),
             errors: [...graphErrors, ...errors].map(toCompileError),
         };
     }
