@@ -260,8 +260,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     snoozeManager.registerWebviewHandlers(
         (msg) => {
+            // The snooze manager only ever says when the pause ends
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
-                CompiledQueryPanel.centerPanel.postMessage(msg);
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ snoozeEndTime: msg.snoozeEndTime ?? null });
             }
         },
         () => !!(CompiledQueryPanel.centerPanel?.webviewPanel?.visible)
@@ -346,7 +347,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     setOnCompilationInfoChanged((info) => {
-        CompiledQueryPanel?.centerPanel?.postMessage({ compilationInfo: info });
+        CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
     });
 
     recompileActiveDocument = async () => {
@@ -829,7 +830,6 @@ export class CompiledQueryPanel {
                         "testQuery": fileMetadata?.queryMeta?.testQuery,
                         "expectedOutputQuery": fileMetadata?.queryMeta?.expectedOutputQuery,
                         "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                        "tagDryRunStatsMeta": tagDryRunStatsMeta,
                         "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
                         "dryRunStatByNodeType": dryRunStatByNodeType,
@@ -851,6 +851,7 @@ export class CompiledQueryPanel {
                         "modelType": fileMetadata?.queryMeta?.type,
                         "actionTypes": [...new Set((curFileMeta?.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                     });
+                    this.centerPanel?.updateDataformBlock({ tagCostEstimate: tagDryRunStatsMeta && { rows: tagDryRunStatsMeta.tagDryRunStatsList, error: tagDryRunStatsMeta.error } });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
                 }
@@ -1196,11 +1197,10 @@ export class CompiledQueryPanel {
                     "errorType": CompilationErrorType.MISSING_EXECUTABLE,
                     "isHelperFile": false,
                     "tableOrViewQuery": null,
-                    "projectConfig": null,
-                    "packageJsonContent": null,
                     "declarations": null,
                     "compiledQuerySchema": null,
                 });
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             }
             return;
         }
@@ -1239,10 +1239,9 @@ export class CompiledQueryPanel {
                 "isHelperFile": false,
                 "declarations": null,
                 "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "compiledQuerySchema": null,
             });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
 
@@ -1254,11 +1253,10 @@ export class CompiledQueryPanel {
                 "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
             });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             await this.postMessage({
@@ -1267,12 +1265,11 @@ export class CompiledQueryPanel {
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
             await this.postMessage({
@@ -1282,10 +1279,9 @@ export class CompiledQueryPanel {
                 "recompiling": false,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "declarations": null
             });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             await this.postMessage({
@@ -1295,11 +1291,10 @@ export class CompiledQueryPanel {
                 "isHelperFile": false,
                 "declarations": null,
                 "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
         if(curFileMeta.errors?.dataformCompilationErrors){
@@ -1327,7 +1322,6 @@ export class CompiledQueryPanel {
                     const { lineNumber, sourceContext } = parseCompilationStack(compilationError.stack);
                     return { error: compilationError.error, fileName: compilationError.fileName, lineNumber, sourceContext };
                 }),
-                "possibleResolutions": curFileMeta.possibleResolutions ?? [],
                 "errorMessage": null,
                 "recompiling": false,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
@@ -1343,11 +1337,10 @@ export class CompiledQueryPanel {
                 "operationsQuery": null,
                 "testQuery": null,
                 "expectedOutputQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ possibleResolutions: curFileMeta.possibleResolutions ?? [], projectConfig: undefined, packageJson: undefined });
             return;
         }
 
@@ -1360,9 +1353,7 @@ export class CompiledQueryPanel {
         if (isConfigFile) {
             await this.postMessage({
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "projectConfig": curFileMeta.projectConfig,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "packageJsonContent": curFileMeta.packageJsonContent,
                 "recompiling": false,
                 "isHelperFile": false,
                 "declarations": null,
@@ -1378,6 +1369,7 @@ export class CompiledQueryPanel {
                 "operationsQuery": null,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             return;
         }
         // PropertyGraph actions live in yaml files that produce no queries, so they never
@@ -1417,10 +1409,9 @@ export class CompiledQueryPanel {
                     "operationsQuery": null,
                     "testQuery": null,
                     "expectedOutputQuery": null,
-                    "projectConfig": null,
-                    "packageJsonContent": null,
                     "compiledQuerySchema": null,
                 });
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
 
                 if (isCompilationStale()) {
                     await this.postMessage({ "dryRunning": false });
@@ -1449,11 +1440,10 @@ export class CompiledQueryPanel {
                     "models": null,
                     "declarations": null,
                     "tableOrViewQuery": null,
-                    "projectConfig": null,
-                    "packageJsonContent": null,
                     "compiledQuerySchema": null,
                     "workspaceFolder": workspaceFolder,
                 });
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
                 return;
             }
         }
@@ -1521,12 +1511,11 @@ export class CompiledQueryPanel {
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
                 "isHelperFile": false,
                 "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
                 "declarations": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
 
@@ -1566,7 +1555,6 @@ export class CompiledQueryPanel {
             "errorType": null,
             "errorMessage": null,
             "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-            "packageJsonContent": curFileMeta.packageJsonContent,
             "isHelperFile": false,
             "workspaceFolder": workspaceFolder,
     });
@@ -1670,6 +1658,7 @@ export class CompiledQueryPanel {
                 dryRunStatByNodeName[assertionQueriesMeta[i].targetName] = cost;
             }
         });
+        this.updateDataformBlock({ packageJson: curFileMeta.packageJsonContent ?? undefined });
         (perTableDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
             const cost = formatCost(result, "");
             if (cost && tableQueriesMeta[i]) {
@@ -1811,18 +1800,16 @@ export class CompiledQueryPanel {
                 "dataformTags": dataformTags,
                 "modelType": fileMetadata.queryMeta.type,
                 "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
-                "snoozeEndTime": snoozeManager.getSnoozeEndTime(),
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "recompiling": false,
                 "dryRunning": false,
                 "declarations": null,
                 "compilerOptions": compilerOptions,
                 "errorType": null,
-                "projectConfig": curFileMeta.projectConfig,
                 "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "packageJsonContent": curFileMeta.packageJsonContent,
                 "isHelperFile": false
             });
+            this.updateDataformBlock({ snoozeEndTime: snoozeManager.getSnoozeEndTime(), projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             this._cachedResults = {
                 fileMetadata,
                 curFileMeta,
