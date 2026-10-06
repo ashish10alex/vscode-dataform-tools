@@ -31,7 +31,7 @@ import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
 import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
-import { CompiledQueryPanel, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import { CompiledQueryPanel, onDidPostPanelMessage, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import { initDeferToProd } from './defer/deferStatusBar';
 import { initProdTargets } from './defer/prodTargets';
 import { registerDeferEditorHints } from './defer/deferEditorHints';
@@ -477,7 +477,7 @@ export async function activate(context: vscode.ExtensionContext) {
     endActivateSpan();
 
     // Internal: read by `just bench` (src/bench), not a public API
-    return { __perf: { getPerfSnapshot, resetPerf } };
+    return { __perf: { getPerfSnapshot, resetPerf }, __panel: { onDidPostMessage: onDidPostPanelMessage } };
 }
 
 // This method is called when your extension is deactivated

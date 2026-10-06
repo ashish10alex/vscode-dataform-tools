@@ -65,6 +65,13 @@ check:
 test:
     npm run test
 
+# Re-record what the compiled query panel is sent for the test workspace, after an intended change (src/panelRecordings)
+record-panel:
+    npm run compile
+    rm -rf .vscode-test/user-data
+    UPDATE_PANEL_RECORDINGS=1 npx vscode-test --label panel
+    git status --short src/panelRecordings/recordings
+
 # Set BENCH_GCP_PROJECT for real BigQuery dry runs, BENCH_ITERATIONS to change the 10 runs per loop.
 # macOS only (like `just test`) and needs the Dataform CLI on PATH.
 # Benchmark startup, save -> preview and editor switch on a generated project

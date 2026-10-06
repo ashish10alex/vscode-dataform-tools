@@ -1,0 +1,172 @@
+{
+  "actionTypes": [
+    "table",
+    "assertion"
+  ],
+  "assertionQuery": "\n -- Assertions: [1] \nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1\n; \n",
+  "compilerOptions": "",
+  "dataformCoreVersion": "3.0.39",
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
+  "declarations": null,
+  "dependents": [
+    {
+      "database": "drawingfire-b72a8",
+      "name": "0200_GAME_DETAILS",
+      "schema": "dataform"
+    },
+    {
+      "database": "drawingfire-b72a8",
+      "name": "0300_INCREMENTAL",
+      "schema": "dataform"
+    },
+    {
+      "database": "drawingfire-b72a8",
+      "name": "dataform_0100_GAMES_META_assertions_uniqueKey_0",
+      "schema": "dataform_assertions"
+    },
+    {
+      "database": "drawingfire-b72a8",
+      "name": "0500_OPERATIONS",
+      "schema": "dataform"
+    }
+  ],
+  "errorMessage": null,
+  "errorType": null,
+  "expectedOutputQuery": "",
+  "incrementalPreOpsQuery": "",
+  "incrementalQuery": "",
+  "isHelperFile": false,
+  "lineageMetadata": null,
+  "models": [
+    {
+      "actionDescriptor": {
+        "description": "games played by Manchester United in 2024"
+      },
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "GAMES",
+          "schema": "football_data"
+        },
+        {
+          "database": "drawingfire-b72a8",
+          "name": "GAME_EVENTS",
+          "schema": "football_data"
+        }
+      ],
+      "fileName": "definitions/0100_GAMES_META.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n\n\n\nWITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n",
+      "tags": [
+        "FOOTY"
+      ],
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0100_GAMES_META",
+        "schema": "dataform"
+      },
+      "type": "table"
+    },
+    {
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "0100_GAMES_META",
+          "schema": "dataform"
+        }
+      ],
+      "fileName": "definitions/0100_GAMES_META.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1\n",
+      "tags": [
+        "FOOTY"
+      ],
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "dataform_0100_GAMES_META_assertions_uniqueKey_0",
+        "schema": "dataform_assertions"
+      },
+      "type": "assertion"
+    }
+  ],
+  "modelType": "table",
+  "nonIncrementalQuery": "",
+  "operationsQuery": "",
+  "packageJsonContent": null,
+  "postOperations": "",
+  "preOperations": "",
+  "projectConfig": {
+    "assertionSchema": "dataform_assertions",
+    "defaultDatabase": "drawingfire-b72a8",
+    "defaultLocation": "europe-west2",
+    "defaultSchema": "dataform",
+    "warehouse": "bigquery"
+  },
+  "propertyGraphs": null,
+  "recompiling": false,
+  "relativeFilePath": "definitions/0100_GAMES_META.sqlx",
+  "tableOrViewQuery": "WITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n\n;",
+  "targetTablesOrViews": [
+    {
+      "actionDescriptor": {
+        "description": "games played by Manchester United in 2024"
+      },
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "GAMES",
+          "schema": "football_data"
+        },
+        {
+          "database": "drawingfire-b72a8",
+          "name": "GAME_EVENTS",
+          "schema": "football_data"
+        }
+      ],
+      "fileName": "definitions/0100_GAMES_META.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n\n\n\nWITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n",
+      "tags": [
+        "FOOTY"
+      ],
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0100_GAMES_META",
+        "schema": "dataform"
+      },
+      "type": "table"
+    },
+    {
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "0100_GAMES_META",
+          "schema": "dataform"
+        }
+      ],
+      "fileName": "definitions/0100_GAMES_META.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1\n",
+      "tags": [
+        "FOOTY"
+      ],
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "dataform_0100_GAMES_META_assertions_uniqueKey_0",
+        "schema": "dataform_assertions"
+      },
+      "type": "assertion"
+    }
+  ],
+  "testQuery": "",
+  "workspaceFolder": "<workspace>"
+}

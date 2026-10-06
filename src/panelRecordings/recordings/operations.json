@@ -1,0 +1,92 @@
+{
+  "actionTypes": [
+    "operations"
+  ],
+  "assertionQuery": "",
+  "compilerOptions": "",
+  "dataformCoreVersion": "3.0.39",
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
+  "declarations": null,
+  "dependents": [],
+  "errorMessage": null,
+  "errorType": null,
+  "expectedOutputQuery": "",
+  "incrementalPreOpsQuery": "",
+  "incrementalQuery": "",
+  "isHelperFile": false,
+  "lineageMetadata": null,
+  "models": [
+    {
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "0100_GAMES_META",
+          "schema": "dataform"
+        }
+      ],
+      "fileName": "definitions/0500_OPERATIONS.sqlx",
+      "hasOutput": true,
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n -- Operations: [1] \n\n\nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
+      "tags": [
+        "OPS_TAG"
+      ],
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0500_OPERATIONS",
+        "schema": "dataform"
+      },
+      "type": "operations"
+    }
+  ],
+  "modelType": "operations",
+  "nonIncrementalQuery": "",
+  "operationsQuery": "\n -- Operations: [1] \n\n\nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
+  "packageJsonContent": null,
+  "postOperations": "",
+  "preOperations": "",
+  "projectConfig": {
+    "assertionSchema": "dataform_assertions",
+    "defaultDatabase": "drawingfire-b72a8",
+    "defaultLocation": "europe-west2",
+    "defaultSchema": "dataform",
+    "warehouse": "bigquery"
+  },
+  "propertyGraphs": null,
+  "recompiling": false,
+  "relativeFilePath": "definitions/0500_OPERATIONS.sqlx",
+  "tableOrViewQuery": "",
+  "targetTablesOrViews": [
+    {
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "0100_GAMES_META",
+          "schema": "dataform"
+        }
+      ],
+      "fileName": "definitions/0500_OPERATIONS.sqlx",
+      "hasOutput": true,
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n -- Operations: [1] \n\n\nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
+      "tags": [
+        "OPS_TAG"
+      ],
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0500_OPERATIONS",
+        "schema": "dataform"
+      },
+      "type": "operations"
+    }
+  ],
+  "testQuery": "",
+  "workspaceFolder": "<workspace>"
+}

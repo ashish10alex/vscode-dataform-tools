@@ -1,0 +1,84 @@
+{
+  "actionTypes": [
+    "assertion"
+  ],
+  "assertionQuery": "\n -- Assertions: [1] \nWITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"; \n",
+  "compilerOptions": "",
+  "dataformCoreVersion": "3.0.39",
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
+  "declarations": null,
+  "dependents": [],
+  "errorMessage": null,
+  "errorType": null,
+  "expectedOutputQuery": "",
+  "incrementalPreOpsQuery": "",
+  "incrementalQuery": "",
+  "isHelperFile": false,
+  "lineageMetadata": null,
+  "models": [
+    {
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "0100_CLUBS",
+          "schema": "dataform"
+        }
+      ],
+      "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n\nWITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0100_CLUBS_ASSER",
+        "schema": "dataform_assertions"
+      },
+      "type": "assertion"
+    }
+  ],
+  "modelType": "assertion",
+  "nonIncrementalQuery": "",
+  "operationsQuery": "",
+  "packageJsonContent": null,
+  "postOperations": "",
+  "preOperations": "",
+  "projectConfig": {
+    "assertionSchema": "dataform_assertions",
+    "defaultDatabase": "drawingfire-b72a8",
+    "defaultLocation": "europe-west2",
+    "defaultSchema": "dataform",
+    "warehouse": "bigquery"
+  },
+  "propertyGraphs": null,
+  "recompiling": false,
+  "relativeFilePath": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
+  "tableOrViewQuery": "",
+  "targetTablesOrViews": [
+    {
+      "dependencyTargets": [
+        {
+          "database": "drawingfire-b72a8",
+          "name": "0100_CLUBS",
+          "schema": "dataform"
+        }
+      ],
+      "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n\nWITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "0100_CLUBS_ASSER",
+        "schema": "dataform_assertions"
+      },
+      "type": "assertion"
+    }
+  ],
+  "testQuery": "",
+  "workspaceFolder": "<workspace>"
+}

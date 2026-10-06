@@ -1,0 +1,144 @@
+{
+  "actionTypes": [
+    "view",
+    "assertion",
+    "operations"
+  ],
+  "assertionQuery": "\n -- Assertions: [1] \nselect 14 as b\n    ; \n",
+  "compilerOptions": "",
+  "dataformCoreVersion": "3.0.39",
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
+  "declarations": null,
+  "dependents": [],
+  "errorMessage": null,
+  "errorType": null,
+  "expectedOutputQuery": "",
+  "incrementalPreOpsQuery": "",
+  "incrementalQuery": "",
+  "isHelperFile": false,
+  "lineageMetadata": null,
+  "models": [
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "select 1 as a",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_table_1",
+        "schema": "dataform"
+      },
+      "type": "view"
+    },
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n    select 12 as a\n    ",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_table_2",
+        "schema": "dataform"
+      },
+      "type": "view"
+    },
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n    select 14 as b\n    ",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_assert",
+        "schema": "dataform_assertions"
+      },
+      "type": "assertion"
+    },
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n -- Operations: [1] \n\n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_ops",
+        "schema": "dataform"
+      },
+      "type": "operations"
+    }
+  ],
+  "modelType": "js",
+  "nonIncrementalQuery": "",
+  "operationsQuery": "\n -- Operations: [1] \n\n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
+  "packageJsonContent": null,
+  "postOperations": "",
+  "preOperations": "",
+  "projectConfig": {
+    "assertionSchema": "dataform_assertions",
+    "defaultDatabase": "drawingfire-b72a8",
+    "defaultLocation": "europe-west2",
+    "defaultSchema": "dataform",
+    "warehouse": "bigquery"
+  },
+  "propertyGraphs": null,
+  "recompiling": false,
+  "relativeFilePath": "definitions/010_JS_MULTIPLE.js",
+  "tableOrViewQuery": "select 1 as a\n;\nselect 12 as a\n    \n;",
+  "targetTablesOrViews": [
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "select 1 as a",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_table_1",
+        "schema": "dataform"
+      },
+      "type": "view"
+    },
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n    select 12 as a\n    ",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_table_2",
+        "schema": "dataform"
+      },
+      "type": "view"
+    },
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n    select 14 as b\n    ",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_assert",
+        "schema": "dataform_assertions"
+      },
+      "type": "assertion"
+    },
+    {
+      "fileName": "definitions/010_JS_MULTIPLE.js",
+      "incrementalPreOps": [],
+      "incrementalQuery": "",
+      "query": "\n -- Operations: [1] \n\n    create or replace table\n    drawingfire-b72a8.dataform.test_js_ops\n    as \n    select 14 as b\n    \n",
+      "target": {
+        "database": "drawingfire-b72a8",
+        "name": "test_js_ops",
+        "schema": "dataform"
+      },
+      "type": "operations"
+    }
+  ],
+  "testQuery": "",
+  "workspaceFolder": "<workspace>"
+}
