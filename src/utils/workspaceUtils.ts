@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import fs from 'fs';
 import path from 'path';
 import { logger } from '../logger';
 import { FileNameMetadataResult, FileNameMetadata } from '../types';
+import { detectProjects } from '../project/detection';
 
 const supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
@@ -100,11 +100,7 @@ export async function getWorkspaceFolder(): Promise<string | undefined> {
 }
 
 export function isDataformWorkspace(workspacePath: string) {
-    const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
-    return dataformSignatureFiles.some(file => {
-        let filePath = path.join(workspacePath, file);
-        return fs.existsSync(filePath);
-    });
+    return detectProjects(workspacePath).some((project) => project.backend === 'dataform');
 }
 
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
