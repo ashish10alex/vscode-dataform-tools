@@ -1,4 +1,5 @@
 import type { BigQuerySlice, CompileStatus, DataformBlock, DbtBlock, FileSlice, HostMessage, ProjectSlice } from './panelContract';
+import { legacyModels } from './panelLegacyFile';
 import { DataformBlockMessage, isSliceMessage } from './panelLegacyState';
 
 /*
@@ -17,6 +18,12 @@ export interface PanelSlices {
      */
     settled?: CompileStatus;
     bigquery?: BigQuerySlice;
+    /**
+     * The dry-run results the columns on show come from, with the file they were for. The columns of the last dry
+     * runs stay while the next ones are out, so that the Schema tab does not empty on every save. Unset when the
+     * file on show has no action with columns.
+     */
+    columns?: { bigquery: BigQuerySlice; file: FileSlice };
     /** Always there, so that a component need not ask whether one has arrived */
     dataform: DataformBlock;
     dbt?: DbtBlock;
@@ -36,6 +43,18 @@ export function initialSlices(baked: Partial<PanelSlices> = {}): PanelSlices {
 
 /** What of the `dataform` block belongs to the file on show, and is not to be shown for the next one */
 const OF_THE_FILE = { deferral: null, leftoverProxies: null, propertyGraphs: null, propertyGraphValidations: null };
+
+/** Where the columns on show come from, after a `bigquery` slice */
+function columnsAfter(slices: PanelSlices, bigquery: BigQuerySlice): PanelSlices['columns'] {
+    // Dry runs are out, or none was made: what is on show stays
+    if (bigquery.dryRunning.length > 0) {
+        return slices.columns;
+    }
+    if (!slices.file || legacyModels(slices.file).length === 0) {
+        return undefined;
+    }
+    return bigquery.results.length > 0 ? { bigquery, file: slices.file } : slices.columns;
+}
 
 /**
  * The slices after a message from the host.
@@ -61,7 +80,7 @@ export function applyMessage(slices: PanelSlices, message: unknown, fileOnShow: 
         case 'compile status':
             return sent.value.status === 'compiling' ? { ...slices, compile: sent.value } : { ...slices, compile: sent.value, settled: sent.value };
         case 'bigquery':
-            return { ...slices, bigquery: sent.value };
+            return { ...slices, bigquery: sent.value, columns: columnsAfter(slices, sent.value) };
         case 'dbt':
             return { ...slices, dbt: sent.value };
         case 'dataform': {
