@@ -56,3 +56,15 @@ export function readRecordedManifest(name: Recording): RecordedManifest {
 export function exampleProjectRoot(name: ExampleProject): string {
     return path.join(fixturesDir(), 'projects', name);
 }
+
+/**
+ * Whole manifests, recorded from a real dbt by scripts/dbt/record-manifests.mjs (see
+ * src/test/fixtures/dbt-manifests/README.md): `dbt compile` of the example Project `dbt`, and `dbt parse` of
+ * `dbt-hooks`, which has nothing compiled and the Project's on-run hooks.
+ */
+export const FULL_MANIFESTS = ['dbt-core', 'dbt-v2', 'dbt-core-hooks-parsed', 'dbt-v2-hooks-parsed'] as const;
+export type FullManifest = (typeof FULL_MANIFESTS)[number];
+
+export function fullManifestPath(name: FullManifest): string {
+    return path.join(fixturesDir(), '..', 'dbt-manifests', `${name}.json`);
+}

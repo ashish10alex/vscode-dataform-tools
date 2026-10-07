@@ -70,6 +70,11 @@ test-node:
     npx tsc -p ./
     npm run test:node
 
+# Record the manifests a real dbt writes for the example Projects (src/test/fixtures/dbt-manifests); give a dbt-core 1.x and a dbt v2 binary
+record-dbt-manifests +binaries:
+    node scripts/dbt/record-manifests.mjs {{binaries}}
+    git status --short src/test/fixtures/dbt-manifests
+
 # Re-record what the compiled query panel is sent for the test workspace, after an intended change (src/panelRecordings)
 record-panel:
     npm run compile
