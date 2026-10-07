@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { ChevronDown, ChevronRight, Loader2, MessageSquareWarning } from "lucide-react";
 import type { CompileError } from "../../../src/backend/backend";
@@ -8,6 +8,7 @@ import { formatBytes } from "../../../src/shared/panelBigQueryView";
 import type { ColumnMetadata } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { CodeBlock } from "../../components/CodeBlock";
+import { SchemaTable } from "./SchemaTab";
 import { getUrlToNavigateToTableInBigQuery } from "../../utils/bigquery";
 import { vscode } from "../utils/vscode";
 
@@ -505,63 +506,59 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   );
 }
 
-/** The columns of a dry run's schema, a nested one under its parent's name */
-function flatColumns(fields: ColumnMetadata[], prefix = ""): Array<{ name: string; type: string; description?: string }> {
-  return fields.flatMap((field) => {
-    const name = prefix + field.name;
-    const type = field.mode === "REPEATED" ? `ARRAY<${field.type}>` : field.type;
-    return [{ name, type, description: field.description }, ...flatColumns(field.fields ?? [], `${name}.`)];
-  });
+/**
+ * The columns of a dbt action as BigQuery gives a schema: those of the dry run of its compiled query, each with the
+ * description its YAML gives where BigQuery has none. Until the dry run is back, the columns the YAML describes,
+ * without types.
+ */
+function schemaFields(action: PanelAction, fromDryRun: ColumnMetadata[] | undefined): ColumnMetadata[] {
+  const described = new Map((action.columns ?? []).map((column) => [column.path.join("."), column.description]));
+  if (!fromDryRun) {
+    return (action.columns ?? []).filter((column) => column.path.length === 1).map((column) => ({ name: column.path[0], type: "", description: column.description }));
+  }
+  const withDescriptions = (fields: ColumnMetadata[], prefix: string): ColumnMetadata[] =>
+    fields.map((field) => {
+      const path = prefix + field.name;
+      return { ...field, description: field.description || described.get(path), ...(field.fields ? { fields: withDescriptions(field.fields, `${path}.`) } : {}) };
+    });
+  return withDescriptions(fromDryRun, "");
 }
 
-/**
- * The columns of each action that is not a test: names and types from the dry run of its compiled query, with the
- * descriptions its YAML gives. Until the dry run is back, the columns the YAML describes.
- */
+/** One action's table on the Schema tab: the same table as a Dataform file has, with a line saying where its columns come from */
+function ActionSchema({ state, action, alone }: { state: PanelSlices; action: PanelAction; alone: boolean }) {
+  const { running, result } = dbtDryRunOf(state, action);
+  const fromDryRun = result?.schema?.fields;
+  const fields = useMemo(() => schemaFields(action, fromDryRun), [action, fromDryRun]);
+  const { database, schema, name } = action.target;
+  return (
+    <div data-dbt="schema" className="flex flex-col min-h-0" style={{ height: alone ? "calc(100vh - 180px)" : "60vh" }}>
+      <div className="pb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-mono text-sm">{dbtNameOf(state, action)}</span>
+        <span className={clsx("text-xs", result?.error ? ERROR : MUTED)}>
+          {fromDryRun
+            ? "From the dry run of the compiled query, with the descriptions the model's YAML gives."
+            : running
+              ? "The dry run is out: types come with it."
+              : result?.error
+                ? "The dry run failed, so there are no types. See the Compiled query tab."
+                : "No dry run yet: these are the columns the model's YAML describes."}
+        </span>
+      </div>
+      <div className="flex-1 min-h-0">
+        <SchemaTable fields={fields} exportName={`${[database, schema, name].filter(Boolean).join("_")}.json`} />
+      </div>
+    </div>
+  );
+}
+
+/** The Schema tab of a dbt file: a table for each action that is not a test */
 function SchemaTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   const actions = view.actions.filter((action) => action.kind !== "test" && action.kind !== "unit test" && action.sections.length > 0);
   return (
-    <div className="space-y-5 text-sm">
-      {actions.map((action) => {
-        const { running, result } = dbtDryRunOf(state, action);
-        const described = new Map((action.columns ?? []).map((column) => [column.path.join("."), column.description]));
-        const fromDryRun = result?.schema ? flatColumns(result.schema.fields) : undefined;
-        const columns = fromDryRun ?? (action.columns ?? []).map((column) => ({ name: column.path.join("."), type: "", description: column.description }));
-        return (
-          <div key={action.id} data-dbt="schema">
-            <div className="font-mono text-sm mb-1">{dbtNameOf(state, action)}</div>
-            {columns.length > 0 && (
-              <table className="w-full border-collapse">
-                <thead className={clsx("text-left text-[11px] uppercase tracking-wider", MUTED)}>
-                  <tr>
-                    <th className="py-1 font-normal">Column</th>
-                    <th className="py-1 font-normal">Type</th>
-                    <th className="py-1 font-normal">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {columns.map((column) => (
-                    <tr key={column.name} className="border-t border-[var(--vscode-widget-border)]">
-                      <td className="py-1.5 pr-4 font-mono text-xs align-top">{column.name}</td>
-                      <td className="py-1.5 pr-4 font-mono text-xs align-top text-[var(--vscode-textPreformat-foreground)]">{column.type}</td>
-                      <td className="py-1.5">{described.get(column.name) ?? column.description ?? ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <div className={clsx("mt-2 text-xs", result?.error ? ERROR : MUTED)}>
-              {fromDryRun
-                ? "From the dry run of the compiled query, with the descriptions the model's YAML gives."
-                : running
-                  ? "The dry run is out: types come with it."
-                  : result?.error
-                    ? "The dry run failed, so there are no types. See the Compiled query tab."
-                    : "No dry run yet: these are the columns the model's YAML describes."}
-            </div>
-          </div>
-        );
-      })}
+    <div className="p-4 space-y-4">
+      {actions.map((action) => (
+        <ActionSchema key={action.id} state={state} action={action} alone={actions.length === 1} />
+      ))}
     </div>
   );
 }
@@ -692,11 +689,16 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
           </div>
         )}
         {view.page !== "tool missing" && (
-          <div className="p-4">
-            {view.page === "panel" && tab === "compiled" && <CompiledTab state={state} view={view} />}
+          <>
+            {/* The schema table has its own frame, as it has in a Dataform file's panel */}
             {view.page === "panel" && tab === "schema" && <SchemaTab state={state} view={view} />}
-            {tab === "project" && <ProjectTab state={state} />}
-          </div>
+            {tab !== "schema" && (
+              <div className="p-4">
+                {view.page === "panel" && tab === "compiled" && <CompiledTab state={state} view={view} />}
+                {tab === "project" && <ProjectTab state={state} />}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
