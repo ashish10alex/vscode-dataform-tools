@@ -496,8 +496,11 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     await runIncludedTargets(context, workspaceFolder, includedTargets, includeDependencies, includeDownstreamDependents, fullRefresh, executionMode, lastRunRequest);
 }
 
-/** Runs the given actions with the CLI or the Dataform API, preparing defer to prod and recording `lastRunRequest` just before dispatching. */
-export async function runIncludedTargets(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>) {
+/**
+ * Runs the given actions with the CLI or the Dataform API, preparing defer to prod and recording `lastRunRequest` just
+ * before dispatching. Resolves to true when it created a workflow invocation on the pushed branch.
+ */
+export async function runIncludedTargets(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>): Promise<boolean> {
     const invocationConfig = {
         includedTargets: includedTargets,
         transitiveDependenciesIncluded: includeDependencies,
@@ -506,7 +509,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
     };
 
     if(executionMode === "api_workspace"){
-        if (!(await beginRun(lastRunRequest))) { return; }
+        if (!(await beginRun(lastRunRequest))) { return false; }
         await showLoadingProgress(
             "",
             syncAndrunDataformRemotely,
@@ -515,20 +518,20 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
             invocationConfig,
             compilerOptionsMap,
         );
-        return;
+        return false;
     }
 
     if(executionMode === "api"){
         if (!(await confirmRemoteRun())) {
-            return;
+            return false;
         }
-        if (!(await beginRun(lastRunRequest))) { return; }
+        if (!(await beginRun(lastRunRequest))) { return false; }
 
         const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
-            return;
+            return false;
         }
 
         try{
@@ -543,7 +546,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
             const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
             if (!gcpProjectLocation) {
                 vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
-                return;
+                return false;
             }
 
             const dataformClient = new (await loadDataformTools())(projectId, gcpProjectLocation);
@@ -563,6 +566,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
                 gcpProjectLocation,
                 repositoryName
             );
+            return true;
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
         }
@@ -570,9 +574,10 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         const actionsList = includedTargets.map((target) => `${target.database}.${target.schema}.${target.name}`);
         let dataformActionCmd = "";
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includeDependencies, includeDownstreamDependents, fullRefresh);
-        if (!(await beginRun(lastRunRequest))) { return; }
+        if (!(await beginRun(lastRunRequest))) { return false; }
         runCommandInTerminal(dataformActionCmd);
     }
+    return false;
 }
 
 export async function readDataformCoreVersion(

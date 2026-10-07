@@ -13,7 +13,8 @@ import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
-import { runCurrentFile } from "../runCurrentFile";
+import { runActions } from "../runActions";
+import { previewAction } from "../previewQueryResults";
 import { runMultipleTagsFromSelection, runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
 import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults } from "../types";
@@ -767,8 +768,7 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand("vscode-dataform-tools.columnLineage");
                 return;
               case 'preview':
-                // Until the panel reads SQL sections (piece 4.4) a preview is of the open file, as the runQuery command does it
-                await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+                await previewAction(message.action, message.section, message.alone);
                 return;
               case 'dataform.compileRemotely':
                 await vscode.commands.executeCommand('vscode-dataform-tools.compileRemotely');
@@ -812,8 +812,7 @@ export class CompiledQueryPanel {
                 return;
               }
               case 'run':
-                // Until the panel reads SQL sections (piece 4.4) the actions it names are those of the open file, which is what runs
-                await runCurrentFile(extensionContext, message.includeDependencies, message.includeDependents, message.fullRefresh, "cli");
+                await runActions(extensionContext, message.actions.map(targetId), message, "cli");
                 return;
               case 'runTags': {
                 const tagsWorkspaceFolder = await getWorkspaceFolder();
@@ -822,11 +821,7 @@ export class CompiledQueryPanel {
                 return;
               }
               case 'dataform.runApi':
-                const _includeDependencies = message.includeDependencies;
-                const _includeDependents = message.includeDependents;
-                const _fullRefresh = message.fullRefresh;
-                const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, message.workspace ? "api_workspace" : "api");
-                if(!result){
+                if (!(await runActions(extensionContext, message.actions.map(targetId), message, message.workspace ? "api_workspace" : "api"))) {
                     return;
                 }
                 const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];

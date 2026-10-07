@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { buildDataformGraph } from '../../backend/dataform/graph';
 import { previewQuery } from '../../bigquery/preview';
-import { Action, titledSections } from '../../shared/compiledGraph';
+import { Action, previewSection, titledSections } from '../../shared/compiledGraph';
 import type { DataformCompiledJson } from '../../types';
 
 const target = (name: string) => ({ database: 'p', schema: 'ds', name });
@@ -54,6 +54,15 @@ suite('preview from sections', () => {
         assert.strictEqual(previewQuery(audit, 'operation 2/2')?.sql, 'create temp table a as select 1;\nselect * from a;');
         // The script does not end with the first statement
         assert.strictEqual(previewQuery(audit, 'operation 1/2'), undefined);
+    });
+
+    test('the section a preview shows is the one whose rows are the action\'s, of the variant asked for', () => {
+        assert.strictEqual(previewSection(orders), 'query');
+        assert.strictEqual(previewSection(orders, true), 'incremental query');
+        assert.strictEqual(previewSection(graph.actions['p.ds.audit']), 'operation 2/2');
+        assert.strictEqual(previewSection(graph.actions['unit test.orders_total']), 'test query');
+        // Not incremental, so it has no such variant
+        assert.strictEqual(previewSection(graph.actions['p.ds.orders_not_null'], true), undefined);
     });
 
     test('post-operations are never run as a preview, though they are dry-run', () => {

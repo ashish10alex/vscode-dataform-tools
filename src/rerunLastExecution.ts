@@ -5,6 +5,7 @@ import { ExecutionMode, LastRunRequest } from './types';
 import { findMissingItems, getLastRun, isFromOtherFolder, planReplay, summarizeLastRun, describeOverrides } from './lastRun';
 import { getDataformTags, getOrCompileDataformJson, getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
 import { runCurrentFile } from './runCurrentFile';
+import { runActions } from './runActions';
 import { runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { runChangedActions } from './changedActions';
 import { withDeferOverride } from './defer/deferRun';
@@ -90,6 +91,9 @@ export async function replayRun(context: vscode.ExtensionContext, workspaceFolde
     switch (runner) {
         case 'currentFile':
             await runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, executionMode, items[0]);
+            return;
+        case 'actions':
+            await runActions(context, items, { includeDependencies, includeDependents, fullRefresh }, executionMode);
             return;
         case 'files':
             await runMultipleFilesFromSelection(context, workspaceFolder, items, includeDependencies, includeDependents, fullRefresh, executionMode);

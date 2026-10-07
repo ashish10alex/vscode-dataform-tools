@@ -54,7 +54,7 @@ export async function gatherQueryAutoCompletionMeta() {
 
 
 /** A Dataform action as it is dry-run with `skipPreOpsInDryRun` on: without its pre-operations, and so without the dry run of its post-operations, which needs them */
-function withoutPreOperations(action: Action): Action {
+export function withoutPreOperations(action: Action): Action {
     const isPreOperations = (title: string) => /^(incremental )?pre_operations/.test(title);
     if (!action.sections.some((section) => isPreOperations(section.title))) {
         return action;
