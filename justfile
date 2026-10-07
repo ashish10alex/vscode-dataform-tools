@@ -65,6 +65,11 @@ check:
 test:
     npm run test
 
+# Run the tests that need no VS Code: the Backends' own, in plain Node (fast, any OS)
+test-node:
+    npx tsc -p ./
+    npm run test:node
+
 # Re-record what the compiled query panel is sent for the test workspace, after an intended change (src/panelRecordings)
 record-panel:
     npm run compile
