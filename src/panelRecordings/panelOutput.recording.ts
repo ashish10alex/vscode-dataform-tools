@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import { toLegacyState } from '../shared/panelLegacyState';
+import { legacyStateReader } from '../shared/panelLegacyState';
 
 /*
 Recorded panel output: opens files of src/test/test-workspace in the real extension and compares what the
@@ -109,6 +109,7 @@ suite('recorded panel output', function () {
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
         const panel: PanelApi | undefined = (await extension.activate())?.__panel;
         assert.ok(panel, 'The extension does not expose __panel');
+        const toLegacyState = legacyStateReader();
         subscription = panel.onDidPostMessage((message) => {
             if (message && typeof message === 'object') {
                 // What the panel itself would merge: a slice is flattened as the panel flattens it

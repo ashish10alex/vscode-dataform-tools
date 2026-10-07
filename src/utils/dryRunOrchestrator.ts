@@ -188,7 +188,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         recordDryRunSchema(document, curFileMeta, impactResult.schema);
     }
 
-    const results = { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets };
+    const results = { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets, dryRuns };
 
     if (dryRuns.some(({ response }) => response?.error?.hasError)) {
         if (sqlxBlockMetadata) {
