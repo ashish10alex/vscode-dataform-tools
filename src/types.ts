@@ -349,6 +349,8 @@ export interface GitHubContentResponse {
 export interface QueryWtType {
     query: string;
     type: string;
+    /** Where the query's job runs, when that is not the BigQuery client's own project and location */
+    place?: { projectId?: string; location?: string };
 }
 
 export interface TableBigQueryConfig {

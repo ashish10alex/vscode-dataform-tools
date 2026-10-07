@@ -3,7 +3,9 @@ import clsx from "clsx";
 import { ChevronDown, ChevronRight, Loader2, MessageSquareWarning } from "lucide-react";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
-import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtNameOf, dbtView } from "../../../src/shared/panelDbtView";
+import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
+import { formatBytes } from "../../../src/shared/panelBigQueryView";
+import type { ColumnMetadata } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { CodeBlock } from "../../components/CodeBlock";
 import { getUrlToNavigateToTableInBigQuery } from "../../utils/bigquery";
@@ -255,6 +257,13 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
   const isTest = action.kind === "test" || action.kind === "unit test";
   const query = action.sections.find((section) => section.title === "query" || section.title === "operation");
   const asWritten = !!query && !query.compiled;
+  const { running, result } = dbtDryRunOf(state, action);
+  const failed = result?.error;
+  const bigQuery = state.dbt?.bigQuery !== false;
+  const which = incrementalCase(state, action);
+  // The size is in the section's header; here, what a run of the query would cost
+  const price = result?.cost && !result.error && !result.bytesUnknown ? result.cost.value : undefined;
+  const cost = price === undefined ? "" : `${state.bigquery?.currencySymbol ?? "$"}${price < 0.01 ? price.toFixed(4) : price.toFixed(2)}`;
   return (
     <section data-dbt="action" data-kind={action.kind} className={clsx(BOX, "min-w-0")}>
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-left bg-transparent border-0 text-[var(--vscode-foreground)] cursor-pointer">
@@ -266,14 +275,33 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
         {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs", MUTED)}>defined in {action.fileName}</span>}
         <span className="ml-auto flex items-center gap-2 text-xs">
           {action.disabled && <span className={MUTED}>disabled</span>}
-          {view.outdated ? <span className={WARNING}>outdated</span> : asWritten ? <span className={MUTED}>not compiled</span> : null}
+          {view.outdated ? (
+            <span className={WARNING}>outdated</span>
+          ) : asWritten ? (
+            <span className={MUTED}>not compiled</span>
+          ) : running ? (
+            <span data-dry-run="running" className={clsx("flex items-center gap-1", MUTED)}>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              dry run
+            </span>
+          ) : failed ? (
+            <span data-dry-run="failed" className={ERROR}>✕ dry run failed</span>
+          ) : result ? (
+            <span data-dry-run="ok" className="font-mono text-[var(--vscode-testing-iconPassed,#73c991)]" title="What the query would scan, from BigQuery's dry run">
+              ✓ {result.bytesUnknown ? "bytes unknown" : formatBytes(result.bytes ?? 0)}
+            </span>
+          ) : null}
         </span>
       </button>
       {open && (
         <div className={clsx("border-t border-[var(--vscode-widget-border)] p-3 space-y-3", view.outdated && "opacity-50")}>
           {action.kind === "incremental" && action.sqlPresent && (
             <div data-dbt="incremental" className={clsx("text-xs", MUTED)}>
-              Incremental model. dbt compiled one case of it: the incremental one if the table already exists, the full build if it does not.
+              {which === "incremental"
+                ? "Incremental model. dbt compiled the incremental case, because the table already exists."
+                : which === "full build"
+                  ? "Incremental model. dbt compiled the full build, because the table does not exist yet."
+                  : "Incremental model. dbt compiled one case of it: the incremental one if the table already exists, the full build if it does not."}
             </div>
           )}
           {action.sections.length === 0 && <div className={clsx("text-sm", MUTED)}>{NO_SQL[action.kind] ?? "No SQL to show."}</div>}
@@ -286,10 +314,42 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
                     {hook ? `${section.title} · as written, not compiled, not dry-run` : "as written, not compiled"}
                   </div>
                 )}
-                <CodeBlock code={section.sql} language="sql" className={hook ? "opacity-70" : undefined} />
+                <CodeBlock
+                  code={section.sql}
+                  language="sql"
+                  className={hook ? "opacity-70" : undefined}
+                  showLineNumbers={!hook && !!failed?.line && failed.section === section.title}
+                  errorAnnotations={!hook && failed?.line && failed.section === section.title ? [{ line: failed.line, message: failed.message }] : undefined}
+                />
+                {!hook && failed && (
+                  <div data-dbt="dry run error" className="mt-2 rounded border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] px-3 py-2 text-xs">
+                    {failed.line && failed.section === section.title && (
+                      <span className={clsx("font-semibold", ERROR)}>
+                        Line {failed.line}
+                        {failed.column ? `, column ${failed.column}` : ""} of the compiled SQL:{" "}
+                      </span>
+                    )}
+                    <span className="break-words">{failed.message}</span>
+                    <div className={clsx("mt-0.5", MUTED)}>Shown here only. Nothing is marked in the source file.</div>
+                  </div>
+                )}
               </div>
             );
           })}
+          {query?.compiled && bigQuery && query.dryRun.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <button
+                type="button"
+                className={SECONDARY_BUTTON}
+                disabled={view.outdated}
+                title={isTest ? "Runs the test's query and shows the rows that fail it" : "Runs the compiled query and shows its rows. It costs what the query costs"}
+                onClick={() => vscode.postMessage({ command: "preview", action: action.target, section: query.title })}
+              >
+                {isTest ? "Preview failing rows" : "Preview"}
+              </button>
+              {cost && <span data-dbt="cost" className={MUTED}>≈ {cost}</span>}
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -363,34 +423,63 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   );
 }
 
+/** The columns of a dry run's schema, a nested one under its parent's name */
+function flatColumns(fields: ColumnMetadata[], prefix = ""): Array<{ name: string; type: string; description?: string }> {
+  return fields.flatMap((field) => {
+    const name = prefix + field.name;
+    const type = field.mode === "REPEATED" ? `ARRAY<${field.type}>` : field.type;
+    return [{ name, type, description: field.description }, ...flatColumns(field.fields ?? [], `${name}.`)];
+  });
+}
+
+/**
+ * The columns of each action that is not a test: names and types from the dry run of its compiled query, with the
+ * descriptions its YAML gives. Until the dry run is back, the columns the YAML describes.
+ */
 function SchemaTab({ state, view }: { state: PanelSlices; view: DbtView }) {
-  const described = view.actions.filter((action) => (action.columns?.length ?? 0) > 0);
+  const actions = view.actions.filter((action) => action.kind !== "test" && action.kind !== "unit test" && action.sections.length > 0);
   return (
-    <div className="space-y-4 text-sm">
-      {described.map((action) => (
-        <div key={action.id}>
-          <div className="font-mono text-sm mb-1">{dbtNameOf(state, action)}</div>
-          <table className="w-full border-collapse">
-            <thead className={clsx("text-left text-[11px] uppercase tracking-wider", MUTED)}>
-              <tr>
-                <th className="py-1 font-normal">Column</th>
-                <th className="py-1 font-normal">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {action.columns!.map((column) => (
-                <tr key={column.path.join(".")} className="border-t border-[var(--vscode-widget-border)]">
-                  <td className="py-1.5 pr-4 font-mono text-xs align-top">{column.path.join(".")}</td>
-                  <td className="py-1.5">{column.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-      <div className={clsx("text-xs", MUTED)}>
-        {described.length > 0 ? "The columns the model's YAML describes." : "The model's YAML describes no column."} The columns and types of the compiled query come from its dry run.
-      </div>
+    <div className="space-y-5 text-sm">
+      {actions.map((action) => {
+        const { running, result } = dbtDryRunOf(state, action);
+        const described = new Map((action.columns ?? []).map((column) => [column.path.join("."), column.description]));
+        const fromDryRun = result?.schema ? flatColumns(result.schema.fields) : undefined;
+        const columns = fromDryRun ?? (action.columns ?? []).map((column) => ({ name: column.path.join("."), type: "", description: column.description }));
+        return (
+          <div key={action.id} data-dbt="schema">
+            <div className="font-mono text-sm mb-1">{dbtNameOf(state, action)}</div>
+            {columns.length > 0 && (
+              <table className="w-full border-collapse">
+                <thead className={clsx("text-left text-[11px] uppercase tracking-wider", MUTED)}>
+                  <tr>
+                    <th className="py-1 font-normal">Column</th>
+                    <th className="py-1 font-normal">Type</th>
+                    <th className="py-1 font-normal">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {columns.map((column) => (
+                    <tr key={column.name} className="border-t border-[var(--vscode-widget-border)]">
+                      <td className="py-1.5 pr-4 font-mono text-xs align-top">{column.name}</td>
+                      <td className="py-1.5 pr-4 font-mono text-xs align-top text-[var(--vscode-textPreformat-foreground)]">{column.type}</td>
+                      <td className="py-1.5">{described.get(column.name) ?? column.description ?? ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div className={clsx("mt-2 text-xs", result?.error ? ERROR : MUTED)}>
+              {fromDryRun
+                ? "From the dry run of the compiled query, with the descriptions the model's YAML gives."
+                : running
+                  ? "The dry run is out: types come with it."
+                  : result?.error
+                    ? "The dry run failed, so there are no types. See the Compiled query tab."
+                    : "No dry run yet: these are the columns the model's YAML describes."}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

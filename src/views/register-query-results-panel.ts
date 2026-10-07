@@ -41,6 +41,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     private _cachedResults?: { results: any[] | undefined, columns:any | undefined, jobStats: any, query:string|undefined };
     private _cachedMultiResults?: { multiResultsMetadata: any[], query:string|undefined };
     private _query?:string;
+    /** Where the query's job runs, see `QueryWtType.place` */
+    private _place?: QueryWtType['place'];
     private _lastRenderPayload?: any;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -63,7 +65,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       if (this._invokedByCommand){
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         if(this._query){
-          await this.updateContent({query: this._query, type:this.queryType});
+          await this.updateContent({query: this._query, type:this.queryType, place: this._place});
         }
       }else {
         let curFileMeta = await getCurrentFileMetadata(false);
@@ -108,7 +110,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "queryLimit": queryLimit
                     });
                 } else if (this._query) {
-                    await this.updateContent({query: this._query, type: this.queryType});
+                    await this.updateContent({query: this._query, type: this.queryType, place: this._place});
                 } else {
                     let curFileMeta = await getCurrentFileMetadata(false);
                     if (curFileMeta?.fileMetadata) {
@@ -240,6 +242,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
 
     public focusWebview(queryWtType:QueryWtType) {
       this._query = queryWtType.query;
+      this._place = queryWtType.place;
       this._invokedByCommand = true;
       this.queryType = queryWtType.type;
       vscode.commands.executeCommand('queryResultsView.focus');
@@ -265,7 +268,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           
           for (let i = 0; i < allQueries.length; i++) {
             const singleQuery = allQueries[i];
-            const queryOutput = queryBigQuery(singleQuery);
+            const queryOutput = queryBigQuery(singleQuery, queryWtType.place);
             // const { results, columns, jobStats, errorMessage } = queryBigQuery(singleQuery);
             const job = await waitForBigQueryJob(queryOutput);
 

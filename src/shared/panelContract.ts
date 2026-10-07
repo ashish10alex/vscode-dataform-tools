@@ -162,6 +162,8 @@ export interface TableState {
     /** As shown, already formatted in the user's time zone */
     lastModified?: string;
     modifiedToday?: boolean;
+    /** BigQuery says there is no such table */
+    missing?: boolean;
     error?: string;
 }
 
