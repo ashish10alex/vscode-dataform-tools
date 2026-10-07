@@ -68,4 +68,15 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
         assert.ok(title.get('showCompiledQueryWtDryRun')?.endsWith('|| vscode-dataform-tools.backend == dbt'));
         assert.ok(title.get('formatDocument')?.endsWith('&& vscode-dataform-tools.backend != dbt'));
     });
+
+    test('the six settings added for dbt are contributed under the one prefix, each for a folder of its own', () => {
+        const all = Array.isArray(manifest.configuration) ? Object.assign({}, ...manifest.configuration.map((section: { properties: object }) => section.properties)) : manifest.configuration.properties;
+        for (const name of ['dbtExecutablePath', 'dbtTarget', 'dbtVars', 'dbtProfilesDir', 'dbtCompileWithHooks', 'backend']) {
+            const setting = all[PREFIX + name];
+            assert.ok(setting, `${name} is not contributed`);
+            assert.strictEqual(setting.scope, 'resource', name);
+            assert.ok(setting.markdownDescription?.length > 40, name);
+        }
+        assert.deepStrictEqual(all[`${PREFIX}backend`].enum, ['dataform', 'dbt', null]);
+    });
 });

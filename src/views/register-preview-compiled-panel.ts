@@ -1,5 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, projects, requiredTools } from '../project';
+import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, incrementalTables, previewDbtAction } from '../project/dbtBigQuery';
@@ -471,7 +471,7 @@ export function dbtFileOf(document: vscode.TextDocument | undefined): { project:
     if (!document || document.uri.scheme !== 'file') {
         return undefined;
     }
-    const found = projects.forFile(document.uri.fsPath);
+    const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
     if (found.kind !== 'project' || found.project.backend !== 'dbt') {
         return undefined;
     }
