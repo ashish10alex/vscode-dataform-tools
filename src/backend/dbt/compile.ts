@@ -7,6 +7,7 @@ import type { DbtProjectData } from './graph';
 import { DbtCommand, invokeDbt } from './invoke';
 import { readManifest } from './manifest';
 import type { DbtOptions } from './options';
+import { activeDbtTarget } from './targets';
 
 /*
  * How a dbt Project is compiled, which differs by engine (ADR 0003):
@@ -22,6 +23,11 @@ import type { DbtOptions } from './options';
 export interface DbtCompileResult extends CompileResult {
     /** What the dbt Backend keeps of the manifest, private to it. Unset when dbt wrote no manifest */
     dbt?: DbtProjectData;
+    /**
+     * The dbt target dbt compiled with, where its log said: the name to show when the user chose none. dbt-core does
+     * not say when it only parses.
+     */
+    target?: string;
     /** The dbt commands that were run, in order, without the binary: for the log and the panel's progress line */
     commands: string[][];
     /** The Project was parsed and nothing was compiled, though a compile was wanted: it has on-run hooks, or errors */
@@ -114,13 +120,14 @@ export class DbtCompiler {
 async function run(request: CompileRequest, command: DbtCommand, extra: string[] = []): Promise<Omit<DbtCompileResult, 'parsedOnly'>> {
     const invocation = await invokeDbt(request, command, extra);
     const errors: CompileError[] = invocation.exitCode === 0 ? [] : invocationErrors(invocation);
-    const commands = [invocation.args];
+    const target = activeDbtTarget(invocation.stdout);
+    const said = { errors, commands: [invocation.args], ...(target ? { target } : {}) };
     if (invocation.manifestPath) {
         const { graph, dbt } = await readManifest(invocation.manifestPath, request.signal);
-        return { graph, dbt, errors, commands };
+        return { graph, dbt, ...said };
     }
     if (errors.length > 0) {
-        return { graph: buildCompiledGraph([]), errors, commands };
+        return { graph: buildCompiledGraph([]), ...said };
     }
     const { binary } = request.options;
     throw new Error(invocation.exitCode === 0 ? `${binary} ${command} wrote no manifest` : `${binary} ${command} failed with exit status ${invocation.exitCode} and reported no error`);
