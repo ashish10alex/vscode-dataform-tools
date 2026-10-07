@@ -1,0 +1,223 @@
+import { createHash } from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import * as vscode from 'vscode';
+import type { DbtCompileResult, DbtOptions } from '../backend/dbt';
+import { logger } from '../logger';
+import type { CompileState } from '../panel/slices';
+import { actionsInFile, isTestKind, siblingsOf } from '../shared/compiledGraph';
+import { dbtTool } from './dbtTool';
+import type { ProjectState } from './registry';
+
+/*
+ * The compile loop of a dbt Project (ADR 0003). The panel asks for a compile when it is first opened, when a file is
+ * saved and when another file is shown; this decides whether one is needed and runs it.
+ *
+ * - One compile per Project at a time, and the latest request wins: a newer one ends the dbt that is running.
+ * - A save always compiles. On dbt v2 that compiles the whole Project, so showing another file reads the graph in
+ *   memory. On dbt-core it compiles the saved file's actions only, so showing a file whose actions have no compiled
+ *   SQL compiles again, for that file.
+ * - dbt writes its artifacts and logs under the extension's storage for the workspace, one directory per Project,
+ *   dbt binary and dbt target, never into the Project's own `target/`.
+ */
+
+/** Why a compile is asked for */
+export type CompileReason = 'open' | 'save' | 'switch';
+
+const ARTIFACTS = 'dbt';
+const LAST_USED = 'last-used';
+const UNUSED_DAYS = 30;
+
+let storageRoot: string | undefined;
+const states = new Map<string, CompileState>();
+/** By Project: what the last compile was run with. Another dbt, dbt target or variables make its result another Project's, in effect */
+const compiledWith = new Map<string, string>();
+const optionsKey = ({ binary, flavour, target, vars, profilesDir, compileWithHooks }: DbtOptions) => JSON.stringify([binary, flavour, target, vars, profilesDir, compileWithHooks]);
+const running = new Map<string, AbortController>();
+const changed = new vscode.EventEmitter<string>();
+/** Fires with a Project's root when how its compile stands changes: started, finished, or failed */
+export const onDidChangeDbtCompile = changed.event;
+
+/** How the Project's compile stands, for the panel's compile status. Before any compile: in a Project, nothing compiled */
+export function dbtCompileState(root: string): CompileState {
+    return states.get(root) ?? { inProject: true, errors: [] };
+}
+
+function setState(root: string, state: CompileState) {
+    states.set(root, state);
+    changed.fire(root);
+}
+
+function setting<T>(root: string, key: string): T | undefined {
+    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(root)).get<T>(key) ?? undefined;
+}
+
+/**
+ * Where dbt writes for this Project, binary and dbt target. The binary is its path with symbolic links followed, so
+ * that dbt-core and dbt v2 never share partial-parse state, and an upgrade that repoints a link starts afresh.
+ */
+function artifactDir(root: string, binary: string, target: string | undefined): string {
+    let real = binary;
+    try {
+        real = fs.realpathSync(binary);
+    } catch {
+        // As given
+    }
+    const name = createHash('sha256').update(`${root}\n${real}\n${target ?? ''}`).digest('hex').slice(0, 12);
+    return path.join(storageRoot!, ARTIFACTS, name);
+}
+
+/** The options of a compile or a run of the Project, from the settings and the dbt that was found. Undefined when there is no usable dbt */
+export async function dbtOptions(root: string): Promise<DbtOptions | undefined> {
+    const tool = await dbtTool(root);
+    if (tool.status !== 'found' || !storageRoot) {
+        return undefined;
+    }
+    const target = setting<string>(root, 'dbtTarget') || undefined;
+    return {
+        binary: tool.path,
+        flavour: tool.probe.flavour,
+        label: tool.probe.label,
+        target,
+        vars: setting<string>(root, 'dbtVars') || undefined,
+        profilesDir: setting<string>(root, 'dbtProfilesDir') || undefined,
+        compileWithHooks: setting<boolean>(root, 'dbtCompileWithHooks') === true,
+        artifactDir: artifactDir(root, tool.path, target),
+    };
+}
+
+/**
+ * Whether showing `file` needs a compile: there is no result yet, the last one was made with other options (another
+ * dbt, dbt target or variables), or the engine is dbt-core and an action of the file has a query that the last
+ * compile did not compile. The tests shown with the file's actions count as the file's.
+ */
+function needsCompile(project: ProjectState, file: string | undefined, options: DbtOptions): boolean {
+    const last = project.dbtBackend?.lastResult;
+    if (!last || compiledWith.get(project.root) !== optionsKey(options)) {
+        return true;
+    }
+    if (options.flavour !== 'dbt-core' || !file) {
+        return false;
+    }
+    // The file's actions, and the tests of those: dbt-core compiles a model's tests with it. Not what a test of the
+    // file is shown with, its model and that model's other tests: selecting the test's file does not compile those,
+    // so asking for them would compile on every showing
+    const own = actionsInFile(last.graph, file);
+    const wanted = new Set(own);
+    for (const action of own.filter((candidate) => !isTestKind(candidate.kind))) {
+        siblingsOf(last.graph, action).filter((sibling) => isTestKind(sibling.kind)).forEach((test) => wanted.add(test));
+    }
+    return [...wanted].some((action) => !action.sqlPresent);
+}
+
+/**
+ * Compiles the Project for `file` (relative to its root, with forward slashes) if `reason` calls for it. Resolves when
+ * the compile has ended, or at once when none was needed or it was replaced by a newer request. It never rejects:
+ * how it went is in `dbtCompileState`, and the result in the Project's Backend.
+ */
+export async function compileDbtProject(project: ProjectState, file: string | undefined, reason: CompileReason): Promise<void> {
+    const { root, dbtBackend } = project;
+    if (!dbtBackend) {
+        return;
+    }
+    // Before anything is awaited, so that of two requests in a row the first is the one that gives way
+    running.get(root)?.abort(new Error('Replaced by a newer compile'));
+    const controller = new AbortController();
+    running.set(root, controller);
+    const isLatest = () => running.get(root) === controller;
+    const previous = dbtCompileState(root);
+
+    const tool = await dbtTool(root);
+    if (!isLatest()) {
+        return;
+    }
+    if (tool.status === 'missing') {
+        setState(root, { inProject: true, errors: [], missingTool: { tool: 'dbt', lookedIn: tool.looked } });
+        return;
+    }
+    if (tool.status === 'unusable') {
+        project.compileNumber++;
+        setState(root, { inProject: true, errors: [{ message: `${tool.reason}\n\ndbt was found by ${tool.foundBy}, at ${tool.path}.` }] });
+        return;
+    }
+    if (tool.status === 'found' && tool.probe.unsupported) {
+        setState(root, { inProject: true, errors: [], unsupportedVersion: { tool: 'dbt', version: tool.probe.version, message: tool.probe.unsupported } });
+        return;
+    }
+    const options = await dbtOptions(root);
+    if (!options || !isLatest()) {
+        return;
+    }
+    if (reason !== 'save' && !needsCompile(project, file, options)) {
+        // What a tool that has since been found or fixed left behind is no longer true
+        if (previous.missingTool || previous.unsupportedVersion) {
+            setState(root, { ...previous, missingTool: undefined, unsupportedVersion: undefined });
+        }
+        running.delete(root);
+        return;
+    }
+
+    const startedAt = Date.now();
+    setState(root, { inProject: true, errors: previous.errors, compiled: previous.compiled, compiling: { showingPrevious: !!dbtBackend.lastResult, startedAt, file } });
+    try {
+        await fs.promises.mkdir(options.artifactDir, { recursive: true });
+        await fs.promises.writeFile(path.join(options.artifactDir, LAST_USED), new Date(startedAt).toISOString());
+        const result: DbtCompileResult = await dbtBackend.compile({ root, file, options, logger, signal: controller.signal });
+        if (!isLatest()) {
+            return;
+        }
+        project.compileNumber++;
+        compiledWith.set(root, optionsKey(options));
+        logger.info(`dbt: ${result.commands.map((args) => args[0]).join(', then ')} of ${root} took ${Date.now() - startedAt} ms, ${result.errors.length} error(s)`);
+        setState(root, {
+            inProject: true,
+            errors: result.errors,
+            compiled: { compiledAt: Date.now(), durationMs: Date.now() - startedAt, ...(result.notice ? { notice: result.notice } : {}) },
+        });
+    } catch (error) {
+        if (!isLatest() || controller.signal.aborted) {
+            return;
+        }
+        // No graph at all: the last result is not shown as this compile's
+        dbtBackend.forget();
+        project.compileNumber++;
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`dbt: the compile of ${root} failed: ${message}`);
+        setState(root, { inProject: true, errors: [{ message }] });
+    } finally {
+        if (isLatest()) {
+            running.delete(root);
+        }
+    }
+}
+
+/** Deletes the artifact directories that no compile has used for 30 days */
+async function pruneArtifacts() {
+    if (!storageRoot) {
+        return;
+    }
+    const base = path.join(storageRoot, ARTIFACTS);
+    const names = await fs.promises.readdir(base).catch(() => [] as string[]);
+    for (const name of names) {
+        const directory = path.join(base, name);
+        const used = await fs.promises.stat(path.join(directory, LAST_USED)).catch(() => fs.promises.stat(directory).catch(() => undefined));
+        if (used && Date.now() - used.mtimeMs > UNUSED_DAYS * 24 * 60 * 60 * 1000) {
+            logger.info(`dbt: deleting artifacts unused for ${UNUSED_DAYS} days: ${directory}`);
+            await fs.promises.rm(directory, { recursive: true, force: true }).catch((error) => logger.error(`dbt: could not delete ${directory}: ${error}`));
+        }
+    }
+}
+
+/** Deletes every artifact directory of this workspace: what `clearExtensionCache` does for dbt. The next compile starts from nothing */
+export async function clearDbtArtifacts() {
+    if (storageRoot) {
+        await fs.promises.rm(path.join(storageRoot, ARTIFACTS), { recursive: true, force: true });
+    }
+}
+
+export function initDbtCompile(context: vscode.ExtensionContext) {
+    // The workspace's own storage; a window with a single file open has none
+    storageRoot = (context.storageUri ?? context.globalStorageUri).fsPath;
+    context.subscriptions.push(changed);
+    pruneArtifacts().catch((error) => logger.error(`dbt: could not prune artifacts: ${error}`));
+}
