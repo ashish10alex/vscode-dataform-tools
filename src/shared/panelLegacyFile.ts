@@ -1,4 +1,4 @@
-import type { FileSlice, PanelAction } from './panelContract';
+import type { FileProblem, FileSlice, PanelAction } from './panelContract';
 
 /*
  * The `file` slice as the flat fields the panel's components still read (see panelLegacyState.ts). The flat state is
@@ -10,8 +10,28 @@ import type { FileSlice, PanelAction } from './panelContract';
 export const MIGRATED_FILE_FIELDS = [
     'tableOrViewQuery', 'assertionQuery', 'preOperations', 'postOperations', 'incrementalPreOpsQuery', 'incrementalQuery',
     'nonIncrementalQuery', 'operationsQuery', 'testQuery', 'expectedOutputQuery', 'models', 'targetTablesOrViews',
-    'dependents', 'modelType', 'actionTypes', 'isHelperFile', 'declarations',
+    'dependents', 'modelType', 'actionTypes', 'isHelperFile', 'declarations', 'errorType', 'errorMessage',
 ] as const;
+
+/** The flat state's name for each problem a file can have */
+const ERROR_TYPE: Record<FileProblem['kind'], string> = {
+    'unsupported file type': 'UNSUPPORTED_FILE_TYPE',
+    'no action': 'FILE_NOT_FOUND',
+    'no sql': 'QUERY_META_ERROR',
+    other: 'COMPILATION_ERROR',
+};
+
+/**
+ * The flat state has one error for the compile and the file together. A file with something to show has none. One
+ * with nothing to show has its problem; where it names none, the reason is the compile's, and the compile status
+ * sent before the slice has given it (see panelLegacyState.ts).
+ */
+function legacyError(slice: FileSlice): Record<string, unknown> {
+    if (slice.problem) {
+        return { errorType: ERROR_TYPE[slice.problem.kind], errorMessage: slice.problem.message ?? null };
+    }
+    return slice.role === 'not compiled' ? {} : { errorType: null, errorMessage: null };
+}
 
 /** An action as the flat state has it. A field that does not apply to the action's type is absent */
 export interface LegacyModel {
@@ -119,6 +139,10 @@ const NO_QUERIES = {
 
 /** The flat fields of a `file` slice. A file with nothing to show clears the fields the flat state always cleared for it */
 export function legacyStateFromFileSlice(slice: FileSlice): Record<string, unknown> {
+    return { ...legacyQueries(slice), ...legacyError(slice) };
+}
+
+function legacyQueries(slice: FileSlice): Record<string, unknown> {
     if (slice.role === 'helper' || slice.role === 'project settings') {
         return { isHelperFile: slice.role === 'helper', declarations: null, ...NO_QUERIES };
     }

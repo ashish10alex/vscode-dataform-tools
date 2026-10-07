@@ -16,6 +16,7 @@ export const MIGRATED_DATAFORM_FIELDS = [
     'lastRun', 'workflowUrls', 'changedActions', 'apiRunGitState', 'columnImpact',
     'projectConfig', 'packageJson', 'possibleResolutions', 'snoozeEndTime', 'tagCostEstimate', 'compilationInfo',
     'compilerOptions', 'compilationMode', 'dataformCoreVersion',
+    'deferral', 'deferToProd', 'leftoverProxies', 'propertyGraphs', 'propertyGraphValidations',
 ] as const satisfies ReadonlyArray<keyof DataformBlock>;
 
 type MigratedDataformField = (typeof MIGRATED_DATAFORM_FIELDS)[number];
@@ -47,6 +48,11 @@ const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => 
     // The flat state calls the Compilation Mode the compilation backend, as the setting does
     compilationMode: (block) => ({ compilationBackend: block.compilationMode }),
     dataformCoreVersion: (block) => ({ dataformCoreVersion: block.dataformCoreVersion }),
+    deferral: (block) => ({ deferral: block.deferral }),
+    deferToProd: (block) => ({ deferToProd: block.deferToProd }),
+    leftoverProxies: (block) => ({ leftoverProxies: block.leftoverProxies }),
+    propertyGraphs: (block) => ({ propertyGraphs: block.propertyGraphs }),
+    propertyGraphValidations: (block) => ({ propertyGraphValidations: block.propertyGraphValidations }),
 };
 
 /** The flat state's fields for a slice the host sent: what the panel merges into its state */
@@ -71,15 +77,25 @@ export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage
  * - `recompiling`, by every status;
  * - `missingExecutables`, when the tool was not found;
  * - `compilationErrors`, when the compile left errors.
- * The flat state's `errorType` and `errorMessage` also carry problems with the file itself, which are not the
- * compile's; they stay flat for now.
+ * The flat state's `errorType` and `errorMessage` are given when the compile is why there is nothing to show. They
+ * also carry problems with the file itself, and are cleared when there is none: the file slice does both, and is
+ * sent after the status (see panelLegacyFile.ts).
  */
+const NOT_IN_A_PROJECT = 'This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root';
+
 function legacyStateFromCompileStatus(status: CompileStatus): Record<string, unknown> {
     const flat: Record<string, unknown> = { recompiling: status.status === 'compiling' };
     if (status.status === 'tool not found') {
         flat.missingExecutables = [status.tool];
+        flat.errorType = 'MISSING_EXECUTABLE';
+    }
+    if (status.status === 'no project') {
+        flat.errorType = 'NOT_A_DATAFORM_WORKSPACE';
+        flat.errorMessage = NOT_IN_A_PROJECT;
     }
     if ((status.status === 'compiled' || status.status === 'parsed only' || status.status === 'failed') && status.errors.length > 0) {
+        flat.errorType = 'COMPILATION_ERROR';
+        flat.errorMessage = null;
         flat.compilationErrors = status.errors.map((error) => ({ error: error.message, fileName: error.fileName ?? '', lineNumber: error.line, sourceContext: error.sourceContext }));
     }
     return flat;

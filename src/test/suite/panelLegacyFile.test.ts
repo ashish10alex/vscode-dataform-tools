@@ -73,7 +73,7 @@ suite('panel: the file slice as the flat query fields the components still read'
 
     test('a file of declarations lists them and nothing else', () => {
         const flat = flatOf('definitions/sources/declarations.js');
-        assert.deepStrictEqual(Object.keys(flat).sort(), ['declarations', 'isHelperFile']);
+        assert.deepStrictEqual(Object.keys(flat).sort(), ['declarations', 'errorMessage', 'errorType', 'isHelperFile']);
         assert.deepStrictEqual(flat.declarations.map((declaration: any) => [declaration.target.name, declaration.fileName]), [['customers', 'definitions/sources/declarations.js'], ['orders', 'definitions/sources/declarations.js']]);
         assert.strictEqual(flat.isHelperFile, false);
     });
