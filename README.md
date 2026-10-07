@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 -->
 <div align="center">
-  <h1>Dataform and dbt Tools for BigQuery</h1>
+  <h1>Tools for Dataform and dbt</h1>
 </div>
 
 A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and [dbt™](https://www.getdbt.com/) projects on BigQuery. Officially recommended [VS Code extension for Dataform](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) by Google[^1] ✨. Supports Dataform versions 2.9.x and 3.x, dbt Core 1.8 and later, and dbt v2, in all major operating systems. Works in: VS Code, Cursor, Antigravity.

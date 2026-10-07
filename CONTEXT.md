@@ -1,4 +1,4 @@
-# Dataform and dbt Tools for BigQuery
+# Tools for Dataform and dbt
 
 A VS Code extension for developing, compiling, previewing and running Dataform and dbt projects on BigQuery.
 

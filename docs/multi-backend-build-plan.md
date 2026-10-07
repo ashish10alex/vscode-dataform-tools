@@ -108,7 +108,7 @@ Starts once 2.1 and 2.2 have merged. Nothing here imports `vscode`.
 
 | Piece | What it does | Decided in |
 |---|---|---|
-| 6.1 Listing | Display name "Dataform and dbt Tools for BigQuery" (final wording depends on [xf#68](https://github.com/ashish10alex/xf/issues/68)), description, keywords. "dbt™" on first mention and the trademark footer. | xf#56 |
+| 6.1 Listing | Display name "Tools for Dataform and dbt" (decided in xf#68 / compliance with dbt trademark policy), description, keywords. "dbt™" on first mention and the trademark footer. | xf#56, xf#68 |
 | 6.2 Settings | Contribute `dbtExecutablePath`, `dbtTarget`, `dbtVars`, `dbtProfilesDir`, `dbtCompileWithHooks`, `backend`, all under `vscode-dataform-tools.`. No existing id moves. | xf#56 |
 | 6.3 Names in the product | The bottom results panel becomes "BigQuery Results". Update the glossary's title and opening line. | xf#56 |
 | 6.4 Docs | README: dbt support, opening a Project at its own folder, the two job-project rules, remote hosts supported. Website and changelog text for 2.0.0. | xf#47, xf#49, xf#53 |
