@@ -15,7 +15,7 @@ import {
 
 interface SkeletonLoaderProps {
   type?: 'default' | 'config';
-  backend?: 'cli' | 'api';
+  mode?: 'cli' | 'api';
 }
 
 // Placeholder bar standing in for text that has not arrived yet.
@@ -30,8 +30,8 @@ const SkeletonSwitch: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ type = 'default', backend = 'cli' }) => {
-  const backendLabel = backend === 'api' ? 'API' : 'CLI';
+export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ type = 'default', mode = 'cli' }) => {
+  const modeLabel = mode === 'api' ? 'API' : 'CLI';
   if (type === 'config') {
     return (
       <div className="animate-pulse space-y-8">
@@ -127,7 +127,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ type = 'default'
               <Play className="w-4 h-4 mr-1.5" /> Run
             </div>
             <div className="pl-2.5 pr-2 py-1.5 rounded-r text-xs font-medium flex items-center gap-1 border-l border-[var(--vscode-button-foreground)]/30 bg-[var(--vscode-button-background)]">
-              {backendLabel}
+              {modeLabel}
               <ChevronDown className="w-3.5 h-3.5" />
             </div>
           </div>

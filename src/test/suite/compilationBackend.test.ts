@@ -2,31 +2,31 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
 import { isTransientGitRemoteError } from '../../utils/remoteCompiler';
-import { pickBackendConfigurationTarget, resolveDataformOptions } from '../../project/dataformOptions';
+import { pickConfigurationTarget, resolveDataformOptions } from '../../project/dataformOptions';
 
-suite('pickBackendConfigurationTarget', () => {
+suite('pickConfigurationTarget', () => {
     test('updates the workspace value that shadows the user setting', () => {
         // User settings "api" + workspace "cli": writing to user settings would have no effect
         assert.strictEqual(
-            pickBackendConfigurationTarget({ globalValue: 'api', workspaceValue: 'cli' }, true),
+            pickConfigurationTarget({ globalValue: 'api', workspaceValue: 'cli' }, true),
             vscode.ConfigurationTarget.Workspace,
         );
     });
 
     test('prefers a workspace folder value over workspace and user values', () => {
         assert.strictEqual(
-            pickBackendConfigurationTarget({ globalValue: 'api', workspaceValue: 'cli', workspaceFolderValue: 'cli' }, true),
+            pickConfigurationTarget({ globalValue: 'api', workspaceValue: 'cli', workspaceFolderValue: 'cli' }, true),
             vscode.ConfigurationTarget.WorkspaceFolder,
         );
     });
 
     test('keeps a user-level choice in user settings', () => {
-        assert.strictEqual(pickBackendConfigurationTarget({ globalValue: 'cli' }, true), vscode.ConfigurationTarget.Global);
+        assert.strictEqual(pickConfigurationTarget({ globalValue: 'cli' }, true), vscode.ConfigurationTarget.Global);
     });
 
     test('writes to the workspace when nothing is set, or to user settings without a workspace', () => {
-        assert.strictEqual(pickBackendConfigurationTarget({}, true), vscode.ConfigurationTarget.Workspace);
-        assert.strictEqual(pickBackendConfigurationTarget(undefined, false), vscode.ConfigurationTarget.Global);
+        assert.strictEqual(pickConfigurationTarget({}, true), vscode.ConfigurationTarget.Workspace);
+        assert.strictEqual(pickConfigurationTarget(undefined, false), vscode.ConfigurationTarget.Global);
     });
 });
 

@@ -16,7 +16,7 @@ import { clearCompiled, currentDataformRoot, setCompiled } from '../project';
 import { setCompilationInfo } from './compilationInfo';
 import type { DataformOptions } from '../backend/dataform/options';
 import type { CompilationMode } from '../project/tools';
-import { initDataformOptions, getSelectedReleaseConfig, isBackendExplicitlySet, isRemoteMode, resolveDataformOptions, setCompilationBackend, setSelectedReleaseConfig } from '../project/dataformOptions';
+import { initDataformOptions, getSelectedReleaseConfig, isCompilationModeExplicitlySet, isRemoteMode, resolveDataformOptions, setCompilationMode, setSelectedReleaseConfig } from '../project/dataformOptions';
 
 /*
  * Remote mode (beta): compiles the pushed commit of the current branch with the Dataform API
@@ -54,14 +54,14 @@ async function switchCompilationBackend(value?: CompilationMode) {
         value = (await vscode.window.showQuickPick(items, { placeHolder: "Compile the Dataform project with" }))?.value;
     }
     if (value) {
-        await setCompilationBackend(value);
+        await setCompilationMode(value);
     }
 }
 
 function syncRemoteModeContext() {
     const remote = isRemoteMode();
     vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.remoteMode', remote);
-    refreshRemoteModeStatusBar(remote, isBackendExplicitlySet());
+    refreshRemoteModeStatusBar(remote, isCompilationModeExplicitlySet());
 }
 
 export function initRemoteCompiler(context: vscode.ExtensionContext) {
@@ -232,7 +232,7 @@ async function reportEntry(git: GitService, entry: RemoteCompileEntry, durationM
     const hasErrors = (entry.compiledJson.graphErrors?.compilationErrors?.length ?? 0) > 0;
     updateRemoteModeStatusBar({ state: "compiled", sha: entry.sha, stale: !!reason, reason, hasErrors });
     setCompilationInfo({
-        backend: "api",
+        mode: "api",
         compiledAt: entry.compiledAt,
         durationMs,
         fromCache: durationMs === undefined,
@@ -505,7 +505,7 @@ async function remoteModeActions() {
         },
         {
             label: "$(terminal) Switch to CLI mode",
-            run: () => setCompilationBackend("cli"),
+            run: () => setCompilationMode("cli"),
         },
     ];
     const picked = await vscode.window.showQuickPick(actions, { placeHolder: "Dataform remote mode (beta)" });

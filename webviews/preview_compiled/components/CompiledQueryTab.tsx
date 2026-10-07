@@ -190,7 +190,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   };
 
   // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
-  const isRemoteMode = state.dataform.compilationInfo?.backend === "api";
+  const isRemoteMode = state.dataform.compilationInfo?.mode === "api";
   const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
   const runBackend: RunBackend = isRemoteMode ? "api" : preferredBackend;
   const hasRunnableActions = !!view.actionTypes?.some(t => t !== 'test');
@@ -327,7 +327,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
             {fileName || " "}
           </span>
-          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={compiling} />
+          <CompilationInfoBadge info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
         </div>
         <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={compiling} onRerunDispatched={handleRerunDispatched} />
         <PropertyGraphSection state={state} />
@@ -342,7 +342,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
               {fileName || " "}
           </span>
-          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={compiling} />
+          <CompilationInfoBadge info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
           <div className="flex-grow"></div>
           <button onClick={handleFormat} disabled={formatting || compiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
               <Wand2 className="w-3 h-3 mr-1.5" /> Format

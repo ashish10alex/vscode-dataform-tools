@@ -17,19 +17,19 @@ export function initDataformOptions(context: vscode.ExtensionContext) {
     extensionContext = context;
 }
 
-function backendConfig() {
+function compilationModeConfig() {
     const root = currentDataformRoot();
     return vscode.workspace.getConfiguration('vscode-dataform-tools', root ? vscode.Uri.file(root) : vscode.workspace.workspaceFolders?.[0]?.uri);
 }
 
 /** Whether the Compilation Mode is API: the pushed commit is compiled with the Dataform API */
 export function isRemoteMode(): boolean {
-    return backendConfig().get<string>('compilationBackend') === 'api';
+    return compilationModeConfig().get<string>('compilationBackend') === 'api';
 }
 
 /** True when the user has set the Compilation Mode at any scope, i.e. they have engaged with remote mode. */
-export function isBackendExplicitlySet(): boolean {
-    const inspected = backendConfig().inspect<string>('compilationBackend');
+export function isCompilationModeExplicitlySet(): boolean {
+    const inspected = compilationModeConfig().inspect<string>('compilationBackend');
     return inspected?.globalValue !== undefined || inspected?.workspaceValue !== undefined || inspected?.workspaceFolderValue !== undefined;
 }
 
@@ -37,14 +37,14 @@ export function isBackendExplicitlySet(): boolean {
  * Writes the Compilation Mode to the most specific scope that already has a value, so the change takes effect
  * instead of being shadowed by e.g. a workspace value when only the user setting is updated.
  */
-export async function setCompilationBackend(value: CompilationMode) {
-    const config = backendConfig();
-    const target = pickBackendConfigurationTarget(config.inspect<string>('compilationBackend'), !!vscode.workspace.workspaceFolders?.length);
+export async function setCompilationMode(value: CompilationMode) {
+    const config = compilationModeConfig();
+    const target = pickConfigurationTarget(config.inspect<string>('compilationBackend'), !!vscode.workspace.workspaceFolders?.length);
     await config.update('compilationBackend', value, target);
 }
 
 /** The most specific scope that already has a value; the workspace (or user settings without one) otherwise. */
-export function pickBackendConfigurationTarget(
+export function pickConfigurationTarget(
     inspected: { globalValue?: unknown, workspaceValue?: unknown, workspaceFolderValue?: unknown } | undefined,
     hasWorkspace: boolean
 ): vscode.ConfigurationTarget {

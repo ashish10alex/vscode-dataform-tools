@@ -9,17 +9,6 @@ export type { CompilationInfo };
 import type { ApiRunGitState } from "../../src/shared/apiRunGitState";
 export type { ApiRunGitState };
 
-export interface LastModifiedTimeMetaItem {
-  lastModifiedTime: string | undefined;
-  modelWasUpdatedToday: boolean | undefined;
-  error: { message: string | undefined };
-}
-
-export interface DryRunErrorAnnotation {
-  message: string;
-  location?: { line: number; column: number };
-}
-
 import type { PanelSlices } from "../../src/shared/panelState";
 
 /** What the panel knows: the slices the host has sent (see src/shared/panelState.ts) */

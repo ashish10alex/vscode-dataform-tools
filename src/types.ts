@@ -537,17 +537,6 @@ export type DependancyModelMetadata = {
     data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean, isAssertion: boolean, fullTableName: string };
 };
 
-export type ErrorMeta = {
-    mainQueryError: DryRunError;
-    preOpsError?: DryRunError;
-    postOpsError?: DryRunError;
-    nonIncrementalError?: DryRunError;
-    incrementalError?: DryRunError;
-    assertionError?: DryRunError;
-    testError?: DryRunError;
-    expectedOutputError?: DryRunError;
-};
-
 /** Which step of the lookup found an executable */
 export type ExecutableSource = 'setting' | 'projectLocal' | 'path' | 'commonLocation';
 

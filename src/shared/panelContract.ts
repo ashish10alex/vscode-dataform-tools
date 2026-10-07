@@ -167,7 +167,7 @@ export interface TableState {
 
 /**
  * What BigQuery said of the actions on show. A result is keyed by its action, script and variant; it places an
- * error within a section. This replaces the eleven maps keyed by node name or node type.
+ * error within a section.
  */
 export interface BigQuerySlice extends Slice {
     results: DryRunResult[];

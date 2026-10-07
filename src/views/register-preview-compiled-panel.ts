@@ -52,7 +52,7 @@ import { computeApiRunGitState } from '../apiRunGitState';
 import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
-import { isRemoteMode, resolveDataformOptions, setCompilationBackend } from '../project/dataformOptions';
+import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -800,10 +800,10 @@ export class CompiledQueryPanel {
                 return;
               case 'dataform.switchCompilationMode': {
                 try {
-                  await setCompilationBackend(message.compilationMode === 'api' ? 'api' : 'cli');
+                  await setCompilationMode(message.compilationMode === 'api' ? 'api' : 'cli');
                   await recompileActiveDocument?.();
                 } catch (error: any) {
-                  vscode.window.showErrorMessage(`Unable to switch the compilation backend: ${error.message}`);
+                  vscode.window.showErrorMessage(`Unable to switch the compilation mode: ${error.message}`);
                 }
                 return;
               }
