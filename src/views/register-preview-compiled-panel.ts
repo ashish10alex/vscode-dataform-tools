@@ -1,7 +1,10 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { compileNumber, compiledJson, currentDataformRoot, requiredTools } from '../project';
-import type { DataformBlock, HostMessage, PanelMessage } from '../shared/panelContract';
-import { CompileState, compileStatusSlice } from '../panel/slices';
+import { compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, requiredTools } from '../project';
+import type { DataformBlock, FileSlice, HostMessage, PanelMessage } from '../shared/panelContract';
+import { CompileState, compileStatusSlice, fileSlice } from '../panel/slices';
+import { ActionId, slashPath, targetId } from '../shared/compiledGraph';
+import { legacyModels } from '../shared/panelLegacyFile';
+import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
 import { DataformBlockMessage, MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
 import * as vscode from 'vscode';
@@ -469,6 +472,45 @@ export class CompiledQueryPanel {
     }
 
     /**
+     * Tells the panel what the file on show defines: its actions, each with its SQL and its neighbours. Sent with
+     * every render of a file, before the flat fields of that render.
+     *
+     * @param file Relative to the Project root
+     * @param shown `deferral`: the SQL is sent after defer's rewrite, as it is dry-run. `registered`: actions shown
+     * with the file though the graph gives them another, see `fileSlice`. `role`: what the render found the file to
+     * be, where that is not for the graph to say; no action is sent then.
+     */
+    private sendFileSlice(file: string | undefined, shown: { deferral?: CurrentFileMetadata['deferral']; registered?: ActionId[]; role?: 'project settings' | 'helper' } = {}): FileSlice | undefined {
+        const backend = dataformBackend();
+        if (!backend || !file) {
+            this.sendNoActions(file);
+            return undefined;
+        }
+        const relativePath = slashPath(file);
+        let graph = compiledGraph();
+        const entries = shown.deferral?.entries ?? [];
+        if (graph && entries.length > 0) {
+            const rewritten = [...(graph.files[relativePath] ?? []), ...(shown.registered ?? [])]
+                .filter((id) => graph!.actions[id])
+                .map((id) => [id, applyDeferralToAction(graph!.actions[id], entries)]);
+            graph = { ...graph, actions: { ...graph.actions, ...Object.fromEntries(rewritten) } };
+        }
+        let value = fileSlice(graph, backend, relativePath, compileNumber(), shown.registered);
+        if (shown.role) {
+            value = { ...value, role: shown.role, actions: [] };
+        }
+        const message: HostMessage = { slice: 'file', value };
+        this.postMessage(message);
+        return value;
+    }
+
+    /** Tells the panel that there is nothing of the file to show: it is in no Project, or its Project did not compile, or it could not be read */
+    private sendNoActions(file?: string) {
+        const message: HostMessage = { slice: 'file', value: { compile: compileNumber(), file: file ? slashPath(file) : '', role: 'not compiled', actions: [] } };
+        this.postMessage(message);
+    }
+
+    /**
      * Changes fields of the `dataform` block and sends the block, saying which fields this send is about. It is sent
      * every time, as the flat message it replaces was: the panel acts on these fields arriving (see
      * `DataformBlockMessage`). Sending a slice only when it changes waits until the components read slices.
@@ -747,16 +789,6 @@ export class CompiledQueryPanel {
                 // FIXME: there must be a way to avoid double calls before and after function invocation ?
                 const _runModelApiNodeMaps = deriveNodeMapsFromQueryMeta(this.centerPanel?._cachedResults?.fileMetadata?.queryMeta);
                 let messageDict: WebviewMessage = {
-                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
-                    "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
-                    "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
-                    "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
-                    "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
-                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                    "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
-                    "testQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.testQuery,
-                    "expectedOutputQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.expectedOutputQuery,
                     "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
                     "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
                     "dryRunErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunErrorsByNodeType,
@@ -768,9 +800,6 @@ export class CompiledQueryPanel {
                     "dryRunIncrementalQueryByNodeName": _runModelApiNodeMaps.dryRunIncrementalQueryByNodeName,
                     "dryRunNonIncrementalQueryByNodeName": _runModelApiNodeMaps.dryRunNonIncrementalQueryByNodeName,
                     "compiledQuerySchema": compiledQuerySchema,
-                    "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
-                    "models": this.centerPanel?._cachedResults?.curFileMeta?.fileMetadata?.tables,
-                    "dependents": this.centerPanel?._cachedResults?.curFileMeta?.dependents,
                     "dataformTags": dataformTags,
                     "apiUrlLoading": true,
                 };
@@ -824,7 +853,6 @@ export class CompiledQueryPanel {
                     }
                     const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                     const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                    const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                     const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                     const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
                     const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
@@ -832,16 +860,6 @@ export class CompiledQueryPanel {
                     const dryRunIncrementalErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
                     const _costEstNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
                     this.centerPanel?.postMessage({
-                        "tableOrViewQuery": fileMetadata?.queryMeta?.tableQueries?.map((t: any) => t.query).join("\n"),
-                        "assertionQuery": fileMetadata?.queryMeta?.assertionQuery,
-                        "preOperations": fileMetadata?.queryMeta?.preOpsQuery,
-                        "postOperations": fileMetadata?.queryMeta?.postOpsQuery,
-                        "incrementalPreOpsQuery": fileMetadata?.queryMeta?.incrementalPreOpsQuery,
-                        "incrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                        "nonIncrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                        "operationsQuery": fileMetadata?.queryMeta?.operationsQuery,
-                        "testQuery": fileMetadata?.queryMeta?.testQuery,
-                        "expectedOutputQuery": fileMetadata?.queryMeta?.expectedOutputQuery,
                         "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                         "currencySymbol": currencySymbol,
                         "errorMessage": errorMessage,
@@ -856,13 +874,8 @@ export class CompiledQueryPanel {
                         "dryRunIncrementalQueryByNodeName": _costEstNodeMaps.dryRunIncrementalQueryByNodeName,
                         "dryRunNonIncrementalQueryByNodeName": _costEstNodeMaps.dryRunNonIncrementalQueryByNodeName,
                         "compiledQuerySchema": compiledQuerySchema,
-                        "targetTablesOrViews": targetTablesOrViews,
-                        "models": curFileMeta?.fileMetadata?.tables,
-                        "dependents": curFileMeta?.dependents,
                         "dataformTags": dataformTags,
                         "selectedTags": selectedTags,
-                        "modelType": fileMetadata?.queryMeta?.type,
-                        "actionTypes": [...new Set((curFileMeta?.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                     });
                     this.centerPanel?.updateDataformBlock({ tagCostEstimate: tagDryRunStatsMeta && { rows: tagDryRunStatsMeta.tagDryRunStatsList, error: tagDryRunStatsMeta.error } });
                 }else{
@@ -887,7 +900,6 @@ export class CompiledQueryPanel {
               case 'dataform.loadLineage': {
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
                 const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
                 const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
                 const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
@@ -906,16 +918,6 @@ export class CompiledQueryPanel {
                 const lineageMetadata = await getLiniageMetadata(fileMetadata?.tables?.[0]?.target, locationLineage);
 
                 this.centerPanel?.postMessage({
-                    "tableOrViewQuery": fileMetadata?.queryMeta?.tableQueries?.map((t: any) => t.query).join("\n"),
-                    "assertionQuery": fileMetadata?.queryMeta?.assertionQuery,
-                    "preOperations": fileMetadata?.queryMeta?.preOpsQuery,
-                    "postOperations": fileMetadata?.queryMeta?.postOpsQuery,
-                    "incrementalPreOpsQuery": fileMetadata?.queryMeta?.incrementalPreOpsQuery,
-                    "incrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                    "nonIncrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                    "operationsQuery": fileMetadata?.queryMeta?.operationsQuery,
-                    "testQuery": fileMetadata?.queryMeta?.testQuery,
-                    "expectedOutputQuery": fileMetadata?.queryMeta?.expectedOutputQuery,
                     "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                     "lineageMetadata": lineageMetadata,
                     "errorMessage": errorMessage,
@@ -930,12 +932,7 @@ export class CompiledQueryPanel {
                     "dryRunIncrementalQueryByNodeName": _lineageNodeMaps.dryRunIncrementalQueryByNodeName,
                     "dryRunNonIncrementalQueryByNodeName": _lineageNodeMaps.dryRunNonIncrementalQueryByNodeName,
                     "compiledQuerySchema": compiledQuerySchema,
-                    "targetTablesOrViews": targetTablesOrViews,
-                    "models": curFileMeta?.fileMetadata?.tables,
-                    "dependents": curFileMeta?.dependents,
                     "dataformTags": dataformTags,
-                    "modelType": fileMetadata?.queryMeta?.type,
-                    "actionTypes": [...new Set((curFileMeta?.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 });
                 return;
               }
@@ -1205,11 +1202,9 @@ export class CompiledQueryPanel {
                 this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
             } else {
                 this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
+                this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
                 await this.postMessage({
                     "errorType": CompilationErrorType.MISSING_EXECUTABLE,
-                    "isHelperFile": false,
-                    "tableOrViewQuery": null,
-                    "declarations": null,
                     "compiledQuerySchema": null,
                 });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
@@ -1243,12 +1238,10 @@ export class CompiledQueryPanel {
 
         if(!curFileMeta){
             this.sendCompileStatus();
+            this.sendNoActions();
             await this.postMessage({
                 "errorMessage": `File type not supported. Supported file types are sqlx, js`,
                 "errorType": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
-                "isHelperFile": false,
-                "declarations": null,
-                "tableOrViewQuery": null,
                 "compiledQuerySchema": null,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
@@ -1258,24 +1251,20 @@ export class CompiledQueryPanel {
 
         if (curFileMeta.isDataformWorkspace===false){
             this.sendCompileStatus({ inProject: false });
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
                 "errorMessage": `This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root`,
                 "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "declarations": null,
                 "compiledQuerySchema": null,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
                 "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "declarations": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
@@ -1283,24 +1272,20 @@ export class CompiledQueryPanel {
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
             const workspaceFolder = await getWorkspaceFolder();
             this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
                 "errorType": CompilationErrorType.FILE_NOT_FOUND,
                 "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                 "workspaceFolder": workspaceFolder,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "declarations": null
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
                 "errorMessage": curFileMeta.errors.queryMetaError,
                 "errorType": CompilationErrorType.QUERY_META_ERROR,
-                "isHelperFile": false,
-                "declarations": null,
-                "tableOrViewQuery": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
@@ -1333,21 +1318,10 @@ export class CompiledQueryPanel {
                     return { message: compilationError.error, fileName: compilationError.fileName, line: lineNumber, sourceContext };
                 }),
             });
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
                 "errorMessage": null,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
-                "isHelperFile": false,
-                "declarations": null,
-                "tableOrViewQuery": null,
-                "assertionQuery": null,
-                "preOperations": null,
-                "postOperations": null,
-                "incrementalPreOpsQuery": null,
-                "incrementalQuery": null,
-                "nonIncrementalQuery": null,
-                "operationsQuery": null,
-                "testQuery": null,
-                "expectedOutputQuery": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
@@ -1363,20 +1337,12 @@ export class CompiledQueryPanel {
 
         if (isConfigFile) {
             this.sendCompileStatus();
+            // package.json is shown as the settings files are
+            this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'project settings' });
             await this.postMessage({
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "isHelperFile": false,
-                "declarations": null,
                 "errorType": null,
                 "errorMessage": null,
-                "tableOrViewQuery": null,
-                "assertionQuery": null,
-                "preOperations": null,
-                "postOperations": null,
-                "incrementalPreOpsQuery": null,
-                "incrementalQuery": null,
-                "nonIncrementalQuery": null,
-                "operationsQuery": null,
                 "workspaceFolder": workspaceFolder,
             });
             this.updateDataformBlock({ dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
@@ -1395,6 +1361,7 @@ export class CompiledQueryPanel {
                     diagnosticCollection.clear();
                 }
                 this.sendCompileStatus();
+                this.sendFileSlice(relativeFilePathForGraphs);
                 await this.postMessage({
                     "propertyGraphs": propertyGraphs,
                     "propertyGraphValidations": null,
@@ -1405,19 +1372,6 @@ export class CompiledQueryPanel {
                     "dryRunning": true,
                     "errorType": null,
                     "errorMessage": null,
-                    "isHelperFile": false,
-                    "declarations": null,
-                    "models": null,
-                    "tableOrViewQuery": null,
-                    "assertionQuery": null,
-                    "preOperations": null,
-                    "postOperations": null,
-                    "incrementalPreOpsQuery": null,
-                    "incrementalQuery": null,
-                    "nonIncrementalQuery": null,
-                    "operationsQuery": null,
-                    "testQuery": null,
-                    "expectedOutputQuery": null,
                     "compiledQuerySchema": null,
                 });
                 this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
@@ -1439,16 +1393,13 @@ export class CompiledQueryPanel {
             const coreVersion = curFileMeta.dataformCoreVersion ?? compiledJson()?.dataformCoreVersion;
             if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
                 this.sendCompileStatus();
+                this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
                 await this.postMessage({
                     "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
                     "errorType": CompilationErrorType.COMPILATION_ERROR,
                     "relativeFilePath": relativeFilePathForGraphs,
                     "dryRunning": false,
-                    "isHelperFile": false,
                     "propertyGraphs": null,
-                    "models": null,
-                    "declarations": null,
-                    "tableOrViewQuery": null,
                     "compiledQuerySchema": null,
                     "workspaceFolder": workspaceFolder,
                 });
@@ -1475,13 +1426,12 @@ export class CompiledQueryPanel {
                                 diagnosticCollection.clear();
                             }
                             this.sendCompileStatus();
+                            this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath);
                             await this.postMessage({
-                                "declarations": filteredDeclarations,
                                 "propertyGraphs": null,
                                 "errorType": null,
                                 "errorMessage": null,
                                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                                "isHelperFile": false,
                                 "workspaceFolder": workspaceFolder,
                             });
                             return;
@@ -1490,21 +1440,12 @@ export class CompiledQueryPanel {
                     
                     // If it's a JS file but has no tables and no declarations, it's a helper file
                     this.sendCompileStatus();
+                    this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'helper' });
                     await this.postMessage({
-                        "isHelperFile": true,
                         "propertyGraphs": null,
                         "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                         "errorType": null,
                         "errorMessage": null,
-                        "declarations": null,
-                        "tableOrViewQuery": null,
-                        "assertionQuery": null,
-                        "preOperations": null,
-                        "postOperations": null,
-                        "incrementalPreOpsQuery": null,
-                        "incrementalQuery": null,
-                        "nonIncrementalQuery": null,
-                        "operationsQuery": null,
                         "workspaceFolder": workspaceFolder,
                     });
                     return;
@@ -1516,12 +1457,10 @@ export class CompiledQueryPanel {
         const fm = curFileMeta.fileMetadata;
         if (!fm) {
             this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
                 "errorMessage": `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.`,
                 "errorType": CompilationErrorType.COMPILATION_ERROR,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "declarations": null,
                 "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
@@ -1534,36 +1473,24 @@ export class CompiledQueryPanel {
         this.deferral = curFileMeta.deferral;
 
         this.sendCompileStatus();
+        // A notebook belongs to its own file in the graph; the JavaScript file that registers it shows it
+        const registered = fm.tables.filter((table) => table.type === "notebook" && table.target).map((table) => targetId(table.target));
+        const shownFile = this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { deferral: curFileMeta.deferral, registered });
+        // The panel lists the actions in the slice's order, and matches the last-modified times to them by position
+        const shownModels = shownFile ? legacyModels(shownFile).map(({ model }) => model) : [];
         await this.postMessage({
             "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
             "deferToProd": getDeferToProdState(workspaceFolder),
             "leftoverProxies": curFileMeta.leftoverProxies ?? null,
-            "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
-            "assertionQuery": fileMetadata.queryMeta.assertionQuery,
-            "preOperations": fileMetadata.queryMeta.preOpsQuery,
-            "postOperations": fileMetadata.queryMeta.postOpsQuery,
-            "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-            "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-            "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-            "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-            "testQuery": fileMetadata.queryMeta.testQuery,
-            "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
             "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
             "compiledQuerySchema": compiledQuerySchema,
-            "targetTablesOrViews": targetTablesOrViews,
-            "dependents": curFileMeta.dependents,
             "dataformTags": dataformTags,
-            "modelType": fileMetadata.queryMeta.type,
-            "actionTypes": [...new Set((fm.tables || []).map((m: any) => m.type).filter(Boolean))],
-            "models": fm.tables,
             "propertyGraphs": null,
             "dryRunning": true,
-            "declarations": null,
             "errorType": null,
             "errorMessage": null,
-            "isHelperFile": false,
             "workspaceFolder": workspaceFolder,
     });
         this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
@@ -1600,7 +1527,7 @@ export class CompiledQueryPanel {
         }
 
         // Filter out test nodes as they don't have a table to check last modified time for
-        const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
+        const tablesForLastModified = shownModels.filter((model) => model.type !== "test" && model.target);
 
         const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
         const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
@@ -1610,7 +1537,7 @@ export class CompiledQueryPanel {
 
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             perfTimed('dryRuns', () => dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document!, diagnosticCollection, false)),
-            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map((table) => table.target))) : Promise.resolve([]),
+            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map((table) => table.target!))) : Promise.resolve([]),
         ]);
         if (dryRunResults.accessDeniedTargets.length > 0) {
             // Read again so the prod tables we cannot read keep their dev refs, then show and dry run that
@@ -1620,8 +1547,8 @@ export class CompiledQueryPanel {
         const modelsLastUpdateTimesMeta: any[] = [];
         let timeIndex = 0;
         const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
-        for (const table of targetTablesOrViews) {
-            if (table.type !== "test") {
+        for (const table of shownModels) {
+            if (table.type !== "test" && table.target) {
                 modelsLastUpdateTimesMeta.push(safeModelsLastUpdateTimesMeta[timeIndex]);
                 timeIndex++;
             } else {
@@ -1775,16 +1702,6 @@ export class CompiledQueryPanel {
                 "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
                 "deferToProd": getDeferToProdState(workspaceFolder),
             "leftoverProxies": curFileMeta.leftoverProxies ?? null,
-                "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
-                "assertionQuery": fileMetadata.queryMeta.assertionQuery,
-                "preOperations": fileMetadata.queryMeta.preOpsQuery,
-                "postOperations": fileMetadata.queryMeta.postOpsQuery,
-                "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-                "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                "testQuery": fileMetadata.queryMeta.testQuery,
-                "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
@@ -1804,17 +1721,10 @@ export class CompiledQueryPanel {
                 "expectedOutputDryRunResult": expectedOutputDryRunResult,
                 "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
-                "targetTablesOrViews": targetTablesOrViews,
-                "models": curFileMeta.fileMetadata?.tables,
-                "dependents": curFileMeta.dependents,
                 "dataformTags": dataformTags,
-                "modelType": fileMetadata.queryMeta.type,
-                "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
                 "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
                 "dryRunning": false,
-                "declarations": null,
                 "errorType": null,
-                "isHelperFile": false
             });
             this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
             this.updateDataformBlock({ snoozeEndTime: snoozeManager.getSnoozeEndTime(), projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });

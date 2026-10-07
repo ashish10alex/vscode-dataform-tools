@@ -38,7 +38,7 @@ suite('panel slices: file', () => {
 
         const [table, assertion] = slice.actions;
         assert.strictEqual(table.id, `${PROJECT}.xf_example.dim_customers`);
-        assert.deepStrictEqual([table.buildsNothing, table.runnable, table.sqlPresent, table.disabled], [false, true, true, false]);
+        assert.deepStrictEqual([table.buildsNothing, table.buildsTable, table.runnable, table.sqlPresent, table.disabled], [false, true, true, true, false]);
         assert.ok(table.description && table.columns?.length);
         assert.deepStrictEqual(table.sections.map((section) => section.title), ['pre_operations', 'query', 'post_operations']);
         // Neighbours are named, not sent whole
@@ -47,6 +47,19 @@ suite('panel slices: file', () => {
             assert.deepStrictEqual(Object.keys(neighbour).sort(), ['fileName', 'kind', 'target']);
         }
         assert.ok(assertion.dependencies.some((dependency) => dependency.target.name === 'dim_customers'));
+    });
+
+    test('an operation builds a table only when it says it has output', () => {
+        const builds = (file: string) => fileSlice(graph, dataform, file, 1).actions[0].buildsTable;
+        assert.deepStrictEqual([builds('definitions/operations/audit_log.sqlx'), builds('definitions/operations/create_udf.sqlx')], [true, false]);
+    });
+
+    test('actions a file registers are shown after its own, once each', () => {
+        const stgPayments = `${PROJECT}.xf_example.stg_payments`;
+        const slice = fileSlice(graph, dataform, 'definitions/marts/legacy_orders.sqlx', 1, [stgPayments, `${PROJECT}.xf_example.legacy_orders`, 'no.such.action']);
+        assert.deepStrictEqual(slice.actions.map((action) => action.target.name), ['legacy_orders', 'stg_payments']);
+        // A file whose only actions are registered ones still shows them
+        assert.deepStrictEqual(fileSlice(graph, dataform, 'includes/helpers.js', 1, [stgPayments]).role, 'actions');
     });
 
     test('its size does not grow with the Project', () => {

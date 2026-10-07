@@ -1,4 +1,5 @@
 import type { CompileStatus, DataformBlock, HostMessage } from './panelContract';
+import { legacyStateFromFileSlice } from './panelLegacyFile';
 
 /*
  * While the compiled-query panel moves from one flat state to the slices of the contract (piece 4.4 of the build
@@ -53,6 +54,9 @@ export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage
     if (message.slice === 'compile status') {
         return legacyStateFromCompileStatus(message.value);
     }
+    if (message.slice === 'file') {
+        return legacyStateFromFileSlice(message.value);
+    }
     if (message.slice !== 'dataform') {
         // No component reads the other slices yet, and the host does not send them
         return {};
@@ -68,7 +72,7 @@ export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage
  * - `missingExecutables`, when the tool was not found;
  * - `compilationErrors`, when the compile left errors.
  * The flat state's `errorType` and `errorMessage` also carry problems with the file itself, which are not the
- * compile's; they stay flat until the file slice moves.
+ * compile's; they stay flat for now.
  */
 function legacyStateFromCompileStatus(status: CompileStatus): Record<string, unknown> {
     const flat: Record<string, unknown> = { recompiling: status.status === 'compiling' };

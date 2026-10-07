@@ -16,8 +16,8 @@
   "errorMessage": null,
   "errorType": null,
   "expectedOutputQuery": "",
-  "incrementalPreOpsQuery": "\n  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );\n\n",
-  "incrementalQuery": "\n\n\n\n\nSELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint\n",
+  "incrementalPreOpsQuery": "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );\n",
+  "incrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
   "isHelperFile": false,
   "lineageMetadata": null,
   "models": [
@@ -31,13 +31,13 @@
       ],
       "fileName": "definitions/0300_INCREMENTAL.sqlx",
       "incrementalPreOps": [
-        "\n  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );\n"
+        "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );"
       ],
-      "incrementalQuery": "\n\n\n\n\nSELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint\n",
+      "incrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
       "preOps": [
-        "\n  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );\n"
+        "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );"
       ],
-      "query": "\n\n\n\n\nSELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint\n",
+      "query": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "0300_INCREMENTAL",
@@ -47,11 +47,11 @@
     }
   ],
   "modelType": "incremental",
-  "nonIncrementalQuery": "\n\n\n\n\nSELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint\n",
+  "nonIncrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
   "operationsQuery": "",
   "packageJsonContent": null,
   "postOperations": "",
-  "preOperations": "\n  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );\n\n",
+  "preOperations": "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );\n",
   "projectConfig": {
     "assertionSchema": "dataform_assertions",
     "defaultDatabase": "drawingfire-b72a8",
@@ -74,13 +74,13 @@
       ],
       "fileName": "definitions/0300_INCREMENTAL.sqlx",
       "incrementalPreOps": [
-        "\n  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );\n"
+        "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );"
       ],
-      "incrementalQuery": "\n\n\n\n\nSELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint\n",
+      "incrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
       "preOps": [
-        "\n  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );\n"
+        "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );"
       ],
-      "query": "\n\n\n\n\nSELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint\n",
+      "query": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
       "target": {
         "database": "drawingfire-b72a8",
         "name": "0300_INCREMENTAL",

@@ -66,6 +66,8 @@ export interface PanelAction extends ActionReference {
     id: ActionId;
     /** The action builds nothing and its Target is made up: it is never shown as a BigQuery link */
     buildsNothing: boolean;
+    /** The action builds a table or view at its Target. An operation does only when it says it has output */
+    buildsTable: boolean;
     tags: string[];
     disabled: boolean;
     description?: string;

@@ -15,13 +15,13 @@
   "dependents": [
     {
       "database": "drawingfire-b72a8",
-      "name": "0100_CLUBS_ASSER",
-      "schema": "dataform_assertions"
+      "name": "test_one",
+      "schema": "dataform"
     },
     {
       "database": "drawingfire-b72a8",
-      "name": "test_one",
-      "schema": "dataform"
+      "name": "0100_CLUBS_ASSER",
+      "schema": "dataform_assertions"
     }
   ],
   "errorMessage": null,
@@ -46,7 +46,7 @@
       "fileName": "definitions/0100_CLUBS.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n\nselect * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
+      "query": "select * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
       "tags": [
         "FOOTY"
       ],
@@ -90,7 +90,7 @@
       "fileName": "definitions/0100_CLUBS.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n\nselect * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
+      "query": "select * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
       "tags": [
         "FOOTY"
       ],

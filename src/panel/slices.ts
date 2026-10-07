@@ -8,6 +8,7 @@ import {
     CompiledGraph,
     RunOptions,
     actionsInFile,
+    buildsTable,
     dependenciesOf,
     dependentsOf,
     isMadeUpTarget,
@@ -50,6 +51,7 @@ function panelAction(graph: CompiledGraph, action: Action): PanelAction {
         ...reference(action),
         id: action.id,
         buildsNothing: isMadeUpTarget(action.target),
+        buildsTable: buildsTable(action),
         tags: action.tags,
         disabled: action.disabled === true,
         sections: action.sections,
@@ -80,10 +82,13 @@ function roleWithoutActions(backend: Backend<never>, file: string): FileRole {
  * Nothing else of the Compiled Graph is in it, so its size does not grow with the Project.
  *
  * @param file Relative to the Project root with forward slashes
+ * @param registered Actions the file brings into the Project though the graph gives them another file: the notebooks
+ * a Dataform JavaScript file registers. They are shown after the file's own
  */
-export function fileSlice(graph: CompiledGraph | undefined, backend: Backend<never>, file: string, compile: CompileNumber): FileSlice {
+export function fileSlice(graph: CompiledGraph | undefined, backend: Backend<never>, file: string, compile: CompileNumber, registered: ActionId[] = []): FileSlice {
+    const also = graph ? registered.map((id) => graph.actions[id]).filter((action): action is Action => action !== undefined) : [];
     const defined = graph ? actionsInFile(graph, file) : [];
-    if (!graph || defined.length === 0) {
+    if (!graph || defined.length + also.length === 0) {
         return { compile, file, role: roleWithoutActions(backend, file), actions: [] };
     }
     // An action's siblings are its file's actions and the tests that read them, already in display order
@@ -95,6 +100,7 @@ export function fileSlice(graph: CompiledGraph | undefined, backend: Backend<nev
             }
         }
     }
+    shown.push(...also.filter((action) => !shown.includes(action)));
     return { compile, file, role: 'actions', actions: shown.map((action) => panelAction(graph, action)) };
 }
 

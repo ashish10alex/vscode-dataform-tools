@@ -33,7 +33,7 @@
       "hasOutput": true,
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n -- Operations: [1] \n\n\nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
+      "query": "\n -- Operations: [1] \nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
       "tags": [
         "OPS_TAG"
       ],
@@ -47,7 +47,7 @@
   ],
   "modelType": "operations",
   "nonIncrementalQuery": "",
-  "operationsQuery": "\n -- Operations: [1] \n\n\nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
+  "operationsQuery": "\n -- Operations: [1] \nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
   "packageJsonContent": null,
   "postOperations": "",
   "preOperations": "",
@@ -75,7 +75,7 @@
       "hasOutput": true,
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n -- Operations: [1] \n\n\nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
+      "query": "\n -- Operations: [1] \nDROP TABLE IF EXISTS\n`drawingfire-b72a8.dataform.0500_OPERATIONS`;\n\nCREATE OR REPLACE TABLE `drawingfire-b72a8.dataform.0500_OPERATIONS` AS \nSELECT * FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n",
       "tags": [
         "OPS_TAG"
       ],

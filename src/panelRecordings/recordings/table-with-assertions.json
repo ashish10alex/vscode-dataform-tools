@@ -3,7 +3,7 @@
     "table",
     "assertion"
   ],
-  "assertionQuery": "\n -- Assertions: [1] \nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1\n; \n",
+  "assertionQuery": "\n -- Assertions: [1] \nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1; \n",
   "compilerOptions": "",
   "dataformCoreVersion": "3.0.39",
   "dataformTags": [
@@ -26,13 +26,13 @@
     },
     {
       "database": "drawingfire-b72a8",
-      "name": "dataform_0100_GAMES_META_assertions_uniqueKey_0",
-      "schema": "dataform_assertions"
+      "name": "0500_OPERATIONS",
+      "schema": "dataform"
     },
     {
       "database": "drawingfire-b72a8",
-      "name": "0500_OPERATIONS",
-      "schema": "dataform"
+      "name": "dataform_0100_GAMES_META_assertions_uniqueKey_0",
+      "schema": "dataform_assertions"
     }
   ],
   "errorMessage": null,
@@ -62,7 +62,7 @@
       "fileName": "definitions/0100_GAMES_META.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n\n\n\nWITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n",
+      "query": "WITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES",
       "tags": [
         "FOOTY"
       ],
@@ -84,7 +84,7 @@
       "fileName": "definitions/0100_GAMES_META.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1\n",
+      "query": "SELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1",
       "tags": [
         "FOOTY"
       ],
@@ -112,7 +112,7 @@
   "propertyGraphs": null,
   "recompiling": false,
   "relativeFilePath": "definitions/0100_GAMES_META.sqlx",
-  "tableOrViewQuery": "WITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n\n;",
+  "tableOrViewQuery": "WITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n;",
   "targetTablesOrViews": [
     {
       "actionDescriptor": {
@@ -133,7 +133,7 @@
       "fileName": "definitions/0100_GAMES_META.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\n\n\n\nWITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES\n",
+      "query": "WITH GAMES AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAMES`\n)\n\n, GAME_EVENTS AS (\n  SELECT * FROM\n    `drawingfire-b72a8.football_data.GAME_EVENTS`\n)\n\nSELECT *,\n  ROW_NUMBER() OVER (\n    PARTITION BY HOME_CLUB_ID\n    ORDER BY ATTENDANCE DESC\n  ) AS RN \nFROM GAMES\n WHERE 1 = 1\n  AND COMPETITION_ID = 'GB1'\n  AND HOME_CLUB_ID = 985\n  AND SEASON = 2024\n  ORDER BY DATE desc\n\n-- SELECT * FROM GAMES AS G\n-- LEFT JOIN GAME_EVENTS AS E\n--   USING (GAME_ID)\n\n\n-- SELECT DISTINCT competition_id, competition_type FROM GAMES",
       "tags": [
         "FOOTY"
       ],
@@ -155,7 +155,7 @@
       "fileName": "definitions/0100_GAMES_META.sqlx",
       "incrementalPreOps": [],
       "incrementalQuery": "",
-      "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1\n",
+      "query": "SELECT\n  *\nFROM (\n  SELECT\n    game_id,\n    COUNT(1) AS index_row_count\n  FROM `drawingfire-b72a8.dataform.0100_GAMES_META`\n  GROUP BY game_id\n  ) AS data\nWHERE index_row_count > 1",
       "tags": [
         "FOOTY"
       ],
