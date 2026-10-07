@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { logger } from '../logger';
-import type { CompiledGraph } from '../shared/compiledGraph';
+import path from 'path';
+import { CompiledGraph, actionsInFile } from '../shared/compiledGraph';
 import type { DataformCompiledJson } from '../types';
 import { CompiledIndices, emptyIndices } from '../utils/compiledJsonIndex';
 import { createDataformBackend } from './dataformBackend';
-import type { BackendName } from './detection';
+import { BACKENDS, BackendName, FileBackendHints } from './detection';
 import { ProjectRegistry, ProjectState } from './registry';
 
 export { ProjectRegistry, ProjectState } from './registry';
@@ -51,6 +52,50 @@ function syncBackendContext() {
     vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.backendListsChangedActions', context.listsChangedActions);
 }
 
+/** Where the answer to "which Backend?" for a root shared by two Projects is kept, when no setting gives it */
+const SHARED_ROOT_BACKEND = 'sharedRootBackend';
+let workspaceState: vscode.Memento | undefined;
+/** Asked once in a window: a user who closes the question is not asked again until the next one */
+let askedForBackend = false;
+
+const isBackendName = (value: unknown): value is BackendName => BACKENDS.includes(value as BackendName);
+
+/**
+ * What settles which Project a file belongs to in a directory that is the root of both a Dataform and a dbt Project,
+ * when its type does not (xf#47): the one Compiled Graph that lists it, else the `backend` setting, else what the
+ * user answered when asked.
+ */
+export function fileBackendHints(filePath: string): FileBackendHints {
+    const setting = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(filePath)).get<string>('backend');
+    const remembered = workspaceState?.get<string>(SHARED_ROOT_BACKEND);
+    const preferred = isBackendName(setting) ? setting : isBackendName(remembered) ? remembered : undefined;
+    return {
+        ...(preferred ? { preferred } : {}),
+        isListed: (backend, relativePath) => {
+            const root = filePath.slice(0, filePath.length - relativePath.length).replace(/[\\/]+$/, '');
+            const project = projects.find(path.normalize(root), backend);
+            const graph = backend === 'dataform' ? project?.dataformBackend?.graph : project?.dbtBackend?.lastResult?.graph;
+            return !!graph && actionsInFile(graph, relativePath).length > 0;
+        },
+    };
+}
+
+/** Asks which Backend files that neither Project claims belong to, once, and remembers the answer for the workspace */
+async function askForBackend(filePath: string) {
+    if (askedForBackend || !workspaceState) {
+        return;
+    }
+    askedForBackend = true;
+    const answer = await vscode.window.showInformationMessage(
+        `${path.basename(filePath)} is in a folder that is both a Dataform and a dbt project, and neither claims it. Which should such files be treated as? The setting "vscode-dataform-tools.backend" changes this later.`,
+        'Dataform', 'dbt',
+    );
+    if (answer) {
+        await workspaceState.update(SHARED_ROOT_BACKEND, answer === 'dbt' ? 'dbt' : 'dataform');
+        syncProjects();
+    }
+}
+
 let knownProjects = '';
 
 /**
@@ -70,7 +115,12 @@ function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.acti
         vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.multipleProjects', found.length > 1);
     }
     if (editor?.document.uri.scheme === 'file') {
-        projects.noteActiveFile(editor.document.uri.fsPath);
+        const file = editor.document.uri.fsPath;
+        const hints = fileBackendHints(file);
+        projects.noteActiveFile(file, hints);
+        if (projects.forFile(file, hints).kind === 'ambiguous') {
+            void askForBackend(file);
+        }
     }
     syncBackendContext();
     if (projects.active !== before) {
@@ -90,9 +140,15 @@ export function activateProject(project: ProjectState) {
 
 /** Finds the window's Projects and keeps the list and the active Project current */
 export function initProjects(context: vscode.ExtensionContext) {
+    workspaceState = context.workspaceState;
     syncProjects();
     context.subscriptions.push(
         activeProjectChanged,
+        vscode.workspace.onDidChangeConfiguration((event) => {
+            if (event.affectsConfiguration('vscode-dataform-tools.backend')) {
+                syncProjects();
+            }
+        }),
         vscode.workspace.onDidChangeWorkspaceFolders(() => syncProjects()),
         vscode.window.onDidChangeActiveTextEditor((editor) => syncProjects(editor)),
     );

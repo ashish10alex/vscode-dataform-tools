@@ -706,6 +706,20 @@
                     "scope": "resource",
                     "markdownDescription": "**Path to the dbt executable**, for a dbt project.\n\nLeave it empty to let the extension find dbt. It looks, in this order, at: this setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, and common install directories. The first one that has a dbt is used, and the compiled query panel says which.\n\nBoth dbt-core (1.8 or later, with the BigQuery adapter) and dbt v2 work.\n\n**Example**: `/opt/homebrew/bin/dbt`, or `.venv/bin/dbt` relative to the project."
                 },
+                "vscode-dataform-tools.backend": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "dataform",
+                        "dbt",
+                        null
+                    ],
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**Only for a folder that is both a Dataform and a dbt project** (it has `workflow_settings.yaml` or `dataform.json`, and `dbt_project.yml`).\n\nThere, a file's type says which project it belongs to: `.sqlx` is Dataform's; `.sql`, `.csv` and `.py` are dbt's. A YAML, `.js` or `.json` file belongs to the project that compiles an action from it. This setting decides for a file that neither claims. Left empty, the extension asks once and remembers the answer for the workspace.\n\nIn any other folder this setting does nothing: the project is told by its settings file."
+                },
                 "vscode-dataform-tools.dbtTarget": {
                     "type": "string",
                     "default": null,
