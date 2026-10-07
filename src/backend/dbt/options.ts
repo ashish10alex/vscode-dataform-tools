@@ -1,3 +1,5 @@
+import type { DbtFlavour } from './probe';
+
 /*
  * The dbt Backend's options. The host resolves them from settings and passes them in with every request (see
  * `BackendRequest`), so the Backend never reads a setting.
@@ -5,6 +7,15 @@
 export interface DbtOptions {
     /** The dbt to run: a path, or a name to find on PATH */
     binary: string;
+    /** Which engine the binary is, from the host's probe of it (probe.ts). The two are compiled with differently */
+    flavour: DbtFlavour;
+    /** How the dbt names itself, e.g. "dbt 2.0.6", for messages. From the probe */
+    label?: string;
+    /**
+     * Compile a dbt v2 Project that has on-run hooks. dbt v2 runs those hooks against the warehouse every time it
+     * compiles, so without this such a Project is only parsed.
+     */
+    compileWithHooks?: boolean;
     /** The dbt target to compile and run with (`--target`). Unset lets dbt choose: `$DBT_TARGET`, else the profile's default */
     target?: string;
     /** Variables for the Project (`--vars`), as the user typed them: YAML or JSON */

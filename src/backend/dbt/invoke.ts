@@ -10,6 +10,9 @@ import type { DbtOptions } from './options';
  * for its callers.
  */
 
+/** What running dbt needs of the Backend's options */
+export type DbtRunOptions = Pick<DbtOptions, 'binary' | 'target' | 'vars' | 'profilesDir' | 'artifactDir' | 'env'>;
+
 /** The dbt commands that write a manifest. A parse compiles no SQL and connects to nothing */
 export type DbtCommand = 'compile' | 'parse';
 
@@ -36,7 +39,7 @@ export function manifestPathIn(artifactDir: string): string {
  * `--no-version-check` is passed as ADR 0003 decides; in dbt-core it also turns off the check of the Project's
  * `require-dbt-version`. `extra` comes after the command's own, e.g. `--select`.
  */
-export function dbtArguments(command: DbtCommand, root: string, options: DbtOptions, extra: string[] = []): string[] {
+export function dbtArguments(command: DbtCommand, root: string, options: DbtRunOptions, extra: string[] = []): string[] {
     const args = [
         command,
         '--project-dir', root,
@@ -83,7 +86,7 @@ function killTree(child: ChildProcess) {
  * started, and with the signal's reason when the signal is aborted, which ends dbt's process tree.
  */
 export async function invokeDbt(
-    request: Pick<BackendRequest<DbtOptions>, 'root' | 'options' | 'logger' | 'signal'>,
+    request: Pick<BackendRequest<DbtRunOptions>, 'root' | 'options' | 'logger' | 'signal'>,
     command: DbtCommand,
     extra: string[] = [],
     onLine?: (line: string) => void,
