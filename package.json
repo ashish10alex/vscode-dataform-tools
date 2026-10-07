@@ -607,6 +607,24 @@
                     "scope": "resource",
                     "markdownDescription": "**Path to the dbt executable**, for a dbt project.\n\nLeave it empty to let the extension find dbt. It looks, in this order, at: this setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, and common install directories. The first one that has a dbt is used, and the compiled query panel says which.\n\nBoth dbt-core (1.8 or later, with the BigQuery adapter) and dbt v2 work.\n\n**Example**: `/opt/homebrew/bin/dbt`, or `.venv/bin/dbt` relative to the project."
                 },
+                "vscode-dataform-tools.dbtTarget": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**The dbt target to compile and run a dbt project with** (dbt's `--target`): one of the `outputs` of the project's profile, such as `dev`.\n\nLeave it empty to let dbt choose: `$DBT_TARGET` if it is set, else the profile's default.\n\nThis is the default for everyone who uses the workspace. The compiled query panel shows the dbt target in use and lets you pick another for yourself; that choice is kept privately for the workspace and does not change this setting."
+                },
+                "vscode-dataform-tools.dbtVars": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**dbt variables** for a dbt project (dbt's `--vars`), as YAML or JSON in one line. They apply to compiles and to runs.\n\n**Example**: `{run_date: 2026-01-31, region: eu}`"
+                },
+                "vscode-dataform-tools.dbtProfilesDir": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**The directory that holds `profiles.yml`** for a dbt project (dbt's `--profiles-dir`), absolute or relative to the project. It applies to compiles and to runs.\n\nLeave it empty to let dbt look where it does by default: `$DBT_PROFILES_DIR`, the project's root, then `~/.dbt`."
+                },
                 "vscode-dataform-tools.dbtCompileWithHooks": {
                     "type": "boolean",
                     "default": false,

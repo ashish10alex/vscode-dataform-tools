@@ -107,6 +107,111 @@ function ToolButtons({ looking }: { looking: boolean }) {
   );
 }
 
+/**
+ * The dbt target in use, and the way to choose another (xf#50): a name of the Project's profile, or a typed one when
+ * the profile could not be read. The choice is the user's own for this workspace; the way back is to the default.
+ */
+function TargetControl({ block }: { block: DbtBlock }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const { target } = block;
+  const choose = (name: string | null) => {
+    setOpen(false);
+    setTyped("");
+    vscode.postMessage({ command: "dbt.setTarget", name });
+  };
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [open]);
+  const backTo = target.setting ?? target.profileDefault;
+  return (
+    <div data-dbt="target" className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        title={target.overridden ? "Your own choice for this workspace. It overrides the dbtTarget setting" : "Choose the dbt target to compile and run with"}
+        className={clsx(
+          "flex items-center gap-1.5 px-2 py-1 rounded border text-xs bg-transparent cursor-pointer text-[var(--vscode-foreground)]",
+          target.overridden ? "border-[var(--vscode-inputValidation-warningBorder)] bg-[var(--vscode-inputValidation-warningBackground)]" : "border-[var(--vscode-widget-border)]",
+        )}
+      >
+        <span className={MUTED}>dbt target</span>
+        <span className="font-mono">{target.name ?? "dbt's default"}</span>
+        {target.overridden && <span className={clsx("text-[10px] uppercase tracking-wider", WARNING)}>override</span>}
+        <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div role="menu" className="absolute right-0 mt-1 w-64 z-20 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background,var(--vscode-sideBar-background))] shadow-lg p-1.5 text-sm">
+            {target.names.length > 0 ? (
+              target.names.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={name === target.name}
+                  onClick={() => choose(name)}
+                  className={clsx("w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded border-0 cursor-pointer text-left text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]", name === target.name ? "bg-[var(--vscode-list-inactiveSelectionBackground,rgba(128,128,128,0.2))]" : "bg-transparent")}
+                >
+                  <span className="font-mono text-xs">{name}</span>
+                  <span className={clsx("text-[11px]", MUTED)}>{[name === target.profileDefault && "profile default", name === target.setting && "setting"].filter(Boolean).join(" · ")}</span>
+                </button>
+              ))
+            ) : (
+              <form
+                className="p-1.5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (typed.trim()) {
+                    choose(typed.trim());
+                  }
+                }}
+              >
+                <div className={clsx("text-xs mb-1.5", MUTED)}>profiles.yml could not be read, so type a name</div>
+                <div className="flex gap-1.5">
+                  <input
+                    autoFocus
+                    value={typed}
+                    onChange={(event) => setTyped(event.target.value)}
+                    placeholder="dbt target name"
+                    aria-label="dbt target name"
+                    className="min-w-0 flex-1 px-2 py-1 rounded font-mono text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border,var(--vscode-widget-border))]"
+                  />
+                  <button type="submit" className={SECONDARY_BUTTON} disabled={!typed.trim()}>
+                    Use
+                  </button>
+                </div>
+              </form>
+            )}
+            <div className={clsx("border-t border-[var(--vscode-widget-border)] mt-1 pt-1.5 px-2 pb-1 text-xs space-y-1", MUTED)}>
+              {target.overridden && (
+                <button type="button" className={clsx("p-0 bg-transparent border-0 cursor-pointer underline text-xs", WARNING)} onClick={() => choose(null)}>
+                  Back to the default{backTo ? ` (${backTo})` : ""}
+                </button>
+              )}
+              <div>
+                vars <span className="font-mono text-[var(--vscode-foreground)]">{block.vars ?? "none"}</span>
+              </div>
+              <div>
+                profiles dir <span className="font-mono text-[var(--vscode-foreground)]">{block.profilesDir ?? "dbt's default"}</span>
+              </div>
+              <div className="italic">vars and profiles dir are set in settings</div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ErrorCard({ error }: { error: CompileError }) {
   const at = error.fileName ? [error.fileName, error.line].filter((part) => part !== undefined).join(":") : "";
   return (
@@ -290,6 +395,18 @@ function SchemaTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   );
 }
 
+/** Why the dbt target is the one it is, for the Project tab */
+function targetNote(target: DbtBlock["target"]): string {
+  if (target.overridden) {
+    const fallback = target.setting ?? target.profileDefault;
+    return `  (override${fallback ? `; default is ${fallback}` : ""})`;
+  }
+  if (target.setting === target.name) {
+    return "  (the dbtTarget setting)";
+  }
+  return target.profileDefault === target.name ? "  (profile default)" : "";
+}
+
 function ProjectTab({ state }: { state: PanelSlices }) {
   const block = state.dbt;
   const dbt = block?.dbt;
@@ -297,7 +414,7 @@ function ProjectTab({ state }: { state: PanelSlices }) {
     ["Backend", "dbt"],
     ["dbt", dbt ? `${dbt.path}  (found by ${dbt.foundBy})` : block?.looking ? "looking for it…" : "not found"],
     ["Version", engineLabel(dbt) || "not known"],
-    ["dbt target", block?.target.name ? `${block.target.name}${block.target.overridden ? "  (override)" : ""}` : "not reported yet"],
+    ["dbt target", block?.target.name ? `${block.target.name}${targetNote(block.target)}` : "dbt chooses; it has not said which yet"],
     ["dbt vars", block?.vars ?? "none"],
     ["Profiles dir", block?.profilesDir ?? "where dbt looks by default"],
     ["Warehouse", block?.warehouse ?? "not known yet"],
@@ -364,11 +481,7 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
           {engine && <span className={clsx("font-mono", MUTED)}>{engine}</span>}
-          {block?.target.name && (
-            <span data-dbt="target" className="px-2 py-1 rounded border border-[var(--vscode-widget-border)]">
-              <span className={MUTED}>dbt target</span> <span className="font-mono">{block.target.name}</span>
-            </span>
-          )}
+          {block && view.page !== "tool missing" && <TargetControl block={block} />}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, projects, requiredTools } from '../project';
-import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile } from '../project/dbtCompile';
+import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
 import { CompileState, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../panel/slices';
@@ -312,6 +312,12 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push(onDidChangeDbtCompile((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
     // So is what is known of its dbt: another one found, or none any more
     context.subscriptions.push(onDidChangeDbtTool((root) => CompiledQueryPanel.centerPanel?.dbtToolChanged(root)));
+    // And the settings a dbt compile is made with: another dbt target, other variables or profiles are another result
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (['dbtTarget', 'dbtVars', 'dbtProfilesDir'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
+            CompiledQueryPanel.centerPanel?.dbtOptionsChanged();
+        }
+    }));
 
 
     const triggerCompilationForDocument = async (document: vscode.TextDocument, spanName: string = 'recompilePreview') => {
@@ -658,13 +664,19 @@ export class CompiledQueryPanel {
         const tool = dbtToolNow(project.root);
         const settings = dbtSettings(project.root);
         const shown = fileSlice(last?.graph, backend, file, project.compileNumber);
+        const targets = listDbtTargets(project.root, { profilesDir: settings.profilesDir });
         const block: DbtBlock = dbtBlock({
             ...(tool?.status === 'found' ? { dbt: { path: tool.path, foundBy: tool.foundBy, flavour: tool.probe.flavour, version: tool.probe.version } } : {}),
             looking: !tool || tool.status === 'looking',
-            target: last?.target ?? settings.target,
+            // What was chosen or set is in force at once, before the compile that uses it has ended. With neither,
+            // dbt chooses, and its log says what it chose
+            target: settings.target ?? last?.target,
+            targetOverridden: settings.overridden,
+            targetSetting: settings.settingTarget,
+            targets,
             vars: settings.vars,
             profilesDir: settings.profilesDir,
-            profile: listDbtTargets(project.root, { profilesDir: settings.profilesDir })?.profile,
+            profile: targets?.profile,
             parsedForHooks: last?.parsedOnly === true && !!last.notice,
             data: last?.dbt,
             graph: last?.graph,
@@ -714,6 +726,16 @@ export class CompiledQueryPanel {
             .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
     }
 
+    /** A setting that a dbt compile is made with has changed: the file on show is shown again, which compiles it if its Project is affected */
+    public dbtOptionsChanged() {
+        const shown = this.dbtOnShow;
+        if (!shown || this.centerPanelDisposed) {
+            return;
+        }
+        CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, shown.project, shown.file, 'switch')
+            .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
+    }
+
     /** Opens the file that defines an action of the dbt Project on show. False when the panel is not showing one */
     private openDbtAction(target: { database: string; schema: string; name: string }): boolean {
         const shown = this.dbtOnShow;
@@ -754,7 +776,9 @@ export class CompiledQueryPanel {
                 await lookForDbt(project.root);
                 return;
             case 'dbt.setTarget':
-                // The dbt target control comes with piece 5.5
+                await setDbtTargetOverride(project.root, message.name);
+                // Another dbt target is another result: this compiles, and replaces a compile that is running
+                await CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, project, file, 'switch');
                 return;
         }
     }

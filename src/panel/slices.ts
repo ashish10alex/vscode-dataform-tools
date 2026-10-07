@@ -177,8 +177,14 @@ export interface DbtBlockInput {
     dbt?: DbtBlock['dbt'];
     /** dbt is still being looked for */
     looking?: boolean;
-    /** The dbt target the last compile said it used, else the one the settings name */
+    /** The dbt target in force: the one chosen or set, else the one the last compile said dbt used */
     target?: string;
+    /** The panel's choice overrides the `dbtTarget` setting */
+    targetOverridden?: boolean;
+    /** The `dbtTarget` setting */
+    targetSetting?: string;
+    /** The dbt targets of the Project's profile and its default, where `profiles.yml` could be read */
+    targets?: { names: string[]; defaultName?: string };
     vars?: string;
     profilesDir?: string;
     /** The profile `dbt_project.yml` names, where it could be read */
@@ -205,8 +211,13 @@ export function dbtBlock(input: DbtBlockInput, compile: CompileNumber): DbtBlock
     const block: DbtBlock = {
         compile,
         looking: input.looking === true,
-        // The control that overrides the dbt target, and the names it offers, come with it (piece 5.5)
-        target: { ...(input.target ? { name: input.target } : {}), overridden: false, names: [] },
+        target: {
+            ...(input.target ? { name: input.target } : {}),
+            overridden: input.targetOverridden === true,
+            names: input.targets?.names ?? [],
+            ...(input.targets?.defaultName ? { profileDefault: input.targets.defaultName } : {}),
+            ...(input.targetSetting ? { setting: input.targetSetting } : {}),
+        },
         hooksNotice: input.parsedForHooks === true,
         bigQuery: !data?.adapterType || data.adapterType === BIGQUERY,
         names: {},

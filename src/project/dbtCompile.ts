@@ -29,6 +29,9 @@ const LAST_USED = 'last-used';
 const UNUSED_DAYS = 30;
 
 let storageRoot: string | undefined;
+/** Where the dbt target chosen in the panel is kept: private to this workspace on this machine, never in a settings file */
+let workspaceState: vscode.Memento | undefined;
+const TARGET_OVERRIDES = 'dbtTargetOverrides';
 const states = new Map<string, CompileState>();
 /** By Project: what the last compile was run with. Another dbt, dbt target or variables make its result another Project's, in effect */
 const compiledWith = new Map<string, string>();
@@ -67,10 +70,33 @@ function artifactDir(root: string, binary: string, target: string | undefined): 
     return path.join(storageRoot!, ARTIFACTS, name);
 }
 
-/** What the settings say of how the Project is compiled. Each is unset when its setting is empty */
-export function dbtSettings(root: string): { target?: string; vars?: string; profilesDir?: string; compileWithHooks: boolean } {
+/** The dbt target chosen in the panel for the Project, which overrides the `dbtTarget` setting (xf#50). Undefined when none is */
+export function dbtTargetOverride(root: string): string | undefined {
+    return workspaceState?.get<Record<string, string>>(TARGET_OVERRIDES)?.[root] || undefined;
+}
+
+/** Chooses a dbt target for the Project in this workspace; null goes back to the `dbtTarget` setting */
+export async function setDbtTargetOverride(root: string, name: string | null): Promise<void> {
+    const overrides = { ...(workspaceState?.get<Record<string, string>>(TARGET_OVERRIDES) ?? {}) };
+    if (name === null || name.trim() === '') {
+        delete overrides[root];
+    } else {
+        overrides[root] = name.trim();
+    }
+    await workspaceState?.update(TARGET_OVERRIDES, overrides);
+}
+
+/**
+ * How the Project is compiled and run, from the settings and the panel's choice of dbt target. Each is unset when
+ * nothing names it. `settingTarget` is the team's default, which `target` is unless the panel overrides it.
+ */
+export function dbtSettings(root: string): { target?: string; settingTarget?: string; overridden: boolean; vars?: string; profilesDir?: string; compileWithHooks: boolean } {
+    const settingTarget = setting<string>(root, 'dbtTarget') || undefined;
+    const override = dbtTargetOverride(root);
     return {
-        target: setting<string>(root, 'dbtTarget') || undefined,
+        target: override ?? settingTarget,
+        settingTarget,
+        overridden: override !== undefined,
         vars: setting<string>(root, 'dbtVars') || undefined,
         profilesDir: setting<string>(root, 'dbtProfilesDir') || undefined,
         compileWithHooks: setting<boolean>(root, 'dbtCompileWithHooks') === true,
@@ -83,13 +109,16 @@ export async function dbtOptions(root: string): Promise<DbtOptions | undefined> 
     if (tool.status !== 'found' || !storageRoot) {
         return undefined;
     }
-    const settings = dbtSettings(root);
+    const { target, vars, profilesDir, compileWithHooks } = dbtSettings(root);
     return {
         binary: tool.path,
         flavour: tool.probe.flavour,
         label: tool.probe.label,
-        ...settings,
-        artifactDir: artifactDir(root, tool.path, settings.target),
+        target,
+        vars,
+        profilesDir,
+        compileWithHooks,
+        artifactDir: artifactDir(root, tool.path, target),
     };
 }
 
@@ -236,6 +265,7 @@ export async function clearDbtArtifacts() {
 export function initDbtCompile(context: vscode.ExtensionContext) {
     // The workspace's own storage; a window with a single file open has none
     storageRoot = (context.storageUri ?? context.globalStorageUri).fsPath;
+    workspaceState = context.workspaceState;
     context.subscriptions.push(changed);
     pruneArtifacts().catch((error) => logger.error(`dbt: could not prune artifacts: ${error}`));
 }
