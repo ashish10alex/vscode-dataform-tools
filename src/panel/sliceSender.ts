@@ -24,6 +24,21 @@ export class SliceSender {
         return true;
     }
 
+    /**
+     * Sends again every slice that was sent, as it was last sent, in an order the panel can take them in: the
+     * Project and the compile status before the file they are about. For a panel whose page has only now begun to
+     * listen: what was posted before that found nobody.
+     */
+    resend() {
+        const order: SliceName[] = ['project', 'dbt', 'compile status', 'file', 'bigquery', 'run status'];
+        for (const slice of order) {
+            const serialised = this.sent.get(slice);
+            if (serialised !== undefined) {
+                this.post({ slice, value: JSON.parse(serialised) } as HostMessage);
+            }
+        }
+    }
+
     /** Forgets what was sent: the panel was reloaded and has nothing */
     reset() {
         this.sent.clear();

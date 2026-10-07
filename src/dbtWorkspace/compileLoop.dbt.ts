@@ -19,6 +19,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 interface PanelApi {
     onDidPostMessage(listener: (message: unknown) => void): vscode.Disposable;
     dbtMessage(message: DbtPanelMessage): Promise<void> | undefined;
+    resendAll(): void;
     dbtRunMessage(message: Extract<PanelMessage, { command: 'run' | 'runTags' | 'repeatLastRun' }>): Promise<boolean> | undefined;
 }
 
@@ -144,6 +145,25 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         assert.strictEqual(slices.file?.compile, slices.compile?.compile);
         assert.strictEqual(slices.project?.compile, slices.compile?.compile);
         assert.strictEqual(slices.dbt?.compile, slices.compile?.compile);
+    });
+
+    test('a page that begins to listen after the compile has ended is sent everything again', async () => {
+        // The first page starts as "compiling". A compile that is reused ends before the page listens, and a slice
+        // is not sent twice: without the resend the panel would stay on "compiling"
+        const resent: Array<{ slice?: string; value?: { status?: string; file?: string; backend?: string } }> = [];
+        const tap = panel.onDidPostMessage((message) => resent.push(message as typeof resent[number]));
+        try {
+            panel.resendAll();
+        } finally {
+            tap.dispose();
+        }
+        const slicesResent = resent.filter((message) => message.slice !== 'dataform').map((message) => message.slice);
+        assert.deepStrictEqual(slicesResent.slice(0, 4), ['project', 'dbt', 'compile status', 'file']);
+        const status = resent.find((message) => message.slice === 'compile status')?.value;
+        assert.strictEqual(status?.status, 'compiled');
+        assert.strictEqual(resent.find((message) => message.slice === 'file')?.value?.file, 'models/marts/fct_orders.sql');
+        assert.strictEqual(resent.find((message) => message.slice === 'project')?.value?.backend, 'dbt');
+        assert.ok(resent.some((message) => message.slice === 'dataform'), 'The dataform block was not sent again');
     });
 
     test('the model and each test shown with it are dry-run without being asked, and nothing else is', async () => {
