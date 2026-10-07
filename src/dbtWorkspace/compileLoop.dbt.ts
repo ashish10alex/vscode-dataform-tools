@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import type { CompileStatus, DbtBlock, DbtPanelMessage, FileSlice, ProjectSlice } from '../shared/panelContract';
+import type { BigQuerySlice, CompileStatus, DbtBlock, DbtPanelMessage, FileSlice, ProjectSlice } from '../shared/panelContract';
 
 /*
 The compile loop of a dbt Project, in the real extension with a stand-in for dbt: a script that answers `--version`
@@ -26,7 +26,9 @@ suite('the compile loop of a dbt Project', function () {
     const manifests = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'fixtures', 'dbt-manifests');
     let dir: string;
     let subscription: vscode.Disposable | undefined;
-    const slices: { project?: ProjectSlice; compile?: CompileStatus; file?: FileSlice; dbt?: DbtBlock } = {};
+    const slices: { project?: ProjectSlice; compile?: CompileStatus; file?: FileSlice; dbt?: DbtBlock; bigquery?: BigQuerySlice } = {};
+    /** Every `bigquery` slice the panel was sent, in order */
+    const bigQuerySent: BigQuerySlice[] = [];
     let panel: PanelApi;
     let standIn: string;
     const statuses: string[] = [];
@@ -70,6 +72,9 @@ suite('the compile loop of a dbt Project', function () {
                 slices.file = value as FileSlice;
             } else if (slice === 'dbt') {
                 slices.dbt = value as DbtBlock;
+            } else if (slice === 'bigquery') {
+                slices.bigquery = value as BigQuerySlice;
+                bigQuerySent.push(slices.bigquery);
             }
         });
 
@@ -136,6 +141,31 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         assert.strictEqual(slices.file?.compile, slices.compile?.compile);
         assert.strictEqual(slices.project?.compile, slices.compile?.compile);
         assert.strictEqual(slices.dbt?.compile, slices.compile?.compile);
+    });
+
+    test('the model and each test shown with it are dry-run without being asked, and nothing else is', async () => {
+        const compile = slices.compile?.compile;
+        await until('the dry runs', () => slices.bigquery?.compile === compile && slices.bigquery?.dryRunning.length === 0 && (slices.bigquery?.results.length ?? 0) > 0);
+        const shown = slices.file!.actions;
+        // One result each for the model and its three tests; the unit test has no SQL
+        assert.deepStrictEqual(slices.bigquery?.results.map((result) => result.action).sort(), shown.filter((action) => action.kind !== 'unit test').map((action) => action.id).sort());
+        for (const result of slices.bigquery?.results ?? []) {
+            assert.deepStrictEqual([result.script, result.sections, result.compile, result.incremental], ['query', ['query'], compile, false]);
+            // BigQuery's answer, or why there is none (no credentials where the tests run in CI): never neither
+            assert.ok(result.bytes !== undefined || result.error?.message, JSON.stringify(result));
+        }
+        // The panel was first told which dry runs were out
+        const first = bigQuerySent.find((sent) => sent.compile === compile && sent.dryRunning.length > 0);
+        assert.deepStrictEqual(first?.dryRunning.map((key) => [key.script, key.incremental]), [['query', false], ['query', false], ['query', false], ['query', false]]);
+        assert.deepStrictEqual(first?.results, []);
+
+        // A file with nothing to dry-run: what was said of the last file is taken away, and BigQuery is not asked
+        await show('seeds/country_codes.csv');
+        await until('the seed', () => slices.file?.file === 'seeds/country_codes.csv');
+        await sleep(300);
+        assert.deepStrictEqual([slices.bigquery?.results, slices.bigquery?.dryRunning], [[], []]);
+        await show('models/marts/fct_orders.sql');
+        await until('the model again', () => slices.file?.file === 'models/marts/fct_orders.sql');
     });
 
     test("the panel is told what only a dbt Project has: the dbt found, its dbt target, its warehouse", async () => {

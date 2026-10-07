@@ -339,9 +339,9 @@ export function processQueryResults(rows: any[]): { results: any[], columns: any
     return { results, columns };
 }
 
-export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function queryBigQuery(query: string, place?: JobPlace): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
 
-    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
+    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query, false, place);
 
     if (errorMessage) {
         return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };

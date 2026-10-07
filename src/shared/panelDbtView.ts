@@ -1,4 +1,5 @@
 import type { CompileError } from '../backend/backend';
+import type { DryRunResult } from '../bigquery/dryRunService';
 import type { Kind, Target } from './compiledGraph';
 import type { ActionReference, CompileStatus, FileSlice, PanelAction } from './panelContract';
 import { PanelSlices, fileOnShow } from './panelState';
@@ -81,6 +82,39 @@ const hasGraph = (status: CompileStatus | undefined): status is Extract<CompileS
 const errorsOf = (status: CompileStatus | undefined): CompileError[] => (status && (hasGraph(status) || status.status === 'failed') ? status.errors : []);
 
 const plural = (count: number, one: string) => `${count} ${one}${count === 1 ? '' : 's'}`;
+
+/** What BigQuery has said of an action's compiled query */
+export interface DbtDryRun {
+    /** The dry run is out */
+    running: boolean;
+    /** Unset until it is back, and for an action that is never dry-run */
+    result?: DryRunResult;
+}
+
+/**
+ * The dry run of the action's query, if it is of the SQL on show: a result of another compile than the `file`
+ * slice's is not.
+ */
+export function dbtDryRunOf(slices: Pick<PanelSlices, 'bigquery' | 'file'>, action: Pick<PanelAction, 'id'>): DbtDryRun {
+    const { bigquery, file } = slices;
+    if (!bigquery || !file || bigquery.compile !== file.compile) {
+        return { running: false };
+    }
+    const result = bigquery.results.find((candidate) => candidate.action === action.id && candidate.compile === file.compile);
+    return { running: !result && bigquery.dryRunning.some((key) => key.action === action.id), ...(result ? { result } : {}) };
+}
+
+/**
+ * Which case of an incremental model dbt compiled, as far as BigQuery can tell: the incremental one when the model's
+ * table exists, the full build when it does not. Undefined when BigQuery has not said.
+ */
+export function incrementalCase(slices: Pick<PanelSlices, 'bigquery' | 'file'>, action: Pick<PanelAction, 'id'>): 'incremental' | 'full build' | undefined {
+    const table = slices.bigquery && slices.file && slices.bigquery.compile === slices.file.compile ? slices.bigquery.tables[action.id] : undefined;
+    if (!table) {
+        return undefined;
+    }
+    return table.missing ? 'full build' : table.lastModified !== undefined ? 'incremental' : undefined;
+}
 
 /** What dbt calls the action: its name there when that differs from its Target's, e.g. a source's */
 export function dbtNameOf(slices: Pick<PanelSlices, 'dbt'>, action: Pick<PanelAction, 'id' | 'target'>): string {

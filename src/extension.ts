@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { Target, WorkflowUrlEntry } from './types';
+import { QueryWtType, Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
@@ -148,11 +148,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // Runs a query the extension generated rather than one taken from the active file,
     // e.g. the starter GQL query built from a property graph.
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runGeneratedQuery', async (query: string, type: string) => {
+        vscode.commands.registerCommand('vscode-dataform-tools.runGeneratedQuery', async (query: string, type: string, place?: QueryWtType['place']) => {
             if (!query) {
                 return;
             }
-            await runQueryInPanel({ query: query, type: type || "table" }, queryResultsViewProvider);
+            await runQueryInPanel({ query: query, type: type || "table", ...(place ? { place } : {}) }, queryResultsViewProvider);
         })
     );
 

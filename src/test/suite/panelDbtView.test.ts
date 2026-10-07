@@ -7,7 +7,8 @@ import { DbtBackend } from '../../backend/dbt';
 import { DbtManifest, buildDbtGraph } from '../../backend/dbt/graph';
 import { CompileState, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../../panel/slices';
 import type { DbtBlock } from '../../shared/panelContract';
-import { dbtView } from '../../shared/panelDbtView';
+import type { DryRunResult } from '../../bigquery/dryRunService';
+import { dbtDryRunOf, dbtView, incrementalCase } from '../../shared/panelDbtView';
 import { PanelSlices, applyMessage, initialSlices } from '../../shared/panelState';
 import { findProjectRoot } from './helper';
 
@@ -133,6 +134,36 @@ suite('the dbt panel: a file with no SQL', () => {
         assert.strictEqual(viewOf('models/docs.md').card?.title, 'No action is defined in this file');
         assert.strictEqual(viewOf('README.md').card?.title, 'This file is not part of the compile');
         assert.strictEqual(viewOf('models/reporting/_exposures.yml').card?.title, 'Exposure: revenue_dashboard');
+    });
+});
+
+suite('the dbt panel: what BigQuery said', () => {
+    const shown = after({ manifest: v2, file: 'models/marts/fct_orders.sql', state: compiled() });
+    const [model, dataTest] = shown.file!.actions;
+    const result = (action: string, compile: number): DryRunResult => ({ action, script: 'query', incremental: false, sections: ['query'], compile, sql: 'select 1', bytes: 1024 });
+    const bigquery = (fields: Partial<NonNullable<PanelSlices['bigquery']>>): PanelSlices =>
+        applyMessage(shown, { slice: 'bigquery', value: { compile: 1, results: [], dryRunning: [], tables: {}, currencySymbol: '$', ...fields } });
+
+    test('an action is out while its dry run is, and has its result when it is back', () => {
+        const out = bigquery({ dryRunning: [{ action: model.id, script: 'query', incremental: false }], results: [result(dataTest.id, 1)] });
+        assert.deepStrictEqual(dbtDryRunOf(out, model), { running: true });
+        assert.deepStrictEqual(dbtDryRunOf(out, dataTest), { running: false, result: result(dataTest.id, 1) });
+        // Nothing asked yet
+        assert.deepStrictEqual(dbtDryRunOf(shown, model), { running: false });
+    });
+
+    test('what BigQuery said of another compile is not shown with this SQL', () => {
+        const old = bigquery({ compile: 0, results: [result(model.id, 0)], dryRunning: [{ action: dataTest.id, script: 'query', incremental: false }] });
+        assert.deepStrictEqual(dbtDryRunOf(old, model), { running: false });
+        assert.deepStrictEqual(dbtDryRunOf(old, dataTest), { running: false });
+    });
+
+    test('which case of an incremental model dbt compiled is told by whether its table exists', () => {
+        assert.strictEqual(incrementalCase(shown, model), undefined);
+        assert.strictEqual(incrementalCase(bigquery({ tables: { [model.id]: { lastModified: 'today' } } }), model), 'incremental');
+        assert.strictEqual(incrementalCase(bigquery({ tables: { [model.id]: { missing: true } } }), model), 'full build');
+        // BigQuery answered, but not with either
+        assert.strictEqual(incrementalCase(bigquery({ tables: { [model.id]: {} } }), model), undefined);
     });
 });
 

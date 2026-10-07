@@ -2,6 +2,8 @@ import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
+import { dbtActionsToDryRun, dryRunDbtActions, incrementalTables, previewDbtAction } from '../project/dbtBigQuery';
+import type { DryRunResult } from '../bigquery/dryRunService';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
 import { CompileState, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../panel/slices';
 import { SliceSender } from '../panel/sliceSender';
@@ -636,6 +638,8 @@ export class CompiledQueryPanel {
             CompiledQueryPanel.centerPanel = panel;
         }
         panel.dbtOnShow = { project, file };
+        // What BigQuery said of the last file, or of the last compile, is not for this one
+        panel.sendDbtBigQuery(++panel.dbtDryRunSeq, project.compileNumber, { results: [], dryRunning: [], tables: {} });
         // Any Dataform render still in flight is no longer wanted
         panel.renderSeq++;
         const compiling = compileDbtProject(project, file, reason);
@@ -654,6 +658,58 @@ export class CompiledQueryPanel {
         panel.sendDbt();
         await compiling;
         panel.sendDbt();
+        // Not waited for: the SQL is on show, and the dry runs fill in as they arrive
+        panel.dryRunDbt().catch((error) => logger.error(`dbt: the dry runs of ${file} failed: ${error}`));
+    }
+
+    /** Counts the showings of a dbt file, so that dry runs asked for an earlier one are dropped when they arrive */
+    private dbtDryRunSeq = 0;
+
+    private sendDbtBigQuery(seq: number, compile: number, fields: Partial<Omit<BigQuerySlice, 'compile'>>) {
+        if (seq !== this.dbtDryRunSeq || this.centerPanelDisposed) {
+            return;
+        }
+        this.bigQuery = { ...this.bigQuery, ...fields };
+        this.slices.send('bigquery', bigQuerySlice(this.bigQuery, compile));
+    }
+
+    /**
+     * Dry-runs every action on show that has a compiled query, at once, and sends the panel each result as it
+     * arrives (xf#53). Nothing is asked of BigQuery while a compile runs, for a Project that was only parsed, or
+     * for a Project of another warehouse.
+     */
+    private async dryRunDbt() {
+        const shown = this.dbtOnShow;
+        const last = shown?.project.dbtBackend?.lastResult;
+        if (!shown || !last) {
+            return;
+        }
+        const { project, file } = shown;
+        const state = dbtCompileState(project.root);
+        const adapter = last.dbt?.adapterType;
+        if (state.compiling || !state.compiled || last.parsedOnly || (adapter && adapter !== 'bigquery')) {
+            return;
+        }
+        const seq = this.dbtDryRunSeq;
+        const compile = project.compileNumber;
+        const actions = dbtActionsToDryRun(last.graph, fileSlice(last.graph, project.dbtBackend!, file, compile).actions.map((action) => action.id));
+        if (actions.length === 0) {
+            return;
+        }
+        const out = (done: DryRunResult[]): DryRunKey[] => actions
+            .filter((action) => !done.some((result) => result.action === action.id))
+            .flatMap((action) => dryRunScripts(action).map((script) => ({ action: action.id, script: script.name, incremental: script.incremental })));
+        const results: DryRunResult[] = [];
+        this.sendDbtBigQuery(seq, compile, { results: [], tables: {}, dryRunning: out([]) });
+        const tables = incrementalTables(actions).then((found) => {
+            this.sendDbtBigQuery(seq, compile, { tables: found });
+        });
+        await dryRunDbtActions(actions, compile, (arrived) => {
+            results.push(...arrived);
+            const currency = results.find((result) => result.cost)?.cost?.currency as SupportedCurrency | undefined;
+            this.sendDbtBigQuery(seq, compile, { results: [...results], dryRunning: out(results), ...(currency && currencySymbolMapping[currency] ? { currencySymbol: currencySymbolMapping[currency] } : {}) });
+        });
+        await tables;
     }
 
     /** The slices of a file of a dbt Project, as things stand: the three Backend-neutral ones and dbt's own block */
@@ -797,6 +853,8 @@ export class CompiledQueryPanel {
         const leaving = CompiledQueryPanel.centerPanel;
         if (leaving?.dbtOnShow) {
             leaving.dbtOnShow = undefined;
+            // Dry runs still out for it are dropped when they arrive
+            leaving.dbtDryRunSeq++;
             // The panel draws by the Project's Backend: it must not go on drawing the next file as dbt's
             leaving.slices.send('project', null);
         }
@@ -1009,6 +1067,10 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand("vscode-dataform-tools.columnLineage");
                 return;
               case 'preview':
+                if (panel.dbtOnShow) {
+                    await previewDbtAction(panel.dbtOnShow.project.dbtBackend?.lastResult?.graph, message.action, message.section);
+                    return;
+                }
                 await previewAction(message.action, message.section, message.alone);
                 return;
               case 'dataform.compileRemotely':

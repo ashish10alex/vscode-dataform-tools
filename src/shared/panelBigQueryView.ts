@@ -27,7 +27,7 @@ const mainScript = (model: FileModel) => (model.type === 'operations' ? 'operati
 
 const UNKNOWN_BYTES = '⚠ Bytes unknown';
 
-function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number): string {
     if (bytes === 0) {
         return '0 B';
     }
