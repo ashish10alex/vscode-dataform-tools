@@ -13,6 +13,13 @@ interface SchemaTabProps {
   state: PanelState;
 }
 
+interface SchemaTableProps {
+  /** The columns to show, as BigQuery gives a schema: nested ones under their parent */
+  fields: ColumnMetadata[];
+  /** The name of the file "Export JSON" offers */
+  exportName: string;
+}
+
 type SchemaRow = {
     name: string;
     type: string;
@@ -46,20 +53,30 @@ const buildRows = (
 
 const buttonClassName = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm justify-center";
 
+/** The Schema tab of a Dataform file: the columns of its first action, from the last dry runs that gave results */
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
+  const schema = columnsOnShow(state.columns);
+  const target = fileView(state.file).models[0]?.target;
+  return <SchemaTable fields={schema?.fields ?? NO_FIELDS} exportName={target ? `${target.database}_${target.schema}_${target.name}.json` : 'schema.json'} />;
+};
+
+const NO_FIELDS: ColumnMetadata[] = [];
+
+/**
+ * A table of columns with their types and descriptions, for either Backend: a filter on each column, nested columns
+ * that open, descriptions that can be edited, and the columns as JSON to copy or save.
+ */
+export const SchemaTable: React.FC<SchemaTableProps> = ({ fields, exportName }) => {
   const [editedDescriptions, setEditedDescriptions] = useState<Record<string, string>>({});
   const [isCopied, setIsCopied] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
-  const schema = columnsOnShow(state.columns);
-  const fields = schema?.fields || [];
-
   const data = useMemo(
     () => buildRows(fields, editedDescriptions),
-    [schema, editedDescriptions]
+    [fields, editedDescriptions]
   );
 
-  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [schema]);
+  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [fields]);
 
   const columns = useMemo<ColumnDef<SchemaRow>[]>(() => [
     {
@@ -150,20 +167,14 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   };
 
   const handleExportJson = () => {
-    let filename = 'schema.json';
-    const target = fileView(state.file).models[0]?.target;
-    if (target) {
-      filename = `${target.database}_${target.schema}_${target.name}.json`;
-    }
-
     vscode.postMessage({
       command: 'exportSchema',
       content: columnsConfigText(),
-      fileName: filename
+      fileName: exportName
     });
   };
 
-  if (!schema || schema.fields.length === 0) {
+  if (fields.length === 0) {
     return (
         <div className="p-8 text-center text-[var(--vscode-descriptionForeground)]">
             <p>No schema available.</p>
