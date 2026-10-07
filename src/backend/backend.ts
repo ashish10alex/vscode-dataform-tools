@@ -29,6 +29,16 @@ export interface BackendRequest<Options> {
     signal: AbortSignal;
 }
 
+/** What a compile is for, beside the Project */
+export interface CompileScope {
+    /**
+     * The file whose actions are wanted, relative to the Project root with forward slashes: the one on show. A
+     * Backend that compiles the whole Project every time ignores it; the dbt Backend compiles only that file's
+     * actions when the engine is dbt-core (ADR 0003).
+     */
+    file?: string;
+}
+
 /** One error the tool reported while compiling */
 export interface CompileError {
     /** The file the error is about, relative to the Project root with forward slashes. Unset when it is not about a file */
@@ -80,7 +90,7 @@ export interface Backend<Options = unknown> {
      * Compiles the Project. Errors in the Project come back in the result; the promise rejects only when there is
      * no graph at all, e.g. the tool could not be started, or the compile was cancelled.
      */
-    compile(request: BackendRequest<Options>): Promise<CompileResult>;
+    compile(request: BackendRequest<Options> & CompileScope): Promise<CompileResult>;
     /** Which files affect a compile */
     readonly compileFiles: CompileFiles;
     readonly runner?: Runner<Options>;

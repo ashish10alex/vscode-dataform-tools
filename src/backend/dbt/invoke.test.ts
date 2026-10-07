@@ -4,8 +4,7 @@ import os from 'os';
 import path from 'path';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
 import { exampleProjectRoot } from './fixtures';
-import { dbtArguments, invokeDbt, manifestPathIn } from './invoke';
-import type { DbtOptions } from './options';
+import { DbtRunOptions as DbtOptions, dbtArguments, invokeDbt, manifestPathIn } from './invoke';
 
 const logger = { info: () => undefined, debug: () => undefined, error: () => undefined };
 
