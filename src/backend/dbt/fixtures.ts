@@ -68,3 +68,12 @@ export type FullManifest = (typeof FULL_MANIFESTS)[number];
 export function fullManifestPath(name: FullManifest): string {
     return path.join(fixturesDir(), '..', 'dbt-manifests', `${name}.json`);
 }
+
+/**
+ * What a real dbt printed for a `dbt parse` that met an error, by engine and case (see
+ * src/test/fixtures/dbt-logs/README.md). `stderr` is empty for all but "badflag".
+ */
+export function readDbtLog(name: string): { stdout: string; stderr: string } {
+    const file = (suffix: string) => path.join(fixturesDir(), '..', 'dbt-logs', `${name}.${suffix}`);
+    return { stdout: fs.readFileSync(file('stdout.jsonl'), 'utf8'), stderr: fs.existsSync(file('stderr.txt')) ? fs.readFileSync(file('stderr.txt'), 'utf8') : '' };
+}

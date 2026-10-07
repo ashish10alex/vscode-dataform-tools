@@ -1,0 +1,4 @@
+Usage: dbt-core parse [OPTIONS]
+Try 'dbt-core parse --help' for help.
+
+Error: No such option '--no-such-flag'.
