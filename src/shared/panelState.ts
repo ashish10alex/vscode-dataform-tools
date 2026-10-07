@@ -57,19 +57,35 @@ function columnsAfter(slices: PanelSlices, bigquery: BigQuerySlice): PanelSlices
 }
 
 /**
+ * The file the panel names: the one a running compile was started for, else the one whose actions are on show.
+ * Undefined before the host has named one.
+ */
+export function fileOnShow(slices: Pick<PanelSlices, 'compile' | 'file'>): string | undefined {
+    if (slices.compile?.status === 'compiling' && slices.compile.file) {
+        return slices.compile.file;
+    }
+    return slices.file?.file || undefined;
+}
+
+/**
  * The slices after a message from the host.
  *
  * A `dataform` block that says which fields it is about changes only those: the others keep the very values they
  * had, so that a component that acts on a field arriving (the polling of workflow statuses, the defer banner) sees
  * an arrival only when the host sent that field.
  *
- * @param fileOnShow The file the panel is showing, as the flat state has it. A flat message that names another file
- * takes what belonged to the last one off the `dataform` block, as it does off the flat state
+ * When the file the panel names changes, what belonged to the last one is taken off the `dataform` block: its defer
+ * banner and its property graphs are not shown under the next file's name while that file compiles.
  */
-export function applyMessage(slices: PanelSlices, message: unknown, fileOnShow: string | undefined): PanelSlices {
+export function applyMessage(slices: PanelSlices, message: unknown): PanelSlices {
+    const next = withSlice(slices, message);
+    const named = fileOnShow(next);
+    return named !== undefined && named !== fileOnShow(slices) ? { ...next, dataform: { ...next.dataform, ...OF_THE_FILE } } : next;
+}
+
+function withSlice(slices: PanelSlices, message: unknown): PanelSlices {
     if (!isSliceMessage(message)) {
-        const named = (message as { relativeFilePath?: unknown } | null)?.relativeFilePath;
-        return typeof named === 'string' && named !== '' && named !== fileOnShow ? { ...slices, dataform: { ...slices.dataform, ...OF_THE_FILE } } : slices;
+        return slices;
     }
     const sent = message as HostMessage | DataformBlockMessage;
     switch (sent.slice) {

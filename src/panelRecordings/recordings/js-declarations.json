@@ -1,4 +1,10 @@
 {
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
   "declarations": [
     {
       "fileName": "definitions/sources.js",

@@ -18,6 +18,7 @@ export const MIGRATED_DATAFORM_FIELDS = [
     'projectConfig', 'packageJson', 'possibleResolutions', 'snoozeEndTime', 'tagCostEstimate', 'compilationInfo',
     'compilerOptions', 'compilationMode', 'dataformCoreVersion',
     'deferral', 'deferToProd', 'leftoverProxies', 'propertyGraphs', 'propertyGraphValidations',
+    'lineage', 'propertyGraphElementSchemas',
 ] as const satisfies ReadonlyArray<keyof DataformBlock>;
 
 type MigratedDataformField = (typeof MIGRATED_DATAFORM_FIELDS)[number];
@@ -43,7 +44,11 @@ const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => 
     packageJson: (block) => ({ packageJsonContent: block.packageJson ?? null }),
     possibleResolutions: (block) => ({ possibleResolutions: block.possibleResolutions }),
     snoozeEndTime: (block) => ({ snoozeEndTime: block.snoozeEndTime }),
-    tagCostEstimate: (block) => ({ tagDryRunStatsMeta: block.tagCostEstimate && { tagDryRunStatsList: block.tagCostEstimate.rows, error: block.tagCostEstimate.error } }),
+    // The flat state has the tags an estimate was for beside it
+    tagCostEstimate: (block) => ({
+        tagDryRunStatsMeta: block.tagCostEstimate && { tagDryRunStatsList: block.tagCostEstimate.rows, error: block.tagCostEstimate.error },
+        ...(block.tagCostEstimate?.tags ? { selectedTags: block.tagCostEstimate.tags } : {}),
+    }),
     compilationInfo: (block) => ({ compilationInfo: block.compilationInfo }),
     compilerOptions: (block) => ({ compilerOptions: block.compilerOptions }),
     // The flat state calls the Compilation Mode the compilation backend, as the setting does
@@ -54,6 +59,8 @@ const FLAT_FIELD: { [Field in MigratedDataformField]: (block: DataformBlock) => 
     leftoverProxies: (block) => ({ leftoverProxies: block.leftoverProxies }),
     propertyGraphs: (block) => ({ propertyGraphs: block.propertyGraphs }),
     propertyGraphValidations: (block) => ({ propertyGraphValidations: block.propertyGraphValidations }),
+    lineage: (block) => ({ lineageMetadata: block.lineage }),
+    propertyGraphElementSchemas: (block) => ({ propertyGraphElementSchemas: block.propertyGraphElementSchemas }),
 };
 
 /** The flat state's fields for a slice the host sent: what the panel merges into its state */
@@ -62,14 +69,18 @@ export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage
         return legacyStateFromCompileStatus(message.value);
     }
     if (message.slice === 'file') {
-        return legacyStateFromFileSlice(message.value);
+        // The flat state names the file on show; a slice for no file leaves the name as it is
+        return { ...legacyStateFromFileSlice(message.value), ...(message.value.file ? { relativeFilePath: message.value.file } : {}) };
+    }
+    if (message.slice === 'project') {
+        return { workspaceFolder: message.value.root, dataformTags: message.value.tags };
     }
     if (message.slice === 'bigquery') {
         // Without the file's actions; `legacyStateReader` gives them
         return legacyStateFromBigQuerySlice(message.value, undefined);
     }
     if (message.slice !== 'dataform') {
-        // No component reads the other slices yet, and the host does not send them
+        // The host does not send the other slices
         return {};
     }
     const touched: readonly MigratedDataformField[] = 'touched' in message ? message.touched : MIGRATED_DATAFORM_FIELDS;
@@ -91,6 +102,9 @@ export const NOT_IN_A_PROJECT = 'This file is not in a Dataform project. Hint: o
 
 function legacyStateFromCompileStatus(status: CompileStatus): Record<string, unknown> {
     const flat: Record<string, unknown> = { recompiling: status.status === 'compiling' };
+    if (status.status === 'compiling' && status.file) {
+        flat.relativeFilePath = status.file;
+    }
     if (status.status === 'tool not found') {
         flat.missingExecutables = [status.tool];
         flat.errorType = 'MISSING_EXECUTABLE';

@@ -134,6 +134,11 @@ export type CompileStatus = Slice & (
         startedAt: number;
         /** The command line of the compile, where there is one */
         command?: string;
+        /**
+         * The file the panel is for, relative to the Project root: the one whose save or opening started the
+         * compile. The panel names it while the compile runs, though the SQL on show may still be another file's
+         */
+        file?: string;
     }
     /** Errors travel with a compiled Project: a compile can give a graph and errors together */
     | { status: 'compiled'; compiledAt: number; durationMs?: number; errors: CompileError[] }
@@ -223,7 +228,9 @@ export interface DataformBlock extends Slice {
     /** Columns the last dry run drops or retypes against prod */
     columnImpact?: { file: string; changed?: number };
     /** The cost estimate across tags */
-    tagCostEstimate?: { rows?: unknown[]; /** Why there are no rows, as the host has always sent it: text */ error?: string };
+    tagCostEstimate?: { rows?: unknown[]; /** Why there are no rows, as the host has always sent it: text */ error?: string; /** The tags it was asked for */ tags?: string[] };
+    /** What Dataplex says reads the file's first table, once asked for. Null before, and for the next file */
+    lineage?: { dependencies?: string[]; error?: { message?: string } } | null;
 }
 
 /** What only a dbt Project has */

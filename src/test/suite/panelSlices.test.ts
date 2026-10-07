@@ -108,6 +108,11 @@ suite('panel slices: file', () => {
 });
 
 suite('panel slices: compile status', () => {
+    test('a compile that is running names the file it was started for', () => {
+        const status = compileStatusSlice({ inProject: true, errors: [], compiling: { showingPrevious: false, startedAt: 5, file: 'definitions/a.sqlx' } }, 3);
+        assert.deepStrictEqual(status, { compile: 3, status: 'compiling', showingPrevious: false, startedAt: 5, file: 'definitions/a.sqlx' });
+    });
+
     const error = { message: 'Could not resolve "order_lines"', fileName: 'definitions/order_totals.sqlx' };
     const compiled = { compiledAt: 1000, durationMs: 250 };
 

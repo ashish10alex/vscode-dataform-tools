@@ -39,11 +39,10 @@ suite('panel: slices as the flat state the components still read', () => {
         assert.deepStrictEqual(flat, { compilationBackend: 'api', compilerOptions: '--schema-suffix=dev', dataformCoreVersion: '3.0.39' });
     });
 
-    test('a field not yet moved is not passed on, so its placeholder cannot overwrite what was sent the old way', () => {
+    test('every field of the block has moved; the number of its compile is not a field of the flat state', () => {
         const flat = legacyStateFromSlice({ slice: 'dataform', value: block({ compilerOptions: '', propertyGraphElementSchemas: {} }) });
-        for (const field of ['propertyGraphElementSchemas', 'compile']) {
-            assert.ok(!(field in flat), field);
-        }
+        assert.ok(!('compile' in flat));
+        assert.deepStrictEqual(flat.propertyGraphElementSchemas, {});
     });
 
     test('the compile status gives the compiling flag, and the other flat fields only where it has something to say of them', () => {
@@ -88,6 +87,26 @@ suite('panel: slices as the flat state the components still read', () => {
         }
     });
 
+    test('the file, the Project, the lineage and an estimate\'s tags keep their flat names for the recordings', () => {
+        const project: HostMessage = { slice: 'project', value: { compile: 1, root: '/work/shop', backend: 'dataform', parts: { runner: true, changes: false }, tags: ['daily'] } };
+        assert.deepStrictEqual(toLegacyState(project as unknown as Record<string, unknown>), { workspaceFolder: '/work/shop', dataformTags: ['daily'] });
+        // A compile names the file it was started for; one that names none leaves the name as it is
+        const compiling = (file?: string): CompileStatus => ({ compile: 1, status: 'compiling', showingPrevious: false, startedAt: 1, ...(file ? { file } : {}) });
+        assert.deepStrictEqual(legacyStateFromSlice({ slice: 'compile status', value: compiling('definitions/a.sqlx') }), { recompiling: true, relativeFilePath: 'definitions/a.sqlx' });
+        assert.deepStrictEqual(legacyStateFromSlice({ slice: 'compile status', value: compiling() }), { recompiling: true });
+        // So does a file slice, unless it is for no file
+        const file = (name: string): HostMessage => ({ slice: 'file', value: { compile: 1, file: name, role: 'helper', actions: [] } });
+        assert.strictEqual(legacyStateFromSlice(file('includes/params.js')).relativeFilePath, 'includes/params.js');
+        assert.ok(!('relativeFilePath' in legacyStateFromSlice(file(''))));
+
+        const lineage = { dependencies: ['p.ds.report'] };
+        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value: block({ lineage }), touched: ['lineage'] }), { lineageMetadata: lineage });
+        const estimate = toLegacyState({ slice: 'dataform', value: block({ tagCostEstimate: { rows: [], tags: ['daily'] } }), touched: ['tagCostEstimate'] });
+        assert.deepStrictEqual(estimate, { tagDryRunStatsMeta: { tagDryRunStatsList: [], error: undefined }, selectedTags: ['daily'] });
+        // An estimate that names no tags leaves the selected tags alone
+        assert.ok(!('selectedTags' in toLegacyState({ slice: 'dataform', value: block({ tagCostEstimate: { error: 'boom' } }), touched: ['tagCostEstimate'] })));
+    });
+
     test('defer to prod and the property graphs arrive through the block, each only when the send is about it', () => {
         const deferral = { status: 'error' as const, message: 'Retry failed' };
         const value = block({ deferral, deferToProd: { enabled: true, available: true }, leftoverProxies: ['p.ds.t'], propertyGraphs: [], propertyGraphValidations: [] });
@@ -113,8 +132,6 @@ suite('panel: slices as the flat state the components still read', () => {
         assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['workflowUrls'] }), { workflowUrls: [] });
         assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['changedActions', 'lastRun'] }), { changedActions: { status: 'idle' }, lastRun: null });
         assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: [] }), {});
-        // A field that has not been moved is not passed on even when a send names it
-        assert.deepStrictEqual(toLegacyState({ slice: 'dataform', value, touched: ['propertyGraphElementSchemas'] }), {});
     });
 
     test('the same links sent twice arrive twice, as two flat messages did', () => {

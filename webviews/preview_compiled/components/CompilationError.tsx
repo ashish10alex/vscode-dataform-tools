@@ -6,6 +6,7 @@ import { WebviewState, CompilationErrorType } from '../types';
 import { CompilerOverrides } from './CompilerOverrides';
 import { CompilationInfoBadge } from './CompilationInfoBadge';
 import { panelProblem } from '../utils/panelProblem';
+import { fileOnShow } from '../../../src/shared/panelState';
 
 interface CompilationErrorProps {
   state: WebviewState;
@@ -90,14 +91,12 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 );
 
 export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => {
-  const {
-    relativeFilePath,
-    workspaceFolder,
-  } = state;
   const { type: errorType, message: errorMessage, compiling: recompiling, missingTools: missingExecutables, compileErrors } = panelProblem(state);
   // As the sections below name an error's parts
   const compilationErrors = compileErrors.map((error) => ({ error: error.message, fileName: error.fileName ?? '', lineNumber: error.line, sourceContext: error.sourceContext }));
   const { possibleResolutions, compilationInfo } = state.dataform;
+  const relativeFilePath = fileOnShow(state);
+  const workspaceFolder = state.project?.root;
   // The selected backend, not compilationInfo: an API compile that fails early records no info,
   // which would leave the last CLI compile describing the error.
   const backend = state.dataform.compilationMode ?? compilationInfo?.backend ?? 'cli';

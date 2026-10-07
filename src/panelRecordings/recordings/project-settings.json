@@ -1,6 +1,12 @@
 {
   "assertionQuery": null,
   "dataformCoreVersion": "3.0.39",
+  "dataformTags": [
+    "FOOTY",
+    "OPS_TAG",
+    "new_tag",
+    "tag2"
+  ],
   "declarations": null,
   "errorMessage": null,
   "errorType": null,
