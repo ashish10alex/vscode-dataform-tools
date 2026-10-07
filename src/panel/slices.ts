@@ -1,4 +1,5 @@
 import { Backend, CompileError, affectsCompile, backendParts } from '../backend';
+import type { DbtProjectData } from '../backend/dbt';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import { SETTINGS_FILES } from '../project/detection';
 import type { Tool } from '../project/tools';
@@ -6,6 +7,7 @@ import {
     Action,
     ActionId,
     CompiledGraph,
+    Kind,
     RunOptions,
     actionsInFile,
     buildsTable,
@@ -20,6 +22,7 @@ import type {
     BigQuerySlice,
     CompileNumber,
     CompileStatus,
+    DbtBlock,
     DryRunKey,
     FileRole,
     FileSlice,
@@ -166,4 +169,78 @@ export function bigQuerySlice(input: { results: DryRunResult[]; dryRunning?: Dry
 /** The run status slice: the last run started through a Backend's runner, if there has been one */
 export function runStatusSlice(lastRun: { request: RunOptions; command: string; startedAt: number } | undefined, compile: CompileNumber): RunStatusSlice {
     return lastRun ? { compile, lastRun } : { compile };
+}
+
+/** What the host knows of a dbt Project beside its Compiled Graph, from which its block is built */
+export interface DbtBlockInput {
+    /** The dbt that was found, if one was */
+    dbt?: DbtBlock['dbt'];
+    /** dbt is still being looked for */
+    looking?: boolean;
+    /** The dbt target the last compile said it used, else the one the settings name */
+    target?: string;
+    vars?: string;
+    profilesDir?: string;
+    /** The profile `dbt_project.yml` names, where it could be read */
+    profile?: string;
+    /** The last compile only parsed the Project, because it has on-run hooks */
+    parsedForHooks?: boolean;
+    /** What the last compile's manifest said beside the graph */
+    data?: DbtProjectData;
+    graph?: CompiledGraph;
+    /** The actions on show: those of the `file` slice sent with this block */
+    shown?: ActionId[];
+    /** The file on show, relative to the Project root with forward slashes */
+    file?: string;
+}
+
+const BIGQUERY = 'bigquery';
+
+/**
+ * The `dbt` block: what only a dbt Project has. A Project is taken for a BigQuery one until a compile says its
+ * profile is for another warehouse.
+ */
+export function dbtBlock(input: DbtBlockInput, compile: CompileNumber): DbtBlock {
+    const { data, graph } = input;
+    const block: DbtBlock = {
+        compile,
+        looking: input.looking === true,
+        // The control that overrides the dbt target, and the names it offers, come with it (piece 5.5)
+        target: { ...(input.target ? { name: input.target } : {}), overridden: false, names: [] },
+        hooksNotice: input.parsedForHooks === true,
+        bigQuery: !data?.adapterType || data.adapterType === BIGQUERY,
+        names: {},
+        macros: [],
+    };
+    if (input.dbt) {
+        block.dbt = input.dbt;
+    }
+    if (input.vars) {
+        block.vars = input.vars;
+    }
+    if (input.profilesDir) {
+        block.profilesDir = input.profilesDir;
+    }
+    if (data?.adapterType) {
+        block.warehouse = data.adapterType;
+    }
+    if (data && graph) {
+        const actions: Partial<Record<Kind, number>> = {};
+        for (const action of Object.values(graph.actions)) {
+            actions[action.kind] = (actions[action.kind] ?? 0) + 1;
+        }
+        block.project = { name: data.projectName, ...(input.profile ? { profile: input.profile } : {}), actions };
+    }
+    for (const id of input.shown ?? []) {
+        const name = data?.names[id];
+        const called = !name ? undefined : name.sourceName ? `${name.sourceName}.${name.name}` : name.version ? `${name.name} v${name.version}` : name.name;
+        if (called && called !== graph?.actions[id]?.target.name) {
+            block.names[id] = called;
+        }
+    }
+    if (input.file) {
+        // By name only: a manifest lists a macro's arguments only where a YAML file documents them
+        block.macros = (data?.macros ?? []).filter((macro) => macro.fileName === input.file).map((macro) => macro.name);
+    }
+    return block;
 }

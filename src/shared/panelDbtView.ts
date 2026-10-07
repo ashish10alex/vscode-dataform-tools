@@ -1,0 +1,298 @@
+import type { CompileError } from '../backend/backend';
+import type { Kind, Target } from './compiledGraph';
+import type { ActionReference, CompileStatus, FileSlice, PanelAction } from './panelContract';
+import { PanelSlices, fileOnShow } from './panelState';
+
+/*
+ * What the compiled-query panel draws for a file of a dbt Project (decided in xf#52), worked out from the slices.
+ * Which page, which tabs, which notices and which card are decided here, so that the components only draw, and so
+ * that every state can be tested without a browser.
+ */
+
+export type DbtTab = 'compiled' | 'schema' | 'project';
+
+/** The one line under the tabs that says how the compile stands */
+export type DbtStatusLine =
+    /** Nothing is known yet: dbt is being looked for, or the first compile has not been asked for */
+    | { kind: 'waiting'; text: string }
+    /** A compile runs and there is nothing of this file to show meanwhile */
+    | { kind: 'first compile'; text: string; startedAt: number; command?: string }
+    /** A compile runs and the last result is on show, marked outdated */
+    | { kind: 'recompiling'; text: string; startedAt: number; command?: string }
+    | { kind: 'compiled'; compiledAt: number; durationMs?: number }
+    | { kind: 'parsed'; compiledAt: number }
+    | { kind: 'failed'; text: string };
+
+/** A file with no SQL to show: what the thing is, and a few details */
+export interface DbtCard {
+    title: string;
+    rows: Array<{ label: string; value: string }>;
+    foot?: string;
+}
+
+export interface DbtView {
+    /** `tool missing`: dbt was not found, and nothing else is drawn. `unsupported`: the dbt found is too old */
+    page: 'panel' | 'tool missing' | 'unsupported';
+    /** Where dbt was looked for, on the `tool missing` page */
+    lookedIn: string[];
+    /** What is wrong with the dbt found, on the `unsupported` page */
+    unsupported?: string;
+    /** The file the panel names, relative to the Project root. Empty before the host has named one */
+    file: string;
+    /** What the file is, in a few words, e.g. "model · table", "2 sources", "macros" */
+    what: string;
+    /** The Target of the file's one action, when it has exactly one that is not a test */
+    target?: { target: Target; text: string; /** Shown as a link to the table in BigQuery */ link: boolean; buildsNothing: boolean };
+    tabs: DbtTab[];
+    status?: DbtStatusLine;
+    /** The SQL on show is the last compile's, and another is running */
+    outdated: boolean;
+    /** Placeholder lines stand in for SQL that is being compiled */
+    skeleton: boolean;
+    /** The Project was only parsed because it has on-run hooks: the panel offers to compile with them */
+    parsedOnly: boolean;
+    /** The warehouse of a Project that is not a BigQuery one */
+    otherWarehouse?: string;
+    /** The file's errors, and those that name no file: each is drawn as a card */
+    errors: CompileError[];
+    /** Errors that name another file of the Project: one collapsed line at the bottom */
+    errorsElsewhere: CompileError[];
+    /** The actions drawn as sections, in order. Empty when a card is drawn instead */
+    actions: PanelAction[];
+    card?: DbtCard;
+    /** What the file's first action reads from */
+    readsFrom: ActionReference[];
+}
+
+const MODEL_KINDS: ReadonlySet<Kind> = new Set<Kind>(['table', 'view', 'incremental', 'materialized view', 'ephemeral']);
+
+/** A Kind as the panel names it for dbt: a model says how it is materialized */
+export function dbtKindLabel(kind: Kind): string {
+    return MODEL_KINDS.has(kind) ? `model · ${kind}` : kind;
+}
+
+export function targetText(target: Target): string {
+    return [target.database, target.schema, target.name].filter(Boolean).join('.');
+}
+
+const hasGraph = (status: CompileStatus | undefined): status is Extract<CompileStatus, { status: 'compiled' | 'parsed only' }> =>
+    status?.status === 'compiled' || status?.status === 'parsed only';
+
+const errorsOf = (status: CompileStatus | undefined): CompileError[] => (status && (hasGraph(status) || status.status === 'failed') ? status.errors : []);
+
+const plural = (count: number, one: string) => `${count} ${one}${count === 1 ? '' : 's'}`;
+
+/** What dbt calls the action: its name there when that differs from its Target's, e.g. a source's */
+export function dbtNameOf(slices: Pick<PanelSlices, 'dbt'>, action: Pick<PanelAction, 'id' | 'target'>): string {
+    return slices.dbt?.names[action.id] ?? action.target.name;
+}
+
+function whatOf(file: FileSlice | undefined, macros: string[], graph: boolean): string {
+    if (!file || !graph) {
+        return '';
+    }
+    if (file.role === 'project settings') {
+        return 'project settings';
+    }
+    if (file.role !== 'actions') {
+        return macros.length > 0 ? 'macros' : file.role === 'helper' ? 'no action' : 'not compiled';
+    }
+    const own = file.actions.filter((action) => action.fileName === file.file);
+    const kinds = [...new Set(own.map((action) => action.kind))];
+    if (own.length === 1) {
+        return dbtKindLabel(own[0].kind);
+    }
+    return kinds.length === 1 ? plural(own.length, kinds[0]) : plural(own.length, 'action');
+}
+
+/** The card of a file whose actions have no SQL: a seed, sources, exposures */
+function cardOfActions(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): DbtCard {
+    const kinds = [...new Set(file.actions.map((action) => action.kind))];
+    const fileRow = { label: 'File', value: file.file };
+    if (file.actions.length === 1 && kinds[0] === 'seed') {
+        const [seed] = file.actions;
+        return {
+            title: `Seed: ${dbtNameOf(slices, seed)}`,
+            rows: [
+                { label: 'What it is', value: 'A CSV file dbt loads as a table' },
+                fileRow,
+                { label: 'Target', value: targetText(seed.target) },
+                { label: 'Used by', value: seed.dependents.map((dependent) => dependent.target.name).join(', ') || 'nothing' },
+            ],
+            foot: 'No SQL, so no dry run, cost, schema or preview.',
+        };
+    }
+    if (kinds.length === 1 && kinds[0] === 'source') {
+        return {
+            title: 'Sources defined in this file',
+            rows: [...file.actions.map((source) => ({ label: dbtNameOf(slices, source), value: targetText(source.target) })), fileRow],
+            foot: 'Sources are read, not built. Nothing to run.',
+        };
+    }
+    if (kinds.length === 1 && kinds[0] === 'exposure') {
+        return {
+            title: file.actions.length === 1 ? `Exposure: ${dbtNameOf(slices, file.actions[0])}` : 'Exposures defined in this file',
+            rows: [
+                ...file.actions.map((exposure) => ({
+                    label: file.actions.length === 1 ? 'Reads' : dbtNameOf(slices, exposure),
+                    value: exposure.dependencies.map((dependency) => dependency.target.name).join(', ') || 'nothing',
+                })),
+                fileRow,
+            ],
+            foot: 'An exposure is something downstream of the Project, such as a dashboard. It builds nothing.',
+        };
+    }
+    return {
+        title: 'Defined in this file',
+        rows: [
+            ...file.actions.map((action) => ({ label: `${action.kind} ${dbtNameOf(slices, action)}`, value: action.buildsNothing ? 'builds nothing' : targetText(action.target) })),
+            fileRow,
+        ],
+        foot: 'None of these has SQL to show.',
+    };
+}
+
+/** In the order the panel lists them, with the words it uses */
+const COUNTED: Array<[Kind[], string]> = [
+    [['table', 'view', 'incremental', 'materialized view', 'ephemeral'], 'model'],
+    [['seed'], 'seed'],
+    [['snapshot'], 'snapshot'],
+    [['test'], 'test'],
+    [['unit test'], 'unit test'],
+    [['source'], 'source'],
+    [['exposure'], 'exposure'],
+    [['analysis'], 'analysis'],
+    [['operation'], 'on-run hook'],
+];
+
+function countsText(actions: Partial<Record<Kind, number>>): string {
+    const parts: string[] = [];
+    for (const [kinds, word] of COUNTED) {
+        const count = kinds.reduce((sum, kind) => sum + (actions[kind] ?? 0), 0);
+        if (count > 0) {
+            parts.push(word === 'analysis' ? `${count} ${count === 1 ? 'analysis' : 'analyses'}` : plural(count, word));
+        }
+    }
+    return parts.join(' · ') || 'none';
+}
+
+/** The card of a file that defines no action */
+function cardOfRole(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): DbtCard {
+    const fileRow = { label: 'File', value: file.file };
+    const block = slices.dbt;
+    if (file.role === 'project settings') {
+        return {
+            title: block?.project?.name ? `dbt Project: ${block.project.name}` : 'dbt Project',
+            rows: [
+                { label: 'What it is', value: "The Project's settings file" },
+                fileRow,
+                ...(block?.project?.profile ? [{ label: 'Profile', value: block.project.profile }] : []),
+                ...(block?.project ? [{ label: 'Actions', value: countsText(block.project.actions) }] : []),
+            ],
+        };
+    }
+    const macros = block?.macros ?? [];
+    if (macros.length > 0) {
+        return {
+            title: `Macros: ${macros.join(', ')}`,
+            rows: [{ label: 'What it is', value: 'A file of Jinja macros' }, fileRow, { label: 'Defines', value: macros.join(', ') }],
+            foot: 'Defines no action, so there is no SQL to show.',
+        };
+    }
+    if (file.role === 'helper') {
+        return {
+            title: 'No action is defined in this file',
+            rows: [{ label: 'What it is', value: 'A file dbt reads when it compiles the Project' }, fileRow],
+            foot: 'A save of it compiles the Project again.',
+        };
+    }
+    return {
+        title: 'This file is not part of the compile',
+        rows: [{ label: 'What it is', value: 'A file in the Project that dbt does not read' }, fileRow],
+    };
+}
+
+/** What the panel draws for the dbt file on show */
+export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file' | 'dbt'>): DbtView {
+    const { compile, settled, dbt: block } = slices;
+    const named = fileOnShow(slices) ?? '';
+    // The `file` slice may still be the last file's while the compile for this one runs
+    const file = slices.file && slices.file.file === named ? slices.file : undefined;
+    const compiling = compile?.status === 'compiling' ? compile : undefined;
+    const last = compiling ? settled : compile;
+    const graph = hasGraph(last);
+    const view: DbtView = {
+        page: 'panel', lookedIn: [], file: named, what: whatOf(file, block?.macros ?? [], graph), tabs: ['compiled', 'project'],
+        outdated: false, skeleton: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [], readsFrom: [],
+    };
+
+    if (!compiling && compile?.status === 'tool not found') {
+        return { ...view, page: 'tool missing', lookedIn: compile.lookedIn, what: '', tabs: [] };
+    }
+    if (!compiling && compile?.status === 'version unsupported') {
+        return { ...view, page: 'unsupported', unsupported: compile.message, what: '' };
+    }
+    if (block && !block.bigQuery && block.warehouse) {
+        view.otherWarehouse = block.warehouse;
+    }
+
+    const withSql = file?.actions.filter((action) => action.sections.length > 0) ?? [];
+    const allErrors = errorsOf(last);
+    // With no SQL of the file to show, an error anywhere is why: dbt-core stops at the first, whichever file it is in
+    const own = allErrors.filter((error) => withSql.length === 0 || !error.fileName || error.fileName === named);
+    view.errors = own;
+    view.errorsElsewhere = allErrors.filter((error) => !own.includes(error));
+
+    // dbt-core compiles a file when it is shown: until then its actions are in the graph without their SQL
+    const awaitsSql = block?.dbt?.flavour === 'dbt-core' && withSql.some((action) => action.fileName === named && !action.sqlPresent);
+    view.skeleton = !!compiling && (!file || !graph || awaitsSql);
+    view.outdated = !!compiling && !view.skeleton;
+
+    if (graph && file && !view.skeleton) {
+        if (withSql.length > 0) {
+            view.actions = file.actions;
+            view.readsFrom = file.actions[0].dependencies;
+        } else if (file.role === 'actions') {
+            view.card = cardOfActions(slices, file);
+        } else if (own.length === 0) {
+            view.card = cardOfRole(slices, file);
+        }
+    }
+
+    const primary = file?.actions.filter((action) => action.fileName === named && action.kind !== 'test' && action.kind !== 'unit test') ?? [];
+    if (graph && primary.length === 1) {
+        const [action] = primary;
+        const bigQuery = block?.bigQuery !== false;
+        view.target = { target: action.target, text: targetText(action.target), link: action.buildsTable && bigQuery, buildsNothing: !action.buildsTable && action.kind !== 'source' };
+    }
+
+    view.parsedOnly = last?.status === 'parsed only' && block?.hooksNotice !== false;
+    const dryRun = withSql.some((action) => action.sections.some((section) => section.dryRun.length > 0));
+    if (last?.status === 'compiled' && view.actions.length > 0 && dryRun && !view.otherWarehouse) {
+        view.tabs = ['compiled', 'schema', 'project'];
+    }
+
+    if (compiling) {
+        const running = { startedAt: compiling.startedAt, ...(compiling.command ? { command: compiling.command } : {}) };
+        view.status = view.skeleton
+            ? { kind: 'first compile', text: graph ? 'Compiling this file for the first time since the last save…' : 'Compiling the Project…', ...running }
+            : { kind: 'recompiling', text: 'Recompiling… showing the previous result', ...running };
+    } else if (last?.status === 'compiled') {
+        if (view.errors.length > 0 && view.actions.length === 0) {
+            view.status = { kind: 'failed', text: 'Compile failed' };
+            view.what = '';
+        } else if (withSql.length > 0 && withSql.every((action) => !action.sqlPresent)) {
+            // dbt v2 stops at a parse when the Project has errors: the SQL on show is as written
+            view.status = { kind: 'parsed', compiledAt: last.compiledAt };
+        } else {
+            view.status = { kind: 'compiled', compiledAt: last.compiledAt, ...(last.durationMs === undefined ? {} : { durationMs: last.durationMs }) };
+        }
+    } else if (last?.status === 'parsed only') {
+        view.status = { kind: 'parsed', compiledAt: last.compiledAt };
+    } else if (last?.status === 'failed' && last.errors.length > 0) {
+        view.status = { kind: 'failed', text: 'Compile failed' };
+    } else {
+        view.status = { kind: 'waiting', text: block?.looking ? 'Looking for dbt…' : 'Waiting for the first compile…' };
+    }
+    return view;
+}

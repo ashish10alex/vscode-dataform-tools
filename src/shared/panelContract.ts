@@ -244,6 +244,8 @@ export interface DbtBlock extends Slice {
         flavour: 'dbt-core' | 'dbt v2';
         version: string;
     };
+    /** dbt is being looked for: the panel does not yet say that there is none */
+    looking: boolean;
     target: {
         /** The active dbt target. Unset until dbt has reported it */
         name?: string;
@@ -257,14 +259,29 @@ export interface DbtBlock extends Slice {
     profilesDir?: string;
     /** The Project has on-run hooks and was only parsed: the panel offers to compile with hooks */
     hooksNotice: boolean;
+    /** The warehouse the Project's profile is for, as dbt names its adapter, e.g. "bigquery". Unset until a compile has said */
+    warehouse?: string;
     /** False for a Project of another warehouse: no dry run, cost, schema, preview or run */
     bigQuery: boolean;
+    /** What `dbt_project.yml` says, and what the last compile found. Unset before the first compile that left a graph */
+    project?: {
+        name: string;
+        /** The profile the Project names, where `dbt_project.yml` could be read */
+        profile?: string;
+        /** How many actions the Project has of each Kind it has any of */
+        actions: Partial<Record<Kind, number>>;
+    };
+    /** What dbt calls each action on show, where that is not its Target's name: a source is "<source>.<table>", a versioned model "<name> v<version>" */
+    names: Record<ActionId, string>;
+    /** The names of the macros and generic tests the file on show defines */
+    macros: string[];
 }
 
 // ---- Host to panel
 
 export type HostMessage =
-    | { slice: 'project'; value: ProjectSlice }
+    /** Null takes the Project back: the file now on show is not yet known to be in the one last sent */
+    | { slice: 'project'; value: ProjectSlice | null }
     | { slice: 'file'; value: FileSlice }
     | { slice: 'compile status'; value: CompileStatus }
     | { slice: 'bigquery'; value: BigQuerySlice }

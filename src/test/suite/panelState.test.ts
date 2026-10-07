@@ -109,6 +109,15 @@ suite('panel: the slices the panel keeps', () => {
         assert.deepStrictEqual([done.compile, done.settled], [compiled.value, compiled.value]);
     });
 
+    test('the host can take the Project back, so that the next file is not drawn as the last Project\'s', () => {
+        const project: HostMessage = { slice: 'project', value: { compile: 1, root: '/work/shop', backend: 'dbt', parts: { runner: true, changes: false }, tags: [] } };
+        const shown = applyMessage(initialSlices(), project);
+        assert.strictEqual(shown.project?.backend, 'dbt');
+        const left = applyMessage(shown, { slice: 'project', value: null });
+        assert.strictEqual(left.project, undefined);
+        assert.strictEqual(left.dataform, shown.dataform);
+    });
+
     test('anything that is not a message is left alone', () => {
         const slices = initialSlices();
         assert.strictEqual(applyMessage(slices, null), slices);

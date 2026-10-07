@@ -32,6 +32,7 @@ import { initLastRun } from './lastRun';
 import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, onDidPostPanelMessage, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import type { DbtPanelMessage } from './shared/panelContract';
 import { initDeferToProd } from './defer/deferStatusBar';
 import { initProdTargets } from './defer/prodTargets';
 import { registerDeferEditorHints } from './defer/deferEditorHints';
@@ -485,7 +486,12 @@ export async function activate(context: vscode.ExtensionContext) {
     // Internal: read by `just bench` (src/bench), not a public API
     return {
         __perf: { getPerfSnapshot, resetPerf },
-        __panel: { onDidPostMessage: onDidPostPanelMessage, forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices() },
+        __panel: {
+            onDidPostMessage: onDidPostPanelMessage,
+            forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices(),
+            // As if a button of a dbt Project's panel had been clicked
+            dbtMessage: (message: DbtPanelMessage) => CompiledQueryPanel.centerPanel?.onDbtMessage(message),
+        },
         // What the tests of a dbt workspace read (src/dbtWorkspace)
         __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool },
     };

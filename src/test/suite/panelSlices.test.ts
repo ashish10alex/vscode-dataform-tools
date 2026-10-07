@@ -7,7 +7,9 @@ import { DataformBackend } from '../../backend/dataform/backend';
 import { buildDataformGraph } from '../../backend/dataform/graph';
 import type { DryRunResult } from '../../bigquery/dryRunService';
 import { SliceSender } from '../../panel/sliceSender';
-import { bigQuerySlice, compileStatusSlice, fileSlice, projectSlice, runStatusSlice } from '../../panel/slices';
+import { DbtBackend } from '../../backend/dbt';
+import { buildDbtGraph } from '../../backend/dbt/graph';
+import { bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../../panel/slices';
 import { Action, buildCompiledGraph, madeUpTarget, targetId, titledSections } from '../../shared/compiledGraph';
 import type { HostMessage } from '../../shared/panelContract';
 import { findProjectRoot } from './helper';
@@ -191,5 +193,52 @@ suite('panel slices: sent only when changed', () => {
         sender.reset();
         assert.strictEqual(sender.send('run status', runStatusSlice(undefined, 1)), true);
         assert.strictEqual(posted.length, 2);
+    });
+});
+
+suite('panel slices: the dbt block', () => {
+    const built = buildDbtGraph(JSON.parse(fs.readFileSync(path.join(findProjectRoot(__dirname), 'src', 'test', 'fixtures', 'dbt-manifests', 'dbt-v2.json'), 'utf8')));
+    const dbt = new DbtBackend();
+    const found = { path: '/work/shop/.venv/bin/dbt', foundBy: "the Project's .venv", flavour: 'dbt v2' as const, version: '2.0.6' };
+    const shownIn = (file: string) => fileSlice(built.graph, dbt, file, 3).actions.map((action) => action.id);
+
+    test('before dbt is found and anything is compiled: a BigQuery Project until a compile says otherwise', () => {
+        assert.deepStrictEqual(dbtBlock({ looking: true }, 0), {
+            compile: 0, looking: true, target: { overridden: false, names: [] }, hooksNotice: false, bigQuery: true, names: {}, macros: [],
+        });
+    });
+
+    test('the dbt found, the dbt target, the warehouse and what the Project holds', () => {
+        const block = dbtBlock({ dbt: found, target: 'dev', vars: '{a: 1}', profilesDir: './', profile: 'xf_example', data: built.dbt, graph: built.graph, shown: [], file: 'dbt_project.yml' }, 3);
+        assert.deepStrictEqual([block.compile, block.dbt, block.looking, block.target], [3, found, false, { name: 'dev', overridden: false, names: [] }]);
+        assert.deepStrictEqual([block.vars, block.profilesDir, block.warehouse, block.bigQuery, block.hooksNotice], ['{a: 1}', './', 'bigquery', true, false]);
+        assert.deepStrictEqual([block.project?.name, block.project?.profile], ['xf_example', 'xf_example']);
+        assert.deepStrictEqual([block.project?.actions.source, block.project?.actions.seed, block.project?.actions.test], [3, 1, 12]);
+        // Every action is counted once
+        assert.strictEqual(Object.values(block.project?.actions ?? {}).reduce((sum, count) => sum + count, 0), Object.keys(built.graph.actions).length);
+    });
+
+    test('a Project of another warehouse is not a BigQuery one', () => {
+        const block = dbtBlock({ data: { ...built.dbt, adapterType: 'snowflake' }, graph: built.graph }, 1);
+        assert.deepStrictEqual([block.warehouse, block.bigQuery], ['snowflake', false]);
+    });
+
+    test('names what dbt calls an action only where that is not its table name', () => {
+        const sources = dbtBlock({ data: built.dbt, graph: built.graph, shown: shownIn('models/staging/_sources.yml'), file: 'models/staging/_sources.yml' }, 3);
+        assert.deepStrictEqual(Object.values(sources.names).sort(), ['raw.customers', 'raw.orders', 'raw.payments']);
+        const model = dbtBlock({ data: built.dbt, graph: built.graph, shown: shownIn('models/marts/dim_customers.sql'), file: 'models/marts/dim_customers.sql' }, 3);
+        assert.deepStrictEqual(model.names, {});
+        const versioned = dbtBlock({ data: built.dbt, graph: built.graph, shown: shownIn('models/marts/customer_segments_v2.sql'), file: 'models/marts/customer_segments_v2.sql' }, 3);
+        assert.deepStrictEqual(Object.values(versioned.names), ['customer_segments v2']);
+    });
+
+    test('the macros of the file on show, and of no other', () => {
+        const block = (file: string) => dbtBlock({ data: built.dbt, graph: built.graph, shown: [], file }, 3);
+        assert.deepStrictEqual(block('macros/audit.sql').macros, ['create_cents_to_dollars_udf', 'record_run_in_audit_log']);
+        assert.deepStrictEqual(block('models/marts/dim_customers.sql').macros, []);
+    });
+
+    test('a Project parsed for its hooks carries the notice', () => {
+        assert.strictEqual(dbtBlock({ parsedForHooks: true }, 1).hooksNotice, true);
     });
 });

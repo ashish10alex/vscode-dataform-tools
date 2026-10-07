@@ -93,7 +93,7 @@ function withSlice(slices: PanelSlices, message: unknown): PanelSlices {
     const sent: HostMessage = message;
     switch (sent.slice) {
         case 'project':
-            return { ...slices, project: sent.value };
+            return { ...slices, project: sent.value ?? undefined };
         case 'file':
             return { ...slices, file: sent.value };
         case 'compile status':

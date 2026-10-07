@@ -67,22 +67,29 @@ function artifactDir(root: string, binary: string, target: string | undefined): 
     return path.join(storageRoot!, ARTIFACTS, name);
 }
 
+/** What the settings say of how the Project is compiled. Each is unset when its setting is empty */
+export function dbtSettings(root: string): { target?: string; vars?: string; profilesDir?: string; compileWithHooks: boolean } {
+    return {
+        target: setting<string>(root, 'dbtTarget') || undefined,
+        vars: setting<string>(root, 'dbtVars') || undefined,
+        profilesDir: setting<string>(root, 'dbtProfilesDir') || undefined,
+        compileWithHooks: setting<boolean>(root, 'dbtCompileWithHooks') === true,
+    };
+}
+
 /** The options of a compile or a run of the Project, from the settings and the dbt that was found. Undefined when there is no usable dbt */
 export async function dbtOptions(root: string): Promise<DbtOptions | undefined> {
     const tool = await dbtTool(root);
     if (tool.status !== 'found' || !storageRoot) {
         return undefined;
     }
-    const target = setting<string>(root, 'dbtTarget') || undefined;
+    const settings = dbtSettings(root);
     return {
         binary: tool.path,
         flavour: tool.probe.flavour,
         label: tool.probe.label,
-        target,
-        vars: setting<string>(root, 'dbtVars') || undefined,
-        profilesDir: setting<string>(root, 'dbtProfilesDir') || undefined,
-        compileWithHooks: setting<boolean>(root, 'dbtCompileWithHooks') === true,
-        artifactDir: artifactDir(root, tool.path, target),
+        ...settings,
+        artifactDir: artifactDir(root, tool.path, settings.target),
     };
 }
 
@@ -125,6 +132,22 @@ export async function compileDbtProject(project: ProjectState, file: string | un
     const controller = new AbortController();
     running.set(root, controller);
     const isLatest = () => running.get(root) === controller;
+    try {
+        await compileIfNeeded(project, dbtBackend, file, reason, controller, isLatest);
+    } finally {
+        if (isLatest()) {
+            running.delete(root);
+        }
+    }
+}
+
+/** Whether a compile of the Project has been asked for and has not ended */
+export function dbtCompilePending(root: string): boolean {
+    return running.has(root);
+}
+
+async function compileIfNeeded(project: ProjectState, dbtBackend: NonNullable<ProjectState['dbtBackend']>, file: string | undefined, reason: CompileReason, controller: AbortController, isLatest: () => boolean): Promise<void> {
+    const { root } = project;
     const previous = dbtCompileState(root);
 
     const tool = await dbtTool(root);
@@ -153,7 +176,6 @@ export async function compileDbtProject(project: ProjectState, file: string | un
         if (previous.missingTool || previous.unsupportedVersion) {
             setState(root, { ...previous, missingTool: undefined, unsupportedVersion: undefined });
         }
-        running.delete(root);
         return;
     }
 
@@ -184,10 +206,6 @@ export async function compileDbtProject(project: ProjectState, file: string | un
         const message = error instanceof Error ? error.message : String(error);
         logger.error(`dbt: the compile of ${root} failed: ${message}`);
         setState(root, { inProject: true, errors: [{ message }] });
-    } finally {
-        if (isLatest()) {
-            running.delete(root);
-        }
     }
 }
 
