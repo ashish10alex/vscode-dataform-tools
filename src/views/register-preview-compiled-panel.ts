@@ -2,6 +2,7 @@ import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, requiredTools } from '../project';
 import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
 import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice, projectSlice } from '../panel/slices';
+import { SliceSender } from '../panel/sliceSender';
 import { toDryRunResult } from '../bigquery/dryRunService';
 import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
 import { fileModels } from '../shared/panelFileView';
@@ -448,6 +449,21 @@ export class CompiledQueryPanel {
         return this.webviewPanel.webview.postMessage(message);
     }
 
+    /**
+     * Sends the slices both Backends have, each only when it differs from what the panel was last sent: a save does
+     * not send the Project again, and a dry-run result does not send the SQL again. The `dataform` block is not
+     * sent through it: the panel acts on some of its fields arriving, changed or not (see `updateDataformBlock`).
+     */
+    private readonly slices = new SliceSender((message) => this.postMessage(message));
+
+    /**
+     * Has the next send of each slice go out whatever was sent before. For the recorded panel output, which reads
+     * each file as a panel that starts with it would.
+     */
+    public forgetSentSlices() {
+        this.slices.reset();
+    }
+
     /** Tells the panel of something that happened once, see `HostEvent` */
     public sendEvent(event: HostEvent) {
         this.postMessage(event);
@@ -460,33 +476,28 @@ export class CompiledQueryPanel {
     };
 
     /**
-     * Tells the panel how the Project's compile stands: one of the seven values of the contract. Called wherever the
-     * flat state's `recompiling` used to be set, with what is special about that place; the rest is what the last
-     * compile left. Sent every time, as `recompiling` was.
+     * Tells the panel how the Project's compile stands: one of the seven values of the contract. Called with what is
+     * special about the place it is called from; the rest is what the last compile left.
      */
     public sendCompileStatus(state: Partial<CompileState> = {}) {
         const info = getCompilationInfo();
         const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
-        const message: HostMessage = { slice: 'compile status', value: compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()) };
-        this.postMessage(message);
+        this.slices.send('compile status', compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()));
     }
 
     /**
-     * Tells the panel which Project the file belongs to: its root and its tags. Sent where the flat workspace folder
-     * and tags were, so that they arrive as often as they did. Not sent for a file in no Project.
+     * Tells the panel which Project the file belongs to: its root and its tags. Not sent for a file in no Project.
      */
     private sendProject() {
         const backend = dataformBackend();
         const root = currentDataformRoot();
         if (backend && root) {
-            const message: HostMessage = { slice: 'project', value: projectSlice({ root }, backend, compiledGraph(), compileNumber()) };
-            this.postMessage(message);
+            this.slices.send('project', projectSlice({ root }, backend, compiledGraph(), compileNumber()));
         }
     }
 
     /**
-     * Tells the panel what the file on show defines: its actions, each with its SQL and its neighbours. Sent with
-     * every render of a file, before the flat fields of that render.
+     * Tells the panel what the file on show defines: its actions, each with its SQL and its neighbours.
      *
      * @param file Relative to the Project root
      * @param shown `deferral`: the SQL is sent after defer's rewrite, as it is dry-run. `registered`: actions shown
@@ -512,8 +523,7 @@ export class CompiledQueryPanel {
         if (shown.role) {
             value = { ...value, role: shown.role, actions: [] };
         }
-        const message: HostMessage = { slice: 'file', value };
-        this.postMessage(message);
+        this.slices.send('file', value);
         return value;
     }
 
@@ -524,8 +534,7 @@ export class CompiledQueryPanel {
      * sent before this has given: the file is in no Project, the tool was not found, or the compile left errors
      */
     private sendNoActions(file?: string, problem?: FileProblem) {
-        const message: HostMessage = { slice: 'file', value: { compile: compileNumber(), file: file ? slashPath(file) : '', role: 'not compiled', actions: [], ...(problem ? { problem } : {}) } };
-        this.postMessage(message);
+        this.slices.send('file', { compile: compileNumber(), file: file ? slashPath(file) : '', role: 'not compiled', actions: [], ...(problem ? { problem } : {}) });
         // And BigQuery has said nothing of it
         this.sendBigQuery({ results: [], tables: {}, dryRunning: [] });
     }
@@ -534,14 +543,11 @@ export class CompiledQueryPanel {
     private bigQuery: Omit<BigQuerySlice, 'compile'> = { results: [], dryRunning: [], tables: {}, currencySymbol: '$' };
 
     /**
-     * Changes what BigQuery has said of the file on show and sends the `bigquery` slice. Sent every time, as the flat
-     * fields it replaces were. A render that starts dry runs sends it after the flat fields of that render and before
-     * the `dataform` block: the panel clears what the last dry runs gave when it hears that new ones are out.
+     * Changes what BigQuery has said of the file on show and sends the `bigquery` slice.
      */
     public sendBigQuery(fields: Partial<Omit<BigQuerySlice, 'compile'>>) {
         this.bigQuery = { ...this.bigQuery, ...fields };
-        const message: HostMessage = { slice: 'bigquery', value: bigQuerySlice(this.bigQuery, compileNumber()) };
-        this.postMessage(message);
+        this.slices.send('bigquery', bigQuerySlice(this.bigQuery, compileNumber()));
     }
 
     /**
