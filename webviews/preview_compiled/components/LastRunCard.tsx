@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { HostEvent } from "../../../src/shared/panelContract";
 import { Loader2, RotateCcw, X } from 'lucide-react';
 import { ExecutionMode, LastRunView, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
@@ -90,7 +91,7 @@ export function LastRunCard({ lastRun, latestApiRun, disabled, onRerunDispatched
             return;
         }
         const handleMessage = (event: MessageEvent) => {
-            if (event.data?.rerunAborted) {
+            if ((event.data as HostEvent | undefined)?.event === 'rerun aborted') {
                 setRerunFromTimestamp(null);
             }
         };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode, Download, Maximize2, Minimize2 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
-import { WebviewState, ActionCounts, WorkflowAction, WorkflowUrlEntry } from '../types';
+import { PanelState, ActionCounts, WorkflowAction, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { DataTable } from '../../components/ui/data-table';
@@ -10,7 +10,7 @@ import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { IncludedTargetsList } from './IncludedTargetsList';
 
 interface LatestRunBannerProps {
-    state: WebviewState;
+    state: PanelState;
     submittingSince?: number | null;
 }
 

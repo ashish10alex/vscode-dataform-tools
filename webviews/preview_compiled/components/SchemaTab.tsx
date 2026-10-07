@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { WebviewState } from '../types';
+import { PanelState } from '../types';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef, ExpandedState } from '@tanstack/react-table';
 import { Download, Edit2, Copy, Check, ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
@@ -10,7 +10,7 @@ import { fileView } from '../utils/fileView';
 import { columnsOnShow } from '../utils/bigQueryView';
 
 interface SchemaTabProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 type SchemaRow = {

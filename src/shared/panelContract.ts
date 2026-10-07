@@ -21,7 +21,7 @@ import type { ActionId, ColumnDescription, Kind, RunOptions, SqlSection, Target 
  * What the compiled-query panel and the extension host say to each other (decided in xf#51). Host and panel both
  * import this file and nothing else describes their messages. Types only: importing it pulls no code into either.
  *
- * The host sends the panel slices. Each slice is built by one function, sent only when it changes, and names the
+ * The host sends the panel slices, and now and then an event. Each slice is built by one function and names the
  * compile it belongs to. What both Backends have is in the neutral slices; what only one has is in its own block,
  * so that a component shared by both cannot reach into it by accident.
  *
@@ -268,8 +268,19 @@ export type HostMessage =
     | { slice: 'compile status'; value: CompileStatus }
     | { slice: 'bigquery'; value: BigQuerySlice }
     | { slice: 'run status'; value: RunStatusSlice }
-    | { slice: 'dataform'; value: DataformBlock }
+    /**
+     * `touched` names the fields this send is about. The panel changes only those, and so sees a field arrive only
+     * when the host sent it: a component may act on an arrival, as the polling of workflow statuses does on the
+     * workflow links. Without `touched` the whole block is replaced.
+     */
+    | { slice: 'dataform'; value: DataformBlock; touched?: Array<Exclude<keyof DataformBlock, 'compile'>> }
     | { slice: 'dbt'; value: DbtBlock };
+
+/** Something that happened once, which is not state: the panel acts on it and keeps nothing */
+export type HostEvent =
+    /** The user did not confirm a repeat of the last run */
+    | { event: 'rerun aborted' }
+    | { event: 'workflow cancel failed'; workflowInvocationId: string };
 
 export type SliceName = HostMessage['slice'];
 

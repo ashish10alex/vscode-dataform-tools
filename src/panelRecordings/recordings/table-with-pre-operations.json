@@ -1,86 +1,26 @@
 {
-  "actionTypes": [
-    "table"
-  ],
-  "assertionQuery": "",
-  "compilerOptions": "",
-  "dataformCoreVersion": "3.0.39",
-  "dataformTags": [
-    "FOOTY",
-    "OPS_TAG",
-    "new_tag",
-    "tag2"
-  ],
-  "declarations": null,
-  "dependents": [],
-  "errorMessage": null,
-  "errorType": null,
-  "expectedOutputQuery": "",
-  "incrementalPreOpsQuery": "",
-  "incrementalQuery": "",
-  "isHelperFile": false,
-  "lineageMetadata": null,
-  "models": [
-    {
-      "actionDescriptor": {
-        "columns": [
-          {
-            "description": "date on which transfere from one club to another happened",
-            "path": [
-              "transfer_date"
-            ]
-          },
-          {
-            "description": "unique identifier for a player",
-            "path": [
-              "player_id"
-            ]
-          }
-        ],
-        "description": "Shows mox expensive manchester united player in each season"
-      },
-      "dependencyTargets": [
-        {
-          "database": "drawingfire-b72a8",
-          "name": "TRANSFERS",
-          "schema": "football_data"
-        }
-      ],
-      "fileName": "definitions/0200_PLAYER_TRANSFERS.sqlx",
-      "incrementalPreOps": [],
-      "incrementalQuery": "",
-      "preOps": [
-        "   SET @@query_label = \"key:value\";"
-      ],
-      "query": "WITH TRANSFERS AS (\n  SELECT * FROM `drawingfire-b72a8.football_data.TRANSFERS`\n)\n\n, TEST AS (\n  SELECT *\n  FROM TRANSFERS\n  WHERE\n    1 = 1\n    AND TO_CLUB_ID = 985\n  ORDER BY TRANSFER_DATE DESC\n)\n\nSELECT *\nFROM TEST\nQUALIFY\n  ROW_NUMBER() OVER (\n    PARTITION BY TRANSFER_SEASON\n    ORDER BY TRANSFER_FEE DESC\n  ) = 1\nORDER BY TRANSFER_DATE DESC",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0200_PLAYER_TRANSFERS",
-        "schema": "dataform"
-      },
-      "type": "table"
-    }
-  ],
-  "modelType": "table",
-  "nonIncrementalQuery": "",
-  "operationsQuery": "",
-  "packageJsonContent": null,
-  "postOperations": "",
-  "preOperations": "   SET @@query_label = \"key:value\";\n",
-  "projectConfig": {
-    "assertionSchema": "dataform_assertions",
-    "defaultDatabase": "drawingfire-b72a8",
-    "defaultLocation": "europe-west2",
-    "defaultSchema": "dataform",
-    "warehouse": "bigquery"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
   },
-  "propertyGraphs": null,
-  "recompiling": false,
-  "relativeFilePath": "definitions/0200_PLAYER_TRANSFERS.sqlx",
-  "tableOrViewQuery": "WITH TRANSFERS AS (\n  SELECT * FROM `drawingfire-b72a8.football_data.TRANSFERS`\n)\n\n, TEST AS (\n  SELECT *\n  FROM TRANSFERS\n  WHERE\n    1 = 1\n    AND TO_CLUB_ID = 985\n  ORDER BY TRANSFER_DATE DESC\n)\n\nSELECT *\nFROM TEST\nQUALIFY\n  ROW_NUMBER() OVER (\n    PARTITION BY TRANSFER_SEASON\n    ORDER BY TRANSFER_FEE DESC\n  ) = 1\nORDER BY TRANSFER_DATE DESC\n;",
-  "targetTablesOrViews": [
-    {
-      "actionDescriptor": {
+  "dataform": {
+    "compilerOptions": "",
+    "dataformCoreVersion": "3.0.39",
+    "lineage": null,
+    "projectConfig": {
+      "assertionSchema": "dataform_assertions",
+      "defaultDatabase": "drawingfire-b72a8",
+      "defaultLocation": "europe-west2",
+      "defaultSchema": "dataform",
+      "warehouse": "bigquery"
+    },
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
         "columns": [
           {
             "description": "date on which transfere from one club to another happened",
@@ -95,30 +35,66 @@
             ]
           }
         ],
-        "description": "Shows mox expensive manchester united player in each season"
-      },
-      "dependencyTargets": [
-        {
+        "dependencies": [
+          {
+            "fileName": "definitions/sources.js",
+            "kind": "declaration",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "TRANSFERS",
+              "schema": "football_data"
+            }
+          }
+        ],
+        "dependents": [],
+        "description": "Shows mox expensive manchester united player in each season",
+        "disabled": false,
+        "fileName": "definitions/0200_PLAYER_TRANSFERS.sqlx",
+        "id": "drawingfire-b72a8.dataform.0200_PLAYER_TRANSFERS",
+        "kind": "table",
+        "runnable": true,
+        "sections": [
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "sql": "   SET @@query_label = \"key:value\";",
+            "title": "pre_operations"
+          },
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "sql": "WITH TRANSFERS AS (\n  SELECT * FROM `drawingfire-b72a8.football_data.TRANSFERS`\n)\n\n, TEST AS (\n  SELECT *\n  FROM TRANSFERS\n  WHERE\n    1 = 1\n    AND TO_CLUB_ID = 985\n  ORDER BY TRANSFER_DATE DESC\n)\n\nSELECT *\nFROM TEST\nQUALIFY\n  ROW_NUMBER() OVER (\n    PARTITION BY TRANSFER_SEASON\n    ORDER BY TRANSFER_FEE DESC\n  ) = 1\nORDER BY TRANSFER_DATE DESC",
+            "title": "query"
+          }
+        ],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
           "database": "drawingfire-b72a8",
-          "name": "TRANSFERS",
-          "schema": "football_data"
+          "name": "0200_PLAYER_TRANSFERS",
+          "schema": "dataform"
         }
-      ],
-      "fileName": "definitions/0200_PLAYER_TRANSFERS.sqlx",
-      "incrementalPreOps": [],
-      "incrementalQuery": "",
-      "preOps": [
-        "   SET @@query_label = \"key:value\";"
-      ],
-      "query": "WITH TRANSFERS AS (\n  SELECT * FROM `drawingfire-b72a8.football_data.TRANSFERS`\n)\n\n, TEST AS (\n  SELECT *\n  FROM TRANSFERS\n  WHERE\n    1 = 1\n    AND TO_CLUB_ID = 985\n  ORDER BY TRANSFER_DATE DESC\n)\n\nSELECT *\nFROM TEST\nQUALIFY\n  ROW_NUMBER() OVER (\n    PARTITION BY TRANSFER_SEASON\n    ORDER BY TRANSFER_FEE DESC\n  ) = 1\nORDER BY TRANSFER_DATE DESC",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0200_PLAYER_TRANSFERS",
-        "schema": "dataform"
-      },
-      "type": "table"
-    }
-  ],
-  "testQuery": "",
-  "workspaceFolder": "<workspace>"
+      }
+    ],
+    "file": "definitions/0200_PLAYER_TRANSFERS.sqlx",
+    "role": "actions"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
+    },
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }

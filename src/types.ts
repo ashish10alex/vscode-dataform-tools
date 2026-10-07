@@ -630,63 +630,6 @@ export interface ActionCounts {
     skipped: number;
 }
 
-export interface WebviewMessage {
-  snoozeEndTime?: number | null;
-  tableOrViewQuery?: string;
-  assertionQuery?: string;
-  preOperations?: string;
-  postOperations?: string;
-  incrementalPreOpsQuery?: string;
-  incrementalQuery?: string;
-  nonIncrementalQuery?: string;
-  operationsQuery?: string;
-  testQuery?: string;
-  expectedOutputQuery?: string;
-  actionTypes?: string[];
-  relativeFilePath?: string;
-  errorMessage?: string | null;
-  errorType?: CompilationErrorType;
-  compilationErrors?: Array<{
-    error: string;
-    fileName: string;
-    lineNumber?: number;
-    sourceContext?: string;
-  }> | null;
-  possibleResolutions?: string[] | null;
-  dryRunErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunIncrementalErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunIncrementalErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunExpectedOutputErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunQueryByNodeName?: Record<string, string>;
-  dryRunIncrementalQueryByNodeName?: Record<string, string>;
-  dryRunNonIncrementalQueryByNodeName?: Record<string, string>;
-  compiledQuerySchema?: any;
-  targetTablesOrViews?: any;
-  models?: any; 
-  dependents?: any; 
-  dataformTags?: string[]; 
-  apiUrlLoading?: boolean;
-  workflowInvocationUrlGCP?: string;
-  errorWorkflowInvocation?: string;
-  recompiling?: boolean;
-  compilationBackend?: "cli" | "api";
-  dryRunning?: boolean;
-  modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
-  declarations?: Declarations[] | null;
-  compilerOptions?: string;
-  workflowUrls?: WorkflowUrlEntry[];
-  missingExecutables?: string[];
-  projectConfig?: ProjectConfig;
-  dataformCoreVersion?: string;
-  packageJsonContent?: {
-    name?: string;
-    dependencies?: { [key: string]: string };
-    devDependencies?: { [key: string]: string };
-  };
-}
-
 export type CreateCompilationResultResponse = Promise<
 [
     protos.google.cloud.dataform.v1beta1.ICompilationResult,

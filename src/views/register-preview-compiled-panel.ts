@@ -1,13 +1,13 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, requiredTools } from '../project';
-import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostMessage, PanelMessage } from '../shared/panelContract';
+import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
 import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice, projectSlice } from '../panel/slices';
 import { toDryRunResult } from '../bigquery/dryRunService';
 import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
-import { legacyModels } from '../shared/panelLegacyFile';
+import { fileModels } from '../shared/panelFileView';
+import type { PanelSlices } from '../shared/panelState';
 import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
-import { DataformBlockMessage, MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
 import * as vscode from 'vscode';
 import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
@@ -440,7 +440,7 @@ export class CompiledQueryPanel {
      * Compiles, dry runs and API calls often finish after the user has closed the panel, and touching a
      * disposed panel's webview throws, so every message goes through here and is dropped once it is closed.
      */
-    public postMessage(message: unknown): Thenable<boolean> {
+    public postMessage(message: HostMessage | HostEvent): Thenable<boolean> {
         if (this.centerPanelDisposed) {
             return Promise.resolve(false);
         }
@@ -448,10 +448,12 @@ export class CompiledQueryPanel {
         return this.webviewPanel.webview.postMessage(message);
     }
 
-    /**
-     * What only a Dataform Project has, as the panel was last told. Only the fields of `MIGRATED_DATAFORM_FIELDS` are
-     * kept here so far; the rest still travel as flat fields and hold a placeholder.
-     */
+    /** Tells the panel of something that happened once, see `HostEvent` */
+    public sendEvent(event: HostEvent) {
+        this.postMessage(event);
+    }
+
+    /** What only a Dataform Project has, as the panel was last told */
     public dataformBlock: DataformBlock = {
         compile: 0, compilerOptions: '', compilationMode: 'cli', snoozeEndTime: null, deferral: null, leftoverProxies: null,
         lastRun: null, propertyGraphs: null, propertyGraphValidations: null, propertyGraphElementSchemas: {},
@@ -543,13 +545,12 @@ export class CompiledQueryPanel {
     }
 
     /**
-     * Changes fields of the `dataform` block and sends the block, saying which fields this send is about. It is sent
-     * every time, as the flat message it replaces was: the panel acts on these fields arriving (see
-     * `DataformBlockMessage`). Sending a slice only when it changes waits until the components read slices.
+     * Changes fields of the `dataform` block and sends the block, saying which fields this send is about (`touched`
+     * in the contract). It is sent every time, changed or not: the panel acts on some of these fields arriving.
      */
-    public updateDataformBlock(fields: Partial<Pick<DataformBlock, (typeof MIGRATED_DATAFORM_FIELDS)[number]>>) {
+    public updateDataformBlock(fields: Partial<Omit<DataformBlock, 'compile'>>) {
         this.dataformBlock = { ...this.dataformBlock, ...fields, compile: compileNumber() };
-        const message: DataformBlockMessage = { slice: 'dataform', value: this.dataformBlock, touched: Object.keys(fields) as DataformBlockMessage['touched'] };
+        const message: HostMessage = { slice: 'dataform', value: this.dataformBlock, touched: Object.keys(fields) as Array<Exclude<keyof DataformBlock, 'compile'>> };
         this.postMessage(message);
     }
 
@@ -912,7 +913,7 @@ export class CompiledQueryPanel {
                 if (message.workflowInvocationId && this.centerPanel) {
                     const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
                     if (!cancelled) {
-                        this.centerPanel?.postMessage({ cancelWorkflowInvocationFailed: message.workflowInvocationId });
+                        this.centerPanel?.sendEvent({ event: 'workflow cancel failed', workflowInvocationId: message.workflowInvocationId });
                     }
                 }
                 return;
@@ -948,7 +949,7 @@ export class CompiledQueryPanel {
                 // Every runner records the run just before dispatching it, so an unchanged timestamp means
                 // the rerun was cancelled or failed its checks and the webview should stop showing progress.
                 if (getLastRun()?.timestamp === previousTimestamp) {
-                  this.centerPanel?.postMessage({ rerunAborted: true });
+                  this.centerPanel?.sendEvent({ event: 'rerun aborted' });
                 }
                 return;
               }
@@ -1164,7 +1165,7 @@ export class CompiledQueryPanel {
 
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool: missingExecutables[0] as Tool, compilerOptions, dataformCoreVersion });
             } else {
                 this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
@@ -1174,7 +1175,7 @@ export class CompiledQueryPanel {
         }
 
         if(this.webviewPanel.webview.html === ""){
-            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: freshCompilation, compilerOptions, dataformCoreVersion });
         }
 
         // Every render that gets this far sends these, as the payloads of a compiled file used to
@@ -1376,7 +1377,7 @@ export class CompiledQueryPanel {
         const registered = fm.tables.filter((table) => table.type === "notebook" && table.target).map((table) => targetId(table.target));
         const shownFile = this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { deferral: curFileMeta.deferral, registered });
         // The panel lists the actions in the slice's order, and matches the last-modified times to them by position
-        const shown = shownFile ? legacyModels(shownFile) : [];
+        const shown = shownFile ? fileModels(shownFile) : [];
         this.sendProject();
         this.updateDataformBlock({ lineage: curFileMeta.lineageMetadata ?? null });
         // The dry runs that are now out: every script of every action shown. Their results are for this compile
@@ -1562,39 +1563,29 @@ export class CompiledQueryPanel {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
-        if (initialState.snoozeEndTime === undefined) {
-            initialState.snoozeEndTime = snoozeManager.getSnoozeEndTime();
-        }
-        if (initialState.compilationBackend === undefined) {
-            initialState.compilationBackend = isRemoteMode() ? "api" : "cli";
-        }
-        if (initialState.lastRun === undefined) {
-            initialState.lastRun = getLastRunView();
-        }
-        if (initialState.compilationInfo === undefined) {
-            initialState.compilationInfo = getCompilationInfo();
-        }
-        // The panel reads these from the `dataform` block: the block starts with what the first page is given
+    /**
+     * The panel's page. It is given the slices the panel starts with, so that its first paint is right before any
+     * message: the `dataform` block and how the compile stands.
+     */
+    private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: Tool; compilerOptions?: string; dataformCoreVersion?: string | null }) {
+        const compilationInfo = getCompilationInfo();
         this.dataformBlock = {
             ...this.dataformBlock,
-            compilerOptions: initialState.compilerOptions ?? '',
-            compilationMode: initialState.compilationBackend,
-            dataformCoreVersion: initialState.dataformCoreVersion ?? undefined,
-            snoozeEndTime: initialState.snoozeEndTime ?? null,
-            lastRun: initialState.lastRun ?? null,
-            compilationInfo: initialState.compilationInfo ?? undefined,
+            compilerOptions: first.compilerOptions ?? '',
+            compilationMode: isRemoteMode() ? "api" : "cli",
+            dataformCoreVersion: first.dataformCoreVersion ?? undefined,
+            snoozeEndTime: snoozeManager.getSnoozeEndTime() ?? null,
+            lastRun: getLastRunView() ?? null,
+            compilationInfo: compilationInfo ?? undefined,
         };
-        initialState.dataform = this.dataformBlock;
-        // And how the compile stands, which the flat `recompiling` and `missingExecutables` of the first page say
-        const missingTool = initialState.missingExecutables?.[0] as Tool | undefined;
-        initialState.compile = compileStatusSlice({
+        const compile = compileStatusSlice({
             inProject: true,
             errors: [],
-            ...(missingTool ? { missingTool: { tool: missingTool, lookedIn: [] } } : {}),
-            ...(initialState.recompiling ? { compiling: { showingPrevious: false, startedAt: Date.now() } } : {}),
-            ...(initialState.compilationInfo ? { compiled: { compiledAt: initialState.compilationInfo.compiledAt } } : {}),
+            ...(first.missingTool ? { missingTool: { tool: first.missingTool, lookedIn: [] } } : {}),
+            ...(first.compiling ? { compiling: { showingPrevious: false, startedAt: Date.now() } } : {}),
+            ...(compilationInfo ? { compiled: { compiledAt: compilationInfo.compiledAt } } : {}),
         }, compileNumber());
+        const initialState: Partial<PanelSlices> = { dataform: this.dataformBlock, compile };
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const nonce = getNonce();

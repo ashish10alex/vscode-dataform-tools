@@ -1,32 +1,37 @@
 {
-  "assertionQuery": null,
-  "dataformCoreVersion": "3.0.39",
-  "dataformTags": [
-    "FOOTY",
-    "OPS_TAG",
-    "new_tag",
-    "tag2"
-  ],
-  "declarations": null,
-  "errorMessage": null,
-  "errorType": null,
-  "incrementalPreOpsQuery": null,
-  "incrementalQuery": null,
-  "isHelperFile": false,
-  "nonIncrementalQuery": null,
-  "operationsQuery": null,
-  "packageJsonContent": null,
-  "postOperations": null,
-  "preOperations": null,
-  "projectConfig": {
-    "assertionSchema": "dataform_assertions",
-    "defaultDatabase": "drawingfire-b72a8",
-    "defaultLocation": "europe-west2",
-    "defaultSchema": "dataform",
-    "warehouse": "bigquery"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
   },
-  "recompiling": false,
-  "relativeFilePath": "workflow_settings.yaml",
-  "tableOrViewQuery": null,
-  "workspaceFolder": "<workspace>"
+  "dataform": {
+    "compilerOptions": "",
+    "dataformCoreVersion": "3.0.39",
+    "projectConfig": {
+      "assertionSchema": "dataform_assertions",
+      "defaultDatabase": "drawingfire-b72a8",
+      "defaultLocation": "europe-west2",
+      "defaultSchema": "dataform",
+      "warehouse": "bigquery"
+    },
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [],
+    "file": "workflow_settings.yaml",
+    "role": "project settings"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
+    },
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }
