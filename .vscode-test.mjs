@@ -19,6 +19,14 @@ export default defineConfig([
 		mocha: { timeout: 2 * 60 * 1000 },
 	},
 	{
+		// The extension in a dbt workspace: opens xf's example dbt Project, see src/dbtWorkspace
+		label: 'dbt',
+		files: 'out/src/dbtWorkspace/**/*.dbt.js',
+		workspaceFolder: 'src/test/fixtures/xf-examples/projects/dbt',
+		launchArgs,
+		mocha: { timeout: 60 * 1000 },
+	},
+	{
 		// `just bench`: opens the generated bench project, see src/bench
 		label: 'bench',
 		files: 'out/src/bench/**/*.bench.js',

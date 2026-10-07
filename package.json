@@ -40,6 +40,7 @@
     "activationEvents": [
         "workspaceContains:workflow_settings.yaml",
         "workspaceContains:dataform.json",
+        "workspaceContains:dbt_project.yml",
         "onLanguage:sqlx"
     ],
     "main": "./dist/extension.js",
@@ -706,7 +707,7 @@
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test:node": "mocha --ui tdd \"out/src/backend/**/*.test.js\"",
-        "test": "npm run test:node && rimraf .vscode-test/user-data && vscode-test --label unit && vscode-test --label panel",
+        "test": "npm run test:node && rimraf .vscode-test/user-data && vscode-test --label unit && vscode-test --label panel && vscode-test --label dbt",
         "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {

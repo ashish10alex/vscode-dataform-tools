@@ -4,6 +4,7 @@ import type { CompiledGraph } from '../shared/compiledGraph';
 import type { DataformCompiledJson } from '../types';
 import { CompiledIndices, emptyIndices } from '../utils/compiledJsonIndex';
 import { createDataformBackend } from './dataformBackend';
+import type { BackendName } from './detection';
 import { ProjectRegistry, ProjectState } from './registry';
 
 export { ProjectRegistry, ProjectState } from './registry';
@@ -19,6 +20,35 @@ export const onDidChangeActiveProject = activeProjectChanged.event;
 
 function workspaceFolderPaths(): string[] {
     return (vscode.workspace.workspaceFolders ?? []).filter((folder) => folder.uri.scheme === 'file').map((folder) => folder.uri.fsPath);
+}
+
+/**
+ * What menus, commands and editor buttons show by: the active Project's Backend, and which optional parts it has.
+ * With no active Project the Backend is empty, and nothing that needs one is shown.
+ */
+export interface BackendContext {
+    backend: BackendName | '';
+    canRun: boolean;
+    listsChangedActions: boolean;
+}
+
+export function backendContext(project: ProjectState | undefined = projects.active): BackendContext {
+    const parts = project?.parts;
+    return { backend: project?.backend ?? '', canRun: parts?.runner ?? false, listsChangedActions: parts?.changes ?? false };
+}
+
+let knownContext = '';
+
+/** Sets the context keys of `backendContext`, when they differ from what was last set */
+function syncBackendContext() {
+    const context = backendContext();
+    if (JSON.stringify(context) === knownContext) {
+        return;
+    }
+    knownContext = JSON.stringify(context);
+    vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.backend', context.backend);
+    vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.backendCanRun', context.canRun);
+    vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.backendListsChangedActions', context.listsChangedActions);
 }
 
 let knownProjects = '';
@@ -42,6 +72,7 @@ function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.acti
     if (editor?.document.uri.scheme === 'file') {
         projects.noteActiveFile(editor.document.uri.fsPath);
     }
+    syncBackendContext();
     if (projects.active !== before) {
         activeProjectChanged.fire(projects.active);
     }
@@ -51,6 +82,7 @@ function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.acti
 export function activateProject(project: ProjectState) {
     const before = projects.active;
     projects.activate(project);
+    syncBackendContext();
     if (projects.active !== before) {
         activeProjectChanged.fire(projects.active);
     }

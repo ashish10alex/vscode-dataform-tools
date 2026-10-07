@@ -1,4 +1,6 @@
+import { Backend, BackendPart, backendParts } from '../backend';
 import { DataformBackend } from '../backend/dataform/backend';
+import { DbtBackend } from '../backend/dbt';
 import { BackendName, detectProjects, detectWorkspaceProjects, FileBackendHints, Project, projectForFile, ProjectForFile } from './detection';
 
 /*
@@ -9,10 +11,21 @@ import { BackendName, detectProjects, detectWorkspaceProjects, FileBackendHints,
 /** A Project and the state the extension keeps for it */
 export class ProjectState implements Project {
     /**
-     * @param dataformBackend The Backend of a Dataform Project, which holds what it last compiled to. A dbt Project
-     * has none until the dbt Backend exists.
+     * @param dataformBackend The Backend of a Dataform Project, which holds what it last compiled to
+     * @param dbtBackend The Backend of a dbt Project, likewise
      */
-    constructor(public readonly root: string, public readonly backend: BackendName, public readonly dataformBackend?: DataformBackend) {}
+    constructor(
+        public readonly root: string,
+        public readonly backend: BackendName,
+        public readonly dataformBackend?: DataformBackend,
+        public readonly dbtBackend?: DbtBackend,
+    ) {}
+
+    /** Which optional parts the Project's Backend has: what the host shows controls for */
+    get parts(): Record<BackendPart, boolean> {
+        const backend: Backend<never> | undefined = this.dataformBackend ?? this.dbtBackend;
+        return backend ? backendParts(backend) : { runner: false, changes: false };
+    }
 
     /**
      * How many compile results the Project has had. What is shown of a Project names the compile it came from, so
@@ -34,7 +47,9 @@ export class ProjectRegistry {
     constructor(private readonly createDataformBackend: () => DataformBackend = holdOnly) {}
 
     private newState(project: Project): ProjectState {
-        return new ProjectState(project.root, project.backend, project.backend === 'dataform' ? this.createDataformBackend() : undefined);
+        return project.backend === 'dataform'
+            ? new ProjectState(project.root, project.backend, this.createDataformBackend())
+            : new ProjectState(project.root, project.backend, undefined, new DbtBackend());
     }
 
     /** Every Project of the window, in workspace-folder order */
