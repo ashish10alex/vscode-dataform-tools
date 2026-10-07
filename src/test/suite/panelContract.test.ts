@@ -36,7 +36,7 @@ suite('panel contract', () => {
     test("a Backend's own messages carry its name, and the shared ones carry none", () => {
         // Every one of the 44 messages the panel sends today has a place here, see the pull request of piece 4.1
         const commands: Record<PanelCommand, true> = {
-            'openAction': true, 'preview': true, 'run': true, 'runTags': true, 'repeatLastRun': true, 'copyToClipboard': true,
+            'openAction': true, 'openFile': true, 'preview': true, 'run': true, 'runTags': true, 'repeatLastRun': true, 'copyToClipboard': true,
             'exportSchema': true, 'selectProject': true, 'showDependencyGraph': true, 'formatFile': true, 'lintFile': true,
             'showLogs': true, 'openExternal': true,
             'dataform.updateCompilerOptions': true, 'dataform.switchCompilationMode': true, 'dataform.compileRemotely': true,
@@ -52,7 +52,7 @@ suite('panel contract', () => {
             'dbt.setTarget': true, 'dbt.compileWithHooks': true, 'dbt.chooseExecutable': true, 'dbt.lookForDbtAgain': true,
         };
         const names = Object.keys(commands);
-        assert.strictEqual(names.filter((name) => !name.includes('.')).length, 13);
+        assert.strictEqual(names.filter((name) => !name.includes('.')).length, 14);
         assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 31);
         assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 4);
     });

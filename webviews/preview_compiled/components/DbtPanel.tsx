@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { ChevronDown, ChevronRight, Loader2, MessageSquareWarning } from "lucide-react";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
-import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
+import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
 import { formatBytes } from "../../../src/shared/panelBigQueryView";
 import type { ColumnMetadata } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
@@ -264,16 +264,35 @@ function TargetControl({ block }: { block: DbtBlock }) {
   );
 }
 
-function ErrorCard({ error }: { error: CompileError }) {
-  const at = error.fileName ? [error.fileName, error.line].filter((part) => part !== undefined).join(":") : "";
+/** A file of the Project, and a line of it where dbt gave one, as a link that opens it there */
+function FileLink({ error, className }: { error: CompileError; className?: string }) {
+  if (!error.fileName) {
+    return null;
+  }
+  const at = [error.fileName, error.line].filter((part) => part !== undefined).join(":");
+  return (
+    <button
+      type="button"
+      title={`Open ${at}`}
+      className={clsx("p-0 bg-transparent border-0 cursor-pointer font-mono text-xs text-[var(--vscode-textLink-foreground)] hover:underline", className)}
+      onClick={() => vscode.postMessage({ command: "openFile", file: error.fileName!, ...(error.line !== undefined ? { line: error.line } : {}) })}
+    >
+      {at}
+    </button>
+  );
+}
+
+function ErrorCard({ error, flavour }: { error: CompileError; flavour?: "dbt-core" | "dbt v2" }) {
   return (
     <div data-dbt="compile error" className="rounded border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] p-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className={clsx("font-semibold", ERROR)}>Compile error</span>
         {error.code && <span className={clsx("font-mono", MUTED)}>{error.code}</span>}
-        {at && <span className="font-mono ml-auto">{at}</span>}
+        <FileLink error={error} className="ml-auto" />
       </div>
       <pre className="mt-2 mb-0 text-xs font-mono whitespace-pre-wrap break-words">{error.message}</pre>
+      {error.sourceContext && <pre className={clsx("mt-2 mb-0 text-xs font-mono whitespace-pre overflow-x-auto", MUTED)}>{error.sourceContext}</pre>}
+      <div className={clsx("mt-2 text-xs", MUTED)}>{dbtErrorFoot(error, flavour)}</div>
     </div>
   );
 }
@@ -425,7 +444,7 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
         </div>
       )}
       {view.errors.map((error, index) => (
-        <ErrorCard key={index} error={error} />
+        <ErrorCard key={index} error={error} flavour={state.dbt?.dbt?.flavour} />
       ))}
       {view.actions.map((action, index) => (
         <ActionSection key={action.id} state={state} view={view} action={action} first={index === 0} />
@@ -446,7 +465,11 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
           <ul className="px-3 pb-3 m-0 list-none space-y-1 font-mono text-xs">
             {view.errorsElsewhere.map((error, index) => (
               <li key={index}>
-                {[error.fileName, error.line].filter((part) => part !== undefined).join(":")} <span className={MUTED}>{error.message.split("\n")[0]}</span>
+                <FileLink error={error} />{" "}
+                <span className={MUTED}>
+                  {error.message.split("\n")[0]}
+                  {error.code ? `  (${error.code})` : ""}
+                </span>
               </li>
             ))}
           </ul>

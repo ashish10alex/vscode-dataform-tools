@@ -1,4 +1,5 @@
 import type { CompileError } from '../backend/backend';
+import { namesMissingRef } from '../backend/dbt/place';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import type { Kind, Target } from './compiledGraph';
 import type { ActionReference, CompileStatus, FileSlice, PanelAction } from './panelContract';
@@ -87,6 +88,30 @@ const hasGraph = (status: CompileStatus | undefined): status is Extract<CompileS
 const errorsOf = (status: CompileStatus | undefined): CompileError[] => (status && (hasGraph(status) || status.status === 'failed') ? status.errors : []);
 
 const plural = (count: number, one: string) => `${count} ${one}${count === 1 ? '' : 's'}`;
+
+/** dbt's words for a dbt target that its profile does not have, in either engine */
+const UNKNOWN_TARGET = /target named|does not have a target|target ['"][^'"]+['"] (?:was )?not found/i;
+
+/**
+ * What the panel says under a compile error (xf#65): whether it is marked in the editor, and what the user can do
+ * where the error is not about a file. On dbt-core it also says that there may be more errors than this one.
+ */
+export function dbtErrorFoot(error: CompileError, flavour: 'dbt-core' | 'dbt v2' | undefined): string {
+    const notes: string[] = [];
+    if (flavour === 'dbt-core') {
+        notes.push('dbt-core stops at the first error, so there may be more.');
+    }
+    if (!error.fileName) {
+        notes.push(UNKNOWN_TARGET.test(error.message) ? 'Not about a file. Change the dbt target in the control above.' : 'Not about a file.');
+    } else if (error.line !== undefined) {
+        notes.push('Also marked in the editor on that line.');
+    } else if (namesMissingRef(error)) {
+        notes.push('dbt reported no line. It is marked in the editor on the ref() it names, if that is in the file.');
+    } else {
+        notes.push('dbt reported no line, so nothing is marked in the editor.');
+    }
+    return notes.join(' ');
+}
 
 /** What BigQuery has said of an action's compiled query */
 export interface DbtDryRun {
