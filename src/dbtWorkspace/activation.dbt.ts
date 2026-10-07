@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, test } from 'mocha';
@@ -12,9 +14,19 @@ const EXTENSION_ID = 'ashishalex.dataform-lsp-vscode';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+interface DbtTool {
+    status: 'looking' | 'found' | 'unusable' | 'missing';
+    path?: string;
+    foundBy?: string;
+    probe?: { flavour: string; version: string; label: string };
+    reason?: string;
+    looked?: string[];
+}
+
 interface ProjectsApi {
     list(): Array<{ root: string; backend: string }>;
     backendContext(): { backend: string; canRun: boolean; listsChangedActions: boolean };
+    dbtTool(root: string): Promise<DbtTool>;
 }
 
 suite('a dbt workspace', function () {
@@ -32,6 +44,55 @@ suite('a dbt workspace', function () {
     test('is found as one dbt Project, whose Backend can run and does not list Changed Actions', () => {
         assert.deepStrictEqual(api.list(), [{ root: workspaceFolder, backend: 'dbt' }]);
         assert.deepStrictEqual(api.backendContext(), { backend: 'dbt', canRun: true, listsChangedActions: false });
+    });
+
+    test('its dbt is the one the path setting names, probed, and is looked for again when the setting changes', async function () {
+        // The stand-in for dbt is a script with a shebang line, which Windows cannot start
+        if (process.platform === 'win32') {
+            this.skip();
+        }
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dbt-setting-'));
+        const settings = vscode.workspace.getConfiguration('vscode-dataform-tools');
+        // In the user settings of the test host, so that nothing is written into the example Project
+        const set = (value: string | undefined) => settings.update('dbtExecutablePath', value, vscode.ConfigurationTarget.Global);
+        const settled = async (wanted: (tool: DbtTool) => boolean) => {
+            for (let waited = 0; waited < 10_000; waited += 100) {
+                const tool = await api.dbtTool(workspaceFolder!);
+                if (wanted(tool)) {
+                    return tool;
+                }
+                await sleep(100);
+            }
+            return api.dbtTool(workspaceFolder!);
+        };
+        try {
+            const standIn = path.join(dir, 'dbt');
+            fs.writeFileSync(standIn, '#!/bin/sh\necho "dbt 2.9.9"\n', { mode: 0o755 });
+            await set(standIn);
+            assert.deepStrictEqual(await settled((tool) => tool.path === standIn), {
+                status: 'found', path: standIn, foundBy: 'the dbtExecutablePath setting',
+                probe: { flavour: 'dbt v2', version: '2.9.9', label: 'dbt 2.9.9', recognised: true, bigQueryAdapter: true },
+            });
+
+            // A dbt that cannot say what it is
+            const broken = path.join(dir, 'broken-dbt');
+            fs.writeFileSync(broken, '#!/bin/sh\necho "No module named dbt" >&2\nexit 1\n', { mode: 0o755 });
+            await set(broken);
+            const unusable = await settled((tool) => tool.path === broken);
+            assert.strictEqual(unusable.status, 'unusable');
+            assert.match(unusable.reason ?? '', /No module named dbt/);
+
+            // The file that was found goes away: the next ask looks again, and passes the setting over
+            await set(standIn);
+            await settled((tool) => tool.path === standIn);
+            fs.rmSync(standIn);
+            const after = await api.dbtTool(workspaceFolder!);
+            assert.notStrictEqual(after.path, standIn);
+            assert.ok(after.status === 'missing' ? after.looked?.[0].includes('the dbtExecutablePath setting') : after.foundBy !== 'the dbtExecutablePath setting');
+        } finally {
+            await set(undefined);
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
     });
 
     test('opening a model shows no message', async () => {

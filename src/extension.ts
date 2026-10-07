@@ -45,6 +45,7 @@ import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
 import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
+import { dbtTool, initDbtTools } from './project/dbtTool';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -93,6 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initLastRun(context);
     initChangedActions(context);
     initProjects(context);
+    initDbtTools(context);
     initProdTargets(context);
     initCliCompileCache(context);
 
@@ -482,7 +484,7 @@ export async function activate(context: vscode.ExtensionContext) {
         __perf: { getPerfSnapshot, resetPerf },
         __panel: { onDidPostMessage: onDidPostPanelMessage, forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices() },
         // What the tests of a dbt workspace read (src/dbtWorkspace)
-        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext() },
+        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool },
     };
 }
 

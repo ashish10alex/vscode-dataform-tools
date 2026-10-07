@@ -601,6 +601,12 @@
                     "markdownDescription": "**Override path to dataform executable**\n\n⚠️ **Only use this if the extension cannot find dataform automatically**\n\nThe extension automatically searches:\n- System PATH\n- Common tool managers (mise, asdf, nvm, etc.)\n- Standard installation locations\n\nUse this setting for:\n- **Specific versions** for testing: `/path/to/dataform-v3.0.25`\n- **Company-approved versions**: `/opt/company-tools/dataform`\n- **Non-standard locations**: Custom installation paths\n\n**Example**: `/usr/local/bin/dataform` or `${HOME}/.local/share/mise/installs/npm-dataform-cli/3.0.26/bin/dataform`",
                     "pattern": "^$|^.*dataform(?:\\.cmd|\\.exe)?$"
                 },
+                "vscode-dataform-tools.dbtExecutablePath": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**Path to the dbt executable**, for a dbt project.\n\nLeave it empty to let the extension find dbt. It looks, in this order, at: this setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, and common install directories. The first one that has a dbt is used, and the compiled query panel says which.\n\nBoth dbt-core (1.8 or later, with the BigQuery adapter) and dbt v2 work.\n\n**Example**: `/opt/homebrew/bin/dbt`, or `.venv/bin/dbt` relative to the project."
+                },
                 "vscode-dataform-tools.gcloudExecutablePath": {
                     "type": "string",
                     "default": null,
