@@ -1,94 +1,103 @@
 {
-  "actionTypes": [
-    "incremental"
-  ],
-  "assertionQuery": "",
-  "compilerOptions": "",
-  "dataformCoreVersion": "3.0.39",
-  "dataformTags": [
-    "FOOTY",
-    "OPS_TAG",
-    "new_tag",
-    "tag2"
-  ],
-  "declarations": null,
-  "dependents": [],
-  "errorMessage": null,
-  "errorType": null,
-  "expectedOutputQuery": "",
-  "incrementalPreOpsQuery": "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );\n",
-  "incrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
-  "isHelperFile": false,
-  "lineageMetadata": null,
-  "models": [
-    {
-      "dependencyTargets": [
-        {
-          "database": "drawingfire-b72a8",
-          "name": "0100_GAMES_META",
-          "schema": "dataform"
-        }
-      ],
-      "fileName": "definitions/0300_INCREMENTAL.sqlx",
-      "incrementalPreOps": [
-        "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );"
-      ],
-      "incrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
-      "preOps": [
-        "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );"
-      ],
-      "query": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0300_INCREMENTAL",
-        "schema": "dataform"
-      },
-      "type": "incremental"
-    }
-  ],
-  "modelType": "incremental",
-  "nonIncrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
-  "operationsQuery": "",
-  "packageJsonContent": null,
-  "postOperations": "",
-  "preOperations": "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );\n",
-  "projectConfig": {
-    "assertionSchema": "dataform_assertions",
-    "defaultDatabase": "drawingfire-b72a8",
-    "defaultLocation": "europe-west2",
-    "defaultSchema": "dataform",
-    "warehouse": "bigquery"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
   },
-  "propertyGraphs": null,
-  "recompiling": false,
-  "relativeFilePath": "definitions/0300_INCREMENTAL.sqlx",
-  "tableOrViewQuery": "",
-  "targetTablesOrViews": [
-    {
-      "dependencyTargets": [
-        {
+  "dataform": {
+    "compilerOptions": "",
+    "dataformCoreVersion": "3.0.39",
+    "lineage": null,
+    "projectConfig": {
+      "assertionSchema": "dataform_assertions",
+      "defaultDatabase": "drawingfire-b72a8",
+      "defaultLocation": "europe-west2",
+      "defaultSchema": "dataform",
+      "warehouse": "bigquery"
+    },
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [
+          {
+            "fileName": "definitions/0100_GAMES_META.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_GAMES_META",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "dependents": [],
+        "disabled": false,
+        "fileName": "definitions/0300_INCREMENTAL.sqlx",
+        "id": "drawingfire-b72a8.dataform.0300_INCREMENTAL",
+        "kind": "incremental",
+        "runnable": true,
+        "sections": [
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "sql": "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );",
+            "title": "pre_operations"
+          },
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "sql": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
+            "title": "query"
+          },
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "incremental": true,
+            "sql": "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );",
+            "title": "incremental pre_operations"
+          },
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "incremental": true,
+            "sql": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
+            "title": "incremental query"
+          }
+        ],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
           "database": "drawingfire-b72a8",
-          "name": "0100_GAMES_META",
+          "name": "0300_INCREMENTAL",
           "schema": "dataform"
         }
-      ],
-      "fileName": "definitions/0300_INCREMENTAL.sqlx",
-      "incrementalPreOps": [
-        "  DECLARE date_checkpoint DEFAULT (\n    SELECT MAX(date) FROM `drawingfire-b72a8.dataform.0300_INCREMENTAL`\n  );"
-      ],
-      "incrementalQuery": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
-      "preOps": [
-        "  DECLARE date_checkpoint DEFAULT (\n    SELECT DATE(\"2012-01-01\")\n  );"
-      ],
-      "query": "SELECT\n  *\nFROM\n  `drawingfire-b72a8.dataform.0100_GAMES_META` WHERE 1=1\nAND date >= date_checkpoint",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0300_INCREMENTAL",
-        "schema": "dataform"
-      },
-      "type": "incremental"
-    }
-  ],
-  "testQuery": "",
-  "workspaceFolder": "<workspace>"
+      }
+    ],
+    "file": "definitions/0300_INCREMENTAL.sqlx",
+    "role": "actions"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
+    },
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }

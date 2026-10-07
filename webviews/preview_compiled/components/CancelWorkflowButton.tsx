@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { HostEvent } from "../../../src/shared/panelContract";
 import { CircleStop, Loader2 } from 'lucide-react';
 import { WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
@@ -15,7 +16,8 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
     useEffect(() => {
         if (!requested) { return; }
         const handleMessage = (event: MessageEvent) => {
-            if (event.data?.cancelWorkflowInvocationFailed === entry.workflowInvocationId) {
+            const sent = event.data as HostEvent | undefined;
+            if (sent?.event === 'workflow cancel failed' && sent.workflowInvocationId === entry.workflowInvocationId) {
                 setRequested(false);
             }
         };

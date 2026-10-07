@@ -1,12 +1,15 @@
 import type { BigQuerySlice, CompileStatus, DataformBlock, DbtBlock, FileSlice, HostMessage, ProjectSlice } from './panelContract';
-import { legacyModels } from './panelLegacyFile';
-import { DataformBlockMessage, isSliceMessage } from './panelLegacyState';
+import { fileModels } from './panelFileView';
 
 /*
- * What the compiled-query panel knows: the last of each slice the host sent (see panelContract.ts). The panel's
- * components read this. While some of them still read the flat state, the panel keeps both, and this file holds the
- * half that stays.
+ * What the compiled-query panel knows: the last of each slice the host sent (see panelContract.ts), and a little it
+ * has seen and still shows. The panel's components read this and nothing else.
  */
+
+/** Whether a message from the host is a slice of the contract */
+export function isSliceMessage(message: unknown): message is HostMessage {
+    return typeof message === 'object' && message !== null && typeof (message as { slice?: unknown }).slice === 'string' && 'value' in message;
+}
 
 export interface PanelSlices {
     project?: ProjectSlice;
@@ -50,7 +53,7 @@ function columnsAfter(slices: PanelSlices, bigquery: BigQuerySlice): PanelSlices
     if (bigquery.dryRunning.length > 0) {
         return slices.columns;
     }
-    if (!slices.file || legacyModels(slices.file).length === 0) {
+    if (!slices.file || fileModels(slices.file).length === 0) {
         return undefined;
     }
     return bigquery.results.length > 0 ? { bigquery, file: slices.file } : slices.columns;
@@ -87,7 +90,7 @@ function withSlice(slices: PanelSlices, message: unknown): PanelSlices {
     if (!isSliceMessage(message)) {
         return slices;
     }
-    const sent = message as HostMessage | DataformBlockMessage;
+    const sent: HostMessage = message;
     switch (sent.slice) {
         case 'project':
             return { ...slices, project: sent.value };
@@ -100,7 +103,7 @@ function withSlice(slices: PanelSlices, message: unknown): PanelSlices {
         case 'dbt':
             return { ...slices, dbt: sent.value };
         case 'dataform': {
-            if (!('touched' in sent)) {
+            if (!sent.touched) {
                 return { ...slices, dataform: sent.value };
             }
             const dataform: DataformBlock = { ...slices.dataform, compile: sent.value.compile };

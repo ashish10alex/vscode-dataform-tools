@@ -5,9 +5,7 @@ import { buildDataformGraph } from '../../backend/dataform/graph';
 import { DryRunResult, toDryRunResult } from '../../bigquery/dryRunService';
 import { bigQuerySlice, fileSlice } from '../../panel/slices';
 import { dryRunScripts, madeUpTarget, targetId } from '../../shared/compiledGraph';
-import type { HostMessage } from '../../shared/panelContract';
-import { MIGRATED_BIGQUERY_FIELDS, dryRunCostSummary, legacyStateFromBigQuerySlice } from '../../shared/panelLegacyBigQuery';
-import { legacyStateReader, toLegacyState } from '../../shared/panelLegacyState';
+import { bigQueryFieldsOf, dryRunCostSummary } from '../../shared/panelBigQueryView';
 import type { DataformCompiledJson } from '../../types';
 
 const dataform = new DataformBackend(async () => ({}));
@@ -20,30 +18,27 @@ const graph = buildDataformGraph({
     tests: [{ name: 'v_total', fileName: 'definitions/mixed.js', testQuery: 'select 4', expectedOutputQuery: 'select 5' }],
 } as unknown as DataformCompiledJson);
 const file = fileSlice(graph, dataform, 'definitions/mixed.js', 1);
-const asMessage = (message: HostMessage) => message as unknown as Record<string, unknown>;
 
-suite('panel: the bigquery slice as the flat fields the components still read', () => {
-    test('dry runs that are out are the flat spinner; none out stops it', () => {
-        const out = bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.v', script: 'query', incremental: false }] }, 1);
-        const started = toLegacyState(asMessage({ slice: 'bigquery', value: out }));
+suite('panel: what BigQuery said, by the name of each action', () => {
+    test('dry runs that are out are the spinner; none out stops it', () => {
+        const started = bigQueryFieldsOf(bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.v', script: 'query', incremental: false }] }, 1), undefined);
         assert.deepStrictEqual([started.dryRunning, started.currencySymbol], [true, '$']);
         // The columns on show stay while dry runs are out
-        assert.ok(!('compiledQuerySchema' in started));
-        const back = toLegacyState(asMessage({ slice: 'bigquery', value: bigQuerySlice({ results: [], currencySymbol: '£' }, 1) }));
+        assert.ok(!('columns' in started));
+        const back = bigQueryFieldsOf(bigQuerySlice({ results: [], currencySymbol: '£' }, 1), undefined);
         assert.deepStrictEqual([back.dryRunning, back.currencySymbol], [false, '£']);
     });
 
-    test('what is known of the tables is listed by the position of each action in the flat state', () => {
+    test('what is known of the tables is listed by the position of each model', () => {
         const tables = {
             'p.ds.v': { lastModified: '2026-10-06 09:00', modifiedToday: false },
             'p.ds.op': { error: 'Could not retrieve lastModifiedTime for p.ds.op' },
             'p.ds.check': { lastModified: '2026-10-07 08:00', modifiedToday: true },
         };
-        const flat = legacyStateFromBigQuerySlice(bigQuerySlice({ results: [], tables }, 1), file);
-        assert.deepStrictEqual(Object.keys(flat).sort(), MIGRATED_BIGQUERY_FIELDS.filter((field) => field !== 'compiledQuerySchema').sort());
+        const fields = bigQueryFieldsOf(bigQuerySlice({ results: [], tables }, 1), file);
         assert.deepStrictEqual(file.actions.map((action) => action.id), ['p.ds.v', 'p.ds.op', 'p.ds.check', targetId(madeUpTarget('unit test', 'v_total'))]);
-        // The flat state's order: the view, the assertion, the operation, and a unit test, which builds no table
-        assert.deepStrictEqual(flat.modelsLastUpdateTimesMeta, [
+        // The panel's order: the view, the assertion, the operation, and a unit test, which builds no table
+        assert.deepStrictEqual(fields.lastUpdates, [
             { lastModifiedTime: '2026-10-06 09:00', modelWasUpdatedToday: false, error: { message: undefined } },
             { lastModifiedTime: '2026-10-07 08:00', modelWasUpdatedToday: true, error: { message: undefined } },
             { lastModifiedTime: undefined, modelWasUpdatedToday: undefined, error: { message: 'Could not retrieve lastModifiedTime for p.ds.op' } },
@@ -52,14 +47,14 @@ suite('panel: the bigquery slice as the flat fields the components still read', 
     });
 
     test('while the dry runs are out nothing is known of the tables, and the last file\'s times are not left standing', () => {
-        const flat = legacyStateFromBigQuerySlice(bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.v', script: 'query', incremental: false }] }, 1), file);
-        assert.deepStrictEqual(flat.modelsLastUpdateTimesMeta, [undefined, undefined, undefined, null]);
+        const fields = bigQueryFieldsOf(bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.v', script: 'query', incremental: false }] }, 1), file);
+        assert.deepStrictEqual(fields.lastUpdates, [undefined, undefined, undefined, null]);
     });
 
     test('a file with no action to show says nothing of tables', () => {
         const helper = fileSlice(graph, dataform, 'includes/params.js', 1);
-        assert.ok(!('modelsLastUpdateTimesMeta' in legacyStateFromBigQuerySlice(bigQuerySlice({ results: [] }, 1), helper)));
-        assert.ok(!('modelsLastUpdateTimesMeta' in legacyStateFromBigQuerySlice(bigQuerySlice({ results: [] }, 1), undefined)));
+        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results: [] }, 1), helper).lastUpdates, []);
+        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results: [] }, 1), undefined).lastUpdates, []);
     });
 
     // BigQuery's answers to the scripts of the file's actions, as results
@@ -83,17 +78,14 @@ suite('panel: the bigquery slice as the flat fields the components still read', 
             answer(testId, 'test query', ok(1024)),
             answer(testId, 'expected output', failed('Syntax error at [1:8]', 1, 8)),
         ];
-        const flat = legacyStateFromBigQuerySlice(bigQuerySlice({ results }, 1), file);
-        assert.deepStrictEqual(Object.keys(flat).sort(), [...MIGRATED_BIGQUERY_FIELDS].sort());
+        const fields = bigQueryFieldsOf(bigQuerySlice({ results }, 1), file);
         // A unit test is named by its name, and its two queries are told apart
-        assert.deepStrictEqual(flat.dryRunStatByNodeName, { 'p.ds.v': '1.00 GiB $0.006', 'p.ds.op': '0 B $0.006', v_total: 'Input: 1.00 KiB $0.006' });
+        assert.deepStrictEqual(fields.stats, { 'p.ds.v': '1.00 GiB $0.006', 'p.ds.op': '0 B $0.006', v_total: 'Input: 1.00 KiB $0.006' });
         // An error BigQuery gave no place for is at line 0
-        assert.deepStrictEqual(flat.dryRunErrorsByNodeName, { 'p.ds.check': { message: 'Not found: Table p.ds.v', location: { line: 0, column: 0 } } });
-        assert.deepStrictEqual(flat.dryRunExpectedOutputErrorsByNodeName, { v_total: { message: 'Syntax error at [1:8]', location: { line: 1, column: 8 } } });
-        assert.deepStrictEqual(flat.dryRunQueryByNodeName, { 'p.ds.v': 'select 1', 'p.ds.check': 'select 3', 'p.ds.op': 'select 2' });
-        assert.deepStrictEqual([flat.dryRunIncrementalErrorsByNodeName, flat.dryRunIncrementalQueryByNodeName, flat.dryRunNonIncrementalQueryByNodeName], [{}, {}, {}]);
-        // The maps by type of action are sent empty, so the last file's do not stand
-        assert.deepStrictEqual([flat.dryRunStatByNodeType, flat.dryRunErrorsByNodeType, flat.dryRunIncrementalErrorsByNodeType, flat.dryRunExpectedOutputErrorsByNodeType], [{}, {}, {}, {}]);
+        assert.deepStrictEqual(fields.errors, { 'p.ds.check': { message: 'Not found: Table p.ds.v', location: { line: 0, column: 0 } } });
+        assert.deepStrictEqual(fields.expectedOutputErrors, { v_total: { message: 'Syntax error at [1:8]', location: { line: 1, column: 8 } } });
+        assert.deepStrictEqual(fields.queries, { 'p.ds.v': 'select 1', 'p.ds.check': 'select 3', 'p.ds.op': 'select 2' });
+        assert.deepStrictEqual([fields.incrementalErrors, fields.incrementalQueries, fields.nonIncrementalQueries], [{}, {}, {}]);
     });
 
     test('an incremental table has both variants, and an error is placed in the script that was sent', () => {
@@ -111,18 +103,18 @@ suite('panel: the bigquery slice as the flat fields the components still read', 
             answer('p.ds.events', 'query', failed('Unrecognized name: dy at [4:7]', 4, 7), true, incremental),
         ];
         assert.deepStrictEqual([results[1].error?.section, results[1].error?.line, results[1].error?.column], ['incremental query', 3, 7]);
-        const flat = legacyStateFromBigQuerySlice(bigQuerySlice({ results }, 1), shown);
-        assert.deepStrictEqual(flat.dryRunStatByNodeName, { 'p.ds.events': 'Non incremental: 2.00 KiB $0.006' });
-        assert.deepStrictEqual(flat.dryRunErrorsByNodeName, {});
-        assert.deepStrictEqual(flat.dryRunIncrementalErrorsByNodeName, { 'p.ds.events': { message: 'Unrecognized name: dy at [4:7]', location: { line: 4, column: 7 } } });
-        const scripts = [flat.dryRunNonIncrementalQueryByNodeName, flat.dryRunIncrementalQueryByNodeName] as Array<Record<string, string>>;
+        const fields = bigQueryFieldsOf(bigQuerySlice({ results }, 1), shown);
+        assert.deepStrictEqual(fields.stats, { 'p.ds.events': 'Non incremental: 2.00 KiB $0.006' });
+        assert.deepStrictEqual(fields.errors, {});
+        assert.deepStrictEqual(fields.incrementalErrors, { 'p.ds.events': { message: 'Unrecognized name: dy at [4:7]', location: { line: 4, column: 7 } } });
+        const scripts = [fields.nonIncrementalQueries, fields.incrementalQueries];
         assert.strictEqual(scripts[0]['p.ds.events'], 'declare since default date "2026-01-01";\nselect *\nfrom src\nwhere day >= since;');
         assert.strictEqual(scripts[1]['p.ds.events'].split('\n')[3], 'where dy >= since;');
-        assert.deepStrictEqual(flat.dryRunQueryByNodeName, {});
+        assert.deepStrictEqual(fields.queries, {});
 
         // Sections on show that are not those that were sent: the error is kept and not placed
         const other = { ...shown, actions: shown.actions.map((action) => ({ ...action, sections: action.sections.map((section) => ({ ...section, sql: `${section.sql}\n-- edited` })) })) };
-        const unplaced = legacyStateFromBigQuerySlice(bigQuerySlice({ results }, 1), other).dryRunIncrementalErrorsByNodeName as Record<string, { location: object }>;
+        const unplaced = bigQueryFieldsOf(bigQuerySlice({ results }, 1), other).incrementalErrors;
         assert.deepStrictEqual(unplaced['p.ds.events'].location, { line: 0, column: 0 });
     });
 
@@ -136,40 +128,23 @@ suite('panel: the bigquery slice as the flat fields the components still read', 
             answer('p.ds.orders', 'query', ok(1, [{ name: 'id', type: 'INT64' }, { name: 'total', type: 'NUMERIC' }]), false, described),
             answer('p.ds.orders_check', 'query', ok(1, [{ name: 'n', type: 'INT64' }]), false, described),
         ];
-        assert.deepStrictEqual(legacyStateFromBigQuerySlice(bigQuerySlice({ results }, 1), shown).compiledQuerySchema, {
+        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results }, 1), shown).columns, {
             fields: [{ name: 'id', type: 'INT64', description: 'The order' }, { name: 'total', type: 'NUMERIC' }],
         });
         // A dry run that gave no columns: the one empty column the flat state has for that
         const noColumns = [answer('p.ds.orders', 'query', failed('boom'), false, described)];
-        assert.deepStrictEqual(legacyStateFromBigQuerySlice(bigQuerySlice({ results: noColumns }, 1), shown).compiledQuerySchema, { fields: [{ name: '', type: '' }] });
+        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results: noColumns }, 1), shown).columns, { fields: [{ name: '', type: '' }] });
         // No dry run was made, or they are still out: the columns on show stay
-        assert.ok(!('compiledQuerySchema' in legacyStateFromBigQuerySlice(bigQuerySlice({ results: [] }, 1), shown)));
-        assert.ok(!('compiledQuerySchema' in legacyStateFromBigQuerySlice(bigQuerySlice({ results, dryRunning: [{ action: 'p.ds.orders', script: 'query', incremental: false }] }, 1), shown)));
+        assert.ok(!('columns' in bigQueryFieldsOf(bigQuerySlice({ results: [] }, 1), shown)));
+        assert.ok(!('columns' in bigQueryFieldsOf(bigQuerySlice({ results, dryRunning: [{ action: 'p.ds.orders', script: 'query', incremental: false }] }, 1), shown)));
         // A file with no action to show has no columns
         const helper = fileSlice(described, dataform, 'includes/params.js', 1);
-        assert.strictEqual(legacyStateFromBigQuerySlice(bigQuerySlice({ results: [] }, 1), helper).compiledQuerySchema, null);
+        assert.strictEqual(bigQueryFieldsOf(bigQuerySlice({ results: [] }, 1), helper).columns, null);
     });
 
     test('a result of an earlier compile is not for the SQL on show', () => {
         const stale = { ...answer('p.ds.v', 'query', ok(1024)), compile: 1 };
-        assert.deepStrictEqual(legacyStateFromBigQuerySlice(bigQuerySlice({ results: [stale] }, 2), file).dryRunStatByNodeName, {});
-    });
-
-    test('a reader gives the bigquery slice the actions of the file slice before it', () => {
-        const read = legacyStateReader();
-        const tables = { 'p.ds.v': { lastModified: 'today', modifiedToday: true } };
-        const slice = asMessage({ slice: 'bigquery', value: bigQuerySlice({ results: [], tables }, 1) });
-        // Before any file slice there are no actions to list
-        assert.ok(!('modelsLastUpdateTimesMeta' in read(slice)));
-        assert.ok('models' in read(asMessage({ slice: 'file', value: file })));
-        assert.strictEqual((read(slice).modelsLastUpdateTimesMeta as unknown[]).length, 4);
-        // The next file's slice replaces it
-        read(asMessage({ slice: 'file', value: fileSlice(graph, dataform, 'includes/params.js', 1) }));
-        assert.ok(!('modelsLastUpdateTimesMeta' in read(slice)));
-        // A flat message and the other slices pass as they did
-        const flat = { recompiling: true };
-        assert.strictEqual(read(flat), flat);
-        assert.deepStrictEqual(read(asMessage({ slice: 'compile status', value: { compile: 1, status: 'compiling', showingPrevious: false, startedAt: 1 } })), { recompiling: true });
+        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results: [stale] }, 2), file).stats, {});
     });
 });
 

@@ -13,7 +13,7 @@ import clsx from "clsx";
 import { CodeBlock } from "../../components/CodeBlock";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { vscode } from "../utils/vscode";
-import type { PropertyGraph, PropertyGraphValidation, WebviewState } from "../types";
+import type { PropertyGraph, PropertyGraphValidation, PanelState } from "../types";
 import type { PropertyGraphEntity, PropertyGraphRelationship } from "../../../src/types";
 import {
   DEFAULT_GQL_ROW_LIMIT,
@@ -31,7 +31,7 @@ import { PropertyGraphDiagram, PropertyList, type GraphElementView } from "./Pro
 function toElementView(
   element: PropertyGraphEntity | PropertyGraphRelationship,
   kind: "entity" | "relationship",
-  schemas: WebviewState["propertyGraphElementSchemas"],
+  schemas: PanelState["dataform"]["propertyGraphElementSchemas"],
   requested: Record<string, boolean>,
   schemaKey: string,
 ): GraphElementView {
@@ -340,7 +340,7 @@ const StarterQueryExplainer: React.FC<{
   );
 };
 
-const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }> = ({ graph, state }) => {
+const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: PanelState }> = ({ graph, state }) => {
   const graphKey = fullTargetName(graph.target);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [requestedSchemas, setRequestedSchemas] = useState<Record<string, boolean>>({});
@@ -611,7 +611,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
   );
 };
 
-export const PropertyGraphSection: React.FC<{ state: WebviewState }> = ({ state }) => (
+export const PropertyGraphSection: React.FC<{ state: PanelState }> = ({ state }) => (
   <div className="space-y-4">
     {(state.dataform.propertyGraphs ?? []).map((graph) => (
       // Keying on the body as well as the target remounts the card when the graph is edited,

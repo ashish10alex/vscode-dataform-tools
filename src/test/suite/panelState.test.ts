@@ -1,11 +1,11 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import type { DataformBlock, HostMessage } from '../../shared/panelContract';
-import type { DataformBlockMessage } from '../../shared/panelLegacyState';
 import { EMPTY_DATAFORM_BLOCK, applyMessage, fileOnShow, initialSlices } from '../../shared/panelState';
 
 const block = (fields: Partial<DataformBlock> = {}): DataformBlock => ({ ...EMPTY_DATAFORM_BLOCK, compile: 1, ...fields });
-const about = (value: DataformBlock, ...touched: DataformBlockMessage['touched']): DataformBlockMessage => ({ slice: 'dataform', value, touched });
+type BlockMessage = Extract<HostMessage, { slice: 'dataform' }>;
+const about = (value: DataformBlock, ...touched: NonNullable<BlockMessage['touched']>): BlockMessage => ({ slice: 'dataform', value, touched });
 
 suite('panel: the slices the panel keeps', () => {
     test('it starts with an empty dataform block, or with the slices of the first page', () => {

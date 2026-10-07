@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { WebviewState, CompilationErrorType } from '../types';
+import { PanelState, CompilationErrorType } from '../types';
 import { ExternalLink, Trash2, Play, RefreshCw, CircleDashed, CheckCircle2, XCircle, Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
@@ -8,7 +8,7 @@ import { IncludedTargetsList } from './IncludedTargetsList';
 import { panelProblem } from '../utils/panelProblem';
 
 interface WorkflowURLsTabProps {
-    state: WebviewState;
+    state: PanelState;
     isPolling?: boolean;
 }
 

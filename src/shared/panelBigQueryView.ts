@@ -1,35 +1,29 @@
 import type { DryRunResult } from '../bigquery/dryRunService';
+import type { CompiledQuerySchema } from '../types';
 import { applyColumnDescriptions } from '../utils/schemaTree';
 import { joinScript } from './compiledGraph';
 import type { BigQuerySlice, FileSlice, PanelAction } from './panelContract';
-import { LegacyModel, legacyModels } from './panelLegacyFile';
+import { FileModel, fileModels } from './panelFileView';
 
 /*
- * The `bigquery` slice as the flat fields the panel's components still read (see panelLegacyState.ts). It goes with
- * the rest of the adapter.
+ * What BigQuery said of the actions the compiled-query panel shows, worked out from the `bigquery` slice and the
+ * `file` slice it is for. A result is found by the name the panel gives its action: the action's ID, or a unit
+ * test's name.
  */
 
-/** The flat fields that arrive only through the `bigquery` slice */
-export const MIGRATED_BIGQUERY_FIELDS = [
-    'dryRunning', 'currencySymbol', 'modelsLastUpdateTimesMeta', 'compiledQuerySchema',
-    'dryRunStatByNodeName', 'dryRunErrorsByNodeName', 'dryRunIncrementalErrorsByNodeName', 'dryRunExpectedOutputErrorsByNodeName',
-    'dryRunQueryByNodeName', 'dryRunIncrementalQueryByNodeName', 'dryRunNonIncrementalQueryByNodeName',
-    'dryRunStatByNodeType', 'dryRunErrorsByNodeType', 'dryRunIncrementalErrorsByNodeType', 'dryRunExpectedOutputErrorsByNodeType',
-] as const;
+type Shown = { model: FileModel; action: PanelAction };
 
-type Shown = { model: LegacyModel; action: PanelAction };
-
-/** An error of a dry run as the flat state has it: placed in the script that was sent, which the panel shows */
-interface Annotation {
+/** An error of a dry run, placed in the script that was sent, which the panel shows */
+export interface DryRunAnnotation {
     message: string;
     location?: { line: number; column: number };
 }
 
-/** An error BigQuery gave no place for is at line 0, as the flat state has always had it */
+/** An error BigQuery gave no place for is at line 0, which the panel marks nowhere */
 const NO_PLACE = { line: 0, column: 0 };
 
 /** The script of each type of action that gives its cost, its schema and the SQL shown for it */
-const mainScript = (model: LegacyModel) => (model.type === 'operations' ? 'operation' : 'query');
+const mainScript = (model: FileModel) => (model.type === 'operations' ? 'operation' : 'query');
 
 const UNKNOWN_BYTES = '⚠ Bytes unknown';
 
@@ -63,11 +57,11 @@ export function dryRunCostSummary(result: DryRunResult | undefined, label: strin
 }
 
 /**
- * Where an error is in the script that was dry-run. A result places it in a section's own SQL; the flat state shows
+ * Where an error is in the script that was dry-run. A result places it in a section's own SQL; the panel shows
  * the whole script and marks the line there, so the script is joined again from the action's sections and the place
  * found in it. Undefined when the result gives no place, or the sections on show are not those that were sent.
  */
-function placeInScript(action: PanelAction, result: DryRunResult): Annotation['location'] | undefined {
+function placeInScript(action: PanelAction, result: DryRunResult): DryRunAnnotation['location'] | undefined {
     const error = result.error;
     if (!error?.section || !error.line || !error.column) {
         return undefined;
@@ -87,12 +81,12 @@ function placeInScript(action: PanelAction, result: DryRunResult): Annotation['l
     return { line: before.length, column: before[before.length - 1].length + 1 };
 }
 
-/** The flat maps of dry-run results, each keyed by the name the panel gives an action: its ID, or a unit test's name */
-function legacyDryRunMaps(slice: BigQuerySlice, shown: Shown[]): Record<string, unknown> {
+/** The dry-run results, each keyed by the name the panel gives an action: its ID, or a unit test's name */
+function dryRunMaps(slice: BigQuerySlice, shown: Shown[]): Pick<BigQueryFields, 'stats' | 'errors' | 'incrementalErrors' | 'expectedOutputErrors' | 'queries' | 'incrementalQueries' | 'nonIncrementalQueries'> {
     const stats: Record<string, string> = {};
-    const errors: Record<string, Annotation> = {};
-    const incrementalErrors: Record<string, Annotation> = {};
-    const expectedOutputErrors: Record<string, Annotation> = {};
+    const errors: Record<string, DryRunAnnotation> = {};
+    const incrementalErrors: Record<string, DryRunAnnotation> = {};
+    const expectedOutputErrors: Record<string, DryRunAnnotation> = {};
     const queries: Record<string, string> = {};
     const incrementalQueries: Record<string, string> = {};
     const nonIncrementalQueries: Record<string, string> = {};
@@ -107,7 +101,7 @@ function legacyDryRunMaps(slice: BigQuerySlice, shown: Shown[]): Record<string, 
                 stats[name] = text;
             }
         };
-        const setError = (map: Record<string, Annotation>, name: string, found: DryRunResult | undefined) => {
+        const setError = (map: Record<string, DryRunAnnotation>, name: string, found: DryRunResult | undefined) => {
             if (found?.error) {
                 map[name] = { message: found.error.message, location: placeInScript(action, found) ?? NO_PLACE };
             }
@@ -138,53 +132,65 @@ function legacyDryRunMaps(slice: BigQuerySlice, shown: Shown[]): Record<string, 
             setQuery(queries, action.id, main);
         }
     }
-    return {
-        dryRunStatByNodeName: stats,
-        dryRunErrorsByNodeName: errors,
-        dryRunIncrementalErrorsByNodeName: incrementalErrors,
-        dryRunExpectedOutputErrorsByNodeName: expectedOutputErrors,
-        dryRunQueryByNodeName: queries,
-        dryRunIncrementalQueryByNodeName: incrementalQueries,
-        dryRunNonIncrementalQueryByNodeName: nonIncrementalQueries,
-        // Every result is given by name. The maps by type of action were a second way to find the same result, and
-        // are sent empty so that those of the last file do not stand
-        dryRunStatByNodeType: {},
-        dryRunErrorsByNodeType: {},
-        dryRunIncrementalErrorsByNodeType: {},
-        dryRunExpectedOutputErrorsByNodeType: {},
-    };
+    return { stats, errors, incrementalErrors, expectedOutputErrors, queries, incrementalQueries, nonIncrementalQueries };
 }
 
 const NO_COLUMNS = { fields: [{ name: '', type: '' }] };
 
 /**
  * The columns of the first action on show, from the dry run of its query, described as its config describes them.
- * An action whose dry run gave no columns has the one empty column the flat state has always had for that.
+ * An action whose dry run gave no columns has one empty column, which the Schema tab shows as no schema.
  */
-function legacySchema(slice: BigQuerySlice, shown: Shown[]): unknown {
+function columnsOf(slice: BigQuerySlice, shown: Shown[]): CompiledQuerySchema {
     const [{ model, action }] = shown;
     const schema = slice.results.find((result) => result.action === action.id && result.script === mainScript(model) && !result.incremental)?.schema;
     return schema?.fields ? { fields: applyColumnDescriptions(schema.fields, action.columns ?? []) } : NO_COLUMNS;
 }
 
+/** What is known of a model's table */
+export interface TableTimes {
+    lastModifiedTime: string | undefined;
+    modelWasUpdatedToday: boolean | undefined;
+    error: { message: string | undefined };
+}
+
+/** What a `bigquery` slice says of the actions of a `file` slice */
+export interface BigQueryFields {
+    /** Dry runs are out */
+    dryRunning: boolean;
+    currencySymbol: string;
+    /** What each dry run would cost, as text */
+    stats: Record<string, string>;
+    errors: Record<string, DryRunAnnotation>;
+    incrementalErrors: Record<string, DryRunAnnotation>;
+    expectedOutputErrors: Record<string, DryRunAnnotation>;
+    /** The SQL that was dry-run, which the panel shows in place of the action's own */
+    queries: Record<string, string>;
+    incrementalQueries: Record<string, string>;
+    nonIncrementalQueries: Record<string, string>;
+    /** What is known of each model's table, by the model's position. Null for one that builds none; empty when no model is on show */
+    lastUpdates: Array<TableTimes | null | undefined>;
+    /**
+     * The columns of the first model. Null when no model is on show. Unset while dry runs are out, and when none
+     * was made: the columns the panel has stay.
+     */
+    columns?: CompiledQuerySchema | null;
+}
+
 /**
- * The flat fields of a `bigquery` slice.
- *
- * @param file The `file` slice sent before it. The flat state names a result by its action's name and lists what is
- * known of the tables by the position of their actions, so without the actions it has neither
+ * @param file The `file` slice the `bigquery` slice is for. Without its actions there is no name to find a result by
  */
-export function legacyStateFromBigQuerySlice(slice: BigQuerySlice, file: FileSlice | undefined): Record<string, unknown> {
+export function bigQueryFieldsOf(slice: BigQuerySlice, file: FileSlice | undefined): BigQueryFields {
     const dryRunning = slice.dryRunning.length > 0;
-    const shown = file ? legacyModels(file) : [];
-    const flat: Record<string, unknown> = { dryRunning, currencySymbol: slice.currencySymbol, ...legacyDryRunMaps(slice, shown) };
+    const shown = file ? fileModels(file) : [];
+    const fields: BigQueryFields = { dryRunning, currencySymbol: slice.currencySymbol, ...dryRunMaps(slice, shown), lastUpdates: [] };
     if (shown.length === 0) {
-        // Nothing with columns is on show
         if (!dryRunning) {
-            flat.compiledQuerySchema = null;
+            fields.columns = null;
         }
-        return flat;
+        return fields;
     }
-    flat.modelsLastUpdateTimesMeta = shown.map(({ model, action }) => {
+    fields.lastUpdates = shown.map(({ model, action }) => {
         // A unit test builds no table
         if (model.type === 'test') {
             return null;
@@ -192,9 +198,8 @@ export function legacyStateFromBigQuerySlice(slice: BigQuerySlice, file: FileSli
         const table = slice.tables[action.id];
         return table && { lastModifiedTime: table.lastModified, modelWasUpdatedToday: table.modifiedToday, error: { message: table.error } };
     });
-    // The columns on show stay until dry runs have given others: not while they are out, nor when none was made
     if (!dryRunning && slice.results.length > 0) {
-        flat.compiledQuerySchema = legacySchema(slice, shown);
+        fields.columns = columnsOf(slice, shown);
     }
-    return flat;
+    return fields;
 }

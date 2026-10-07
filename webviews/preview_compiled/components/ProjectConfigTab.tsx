@@ -1,8 +1,8 @@
 import { Settings, Package } from 'lucide-react';
-import { WebviewState } from '../types';
+import { PanelState } from '../types';
 
 interface ProjectConfigTabProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => {

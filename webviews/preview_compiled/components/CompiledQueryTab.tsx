@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
-import { ExecutionMode, Target, WebviewState, WorkflowUrlEntry } from "../types";
+import { ExecutionMode, Target, PanelState, WorkflowUrlEntry } from "../types";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
@@ -71,7 +71,7 @@ const renderDryRunStatLine = (line: string) => {
 };
 
 interface CompiledQueryTabProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({

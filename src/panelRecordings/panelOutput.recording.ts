@@ -3,18 +3,20 @@ import fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import { legacyStateReader } from '../shared/panelLegacyState';
+import type { DataformBlock } from '../shared/panelContract';
+import { PanelSlices, applyMessage, initialSlices } from '../shared/panelState';
 
 /*
 Recorded panel output: opens files of src/test/test-workspace in the real extension and compares what the
 compiled query panel is sent with the JSON saved under src/panelRecordings/recordings.
 
-It pins what the panel shows for a Dataform project while the code behind it is moved (see
-docs/multi-backend-build-plan.md). A difference is either a regression, or an intended change: for those,
-check the diff and run `just record-panel` to save the new output.
+What is recorded is the slices the panel ends with (src/shared/panelContract.ts), kept as the panel keeps them
+(`applyMessage`). It pins what the panel is told of a Dataform project while the code behind it is moved (see
+docs/multi-backend-build-plan.md). A difference is either a regression, or an intended change: for those, check the
+diff and run `just record-panel` to save the new output.
 
-Only what comes from compiling the project is compared. Anything BigQuery, git or the clock decides is left
-out (see `VOLATILE_KEYS`), so the recordings do not depend on credentials or on the machine.
+Only what comes from compiling the project is compared. Anything BigQuery, git, stored state or the clock decides is
+left out (see `recorded`), so the recordings do not depend on credentials or on the machine.
 */
 
 const EXTENSION_ID = 'ashishalex.dataform-lsp-vscode';
@@ -35,21 +37,28 @@ const FILES: Record<string, string> = {
     'project-settings': 'workflow_settings.yaml',
 };
 
-/** Decided by BigQuery, git, stored state or the clock, not by compiling the project */
-const VOLATILE_KEYS = new Set([
-    'compiledQuerySchema', 'testDryRunResult', 'expectedOutputDryRunResult', 'modelsLastUpdateTimesMeta', 'tagDryRunStatsMeta',
-    'compilationTimeMs', 'compilationInfo', 'lastRun', 'changedActions', 'apiRunGitState', 'deferral', 'deferToProd',
-    'leftoverProxies', 'columnImpact', 'workflowUrls', 'snoozeEndTime', 'missingExecutables', 'propertyGraphValidations',
-    'propertyGraphElementSchema', 'currencySymbol',
-    // Sent only with a fresh compile, so it would depend on which file the suite opens first
-    'compilationBackend',
-]);
-const isVolatile = (key: string) => VOLATILE_KEYS.has(key) || key.startsWith('dryRun');
-
-type PanelState = Record<string, unknown>;
+/** The fields of the `dataform` block that compiling the project decides. The rest come from BigQuery, git, stored state or the clock */
+const COMPILED_DATAFORM_FIELDS = ['compilerOptions', 'dataformCoreVersion', 'projectConfig', 'packageJson', 'possibleResolutions', 'propertyGraphs', 'lineage'] as const satisfies ReadonlyArray<keyof DataformBlock>;
 
 interface PanelApi {
     onDidPostMessage: vscode.Event<unknown>;
+}
+
+/**
+ * What of the slices is compared. Left out: what BigQuery said (the `bigquery` slice and the columns kept from it),
+ * when and how fast the compile ran, the number of the compile (it depends on which file the suite opens first),
+ * and the fields of the `dataform` block that compiling does not decide.
+ */
+function recorded(slices: PanelSlices): Record<string, unknown> {
+    const { compile: _fileCompile, ...file } = slices.file ?? { compile: 0 };
+    const { compile: _projectCompile, ...project } = slices.project ?? { compile: 0 };
+    const status = slices.compile;
+    return {
+        project: slices.project && project,
+        file: slices.file && file,
+        compile: status && { status: status.status, ...('errors' in status ? { errors: status.errors } : {}) },
+        dataform: Object.fromEntries(COMPILED_DATAFORM_FIELDS.map((field) => [field, slices.dataform[field]])),
+    };
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,10 +73,9 @@ function sortKeys(value: unknown): unknown {
     return value;
 }
 
-/** What is compared: the merged state without volatile keys, with this machine's paths replaced */
-function normalise(state: PanelState, workspaceFolder: string): string {
-    const kept = Object.fromEntries(Object.entries(state).filter(([key]) => !isVolatile(key)));
-    const json = JSON.stringify(sortKeys(kept), null, 2);
+/** What is compared, as text: with keys in order and this machine's paths replaced */
+function normalise(slices: PanelSlices, workspaceFolder: string): string {
+    const json = JSON.stringify(sortKeys(recorded(slices)), null, 2);
     const asJsonString = (text: string) => JSON.stringify(text).slice(1, -1);
     return json.split(asJsonString(workspaceFolder)).join('<workspace>').split(asJsonString(fs.realpathSync(workspaceFolder))).join('<workspace>') + '\n';
 }
@@ -76,31 +84,32 @@ suite('recorded panel output', function () {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     // The recordings live in the source tree, not next to the compiled test
     const recordingsDir = path.resolve(__dirname, '..', '..', '..', 'src', 'panelRecordings', 'recordings');
-    let messages: PanelState[] = [];
+    let slices: PanelSlices = initialSlices();
+    let seen = 0;
     let subscription: vscode.Disposable | undefined;
 
-    /** Merges the messages the way the panel's webview does, and waits until compile and dry run have both reported and nothing more arrives */
-    async function panelStateAfter(trigger: () => Thenable<unknown>): Promise<PanelState> {
-        messages = [];
+    /** Keeps the slices the way the panel does, and waits until compile and dry run have both reported and nothing more arrives */
+    async function slicesAfter(trigger: () => Thenable<unknown>): Promise<PanelSlices> {
+        // Each file is recorded as a panel that starts with it would have it, so a recording does not depend on the one before
+        slices = initialSlices();
+        seen = 0;
         await trigger();
-        const merged = () => Object.assign({}, ...messages) as PanelState;
         const deadline = Date.now() + 90 * 1000;
-        let seen = -1;
+        let counted = -1;
         let quietSince = Date.now();
         while (Date.now() < deadline) {
             await sleep(100);
-            if (messages.length !== seen) {
-                seen = messages.length;
+            if (seen !== counted) {
+                counted = seen;
                 quietSince = Date.now();
                 continue;
             }
-            const state = merged();
-            const settled = seen > 0 && state.recompiling !== true && state.dryRunning !== true;
+            const settled = seen > 0 && slices.compile?.status !== 'compiling' && (slices.bigquery?.dryRunning.length ?? 0) === 0;
             if (settled && Date.now() - quietSince >= 2500) {
-                return state;
+                return slices;
             }
         }
-        throw new Error(`The panel did not settle within 90s. Last state keys: ${Object.keys(merged()).join(', ')}`);
+        throw new Error(`The panel did not settle within 90s. It has: ${Object.keys(slices).join(', ')}`);
     }
 
     suiteSetup(async function () {
@@ -109,12 +118,9 @@ suite('recorded panel output', function () {
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
         const panel: PanelApi | undefined = (await extension.activate())?.__panel;
         assert.ok(panel, 'The extension does not expose __panel');
-        const toLegacyState = legacyStateReader();
         subscription = panel.onDidPostMessage((message) => {
-            if (message && typeof message === 'object') {
-                // What the panel itself would merge: a slice is flattened as the panel flattens it
-                messages.push(toLegacyState(message as PanelState));
-            }
+            slices = applyMessage(slices, message);
+            seen++;
         });
         if (UPDATE) {
             fs.mkdirSync(recordingsDir, { recursive: true });
@@ -129,7 +135,7 @@ suite('recorded panel output', function () {
     for (const [name, relativePath] of Object.entries(FILES)) {
         test(`${name}: ${relativePath}`, async function () {
             const uri = vscode.Uri.file(path.join(workspaceFolder!, relativePath));
-            const state = await panelStateAfter(async () => {
+            const state = await slicesAfter(async () => {
                 const document = await vscode.workspace.openTextDocument(uri);
                 await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false });
                 if (!panelOpen) {

@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronUp, Cloud, Terminal } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
-import { WebviewState, CompilationErrorType } from '../types';
+import { PanelState, CompilationErrorType } from '../types';
 import { CompilerOverrides } from './CompilerOverrides';
 import { CompilationInfoBadge } from './CompilationInfoBadge';
 import { panelProblem } from '../utils/panelProblem';
 import { fileOnShow } from '../../../src/shared/panelState';
 
 interface CompilationErrorProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 /**

@@ -1,84 +1,77 @@
 {
-  "actionTypes": [
-    "assertion"
-  ],
-  "assertionQuery": "\n -- Assertions: [1] \nWITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"; \n",
-  "compilerOptions": "",
-  "dataformCoreVersion": "3.0.39",
-  "dataformTags": [
-    "FOOTY",
-    "OPS_TAG",
-    "new_tag",
-    "tag2"
-  ],
-  "declarations": null,
-  "dependents": [],
-  "errorMessage": null,
-  "errorType": null,
-  "expectedOutputQuery": "",
-  "incrementalPreOpsQuery": "",
-  "incrementalQuery": "",
-  "isHelperFile": false,
-  "lineageMetadata": null,
-  "models": [
-    {
-      "dependencyTargets": [
-        {
-          "database": "drawingfire-b72a8",
-          "name": "0100_CLUBS",
-          "schema": "dataform"
-        }
-      ],
-      "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
-      "incrementalPreOps": [],
-      "incrementalQuery": "",
-      "query": "WITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0100_CLUBS_ASSER",
-        "schema": "dataform_assertions"
-      },
-      "type": "assertion"
-    }
-  ],
-  "modelType": "assertion",
-  "nonIncrementalQuery": "",
-  "operationsQuery": "",
-  "packageJsonContent": null,
-  "postOperations": "",
-  "preOperations": "",
-  "projectConfig": {
-    "assertionSchema": "dataform_assertions",
-    "defaultDatabase": "drawingfire-b72a8",
-    "defaultLocation": "europe-west2",
-    "defaultSchema": "dataform",
-    "warehouse": "bigquery"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
   },
-  "propertyGraphs": null,
-  "recompiling": false,
-  "relativeFilePath": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
-  "tableOrViewQuery": "",
-  "targetTablesOrViews": [
-    {
-      "dependencyTargets": [
-        {
+  "dataform": {
+    "compilerOptions": "",
+    "dataformCoreVersion": "3.0.39",
+    "lineage": null,
+    "projectConfig": {
+      "assertionSchema": "dataform_assertions",
+      "defaultDatabase": "drawingfire-b72a8",
+      "defaultLocation": "europe-west2",
+      "defaultSchema": "dataform",
+      "warehouse": "bigquery"
+    },
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [
+          {
+            "fileName": "definitions/0100_CLUBS.sqlx",
+            "kind": "view",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_CLUBS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "dependents": [],
+        "disabled": false,
+        "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
+        "id": "drawingfire-b72a8.dataform_assertions.0100_CLUBS_ASSER",
+        "kind": "assertion",
+        "runnable": true,
+        "sections": [
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "sql": "WITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
+            "title": "query"
+          }
+        ],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
           "database": "drawingfire-b72a8",
-          "name": "0100_CLUBS",
-          "schema": "dataform"
+          "name": "0100_CLUBS_ASSER",
+          "schema": "dataform_assertions"
         }
-      ],
-      "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
-      "incrementalPreOps": [],
-      "incrementalQuery": "",
-      "query": "WITH TEST AS (\n\nSELECT \n SUBSTRING(URL, 0,5) as initial\n FROM `drawingfire-b72a8.dataform.0100_CLUBS`\n)\nSELECT * FROM TEST WHERE initial <> \"https\"",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0100_CLUBS_ASSER",
-        "schema": "dataform_assertions"
-      },
-      "type": "assertion"
-    }
-  ],
-  "testQuery": "",
-  "workspaceFolder": "<workspace>"
+      }
+    ],
+    "file": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
+    "role": "actions"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
+    },
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }

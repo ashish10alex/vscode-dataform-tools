@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { panelProblem } from "../utils/panelProblem";
-import { WebviewState } from '../types';
+import { PanelState } from '../types';
 import { vscode } from '../utils/vscode';
 import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
@@ -11,7 +11,7 @@ import { MultiValue } from 'react-select';
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_TOOLTIP } from '../../utils/dryRunAccuracy';
 
 interface CostEstimatorTabProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 type CostEstimateRow = {

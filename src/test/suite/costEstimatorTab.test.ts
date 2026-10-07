@@ -3,7 +3,7 @@ import { suite, test } from 'mocha';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CostEstimatorTab } from '../../../webviews/preview_compiled/components/CostEstimatorTab';
-import type { WebviewState } from '../../../webviews/preview_compiled/types';
+import type { PanelState } from '../../../webviews/preview_compiled/types';
 import type { DataformBlock } from '../../shared/panelContract';
 import { EMPTY_DATAFORM_BLOCK } from '../../shared/panelState';
 import type { TagDryRunStatsMeta } from '../../types';
@@ -11,8 +11,8 @@ import type { TagDryRunStatsMeta } from '../../types';
 const PROMPT = 'Select one or more tags and click Estimate Cost to see results.';
 
 /** The tab for a cost estimate as the host sends it: in the `dataform` block */
-function render(tagCostEstimate?: DataformBlock['tagCostEstimate'], flat: Partial<WebviewState> = {}): string {
-    const state: WebviewState = { ...flat, dataform: { ...EMPTY_DATAFORM_BLOCK, tagCostEstimate } };
+function render(tagCostEstimate?: DataformBlock['tagCostEstimate'], flat: Partial<PanelState> = {}): string {
+    const state: PanelState = { ...flat, dataform: { ...EMPTY_DATAFORM_BLOCK, tagCostEstimate } };
     return renderToStaticMarkup(createElement(CostEstimatorTab, { state }));
 }
 

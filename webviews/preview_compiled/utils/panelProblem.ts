@@ -1,6 +1,5 @@
 import type { CompileError } from "../../../src/backend/backend";
 import type { FileProblem } from "../../../src/shared/panelContract";
-import { NOT_IN_A_PROJECT } from "../../../src/shared/panelLegacyState";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { CompilationErrorType } from "../types";
 
@@ -17,6 +16,9 @@ export interface PanelProblem {
   /** The tools that were looked for and not found */
   missingTools: string[];
 }
+
+/** What the panel says of a file in no Project */
+const NOT_IN_A_PROJECT = "This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root";
 
 const FILE_PROBLEM: Record<FileProblem["kind"], CompilationErrorType> = {
   "unsupported file type": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
