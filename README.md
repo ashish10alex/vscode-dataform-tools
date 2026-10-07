@@ -7,10 +7,7 @@ A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and 
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
-    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube" height="25" style="margin-right: 10px;">
-  </a>
-  <a href="https://buymeacoffee.com/ashishalexj">
-    <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" height="25">
+    <img src="https://img.shields.io/badge/Watch_Installation_&_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube" height="25">
   </a>
 </div>
 <br>
@@ -459,6 +456,18 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
     </tr>
   </tbody>
 </table>
+
+---
+
+## Support & Feedback
+
+If this extension saves you time and makes working with Dataform or dbt easier, consider supporting the project:
+
+- 📝 **Leave a review** on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode)
+- ☕ **Buy me a coffee**:
+  <a href="https://buymeacoffee.com/ashishalexj">
+    <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee" height="25">
+  </a>
 
 ---
 
