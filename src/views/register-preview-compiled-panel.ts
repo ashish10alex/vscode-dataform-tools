@@ -1,8 +1,9 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, requiredTools } from '../project';
-import type { DataformBlock, FileProblem, FileSlice, HostMessage, PanelMessage } from '../shared/panelContract';
-import { CompileState, compileStatusSlice, fileSlice } from '../panel/slices';
-import { ActionId, slashPath, targetId } from '../shared/compiledGraph';
+import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostMessage, PanelMessage } from '../shared/panelContract';
+import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice } from '../panel/slices';
+import { toDryRunResult } from '../bigquery/dryRunService';
+import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
 import { legacyModels } from '../shared/panelLegacyFile';
 import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
@@ -515,6 +516,20 @@ export class CompiledQueryPanel {
         this.postMessage(message);
     }
 
+    /** What BigQuery has said of the file on show, as last sent */
+    private bigQuery: Omit<BigQuerySlice, 'compile'> = { results: [], dryRunning: [], tables: {}, currencySymbol: '$' };
+
+    /**
+     * Changes what BigQuery has said of the file on show and sends the `bigquery` slice. Sent every time, as the flat
+     * fields it replaces were. A render that starts dry runs sends it after the flat fields of that render and before
+     * the `dataform` block: the panel clears what the last dry runs gave when it hears that new ones are out.
+     */
+    public sendBigQuery(fields: Partial<Omit<BigQuerySlice, 'compile'>>) {
+        this.bigQuery = { ...this.bigQuery, ...fields };
+        const message: HostMessage = { slice: 'bigquery', value: bigQuerySlice(this.bigQuery, compileNumber()) };
+        this.postMessage(message);
+    }
+
     /**
      * Changes fields of the `dataform` block and sends the block, saying which fields this send is about. It is sent
      * every time, as the flat message it replaces was: the panel acts on these fields arriving (see
@@ -862,9 +877,9 @@ export class CompiledQueryPanel {
                     const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
                     const dryRunIncrementalErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
                     const _costEstNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
+                    this.centerPanel?.sendBigQuery({ currencySymbol });
                     this.centerPanel?.postMessage({
                         "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                        "currencySymbol": currencySymbol,
                         "dryRunStatByNodeType": dryRunStatByNodeType,
                         "dryRunStatByNodeName": dryRunStatByNodeName,
                         "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
@@ -1354,25 +1369,26 @@ export class CompiledQueryPanel {
                     "compilationTimeMs": curFileMeta.compilationTimeMs,
                     "dataformTags": dataformTags,
                     "workspaceFolder": workspaceFolder,
-                    "dryRunning": true,
                     "compiledQuerySchema": null,
                 });
+                // The validation of a graph is a dry run of the statement that would create it
+                this.sendBigQuery({ results: [], tables: {}, dryRunning: propertyGraphs.map((graph) => ({ action: targetId(graph.target), script: 'validation', incremental: false })) });
                 this.updateDataformBlock({ propertyGraphs, propertyGraphValidations: null });
                 this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
 
                 if (isCompilationStale()) {
-                    await this.postMessage({ "dryRunning": false });
+                    this.sendBigQuery({ dryRunning: [] });
                     return;
                 }
                 // Validation is a network round trip; do not hold up the render for it.
                 validatePropertyGraphs((validations) => {
                     this.updateDataformBlock({ propertyGraphValidations: validations });
-                    this.postMessage({ "dryRunning": false });
+                    this.sendBigQuery({ dryRunning: [] });
                 }, propertyGraphs).catch((error) => {
                     logger.error(`Error validating property graphs: ${error}`);
-                    // The render above set dryRunning: true; without this the webview spins forever.
-                    this.postMessage({ "dryRunning": false });
+                    // The render above said a dry run is out; without this the webview spins forever.
+                    this.sendBigQuery({ dryRunning: [] });
                 });
                 return;
             }
@@ -1383,10 +1399,10 @@ export class CompiledQueryPanel {
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.` });
                 await this.postMessage({
                     "relativeFilePath": relativeFilePathForGraphs,
-                    "dryRunning": false,
                     "compiledQuerySchema": null,
                     "workspaceFolder": workspaceFolder,
                 });
+                this.sendBigQuery({ dryRunning: [] });
                 this.updateDataformBlock({ propertyGraphs: null });
                 this.updateDataformBlock({ dataformCoreVersion: coreVersion ?? undefined });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
@@ -1456,16 +1472,21 @@ export class CompiledQueryPanel {
         const registered = fm.tables.filter((table) => table.type === "notebook" && table.target).map((table) => targetId(table.target));
         const shownFile = this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { deferral: curFileMeta.deferral, registered });
         // The panel lists the actions in the slice's order, and matches the last-modified times to them by position
-        const shownModels = shownFile ? legacyModels(shownFile).map(({ model }) => model) : [];
+        const shown = shownFile ? legacyModels(shownFile) : [];
         await this.postMessage({
             "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
             "compiledQuerySchema": compiledQuerySchema,
             "dataformTags": dataformTags,
-            "dryRunning": true,
             "workspaceFolder": workspaceFolder,
     });
+        // The dry runs that are now out: every script of every action shown. Their results are for this compile
+        const dryRunCompile = compileNumber();
+        const graph = compiledGraph();
+        const dryRunning: DryRunKey[] = (shownFile?.actions ?? []).flatMap(({ id }) =>
+            (graph?.actions[id] ? dryRunScripts(graph.actions[id]) : []).map((script) => ({ action: id, script: script.name, incremental: script.incremental })));
+        this.sendBigQuery({ results: [], tables: {}, dryRunning });
         this.updateDataformBlock({ deferral: toDeferralView(curFileMeta.deferral, curFileMeta.deferralError), deferToProd: getDeferToProdState(workspaceFolder), leftoverProxies: curFileMeta.leftoverProxies ?? null, propertyGraphs: null });
         this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
 
@@ -1483,7 +1504,7 @@ export class CompiledQueryPanel {
         if (isCompilationStale()) {
             // Dry running outdated SQL would report errors and costs of queries that may no longer exist.
             // The panel is redrawn, with a dry run, once the fresh compilation finishes.
-            await this.postMessage({ "dryRunning": false });
+            this.sendBigQuery({ dryRunning: [] });
             return;
         }
 
@@ -1494,14 +1515,12 @@ export class CompiledQueryPanel {
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
             this.sendCompileStatus();
-            await this.postMessage({
-                "dryRunning": false,
-            });
+            this.sendBigQuery({ dryRunning: [] });
             return;
         }
 
         // Filter out test nodes as they don't have a table to check last modified time for
-        const tablesForLastModified = shownModels.filter((model) => model.type !== "test" && model.target);
+        const tablesForLastModified = shown.filter(({ model }) => model.type !== "test" && model.target);
 
         const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
         const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
@@ -1511,24 +1530,21 @@ export class CompiledQueryPanel {
 
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             perfTimed('dryRuns', () => dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document!, diagnosticCollection, false)),
-            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map((table) => table.target!))) : Promise.resolve([]),
+            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map(({ model }) => model.target!))) : Promise.resolve([]),
         ]);
         if (dryRunResults.accessDeniedTargets.length > 0) {
             // Read again so the prod tables we cannot read keep their dev refs, then show and dry run that
             return this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, await getCurrentFileMetadata(false), false);
         }
         const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults } = dryRunResults;
-        const modelsLastUpdateTimesMeta: any[] = [];
-        let timeIndex = 0;
-        const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
-        for (const table of shownModels) {
-            if (table.type !== "test" && table.target) {
-                modelsLastUpdateTimesMeta.push(safeModelsLastUpdateTimesMeta[timeIndex]);
-                timeIndex++;
-            } else {
-                modelsLastUpdateTimesMeta.push(null);
+        // What BigQuery knows of each table, by its action. Nothing is known when there is no BigQuery client
+        const tables: BigQuerySlice['tables'] = {};
+        (_modelsLastUpdateTimesMeta ?? []).forEach((meta, index) => {
+            const table = tablesForLastModified[index];
+            if (meta && table) {
+                tables[table.action.id] = { lastModified: meta.lastModifiedTime, modifiedToday: meta.modelWasUpdatedToday, error: meta.error?.message };
             }
-        }
+        });
 
 
         let currency = "USD" as SupportedCurrency;
@@ -1687,14 +1703,10 @@ export class CompiledQueryPanel {
                 "dryRunQueryByNodeName": dryRunQueryByNodeName,
                 "dryRunIncrementalQueryByNodeName": dryRunIncrementalQueryByNodeName,
                 "dryRunNonIncrementalQueryByNodeName": dryRunNonIncrementalQueryByNodeName,
-                "testDryRunResult": testDryRunResult,
-                "expectedOutputDryRunResult": expectedOutputDryRunResult,
-                "currencySymbol": currencySymbol,
                 "compiledQuerySchema": compiledQuerySchema,
                 "dataformTags": dataformTags,
-                "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
-                "dryRunning": false,
             });
+            this.sendBigQuery({ results: dryRunResults.dryRuns.map(({ action, script, response }) => toDryRunResult(action, script, dryRunCompile, response)), dryRunning: [], tables, currencySymbol });
             this.updateDataformBlock({ deferral: toDeferralView(curFileMeta.deferral, curFileMeta.deferralError), deferToProd: getDeferToProdState(workspaceFolder), leftoverProxies: curFileMeta.leftoverProxies ?? null });
             this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
             this.updateDataformBlock({ snoozeEndTime: snoozeManager.getSnoozeEndTime(), projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });

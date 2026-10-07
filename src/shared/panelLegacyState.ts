@@ -1,4 +1,5 @@
-import type { CompileStatus, DataformBlock, HostMessage } from './panelContract';
+import type { CompileStatus, DataformBlock, FileSlice, HostMessage } from './panelContract';
+import { legacyStateFromBigQuerySlice } from './panelLegacyBigQuery';
 import { legacyStateFromFileSlice } from './panelLegacyFile';
 
 /*
@@ -63,6 +64,10 @@ export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage
     if (message.slice === 'file') {
         return legacyStateFromFileSlice(message.value);
     }
+    if (message.slice === 'bigquery') {
+        // Without the file's actions; `legacyStateReader` gives them
+        return legacyStateFromBigQuerySlice(message.value, undefined);
+    }
     if (message.slice !== 'dataform') {
         // No component reads the other slices yet, and the host does not send them
         return {};
@@ -109,4 +114,22 @@ export function isSliceMessage(message: unknown): message is HostMessage {
 /** A message from the host as flat fields, whichever way it was sent */
 export function toLegacyState(message: Record<string, unknown>): Record<string, unknown> {
     return isSliceMessage(message) ? legacyStateFromSlice(message) : message;
+}
+
+/**
+ * Reads the host's messages as flat fields, one after another. What the `bigquery` slice says of an action is given
+ * to the flat state by the action's place in the `file` slice sent before it, so the reader keeps that slice. The
+ * panel has one reader for its life, and so does the recorded panel output.
+ */
+export function legacyStateReader(): (message: Record<string, unknown>) => Record<string, unknown> {
+    let file: FileSlice | undefined;
+    return (message) => {
+        if (!isSliceMessage(message)) {
+            return message;
+        }
+        if (message.slice === 'file') {
+            file = message.value;
+        }
+        return message.slice === 'bigquery' ? legacyStateFromBigQuerySlice(message.value, file) : legacyStateFromSlice(message);
+    };
 }
