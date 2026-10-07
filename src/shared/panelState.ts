@@ -1,4 +1,4 @@
-import type { BigQuerySlice, CompileStatus, DataformBlock, DbtBlock, FileSlice, HostMessage, ProjectSlice } from './panelContract';
+import type { BigQuerySlice, CompileStatus, DataformBlock, DbtBlock, FileSlice, HostMessage, ProjectSlice, RunStatusSlice } from './panelContract';
 import { fileModels } from './panelFileView';
 
 /*
@@ -21,6 +21,8 @@ export interface PanelSlices {
      */
     settled?: CompileStatus;
     bigquery?: BigQuerySlice;
+    /** The last run started through the Backend's runner. A dbt Project's panel shows its command and offers to repeat it */
+    run?: RunStatusSlice;
     /**
      * The dry-run results the columns on show come from, with the file they were for. The columns of the last dry
      * runs stay while the next ones are out, so that the Schema tab does not empty on every save. Unset when the
@@ -102,6 +104,8 @@ function withSlice(slices: PanelSlices, message: unknown): PanelSlices {
             return { ...slices, bigquery: sent.value, columns: columnsAfter(slices, sent.value) };
         case 'dbt':
             return { ...slices, dbt: sent.value };
+        case 'run status':
+            return { ...slices, run: sent.value };
         case 'dataform': {
             if (!sent.touched) {
                 return { ...slices, dataform: sent.value };

@@ -33,6 +33,7 @@ import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, onDidPostPanelMessage, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
 import type { DbtPanelMessage } from './shared/panelContract';
+import type { DbtRunMessage } from './views/register-preview-compiled-panel';
 import { initDeferToProd } from './defer/deferStatusBar';
 import { initProdTargets } from './defer/prodTargets';
 import { registerDeferEditorHints } from './defer/deferEditorHints';
@@ -48,6 +49,7 @@ import { getPerfSnapshot, perfStart, resetPerf } from './perf';
 import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
 import { dbtTool, initDbtTools } from './project/dbtTool';
 import { clearDbtArtifacts, initDbtCompile } from './project/dbtCompile';
+import { initDbtRuns, lastDbtRun } from './project/dbtRun';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -98,6 +100,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initProjects(context);
     initDbtTools(context);
     initDbtCompile(context);
+    initDbtRuns(context);
     initProdTargets(context);
     initCliCompileCache(context);
 
@@ -491,9 +494,11 @@ export async function activate(context: vscode.ExtensionContext) {
             forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices(),
             // As if a button of a dbt Project's panel had been clicked
             dbtMessage: (message: DbtPanelMessage) => CompiledQueryPanel.centerPanel?.onDbtMessage(message),
+            // As if Run, a Run Tag or Repeat had been clicked in a dbt Project's panel. Resolves to false when the panel shows no dbt file
+            dbtRunMessage: (message: DbtRunMessage) => CompiledQueryPanel.centerPanel?.onDbtRunMessage(message),
         },
         // What the tests of a dbt workspace read (src/dbtWorkspace)
-        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool },
+        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool, lastDbtRun },
     };
 }
 

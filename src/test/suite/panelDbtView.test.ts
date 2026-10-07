@@ -137,6 +137,42 @@ suite('the dbt panel: a file with no SQL', () => {
     });
 });
 
+suite('the dbt panel: Run', () => {
+    const names = (view: ReturnType<typeof dbtView>) => view.run?.targets.map((target) => target.name);
+
+    test("is offered for the file's own actions that a run can execute, and is free after a clean compile", () => {
+        const model = viewOf('models/marts/fct_orders.sql');
+        // The model alone: dbt build runs its tests after it
+        assert.deepStrictEqual([names(model), model.run?.blocked], [['fct_orders'], undefined]);
+        assert.deepStrictEqual(names(viewOf('seeds/country_codes.csv')), ['country_codes']);
+        assert.deepStrictEqual(names(viewOf('tests/assert_positive_order_totals.sql')), ['assert_positive_order_totals']);
+    });
+
+    test('is not offered where nothing can be run: sources, exposures, analyses, ephemeral models, macros', () => {
+        for (const file of ['models/staging/_sources.yml', 'models/reporting/_exposures.yml', 'analyses/revenue_by_country.sql', 'models/intermediate/int_customer_countries.sql', 'macros/audit.sql', 'dbt_project.yml']) {
+            assert.strictEqual(viewOf(file).run, undefined, file);
+        }
+    });
+
+    test('is not offered in a Project of another warehouse', () => {
+        const snowflake: DbtManifest = { ...v2, metadata: { ...v2.metadata, adapter_type: 'snowflake' } };
+        assert.strictEqual(dbtView(after({ manifest: snowflake, file: MODEL, state: compiled() })).run, undefined);
+    });
+
+    test('waits for a fresh compile: blocked while one runs, for a parsed Project, and with errors of the file', () => {
+        const shown = after({ manifest: v2, file: MODEL, state: compiled() });
+        const compiling = dbtView(after({ manifest: v2, file: MODEL, state: { ...compiled(), compiling: { showingPrevious: true, startedAt: 7, file: MODEL } } }, shown));
+        assert.strictEqual(compiling.run?.blocked, 'Wait for the compile to end');
+        const parsed = dbtView(after({ manifest: manifest('dbt-v2-hooks-parsed'), file: 'models/orders.sql', parsedForHooks: true, state: compiled([], 'hooks') }));
+        assert.strictEqual(parsed.run?.blocked, 'The Project is not compiled');
+        const broken = dbtView(after({ manifest: onlyCompiled(v2, []), file: MODEL, state: compiled([{ message: 'not found', fileName: MODEL }]) }));
+        assert.ok(broken.run?.blocked);
+        // Errors in other files do not stop a run of this one when its SQL was compiled
+        const elsewhere = dbtView(after({ manifest: v2, file: MODEL, state: compiled([{ message: 'undefined', fileName: 'models/staging/stg_payments.sql' }]) }));
+        assert.strictEqual(elsewhere.run?.blocked, undefined);
+    });
+});
+
 suite('the dbt panel: what BigQuery said', () => {
     const shown = after({ manifest: v2, file: 'models/marts/fct_orders.sql', state: compiled() });
     const [model, dataTest] = shown.file!.actions;
