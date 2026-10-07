@@ -379,6 +379,41 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
         }
     });
 
+    test('a compile error is shown to the panel, marked in the editor on its line, and cleared by the next compile', async () => {
+        // A stand-in that fails as dbt v2 does for `{% if %}` in a model: it logs the error and still writes a manifest
+        const log = fs.readFileSync(path.resolve(manifests, '..', 'dbt-logs', 'dbt-v2-jinja.stdout.jsonl'), 'utf8').split('models/orders.sql').join('models/marts/fct_orders.sql');
+        fs.writeFileSync(path.join(dir, 'broken.jsonl'), log);
+        const broken = path.join(dir, 'dbt-broken');
+        fs.writeFileSync(broken, `#!/usr/bin/env node
+const fs = require('fs'), path = require('path');
+const args = process.argv.slice(2), dir = ${JSON.stringify(dir)};
+if (args[0] === '--version') { console.log('dbt 2.9.7'); return; }
+const target = args[args.indexOf('--target-path') + 1];
+fs.mkdirSync(target, { recursive: true });
+fs.copyFileSync(${JSON.stringify(path.join(manifests, 'dbt-v2.json'))}, path.join(target, 'manifest.json'));
+process.stdout.write(fs.readFileSync(path.join(dir, 'broken.jsonl'), 'utf8'));
+process.exitCode = 1;
+`, { mode: 0o755 });
+        const document = await show('models/marts/fct_orders.sql');
+        const marks = () => vscode.languages.getDiagnostics(document.uri).filter((diagnostic) => diagnostic.source === 'dbt compile');
+        await until('the model', () => slices.file?.file === 'models/marts/fct_orders.sql' && slices.compile?.status === 'compiled');
+        assert.deepStrictEqual(marks(), []);
+
+        await settings().update('dbtExecutablePath', broken, vscode.ConfigurationTarget.Global);
+        await until('the compile that fails', () => slices.dbt?.dbt?.version === '2.9.7' && slices.compile?.status === 'compiled' && slices.compile.errors.length > 0);
+        const errors = slices.compile?.status === 'compiled' ? slices.compile.errors : [];
+        assert.deepStrictEqual(errors.map((error) => [error.fileName, error.line, error.code]), [['models/marts/fct_orders.sql', 2, 'dbt1502']]);
+        await until('the marker', () => marks().length === 1);
+        const [mark] = marks();
+        assert.deepStrictEqual([mark.range.start.line, mark.code, mark.severity], [1, 'dbt1502', vscode.DiagnosticSeverity.Error]);
+        assert.ok(mark.message.includes('unexpected end of block'), mark.message);
+
+        // A compile that succeeds takes the marker away
+        await settings().update('dbtExecutablePath', standIn, vscode.ConfigurationTarget.Global);
+        await until('the compile that succeeds', () => slices.dbt?.dbt?.version === '2.9.9' && slices.compile?.status === 'compiled' && slices.compile.errors.length === 0);
+        await until('the marker to go', () => marks().length === 0);
+    });
+
     test('a dbt v2 Project with hooks is only parsed, until the offer to compile with hooks is taken', async () => {
         // A stand-in whose parse finds on-run hooks, as the real one does in the example Project `dbt-hooks`
         const withHooks = path.join(dir, 'dbt-with-hooks');

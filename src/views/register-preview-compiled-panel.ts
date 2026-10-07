@@ -979,6 +979,18 @@ export class CompiledQueryPanel {
               case 'dataform.stopSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.stopSnoozeCompilation');
                 return;
+              case 'openFile': {
+                const root = panel.dbtOnShow?.project.root ?? currentDataformRoot();
+                // Only a file inside the Project the panel shows
+                const resolved = root ? path.resolve(root, message.file) : undefined;
+                if (!root || !resolved || path.relative(root, resolved).startsWith('..')) {
+                    return;
+                }
+                const at = new vscode.Position(Math.max(0, (message.line ?? 1) - 1), 0);
+                vscode.window.showTextDocument(Uri.file(resolved), { viewColumn: vscode.ViewColumn.One, preview: false, selection: new vscode.Range(at, at) })
+                    .then(undefined, (error) => logger.error(`Could not open ${message.file}: ${error}`));
+                return;
+              }
               case 'openAction':
                 if (panel.openDbtAction(message.action)) {
                     return;

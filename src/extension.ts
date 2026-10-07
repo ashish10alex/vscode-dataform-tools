@@ -50,6 +50,7 @@ import { backendContext, currentDataformRoot, initProjects, projects, requiredTo
 import { dbtTool, initDbtTools } from './project/dbtTool';
 import { clearDbtArtifacts, initDbtCompile } from './project/dbtCompile';
 import { initDbtRuns, lastDbtRun } from './project/dbtRun';
+import { initDbtDiagnostics } from './project/dbtDiagnostics';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -101,6 +102,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initDbtTools(context);
     initDbtCompile(context);
     initDbtRuns(context);
+    initDbtDiagnostics(context);
     initProdTargets(context);
     initCliCompileCache(context);
 

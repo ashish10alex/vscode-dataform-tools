@@ -321,6 +321,8 @@ export interface RunScope {
 export type SharedPanelMessage =
     /** Open the file that defines the action */
     | { command: 'openAction'; action: Target }
+    /** Open a file of the Project, relative to its root with forward slashes, at a 1-based line where one is given */
+    | { command: 'openFile'; file: string; line?: number }
     /** Run a section's query and show its rows; `alone` leaves out what runs before it */
     | { command: 'preview'; action: Target; section: string; alone?: boolean }
     /** Run the actions with the Backend's runner, in the terminal */
