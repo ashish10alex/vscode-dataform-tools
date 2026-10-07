@@ -93,11 +93,27 @@ export type FileRole =
     /** It is in the Project and nothing in the Compiled Graph comes from it */
     | 'not compiled';
 
+/** Why a file has nothing to show, when that is not for the compile status to say */
+export interface FileProblem {
+    kind:
+        /** The extension shows no file of this type */
+        | 'unsupported file type'
+        /** The file should define an action, and the Compiled Graph has none from it */
+        | 'no action'
+        /** An action of the file has no SQL where it must have */
+        | 'no sql'
+        | 'other';
+    /** For the user; may hold HTML, which the panel sanitises. Absent where the panel has its own words for the kind */
+    message?: string;
+}
+
 /** The file the panel is showing and the actions shown for it. Only these and their neighbours cross */
 export interface FileSlice extends Slice {
     /** Relative to the Project root with forward slashes */
     file: string;
     role: FileRole;
+    /** Set only with the role "not compiled" */
+    problem?: FileProblem;
     /** In display order. A model's tests follow it, though they are defined in other files */
     actions: PanelAction[];
 }
