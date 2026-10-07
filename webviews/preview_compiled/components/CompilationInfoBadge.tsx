@@ -4,8 +4,6 @@ import type { CompilationInfo } from "../../../src/utils/compilationInfo";
 import { compilationInfoParts, compilationInfoTooltip, customCliLabel } from "../utils/compilationInfoFormat";
 import { vscode } from "../utils/vscode";
 
-type CompilationBackend = CompilationInfo["backend"];
-
 /** Re-renders every `intervalMs` so relative times ("3 min ago") stay current. */
 function useNow(intervalMs: number) {
   const [now, setNow] = useState(Date.now());
@@ -17,17 +15,17 @@ function useNow(intervalMs: number) {
 }
 
 /**
- * `backend` is the currently selected backend. When `info` is missing or came from the other backend
+ * `mode` is the Compilation Mode currently selected. When `info` is missing or came from the other one
  * (e.g. an API compile failed before recording anything, leaving the last CLI compile behind), only the
  * current mode and its toggle are shown, since timings and paths of that compile would mislead.
  */
-export function CompilationInfoBadge({ info, backend, recompiling, className }: { info?: CompilationInfo; backend?: CompilationBackend; recompiling?: boolean; className?: string }) {
+export function CompilationInfoBadge({ info, mode: selected, recompiling, className }: { info?: CompilationInfo; mode?: CompilationInfo["mode"]; recompiling?: boolean; className?: string }) {
   const now = useNow(30_000);
-  const mode = backend ?? info?.backend;
+  const mode = selected ?? info?.mode;
   if (!mode || recompiling) {
     return null;
   }
-  const current = info?.backend === mode ? info : undefined;
+  const current = info?.mode === mode ? info : undefined;
 
   const Icon = mode === "api" ? Cloud : Terminal;
   const cliLabel = current && customCliLabel(current);

@@ -1,11 +1,11 @@
 /*
- * Which backend produced the compiled JSON currently in use and how fresh it is, so the compiled
+ * Which Compilation Mode produced the compiled JSON currently in use and how fresh it is, so the compiled
  * query panel can show it. Remote mode serves results from a per-commit cache, so without this the
  * user cannot tell whether they are looking at an old compilation.
  */
 
 export type CompilationInfo = {
-    backend: "cli" | "api";
+    mode: "cli" | "api";
     /** Epoch ms of the compilation that produced the result */
     compiledAt: number;
     /** Only set when the compilation ran just now (not when served from a cache) */

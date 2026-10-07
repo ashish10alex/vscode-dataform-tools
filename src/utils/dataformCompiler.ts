@@ -374,7 +374,7 @@ async function runCliCompile(workspaceFolder: string, options: DataformOptions, 
     const { compiledString, errors, possibleResolutions, compilationTimeMs } = compiled;
     const superseded = compileId !== state.latestCompileId;
     if (!superseded) {
-        setCompilationInfo({ backend: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !dataformCompiledJson, cliPath: options.cli?.path, cliSource: options.cli?.source });
+        setCompilationInfo({ mode: "cli", compiledAt: Date.now(), durationMs: compilationTimeMs, fromCache: false, hasErrors: !dataformCompiledJson, cliPath: options.cli?.path, cliSource: options.cli?.source });
     }
     if (compiledString && dataformCompiledJson) {
         if (superseded) {
@@ -463,7 +463,7 @@ export async function prewarmCliCompilation(workspaceFolder: string, options: Da
         setCompiled(workspaceFolder, savedJson);
         const compilerOptions = options.compilerOptions;
         globalThis.compilerOptionsMap = compilerOptions ? createCompilerOptionsObjectForApi([compilerOptions]) : {};
-        setCompilationInfo({ backend: "cli", compiledAt: saved.meta.compiledAt, fromCache: true, stale: !!reason, staleReason: reason, cliPath: options.cli?.path, cliSource: options.cli?.source });
+        setCompilationInfo({ mode: "cli", compiledAt: saved.meta.compiledAt, fromCache: true, stale: !!reason, staleReason: reason, cliPath: options.cli?.path, cliSource: options.cli?.source });
         if (!reason) {
             logger.info('Loaded the saved compilation; compile inputs are unchanged');
             state.reusable = { fingerprint, result: { dataformCompiledJson: savedJson, errors: undefined, possibleResolutions: undefined, compilationTimeMs: undefined } };

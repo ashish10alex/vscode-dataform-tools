@@ -312,9 +312,9 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
         {problem.compiling && (() => {
-          const backend = state.dataform.compilationMode || state.dataform.compilationInfo?.backend || 'cli';
-          const isApi = backend === 'api';
-          const backendLabel = isApi ? 'API' : 'CLI';
+          const mode = state.dataform.compilationMode || state.dataform.compilationInfo?.mode || 'cli';
+          const isApi = mode === 'api';
+          const modeLabel = isApi ? 'API' : 'CLI';
           return (
             <div className="mb-4">
               <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
@@ -329,7 +329,7 @@ function App() {
                   title={isApi ? "Compiling remotely with the Dataform API" : "Compiling locally with the Dataform CLI"}
                 >
                   {isApi ? <Cloud className="w-3.5 h-3.5" /> : <Terminal className="w-3.5 h-3.5" />}
-                  {backendLabel}
+                  {modeLabel}
                 </span>
               </div>
               {state.dataform.dataformCoreVersion && (
@@ -350,7 +350,7 @@ function App() {
         })()}
 
         {showSkeleton && (
-            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} backend={state.dataform.compilationMode || state.dataform.compilationInfo?.backend} />
+            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} mode={state.dataform.compilationMode || state.dataform.compilationInfo?.mode} />
         )}
 
 {(problem.type === CompilationErrorType.COMPILATION_ERROR ||
