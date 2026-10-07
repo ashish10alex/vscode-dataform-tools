@@ -1,0 +1,9 @@
+snapshots:
+  - name: customers_snapshot
+    description: Slowly changing history of raw customers.
+    relation: source('raw', 'customers')
+    config:
+      schema: snapshots
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
