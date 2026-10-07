@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { ChevronDown, ChevronRight, Eye, Loader2, MessageSquareWarning, Play, Tag } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronRight, Eye, Loader2, MessageSquareWarning, Play, Tag } from "lucide-react";
 import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
@@ -8,7 +8,9 @@ import { ModifierSwitch } from "./ModifierSwitch";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
 import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
-import { formatBytes } from "../../../src/shared/panelBigQueryView";
+import { dryRunCostSummary } from "../../../src/shared/panelBigQueryView";
+import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
+import { renderDryRunStatLine } from "./CompiledQueryTab";
 import type { ColumnMetadata } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { CodeBlock } from "../../components/CodeBlock";
@@ -478,15 +480,14 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
   const bigQuery = state.dbt?.bigQuery !== false;
   const which = incrementalCase(state, action);
   // The size is in the section's header; here, what a run of the query would cost
-  const price = result?.cost && !result.error && !result.bytesUnknown ? result.cost.value : undefined;
-  const cost = price === undefined ? "" : `${state.bigquery?.currencySymbol ?? "$"}${price < 0.01 ? price.toFixed(4) : price.toFixed(2)}`;
+  // What the dry run says the query would scan and cost, in the words Dataform's panel uses: "9.75 MiB $0.000"
+  const stat = dryRunCostSummary(result, "", state.bigquery?.currencySymbol ?? "$");
+  const badge = ACTION_TYPE_BADGE_STYLES[action.kind] ?? DEFAULT_BADGE_STYLE;
   return (
     <section data-dbt="action" data-kind={action.kind} className={clsx(BOX, "min-w-0")}>
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-left bg-transparent border-0 text-[var(--vscode-foreground)] cursor-pointer">
         {open ? <ChevronDown className={clsx("w-4 h-4", MUTED)} /> : <ChevronRight className={clsx("w-4 h-4", MUTED)} />}
-        <span className={clsx("px-1.5 py-0.5 rounded text-[11px] uppercase tracking-wider border border-[var(--vscode-widget-border)]", isTest ? "text-[var(--vscode-textLink-foreground)]" : "text-[var(--vscode-textPreformat-foreground)]")}>
-          {action.kind}
-        </span>
+        <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text} ${badge.border}`}>{action.kind}</span>
         <span className="font-mono text-sm">{dbtNameOf(state, action)}</span>
         {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs", MUTED)}>defined in {action.fileName}</span>}
         <span className="ml-auto flex items-center gap-2 text-xs">
@@ -496,19 +497,23 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
           ) : asWritten ? (
             <span className={MUTED}>not compiled</span>
           ) : running ? (
-            <span data-dry-run="running" className={clsx("flex items-center gap-1", MUTED)}>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              dry run
-            </span>
-          ) : failed ? (
-            <span data-dry-run="failed" className={ERROR}>✕ dry run failed</span>
-          ) : result ? (
-            <span data-dry-run="ok" className="font-mono text-[var(--vscode-testing-iconPassed,#73c991)]" title="What the query would scan, from BigQuery's dry run">
-              ✓ {result.bytesUnknown ? "bytes unknown" : formatBytes(result.bytes ?? 0)}
+            <Loader2 data-dry-run="running" className={clsx("w-3.5 h-3.5 animate-spin", MUTED)} />
+          ) : stat ? (
+            <span data-dry-run="ok" className="text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded" title="What the query would scan and cost, from BigQuery's dry run">
+              {renderDryRunStatLine(stat)}
             </span>
           ) : null}
         </span>
       </button>
+      {failed && !view.outdated && (
+        <div data-dbt="dry run error" title="Shown here only. Nothing is marked in the source file." className="mx-3 mb-3 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <div className="overflow-auto whitespace-pre-wrap">
+            {failed.line && query && failed.section === query.title ? `Line ${failed.line}${failed.column ? `, column ${failed.column}` : ""} of the compiled SQL: ` : ""}
+            {failed.message}
+          </div>
+        </div>
+      )}
       {open && (
         <div className={clsx("border-t border-[var(--vscode-widget-border)] p-3 space-y-3", view.outdated && "opacity-50")}>
           {action.kind === "incremental" && action.sqlPresent && (
@@ -537,25 +542,13 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
                   showLineNumbers={!hook && !!failed?.line && failed.section === section.title}
                   errorAnnotations={!hook && failed?.line && failed.section === section.title ? [{ line: failed.line, message: failed.message }] : undefined}
                 />
-                {!hook && failed && (
-                  <div data-dbt="dry run error" className="mt-2 rounded border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] px-3 py-2 text-xs">
-                    {failed.line && failed.section === section.title && (
-                      <span className={clsx("font-semibold", ERROR)}>
-                        Line {failed.line}
-                        {failed.column ? `, column ${failed.column}` : ""} of the compiled SQL:{" "}
-                      </span>
-                    )}
-                    <span className="break-words">{failed.message}</span>
-                    <div className={clsx("mt-0.5", MUTED)}>Shown here only. Nothing is marked in the source file.</div>
-                  </div>
-                )}
               </div>
             );
           })}
-          {query?.compiled && bigQuery && query.dryRun.length > 0 && (isTest || !isToolbarPreview || cost) && (
+          {query?.compiled && bigQuery && query.dryRun.length > 0 && (isTest || !isToolbarPreview) && (
             <div className="flex flex-wrap items-center gap-3 text-xs">
               {/* The file's own query is previewed from the toolbar, as in a Dataform file. A test's, and a second model's, from its section */}
-              {(isTest || !isToolbarPreview) && (
+              {(
                 <button
                   type="button"
                   className={clsx(TOOLBAR_SECONDARY, "border-0")}
@@ -566,7 +559,6 @@ function ActionSection({ state, view, action, first }: { state: PanelSlices; vie
                   <Eye className="w-4 h-4 mr-1.5" /> {isTest ? "Preview failing rows" : "Preview Data"}
                 </button>
               )}
-              {cost && <span data-dbt="cost" className={MUTED}>≈ {cost}</span>}
             </div>
           )}
         </div>
