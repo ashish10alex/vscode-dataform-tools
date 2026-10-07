@@ -42,6 +42,8 @@ const COMPILED_DATAFORM_FIELDS = ['compilerOptions', 'dataformCoreVersion', 'pro
 
 interface PanelApi {
     onDidPostMessage: vscode.Event<unknown>;
+    /** The host sends a slice only when it has changed: this has it send each one again */
+    forgetSentSlices(): void;
 }
 
 /**
@@ -87,12 +89,14 @@ suite('recorded panel output', function () {
     let slices: PanelSlices = initialSlices();
     let seen = 0;
     let subscription: vscode.Disposable | undefined;
+    let panel: PanelApi | undefined;
 
     /** Keeps the slices the way the panel does, and waits until compile and dry run have both reported and nothing more arrives */
     async function slicesAfter(trigger: () => Thenable<unknown>): Promise<PanelSlices> {
         // Each file is recorded as a panel that starts with it would have it, so a recording does not depend on the one before
         slices = initialSlices();
         seen = 0;
+        panel?.forgetSentSlices();
         await trigger();
         const deadline = Date.now() + 90 * 1000;
         let counted = -1;
@@ -116,7 +120,7 @@ suite('recorded panel output', function () {
         assert.ok(workspaceFolder, 'No workspace folder: run with `vscode-test --label panel`');
         const extension = vscode.extensions.getExtension(EXTENSION_ID);
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
-        const panel: PanelApi | undefined = (await extension.activate())?.__panel;
+        panel = (await extension.activate())?.__panel;
         assert.ok(panel, 'The extension does not expose __panel');
         subscription = panel.onDidPostMessage((message) => {
             slices = applyMessage(slices, message);

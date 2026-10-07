@@ -42,6 +42,7 @@ import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 import { panelProblem } from "../utils/panelProblem";
 import { fileView } from "../utils/fileView";
+import { onlyAvailable } from "../utils/runTags";
 import { fileOnShow } from "../../../src/shared/panelState";
 import { bigQueryView } from "../utils/bigQueryView";
 
@@ -106,11 +107,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const tagPopoverRef = useRef<HTMLDivElement>(null);
 
+  // The tags of a cost estimate become the tags chosen for a run
+  const estimatedTags = state.dataform.tagCostEstimate?.tags;
   useEffect(() => {
-    const available = state.project?.tags ?? [];
-    const incoming = state.dataform.tagCostEstimate?.tags ?? [];
-    setSelectedTagsForRun(incoming.filter(t => available.includes(t)));
-  }, [state.dataform.tagCostEstimate?.tags, state.project?.tags]);
+    if (estimatedTags) {
+      setSelectedTagsForRun(onlyAvailable(estimatedTags, state.project?.tags ?? []));
+    }
+  }, [estimatedTags]);
+
+  // A tag the Project no longer has cannot be run. Keyed on the tags themselves: what was chosen stays through a
+  // save that changes none of them
+  const availableTags = (state.project?.tags ?? []).join("\n");
+  useEffect(() => {
+    setSelectedTagsForRun((chosen) => onlyAvailable(chosen, availableTags === "" ? [] : availableTags.split("\n")));
+  }, [availableTags]);
 
   useEffect(() => {
     if (!tagPopoverOpen) { return; }

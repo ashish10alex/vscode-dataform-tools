@@ -21,7 +21,8 @@ import type { ActionId, ColumnDescription, Kind, RunOptions, SqlSection, Target 
  * What the compiled-query panel and the extension host say to each other (decided in xf#51). Host and panel both
  * import this file and nothing else describes their messages. Types only: importing it pulls no code into either.
  *
- * The host sends the panel slices, and now and then an event. Each slice is built by one function and names the
+ * The host sends the panel slices, and now and then an event. Each slice is built by one function, sent only when it
+ * differs from what the panel has (the `dataform` block apart, see `HostMessage`), and names the
  * compile it belongs to. What both Backends have is in the neutral slices; what only one has is in its own block,
  * so that a component shared by both cannot reach into it by accident.
  *

@@ -478,7 +478,7 @@ export async function activate(context: vscode.ExtensionContext) {
     endActivateSpan();
 
     // Internal: read by `just bench` (src/bench), not a public API
-    return { __perf: { getPerfSnapshot, resetPerf }, __panel: { onDidPostMessage: onDidPostPanelMessage } };
+    return { __perf: { getPerfSnapshot, resetPerf }, __panel: { onDidPostMessage: onDidPostPanelMessage, forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices() } };
 }
 
 // This method is called when your extension is deactivated
