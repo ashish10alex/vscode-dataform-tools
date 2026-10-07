@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertCircle, ChevronDown, ChevronRight, Eye, Loader2, MessageSquareWarning, Play, Tag } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Play, Tag } from "lucide-react";
 import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
@@ -468,102 +468,176 @@ const NO_SQL: Partial<Record<PanelAction["kind"], string>> = {
   "unit test": "A unit test has no SQL of its own: dbt builds it from the rows it is given when it runs.",
 };
 
-function ActionSection({ state, view, action, first }: { state: PanelSlices; view: DbtView; action: PanelAction; first: boolean }) {
-  const [open, setOpen] = useState(first);
-  const isTest = action.kind === "test" || action.kind === "unit test";
-  const query = action.sections.find((section) => section.title === "query" || section.title === "operation");
+const isTestKind = (action: PanelAction) => action.kind === "test" || action.kind === "unit test";
+/** The action's own query, apart from its hooks */
+const queryOf = (action: PanelAction) => action.sections.find((section) => section.title === "query" || section.title === "operation");
+
+/**
+ * The card of one action, as a Dataform action's (CompiledQueryTab.tsx): its kind at the top left, what its dry run
+ * would scan and cost at the top right, then where it builds, when that table last changed, and the dry run's
+ * error. The SQL comes after the cards, further down.
+ */
+function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView; action: PanelAction }) {
+  const [copied, setCopied] = useState(false);
+  const query = queryOf(action);
   const asWritten = !!query && !query.compiled;
-  // The action the toolbar's Preview Data runs: the first with a compiled query
-  const isToolbarPreview = view.actions.find((candidate) => candidate.sqlPresent && candidate.sections.some((section) => section.compiled && section.dryRun.length > 0)) === action;
   const { running, result } = dbtDryRunOf(state, action);
   const failed = result?.error;
   const bigQuery = state.dbt?.bigQuery !== false;
   const which = incrementalCase(state, action);
-  // The size is in the section's header; here, what a run of the query would cost
-  // What the dry run says the query would scan and cost, in the words Dataform's panel uses: "9.75 MiB $0.000"
   const stat = dryRunCostSummary(result, "", state.bigquery?.currencySymbol ?? "$");
   const badge = ACTION_TYPE_BADGE_STYLES[action.kind] ?? DEFAULT_BADGE_STYLE;
+  const table = state.bigquery && state.file && state.bigquery.compile === state.file.compile ? state.bigquery.tables[action.id] : undefined;
+  const link = action.buildsTable && bigQuery;
+  const { database, schema, name } = action.target;
   return (
-    <section data-dbt="action" data-kind={action.kind} className={clsx(BOX, "min-w-0")}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-left bg-transparent border-0 text-[var(--vscode-foreground)] cursor-pointer">
-        {open ? <ChevronDown className={clsx("w-4 h-4", MUTED)} /> : <ChevronRight className={clsx("w-4 h-4", MUTED)} />}
+    <div data-dbt="action" data-kind={action.kind} className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-7 pb-4 rounded-xl border border-[var(--vscode-widget-border)]/60 flex flex-col space-y-2 group">
+      <div className="absolute top-2 left-2 flex items-center gap-1.5">
         <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text} ${badge.border}`}>{action.kind}</span>
-        <span className="font-mono text-sm">{dbtNameOf(state, action)}</span>
-        {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs", MUTED)}>defined in {action.fileName}</span>}
-        <span className="ml-auto flex items-center gap-2 text-xs">
-          {action.disabled && <span className={MUTED}>disabled</span>}
-          {view.outdated ? (
-            <span className={WARNING}>outdated</span>
-          ) : asWritten ? (
-            <span className={MUTED}>not compiled</span>
-          ) : running ? (
-            <Loader2 data-dry-run="running" className={clsx("w-3.5 h-3.5 animate-spin", MUTED)} />
-          ) : stat ? (
-            <span data-dry-run="ok" className="text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded" title="What the query would scan and cost, from BigQuery's dry run">
-              {renderDryRunStatLine(stat)}
-            </span>
-          ) : null}
-        </span>
-      </button>
-      {failed && !view.outdated && (
-        <div data-dbt="dry run error" title="Shown here only. Nothing is marked in the source file." className="mx-3 mb-3 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <div className="overflow-auto whitespace-pre-wrap">
-            {failed.line && query && failed.section === query.title ? `Line ${failed.line}${failed.column ? `, column ${failed.column}` : ""} of the compiled SQL: ` : ""}
-            {failed.message}
+        {action.disabled && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]">disabled</span>}
+      </div>
+      {view.outdated ? (
+        <span className={clsx("absolute top-2 right-2 text-xs", WARNING)}>outdated</span>
+      ) : asWritten ? (
+        <span className={clsx("absolute top-2 right-2 text-xs", MUTED)}>not compiled</span>
+      ) : running ? (
+        <Loader2 data-dry-run="running" className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
+      ) : stat ? (
+        <div data-dry-run="ok" className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">{renderDryRunStatLine(stat)}</div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+        {link ? (
+          <>
+            <a
+              href={getUrlToNavigateToTableInBigQuery(database, schema, name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors break-all"
+            >
+              <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
+              {[database, schema, name].filter(Boolean).join(".")}
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                vscode.postMessage({ command: "copyToClipboard", text: `\`${database}.${schema}.${name}\`` });
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="p-1.5 border-0 bg-transparent cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+              title="Copy table ID with backticks"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
+            <span className="font-semibold break-all">{dbtNameOf(state, action)}</span>
           </div>
+        )}
+        {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs font-mono opacity-80", MUTED)}>{action.fileName}</span>}
+      </div>
+      {link && table && !table.missing && (
+        <div className={clsx("flex items-center space-x-2 text-xs pl-6", MUTED)}>
+          <Clock className="w-3 h-3" />
+          <span>Last updated:</span>
+          {table.lastModified ? (
+            <span className={clsx("font-mono", table.modifiedToday ? "text-[var(--vscode-foreground)]" : "text-[var(--vscode-errorForeground)]")}>{table.lastModified}</span>
+          ) : (
+            <span className="font-mono opacity-70 cursor-help border-b border-dotted border-[var(--vscode-widget-border)]" title={table.error ?? "BigQuery gave no time"}>
+              N/A
+            </span>
+          )}
         </div>
       )}
-      {open && (
-        <div className={clsx("border-t border-[var(--vscode-widget-border)] p-3 space-y-3", view.outdated && "opacity-50")}>
-          {action.kind === "incremental" && action.sqlPresent && (
-            <div data-dbt="incremental" className={clsx("text-xs", MUTED)}>
-              {which === "incremental"
-                ? "Incremental model. dbt compiled the incremental case, because the table already exists."
-                : which === "full build"
-                  ? "Incremental model. dbt compiled the full build, because the table does not exist yet."
-                  : "Incremental model. dbt compiled one case of it: the incremental one if the table already exists, the full build if it does not."}
-            </div>
-          )}
-          {action.sections.length === 0 && <div className={clsx("text-sm", MUTED)}>{NO_SQL[action.kind] ?? "No SQL to show."}</div>}
-          {action.sections.map((section) => {
-            const hook = section !== query;
-            return (
-              <div key={section.title} data-section={section.title}>
-                {(hook || asWritten) && (
-                  <div className={clsx("text-[11px] uppercase tracking-wider mb-1", MUTED)}>
-                    {hook ? `${section.title} · as written, not compiled, not dry-run` : "as written, not compiled"}
-                  </div>
-                )}
-                <CodeBlock
-                  code={section.sql}
-                  language="sql"
-                  className={hook ? "opacity-70" : undefined}
-                  showLineNumbers={!hook && !!failed?.line && failed.section === section.title}
-                  errorAnnotations={!hook && failed?.line && failed.section === section.title ? [{ line: failed.line, message: failed.message }] : undefined}
-                />
-              </div>
-            );
-          })}
-          {query?.compiled && bigQuery && query.dryRun.length > 0 && (isTest || !isToolbarPreview) && (
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              {/* The file's own query is previewed from the toolbar, as in a Dataform file. A test's, and a second model's, from its section */}
-              {(
-                <button
-                  type="button"
-                  className={clsx(TOOLBAR_SECONDARY, "border-0")}
-                  disabled={view.outdated}
-                  title={isTest ? "Runs the test's query and shows the rows that fail it" : "Runs the compiled query and shows its rows. It costs what the query costs"}
-                  onClick={() => vscode.postMessage({ command: "preview", action: action.target, section: query.title })}
-                >
-                  <Eye className="w-4 h-4 mr-1.5" /> {isTest ? "Preview failing rows" : "Preview Data"}
-                </button>
+      {link && table?.missing && (
+        <div className={clsx("flex items-center space-x-2 text-xs pl-6", MUTED)}>
+          <Clock className="w-3 h-3" />
+          <span>Not built yet: BigQuery has no such table.</span>
+        </div>
+      )}
+      {action.kind === "incremental" && action.sqlPresent && (
+        <div data-dbt="incremental" className={clsx("text-xs pl-6", MUTED)}>
+          {which === "incremental"
+            ? "dbt compiled the incremental case, because the table already exists."
+            : which === "full build"
+              ? "dbt compiled the full build, because the table does not exist yet."
+              : "dbt compiled one case of this model: the incremental one if the table already exists, the full build if it does not."}
+        </div>
+      )}
+      {action.sections.length === 0 && <div className={clsx("text-xs pl-6", MUTED)}>{NO_SQL[action.kind] ?? "No SQL to show."}</div>}
+      {failed && !view.outdated && (
+        <div data-dbt="dry run error" title="Shown here only. Nothing is marked in the source file." className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <div className="overflow-auto whitespace-pre-wrap">{failed.message}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** How Dataform's panel names a block of SQL, for dbt's sections */
+function sectionLabel(action: PanelAction, title: string, compiled: boolean): string {
+  const base = /^pre-hook/.test(title) ? title.replace("pre-hook", "Pre-hook") : /^post-hook/.test(title) ? title.replace("post-hook", "Post-hook") : isTestKind(action) ? "Test" : action.kind === "operation" ? "Hook" : "Query";
+  return compiled ? base : `${base} (as written, not compiled)`;
+}
+
+/**
+ * The SQL of the actions, after their cards: one block that opens and closes for each section, as Dataform has.
+ * The file's own query starts open; a test's SQL and a hook start closed.
+ */
+function SqlBlocks({ state, view }: { state: PanelSlices; view: DbtView }) {
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const bigQuery = state.dbt?.bigQuery !== false;
+  const firstWithSql = view.actions.find((action) => action.sections.length > 0);
+  return (
+    <div className={clsx("space-y-3", view.outdated && "opacity-50")}>
+      {view.actions.flatMap((action) => {
+        const query = queryOf(action);
+        const failed = dbtDryRunOf(state, action).result?.error;
+        const name = [action.target.database, action.target.schema, action.target.name].filter(Boolean).join(".");
+        return action.sections.map((section) => {
+          const key = `${action.id}/${section.title}`;
+          const isQuery = section === query;
+          const open = toggled[key] ?? (isQuery && action === firstWithSql);
+          const marked = isQuery && failed?.line && failed.section === section.title ? [{ line: failed.line, message: failed.message }] : undefined;
+          return (
+            <div key={key} data-dbt="sql" data-section={section.title} className="rounded-xl border border-[var(--vscode-widget-border)]/50 overflow-hidden">
+              <button
+                type="button"
+                aria-expanded={open}
+                className="w-full flex items-center px-4 py-2.5 cursor-pointer border-0 bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors text-left"
+                onClick={() => setToggled((before) => ({ ...before, [key]: !open }))}
+              >
+                {open ? <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" /> : <ChevronRight className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />}
+                <span className="font-semibold text-[var(--vscode-foreground)] text-sm mr-3">{sectionLabel(action, section.title, section.compiled)}</span>
+                <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{name}</span>
+              </button>
+              {open && (
+                <div role="region" className="border-t border-[var(--vscode-widget-border)]">
+                  <CodeBlock code={section.sql} language="sql" showLineNumbers errorAnnotations={marked} />
+                  {/* The file's own query is previewed from the toolbar. A test's rows, and a second model's, from here */}
+                  {isQuery && section.compiled && bigQuery && section.dryRun.length > 0 && action !== firstWithSql && (
+                    <div className="px-3 pb-3">
+                      <button
+                        type="button"
+                        className={clsx(TOOLBAR_SECONDARY, "border-0")}
+                        disabled={view.outdated}
+                        title={isTestKind(action) ? "Runs the test's query and shows the rows that fail it" : "Runs the compiled query and shows its rows. It costs what the query costs"}
+                        onClick={() => vscode.postMessage({ command: "preview", action: action.target, section: section.title })}
+                      >
+                        <Eye className="w-4 h-4 mr-1.5" /> {isTestKind(action) ? "Preview failing rows" : "Preview Data"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      )}
-    </section>
+          );
+        });
+      })}
+    </div>
   );
 }
 
@@ -588,10 +662,32 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
       {view.errors.map((error, index) => (
         <ErrorCard key={index} error={error} flavour={state.dbt?.dbt?.flavour} />
       ))}
+      {view.actions.length > 0 && (
+        <div className="space-y-3">
+          {view.actions.map((action) => (
+            <ActionCard key={action.id} state={state} view={view} action={action} />
+          ))}
+        </div>
+      )}
+      {view.readsFrom.length > 0 && (
+        <div data-dbt="reads from" className={clsx("text-xs flex flex-wrap items-center gap-x-4 gap-y-1", MUTED)}>
+          <span>reads from</span>
+          {view.readsFrom.map((neighbour, index) => (
+            <span key={index}>
+              {neighbour.fileName ? (
+                <button type="button" title={`Open ${neighbour.fileName}`} className="p-0 bg-transparent border-0 cursor-pointer font-mono text-xs text-[var(--vscode-textLink-foreground)] hover:underline" onClick={() => vscode.postMessage({ command: "openAction", action: neighbour.target })}>
+                  {neighbour.target.name}
+                </button>
+              ) : (
+                <span className="font-mono text-[var(--vscode-foreground)]">{neighbour.target.name}</span>
+              )}{" "}
+              {neighbour.kind}
+            </span>
+          ))}
+        </div>
+      )}
       <Toolbar state={state} view={view} />
-      {view.actions.map((action, index) => (
-        <ActionSection key={action.id} state={state} view={view} action={action} first={index === 0} />
-      ))}
+      <SqlBlocks state={state} view={view} />
       {view.card && <Card card={view.card} />}
       {view.skeleton && (
         <div data-dbt="skeleton" className="space-y-2 animate-pulse">
@@ -617,23 +713,6 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
             ))}
           </ul>
         </details>
-      )}
-      {view.readsFrom.length > 0 && (
-        <div data-dbt="reads from" className={clsx("text-xs flex flex-wrap items-center gap-x-4 gap-y-1", MUTED)}>
-          <span>reads from</span>
-          {view.readsFrom.map((neighbour, index) => (
-            <span key={index}>
-              {neighbour.fileName ? (
-                <button type="button" title={`Open ${neighbour.fileName}`} className="p-0 bg-transparent border-0 cursor-pointer font-mono text-xs text-[var(--vscode-textLink-foreground)] hover:underline" onClick={() => vscode.postMessage({ command: "openAction", action: neighbour.target })}>
-                  {neighbour.target.name}
-                </button>
-              ) : (
-                <span className="font-mono text-[var(--vscode-foreground)]">{neighbour.target.name}</span>
-              )}{" "}
-              {neighbour.kind}
-            </span>
-          ))}
-        </div>
       )}
     </div>
   );

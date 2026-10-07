@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { getBigQueryClientFor, getJobSettings } from '../bigqueryClient';
 import { queryDryRun } from '../bigqueryDryRun';
+import { formatTimestamp } from '../utils';
 import { DryRunResult, dryRunActions } from '../bigquery/dryRunService';
 import { jobPlace } from '../bigquery/jobPlace';
 import { previewQuery } from '../bigquery/preview';
-import { Action, ActionId, CompiledGraph, Target, dryRunScripts, targetId } from '../shared/compiledGraph';
+import { Action, ActionId, CompiledGraph, Target, buildsTable, dryRunScripts, targetId } from '../shared/compiledGraph';
 import type { TableState } from '../shared/panelContract';
 
 /*
@@ -28,13 +29,14 @@ export function dryRunDbtActions(actions: Action[], compile: number, onResult?: 
 }
 
 /**
- * Whether the table of each incremental model exists: dbt compiles the incremental case of such a model only when
- * it does. An action BigQuery could not be asked about is left out.
+ * What BigQuery knows of the table of each action that builds one: when it was last changed, or that there is no
+ * such table. The panel shows the time on the action's card, as it does for Dataform, and tells by it which case of
+ * an incremental model dbt compiled. An action BigQuery could not be asked about is left out.
  */
-export async function incrementalTables(actions: Action[]): Promise<Record<ActionId, TableState>> {
+export async function tablesOfActions(actions: Action[]): Promise<Record<ActionId, TableState>> {
     const tables: Record<ActionId, TableState> = {};
     const settings = getJobSettings();
-    await Promise.all(actions.filter((action) => action.kind === 'incremental').map(async (action) => {
+    await Promise.all(actions.filter(buildsTable).map(async (action) => {
         const { database, schema, name } = action.target;
         try {
             const client = await getBigQueryClientFor(jobPlace('dbt', action.target, settings));
@@ -43,11 +45,14 @@ export async function incrementalTables(actions: Action[]): Promise<Record<Actio
             }
             const [table] = await client.dataset(schema, { projectId: database }).table(name).get();
             const modified = Number(table?.metadata?.lastModifiedTime);
-            tables[action.id] = Number.isFinite(modified) ? { lastModified: new Date(modified).toLocaleString() } : {};
-        } catch (error) {
-            if ((error as { code?: number })?.code === 404) {
-                tables[action.id] = { missing: true };
+            if (Number.isFinite(modified)) {
+                const at = new Date(modified);
+                tables[action.id] = { lastModified: formatTimestamp(at), modifiedToday: at.toDateString() === new Date().toDateString() };
+            } else {
+                tables[action.id] = {};
             }
+        } catch (error) {
+            tables[action.id] = (error as { code?: number })?.code === 404 ? { missing: true } : { error: `Could not read ${database}.${schema}.${name}: ${error instanceof Error ? error.message : String(error)}` };
         }
     }));
     return tables;
