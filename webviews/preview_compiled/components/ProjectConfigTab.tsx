@@ -6,11 +6,7 @@ interface ProjectConfigTabProps {
 }
 
 export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => {
-  const { 
-    projectConfig, 
-    dataformCoreVersion, 
-    packageJsonContent, 
-  } = state;
+  const { projectConfig, dataformCoreVersion, packageJson: packageJsonContent } = state.dataform;
 
 
   if (packageJsonContent) {

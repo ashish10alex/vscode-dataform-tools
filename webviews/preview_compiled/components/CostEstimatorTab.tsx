@@ -138,13 +138,14 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
 
   useEffect(() => {
       // Clear loading if we get a result or error
-       if (state.tagDryRunStatsMeta || state.errorMessage) {
+       if (state.dataform.tagCostEstimate || state.errorMessage) {
            setLoading(false);
        }
-  }, [state.tagDryRunStatsMeta, state.errorMessage]);
+  }, [state.dataform.tagCostEstimate, state.errorMessage]);
 
   const data = useMemo(() => {
-      const list = state.tagDryRunStatsMeta?.tagDryRunStatsList || [];
+      // The contract leaves a row's shape to the host
+      const list = (state.dataform.tagCostEstimate?.rows ?? []) as CostEstimateRow[];
       return [...list].sort((a, b) => {
           // Sort errors to the top
           const aHasError = !!a.error;
@@ -157,7 +158,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
           }
           return 0;
       });
-  }, [state.tagDryRunStatsMeta]);
+  }, [state.dataform.tagCostEstimate]);
   const currencySymbol = state.currencySymbol || "$";
 
   const columns = useMemo<ColumnDef<CostEstimateRow>[]>(() => [
@@ -292,13 +293,13 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </label>
             </div>
 
-            {(state.errorMessage || state.tagDryRunStatsMeta?.error) && (
+            {(state.errorMessage || state.dataform.tagCostEstimate?.error) && (
                 <div className="mt-4 p-3 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] rounded flex items-start gap-2 text-sm text-[var(--vscode-errorForeground)]">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <div>
                         <div className="font-semibold mb-0.5">Estimation Failed</div>
                         <div className="opacity-90">
-                            {state.errorMessage || state.tagDryRunStatsMeta?.error}
+                            {state.errorMessage || state.dataform.tagCostEstimate?.error}
                         </div>
                     </div>
                 </div>
@@ -310,7 +311,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 <DataTable columns={columns} data={data} searchPlaceholder="Filter costs..." />
              ) : (
                 <div className="text-center text-[var(--vscode-descriptionForeground)] mt-8">
-                     {!state.errorMessage && !state.tagDryRunStatsMeta?.error && (
+                     {!state.errorMessage && !state.dataform.tagCostEstimate?.error && (
                          "Select one or more tags and click Estimate Cost to see results."
                      )}
                  </div>

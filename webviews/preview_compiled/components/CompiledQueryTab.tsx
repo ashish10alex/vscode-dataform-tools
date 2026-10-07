@@ -82,11 +82,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   useEffect(() => {
     if (submittingSince === null) { return; }
-    const newer = (state.workflowUrls || []).some(i => i.timestamp > submittingSince);
+    const newer = (state.dataform.workflowUrls || []).some(i => i.timestamp > submittingSince);
     if (newer) { setSubmittingSince(null); return; }
     const timeoutId = setTimeout(() => setSubmittingSince(null), 30000);
     return () => clearTimeout(timeoutId);
-  }, [state.workflowUrls, submittingSince]);
+  }, [state.dataform.workflowUrls, submittingSince]);
   // API reruns keep showing progress in the latest run banner until the workflow invocation appears.
   const handleRerunDispatched = useCallback((executionMode: ExecutionMode) => {
     if (executionMode !== "cli") { setSubmittingSince(Date.now()); }
@@ -171,21 +171,21 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   };
 
   // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
-  const isRemoteMode = state.compilationInfo?.backend === "api";
+  const isRemoteMode = state.dataform.compilationInfo?.backend === "api";
   const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
   const runBackend: RunBackend = isRemoteMode ? "api" : preferredBackend;
   const hasRunnableActions = !!state.actionTypes?.some(t => t !== 'test');
   const hasTags = (state.dataformTags?.length ?? 0) > 0;
   const showTestRun = !!state.testQuery && !isRemoteMode;
-  const hasRunControls = hasRunnableActions || hasTags || (!!state.changedActions && state.changedActions.status !== "unavailable");
+  const hasRunControls = hasRunnableActions || hasTags || (!!state.dataform.changedActions && state.dataform.changedActions.status !== "unavailable");
   // Run Tag always goes through the API, whichever backend Run is set to
   const runsViaApi = isRemoteMode || (hasRunnableActions ? runBackend === "api" || (hasTags && tagPopoverOpen) : hasTags);
   const latestApiRun = useMemo(
-    () => (state.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
-    [state.workflowUrls]
+    () => (state.dataform.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
+    [state.dataform.workflowUrls]
   );
 
-  const isPropertyGraphFile = (state.propertyGraphs?.length ?? 0) > 0;
+  const isPropertyGraphFile = (state.dataform.propertyGraphs?.length ?? 0) > 0;
   // The divider only separates the switches from the run buttons on the same line; once the switches wrap it would dangle.
   const modifierSwitchesRef = useRef<HTMLDivElement>(null);
   const [modifierSwitchesWrapped, setModifierSwitchesWrapped] = useState(false);
@@ -256,7 +256,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "dataform.showColumnLineage" });
   };
   // From a schema diff after each dry run; no lineage is read until the panel opens
-  const changedColumns = state.columnImpact?.relativeFilePath === state.relativeFilePath ? state.columnImpact?.changed ?? 0 : 0;
+  const changedColumns = state.dataform.columnImpact?.file === state.relativeFilePath ? state.dataform.columnImpact?.changed ?? 0 : 0;
 
   const handleDependencyGraph = () => {
     vscode.postMessage({ command: "showDependencyGraph" });
@@ -307,9 +307,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
             {state.relativeFilePath || " "}
           </span>
-          <CompilationInfoBadge info={state.compilationInfo} backend={state.compilationBackend} recompiling={state.recompiling} />
+          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={state.recompiling} />
         </div>
-        <LastRunCard lastRun={state.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
+        <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
         <PropertyGraphSection state={state} />
       </div>
     );
@@ -322,7 +322,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
               {state.relativeFilePath || " "}
           </span>
-          <CompilationInfoBadge info={state.compilationInfo} backend={state.compilationBackend} recompiling={state.recompiling} />
+          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={state.recompiling} />
           <div className="flex-grow"></div>
           <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
               <Wand2 className="w-3 h-3 mr-1.5" /> Format
@@ -332,7 +332,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </button>
       </div>
 
-      <DeferralBanner deferral={state.deferral} deferToProd={state.deferToProd} leftoverProxies={state.leftoverProxies} />
+      <DeferralBanner deferral={state.dataform.deferral} deferToProd={state.dataform.deferToProd} leftoverProxies={state.dataform.leftoverProxies} />
 
       {/* Model Link */}
       {/* Model Links */}
@@ -614,7 +614,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       {/* Toolbar */}
       <div className="flex flex-col gap-3">
 
-          <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+          <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} />
 
           {/* Explore & inspect: read-only, so none of the run modifiers apply */}
           <div className="flex flex-wrap items-center gap-2">
@@ -726,7 +726,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   </div>
               )}
               <RunChangedButton
-                  changedActions={state.changedActions}
+                  changedActions={state.dataform.changedActions}
                   isRemoteMode={isRemoteMode}
                   disabled={runningModel || !!state.recompiling}
                   includeDependencies={includeDependencies}
@@ -744,13 +744,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               )}
               {runsViaApi && (
                   <div className="basis-full">
-                      <ApiRunGitChip state={state.apiRunGitState} />
+                      <ApiRunGitChip state={state.dataform.apiRunGitState} />
                   </div>
               )}
           </div>
           )}
 
-          <LastRunCard lastRun={state.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
+          <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
           <LatestRunBanner state={state} submittingSince={submittingSince} />
       </div>
 

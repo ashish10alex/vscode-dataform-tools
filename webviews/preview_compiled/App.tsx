@@ -62,22 +62,22 @@ function App() {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    if (!state.snoozeEndTime || state.snoozeEndTime <= Date.now()) {
+    if (!state.dataform.snoozeEndTime || state.dataform.snoozeEndTime <= Date.now()) {
       return;
     }
     setNow(Date.now());
     const timer = setInterval(() => {
       const current = Date.now();
       setNow(current);
-      if (state.snoozeEndTime && current >= state.snoozeEndTime) {
+      if (state.dataform.snoozeEndTime && current >= state.dataform.snoozeEndTime) {
         clearInterval(timer);
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [state.snoozeEndTime]);
+  }, [state.dataform.snoozeEndTime]);
 
-  const isSnoozed = !!(state.snoozeEndTime && state.snoozeEndTime > now);
-  const remainingSec = isSnoozed ? Math.max(0, Math.ceil((state.snoozeEndTime! - now) / 1000)) : 0;
+  const isSnoozed = !!(state.dataform.snoozeEndTime && state.dataform.snoozeEndTime > now);
+  const remainingSec = isSnoozed ? Math.max(0, Math.ceil((state.dataform.snoozeEndTime! - now) / 1000)) : 0;
   const minutesLeft = Math.floor(remainingSec / 60);
   const secondsLeft = remainingSec % 60;
   const timeLeftFormatted = `${minutesLeft}m ${secondsLeft.toString().padStart(2, "0")}s`;
@@ -94,7 +94,7 @@ function App() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const items = state.workflowUrls || [];
+    const items = state.dataform.workflowUrls || [];
     const hasNonTerminal = items.some(i => !i.state || !TERMINAL_WORKFLOW_STATES.has(i.state));
     const hasFailedMissingActions = items.some(i =>
       i.state === 'FAILED' && (!i.failedActions || i.failedActions.length === 0)
@@ -133,15 +133,15 @@ function App() {
     return () => {
       if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
     };
-  }, [state.workflowUrls]);
+  }, [state.dataform.workflowUrls]);
 
   const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
-  const showSkeleton = !!state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && !state.compilationErrors;
+  const showSkeleton = !!state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !state.declarations && !state.errorMessage && !state.compilationErrors;
 
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
-  const isPropertyGraphFile = (state.propertyGraphs?.length ?? 0) > 0;
+  const isPropertyGraphFile = (state.dataform.propertyGraphs?.length ?? 0) > 0;
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
@@ -265,7 +265,7 @@ function App() {
               </>
               )}
             </div>
-            <HeaderRightActions snoozeEndTime={state.snoozeEndTime} onStartSnooze={handleStartSnooze} />
+            <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </>
         )}
 
@@ -277,7 +277,7 @@ function App() {
             </h2>
             <div className="flex-grow"></div>
 
-            <HeaderRightActions snoozeEndTime={state.snoozeEndTime} onStartSnooze={handleStartSnooze} />
+            <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </div>
         )}
       </div>
@@ -305,7 +305,7 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
         {state.recompiling && (() => {
-          const backend = state.compilationBackend || state.compilationInfo?.backend || 'cli';
+          const backend = state.dataform.compilationMode || state.dataform.compilationInfo?.backend || 'cli';
           const isApi = backend === 'api';
           const backendLabel = isApi ? 'API' : 'CLI';
           return (
@@ -313,8 +313,8 @@ function App() {
               <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span>
-                  {state.dataformCoreVersion
-                    ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...`
+                  {state.dataform.dataformCoreVersion
+                    ? `Installing @dataform/core@${state.dataform.dataformCoreVersion} and compiling...`
                     : `Compiling Dataform...`}
                 </span>
                 <span
@@ -325,7 +325,7 @@ function App() {
                   {backendLabel}
                 </span>
               </div>
-              {state.dataformCoreVersion && (
+              {state.dataform.dataformCoreVersion && (
                 <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
                   <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
                     <Info className="w-4 h-4" />
@@ -343,7 +343,7 @@ function App() {
         })()}
 
         {showSkeleton && (
-            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} backend={state.compilationBackend || state.compilationInfo?.backend} />
+            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} backend={state.dataform.compilationMode || state.dataform.compilationInfo?.backend} />
         )}
 
 {(state.errorType === CompilationErrorType.COMPILATION_ERROR ||

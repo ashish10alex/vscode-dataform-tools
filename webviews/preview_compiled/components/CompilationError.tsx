@@ -97,12 +97,11 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
     relativeFilePath,
     workspaceFolder,
     compilationErrors,
-    possibleResolutions,
-    compilationInfo,
   } = state;
+  const { possibleResolutions, compilationInfo } = state.dataform;
   // The selected backend, not compilationInfo: an API compile that fails early records no info,
   // which would leave the last CLI compile describing the error.
-  const backend = state.compilationBackend ?? compilationInfo?.backend ?? 'cli';
+  const backend = state.dataform.compilationMode ?? compilationInfo?.backend ?? 'cli';
   const cliCompileFailed = backend !== 'api';
   const otherBackend = cliCompileFailed ? 'api' : 'cli';
 
@@ -341,7 +340,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             </div>
           )}
         </div>
-        <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+        <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} />
       </>
     );
   }
@@ -364,7 +363,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             </>
           )}
         </div>
-        <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+        <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} />
       </>
     );
   }

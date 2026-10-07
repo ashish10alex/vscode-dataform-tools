@@ -456,7 +456,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
     (relationship) => relationship.name === activeSpec?.relationshipName,
   );
   const starterQuery = activeSpec ? buildGqlQuery(graph, activeSpec, selection) : "";
-  const validation = state.propertyGraphValidations?.find((item) => item.targetName === graphKey);
+  const validation = state.dataform.propertyGraphValidations?.find((item) => item.targetName === graphKey);
   const bodyErrorAnnotations = validation?.graphBodyLine !== undefined && validation.message
     ? [{ line: validation.graphBodyLine, message: validation.message }]
     : undefined;
@@ -613,7 +613,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
 
 export const PropertyGraphSection: React.FC<{ state: WebviewState }> = ({ state }) => (
   <div className="space-y-4">
-    {(state.propertyGraphs ?? []).map((graph) => (
+    {(state.dataform.propertyGraphs ?? []).map((graph) => (
       // Keying on the body as well as the target remounts the card when the graph is edited,
       // so the property selection is re-seeded from the new compiled output rather than
       // holding on to names the graph no longer exposes.

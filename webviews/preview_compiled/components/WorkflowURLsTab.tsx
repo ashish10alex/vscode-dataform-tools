@@ -22,7 +22,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
         vscode.postMessage({ command: 'dataform.loadWorkflowUrls' });
     }, []);
 
-    const urls = state.workflowUrls || [];
+    const urls = state.dataform.workflowUrls || [];
 
     const handleClearUrls = () => {
         vscode.postMessage({ command: 'dataform.clearWorkflowUrls' });
@@ -115,7 +115,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                     </div>
 
                     {(() => {
-                        const latest = (state.workflowUrls || []).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
+                        const latest = (state.dataform.workflowUrls || []).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
                         if (!latest) { return null; }
                         const isTerminal = !!latest.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
                         const elapsedSec = Math.max(0, Math.floor((Date.now() - latest.timestamp) / 1000));
