@@ -5,7 +5,8 @@ import { Declarations } from '../types';
 import { vscode as vsCodeApi } from '../utils/vscode';
 
 interface DeclarationsViewProps {
-  declarations: Declarations[];
+  /** Only where each table is matters here */
+  declarations: Array<Pick<Declarations, 'target'>>;
 }
 
 type DeclarationRow = {

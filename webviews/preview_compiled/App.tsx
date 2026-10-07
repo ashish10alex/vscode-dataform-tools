@@ -22,6 +22,7 @@ import { CompilationError } from './components/CompilationError';
 import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
 import { panelProblem } from './utils/panelProblem';
+import { fileView } from './utils/fileView';
 
 function HeaderRightActions({
   snoozeEndTime,
@@ -60,6 +61,7 @@ function HeaderRightActions({
 function App() {
   const state = useVSCodeMessage();
   const problem = panelProblem(state);
+  const view = fileView(state.file);
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
   const [now, setNow] = useState(Date.now());
 
@@ -140,7 +142,7 @@ function App() {
   const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
   // While a compile runs no error is on show, so only what the file has to show keeps the skeleton away
-  const showSkeleton = problem.compiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !state.declarations;
+  const showSkeleton = problem.compiling && !view.tableOrViewQuery && !view.testQuery && !view.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !view.declarations;
 
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
@@ -206,8 +208,8 @@ function App() {
   }, [state.relativeFilePath, activeTab, isPropertyGraphFile]);
 
   // Handle declarations view (full page override)
-  if (state.declarations) {
-    return <DeclarationsView declarations={state.declarations} />;
+  if (view.declarations) {
+    return <DeclarationsView declarations={view.declarations} />;
   }
 
 
@@ -351,14 +353,14 @@ function App() {
 
 {(problem.type === CompilationErrorType.COMPILATION_ERROR ||
           (!isPropertyGraphFile && (
-            !state.models?.length ||
+            !view.models?.length ||
             problem.missingTools.length > 0
           ))) && (
           <CompilationError state={state} />
         )}
 
         {isConfigFile && !showSkeleton && <ProjectConfigTab state={state} />}
-        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.operationsQuery && !state.assertionQuery && !state.incrementalQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && !state.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
+        {!isConfigFile && (view.isHelperFile || (!view.tableOrViewQuery && !view.operationsQuery && !view.assertionQuery && !view.incrementalQuery && !view.testQuery && !view.expectedOutputQuery && !view.declarations && !view.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
             <div>
                 <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
                     {state.relativeFilePath}
@@ -366,20 +368,20 @@ function App() {
             </div>
         )}
 
-        {!isConfigFile && !state.isHelperFile && activeTab === 'compilation' && (
+        {!isConfigFile && !view.isHelperFile && activeTab === 'compilation' && (
           isPropertyGraphFile ||
-          state.tableOrViewQuery ||
-          state.operationsQuery ||
-          state.assertionQuery ||
-          state.incrementalQuery ||
-          state.testQuery ||
-          state.expectedOutputQuery ||
-          state.declarations ||
-          state.models?.some((m: any) => m.type === 'notebook')
+          view.tableOrViewQuery ||
+          view.operationsQuery ||
+          view.assertionQuery ||
+          view.incrementalQuery ||
+          view.testQuery ||
+          view.expectedOutputQuery ||
+          view.declarations ||
+          view.models?.some((m: any) => m.type === 'notebook')
         ) && <CompiledQueryTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
+        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
+        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
+        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
 
       </div>
     </div>

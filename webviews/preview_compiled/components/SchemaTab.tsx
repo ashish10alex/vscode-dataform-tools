@@ -6,6 +6,7 @@ import { Download, Edit2, Copy, Check, ChevronRight, ChevronDown, ChevronsDownUp
 import { vscode } from '../utils/vscode';
 import type { ColumnMetadata } from '../../../src/types';
 import { buildColumnsConfig, formatAsUnquotedJson, pathKey } from '../../../src/utils/schemaTree';
+import { fileView } from '../utils/fileView';
 
 interface SchemaTabProps {
   state: WebviewState;
@@ -148,7 +149,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
   const handleExportJson = () => {
     let filename = 'schema.json';
-    const target = state.targetTablesOrViews?.[0]?.target || state.models?.[0]?.target;
+    const target = fileView(state.file).models[0]?.target;
     if (target) {
       filename = `${target.database}_${target.schema}_${target.name}.json`;
     }
