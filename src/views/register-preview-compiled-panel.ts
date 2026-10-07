@@ -2,7 +2,7 @@ import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
-import { dbtActionsToDryRun, dryRunDbtActions, incrementalTables, previewDbtAction } from '../project/dbtBigQuery';
+import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import { lastDbtRun, onDidRunDbt, repeatDbtRun, runDbt } from '../project/dbtRun';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
@@ -731,7 +731,7 @@ export class CompiledQueryPanel {
             .flatMap((action) => dryRunScripts(action).map((script) => ({ action: action.id, script: script.name, incremental: script.incremental })));
         const results: DryRunResult[] = [];
         this.sendDbtBigQuery(seq, compile, { results: [], tables: {}, dryRunning: out([]) });
-        const tables = incrementalTables(actions).then((found) => {
+        const tables = tablesOfActions(actions).then((found) => {
             this.sendDbtBigQuery(seq, compile, { tables: found });
         });
         await dryRunDbtActions(actions, compile, (arrived) => {

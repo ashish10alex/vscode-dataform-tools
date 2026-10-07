@@ -1,10 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { ChevronDown, ChevronRight, Loader2, MessageSquareWarning } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Play, Tag } from "lucide-react";
+import type { MultiValue } from "react-select";
+import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
+import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
+import { ModifierSwitch } from "./ModifierSwitch";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
 import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
-import { formatBytes } from "../../../src/shared/panelBigQueryView";
+import { dryRunCostSummary } from "../../../src/shared/panelBigQueryView";
+import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
+import { renderDryRunStatLine } from "./CompiledQueryTab";
 import type { ColumnMetadata } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { CodeBlock } from "../../components/CodeBlock";
@@ -110,51 +116,191 @@ function ToolButtons({ looking }: { looking: boolean }) {
   );
 }
 
+// The buttons of Dataform's toolbar (CompiledQueryTab.tsx), so that the two panels look alike
+const TOOLBAR_BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
+const TOOLBAR_PRIMARY = `${TOOLBAR_BUTTON_BASE} px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]`;
+const TOOLBAR_SECONDARY = `${TOOLBAR_BUTTON_BASE} px-3 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]`;
+// A shade darker than the Run half, as in Dataform's split button
+const SELECTOR_BACKGROUND = "color-mix(in srgb, var(--vscode-button-background) 78%, black)";
+
 /**
- * Run (xf#54): `dbt build` of the file's actions in the extension's terminal. The button names the dbt target it
- * builds into. The menu adds what the actions read from, what reads from them, a full refresh, and a run by tag.
+ * The Run button of a dbt file, shaped as Dataform's (RunSplitButton.tsx): the left half runs the file's actions,
+ * the right half names what the run goes to and opens a menu. For Dataform that is the CLI or the API; for dbt it is
+ * the dbt target, and the menu has the run by tag.
  */
-function RunControl({ run, target, tags }: { run: NonNullable<DbtView["run"]>; target?: string; tags: string[] }) {
+function DbtRunButton({ target, disabled, title, hasTags, onRun, onRunTag }: { target?: string; disabled: boolean; title: string; hasTags: boolean; onRun: () => void; onRunTag: () => void }) {
   const [open, setOpen] = useState(false);
-  const blocked = run.blocked !== undefined;
-  const start = (scope: { includeDependencies?: boolean; includeDependents?: boolean; fullRefresh?: boolean }) => {
-    setOpen(false);
-    vscode.postMessage({ command: "run", actions: run.targets, includeDependencies: false, includeDependents: false, fullRefresh: false, ...scope });
-  };
-  const startTag = (tag: string) => {
-    setOpen(false);
-    vscode.postMessage({ command: "runTags", tags: [tag], includeDependencies: false, includeDependents: false, fullRefresh: false });
-  };
-  const item = "w-full px-2 py-1.5 rounded border-0 bg-transparent cursor-pointer text-left text-sm text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]";
+  const wrapper = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const away = (event: MouseEvent) => {
+      if (wrapper.current && !wrapper.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const escape = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    window.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  const segment = "py-1.5 text-[var(--vscode-button-foreground)] flex items-center disabled:opacity-50 disabled:cursor-default focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
   return (
-    <div data-dbt="run" className="relative">
-      <div className={clsx("flex rounded overflow-hidden text-xs", blocked && "opacity-50")} title={run.blocked ?? "dbt build of this file's actions, in the terminal"}>
-        <button type="button" disabled={blocked} onClick={() => start({})} className="px-3 py-1 border-0 cursor-pointer font-semibold bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]">
-          Run → <span className="font-mono">{target ?? "dbt's default"}</span>
-        </button>
-        <button type="button" aria-label="More ways to run" aria-haspopup="menu" aria-expanded={open} disabled={blocked} onClick={() => setOpen(!open)} className="px-1.5 border-0 border-l border-[var(--vscode-button-separator,rgba(255,255,255,0.3))] cursor-pointer bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]">
-          <ChevronDown className="w-3 h-3" />
-        </button>
-      </div>
+    <div ref={wrapper} data-dbt="run" className="relative inline-flex">
+      <button type="button" onClick={onRun} disabled={disabled} title={title} className={clsx(segment, "pl-3 pr-3 rounded-l text-sm border-0 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]")}>
+        <Play className="w-4 h-4 mr-1.5" />
+        Run
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        disabled={disabled}
+        className={clsx(segment, "gap-1 pl-2.5 pr-2 rounded-r text-xs font-medium border-0 border-l hover:!bg-[var(--vscode-button-hoverBackground)]")}
+        style={{ background: SELECTOR_BACKGROUND, borderLeftColor: "color-mix(in srgb, var(--vscode-button-foreground) 30%, transparent)", borderLeftStyle: "solid", borderLeftWidth: 1 }}
+        aria-label={`Builds into the dbt target ${target ?? "dbt chooses"}. More ways to run`}
+        title="The dbt target the run builds into. More ways to run"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <span className="font-mono">{target ?? "dbt's default"}</span>
+        <ChevronDown className="w-3.5 h-3.5" />
+      </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div role="menu" className="absolute right-0 mt-1 w-64 z-20 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background,var(--vscode-sideBar-background))] shadow-lg p-1.5">
-            <button type="button" role="menuitem" className={item} onClick={() => start({})}>This file's actions</button>
-            <button type="button" role="menuitem" className={item} onClick={() => start({ includeDependencies: true })}>… with dependencies</button>
-            <button type="button" role="menuitem" className={item} onClick={() => start({ includeDependents: true })}>… with dependents</button>
-            <button type="button" role="menuitem" className={item} onClick={() => start({ fullRefresh: true })}>… full refresh</button>
-            <div className={clsx("border-t border-[var(--vscode-widget-border)] mt-1 pt-1.5 px-2 pb-1 text-[11px] uppercase tracking-wider", MUTED)}>Run a tag</div>
-            {tags.length === 0 && <div className={clsx("px-2 pb-1 text-xs", MUTED)}>The Project has no tags.</div>}
-            <div className="max-h-40 overflow-auto">
-              {tags.map((tag) => (
-                <button key={tag} type="button" role="menuitem" className={clsx(item, "font-mono text-xs")} onClick={() => startTag(tag)}>
-                  tag:{tag}
-                </button>
-              ))}
-            </div>
+        <div role="menu" aria-label="Run options" className="absolute top-full left-0 mt-1 z-20 min-w-[230px] py-1 rounded-md border border-[var(--vscode-widget-border)] bg-[var(--vscode-menu-background,var(--vscode-editor-background))] text-[var(--vscode-menu-foreground,var(--vscode-foreground))] shadow-lg">
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!hasTags}
+            onClick={() => {
+              setOpen(false);
+              onRunTag();
+            }}
+            className="w-full flex items-start gap-2 px-3 py-1.5 text-left text-xs border-0 bg-transparent text-inherit outline-none disabled:opacity-50 hover:bg-[var(--vscode-menu-selectionBackground,var(--vscode-list-hoverBackground))] hover:text-[var(--vscode-menu-selectionForeground,inherit)] focus:bg-[var(--vscode-menu-selectionBackground,var(--vscode-list-hoverBackground))]"
+          >
+            <span className="mt-0.5 shrink-0">
+              <Tag className="w-3.5 h-3.5" />
+            </span>
+            <span className="flex flex-col">
+              <span>Run Tag…</span>
+              <span className="opacity-70">{hasTags ? "Pick tag(s) to build with dbt" : "The Project has no tags"}</span>
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The toolbar of a dbt file's Compiled query tab, laid out as Dataform's: a row with Preview Data, then a row with
+ * Run and the switches that say how far the run reaches, then the last run. A run is `dbt build` in the extension's
+ * terminal (xf#54); the switches apply to a run of the file and to a run by tag alike.
+ */
+function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
+  const [includeDependencies, setIncludeDependencies] = useState(false);
+  const [includeDependents, setIncludeDependents] = useState(false);
+  const [fullRefresh, setFullRefresh] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const tags = state.project?.tags ?? [];
+  const tagOptions = useMemo<OptionType[]>(() => tags.map((tag) => ({ value: tag, label: tag })), [tags]);
+  const scope = { includeDependencies, includeDependents, fullRefresh };
+  const bigQuery = state.dbt?.bigQuery !== false;
+  // What Preview Data runs: the compiled query of the file's first action that has one
+  const previewed = view.actions.find((action) => action.sqlPresent && action.sections.some((section) => section.compiled && section.dryRun.length > 0));
+  const section = previewed?.sections.find((candidate) => candidate.compiled && candidate.dryRun.length > 0);
+  const canPreview = bigQuery && !!previewed && !!section;
+  const run = view.run;
+  if (!canPreview && !run) {
+    return null;
+  }
+  const blocked = run?.blocked !== undefined;
+  const runTags = () => {
+    setTagsOpen(false);
+    vscode.postMessage({ command: "runTags", tags: selectedTags, ...scope });
+  };
+  return (
+    <div data-dbt="toolbar" className="flex flex-col gap-3">
+      {canPreview && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={clsx(TOOLBAR_SECONDARY, "border-0")}
+            disabled={view.outdated}
+            title="Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"
+            onClick={() => vscode.postMessage({ command: "preview", action: previewed!.target, section: section!.title })}
+          >
+            <Eye className="w-4 h-4 mr-1.5" /> Preview Data
+          </button>
+        </div>
+      )}
+      {run && (
+        <div className={clsx("flex flex-wrap items-center gap-x-2 gap-y-2", canPreview && "pt-3 border-t border-[var(--vscode-widget-border)]")}>
+          <div className="relative">
+            <DbtRunButton
+              target={state.dbt?.target.name}
+              disabled={blocked}
+              title={run.blocked ?? "Run this file's actions with dbt build, in the terminal"}
+              hasTags={tags.length > 0}
+              onRun={() => vscode.postMessage({ command: "run", actions: run.targets, ...scope })}
+              onRunTag={() => setTagsOpen(true)}
+            />
+            {tagsOpen && (
+              <div
+                role="dialog"
+                aria-label="Run by tag"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && !tagMenuOpen) {
+                    setTagsOpen(false);
+                  }
+                }}
+                className="absolute top-full left-0 mt-1 z-20 w-[min(320px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
+              >
+                <p className={clsx("text-xs mb-2", MUTED)}>Select tag(s) to build with dbt:</p>
+                <StyledMultiSelect
+                  options={tagOptions}
+                  value={tagOptions.filter((option) => selectedTags.includes(option.value))}
+                  onChange={(options: MultiValue<OptionType>) => setSelectedTags(options.map((option) => option.value))}
+                  onMenuOpen={() => setTagMenuOpen(true)}
+                  onMenuClose={() => setTagMenuOpen(false)}
+                  placeholder="Search and select tags..."
+                  isSearchable
+                  closeMenuOnSelect
+                  blurInputOnSelect={false}
+                  autoFocus
+                />
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
+                  <button type="button" onClick={() => setTagsOpen(false)} className="px-3 py-1.5 text-xs border-0 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded">
+                    Cancel
+                  </button>
+                  <button type="button" onClick={runTags} disabled={selectedTags.length === 0 || blocked} className={clsx(TOOLBAR_PRIMARY, "flex-1 justify-center border-0 !text-xs")}>
+                    <Play className="w-3.5 h-3.5 mr-1.5" /> {selectedTags.length > 1 ? `Run ${selectedTags.length} tags` : "Run tag"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </>
+          <div role="group" aria-label="Run modifiers" className="flex flex-wrap items-center gap-1.5">
+            <div className="w-px h-5 mr-0.5 bg-[var(--vscode-widget-border)]" aria-hidden="true" />
+            <ModifierSwitch label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Also build what these actions read from (a + in front of the selection)" />
+            <ModifierSwitch label="+Dependents" checked={includeDependents} onChange={setIncludeDependents} title="Also build what reads from these actions (a + behind the selection)" />
+            <ModifierSwitch label="Full Refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental models from scratch (--full-refresh)" warning />
+          </div>
+        </div>
+      )}
+      {state.run?.lastRun && (
+        <div data-dbt="last run" className={clsx(BOX, "px-3 py-2 text-xs flex flex-wrap items-center gap-2")}>
+          <span className={MUTED}>Sent to terminal</span>
+          <span className="font-mono break-all">{state.run.lastRun.command}</span>
+          <button type="button" className={clsx(SECONDARY_BUTTON, "ml-auto py-0.5")} title="Runs the same selection again, with the dbt target of now" onClick={() => vscode.postMessage({ command: "repeatLastRun" })}>
+            Repeat
+          </button>
+        </div>
       )}
     </div>
   );
@@ -322,107 +468,176 @@ const NO_SQL: Partial<Record<PanelAction["kind"], string>> = {
   "unit test": "A unit test has no SQL of its own: dbt builds it from the rows it is given when it runs.",
 };
 
-function ActionSection({ state, view, action, first }: { state: PanelSlices; view: DbtView; action: PanelAction; first: boolean }) {
-  const [open, setOpen] = useState(first);
-  const isTest = action.kind === "test" || action.kind === "unit test";
-  const query = action.sections.find((section) => section.title === "query" || section.title === "operation");
+const isTestKind = (action: PanelAction) => action.kind === "test" || action.kind === "unit test";
+/** The action's own query, apart from its hooks */
+const queryOf = (action: PanelAction) => action.sections.find((section) => section.title === "query" || section.title === "operation");
+
+/**
+ * The card of one action, as a Dataform action's (CompiledQueryTab.tsx): its kind at the top left, what its dry run
+ * would scan and cost at the top right, then where it builds, when that table last changed, and the dry run's
+ * error. The SQL comes after the cards, further down.
+ */
+function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView; action: PanelAction }) {
+  const [copied, setCopied] = useState(false);
+  const query = queryOf(action);
   const asWritten = !!query && !query.compiled;
   const { running, result } = dbtDryRunOf(state, action);
   const failed = result?.error;
   const bigQuery = state.dbt?.bigQuery !== false;
   const which = incrementalCase(state, action);
-  // The size is in the section's header; here, what a run of the query would cost
-  const price = result?.cost && !result.error && !result.bytesUnknown ? result.cost.value : undefined;
-  const cost = price === undefined ? "" : `${state.bigquery?.currencySymbol ?? "$"}${price < 0.01 ? price.toFixed(4) : price.toFixed(2)}`;
+  const stat = dryRunCostSummary(result, "", state.bigquery?.currencySymbol ?? "$");
+  const badge = ACTION_TYPE_BADGE_STYLES[action.kind] ?? DEFAULT_BADGE_STYLE;
+  const table = state.bigquery && state.file && state.bigquery.compile === state.file.compile ? state.bigquery.tables[action.id] : undefined;
+  const link = action.buildsTable && bigQuery;
+  const { database, schema, name } = action.target;
   return (
-    <section data-dbt="action" data-kind={action.kind} className={clsx(BOX, "min-w-0")}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-left bg-transparent border-0 text-[var(--vscode-foreground)] cursor-pointer">
-        {open ? <ChevronDown className={clsx("w-4 h-4", MUTED)} /> : <ChevronRight className={clsx("w-4 h-4", MUTED)} />}
-        <span className={clsx("px-1.5 py-0.5 rounded text-[11px] uppercase tracking-wider border border-[var(--vscode-widget-border)]", isTest ? "text-[var(--vscode-textLink-foreground)]" : "text-[var(--vscode-textPreformat-foreground)]")}>
-          {action.kind}
-        </span>
-        <span className="font-mono text-sm">{dbtNameOf(state, action)}</span>
-        {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs", MUTED)}>defined in {action.fileName}</span>}
-        <span className="ml-auto flex items-center gap-2 text-xs">
-          {action.disabled && <span className={MUTED}>disabled</span>}
-          {view.outdated ? (
-            <span className={WARNING}>outdated</span>
-          ) : asWritten ? (
-            <span className={MUTED}>not compiled</span>
-          ) : running ? (
-            <span data-dry-run="running" className={clsx("flex items-center gap-1", MUTED)}>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              dry run
+    <div data-dbt="action" data-kind={action.kind} className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-7 pb-4 rounded-xl border border-[var(--vscode-widget-border)]/60 flex flex-col space-y-2 group">
+      <div className="absolute top-2 left-2 flex items-center gap-1.5">
+        <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text} ${badge.border}`}>{action.kind}</span>
+        {action.disabled && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]">disabled</span>}
+      </div>
+      {view.outdated ? (
+        <span className={clsx("absolute top-2 right-2 text-xs", WARNING)}>outdated</span>
+      ) : asWritten ? (
+        <span className={clsx("absolute top-2 right-2 text-xs", MUTED)}>not compiled</span>
+      ) : running ? (
+        <Loader2 data-dry-run="running" className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
+      ) : stat ? (
+        <div data-dry-run="ok" className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">{renderDryRunStatLine(stat)}</div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+        {link ? (
+          <>
+            <a
+              href={getUrlToNavigateToTableInBigQuery(database, schema, name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors break-all"
+            >
+              <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
+              {[database, schema, name].filter(Boolean).join(".")}
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                vscode.postMessage({ command: "copyToClipboard", text: `\`${database}.${schema}.${name}\`` });
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="p-1.5 border-0 bg-transparent cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+              title="Copy table ID with backticks"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center text-sm font-mono text-[var(--vscode-foreground)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-methodForeground)] mr-2"></span>
+            <span className="font-semibold break-all">{dbtNameOf(state, action)}</span>
+          </div>
+        )}
+        {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs font-mono opacity-80", MUTED)}>{action.fileName}</span>}
+      </div>
+      {link && table && !table.missing && (
+        <div className={clsx("flex items-center space-x-2 text-xs pl-6", MUTED)}>
+          <Clock className="w-3 h-3" />
+          <span>Last updated:</span>
+          {table.lastModified ? (
+            <span className={clsx("font-mono", table.modifiedToday ? "text-[var(--vscode-foreground)]" : "text-[var(--vscode-errorForeground)]")}>{table.lastModified}</span>
+          ) : (
+            <span className="font-mono opacity-70 cursor-help border-b border-dotted border-[var(--vscode-widget-border)]" title={table.error ?? "BigQuery gave no time"}>
+              N/A
             </span>
-          ) : failed ? (
-            <span data-dry-run="failed" className={ERROR}>✕ dry run failed</span>
-          ) : result ? (
-            <span data-dry-run="ok" className="font-mono text-[var(--vscode-testing-iconPassed,#73c991)]" title="What the query would scan, from BigQuery's dry run">
-              ✓ {result.bytesUnknown ? "bytes unknown" : formatBytes(result.bytes ?? 0)}
-            </span>
-          ) : null}
-        </span>
-      </button>
-      {open && (
-        <div className={clsx("border-t border-[var(--vscode-widget-border)] p-3 space-y-3", view.outdated && "opacity-50")}>
-          {action.kind === "incremental" && action.sqlPresent && (
-            <div data-dbt="incremental" className={clsx("text-xs", MUTED)}>
-              {which === "incremental"
-                ? "Incremental model. dbt compiled the incremental case, because the table already exists."
-                : which === "full build"
-                  ? "Incremental model. dbt compiled the full build, because the table does not exist yet."
-                  : "Incremental model. dbt compiled one case of it: the incremental one if the table already exists, the full build if it does not."}
-            </div>
-          )}
-          {action.sections.length === 0 && <div className={clsx("text-sm", MUTED)}>{NO_SQL[action.kind] ?? "No SQL to show."}</div>}
-          {action.sections.map((section) => {
-            const hook = section !== query;
-            return (
-              <div key={section.title} data-section={section.title}>
-                {(hook || asWritten) && (
-                  <div className={clsx("text-[11px] uppercase tracking-wider mb-1", MUTED)}>
-                    {hook ? `${section.title} · as written, not compiled, not dry-run` : "as written, not compiled"}
-                  </div>
-                )}
-                <CodeBlock
-                  code={section.sql}
-                  language="sql"
-                  className={hook ? "opacity-70" : undefined}
-                  showLineNumbers={!hook && !!failed?.line && failed.section === section.title}
-                  errorAnnotations={!hook && failed?.line && failed.section === section.title ? [{ line: failed.line, message: failed.message }] : undefined}
-                />
-                {!hook && failed && (
-                  <div data-dbt="dry run error" className="mt-2 rounded border border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)] px-3 py-2 text-xs">
-                    {failed.line && failed.section === section.title && (
-                      <span className={clsx("font-semibold", ERROR)}>
-                        Line {failed.line}
-                        {failed.column ? `, column ${failed.column}` : ""} of the compiled SQL:{" "}
-                      </span>
-                    )}
-                    <span className="break-words">{failed.message}</span>
-                    <div className={clsx("mt-0.5", MUTED)}>Shown here only. Nothing is marked in the source file.</div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {query?.compiled && bigQuery && query.dryRun.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              <button
-                type="button"
-                className={SECONDARY_BUTTON}
-                disabled={view.outdated}
-                title={isTest ? "Runs the test's query and shows the rows that fail it" : "Runs the compiled query and shows its rows. It costs what the query costs"}
-                onClick={() => vscode.postMessage({ command: "preview", action: action.target, section: query.title })}
-              >
-                {isTest ? "Preview failing rows" : "Preview"}
-              </button>
-              {cost && <span data-dbt="cost" className={MUTED}>≈ {cost}</span>}
-            </div>
           )}
         </div>
       )}
-    </section>
+      {link && table?.missing && (
+        <div className={clsx("flex items-center space-x-2 text-xs pl-6", MUTED)}>
+          <Clock className="w-3 h-3" />
+          <span>Not built yet: BigQuery has no such table.</span>
+        </div>
+      )}
+      {action.kind === "incremental" && action.sqlPresent && (
+        <div data-dbt="incremental" className={clsx("text-xs pl-6", MUTED)}>
+          {which === "incremental"
+            ? "dbt compiled the incremental case, because the table already exists."
+            : which === "full build"
+              ? "dbt compiled the full build, because the table does not exist yet."
+              : "dbt compiled one case of this model: the incremental one if the table already exists, the full build if it does not."}
+        </div>
+      )}
+      {action.sections.length === 0 && <div className={clsx("text-xs pl-6", MUTED)}>{NO_SQL[action.kind] ?? "No SQL to show."}</div>}
+      {failed && !view.outdated && (
+        <div data-dbt="dry run error" title="Shown here only. Nothing is marked in the source file." className="mt-1 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <div className="overflow-auto whitespace-pre-wrap">{failed.message}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** How Dataform's panel names a block of SQL, for dbt's sections */
+function sectionLabel(action: PanelAction, title: string, compiled: boolean): string {
+  const base = /^pre-hook/.test(title) ? title.replace("pre-hook", "Pre-hook") : /^post-hook/.test(title) ? title.replace("post-hook", "Post-hook") : isTestKind(action) ? "Test" : action.kind === "operation" ? "Hook" : "Query";
+  return compiled ? base : `${base} (as written, not compiled)`;
+}
+
+/**
+ * The SQL of the actions, after their cards: one block that opens and closes for each section, as Dataform has.
+ * The file's own query starts open; a test's SQL and a hook start closed.
+ */
+function SqlBlocks({ state, view }: { state: PanelSlices; view: DbtView }) {
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const bigQuery = state.dbt?.bigQuery !== false;
+  const firstWithSql = view.actions.find((action) => action.sections.length > 0);
+  return (
+    <div className={clsx("space-y-3", view.outdated && "opacity-50")}>
+      {view.actions.flatMap((action) => {
+        const query = queryOf(action);
+        const failed = dbtDryRunOf(state, action).result?.error;
+        const name = [action.target.database, action.target.schema, action.target.name].filter(Boolean).join(".");
+        return action.sections.map((section) => {
+          const key = `${action.id}/${section.title}`;
+          const isQuery = section === query;
+          const open = toggled[key] ?? (isQuery && action === firstWithSql);
+          const marked = isQuery && failed?.line && failed.section === section.title ? [{ line: failed.line, message: failed.message }] : undefined;
+          return (
+            <div key={key} data-dbt="sql" data-section={section.title} className="rounded-xl border border-[var(--vscode-widget-border)]/50 overflow-hidden">
+              <button
+                type="button"
+                aria-expanded={open}
+                className="w-full flex items-center px-4 py-2.5 cursor-pointer border-0 bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors text-left"
+                onClick={() => setToggled((before) => ({ ...before, [key]: !open }))}
+              >
+                {open ? <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" /> : <ChevronRight className="w-4 h-4 mr-2 flex-shrink-0 text-zinc-400" />}
+                <span className="font-semibold text-[var(--vscode-foreground)] text-sm mr-3">{sectionLabel(action, section.title, section.compiled)}</span>
+                <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60 truncate">{name}</span>
+              </button>
+              {open && (
+                <div role="region" className="border-t border-[var(--vscode-widget-border)]">
+                  <CodeBlock code={section.sql} language="sql" showLineNumbers errorAnnotations={marked} />
+                  {/* The file's own query is previewed from the toolbar. A test's rows, and a second model's, from here */}
+                  {isQuery && section.compiled && bigQuery && section.dryRun.length > 0 && action !== firstWithSql && (
+                    <div className="px-3 pb-3">
+                      <button
+                        type="button"
+                        className={clsx(TOOLBAR_SECONDARY, "border-0")}
+                        disabled={view.outdated}
+                        title={isTestKind(action) ? "Runs the test's query and shows the rows that fail it" : "Runs the compiled query and shows its rows. It costs what the query costs"}
+                        onClick={() => vscode.postMessage({ command: "preview", action: action.target, section: section.title })}
+                      >
+                        <Eye className="w-4 h-4 mr-1.5" /> {isTestKind(action) ? "Preview failing rows" : "Preview Data"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        });
+      })}
+    </div>
   );
 }
 
@@ -447,9 +662,32 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
       {view.errors.map((error, index) => (
         <ErrorCard key={index} error={error} flavour={state.dbt?.dbt?.flavour} />
       ))}
-      {view.actions.map((action, index) => (
-        <ActionSection key={action.id} state={state} view={view} action={action} first={index === 0} />
-      ))}
+      {view.actions.length > 0 && (
+        <div className="space-y-3">
+          {view.actions.map((action) => (
+            <ActionCard key={action.id} state={state} view={view} action={action} />
+          ))}
+        </div>
+      )}
+      {view.readsFrom.length > 0 && (
+        <div data-dbt="reads from" className={clsx("text-xs flex flex-wrap items-center gap-x-4 gap-y-1", MUTED)}>
+          <span>reads from</span>
+          {view.readsFrom.map((neighbour, index) => (
+            <span key={index}>
+              {neighbour.fileName ? (
+                <button type="button" title={`Open ${neighbour.fileName}`} className="p-0 bg-transparent border-0 cursor-pointer font-mono text-xs text-[var(--vscode-textLink-foreground)] hover:underline" onClick={() => vscode.postMessage({ command: "openAction", action: neighbour.target })}>
+                  {neighbour.target.name}
+                </button>
+              ) : (
+                <span className="font-mono text-[var(--vscode-foreground)]">{neighbour.target.name}</span>
+              )}{" "}
+              {neighbour.kind}
+            </span>
+          ))}
+        </div>
+      )}
+      <Toolbar state={state} view={view} />
+      <SqlBlocks state={state} view={view} />
       {view.card && <Card card={view.card} />}
       {view.skeleton && (
         <div data-dbt="skeleton" className="space-y-2 animate-pulse">
@@ -475,32 +713,6 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
             ))}
           </ul>
         </details>
-      )}
-      {state.run?.lastRun && (
-        <div data-dbt="last run" className={clsx(BOX, "px-3 py-2 text-xs flex flex-wrap items-center gap-2")}>
-          <span className={MUTED}>Sent to terminal</span>
-          <span className="font-mono break-all">{state.run.lastRun.command}</span>
-          <button type="button" className={clsx(SECONDARY_BUTTON, "ml-auto py-0.5")} title="Runs the same selection again, with the dbt target of now" onClick={() => vscode.postMessage({ command: "repeatLastRun" })}>
-            Repeat
-          </button>
-        </div>
-      )}
-      {view.readsFrom.length > 0 && (
-        <div data-dbt="reads from" className={clsx("text-xs flex flex-wrap items-center gap-x-4 gap-y-1", MUTED)}>
-          <span>reads from</span>
-          {view.readsFrom.map((neighbour, index) => (
-            <span key={index}>
-              {neighbour.fileName ? (
-                <button type="button" title={`Open ${neighbour.fileName}`} className="p-0 bg-transparent border-0 cursor-pointer font-mono text-xs text-[var(--vscode-textLink-foreground)] hover:underline" onClick={() => vscode.postMessage({ command: "openAction", action: neighbour.target })}>
-                  {neighbour.target.name}
-                </button>
-              ) : (
-                <span className="font-mono text-[var(--vscode-foreground)]">{neighbour.target.name}</span>
-              )}{" "}
-              {neighbour.kind}
-            </span>
-          ))}
-        </div>
       )}
     </div>
   );
@@ -650,7 +862,6 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
         <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
           {engine && <span className={clsx("font-mono", MUTED)}>{engine}</span>}
           {block && view.page !== "tool missing" && <TargetControl block={block} />}
-          {view.page === "panel" && view.run && <RunControl run={view.run} target={block?.target.name} tags={state.project?.tags ?? []} />}
         </div>
       </div>
 

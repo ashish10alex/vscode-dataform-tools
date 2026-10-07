@@ -57,7 +57,7 @@ const SEGMENT_BUTTON = "px-3 py-1.5 text-sm flex items-center text-[var(--vscode
  * Render it as a warning chip rather than plain text, so it is impossible to mistake for a
  * normal estimate at a glance; the tooltip explains what BigQuery actually reported.
  */
-const renderDryRunStatLine = (line: string) => {
+export const renderDryRunStatLine = (line: string) => {
   if (!line.endsWith(UNKNOWN_ACCURACY_STAT)) {
     return line;
   }
