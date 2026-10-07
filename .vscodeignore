@@ -71,3 +71,4 @@ FUTURE_WORK.md
 postcss.config.js
 vite.config.ts
 snippets/README.md
+.devcontainer/**
