@@ -29,6 +29,8 @@ export interface DryRunResult {
     bytes?: number;
     /** BigQuery could not tell what the script would scan, and reported 0 bytes: not an estimate */
     bytesUnknown?: boolean;
+    /** How BigQuery qualifies `bytes`, in its words: "PRECISE", "UPPER_BOUND", "LOWER_BOUND" or "UNKNOWN" */
+    bytesAccuracy?: string;
     cost?: { currency: string; value: number };
     /** The columns the script's last statement gives. Unset when it gives none, or failed */
     schema?: CompiledQuerySchema;
@@ -65,6 +67,9 @@ export function toDryRunResult(action: Action, script: DryRunScript, compile: nu
     result.bytes = statistics?.totalBytesProcessed ?? 0;
     if (statistics?.bytesEstimateUnknown) {
         result.bytesUnknown = true;
+    }
+    if (statistics?.totalBytesProcessedAccuracy) {
+        result.bytesAccuracy = statistics.totalBytesProcessedAccuracy;
     }
     if (statistics?.cost) {
         result.cost = statistics.cost;

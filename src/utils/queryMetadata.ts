@@ -3,46 +3,8 @@ import { compiledIndices } from '../project';
 import path from 'path';
 import { logger } from '../logger';
 import { DataformCompiledJson, TablesWtFullQuery, Table, Operation, Assertion, Notebook } from '../types';
-import type { TableQueryEntry, IncrementalQueryEntry, AssertionQueryEntry, OperationQueryEntry, TestQueryEntry, QueryMeta, DryRunAnnotation } from '../types';
+import type { TableQueryEntry, IncrementalQueryEntry, AssertionQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 
-/** Derive per-node flat maps from the enriched query arrays on QueryMeta. */
-export function deriveNodeMapsFromQueryMeta(queryMeta: QueryMeta | undefined) {
-    const dryRunErrorsByNodeName: Record<string, DryRunAnnotation> = {};
-    const dryRunIncrementalErrorsByNodeName: Record<string, DryRunAnnotation> = {};
-    const dryRunExpectedOutputErrorsByNodeName: Record<string, DryRunAnnotation> = {};
-    const dryRunQueryByNodeName: Record<string, string> = {};
-    const dryRunIncrementalQueryByNodeName: Record<string, string> = {};
-    const dryRunNonIncrementalQueryByNodeName: Record<string, string> = {};
-
-    if (!queryMeta) {
-        return { dryRunErrorsByNodeName, dryRunIncrementalErrorsByNodeName, dryRunExpectedOutputErrorsByNodeName, dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName };
-    }
-
-    for (const tq of queryMeta.tableQueries ?? []) {
-        if (tq.error) { dryRunErrorsByNodeName[tq.targetName] = tq.error; }
-        if (tq.dryRunQuery) { dryRunQueryByNodeName[tq.targetName] = tq.dryRunQuery; }
-    }
-    for (const aq of queryMeta.assertionQueries ?? []) {
-        if (aq.error) { dryRunErrorsByNodeName[aq.targetName] = aq.error; }
-        if (aq.dryRunQuery) { dryRunQueryByNodeName[aq.targetName] = aq.dryRunQuery; }
-    }
-    for (const oq of queryMeta.operationQueries ?? []) {
-        if (oq.error) { dryRunErrorsByNodeName[oq.targetName] = oq.error; }
-        if (oq.dryRunQuery) { dryRunQueryByNodeName[oq.targetName] = oq.dryRunQuery; }
-    }
-    for (const iq of queryMeta.incrementalQueries ?? []) {
-        if (iq.nonIncrementalError) { dryRunErrorsByNodeName[iq.targetName] = iq.nonIncrementalError; }
-        if (iq.incrementalError) { dryRunIncrementalErrorsByNodeName[iq.targetName] = iq.incrementalError; }
-        if (iq.dryRunNonIncrementalQuery) { dryRunNonIncrementalQueryByNodeName[iq.targetName] = iq.dryRunNonIncrementalQuery; }
-        if (iq.dryRunIncrementalQuery) { dryRunIncrementalQueryByNodeName[iq.targetName] = iq.dryRunIncrementalQuery; }
-    }
-    for (const tq of queryMeta.testQueries ?? []) {
-        if (tq.testError) { dryRunErrorsByNodeName[tq.name] = tq.testError; }
-        if (tq.expectedOutputError) { dryRunExpectedOutputErrorsByNodeName[tq.name] = tq.expectedOutputError; }
-    }
-
-    return { dryRunErrorsByNodeName, dryRunIncrementalErrorsByNodeName, dryRunExpectedOutputErrorsByNodeName, dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName };
-}
 function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, relativeFilePath: string, modelObjType: string, isJsFile: boolean) {
     return isJsFile
         ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
