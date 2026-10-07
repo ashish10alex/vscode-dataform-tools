@@ -531,6 +531,17 @@ export class CompiledQueryPanel {
         this.slices.reset();
     }
 
+    /**
+     * Sends the panel again everything it has been sent. Its page says when it has begun to listen (`ready`): what
+     * was posted before that, while the page loaded, reached nobody, and a slice is not sent twice otherwise. A
+     * compile that is reused ends within milliseconds of the page being written, so without this the panel could
+     * stay on the "compiling" its first page starts with.
+     */
+    public resendAll() {
+        this.slices.resend();
+        this.postMessage({ slice: 'dataform', value: this.dataformBlock });
+    }
+
     /** Tells the panel of something that happened once, see `HostEvent` */
     public sendEvent(event: HostEvent) {
         this.postMessage(event);
@@ -990,6 +1001,9 @@ export class CompiledQueryPanel {
         panel.webviewPanel.webview.onDidReceiveMessage(
           async (message: PanelMessage) => {
             switch (message.command) {
+              case 'ready':
+                panel.resendAll();
+                return;
               case 'dataform.startSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
                 return;

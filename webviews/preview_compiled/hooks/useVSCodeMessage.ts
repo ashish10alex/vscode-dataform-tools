@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PanelSlices, applyMessage, initialSlices } from "../../../src/shared/panelState";
+import { vscode } from "../utils/vscode";
 
 declare global {
   interface Window {
@@ -18,6 +19,8 @@ export const useVSCodeMessage = () => {
     };
 
     window.addEventListener("message", handleMessage);
+    // Only now does anyone listen: the host sends again what it posted while the page was loading
+    vscode.postMessage({ command: "ready" });
 
     return () => {
       window.removeEventListener("message", handleMessage);

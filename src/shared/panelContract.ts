@@ -319,6 +319,11 @@ export interface RunScope {
 
 /** Messages either Backend's panel can send */
 export type SharedPanelMessage =
+    /**
+     * The panel's page has loaded and listens: the host sends again what it has sent. A message posted before this
+     * may have found nobody listening, and the host does not send a slice twice of itself
+     */
+    | { command: 'ready' }
     /** Open the file that defines the action */
     | { command: 'openAction'; action: Target }
     /** Open a file of the Project, relative to its root with forward slashes, at a 1-based line where one is given */

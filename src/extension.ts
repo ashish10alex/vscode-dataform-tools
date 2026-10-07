@@ -504,6 +504,8 @@ export async function activate(context: vscode.ExtensionContext) {
         __panel: {
             onDidPostMessage: onDidPostPanelMessage,
             forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices(),
+            // As if the panel's page had just begun to listen
+            resendAll: () => CompiledQueryPanel.centerPanel?.resendAll(),
             // As if a button of a dbt Project's panel had been clicked
             dbtMessage: (message: DbtPanelMessage) => CompiledQueryPanel.centerPanel?.onDbtMessage(message),
             // As if Run, a Run Tag or Repeat had been clicked in a dbt Project's panel. Resolves to false when the panel shows no dbt file

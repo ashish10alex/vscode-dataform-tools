@@ -196,6 +196,32 @@ suite('panel slices: sent only when changed', () => {
     });
 });
 
+suite('panel slices: sent again to a page that has only now begun to listen', () => {
+    test('every slice goes again as it was last sent, the compile status before the file, and stays known as sent', () => {
+        const posted: HostMessage[] = [];
+        const sender = new SliceSender((message) => posted.push(message));
+        const file = fileSlice(graph, dataform, 'definitions/staging/stg_orders.sqlx', 1);
+        sender.send('file', file);
+        sender.send('compile status', compileStatusSlice({ inProject: true, errors: [], compiling: { showingPrevious: false, startedAt: 1 } }, 1));
+        const compiled = compileStatusSlice({ inProject: true, errors: [], compiled: { compiledAt: 5 } }, 1);
+        sender.send('compile status', compiled);
+        sender.send('project', projectSlice({ root: '/work/shop' }, dataform, graph, 1));
+        posted.length = 0;
+
+        sender.resend();
+        assert.deepStrictEqual(posted.map((message) => message.slice), ['project', 'compile status', 'file']);
+        assert.deepStrictEqual([posted[1].value, posted[2].value], [compiled, file]);
+        // Nothing is forgotten: the same slice is still not sent twice afterwards
+        assert.strictEqual(sender.send('compile status', compiled), false);
+    });
+
+    test('a sender that has sent nothing sends nothing', () => {
+        const posted: HostMessage[] = [];
+        new SliceSender((message) => posted.push(message)).resend();
+        assert.deepStrictEqual(posted, []);
+    });
+});
+
 suite('panel slices: the dbt block', () => {
     const built = buildDbtGraph(JSON.parse(fs.readFileSync(path.join(findProjectRoot(__dirname), 'src', 'test', 'fixtures', 'dbt-manifests', 'dbt-v2.json'), 'utf8')));
     const dbt = new DbtBackend();
