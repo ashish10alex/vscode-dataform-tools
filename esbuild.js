@@ -29,14 +29,15 @@ const esbuildProblemMatcherPlugin = {
 
 async function main() {
   const ctx = await esbuild.context({
-    entryPoints: ['src/extension.ts'],
+    // The dbt manifest is read in a worker thread, which needs a file of its own beside the extension's
+    entryPoints: { extension: 'src/extension.ts', dbtManifestWorker: 'src/backend/dbt/dbtManifestWorker.ts' },
     bundle: true,
     format: 'cjs',
     minify: production,
     sourcemap: !production,
     sourcesContent: false,
     platform: 'node',
-    outfile: 'dist/extension.js',
+    outdir: 'dist',
     external: ['vscode'],
     logLevel: 'silent',
     plugins: [
