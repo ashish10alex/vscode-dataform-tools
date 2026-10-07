@@ -1,11 +1,12 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, projects, requiredTools } from '../project';
-import { CompileReason, compileDbtProject, dbtCompileState, onDidChangeDbtCompile } from '../project/dbtCompile';
-import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
-import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice, projectSlice } from '../panel/slices';
+import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile } from '../project/dbtCompile';
+import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
+import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
+import { CompileState, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../panel/slices';
 import { SliceSender } from '../panel/sliceSender';
 import { affectsCompile } from '../backend';
-import { DBT_COMPILE_FILES } from '../backend/dbt';
+import { DBT_COMPILE_FILES, listDbtTargets } from '../backend/dbt';
 import { toDryRunResult } from '../bigquery/dryRunService';
 import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
 import { fileModels } from '../shared/panelFileView';
@@ -309,6 +310,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     // A dbt compile that starts or ends, whoever asked for it, is shown when its Project is the one on show
     context.subscriptions.push(onDidChangeDbtCompile((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
+    // So is what is known of its dbt: another one found, or none any more
+    context.subscriptions.push(onDidChangeDbtTool((root) => CompiledQueryPanel.centerPanel?.dbtToolChanged(root)));
 
 
     const triggerCompilationForDocument = async (document: vscode.TextDocument, spanName: string = 'recompilePreview') => {
@@ -632,9 +635,13 @@ export class CompiledQueryPanel {
         const compiling = compileDbtProject(project, file, reason);
         if (!panel.hasPage) {
             panel.hasPage = true;
-            // Synchronously, so that the first message cannot arrive before the page that listens for it
+            // Synchronously, so that the first message cannot arrive before the page that listens for it. The Project
+            // is in the page, so that the panel never draws a dbt file as Dataform's
+            const sent = panel.dbtSlices(project, file);
             panel.webviewPanel.webview.html = panel.pageWith(panel.webviewPanel.webview, {
                 dataform: panel.dataformBlock,
+                project: sent.project,
+                dbt: sent.dbt,
                 compile: compileStatusSlice({ ...dbtCompileState(project.root), compiling: { showingPrevious: false, startedAt: Date.now(), file } }, project.compileNumber),
             });
         }
@@ -643,23 +650,113 @@ export class CompiledQueryPanel {
         panel.sendDbt();
     }
 
+    /** The slices of a file of a dbt Project, as things stand: the three Backend-neutral ones and dbt's own block */
+    private dbtSlices(project: ProjectState, file: string) {
+        const backend = project.dbtBackend!;
+        const state = dbtCompileState(project.root);
+        const last = backend.lastResult;
+        const tool = dbtToolNow(project.root);
+        const settings = dbtSettings(project.root);
+        const shown = fileSlice(last?.graph, backend, file, project.compileNumber);
+        const block: DbtBlock = dbtBlock({
+            ...(tool?.status === 'found' ? { dbt: { path: tool.path, foundBy: tool.foundBy, flavour: tool.probe.flavour, version: tool.probe.version } } : {}),
+            looking: !tool || tool.status === 'looking',
+            target: last?.target ?? settings.target,
+            vars: settings.vars,
+            profilesDir: settings.profilesDir,
+            profile: listDbtTargets(project.root, { profilesDir: settings.profilesDir })?.profile,
+            parsedForHooks: last?.parsedOnly === true && !!last.notice,
+            data: last?.dbt,
+            graph: last?.graph,
+            shown: shown.actions.map((action) => action.id),
+            file,
+        }, project.compileNumber);
+        return {
+            project: projectSlice({ root: project.root }, backend, last?.graph, project.compileNumber),
+            // While a compile for another file runs, the panel names the file on show, not that one
+            compile: compileStatusSlice(state.compiling ? { ...state, compiling: { ...state.compiling, file } } : state, project.compileNumber),
+            file: shown,
+            dbt: block,
+        };
+    }
+
     /**
-     * Sends the Backend-neutral slices for the dbt file on show: the Project, how its compile stands, and the file's
+     * Sends the slices for the dbt file on show: the Project, dbt's own block, how the compile stands, and the file's
      * actions. Each goes out only when it differs from what the panel was last sent.
      */
     public sendDbt(root?: string) {
         const shown = this.dbtOnShow;
-        const backend = shown?.project.dbtBackend;
-        if (!shown || !backend || (root !== undefined && root !== shown.project.root)) {
+        if (!shown?.project.dbtBackend || (root !== undefined && root !== shown.project.root)) {
+            return;
+        }
+        const slices = this.dbtSlices(shown.project, shown.file);
+        this.slices.send('project', slices.project);
+        this.slices.send('dbt', slices.dbt);
+        this.slices.send('compile status', slices.compile);
+        this.slices.send('file', slices.file);
+    }
+
+    /**
+     * What is known of a Project's dbt has changed. While it is looked for, the panel is only told so; once the
+     * search has ended, the file on show is shown again, which compiles it if the dbt found is another one. A
+     * compile that is waiting for the search does that by itself.
+     */
+    public dbtToolChanged(root: string) {
+        const shown = this.dbtOnShow;
+        if (!shown || shown.project.root !== root || this.centerPanelDisposed) {
+            return;
+        }
+        if (dbtToolNow(root)?.status === 'looking' || dbtCompilePending(root)) {
+            this.sendDbt(root);
+            return;
+        }
+        CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, shown.project, shown.file, 'switch')
+            .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
+    }
+
+    /** Opens the file that defines an action of the dbt Project on show. False when the panel is not showing one */
+    private openDbtAction(target: { database: string; schema: string; name: string }): boolean {
+        const shown = this.dbtOnShow;
+        if (!shown) {
+            return false;
+        }
+        const action = shown.project.dbtBackend?.lastResult?.graph.actions[targetId(target)];
+        if (action?.fileName) {
+            vscode.window.showTextDocument(Uri.file(path.join(shown.project.root, action.fileName)), { viewColumn: vscode.ViewColumn.One, preview: false })
+                .then(undefined, (error) => logger.error(`dbt: could not open ${action.fileName}: ${error}`));
+        }
+        return true;
+    }
+
+    /** What a button of a dbt Project's panel asks for */
+    public async onDbtMessage(message: DbtPanelMessage) {
+        const shown = this.dbtOnShow;
+        if (!shown) {
             return;
         }
         const { project, file } = shown;
-        const state = dbtCompileState(project.root);
-        const graph = backend.lastResult?.graph;
-        this.slices.send('project', projectSlice({ root: project.root }, backend, graph, project.compileNumber));
-        // While a compile for another file runs, the panel names the file on show, not that one
-        this.slices.send('compile status', compileStatusSlice(state.compiling ? { ...state, compiling: { ...state.compiling, file } } : state, project.compileNumber));
-        this.slices.send('file', fileSlice(graph, backend, file, project.compileNumber));
+        const configuration = vscode.workspace.getConfiguration('vscode-dataform-tools', Uri.file(project.root));
+        switch (message.command) {
+            case 'dbt.compileWithHooks':
+                // For this workspace only: the hooks of another Project are another decision
+                await configuration.update('dbtCompileWithHooks', message.on, vscode.ConfigurationTarget.Workspace);
+                await CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, project, file, 'save');
+                return;
+            case 'dbt.chooseExecutable': {
+                const [chosen] = (await vscode.window.showOpenDialog({ canSelectMany: false, canSelectFiles: true, canSelectFolders: false, openLabel: 'Use this dbt', title: 'Choose a dbt executable' })) ?? [];
+                if (chosen) {
+                    // The setting's change makes the extension look for dbt again, which shows the file again
+                    await configuration.update('dbtExecutablePath', chosen.fsPath, vscode.ConfigurationTarget.Workspace);
+                }
+                return;
+            }
+            case 'dbt.lookForDbtAgain':
+                await lookForDbt(project.root);
+                return;
+            case 'dbt.setTarget':
+                // The dbt target control comes with piece 5.5
+                return;
+        }
     }
 
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
@@ -673,8 +770,11 @@ export class CompiledQueryPanel {
             await CompiledQueryPanel.showDbt(extensionUri, extensionContext, dbt.project, dbt.file, freshCompilation ? 'save' : 'switch');
             return;
         }
-        if (CompiledQueryPanel.centerPanel) {
-            CompiledQueryPanel.centerPanel.dbtOnShow = undefined;
+        const leaving = CompiledQueryPanel.centerPanel;
+        if (leaving?.dbtOnShow) {
+            leaving.dbtOnShow = undefined;
+            // The panel draws by the Project's Backend: it must not go on drawing the next file as dbt's
+            leaving.slices.send('project', null);
         }
         // An outdated saved compilation is shown straight away; the startup compile redraws the panel when it finishes
         const renderFresh = freshCompilation && !isCompilationStale();
@@ -772,6 +872,9 @@ export class CompiledQueryPanel {
                 await vscode.commands.executeCommand('vscode-dataform-tools.stopSnoozeCompilation');
                 return;
               case 'openAction':
+                if (panel.openDbtAction(message.action)) {
+                    return;
+                }
                 const { database: projectId, schema: datasetId, name: tableId } = message.action;
 
                 if(!compiledJson()){
@@ -1225,7 +1328,7 @@ export class CompiledQueryPanel {
               case 'dbt.compileWithHooks':
               case 'dbt.chooseExecutable':
               case 'dbt.lookForDbtAgain':
-                // A dbt Project's panel sends these; it has none until Step 5
+                await panel.onDbtMessage(message);
                 return;
               default: {
                 // Every message of the contract has a case above: this line fails the type-check when one is added without

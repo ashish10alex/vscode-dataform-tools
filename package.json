@@ -607,6 +607,12 @@
                     "scope": "resource",
                     "markdownDescription": "**Path to the dbt executable**, for a dbt project.\n\nLeave it empty to let the extension find dbt. It looks, in this order, at: this setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, and common install directories. The first one that has a dbt is used, and the compiled query panel says which.\n\nBoth dbt-core (1.8 or later, with the BigQuery adapter) and dbt v2 work.\n\n**Example**: `/opt/homebrew/bin/dbt`, or `.venv/bin/dbt` relative to the project."
                 },
+                "vscode-dataform-tools.dbtCompileWithHooks": {
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "resource",
+                    "markdownDescription": "**Compile a dbt project that has `on-run-start` or `on-run-end` hooks**, with dbt v2.\n\ndbt v2 runs those hooks against the warehouse every time it compiles. So by default the extension only parses such a project: the compiled query panel shows the SQL as written, and nothing is dry-run.\n\nTurn this on to compile it anyway. **The hooks then run on every save.** The panel offers this where it applies. It has no effect with dbt-core, which does not run hooks when it compiles."
+                },
                 "vscode-dataform-tools.gcloudExecutablePath": {
                     "type": "string",
                     "default": null,

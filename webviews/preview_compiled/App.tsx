@@ -23,7 +23,8 @@ import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
 import { panelProblem } from './utils/panelProblem';
 import { fileView } from './utils/fileView';
-import { fileOnShow } from '../../src/shared/panelState';
+import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
+import { DbtPanel } from './components/DbtPanel';
 
 function HeaderRightActions({
   snoozeEndTime,
@@ -59,8 +60,8 @@ function HeaderRightActions({
   );
 }
 
-function App() {
-  const state = useVSCodeMessage();
+/** The panel of a Dataform Project, and of a file in no Project */
+function DataformPanel({ state }: { state: PanelSlices }) {
   const problem = panelProblem(state);
   const view = fileView(state.file);
   const fileName = fileOnShow(state);
@@ -149,30 +150,6 @@ function App() {
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
   const isPropertyGraphFile = (state.dataform.propertyGraphs?.length ?? 0) > 0;
-
-  useEffect(() => {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          const isDark = document.body.classList.contains('vscode-dark');
-          if (isDark) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-        }
-      });
-    });
-
-    observer.observe(document.body, { attributes: true });
-    
-    // Initial check
-    if (document.body.classList.contains('vscode-dark')) {
-      document.documentElement.classList.add('dark');
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -388,6 +365,37 @@ function App() {
       </div>
     </div>
   );
+}
+
+/** One panel for both Backends: the Project's Backend says which is drawn */
+function App() {
+  const state = useVSCodeMessage();
+
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const isDark = document.body.classList.contains('vscode-dark');
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+      });
+    });
+
+    observer.observe(document.body, { attributes: true });
+    
+    // Initial check
+    if (document.body.classList.contains('vscode-dark')) {
+      document.documentElement.classList.add('dark');
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return state.project?.backend === 'dbt' ? <DbtPanel state={state} /> : <DataformPanel state={state} />;
 }
 
 export default App;

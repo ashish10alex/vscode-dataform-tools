@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import type { CompileStatus, FileSlice, ProjectSlice } from '../shared/panelContract';
+import type { CompileStatus, DbtBlock, DbtPanelMessage, FileSlice, ProjectSlice } from '../shared/panelContract';
 
 /*
 The compile loop of a dbt Project, in the real extension with a stand-in for dbt: a script that answers `--version`
@@ -18,6 +18,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface PanelApi {
     onDidPostMessage(listener: (message: unknown) => void): vscode.Disposable;
+    dbtMessage(message: DbtPanelMessage): Promise<void> | undefined;
 }
 
 suite('the compile loop of a dbt Project', function () {
@@ -25,7 +26,9 @@ suite('the compile loop of a dbt Project', function () {
     const manifests = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'fixtures', 'dbt-manifests');
     let dir: string;
     let subscription: vscode.Disposable | undefined;
-    const slices: { project?: ProjectSlice; compile?: CompileStatus; file?: FileSlice } = {};
+    const slices: { project?: ProjectSlice; compile?: CompileStatus; file?: FileSlice; dbt?: DbtBlock } = {};
+    let panel: PanelApi;
+    let standIn: string;
     const statuses: string[] = [];
     const settings = () => vscode.workspace.getConfiguration('vscode-dataform-tools');
     /** The commands the stand-in was run with, without `--version` */
@@ -55,7 +58,7 @@ suite('the compile loop of a dbt Project', function () {
         assert.ok(workspaceFolder, 'No workspace folder: run with `vscode-test --label dbt`');
         const extension = vscode.extensions.getExtension(EXTENSION_ID);
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
-        const panel: PanelApi = (await extension.activate())?.__panel;
+        panel = (await extension.activate())?.__panel;
         subscription = panel.onDidPostMessage((message) => {
             const { slice, value } = message as { slice?: string; value?: unknown };
             if (slice === 'project') {
@@ -65,11 +68,13 @@ suite('the compile loop of a dbt Project', function () {
                 statuses.push(slices.compile.status);
             } else if (slice === 'file') {
                 slices.file = value as FileSlice;
+            } else if (slice === 'dbt') {
+                slices.dbt = value as DbtBlock;
             }
         });
 
         dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dbt-loop-')));
-        const standIn = path.join(dir, 'dbt');
+        standIn = path.join(dir, 'dbt');
         fs.writeFileSync(standIn, `#!/usr/bin/env node
 const fs = require('fs'), path = require('path');
 const args = process.argv.slice(2), dir = ${JSON.stringify(dir)};
@@ -90,6 +95,11 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         if (dir) {
             await settings().update('dbtExecutablePath', undefined, vscode.ConfigurationTarget.Global);
             fs.rmSync(dir, { recursive: true, force: true });
+        }
+        // What the offer to compile with hooks wrote into the example Project
+        if (workspaceFolder && fs.existsSync(path.join(workspaceFolder, '.vscode'))) {
+            await settings().update('dbtCompileWithHooks', undefined, vscode.ConfigurationTarget.Workspace);
+            fs.rmSync(path.join(workspaceFolder, '.vscode'), { recursive: true, force: true });
         }
     });
 
@@ -125,6 +135,24 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         // Every slice names the compile it came from
         assert.strictEqual(slices.file?.compile, slices.compile?.compile);
         assert.strictEqual(slices.project?.compile, slices.compile?.compile);
+        assert.strictEqual(slices.dbt?.compile, slices.compile?.compile);
+    });
+
+    test("the panel is told what only a dbt Project has: the dbt found, its dbt target, its warehouse", async () => {
+        const block = slices.dbt;
+        assert.deepStrictEqual(block?.dbt, { path: standIn, foundBy: 'the dbtExecutablePath setting', flavour: 'dbt v2', version: '2.9.9' });
+        assert.deepStrictEqual([block?.looking, block?.target, block?.hooksNotice], [false, { name: 'dev', overridden: false, names: [] }, false]);
+        assert.deepStrictEqual([block?.warehouse, block?.bigQuery, block?.project?.name, block?.project?.profile], ['bigquery', true, 'xf_example', 'xf_example']);
+        assert.strictEqual(block?.project?.actions.seed, 1);
+        assert.deepStrictEqual(block?.macros, []);
+
+        // The block follows the file on show
+        await show('macros/audit.sql');
+        await until('the macros of the file', () => slices.file?.file === 'macros/audit.sql' && (slices.dbt?.macros.length ?? 0) > 0);
+        assert.deepStrictEqual(slices.dbt?.macros, ['create_cents_to_dollars_udf', 'record_run_in_audit_log']);
+        await show('models/staging/_sources.yml');
+        await until('the sources of the file', () => slices.file?.file === 'models/staging/_sources.yml' && Object.keys(slices.dbt?.names ?? {}).length > 0);
+        assert.deepStrictEqual(Object.values(slices.dbt?.names ?? {}).sort(), ['raw.customers', 'raw.orders', 'raw.payments']);
     });
 
     test('on dbt v2, showing another file reads the graph in memory', async () => {
@@ -214,5 +242,47 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
         await until('stg_orders to be compiled again', () => slices.file?.file === 'models/staging/stg_orders.sql' && sqlOf('stg_orders') === true && slices.compile?.status === 'compiled');
         assert.deepStrictEqual(selects().at(-1), ['compile', '--select', `path:${path.join('models', 'staging', 'stg_orders.sql')}`]);
         assert.ok(selects().every(([command]) => command === 'compile'), 'dbt-core was asked for something other than a selected compile');
+    });
+
+    test('a dbt v2 Project with hooks is only parsed, until the offer to compile with hooks is taken', async () => {
+        // A stand-in whose parse finds on-run hooks, as the real one does in the example Project `dbt-hooks`
+        const withHooks = path.join(dir, 'dbt-with-hooks');
+        fs.writeFileSync(withHooks, `#!/usr/bin/env node
+const fs = require('fs'), path = require('path');
+const args = process.argv.slice(2), dir = ${JSON.stringify(dir)};
+if (args[0] === '--version') { console.log('dbt 2.9.8'); return; }
+fs.appendFileSync(path.join(dir, 'ran.jsonl'), JSON.stringify(args) + '\\n');
+const target = args[args.indexOf('--target-path') + 1];
+fs.mkdirSync(target, { recursive: true });
+fs.copyFileSync(path.join(${JSON.stringify(manifests)}, args[0] === 'parse' ? 'dbt-v2-hooks-parsed.json' : 'dbt-v2.json'), path.join(target, 'manifest.json'));
+`, { mode: 0o755 });
+        await show('models/marts/fct_orders.sql');
+        await until('the model', () => slices.file?.file === 'models/marts/fct_orders.sql' && slices.compile?.status === 'compiled');
+        fs.rmSync(path.join(dir, 'ran.jsonl'), { force: true });
+
+        // The Backend remembers that the Project's settings files had no hook. A newer time on the file, with the
+        // same content, is a change to it: the next compile parses first
+        const now = new Date();
+        fs.utimesSync(path.join(workspaceFolder!, 'dbt_project.yml'), now, now);
+        // Another dbt is found: the panel shows the file again without being asked, with that dbt
+        await settings().update('dbtExecutablePath', withHooks, vscode.ConfigurationTarget.Global);
+        await until('the parse that finds hooks', () => slices.compile?.status === 'parsed only' && slices.dbt?.hooksNotice === true);
+        assert.deepStrictEqual(ran().map((args) => args[0]), ['parse']);
+        assert.strictEqual(slices.dbt?.dbt?.version, '2.9.8');
+        assert.ok(slices.compile?.status === 'parsed only' && /hooks/.test(slices.compile.notice));
+
+        // The offer: compile with hooks from now on. Nothing is parsed first any more
+        await panel.dbtMessage({ command: 'dbt.compileWithHooks', on: true });
+        await until('the compile with hooks', () => slices.compile?.status === 'compiled' && slices.dbt?.hooksNotice === false);
+        assert.deepStrictEqual(ran().map((args) => args[0]), ['parse', 'compile']);
+        assert.strictEqual(settings().inspect('dbtCompileWithHooks')?.workspaceValue, true);
+        assert.strictEqual(slices.file?.actions[0].sqlPresent, true);
+
+        // Looking again finds the same dbt and compiles nothing
+        const before = ran().length;
+        await panel.dbtMessage({ command: 'dbt.lookForDbtAgain' });
+        await sleep(500);
+        assert.strictEqual(ran().length, before);
+        assert.deepStrictEqual([slices.dbt?.dbt?.path, slices.dbt?.looking], [withHooks, false]);
     });
 });
