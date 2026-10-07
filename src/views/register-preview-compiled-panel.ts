@@ -1,8 +1,11 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, requiredTools } from '../project';
+import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, projects, requiredTools } from '../project';
+import { CompileReason, compileDbtProject, dbtCompileState, onDidChangeDbtCompile } from '../project/dbtCompile';
 import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
 import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice, projectSlice } from '../panel/slices';
 import { SliceSender } from '../panel/sliceSender';
+import { affectsCompile } from '../backend';
+import { DBT_COMPILE_FILES } from '../backend/dbt';
 import { toDryRunResult } from '../bigquery/dryRunService';
 import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
 import { fileModels } from '../shared/panelFileView';
@@ -284,6 +287,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         } else if (editor && changedActiveEditorFileName && activeEditorFileName !== changedActiveEditorFileName && webviewPanelVisisble) {
             activeEditorFileName = changedActiveEditorFileName;
             activeDocumentObj = editor.document;
+            const dbt = dbtFileOf(editor.document);
+            if (dbt) {
+                await CompiledQueryPanel.showDbt(context.extensionUri, context, dbt.project, dbt.file, 'switch');
+                return;
+            }
             if (snoozeManager.isSnoozeActive()) {
                 // Keep tracking the active file but defer the refresh until snooze ends
                 snoozeManager.markDirtyDuringSnooze();
@@ -298,6 +306,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     }, globalThis.DEBOUNCE_WAIT);
 
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
+
+    // A dbt compile that starts or ends, whoever asked for it, is shown when its Project is the one on show
+    context.subscriptions.push(onDidChangeDbtCompile((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
 
 
     const triggerCompilationForDocument = async (document: vscode.TextDocument, spanName: string = 'recompilePreview') => {
@@ -370,6 +381,20 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
+        // A save in a dbt Project compiles it again when the panel is open, or is opened on save. What is shown stays
+        // the file in focus: a save of a macro shows the model beside it afresh
+        const dbt = dbtFileOf(document);
+        if (dbt) {
+            const panelOpen = CompiledQueryPanel.centerPanel?.centerPanelDisposed === false;
+            const opensOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave') === true;
+            if (affectsCompile(DBT_COMPILE_FILES, dbt.file) && (panelOpen || opensOnSave)) {
+                activeEditorFileName = document.fileName;
+                activeDocumentObj = document;
+                const shown = dbtFileOf(vscode.window.activeTextEditor?.document) ?? dbt;
+                await CompiledQueryPanel.showDbt(context.extensionUri, context, shown.project, shown.file, 'save');
+            }
+            return;
+        }
         apiRunGitStateChangedBySave(document.uri.fsPath);
 
         const fileExtension = document.fileName.split('.').pop();
@@ -419,6 +444,19 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 }
 
 
+/** The dbt Project a document is in, and the document's path from its root, when it is in one */
+function dbtFileOf(document: vscode.TextDocument | undefined): { project: ProjectState; file: string } | undefined {
+    if (!document || document.uri.scheme !== 'file') {
+        return undefined;
+    }
+    const found = projects.forFile(document.uri.fsPath);
+    if (found.kind !== 'project' || found.project.backend !== 'dbt') {
+        return undefined;
+    }
+    const project = found.project as ProjectState;
+    return { project, file: slashPath(path.relative(project.root, document.uri.fsPath)) };
+}
+
 const panelMessagePosted = new vscode.EventEmitter<unknown>();
 /** Every message the compiled query panel is sent. For the recorded panel output tests, see src/panelRecordings */
 export const onDidPostPanelMessage = panelMessagePosted.event;
@@ -433,9 +471,12 @@ export class CompiledQueryPanel {
     /** Bumped by every render, so a render still waiting on defer to prod can tell it has been replaced */
     private renderSeq = 0;
     private static readonly viewType = "CenterPanel";
-    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
+    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true, renderDataform = true) {
         CompiledQueryPanel.registerListeners(this, extensionContext);
-        this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
+        // A panel opened on a file of a dbt Project is drawn by `showDbt`
+        if (renderDataform) {
+            this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
+        }
     }
 
     /**
@@ -561,7 +602,80 @@ export class CompiledQueryPanel {
         this.postMessage(message);
     }
 
+    /** The dbt Project and file on show, when the panel is showing one */
+    private dbtOnShow: { project: ProjectState; file: string } | undefined;
+    /** Whether the page has been written. A panel opened on a dbt file has none until `showDbt` writes it */
+    private hasPage = false;
+
+    /**
+     * Shows a file of a dbt Project: opens the panel when there is none, asks the Project's compile loop for a
+     * compile (see src/project/dbtCompile.ts for when one is run), and sends the panel what is known before and
+     * after it.
+     *
+     * @param file Relative to the Project root with forward slashes
+     */
+    public static async showDbt(extensionUri: Uri, extensionContext: ExtensionContext, project: ProjectState, file: string, reason: CompileReason) {
+        let panel = CompiledQueryPanel.centerPanel;
+        if (!panel || panel.centerPanelDisposed) {
+            const webviewPanel = window.createWebviewPanel(
+                CompiledQueryPanel.viewType,
+                "Dataform Tools",
+                { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
+                { enableFindWidget: true, retainContextWhenHidden: true, enableScripts: true, localResourceRoots: [Uri.joinPath(extensionUri, "media"), Uri.joinPath(extensionUri, "dist")] },
+            );
+            panel = new CompiledQueryPanel(webviewPanel, extensionUri, extensionContext, true, undefined, false, false);
+            CompiledQueryPanel.centerPanel = panel;
+        }
+        panel.dbtOnShow = { project, file };
+        // Any Dataform render still in flight is no longer wanted
+        panel.renderSeq++;
+        const compiling = compileDbtProject(project, file, reason);
+        if (!panel.hasPage) {
+            panel.hasPage = true;
+            // Synchronously, so that the first message cannot arrive before the page that listens for it
+            panel.webviewPanel.webview.html = panel.pageWith(panel.webviewPanel.webview, {
+                dataform: panel.dataformBlock,
+                compile: compileStatusSlice({ ...dbtCompileState(project.root), compiling: { showingPrevious: false, startedAt: Date.now(), file } }, project.compileNumber),
+            });
+        }
+        panel.sendDbt();
+        await compiling;
+        panel.sendDbt();
+    }
+
+    /**
+     * Sends the Backend-neutral slices for the dbt file on show: the Project, how its compile stands, and the file's
+     * actions. Each goes out only when it differs from what the panel was last sent.
+     */
+    public sendDbt(root?: string) {
+        const shown = this.dbtOnShow;
+        const backend = shown?.project.dbtBackend;
+        if (!shown || !backend || (root !== undefined && root !== shown.project.root)) {
+            return;
+        }
+        const { project, file } = shown;
+        const state = dbtCompileState(project.root);
+        const graph = backend.lastResult?.graph;
+        this.slices.send('project', projectSlice({ root: project.root }, backend, graph, project.compileNumber));
+        // While a compile for another file runs, the panel names the file on show, not that one
+        this.slices.send('compile status', compileStatusSlice(state.compiling ? { ...state, compiling: { ...state.compiling, file } } : state, project.compileNumber));
+        this.slices.send('file', fileSlice(graph, backend, file, project.compileNumber));
+    }
+
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
+        // A file of a dbt Project is shown by the dbt path, whichever way the panel was asked for
+        const document = vscode.window.activeTextEditor?.document ?? activeDocumentObj;
+        const dbt = dbtFileOf(document);
+        if (dbt) {
+            // What the listener for a change of editor compares the next editor with
+            activeEditorFileName = document!.fileName;
+            activeDocumentObj = document;
+            await CompiledQueryPanel.showDbt(extensionUri, extensionContext, dbt.project, dbt.file, freshCompilation ? 'save' : 'switch');
+            return;
+        }
+        if (CompiledQueryPanel.centerPanel) {
+            CompiledQueryPanel.centerPanel.dbtOnShow = undefined;
+        }
         // An outdated saved compilation is shown straight away; the startup compile redraws the panel when it finishes
         const renderFresh = freshCompilation && !isCompilationStale();
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
@@ -1166,6 +1280,7 @@ export class CompiledQueryPanel {
 
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
+                this.hasPage = true;
                 this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool: missingExecutables[0] as Tool, compilerOptions, dataformCoreVersion });
             } else {
                 this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
@@ -1176,6 +1291,7 @@ export class CompiledQueryPanel {
         }
 
         if(this.webviewPanel.webview.html === ""){
+            this.hasPage = true;
             this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: freshCompilation, compilerOptions, dataformCoreVersion });
         }
 
@@ -1586,7 +1702,11 @@ export class CompiledQueryPanel {
             ...(first.compiling ? { compiling: { showingPrevious: false, startedAt: Date.now() } } : {}),
             ...(compilationInfo ? { compiled: { compiledAt: compilationInfo.compiledAt } } : {}),
         }, compileNumber());
-        const initialState: Partial<PanelSlices> = { dataform: this.dataformBlock, compile };
+        return this.pageWith(webview, { dataform: this.dataformBlock, compile });
+    }
+
+    /** The panel's page, starting with the slices given */
+    private pageWith(webview: vscode.Webview, initialState: Partial<PanelSlices>) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const nonce = getNonce();

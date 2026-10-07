@@ -46,6 +46,7 @@ import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
 import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
 import { dbtTool, initDbtTools } from './project/dbtTool';
+import { clearDbtArtifacts, initDbtCompile } from './project/dbtCompile';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -95,6 +96,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initChangedActions(context);
     initProjects(context);
     initDbtTools(context);
+    initDbtCompile(context);
     initProdTargets(context);
     initCliCompileCache(context);
 
@@ -308,6 +310,7 @@ export async function activate(context: vscode.ExtensionContext) {
             logger.info(`Cleared cached data for key: ${key}`);
         });
         clearRemoteCompileCache();
+        clearDbtArtifacts().catch((error) => logger.error(`Failed to clear the dbt artifacts: ${error}`));
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
     }));
 
