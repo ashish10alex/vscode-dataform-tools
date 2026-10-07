@@ -41,6 +41,7 @@ import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 import { panelProblem } from "../utils/panelProblem";
+import { fileView } from "../utils/fileView";
 
 const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
 const PRIMARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]`;
@@ -75,6 +76,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
 }) => {
   const { compiling, message: problemMessage } = panelProblem(state);
+  const view = fileView(state.file);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [fullRefresh, setFullRefresh] = useState(false);
@@ -144,7 +146,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [activeIncrementalTab, setActiveIncrementalTab] = useState<Record<string, string>>({});
 
   const localDependentIds = new Set(
-    state.dependents?.map((d: any) =>
+    view.dependents?.map((d: any) =>
       typeof d === "string" ? d : `${d.database}.${d.schema}.${d.name}`
     ) || []
   );
@@ -152,7 +154,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const handleRunModel = (api: boolean) => {
     setRunningModel(true);
     // The open file's actions; the host runs the open file until it reads them from here (piece 4.4)
-    const actions: Target[] = (state.targetTablesOrViews ?? []).map((action: { target?: Target }) => action.target).filter((target): target is Target => !!target);
+    const actions: Target[] = (view.models ?? []).map((action: { target?: Target }) => action.target).filter((target): target is Target => !!target);
     const scope = { includeDependents, includeDependencies, fullRefresh };
     vscode.postMessage(api ? { command: "dataform.runApi", actions, workspace: false, ...scope } : { command: "run", actions, ...scope });
     setTimeout(() => setRunningModel(false), api ? 3000 : 10000);
@@ -176,9 +178,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const isRemoteMode = state.dataform.compilationInfo?.backend === "api";
   const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
   const runBackend: RunBackend = isRemoteMode ? "api" : preferredBackend;
-  const hasRunnableActions = !!state.actionTypes?.some(t => t !== 'test');
+  const hasRunnableActions = !!view.actionTypes?.some(t => t !== 'test');
   const hasTags = (state.dataformTags?.length ?? 0) > 0;
-  const showTestRun = !!state.testQuery && !isRemoteMode;
+  const showTestRun = !!view.testQuery && !isRemoteMode;
   const hasRunControls = hasRunnableActions || hasTags || (!!state.dataform.changedActions && state.dataform.changedActions.status !== "unavailable");
   // Run Tag always goes through the API, whichever backend Run is set to
   const runsViaApi = isRemoteMode || (hasRunnableActions ? runBackend === "api" || (hasTags && tagPopoverOpen) : hasTags);
@@ -246,13 +248,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const handlePreviewResults = () => {
     // The open file's first action. A unit test builds nothing, so its Target is made up from its name, as in the
     // Compiled Graph. The host previews the open file until it reads the action and section from here (piece 4.4).
-    const first = state.models?.[0] ?? state.targetTablesOrViews?.[0];
+    const first = view.models[0];
     const action: Target = first?.target ?? { database: "", schema: "unit test", name: first?.name ?? "" };
     vscode.postMessage({ command: "preview", action, section: first?.type === "test" ? "test query" : "query" });
   };
 
   // One table, view, incremental table or operation with hasOutput, ignoring built-in assertions: the action whose columns can be traced
-  const canCheckColumnImpact = tableActions(state.targetTablesOrViews).length === 1;
+  const canCheckColumnImpact = tableActions(view.models).length === 1;
 
   const handleColumnImpact = () => {
     vscode.postMessage({ command: "dataform.showColumnLineage" });
@@ -338,9 +340,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
       {/* Model Link */}
       {/* Model Links */}
-      {state.models && state.models.length > 0 && (
+      {view.models && view.models.length > 0 && (
         <div className="space-y-3">
-          {state.models.map((model: any, index: number) => {
+          {view.models.map((model: any, index: number) => {
             const target = model.target;
             const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
 
@@ -348,7 +350,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
             const badgeStyle = ACTION_TYPE_BADGE_STYLES[model.type] || DEFAULT_BADGE_STYLE;
             const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
-            const sameTypeCount = state.models?.filter((m: any) => m.type === model.type).length ?? 0;
+            const sameTypeCount = view.models?.filter((m: any) => m.type === model.type).length ?? 0;
             const nodeNameKey = model.type === 'test' ? model.name : nodeId;
             const dryRunStat =
               (nodeNameKey ? state.dryRunStatByNodeName?.[nodeNameKey] : undefined) ??
@@ -499,12 +501,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         {isLineageOpen && (
           <div className="p-4 border-t border-[var(--vscode-widget-border)] space-y-4">
             {/* Dependencies */}
-            {state.models && state.models.length > 0 && (
+            {view.models && view.models.length > 0 && (
                 <div>
                    <h4 className="text-sm font-semibold text-[var(--vscode-descriptionForeground)] mb-2 uppercase tracking-wider">Dependencies</h4>
-                   {!state.models[0]?.dependencyTargets?.length && <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No dependencies</span>}
+                   {!view.models[0]?.dependencyTargets?.length && <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No dependencies</span>}
                    <ul className="space-y-1 pl-2">
-                       {state.models.map((model, idx) => (
+                       {view.models.map((model, idx) => (
                            model.dependencyTargets?.map((target: any, tIdx: number) => {
                                const id = `${target.database}.${target.schema}.${target.name}`;
                                return (
@@ -535,11 +537,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 {/* Local Dependents Sub-section */}
                 <div className="mb-4 ml-2">
                      <h5 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] opacity-80 mb-1 uppercase tracking-wider">Local Project</h5>
-                     {(!state.dependents || state.dependents.length === 0) ? (
+                     {(!view.dependents || view.dependents.length === 0) ? (
                          <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No local dependents found.</span>
                     ) : (
                         <ul className="space-y-1 pl-2">
-                            {state.dependents.map((dependent: any, idx: number) => {
+                            {view.dependents.map((dependent: any, idx: number) => {
                                  const id = typeof dependent === 'string' ? dependent : `${dependent.database}.${dependent.schema}.${dependent.name}`;
                                  return (
                                     <li key={idx} className="flex items-center text-sm group">
@@ -758,7 +760,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
       {/* Code Blocks — one accordion per target per query type */}
       <div className="space-y-3 pb-20">
-        {state.models?.flatMap((model: any): React.ReactElement[] => {
+        {view.models?.flatMap((model: any): React.ReactElement[] => {
           const targetName = model.type === 'test'
             ? model.name
             : model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : '';
@@ -768,7 +770,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             : `${model.type}_${model.target?.database}_${model.target?.schema}_${model.target?.name}`;
 
           const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
-          const sameTypeCount = state.models?.filter((m: any) => m.type === model.type).length ?? 0;
+          const sameTypeCount = view.models?.filter((m: any) => m.type === model.type).length ?? 0;
           const nodeNameKey = model.type === 'test' ? model.name : nodeId;
           const modelDryRunError =
             (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
