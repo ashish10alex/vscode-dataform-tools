@@ -371,14 +371,14 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
 
   const entityViews = useMemo(
     () => (graph.entities ?? []).map((entity) =>
-      toElementView(entity, "entity", state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(entity))),
-    [graph.entities, state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor],
+      toElementView(entity, "entity", state.dataform.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(entity))),
+    [graph.entities, state.dataform.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor],
   );
 
   const relationshipViews = useMemo(
     () => (graph.relationships ?? []).map((relationship) =>
-      toElementView(relationship, "relationship", state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(relationship))),
-    [graph.relationships, state.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor],
+      toElementView(relationship, "relationship", state.dataform.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor(relationship))),
+    [graph.relationships, state.dataform.propertyGraphElementSchemas, requestedSchemas, schemaKeyFor],
   );
 
   const elementByName = useMemo(() => {
@@ -402,7 +402,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
     }
     const schemaKey = schemaKeyFor(element);
     const needsSchema = elementImportsAllColumns(element)
-      && state.propertyGraphElementSchemas?.[schemaKey] === undefined
+      && state.dataform.propertyGraphElementSchemas?.[schemaKey] === undefined
       && requestedSchemas[schemaKey] !== true;
 
     if (needsSchema) {
@@ -413,7 +413,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
         table: element.dataSource,
       });
     }
-  }, [elementByName, schemaKeyFor, requestedSchemas, state.propertyGraphElementSchemas]);
+  }, [elementByName, schemaKeyFor, requestedSchemas, state.dataform.propertyGraphElementSchemas]);
 
   const handleToggleExpand = useCallback((elementName: string) => {
     setElementExpanded(elementName, expanded[elementName] !== true);

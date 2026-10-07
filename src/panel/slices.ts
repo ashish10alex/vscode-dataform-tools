@@ -113,7 +113,7 @@ export interface CompileState {
     /** The tool was found and is a version the extension does not work with */
     unsupportedVersion?: { tool: Tool; version: string; message: string };
     /** A compile is running */
-    compiling?: { showingPrevious: boolean; startedAt: number; command?: string };
+    compiling?: { showingPrevious: boolean; startedAt: number; command?: string; file?: string };
     /** The last compile that finished with a graph. `notice` is set when the Project was only parsed */
     compiled?: { compiledAt: number; durationMs?: number; notice?: string };
     /** The errors of the last compile that finished */

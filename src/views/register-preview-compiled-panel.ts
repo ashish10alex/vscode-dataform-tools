@@ -1,7 +1,7 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, requiredTools } from '../project';
 import type { BigQuerySlice, DataformBlock, DryRunKey, FileProblem, FileSlice, HostMessage, PanelMessage } from '../shared/panelContract';
-import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice } from '../panel/slices';
+import { CompileState, bigQuerySlice, compileStatusSlice, fileSlice, projectSlice } from '../panel/slices';
 import { toDryRunResult } from '../bigquery/dryRunService';
 import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
 import { legacyModels } from '../shared/panelLegacyFile';
@@ -15,7 +15,7 @@ import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { runMultipleTagsFromSelection, runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
-import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults } from "../types";
+import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults } from "../types";
 import { currencySymbolMapping } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -320,10 +320,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 if (workspaceFolder) {
                     dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
                 }
-                CompiledQueryPanel?.centerPanel?.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now() } });
-                CompiledQueryPanel?.centerPanel?.postMessage({
-                    "relativeFilePath": getRelativePath(document.fileName),
-                });
+                CompiledQueryPanel?.centerPanel?.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), file: slashPath(getRelativePath(document.fileName)) } });
                 CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationMode: isRemoteMode() ? "api" : "cli", dataformCoreVersion: dataformCoreVersion ?? undefined });
                 let currentFileMetadata = await getCurrentFileMetadata(true, { deferralInBackground: true });
                 updateSchemaAutoCompletions(currentFileMetadata);
@@ -455,7 +452,7 @@ export class CompiledQueryPanel {
      * What only a Dataform Project has, as the panel was last told. Only the fields of `MIGRATED_DATAFORM_FIELDS` are
      * kept here so far; the rest still travel as flat fields and hold a placeholder.
      */
-    private dataformBlock: DataformBlock = {
+    public dataformBlock: DataformBlock = {
         compile: 0, compilerOptions: '', compilationMode: 'cli', snoozeEndTime: null, deferral: null, leftoverProxies: null,
         lastRun: null, propertyGraphs: null, propertyGraphValidations: null, propertyGraphElementSchemas: {},
     };
@@ -470,6 +467,19 @@ export class CompiledQueryPanel {
         const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
         const message: HostMessage = { slice: 'compile status', value: compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()) };
         this.postMessage(message);
+    }
+
+    /**
+     * Tells the panel which Project the file belongs to: its root and its tags. Sent where the flat workspace folder
+     * and tags were, so that they arrive as often as they did. Not sent for a file in no Project.
+     */
+    private sendProject() {
+        const backend = dataformBackend();
+        const root = currentDataformRoot();
+        if (backend && root) {
+            const message: HostMessage = { slice: 'project', value: projectSlice({ root }, backend, compiledGraph(), compileNumber()) };
+            this.postMessage(message);
+        }
     }
 
     /**
@@ -808,21 +818,11 @@ export class CompiledQueryPanel {
                 const _includeDependencies = message.includeDependencies;
                 const _includeDependents = message.includeDependents;
                 const _fullRefresh = message.fullRefresh;
-                // FIXME: there must be a way to avoid double calls before and after function invocation ?
-                let messageDict: WebviewMessage = {
-                    "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
-                    "dataformTags": dataformTags,
-                    "apiUrlLoading": true,
-                };
-                this.centerPanel?.postMessage(messageDict);
                 const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, message.workspace ? "api_workspace" : "api");
                 if(!result){
                     return;
                 }
-                const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
                 const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false };
-                this.centerPanel?.postMessage(messageDict);
                 this.centerPanel?.updateDataformBlock({ workflowUrls: updatedWorkflowUrls });
                 return;
               case 'dataform.runTagsApi': {
@@ -862,14 +862,8 @@ export class CompiledQueryPanel {
                         currency = tagDryRunStatsMeta?.tagDryRunStatsList[0].currency;
                         currencySymbol = currencySymbolMapping[currency];
                     }
-                    const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
                     this.centerPanel?.sendBigQuery({ currencySymbol });
-                    this.centerPanel?.postMessage({
-                        "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                        "dataformTags": dataformTags,
-                        "selectedTags": selectedTags,
-                    });
-                    this.centerPanel?.updateDataformBlock({ tagCostEstimate: tagDryRunStatsMeta && { rows: tagDryRunStatsMeta.tagDryRunStatsList, error: tagDryRunStatsMeta.error } });
+                    this.centerPanel?.updateDataformBlock({ tagCostEstimate: tagDryRunStatsMeta && { rows: tagDryRunStatsMeta.tagDryRunStatsList, error: tagDryRunStatsMeta.error, tags: selectedTags } });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
                 }
@@ -903,11 +897,7 @@ export class CompiledQueryPanel {
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata?.tables?.[0]?.target, locationLineage);
 
-                this.centerPanel?.postMessage({
-                    "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                    "lineageMetadata": lineageMetadata,
-                    "dataformTags": dataformTags,
-                });
+                this.centerPanel?.updateDataformBlock({ lineage: lineageMetadata });
                 return;
               }
               case 'dataform.loadWorkflowUrls':
@@ -1097,9 +1087,10 @@ export class CompiledQueryPanel {
                     // the only signal available that the table could not be read.
                     error: columns.length === 0 ? `Could not read the schema of ${fullTableId}` : undefined,
                 };
-                await this.centerPanel?.postMessage({
-                    "propertyGraphElementSchema": elementSchema,
-                });
+                if (this.centerPanel) {
+                    const known = this.centerPanel.dataformBlock.propertyGraphElementSchemas;
+                    this.centerPanel.updateDataformBlock({ propertyGraphElementSchemas: { ...known, [elementSchema.elementName]: elementSchema } });
+                }
                 return;
               }
               case 'dataform.runGeneratedQuery':
@@ -1177,8 +1168,6 @@ export class CompiledQueryPanel {
             } else {
                 this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
-                await this.postMessage({
-                });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             }
             return;
@@ -1196,11 +1185,9 @@ export class CompiledQueryPanel {
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
-            this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now() } });
-            await this.postMessage({
-                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                "workspaceFolder": workspaceFolder,
-            });
+            const compilingFor = curFileMeta?.pathMeta?.relativeFilePath;
+            this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), ...(compilingFor ? { file: slashPath(compilingFor) } : {}) } });
+            this.sendProject();
             this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', compilationMode: isRemoteMode() ? "api" : "cli", dataformCoreVersion: dataformCoreVersion ?? undefined });
         }
 
@@ -1211,8 +1198,6 @@ export class CompiledQueryPanel {
         if(!curFileMeta){
             this.sendCompileStatus();
             this.sendNoActions(undefined, { kind: 'unsupported file type', message: `File type not supported. Supported file types are sqlx, js` });
-            await this.postMessage({
-            });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
@@ -1221,33 +1206,23 @@ export class CompiledQueryPanel {
         if (curFileMeta.isDataformWorkspace===false){
             this.sendCompileStatus({ inProject: false });
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
-            await this.postMessage({
-            });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: curFileMeta?.errors?.errorGettingFileNameFromDocument });
-            await this.postMessage({
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendProject();
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
-            const workspaceFolder = await getWorkspaceFolder();
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'no action' });
-            await this.postMessage({
-                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendProject();
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'no sql', message: curFileMeta.errors.queryMetaError });
-            await this.postMessage({
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendProject();
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
@@ -1279,9 +1254,7 @@ export class CompiledQueryPanel {
             });
             // The compile status has named the errors; with none to name, the file still has nothing to show
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, curFileMeta.errors.dataformCompilationErrors.length === 0 ? { kind: 'other' } : undefined);
-            await this.postMessage({
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendProject();
             this.updateDataformBlock({ possibleResolutions: curFileMeta.possibleResolutions ?? [], projectConfig: undefined, packageJson: undefined });
             return;
         }
@@ -1296,10 +1269,7 @@ export class CompiledQueryPanel {
             this.sendCompileStatus();
             // package.json is shown as the settings files are
             this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'project settings' });
-            await this.postMessage({
-                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendProject();
             this.updateDataformBlock({ dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
             this.updateDataformBlock({ projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             return;
@@ -1317,12 +1287,7 @@ export class CompiledQueryPanel {
                 }
                 this.sendCompileStatus();
                 this.sendFileSlice(relativeFilePathForGraphs);
-                await this.postMessage({
-                    "relativeFilePath": relativeFilePathForGraphs,
-                    "compilationTimeMs": curFileMeta.compilationTimeMs,
-                    "dataformTags": dataformTags,
-                    "workspaceFolder": workspaceFolder,
-                });
+                this.sendProject();
                 // The validation of a graph is a dry run of the statement that would create it
                 this.sendBigQuery({ results: [], tables: {}, dryRunning: propertyGraphs.map((graph) => ({ action: targetId(graph.target), script: 'validation', incremental: false })) });
                 this.updateDataformBlock({ propertyGraphs, propertyGraphValidations: null });
@@ -1349,10 +1314,7 @@ export class CompiledQueryPanel {
             if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
                 this.sendCompileStatus();
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.` });
-                await this.postMessage({
-                    "relativeFilePath": relativeFilePathForGraphs,
-                    "workspaceFolder": workspaceFolder,
-                });
+                this.sendProject();
                 this.sendBigQuery({ dryRunning: [] });
                 this.updateDataformBlock({ propertyGraphs: null });
                 this.updateDataformBlock({ dataformCoreVersion: coreVersion ?? undefined });
@@ -1379,10 +1341,7 @@ export class CompiledQueryPanel {
                             }
                             this.sendCompileStatus();
                             this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath);
-                            await this.postMessage({
-                                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                                "workspaceFolder": workspaceFolder,
-                            });
+                            this.sendProject();
                             this.updateDataformBlock({ propertyGraphs: null });
                             return;
                         }
@@ -1391,10 +1350,7 @@ export class CompiledQueryPanel {
                     // If it's a JS file but has no tables and no declarations, it's a helper file
                     this.sendCompileStatus();
                     this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'helper' });
-                    await this.postMessage({
-                        "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                        "workspaceFolder": workspaceFolder,
-                    });
+                    this.sendProject();
                     this.updateDataformBlock({ propertyGraphs: null });
                     return;
                 }
@@ -1406,9 +1362,7 @@ export class CompiledQueryPanel {
         if (!fm) {
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.` });
-            await this.postMessage({
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendProject();
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
@@ -1423,13 +1377,8 @@ export class CompiledQueryPanel {
         const shownFile = this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { deferral: curFileMeta.deferral, registered });
         // The panel lists the actions in the slice's order, and matches the last-modified times to them by position
         const shown = shownFile ? legacyModels(shownFile) : [];
-        await this.postMessage({
-            "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-            "lineageMetadata": curFileMeta.lineageMetadata,
-            "compilationTimeMs": curFileMeta.compilationTimeMs,
-            "dataformTags": dataformTags,
-            "workspaceFolder": workspaceFolder,
-    });
+        this.sendProject();
+        this.updateDataformBlock({ lineage: curFileMeta.lineageMetadata ?? null });
         // The dry runs that are now out: every script of every action shown. Their results are for this compile
         const dryRunCompile = compileNumber();
         const graph = compiledGraph();
@@ -1533,12 +1482,8 @@ export class CompiledQueryPanel {
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
             this.sendCompileStatus();
-            await this.postMessage({
-                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "lineageMetadata": curFileMeta.lineageMetadata,
-                "compilationTimeMs": curFileMeta.compilationTimeMs,
-                "dataformTags": dataformTags,
-            });
+            this.sendProject();
+            this.updateDataformBlock({ lineage: curFileMeta.lineageMetadata ?? null });
             this.sendBigQuery({ results: dryRunResults.dryRuns.map(({ action, script, response }) => toDryRunResult(action, script, dryRunCompile, response)), dryRunning: [], tables, currencySymbol });
             this.updateDataformBlock({ deferral: toDeferralView(curFileMeta.deferral, curFileMeta.deferralError), deferToProd: getDeferToProdState(workspaceFolder), leftoverProxies: curFileMeta.leftoverProxies ?? null });
             this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });

@@ -71,20 +71,20 @@ const renderTotal = (
 };
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
-  const [selectedTags, setSelectedTags] = useState<string[]>(state.selectedTags || []);
+  const [selectedTags, setSelectedTags] = useState<string[]>(state.dataform.tagCostEstimate?.tags || []);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-     if (state.selectedTags) {
-         setSelectedTags(state.selectedTags);
+     if (state.dataform.tagCostEstimate?.tags) {
+         setSelectedTags(state.dataform.tagCostEstimate?.tags);
      }
-  }, [state.selectedTags]);
+  }, [state.dataform.tagCostEstimate?.tags]);
 
   const tagOptions: OptionType[] = useMemo(() =>
-      (state.dataformTags || []).map(tag => ({ value: tag, label: tag })),
-      [state.dataformTags]
+      (state.project?.tags || []).map(tag => ({ value: tag, label: tag })),
+      [state.project?.tags]
   );
 
   const selectedTagOptions: OptionType[] = useMemo(() =>
@@ -252,7 +252,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </div>
             </details>
 
-            {state.dataformTags && state.dataformTags.length > 0 && (
+            {state.project?.tags && state.project?.tags.length > 0 && (
                 <div className="mb-3">
                     <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tags:</p>
                     <StyledMultiSelect

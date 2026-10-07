@@ -23,6 +23,7 @@ import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
 import { panelProblem } from './utils/panelProblem';
 import { fileView } from './utils/fileView';
+import { fileOnShow } from '../../src/shared/panelState';
 
 function HeaderRightActions({
   snoozeEndTime,
@@ -62,6 +63,7 @@ function App() {
   const state = useVSCodeMessage();
   const problem = panelProblem(state);
   const view = fileView(state.file);
+  const fileName = fileOnShow(state);
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
   const [now, setNow] = useState(Date.now());
 
@@ -139,7 +141,7 @@ function App() {
     };
   }, [state.dataform.workflowUrls]);
 
-  const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
+  const isConfigFile = fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json';
 
   // While a compile runs no error is on show, so only what the file has to show keeps the skeleton away
   const showSkeleton = problem.compiling && !view.tableOrViewQuery && !view.testQuery && !view.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !view.declarations;
@@ -200,12 +202,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json') {
+    if (fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json') {
       setActiveTab('project_config');
     } else if (activeTab === 'project_config' || (isPropertyGraphFile && activeTab !== 'compilation')) {
       setActiveTab('compilation');
     }
-  }, [state.relativeFilePath, activeTab, isPropertyGraphFile]);
+  }, [fileName, activeTab, isPropertyGraphFile]);
 
   // Handle declarations view (full page override)
   if (view.declarations) {
@@ -360,10 +362,10 @@ function App() {
         )}
 
         {isConfigFile && !showSkeleton && <ProjectConfigTab state={state} />}
-        {!isConfigFile && (view.isHelperFile || (!view.tableOrViewQuery && !view.operationsQuery && !view.assertionQuery && !view.incrementalQuery && !view.testQuery && !view.expectedOutputQuery && !view.declarations && !view.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
+        {!isConfigFile && (view.isHelperFile || (!view.tableOrViewQuery && !view.operationsQuery && !view.assertionQuery && !view.incrementalQuery && !view.testQuery && !view.expectedOutputQuery && !view.declarations && !view.models?.some((m: any) => m.type === 'notebook') && fileName?.endsWith('.js'))) && (
             <div>
                 <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
-                    {state.relativeFilePath}
+                    {fileName}
                 </code>
             </div>
         )}

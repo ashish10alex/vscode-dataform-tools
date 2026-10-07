@@ -27,7 +27,7 @@ const answered = bigQuerySlice({ results, tables }, 1);
 const out = bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.orders', script: 'query', incremental: false }] }, 1);
 const compiling: CompileStatus = { compile: 1, status: 'compiling', showingPrevious: false, startedAt: 1 };
 /** The slices after the host's messages, as the panel keeps them */
-const after = (...messages: HostMessage[]): PanelSlices => messages.reduce((slices, message) => applyMessage(slices, message, undefined), initialSlices());
+const after = (...messages: HostMessage[]): PanelSlices => messages.reduce((slices, message) => applyMessage(slices, message), initialSlices());
 const aFile = (value: FileSlice): HostMessage => ({ slice: 'file', value });
 const bigquery = (value: BigQuerySlice): HostMessage => ({ slice: 'bigquery', value });
 
@@ -66,13 +66,13 @@ suite('panel: what BigQuery said of the actions on show', () => {
         // The same results give the same object, so the Schema tab does not work its rows out again
         assert.strictEqual(columnsOnShow(shown.columns), columns);
 
-        const next = applyMessage(shown, bigquery(out), undefined);
+        const next = applyMessage(shown, bigquery(out));
         assert.strictEqual(bigQueryView(next).dryRunning, true);
         assert.strictEqual(columnsOnShow(next.columns), columns);
         // No dry run was made, e.g. the compile was already out of date
-        assert.strictEqual(columnsOnShow(applyMessage(next, bigquery(bigQuerySlice({ results: [] }, 1)), undefined).columns), columns);
+        assert.strictEqual(columnsOnShow(applyMessage(next, bigquery(bigQuerySlice({ results: [] }, 1))).columns), columns);
         // New results: new columns
-        const again = applyMessage(next, bigquery(bigQuerySlice({ results: [answer('p.ds.orders', ok([{ name: 'total', type: 'NUMERIC' }]))] }, 1)), undefined);
+        const again = applyMessage(next, bigquery(bigQuerySlice({ results: [answer('p.ds.orders', ok([{ name: 'total', type: 'NUMERIC' }]))] }, 1)));
         assert.deepStrictEqual(columnsOnShow(again.columns), { fields: [{ name: 'total', type: 'NUMERIC' }] });
     });
 

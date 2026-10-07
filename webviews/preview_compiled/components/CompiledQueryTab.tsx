@@ -42,6 +42,7 @@ import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 import { panelProblem } from "../utils/panelProblem";
 import { fileView } from "../utils/fileView";
+import { fileOnShow } from "../../../src/shared/panelState";
 import { bigQueryView } from "../utils/bigQueryView";
 
 const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
@@ -78,6 +79,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 }) => {
   const { compiling, message: problemMessage } = panelProblem(state);
   const view = fileView(state.file);
+  const fileName = fileOnShow(state);
   const bq = bigQueryView(state);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
@@ -99,16 +101,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   }, []);
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
-  const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.selectedTags || []);
+  const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.dataform.tagCostEstimate?.tags || []);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const tagPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const available = state.dataformTags ?? [];
-    const incoming = state.selectedTags ?? [];
+    const available = state.project?.tags ?? [];
+    const incoming = state.dataform.tagCostEstimate?.tags ?? [];
     setSelectedTagsForRun(incoming.filter(t => available.includes(t)));
-  }, [state.selectedTags, state.dataformTags]);
+  }, [state.dataform.tagCostEstimate?.tags, state.project?.tags]);
 
   useEffect(() => {
     if (!tagPopoverOpen) { return; }
@@ -129,8 +131,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   }, [tagPopoverOpen]);
 
   const tagOptions: OptionType[] = useMemo(
-    () => (state.dataformTags || []).map(tag => ({ value: tag, label: tag })),
-    [state.dataformTags]
+    () => (state.project?.tags || []).map(tag => ({ value: tag, label: tag })),
+    [state.project?.tags]
   );
   const selectedTagRunOptions: OptionType[] = useMemo(
     () => selectedTagsForRun.map(tag => ({ value: tag, label: tag })),
@@ -181,7 +183,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
   const runBackend: RunBackend = isRemoteMode ? "api" : preferredBackend;
   const hasRunnableActions = !!view.actionTypes?.some(t => t !== 'test');
-  const hasTags = (state.dataformTags?.length ?? 0) > 0;
+  const hasTags = (state.project?.tags?.length ?? 0) > 0;
   const showTestRun = !!view.testQuery && !isRemoteMode;
   const hasRunControls = hasRunnableActions || hasTags || (!!state.dataform.changedActions && state.dataform.changedActions.status !== "unavailable");
   // Run Tag always goes through the API, whichever backend Run is set to
@@ -242,7 +244,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   };
   
   const handleRunTest = () => {
-    if (state.workspaceFolder) {
+    if (state.project?.root) {
         vscode.postMessage({ command: "dataform.runTests" });
     }
   };
@@ -262,7 +264,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "dataform.showColumnLineage" });
   };
   // From a schema diff after each dry run; no lineage is read until the panel opens
-  const changedColumns = state.dataform.columnImpact?.file === state.relativeFilePath ? state.dataform.columnImpact?.changed ?? 0 : 0;
+  const changedColumns = state.dataform.columnImpact?.file === fileName ? state.dataform.columnImpact?.changed ?? 0 : 0;
 
   const handleDependencyGraph = () => {
     vscode.postMessage({ command: "showDependencyGraph" });
@@ -286,15 +288,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     // Since we don't have a direct "lineage loaded" event here easily without complex effect, 
     // we can rely on the fact that the state update will cause a re-render. 
     // However, if we want to turn off loading specifically when lineageMetadata arrives, we might need an effect.
-    // For now, let's just set a timeout fallback or rely on state.lineageMetadata check.
-    // But since `state` comes from prop, we can check if `state.lineageMetadata` changes.
+    // For now, let's just set a timeout fallback or rely on state.dataform.lineage check.
+    // But since `state` comes from prop, we can check if `state.dataform.lineage` changes.
   };
 
   useEffect(() => {
-      if (state.lineageMetadata || problemMessage) {
+      if (state.dataform.lineage || problemMessage) {
           setLoadingLineage(false);
       }
-  }, [state.lineageMetadata, problemMessage]);
+  }, [state.dataform.lineage, problemMessage]);
 
   const queryLabelByType = (type: string) => {
     if (type === 'view') {return 'View';};
@@ -311,7 +313,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       <div className="space-y-6 pb-20">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
-            {state.relativeFilePath || " "}
+            {fileName || " "}
           </span>
           <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={compiling} />
         </div>
@@ -326,7 +328,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       {/* Filename + Compile Time + Format/Lint */}
       <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
-              {state.relativeFilePath || " "}
+              {fileName || " "}
           </span>
           <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={compiling} />
           <div className="flex-grow"></div>
@@ -564,7 +566,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                  <div className="ml-2">
                      <h5 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] opacity-80 mb-1 uppercase tracking-wider">Dataplex (Downstream)</h5>
                      
-                     {!state.lineageMetadata ? (
+                     {!state.dataform.lineage ? (
                           <button 
                              onClick={handleLineageMetadata}
                              disabled={loadingLineage}
@@ -575,17 +577,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                          </button>
                     ) : (
                         <div className="mt-1">
-                            {state.lineageMetadata.error ? (
+                            {state.dataform.lineage.error ? (
                                 <div className="text-red-500 dark:text-red-400 text-sm mb-1">
-                                    Error: {state.lineageMetadata.error.message || "Unknown error"}
+                                    Error: {state.dataform.lineage.error.message || "Unknown error"}
                                 </div>
                             ) : (
                                 <>
-                                    {(!state.lineageMetadata.dependencies || state.lineageMetadata.dependencies.length === 0) ? (
+                                    {(!state.dataform.lineage.dependencies || state.dataform.lineage.dependencies.length === 0) ? (
                                          <span className="text-sm text-zinc-500 italic">No Dataplex dependents found.</span>
                                     ) : (
                                         <ul className="space-y-1 pl-2">
-                                            {state.lineageMetadata.dependencies.map((item: string, idx: number) => {
+                                            {state.dataform.lineage.dependencies.map((item: string, idx: number) => {
                                                 const isExternal = !localDependentIds.has(item);
                                                 return (
                                                    <li key={idx} className="flex items-center text-sm">

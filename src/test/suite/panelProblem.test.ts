@@ -13,7 +13,7 @@ const errors = [{ message: 'Unexpected token', fileName: 'definitions/a.sqlx', l
 const failed = status({ status: 'failed', errors });
 /** The slices after the host's messages, as the panel keeps them */
 const after = (...messages: Array<CompileStatus | FileSlice>) =>
-    messages.reduce((slices, value) => applyMessage(slices, 'status' in value ? { slice: 'compile status', value } : { slice: 'file', value }, undefined), initialSlices());
+    messages.reduce((slices, value) => applyMessage(slices, 'status' in value ? { slice: 'compile status', value } : { slice: 'file', value }), initialSlices());
 
 suite('panel: what is wrong, from the compile status and the file slice', () => {
     test('before the host has said anything, and for a file with something to show, nothing is wrong', () => {
