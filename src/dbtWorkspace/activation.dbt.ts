@@ -112,8 +112,9 @@ suite('a dbt workspace', function () {
             // Longer than the debounce of the listeners for a change of editor
             await sleep(2000);
             assert.deepStrictEqual(shown, []);
-            // That this way of listening does hear the extension: a Dataform command says why it does nothing here
-            await vscode.commands.executeCommand('vscode-dataform-tools.runCurrentFile');
+            // That this way of listening does hear the extension: a Dataform-only command says why it does nothing here.
+            // It is not in the palette of a dbt Project, but a keybinding can still run it
+            await vscode.commands.executeCommand('vscode-dataform-tools.runCurrentFileWtApi');
             assert.strictEqual(shown.length, 1, 'A Dataform command run in a dbt Project should say why it did nothing');
         } finally {
             kinds.forEach((kind, index) => {

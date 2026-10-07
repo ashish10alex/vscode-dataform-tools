@@ -81,17 +81,17 @@
         "commands": [
             {
                 "command": "vscode-dataform-tools.runQuery",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Preview query results"
             },
             {
                 "command": "vscode-dataform-tools.cancelQuery",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Cancel query"
             },
             {
                 "command": "vscode-dataform-tools.runFilesTagsWtOptions",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run file(s) / tag(s) with options"
             },
             {
@@ -116,17 +116,17 @@
             },
             {
                 "command": "vscode-dataform-tools.runTag",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run a tag"
             },
             {
                 "command": "vscode-dataform-tools.runTagWtDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run a tag with dependencies"
             },
             {
                 "command": "vscode-dataform-tools.runTagWtDownstreamDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run a tag with dependents"
             },
             {
@@ -146,17 +146,17 @@
             },
             {
                 "command": "vscode-dataform-tools.runAssertions",
-                "category": "Dataform",
-                "title": "Run assertions in the current model"
+                "category": "Dataform/dbt",
+                "title": "Run assertions / tests in the current model"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run current file with dependents"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFile",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run current file",
                 "icon": "$(play)",
                 "group": "navigation"
@@ -187,29 +187,29 @@
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run current file with dependencies"
             },
             {
                 "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Show compiled query in vertical split",
                 "icon": "$(layout-centered)",
                 "group": "navigation@3"
             },
             {
                 "command": "vscode-dataform-tools.showCompiledQueryInWebView",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Show compiled Query in web view"
             },
             {
                 "command": "vscode-dataform-tools.snoozeCompilation",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Snooze compilation (5 minutes)"
             },
             {
                 "command": "vscode-dataform-tools.stopSnoozeCompilation",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Stop snooze compilation"
             },
             {
@@ -256,12 +256,12 @@
             },
             {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Select project"
             },
             {
                 "command": "vscode-dataform-tools.clearExtensionCache",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Clear extension cache"
             },
             {
@@ -271,7 +271,7 @@
             },
             {
                 "command": "vscode-dataform-tools.rerunLastExecution",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Rerun last execution"
             },
             {
@@ -413,42 +413,138 @@
                 },
                 {
                     "command": "vscode-dataform-tools.traceColumnLineageGuessed",
-                    "when": "vscode-dataform-tools.devMode"
+                    "when": "vscode-dataform-tools.devMode && vscode-dataform-tools.backend != dbt"
                 },
                 {
                     "command": "vscode-dataform-tools.runTests",
-                    "when": "!vscode-dataform-tools.remoteMode"
+                    "when": "!vscode-dataform-tools.remoteMode && vscode-dataform-tools.backend != dbt"
                 },
                 {
                     "command": "vscode-dataform-tools.compileRemotely",
-                    "when": "vscode-dataform-tools.remoteMode"
+                    "when": "vscode-dataform-tools.remoteMode && vscode-dataform-tools.backend != dbt"
                 },
                 {
                     "command": "vscode-dataform-tools.remoteModeActions",
-                    "when": "vscode-dataform-tools.remoteMode"
+                    "when": "vscode-dataform-tools.remoteMode && vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runFilesTagsWtOptionsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runChangedActionsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runTagWtApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runTagWtDependenciesApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runTagWtDependentsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtDependenciesApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtDependentsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.switchCompilationBackend",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.openLastWorkflowExecution",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.toggleDeferToProd",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.deferToProdActions",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.removeProxyViews",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.refreshDeferToProd",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.columnLineage",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.columnImpactOfChanges",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.dependencyGraphPanel",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.dependencyInspector",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runChangedActions",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.createNewDataformProject",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.formatDocument",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.lintCurrentFile",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.searchTableColumns",
+                    "when": "vscode-dataform-tools.backend != dbt"
                 }
             ],
             "editor/context": [
                 {
                     "command": "vscode-dataform-tools.searchTableColumns",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt",
                     "group": "navigation@10"
                 }
             ],
             "editor/title": [
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt",
                     "group": "navigation"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt",
                     "group": "navigation@3"
                 },
                 {
                     "command": "vscode-dataform-tools.formatDocument",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
+                    "when": "(resourceExtname == .sqlx || resourceExtname == .js) && vscode-dataform-tools.backend != dbt",
                     "group": "navigation@0"
                 }
             ]

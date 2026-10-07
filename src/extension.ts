@@ -51,6 +51,7 @@ import { dbtTool, initDbtTools } from './project/dbtTool';
 import { clearDbtArtifacts, initDbtCompile } from './project/dbtCompile';
 import { initDbtRuns, lastDbtRun } from './project/dbtRun';
 import { initDbtDiagnostics } from './project/dbtDiagnostics';
+import { dbtPreviewFile, dbtRerun, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -146,6 +147,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async () => {
             logger.info('Running query command');
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            if (dbt) {
+                await dbtPreviewFile(dbt);
+                return;
+            }
             await previewQueryResults(queryResultsViewProvider);
         })
     );
@@ -243,6 +249,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async () => {
+            // In a dbt Project: build the tests attached to the open model
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            if (dbt) {
+                await dbtRunTestsOfFile(dbt);
+                return;
+            }
             let curFileMeta = await getCurrentFileMetadata(false);
             if (!curFileMeta?.fileMetadata) {
                 return;
@@ -320,7 +332,10 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.rerunLastExecution', () => rerunLastExecution(context)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.rerunLastExecution', () => {
+        const dbt = CompiledQueryPanel.activeDbtFile();
+        return dbt ? dbtRerun(dbt) : rerunLastExecution(context);
+    }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.openLastWorkflowExecution', async () => {
         const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
@@ -332,9 +347,14 @@ export async function activate(context: vscode.ExtensionContext) {
         await vscode.env.openExternal(vscode.Uri.parse(lastEntry.url));
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(context, false, false, false, "cli"); }));
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(context, true, false, false, "cli"); }));
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(context, false, true, false, "cli"); }));
+    // In a dbt Project the run commands are `dbt build` in the extension's terminal (xf#63)
+    const runFile = (includeDependencies: boolean, includeDependents: boolean) => () => {
+        const dbt = CompiledQueryPanel.activeDbtFile();
+        return dbt ? dbtRunFile(dbt, { includeDependencies, includeDependents, fullRefresh: false }) : runCurrentFile(context, includeDependencies, includeDependents, false, "cli");
+    };
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', runFile(false, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', runFile(true, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', runFile(false, true)));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => {
         let transitiveDependenciesIncluded = false;
@@ -379,7 +399,10 @@ export async function activate(context: vscode.ExtensionContext) {
     }));
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => { runFilesTagsWtOptions(context, "cli"); })
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => {
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            return dbt ? dbtRunWithOptions(dbt) : runFilesTagsWtOptions(context, "cli");
+        })
     );
 
     context.subscriptions.push(
@@ -416,26 +439,13 @@ export async function activate(context: vscode.ExtensionContext) {
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
         }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
-        let includeDependencies = false;
-        let includeDependents = false;
-        let fullRefresh = false;
-        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
-        let includeDependencies = true;
-        let includeDependents = false;
-        let fullRefresh = false;
-        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
-        let includeDependencies = false;
-        let includeDependents = true;
-        let fullRefresh = false;
-        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
-    }));
+    const runATag = (includeDependencies: boolean, includeDependents: boolean) => () => {
+        const dbt = CompiledQueryPanel.activeDbtFile();
+        return dbt ? dbtRunTag(dbt, { includeDependencies, includeDependents, fullRefresh: false }) : runTag(context, includeDependencies, includeDependents, false, "cli");
+    };
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', runATag(false, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', runATag(true, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', runATag(false, true)));
 
     const errorLensExtensionInstalled = vscode.extensions.getExtension("usernamehw.errorlens");
     //NOTE: in wsl the extension is not visible in wsl remote by the api as it can be installed in client side (windows) if vscode thinks its is a UI based extension instead of workspace based

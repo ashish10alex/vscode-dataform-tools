@@ -10,9 +10,9 @@ import { CodeCompilationConfig, DataformCompiledJson, ExecutionMode, GraphError 
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { toDataformCompiledJson, ApiCompilationResult, ApiCompilationResultAction } from './remoteCompileAdapter';
 import { DEFAULT_CONFIG_KEY, getRemoteCompile, initRemoteCompileCache, saveRemoteCompile, RemoteCompileEntry } from './remoteCompileCache';
-import { initRemoteModeStatusBar, refreshRemoteModeStatusBar, updateRemoteModeStatusBar } from './remoteModeStatusBar';
+import { initRemoteModeStatusBar, refreshRemoteModeStatusBar, setRemoteModeStatusBarInDbt, updateRemoteModeStatusBar } from './remoteModeStatusBar';
 import { createCompilerOptionsObjectForApi } from './dataformCompiler';
-import { clearCompiled, currentDataformRoot, setCompiled } from '../project';
+import { clearCompiled, currentDataformRoot, onDidChangeActiveProject, projects, setCompiled } from '../project';
 import { setCompilationInfo } from './compilationInfo';
 import type { DataformOptions } from '../backend/dataform/options';
 import type { CompilationMode } from '../project/tools';
@@ -69,6 +69,9 @@ export function initRemoteCompiler(context: vscode.ExtensionContext) {
     initDataformOptions(context);
     initRemoteCompileCache(context);
     initRemoteModeStatusBar(context);
+    // Remote mode is Dataform's: its item is not shown while the active Project is a dbt one
+    setRemoteModeStatusBarInDbt(projects.active?.backend === 'dbt');
+    context.subscriptions.push(onDidChangeActiveProject((project) => setRemoteModeStatusBarInDbt(project?.backend === 'dbt')));
     syncRemoteModeContext();
 
     context.subscriptions.push(
