@@ -163,7 +163,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
           return 0;
       });
   }, [state.dataform.tagCostEstimate]);
-  const currencySymbol = state.currencySymbol || "$";
+  const currencySymbol = state.bigquery?.currencySymbol || "$";
 
   const columns = useMemo<ColumnDef<CostEstimateRow>[]>(() => [
       {

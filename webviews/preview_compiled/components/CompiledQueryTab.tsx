@@ -42,6 +42,7 @@ import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 import { panelProblem } from "../utils/panelProblem";
 import { fileView } from "../utils/fileView";
+import { bigQueryView } from "../utils/bigQueryView";
 
 const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
 const PRIMARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]`;
@@ -77,6 +78,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 }) => {
   const { compiling, message: problemMessage } = panelProblem(state);
   const view = fileView(state.file);
+  const bq = bigQueryView(state);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [fullRefresh, setFullRefresh] = useState(false);
@@ -344,17 +346,15 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         <div className="space-y-3">
           {view.models.map((model: any, index: number) => {
             const target = model.target;
-            const lastUpdateMeta = state.modelsLastUpdateTimesMeta?.[index];
+            const lastUpdateMeta = bq.lastUpdates[index];
 
             if (!target && model.type !== 'test') { return null; }
 
             const badgeStyle = ACTION_TYPE_BADGE_STYLES[model.type] || DEFAULT_BADGE_STYLE;
             const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
-            const sameTypeCount = view.models?.filter((m: any) => m.type === model.type).length ?? 0;
             const nodeNameKey = model.type === 'test' ? model.name : nodeId;
             const dryRunStat =
-              (nodeNameKey ? state.dryRunStatByNodeName?.[nodeNameKey] : undefined) ??
-              (sameTypeCount === 1 ? state.dryRunStatByNodeType?.[model.type] : undefined);
+              nodeNameKey ? bq.stats[nodeNameKey] : undefined;
 
             return (
               <div
@@ -375,14 +375,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     </span>
                   ))}
                 </div>
-                {dryRunStat && !state.dryRunning && (
+                {dryRunStat && !bq.dryRunning && (
                   <div className="absolute top-2 right-2 text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
                     {dryRunStat.split("<br>").map((line, i) => (
                       <React.Fragment key={i}>{i > 0 && <br />}{renderDryRunStatLine(line)}</React.Fragment>
                     ))}
                   </div>
                 )}
-                {state.dryRunning && !compiling && (
+                {bq.dryRunning && !compiling && (
                   <Loader2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
                 )}
                 <div className="flex items-center">
@@ -454,14 +454,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                 {/* Inline dry-run error — looked up by node name (precise) then node type (fallback) */}
                 {(() => {
                   const nonIncError =
-                    (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
-                    (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined);
+                    nodeNameKey ? bq.errors[nodeNameKey] : undefined;
                   const incError =
-                    (nodeNameKey ? state.dryRunIncrementalErrorsByNodeName?.[nodeNameKey] : undefined) ??
-                    (sameTypeCount === 1 ? state.dryRunIncrementalErrorsByNodeType?.[model.type] : undefined);
+                    nodeNameKey ? bq.incrementalErrors[nodeNameKey] : undefined;
                   const modelExpectedOutputError =
-                    (nodeNameKey ? state.dryRunExpectedOutputErrorsByNodeName?.[nodeNameKey] : undefined) ??
-                    (sameTypeCount === 1 ? state.dryRunExpectedOutputErrorsByNodeType?.[model.type] : undefined);
+                    nodeNameKey ? bq.expectedOutputErrors[nodeNameKey] : undefined;
                   const errorDisplay = [
                     incError ? `(Incremental): ${incError.message}` : '',
                     nonIncError ? (
@@ -636,7 +633,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               {canCheckColumnImpact && (
                   <button
                       onClick={handleColumnImpact}
-                      disabled={compiling || state.dryRunning}
+                      disabled={compiling || bq.dryRunning}
                       className={SECONDARY_BUTTON}
                       title={changedColumns
                           ? `This dry run drops or retypes ${changedColumns} column${changedColumns === 1 ? '' : 's'} against prod. Show every column's lineage, those first (Dataplex lineage)`
@@ -770,17 +767,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             : `${model.type}_${model.target?.database}_${model.target?.schema}_${model.target?.name}`;
 
           const nodeId = model.target ? `${model.target.database}.${model.target.schema}.${model.target.name}` : null;
-          const sameTypeCount = view.models?.filter((m: any) => m.type === model.type).length ?? 0;
           const nodeNameKey = model.type === 'test' ? model.name : nodeId;
           const modelDryRunError =
-            (nodeNameKey ? state.dryRunErrorsByNodeName?.[nodeNameKey] : undefined) ??
-            (sameTypeCount === 1 ? state.dryRunErrorsByNodeType?.[model.type] : undefined);
+            nodeNameKey ? bq.errors[nodeNameKey] : undefined;
           const modelIncrementalDryRunError =
-            (nodeNameKey ? state.dryRunIncrementalErrorsByNodeName?.[nodeNameKey] : undefined) ??
-            (sameTypeCount === 1 ? state.dryRunIncrementalErrorsByNodeType?.[model.type] : undefined);
+            nodeNameKey ? bq.incrementalErrors[nodeNameKey] : undefined;
           const modelExpectedOutputError =
-            (nodeNameKey ? state.dryRunExpectedOutputErrorsByNodeName?.[nodeNameKey] : undefined) ??
-            (sameTypeCount === 1 ? state.dryRunExpectedOutputErrorsByNodeType?.[model.type] : undefined);
+            nodeNameKey ? bq.expectedOutputErrors[nodeNameKey] : undefined;
 
           const errorAnnotations = modelDryRunError?.location?.line != null
             ? [{ line: modelDryRunError.location.line, message: modelDryRunError.message }]
@@ -798,8 +791,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const incTabCodeFallback = [incPreOps, incPreOps && trimmedIncQuery ? ';' : '', trimmedIncQuery].filter(Boolean).join('\n');
             const trimmedNonIncQuery = model.query ?? '';
             const nonIncTabCodeFallback = [...(model.preOps || []), trimmedNonIncQuery].filter(Boolean).join('\n\n');
-            const incTabCode = (nodeNameKey && state.dryRunIncrementalQueryByNodeName?.[nodeNameKey]) ?? incTabCodeFallback;
-            const nonIncTabCode = (nodeNameKey && state.dryRunNonIncrementalQueryByNodeName?.[nodeNameKey]) ?? nonIncTabCodeFallback;
+            const incTabCode = (nodeNameKey && bq.incrementalQueries[nodeNameKey]) ?? incTabCodeFallback;
+            const nonIncTabCode = (nodeNameKey && bq.nonIncrementalQueries[nodeNameKey]) ?? nonIncTabCodeFallback;
             const activeTab = activeIncrementalTab[modelId] || 'incremental';
 
             const elements: React.ReactElement[] = [];
@@ -972,7 +965,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           // Non-incremental models: existing accordion logic
           const blocks: { key: string; label: string; code: string }[] = [];
 
-          const nodeDisplayQuery = (nodeNameKey && state.dryRunQueryByNodeName?.[nodeNameKey])
+          const nodeDisplayQuery = (nodeNameKey && bq.queries[nodeNameKey])
             ?? model.query ?? '';
 
           if (model.preOps?.length) {

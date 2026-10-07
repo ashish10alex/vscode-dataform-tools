@@ -507,7 +507,7 @@ const PropertyGraphCard: React.FC<{ graph: PropertyGraph; state: WebviewState }>
         </div>
       )}
 
-      <ValidationBanner validation={validation} dryRunning={state.dryRunning === true} />
+      <ValidationBanner validation={validation} dryRunning={(state.bigquery?.dryRunning.length ?? 0) > 0} />
 
       <PropertyGraphDiagram
         entities={entityViews}

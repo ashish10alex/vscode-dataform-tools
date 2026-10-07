@@ -7,6 +7,7 @@ import { vscode } from '../utils/vscode';
 import type { ColumnMetadata } from '../../../src/types';
 import { buildColumnsConfig, formatAsUnquotedJson, pathKey } from '../../../src/utils/schemaTree';
 import { fileView } from '../utils/fileView';
+import { columnsOnShow } from '../utils/bigQueryView';
 
 interface SchemaTabProps {
   state: WebviewState;
@@ -50,14 +51,15 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
-  const fields = state.compiledQuerySchema?.fields || [];
+  const schema = columnsOnShow(state.columns);
+  const fields = schema?.fields || [];
 
   const data = useMemo(
     () => buildRows(fields, editedDescriptions),
-    [state.compiledQuerySchema, editedDescriptions]
+    [schema, editedDescriptions]
   );
 
-  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [state.compiledQuerySchema]);
+  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [schema]);
 
   const columns = useMemo<ColumnDef<SchemaRow>[]>(() => [
     {
@@ -161,7 +163,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
     });
   };
 
-  if (!state.compiledQuerySchema || state.compiledQuerySchema.fields.length === 0) {
+  if (!schema || schema.fields.length === 0) {
     return (
         <div className="p-8 text-center text-[var(--vscode-descriptionForeground)]">
             <p>No schema available.</p>
