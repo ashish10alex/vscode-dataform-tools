@@ -6,7 +6,7 @@ The 1.19.x pre-release can carry the same text with "pre-release" in its first l
 
 ---
 
-The extension is now **Dataform and dbt Tools for BigQuery**. It works in dbt™ projects on BigQuery beside Dataform, with the dbt you have installed: dbt Core 1.8 or later with the BigQuery adapter, or dbt v2.
+The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects on BigQuery beside Dataform, with the dbt you have installed: dbt Core 1.8 or later with the BigQuery adapter, or dbt v2.
 
 ### Features
 
