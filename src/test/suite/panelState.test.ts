@@ -68,6 +68,18 @@ suite('panel: the slices the panel keeps', () => {
         assert.strictEqual(next.dataform.compilerOptions, '--vars=a=b');
     });
 
+    test('the last compile that finished is kept while the next one runs', () => {
+        const failed: HostMessage = { slice: 'compile status', value: { compile: 1, status: 'failed', errors: [{ message: 'boom' }] } };
+        const compiling: HostMessage = { slice: 'compile status', value: { compile: 1, status: 'compiling', showingPrevious: false, startedAt: 5 } };
+        const compiled: HostMessage = { slice: 'compile status', value: { compile: 2, status: 'compiled', compiledAt: 9, errors: [] } };
+        const first = applyMessage(initialSlices(), failed, undefined);
+        assert.deepStrictEqual([first.compile, first.settled], [failed.value, failed.value]);
+        const running = applyMessage(first, compiling, undefined);
+        assert.deepStrictEqual([running.compile, running.settled], [compiling.value, failed.value]);
+        const done = applyMessage(running, compiled, undefined);
+        assert.deepStrictEqual([done.compile, done.settled], [compiled.value, compiled.value]);
+    });
+
     test('anything that is not a message is left alone', () => {
         const slices = initialSlices();
         assert.strictEqual(applyMessage(slices, null, undefined), slices);

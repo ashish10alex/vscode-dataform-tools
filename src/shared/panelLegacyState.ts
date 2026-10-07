@@ -86,7 +86,8 @@ export function legacyStateFromSlice(message: HostMessage | DataformBlockMessage
  * also carry problems with the file itself, and are cleared when there is none: the file slice does both, and is
  * sent after the status (see panelLegacyFile.ts).
  */
-const NOT_IN_A_PROJECT = 'This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root';
+/** What the panel says of a file in no Project. The panel's own words; they move there with the components */
+export const NOT_IN_A_PROJECT = 'This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root';
 
 function legacyStateFromCompileStatus(status: CompileStatus): Record<string, unknown> {
     const flat: Record<string, unknown> = { recompiling: status.status === 'compiling' };

@@ -1641,6 +1641,15 @@ export class CompiledQueryPanel {
             compilationInfo: initialState.compilationInfo ?? undefined,
         };
         initialState.dataform = this.dataformBlock;
+        // And how the compile stands, which the flat `recompiling` and `missingExecutables` of the first page say
+        const missingTool = initialState.missingExecutables?.[0] as Tool | undefined;
+        initialState.compile = compileStatusSlice({
+            inProject: true,
+            errors: [],
+            ...(missingTool ? { missingTool: { tool: missingTool, lookedIn: [] } } : {}),
+            ...(initialState.recompiling ? { compiling: { showingPrevious: false, startedAt: Date.now() } } : {}),
+            ...(initialState.compilationInfo ? { compiled: { compiledAt: initialState.compilationInfo.compiledAt } } : {}),
+        }, compileNumber());
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const nonce = getNonce();
