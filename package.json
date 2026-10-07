@@ -52,7 +52,7 @@
             "panel": [
                 {
                     "id": "queryResultsContainer",
-                    "title": "Dataform tools",
+                    "title": "BigQuery Results",
                     "icon": ""
                 }
             ]
@@ -63,7 +63,7 @@
                     "icon": "",
                     "type": "webview",
                     "id": "queryResultsView",
-                    "name": "Dataform tools"
+                    "name": "BigQuery Results"
                 }
             ]
         },
