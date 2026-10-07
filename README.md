@@ -1,9 +1,9 @@
 <!-- markdownlint-disable MD041 -->
 <div align="center">
-  <h1>Dataform Tools</h1>
+  <h1>Dataform and dbt Tools for BigQuery</h1>
 </div>
 
-Officially recommended [VS Code extension for Dataform](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) by Google[^1] ✨. Supports [Dataform](https://github.com/dataform-co/dataform) versions 2.9.x and 3.x in all major operating systems. Works in: VS Code, Cursor, Antigravity.
+A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and [dbt™](https://www.getdbt.com/) projects on BigQuery. Officially recommended [VS Code extension for Dataform](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) by Google[^1] ✨. Supports Dataform versions 2.9.x and 3.x, dbt Core 1.8 and later, and dbt v2, in all major operating systems. Works in: VS Code, Cursor, Antigravity.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=nb_OFh6YgOc">
@@ -393,5 +393,9 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
 ## TODO
 
 * [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
+
+---
+
+dbt and dbt Core are trademarks of dbt Labs, LLC. This extension is a community project. It is not affiliated with, endorsed by or sponsored by dbt Labs or Google.
 
 [^1]: [Link to confirmation of official recommendation by Google:](https://github.com/dataform-co/dataform/blob/main/vscode/README.md). Note that this is a community-led project and not an officially supported Google product.

@@ -1,9 +1,9 @@
 {
     "name": "dataform-lsp-vscode",
-    "displayName": "Dataform tools",
+    "displayName": "Dataform and dbt Tools for BigQuery",
     "publisher": "ashishalex",
     "icon": "media/images/dtools.png",
-    "description": "Compiled query, dry run stats, dependency graphs, inline diagnostics, run and preview models, cost estimation, go-to-definition, auto-completion, formatting using sqlfluff and more.",
+    "description": "For Dataform and dbt™ projects on BigQuery: compiled query, dry run cost, schema, preview and runs. For Dataform also dependency graphs, column lineage, inline diagnostics, go-to-definition, auto-completion, formatting with sqlfluff and more.",
     "repository": {
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
@@ -24,6 +24,7 @@
     ],
     "keywords": [
         "dataform",
+        "dbt",
         "sqlx",
         "bigquery",
         "google-cloud",
@@ -32,7 +33,9 @@
         "dag",
         "sqlfluff",
         "elt",
-        "dbt"
+        "dbt-core",
+        "dbt-bigquery",
+        "jinja"
     ],
     "extensionDependencies": [
         "vscode.git"
