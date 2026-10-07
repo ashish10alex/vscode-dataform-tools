@@ -388,6 +388,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     setOnRemoteCompileCompleted(recompileActiveDocument);
 
     snoozeManager.setOnSnoozeEndedCallback(async () => {
+        // What was saved in a dbt Project during the snooze is compiled now
+        if (CompiledQueryPanel.centerPanel?.dbtOptionsChanged('save')) {
+            return;
+        }
         const doc = getDocumentToRecompile();
         if (doc) {
             await triggerCompilationForDocument(doc);
@@ -399,6 +403,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         // the file in focus: a save of a macro shows the model beside it afresh
         const dbt = dbtFileOf(document);
         if (dbt) {
+            // A snooze of compilation holds for dbt too: nothing is compiled on save until it ends
+            if (snoozeManager.isSnoozeActive()) {
+                return;
+            }
             const panelOpen = CompiledQueryPanel.centerPanel?.centerPanelDisposed === false;
             const opensOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave') === true;
             if (affectsCompile(DBT_COMPILE_FILES, dbt.file) && (panelOpen || opensOnSave)) {
@@ -459,7 +467,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
 
 /** The dbt Project a document is in, and the document's path from its root, when it is in one */
-function dbtFileOf(document: vscode.TextDocument | undefined): { project: ProjectState; file: string } | undefined {
+export function dbtFileOf(document: vscode.TextDocument | undefined): { project: ProjectState; file: string } | undefined {
     if (!document || document.uri.scheme !== 'file') {
         return undefined;
     }
@@ -617,6 +625,11 @@ export class CompiledQueryPanel {
         this.dataformBlock = { ...this.dataformBlock, ...fields, compile: compileNumber() };
         const message: HostMessage = { slice: 'dataform', value: this.dataformBlock, touched: Object.keys(fields) as Array<Exclude<keyof DataformBlock, 'compile'>> };
         this.postMessage(message);
+    }
+
+    /** The file of a dbt Project a command acts on: the one in the editor in focus, else the one the panel shows */
+    public static activeDbtFile(): { project: ProjectState; file: string } | undefined {
+        return dbtFileOf(vscode.window.activeTextEditor?.document) ?? (vscode.window.activeTextEditor ? undefined : CompiledQueryPanel.centerPanel?.dbtOnShow);
     }
 
     /** The dbt Project and file on show, when the panel is showing one */
@@ -789,14 +802,18 @@ export class CompiledQueryPanel {
             .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
     }
 
-    /** A setting that a dbt compile is made with has changed: the file on show is shown again, which compiles it if its Project is affected */
-    public dbtOptionsChanged() {
+    /**
+     * A setting that a dbt compile is made with has changed: the file on show is shown again, which compiles it if
+     * its Project is affected. With the reason `save` it is compiled whatever has changed. False when the panel shows no dbt file
+     */
+    public dbtOptionsChanged(reason: CompileReason = 'switch'): boolean {
         const shown = this.dbtOnShow;
         if (!shown || this.centerPanelDisposed) {
-            return;
+            return false;
         }
-        CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, shown.project, shown.file, 'switch')
+        CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, shown.project, shown.file, reason)
             .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
+        return true;
     }
 
     /** Opens the file that defines an action of the dbt Project on show. False when the panel is not showing one */

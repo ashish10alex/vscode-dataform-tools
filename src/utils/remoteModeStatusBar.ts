@@ -7,6 +7,23 @@ export type RemoteModeStatus =
     | { state: "error", message: string };
 
 let statusBarItem: vscode.StatusBarItem | undefined;
+/** What the item was last asked to show, kept so that it comes back as it was when a dbt Project is left */
+let last: { remote: boolean; backendExplicitlySet: boolean } | undefined;
+/** The active Project is a dbt one: remote mode is Dataform's, and the item is not shown there */
+let inDbtProject = false;
+
+/** Hides the item while the active Project is a dbt one, and shows it again as it was when it is not */
+export function setRemoteModeStatusBarInDbt(dbt: boolean) {
+    if (dbt === inDbtProject) {
+        return;
+    }
+    inDbtProject = dbt;
+    if (dbt) {
+        statusBarItem?.hide();
+    } else if (last) {
+        refreshRemoteModeStatusBar(last.remote, last.backendExplicitlySet);
+    }
+}
 
 export function initRemoteModeStatusBar(context: vscode.ExtensionContext) {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
@@ -18,7 +35,12 @@ export function initRemoteModeStatusBar(context: vscode.ExtensionContext) {
  * always a visible way back to remote mode.
  */
 export function refreshRemoteModeStatusBar(remote: boolean, backendExplicitlySet: boolean) {
+    last = { remote, backendExplicitlySet };
     if (!statusBarItem) {
+        return;
+    }
+    if (inDbtProject) {
+        statusBarItem.hide();
         return;
     }
     if (remote) {

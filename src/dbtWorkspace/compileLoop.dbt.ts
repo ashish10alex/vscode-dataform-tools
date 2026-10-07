@@ -371,6 +371,40 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
             await panel.dbtRunMessage({ command: 'run', actions: [model], ...scope });
             assert.strictEqual(asked.length, 2);
             assert.deepStrictEqual(sent().slice(4), Array(2).fill(`${standIn} build --select xf_example.marts.fct_orders --target ci`));
+
+            // The commands of the palette do the same for the file in the editor (xf#63). Back to the default dbt target first
+            await panel.dbtMessage({ command: 'dbt.setTarget', name: null });
+            await until('the default dbt target', () => slices.dbt?.target.overridden === false && slices.compile?.status === 'compiled');
+            await show('models/marts/fct_orders.sql');
+            const run = async (command: string) => {
+                const before = sent().length;
+                await vscode.commands.executeCommand(`vscode-dataform-tools.${command}`);
+                await until(`${command} to send a run`, () => sent().length === before + 1);
+                return sent().at(-1)!.replace(`${standIn} build --select `, '').replace(' --target dev', '');
+            };
+            assert.strictEqual(await run('runCurrentFile'), 'xf_example.marts.fct_orders');
+            assert.strictEqual(await run('runCurrentFileWtDeps'), '+xf_example.marts.fct_orders');
+            assert.strictEqual(await run('runCurrentFileWtDownstreamDeps'), 'xf_example.marts.fct_orders+');
+            // The tests attached to the open model, and not the model
+            const tests = (await run('runAssertions')).split(' ');
+            assert.strictEqual(tests.length, 4, tests.join(' '));
+            assert.ok(tests.every((name) => name !== 'xf_example.marts.fct_orders' && !name.includes('+')), tests.join(' '));
+            assert.ok(tests.some((name) => name.endsWith('unique_fct_orders_order_id')), tests.join(' '));
+            assert.strictEqual(await run('rerunLastExecution'), tests.join(' '));
+            // A tag is picked from the Project's tags
+            const picker = window.showQuickPick;
+            let offered: string[] = [];
+            window.showQuickPick = (items: unknown) => {
+                offered = items as string[];
+                return Promise.resolve('marts');
+            };
+            try {
+                assert.strictEqual(await run('runTag'), 'tag:marts');
+                assert.strictEqual(await run('runTagWtDeps'), '+tag:marts');
+                assert.ok(offered.includes('staging'), offered.join(', '));
+            } finally {
+                window.showQuickPick = picker;
+            }
         } finally {
             window.createTerminal = originals.createTerminal;
             window.showWarningMessage = originals.showWarningMessage;

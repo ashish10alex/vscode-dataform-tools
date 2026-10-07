@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { currentDataformRoot } from '../project';
+import { currentDataformRoot, onDidChangeActiveProject, projects } from '../project';
 import { getDeferAvailability, isDeferEnabled } from './index';
 import { clearProdTargetCache } from './prodTargets';
 import { clearTableExistenceCache } from './tableExistence';
@@ -25,7 +25,8 @@ function refreshStatusBar() {
         return;
     }
     const workspaceFolder = currentWorkspaceFolder();
-    if (!workspaceFolder) {
+    // Defer to prod is Dataform's: the item is not shown while the active Project is a dbt one
+    if (!workspaceFolder || projects.active?.backend === 'dbt') {
         statusBarItem.hide();
         return;
     }
@@ -108,6 +109,7 @@ export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: 
     statusBarItem.command = 'vscode-dataform-tools.deferToProdActions';
     context.subscriptions.push(
         statusBarItem,
+        onDidChangeActiveProject(() => refreshStatusBar()),
         vscode.commands.registerCommand('vscode-dataform-tools.toggleDeferToProd', toggleDeferToProd),
         vscode.commands.registerCommand('vscode-dataform-tools.deferToProdActions', () => deferToProdActions(refreshPanel)),
         vscode.commands.registerCommand('vscode-dataform-tools.removeProxyViews', removeProxyViewsCommand),
