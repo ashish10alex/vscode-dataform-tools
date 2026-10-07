@@ -131,6 +131,8 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
             assert.deepStrictEqual(ran(), [['parse']]);
             assert.strictEqual(result.parsedOnly, true);
             assert.deepStrictEqual(result.errors.map((error) => [error.fileName, error.line, error.code]), [['models/order_totals.sql', 4, 'dbt1048']]);
+            // dbt v2 says which dbt target it used even when it fails
+            assert.strictEqual(result.target, 'dev');
             assert.deepStrictEqual(Object.keys(result.graph.actions).sort(), [`${P}.xf_example.order_totals`, `${P}.xf_example.orders`]);
             assert.strictEqual(result.notice, undefined);
         });
