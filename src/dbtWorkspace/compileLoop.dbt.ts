@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import type { BigQuerySlice, CompileStatus, DbtBlock, DbtPanelMessage, FileSlice, ProjectSlice } from '../shared/panelContract';
+import type { BigQuerySlice, CompileStatus, DbtBlock, DbtPanelMessage, FileSlice, PanelMessage, ProjectSlice, RunStatusSlice } from '../shared/panelContract';
 
 /*
 The compile loop of a dbt Project, in the real extension with a stand-in for dbt: a script that answers `--version`
@@ -19,6 +19,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 interface PanelApi {
     onDidPostMessage(listener: (message: unknown) => void): vscode.Disposable;
     dbtMessage(message: DbtPanelMessage): Promise<void> | undefined;
+    dbtRunMessage(message: Extract<PanelMessage, { command: 'run' | 'runTags' | 'repeatLastRun' }>): Promise<boolean> | undefined;
 }
 
 suite('the compile loop of a dbt Project', function () {
@@ -26,7 +27,7 @@ suite('the compile loop of a dbt Project', function () {
     const manifests = path.resolve(__dirname, '..', '..', '..', 'src', 'test', 'fixtures', 'dbt-manifests');
     let dir: string;
     let subscription: vscode.Disposable | undefined;
-    const slices: { project?: ProjectSlice; compile?: CompileStatus; file?: FileSlice; dbt?: DbtBlock; bigquery?: BigQuerySlice } = {};
+    const slices: { project?: ProjectSlice; compile?: CompileStatus; file?: FileSlice; dbt?: DbtBlock; bigquery?: BigQuerySlice; run?: RunStatusSlice } = {};
     /** Every `bigquery` slice the panel was sent, in order */
     const bigQuerySent: BigQuerySlice[] = [];
     let panel: PanelApi;
@@ -72,6 +73,8 @@ suite('the compile loop of a dbt Project', function () {
                 slices.file = value as FileSlice;
             } else if (slice === 'dbt') {
                 slices.dbt = value as DbtBlock;
+            } else if (slice === 'run status') {
+                slices.run = value as RunStatusSlice;
             } else if (slice === 'bigquery') {
                 slices.bigquery = value as BigQuerySlice;
                 bigQuerySent.push(slices.bigquery);
@@ -313,6 +316,67 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
         await compiledAgain('the compile with no dbt target named', 3);
         assert.deepStrictEqual(targets(), ['ci', 'dev', null]);
         assert.deepStrictEqual(slices.dbt?.target, { name: 'dev', overridden: false, names: ['dev', 'ci'], profileDefault: 'dev' });
+    });
+
+    test('Run sends dbt build to a terminal in the Project, and asks once before building into another dbt target', async () => {
+        await show('models/marts/fct_orders.sql');
+        await until('the model', () => slices.file?.file === 'models/marts/fct_orders.sql' && slices.compile?.status === 'compiled' && slices.dbt?.target.name === 'dev');
+        const model = slices.file!.actions[0].target;
+        // Terminals and questions are caught, so that no dbt is run and nothing waits for an answer
+        const window = vscode.window as unknown as Record<string, (...args: unknown[]) => unknown>;
+        const originals = { createTerminal: window.createTerminal, showWarningMessage: window.showWarningMessage };
+        const terminals: Array<{ options: vscode.TerminalOptions; sent: string[] }> = [];
+        const asked: Array<{ message: string; detail?: string }> = [];
+        let answer: string | undefined;
+        window.createTerminal = (options: unknown) => {
+            const terminal = { options: options as vscode.TerminalOptions, sent: [] as string[] };
+            terminals.push(terminal);
+            return { show: () => undefined, sendText: (text: string) => terminal.sent.push(text), exitStatus: undefined };
+        };
+        window.showWarningMessage = (message: unknown, options: unknown) => {
+            asked.push({ message: String(message), detail: (options as vscode.MessageOptions)?.detail });
+            return Promise.resolve(answer);
+        };
+        const scope = { includeDependencies: false, includeDependents: false, fullRefresh: false };
+        const sent = () => terminals.flatMap((terminal) => terminal.sent);
+        try {
+            // The profile's default: no question. The dbt target is named though nobody set it
+            assert.strictEqual(await panel.dbtRunMessage({ command: 'run', actions: [model], ...scope }), true);
+            const plain = `${standIn} build --select xf_example.marts.fct_orders --target dev`;
+            assert.deepStrictEqual([sent(), asked], [[plain], []]);
+            assert.deepStrictEqual([terminals[0].options.name, terminals[0].options.cwd], ['dbt', workspaceFolder]);
+            await until('the run status', () => slices.run?.lastRun?.command === plain);
+            assert.deepStrictEqual(slices.run?.lastRun?.request, { actions: [slices.file!.actions[0].id], tags: [], ...scope });
+
+            // With what it reads from, what reads from it, and a full refresh; and by tag
+            await panel.dbtRunMessage({ command: 'run', actions: [model], includeDependencies: true, includeDependents: true, fullRefresh: true });
+            assert.strictEqual(sent().at(-1), `${standIn} build --select +xf_example.marts.fct_orders+ --full-refresh --target dev`);
+            await panel.dbtRunMessage({ command: 'runTags', tags: ['marts'], ...scope });
+            assert.strictEqual(sent().at(-1), `${standIn} build --select tag:marts --target dev`);
+            await panel.dbtRunMessage({ command: 'repeatLastRun' });
+            assert.strictEqual(sent().length, 4);
+            assert.strictEqual(sent().at(-1), sent().at(-2));
+
+            // Another dbt target than the profile's default: asked first, with the command; no is no
+            await panel.dbtMessage({ command: 'dbt.setTarget', name: 'ci' });
+            await until('the override', () => slices.dbt?.target.name === 'ci' && slices.compile?.status === 'compiled');
+            await panel.dbtRunMessage({ command: 'run', actions: [model], ...scope });
+            assert.strictEqual(sent().length, 4, 'A run that was not confirmed was sent');
+            assert.strictEqual(asked.length, 1);
+            assert.strictEqual(asked[0].message, 'Build into ci?');
+            assert.ok(asked[0].detail?.includes('(dev)') && asked[0].detail.includes('--target ci'), asked[0].detail);
+            // Yes: it runs, and the same dbt target is not asked about again in this window
+            answer = 'Run';
+            await panel.dbtRunMessage({ command: 'run', actions: [model], ...scope });
+            await panel.dbtRunMessage({ command: 'run', actions: [model], ...scope });
+            assert.strictEqual(asked.length, 2);
+            assert.deepStrictEqual(sent().slice(4), Array(2).fill(`${standIn} build --select xf_example.marts.fct_orders --target ci`));
+        } finally {
+            window.createTerminal = originals.createTerminal;
+            window.showWarningMessage = originals.showWarningMessage;
+            await panel.dbtMessage({ command: 'dbt.setTarget', name: null });
+            await until('the default dbt target again', () => slices.dbt?.target.overridden === false && slices.compile?.status === 'compiled');
+        }
     });
 
     test('a dbt v2 Project with hooks is only parsed, until the offer to compile with hooks is taken', async () => {

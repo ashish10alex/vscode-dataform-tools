@@ -4,8 +4,9 @@ import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, d
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, incrementalTables, previewDbtAction } from '../project/dbtBigQuery';
 import type { DryRunResult } from '../bigquery/dryRunService';
+import { lastDbtRun, onDidRunDbt, repeatDbtRun, runDbt } from '../project/dbtRun';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
-import { CompileState, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../panel/slices';
+import { CompileState, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../panel/slices';
 import { SliceSender } from '../panel/sliceSender';
 import { affectsCompile } from '../backend';
 import { DBT_COMPILE_FILES, listDbtTargets } from '../backend/dbt';
@@ -314,6 +315,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push(onDidChangeDbtCompile((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
     // So is what is known of its dbt: another one found, or none any more
     context.subscriptions.push(onDidChangeDbtTool((root) => CompiledQueryPanel.centerPanel?.dbtToolChanged(root)));
+    // And a run of it sent to the terminal, from the panel or from a command
+    context.subscriptions.push(onDidRunDbt((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
     // And the settings a dbt compile is made with: another dbt target, other variables or profiles are another result
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (['dbtTarget', 'dbtVars', 'dbtProfilesDir'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
@@ -467,6 +470,9 @@ function dbtFileOf(document: vscode.TextDocument | undefined): { project: Projec
     const project = found.project as ProjectState;
     return { project, file: slashPath(path.relative(project.root, document.uri.fsPath)) };
 }
+
+/** The messages of the contract that start a run */
+export type DbtRunMessage = Extract<PanelMessage, { command: 'run' | 'runTags' | 'repeatLastRun' }>;
 
 const panelMessagePosted = new vscode.EventEmitter<unknown>();
 /** Every message the compiled query panel is sent. For the recorded panel output tests, see src/panelRecordings */
@@ -762,6 +768,7 @@ export class CompiledQueryPanel {
         this.slices.send('dbt', slices.dbt);
         this.slices.send('compile status', slices.compile);
         this.slices.send('file', slices.file);
+        this.slices.send('run status', runStatusSlice(lastDbtRun(shown.project.root), shown.project.compileNumber));
     }
 
     /**
@@ -803,6 +810,25 @@ export class CompiledQueryPanel {
             vscode.window.showTextDocument(Uri.file(path.join(shown.project.root, action.fileName)), { viewColumn: vscode.ViewColumn.One, preview: false })
                 .then(undefined, (error) => logger.error(`dbt: could not open ${action.fileName}: ${error}`));
         }
+        return true;
+    }
+
+    /**
+     * Run, Run Tag and Repeat for the dbt Project on show: `dbt build` in the extension's terminal. Resolves to false
+     * when the panel shows no dbt file, and the message is Dataform's to answer.
+     */
+    public async onDbtRunMessage(message: DbtRunMessage): Promise<boolean> {
+        const shown = this.dbtOnShow;
+        if (!shown) {
+            return false;
+        }
+        if (message.command === 'repeatLastRun') {
+            await repeatDbtRun(shown.project);
+            return true;
+        }
+        const { includeDependencies, includeDependents, fullRefresh } = message;
+        const selection = message.command === 'run' ? { actions: message.actions.map(targetId), tags: [] } : { actions: [], tags: message.tags };
+        await runDbt(shown.project, { ...selection, includeDependencies, includeDependents, fullRefresh });
         return true;
     }
 
@@ -1115,9 +1141,15 @@ export class CompiledQueryPanel {
                 return;
               }
               case 'run':
+                if (await panel.onDbtRunMessage(message)) {
+                    return;
+                }
                 await runActions(extensionContext, message.actions.map(targetId), message, "cli");
                 return;
               case 'runTags': {
+                if (await panel.onDbtRunMessage(message)) {
+                    return;
+                }
                 const tagsWorkspaceFolder = await getWorkspaceFolder();
                 if (!tagsWorkspaceFolder || message.tags.length === 0) { return; }
                 await runMultipleTagsFromSelection(tagsWorkspaceFolder, message.tags, message.includeDependencies, message.includeDependents, message.fullRefresh);
@@ -1248,6 +1280,9 @@ export class CompiledQueryPanel {
                 return;
               }
               case 'repeatLastRun': {
+                if (await panel.onDbtRunMessage(message)) {
+                    return;
+                }
                 const previousTimestamp = getLastRun()?.timestamp;
                 await vscode.commands.executeCommand('vscode-dataform-tools.rerunLastExecution');
                 // Every runner records the run just before dispatching it, so an unchanged timestamp means

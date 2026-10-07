@@ -63,6 +63,11 @@ export interface DbtView {
     card?: DbtCard;
     /** What the file's first action reads from */
     readsFrom: ActionReference[];
+    /**
+     * Run is offered: the file defines an action a run can execute, in a BigQuery Project. `targets` are those
+     * actions; `blocked` while there is no fresh compile to run from, and says why.
+     */
+    run?: { targets: Target[]; blocked?: string };
 }
 
 const MODEL_KINDS: ReadonlySet<Kind> = new Set<Kind>(['table', 'view', 'incremental', 'materialized view', 'ephemeral']);
@@ -304,6 +309,15 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const dryRun = withSql.some((action) => action.sections.some((section) => section.dryRun.length > 0));
     if (last?.status === 'compiled' && view.actions.length > 0 && dryRun && !view.otherWarehouse) {
         view.tabs = ['compiled', 'schema', 'project'];
+    }
+
+    const runnable = file?.actions.filter((action) => action.fileName === named && action.runnable) ?? [];
+    if (graph && runnable.length > 0 && !view.otherWarehouse) {
+        const blocked = compiling ? 'Wait for the compile to end'
+            : last?.status === 'parsed only' || withSql.some((action) => action.fileName === named && !action.sqlPresent) ? 'The Project is not compiled'
+            : view.errors.length > 0 ? 'The compile left errors'
+            : undefined;
+        view.run = { targets: runnable.map((action) => action.target), ...(blocked ? { blocked } : {}) };
     }
 
     if (compiling) {

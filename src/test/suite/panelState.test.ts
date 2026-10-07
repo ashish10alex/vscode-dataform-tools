@@ -118,6 +118,11 @@ suite('panel: the slices the panel keeps', () => {
         assert.strictEqual(left.dataform, shown.dataform);
     });
 
+    test('the last run is kept', () => {
+        const run: HostMessage = { slice: 'run status', value: { compile: 2, lastRun: { request: { actions: ['p.d.t'], tags: [], includeDependencies: false, includeDependents: false, fullRefresh: false }, command: 'dbt build --select shop.t --target dev', startedAt: 9 } } };
+        assert.deepStrictEqual(applyMessage(initialSlices(), run).run, run.value);
+    });
+
     test('anything that is not a message is left alone', () => {
         const slices = initialSlices();
         assert.strictEqual(applyMessage(slices, null), slices);

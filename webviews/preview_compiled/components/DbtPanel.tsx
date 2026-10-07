@@ -110,6 +110,56 @@ function ToolButtons({ looking }: { looking: boolean }) {
 }
 
 /**
+ * Run (xf#54): `dbt build` of the file's actions in the extension's terminal. The button names the dbt target it
+ * builds into. The menu adds what the actions read from, what reads from them, a full refresh, and a run by tag.
+ */
+function RunControl({ run, target, tags }: { run: NonNullable<DbtView["run"]>; target?: string; tags: string[] }) {
+  const [open, setOpen] = useState(false);
+  const blocked = run.blocked !== undefined;
+  const start = (scope: { includeDependencies?: boolean; includeDependents?: boolean; fullRefresh?: boolean }) => {
+    setOpen(false);
+    vscode.postMessage({ command: "run", actions: run.targets, includeDependencies: false, includeDependents: false, fullRefresh: false, ...scope });
+  };
+  const startTag = (tag: string) => {
+    setOpen(false);
+    vscode.postMessage({ command: "runTags", tags: [tag], includeDependencies: false, includeDependents: false, fullRefresh: false });
+  };
+  const item = "w-full px-2 py-1.5 rounded border-0 bg-transparent cursor-pointer text-left text-sm text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]";
+  return (
+    <div data-dbt="run" className="relative">
+      <div className={clsx("flex rounded overflow-hidden text-xs", blocked && "opacity-50")} title={run.blocked ?? "dbt build of this file's actions, in the terminal"}>
+        <button type="button" disabled={blocked} onClick={() => start({})} className="px-3 py-1 border-0 cursor-pointer font-semibold bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]">
+          Run → <span className="font-mono">{target ?? "dbt's default"}</span>
+        </button>
+        <button type="button" aria-label="More ways to run" aria-haspopup="menu" aria-expanded={open} disabled={blocked} onClick={() => setOpen(!open)} className="px-1.5 border-0 border-l border-[var(--vscode-button-separator,rgba(255,255,255,0.3))] cursor-pointer bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]">
+          <ChevronDown className="w-3 h-3" />
+        </button>
+      </div>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div role="menu" className="absolute right-0 mt-1 w-64 z-20 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background,var(--vscode-sideBar-background))] shadow-lg p-1.5">
+            <button type="button" role="menuitem" className={item} onClick={() => start({})}>This file's actions</button>
+            <button type="button" role="menuitem" className={item} onClick={() => start({ includeDependencies: true })}>… with dependencies</button>
+            <button type="button" role="menuitem" className={item} onClick={() => start({ includeDependents: true })}>… with dependents</button>
+            <button type="button" role="menuitem" className={item} onClick={() => start({ fullRefresh: true })}>… full refresh</button>
+            <div className={clsx("border-t border-[var(--vscode-widget-border)] mt-1 pt-1.5 px-2 pb-1 text-[11px] uppercase tracking-wider", MUTED)}>Run a tag</div>
+            {tags.length === 0 && <div className={clsx("px-2 pb-1 text-xs", MUTED)}>The Project has no tags.</div>}
+            <div className="max-h-40 overflow-auto">
+              {tags.map((tag) => (
+                <button key={tag} type="button" role="menuitem" className={clsx(item, "font-mono text-xs")} onClick={() => startTag(tag)}>
+                  tag:{tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * The dbt target in use, and the way to choose another (xf#50): a name of the Project's profile, or a typed one when
  * the profile could not be read. The choice is the user's own for this workspace; the way back is to the default.
  */
@@ -402,6 +452,15 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
           </ul>
         </details>
       )}
+      {state.run?.lastRun && (
+        <div data-dbt="last run" className={clsx(BOX, "px-3 py-2 text-xs flex flex-wrap items-center gap-2")}>
+          <span className={MUTED}>Sent to terminal</span>
+          <span className="font-mono break-all">{state.run.lastRun.command}</span>
+          <button type="button" className={clsx(SECONDARY_BUTTON, "ml-auto py-0.5")} title="Runs the same selection again, with the dbt target of now" onClick={() => vscode.postMessage({ command: "repeatLastRun" })}>
+            Repeat
+          </button>
+        </div>
+      )}
       {view.readsFrom.length > 0 && (
         <div data-dbt="reads from" className={clsx("text-xs flex flex-wrap items-center gap-x-4 gap-y-1", MUTED)}>
           <span>reads from</span>
@@ -571,6 +630,7 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
         <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
           {engine && <span className={clsx("font-mono", MUTED)}>{engine}</span>}
           {block && view.page !== "tool missing" && <TargetControl block={block} />}
+          {view.page === "panel" && view.run && <RunControl run={view.run} target={block?.target.name} tags={state.project?.tags ?? []} />}
         </div>
       </div>
 
