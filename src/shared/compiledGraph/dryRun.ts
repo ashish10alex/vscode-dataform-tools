@@ -57,7 +57,7 @@ export function joinScript(statements: string[]): { sql: string; parts: ScriptPa
  * joined in order. An action with an incremental variant has the scripts of both variants. Empty when the action has
  * nothing to dry-run.
  */
-export function dryRunScripts(action: Action): DryRunScript[] {
+export function dryRunScripts(action: Pick<Action, 'sections'>): DryRunScript[] {
     const scripts: DryRunScript[] = [];
     for (const incremental of hasIncrementalVariant(action) ? [false, true] : [false]) {
         const sections = sectionsFor(action, incremental);
@@ -71,6 +71,16 @@ export function dryRunScripts(action: Action): DryRunScript[] {
         }
     }
     return scripts;
+}
+
+/**
+ * The title of the section a preview of the action shows, of the variant asked for: the one that ends the variant's
+ * first dry-run script, which is the script whose rows are the action's. Undefined when the action has nothing to
+ * dry-run, and for the incremental variant of an action that has none.
+ */
+export function previewSection(action: Pick<Action, 'sections'>, incremental = false): string | undefined {
+    const script = dryRunScripts(action).find((candidate) => candidate.incremental === incremental);
+    return script?.parts[script.parts.length - 1].source;
 }
 
 /** A place in a section's SQL. Lines and columns start at 1, as BigQuery counts them */

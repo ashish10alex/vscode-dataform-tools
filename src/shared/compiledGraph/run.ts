@@ -1,4 +1,5 @@
-import type { ActionId } from './graph';
+import { actionsInFile, isRunnable, isTestKind } from './graph';
+import type { ActionId, CompiledGraph } from './graph';
 
 /** Selects what a run executes */
 export interface RunOptions {
@@ -9,4 +10,23 @@ export interface RunOptions {
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
+}
+
+/** What a run of some actions is recorded as, so that it can be repeated */
+export type RecordedRun =
+    /** Every action of the file: a repeat runs the file as it is then, with what was added to it since */
+    | { file: string }
+    | { actions: ActionId[] };
+
+/**
+ * How to record a run of the actions `ids`: as their file when they are all of one file and leave out nothing of it
+ * that a run executes, else as the actions. A disabled action and a test do not count: no run executes them.
+ */
+export function runSelection(graph: CompiledGraph, ids: ActionId[]): RecordedRun {
+    const asked = new Set(ids);
+    const file = graph.actions[ids[0]]?.fileName;
+    const whole = !!file
+        && ids.every((id) => graph.actions[id]?.fileName === file)
+        && actionsInFile(graph, file).every((action) => asked.has(action.id) || action.disabled || !isRunnable(action) || isTestKind(action.kind));
+    return whole ? { file } : { actions: ids };
 }

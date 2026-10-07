@@ -256,6 +256,7 @@ suite('deferRules.computeRunSet', () => {
         assert.deepStrictEqual(names({ ...base, kind: 'currentFile', items: ['definitions/mart.sqlx'] }), ['mart', 'mart_assert']);
         assert.deepStrictEqual(names({ ...base, kind: 'tags', items: ['daily'] }), ['mart']);
         assert.deepStrictEqual(names({ ...base, kind: 'changed', items: ['proj-dev.sales_dev.report'] }), ['report']);
+        assert.deepStrictEqual(names({ ...base, kind: 'actions', items: ['proj-dev.sales_dev.mart'] }), ['mart']);
     });
 
     test('adds transitive dependencies or dependents when the run includes them, but never declarations', () => {

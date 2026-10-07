@@ -64,6 +64,7 @@ function selectionLabel(request: LastRunRequest, items: string[]): string {
     switch (request.kind) {
         case 'currentFile': return `file ${items[0] ?? ''}`;
         case 'files': return `${request.items.length} file${plural}: ${summarizeItems(items)}`;
+        case 'actions': return `${request.items.length} action${plural}: ${summarizeItems(items)}`;
         case 'tags': return `tag${plural} ${summarizeItems(items)}`;
         case 'changed': {
             const files = request.files ? ` (${request.selectedFileCount ?? request.files.length} of ${request.changedFileCount ?? '?'} files)` : '';
@@ -94,12 +95,12 @@ export function describeOverrides(compilerOptions: typeof globalThis.compilerOpt
 }
 
 export function summarizeLastRun(request: LastRunRequest, replayMode: ExecutionMode, overrides?: string): { label: string; detail: string } {
-    const baseNames = request.kind === 'tags' || request.kind === 'changed' ? request.items : request.items.map((item) => path.basename(item));
+    const baseNames = request.kind === 'currentFile' || request.kind === 'files' ? request.items.map((item) => path.basename(item)) : request.items;
     const label = [selectionLabel(request, baseNames), ...flagLabels(request), modeLabel(replayMode)].join(' · ');
 
     const itemLine = request.kind === 'changed'
         ? `Last ran ${request.items.length} action${request.items.length === 1 ? '' : 's'}: ${request.items.join(', ')} (recomputed on rerun)`
-        : `${request.kind === 'tags' ? 'Tags' : 'Files'}: ${request.items.join(', ')}`;
+        : `${request.kind === 'tags' ? 'Tags' : request.kind === 'actions' ? 'Actions' : 'Files'}: ${request.items.join(', ')}`;
     const detailLines = [
         itemLine,
         ...(request.kind === 'changed' && request.files ? [`Only changes in: ${request.files.join(', ')}`] : []),
@@ -126,7 +127,8 @@ export function findMissingItems(request: LastRunRequest, knownTags: string[] | 
     if (request.kind === 'tags') {
         return knownTags === undefined ? [] : request.items.filter((tag) => !knownTags.includes(tag));
     }
-    if (request.kind === 'changed') {
+    // A run of actions is checked by its runner, against the compile it starts from
+    if (request.kind === 'changed' || request.kind === 'actions') {
         return [];
     }
     return request.items.filter((item) => !fileExists(item));
@@ -137,7 +139,7 @@ export function isFromOtherFolder(request: LastRunRequest, currentFolder: string
     return !!request.workspaceFolder && path.resolve(request.workspaceFolder) !== path.resolve(currentFolder);
 }
 
-export type ReplayRunner = 'currentFile' | 'files' | 'tagsCli' | 'tagsApi' | 'changed';
+export type ReplayRunner = 'currentFile' | 'files' | 'tagsCli' | 'tagsApi' | 'changed' | 'actions';
 
 export interface ReplayPlan {
     runner: ReplayRunner;

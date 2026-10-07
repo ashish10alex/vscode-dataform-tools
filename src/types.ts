@@ -689,14 +689,15 @@ export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:strin
 
 export type ExecutionMode = "cli" | "api" | "api_workspace";
 
-export type LastRunKind = 'currentFile' | 'files' | 'tags' | 'changed';
+export type LastRunKind = 'currentFile' | 'files' | 'tags' | 'changed' | 'actions';
 
 /** The selection and options of the most recent Dataform run, kept so it can be repeated. */
 export interface LastRunRequest {
     kind: LastRunKind;
     /**
-     * Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`, and for `changed`
-     * the actions that ran (informational only: a rerun recomputes them).
+     * Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`, for `changed`
+     * the actions that ran (informational only: a rerun recomputes them), and for `actions` the IDs of the
+     * actions that were asked for (a rerun runs the same ones).
      */
     items: string[];
     /** `changed`: the files whose changes ran, when some changed files were left out; a rerun keeps to them. Absent when every changed file ran. */

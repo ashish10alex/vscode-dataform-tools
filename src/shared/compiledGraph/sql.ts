@@ -45,7 +45,7 @@ export function titledSections(title: string, statements: Array<string | undefin
 }
 
 /** Whether the action has SQL for runs that update an existing table as well as for full rebuilds */
-export function hasIncrementalVariant(action: Action): boolean {
+export function hasIncrementalVariant(action: Pick<Action, 'sections'>): boolean {
     return action.sections.some((section) => section.incremental);
 }
 
@@ -53,7 +53,7 @@ export function hasIncrementalVariant(action: Action): boolean {
  * The SQL the action executes, in execution order. For an action with an incremental variant, `incremental` selects
  * it instead of the full rebuild.
  */
-export function sectionsFor(action: Action, incremental: boolean): SqlSection[] {
+export function sectionsFor(action: Pick<Action, 'sections'>, incremental: boolean): SqlSection[] {
     const variant = incremental && hasIncrementalVariant(action);
     return action.sections.filter((section) => (section.incremental === true) === variant);
 }

@@ -1,4 +1,4 @@
-import { Action, dryRunScripts, joinScript } from '../shared/compiledGraph';
+import { Action, dryRunScripts, joinScript, previewSection } from '../shared/compiledGraph';
 
 /*
  * What a preview runs for an action of a Compiled Graph, whichever Backend compiled it. The host runs the query with
@@ -27,7 +27,7 @@ export function previewQuery(action: Action, section: string, options: { alone?:
         return undefined;
     }
     const script = dryRunScripts(action).find((candidate) => candidate.incremental === (chosen.incremental === true));
-    if (!script || script.parts[script.parts.length - 1].source !== section) {
+    if (!script || previewSection(action, script.incremental) !== section) {
         return undefined;
     }
     if (options.alone) {

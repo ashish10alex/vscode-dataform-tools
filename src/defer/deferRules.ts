@@ -283,7 +283,7 @@ interface RunnableAction {
 }
 
 export interface RunSelection {
-    kind: "currentFile" | "files" | "tags" | "changed";
+    kind: "currentFile" | "files" | "tags" | "changed" | "actions";
     /** Workspace-relative files, tag names or `database.schema.name` target ids, depending on `kind` */
     items: string[];
     includeDependencies: boolean;
@@ -308,6 +308,7 @@ export function computeRunSet(graph: DataformCompiledJson, selection: RunSelecti
             case "tags":
                 return (action.tags ?? []).some((tag) => items.has(tag));
             case "changed":
+            case "actions":
                 return items.has(targetId(action.target));
         }
     });

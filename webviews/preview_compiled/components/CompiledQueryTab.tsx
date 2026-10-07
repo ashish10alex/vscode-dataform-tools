@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { ExecutionMode, Target, PanelState, WorkflowUrlEntry } from "../types";
+import { previewSection, targetId } from "../../../src/shared/compiledGraph";
 import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
@@ -167,7 +168,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   const handleRunModel = (api: boolean) => {
     setRunningModel(true);
-    // The open file's actions; the host runs the open file until it reads them from here (piece 4.4)
+    // The file's actions that have a Target: all but its unit tests, which a run does not execute
     const actions: Target[] = (view.models ?? []).map((action: { target?: Target }) => action.target).filter((target): target is Target => !!target);
     const scope = { includeDependents, includeDependencies, fullRefresh };
     vscode.postMessage(api ? { command: "dataform.runApi", actions, workspace: false, ...scope } : { command: "run", actions, ...scope });
@@ -260,11 +261,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   };
 
   const handlePreviewResults = () => {
-    // The open file's first action. A unit test builds nothing, so its Target is made up from its name, as in the
-    // Compiled Graph. The host previews the open file until it reads the action and section from here (piece 4.4).
+    // The file's first action. A unit test builds nothing, so its Target is made up from its name, as in the Compiled
+    // Graph. The section is the one whose rows are the action's: a table's query, the last statement of an operation.
     const first = view.models[0];
     const action: Target = first?.target ?? { database: "", schema: "unit test", name: first?.name ?? "" };
-    vscode.postMessage({ command: "preview", action, section: first?.type === "test" ? "test query" : "query" });
+    const shown = state.file?.actions.find((candidate) => candidate.id === targetId(action));
+    vscode.postMessage({ command: "preview", action, section: (shown && previewSection(shown)) ?? "query" });
   };
 
   // One table, view, incremental table or operation with hasOutput, ignoring built-in assertions: the action whose columns can be traced
