@@ -812,12 +812,6 @@ export interface CachedResults {
     curFileMeta: any;
     targetTablesOrViews: any;
     errorMessage: string | null;
-    dryRunStatByNodeType: Record<string, string>;
-    dryRunStatByNodeName: Record<string, string>;
-    dryRunErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunExpectedOutputErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: ErrorLocation }>;
     location: string | undefined;
     compilerOptions: string | undefined;
 }

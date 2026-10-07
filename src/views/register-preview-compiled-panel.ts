@@ -9,13 +9,13 @@ import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
 import { DataformBlockMessage, MIGRATED_DATAFORM_FIELDS } from '../shared/panelLegacyState';
 import * as vscode from 'vscode';
-import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
+import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runCurrentFile } from "../runCurrentFile";
 import { runMultipleTagsFromSelection, runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
-import { ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
+import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults } from "../types";
 import { currencySymbolMapping } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -514,6 +514,8 @@ export class CompiledQueryPanel {
     private sendNoActions(file?: string, problem?: FileProblem) {
         const message: HostMessage = { slice: 'file', value: { compile: compileNumber(), file: file ? slashPath(file) : '', role: 'not compiled', actions: [], ...(problem ? { problem } : {}) } };
         this.postMessage(message);
+        // And BigQuery has said nothing of it
+        this.sendBigQuery({ results: [], tables: {}, dryRunning: [] });
     }
 
     /** What BigQuery has said of the file on show, as last sent */
@@ -807,18 +809,8 @@ export class CompiledQueryPanel {
                 const _includeDependents = message.includeDependents;
                 const _fullRefresh = message.fullRefresh;
                 // FIXME: there must be a way to avoid double calls before and after function invocation ?
-                const _runModelApiNodeMaps = deriveNodeMapsFromQueryMeta(this.centerPanel?._cachedResults?.fileMetadata?.queryMeta);
                 let messageDict: WebviewMessage = {
                     "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
-                    "dryRunErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunErrorsByNodeType,
-                    "dryRunErrorsByNodeName": _runModelApiNodeMaps.dryRunErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeName": _runModelApiNodeMaps.dryRunIncrementalErrorsByNodeName,
-                    "dryRunExpectedOutputErrorsByNodeName": _runModelApiNodeMaps.dryRunExpectedOutputErrorsByNodeName || this.centerPanel?._cachedResults?.dryRunExpectedOutputErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType,
-                    "dryRunQueryByNodeName": _runModelApiNodeMaps.dryRunQueryByNodeName,
-                    "dryRunIncrementalQueryByNodeName": _runModelApiNodeMaps.dryRunIncrementalQueryByNodeName,
-                    "dryRunNonIncrementalQueryByNodeName": _runModelApiNodeMaps.dryRunNonIncrementalQueryByNodeName,
-                    "compiledQuerySchema": compiledQuerySchema,
                     "dataformTags": dataformTags,
                     "apiUrlLoading": true,
                 };
@@ -870,27 +862,10 @@ export class CompiledQueryPanel {
                         currency = tagDryRunStatsMeta?.tagDryRunStatsList[0].currency;
                         currencySymbol = currencySymbolMapping[currency];
                     }
-                    const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                     const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                    const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
-                    const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
-                    const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
-                    const dryRunIncrementalErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
-                    const _costEstNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
                     this.centerPanel?.sendBigQuery({ currencySymbol });
                     this.centerPanel?.postMessage({
                         "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                        "dryRunStatByNodeType": dryRunStatByNodeType,
-                        "dryRunStatByNodeName": dryRunStatByNodeName,
-                        "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
-                        "dryRunErrorsByNodeName": _costEstNodeMaps.dryRunErrorsByNodeName,
-                        "dryRunIncrementalErrorsByNodeName": _costEstNodeMaps.dryRunIncrementalErrorsByNodeName,
-                        "dryRunExpectedOutputErrorsByNodeName": _costEstNodeMaps.dryRunExpectedOutputErrorsByNodeName || this.centerPanel?._cachedResults?.dryRunExpectedOutputErrorsByNodeName,
-                        "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
-                        "dryRunQueryByNodeName": _costEstNodeMaps.dryRunQueryByNodeName,
-                        "dryRunIncrementalQueryByNodeName": _costEstNodeMaps.dryRunIncrementalQueryByNodeName,
-                        "dryRunNonIncrementalQueryByNodeName": _costEstNodeMaps.dryRunNonIncrementalQueryByNodeName,
-                        "compiledQuerySchema": compiledQuerySchema,
                         "dataformTags": dataformTags,
                         "selectedTags": selectedTags,
                     });
@@ -917,11 +892,6 @@ export class CompiledQueryPanel {
               case 'dataform.loadLineage': {
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
-                const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
-                const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
-                const dryRunIncrementalErrorsByNodeTypeLineage = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
-                const _lineageNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
                 const locationLineage = this.centerPanel?._cachedResults?.location ||
                     curFileMeta?.projectConfig?.defaultLocation ||
                     compiledJson()?.projectConfig?.defaultLocation;
@@ -936,17 +906,6 @@ export class CompiledQueryPanel {
                 this.centerPanel?.postMessage({
                     "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
                     "lineageMetadata": lineageMetadata,
-                    "dryRunStatByNodeType": dryRunStatByNodeType,
-                    "dryRunStatByNodeName": dryRunStatByNodeName,
-                    "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
-                    "dryRunErrorsByNodeName": _lineageNodeMaps.dryRunErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeName": _lineageNodeMaps.dryRunIncrementalErrorsByNodeName,
-                    "dryRunExpectedOutputErrorsByNodeName": _lineageNodeMaps.dryRunExpectedOutputErrorsByNodeName || this.centerPanel?._cachedResults?.dryRunExpectedOutputErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeTypeLineage,
-                    "dryRunQueryByNodeName": _lineageNodeMaps.dryRunQueryByNodeName,
-                    "dryRunIncrementalQueryByNodeName": _lineageNodeMaps.dryRunIncrementalQueryByNodeName,
-                    "dryRunNonIncrementalQueryByNodeName": _lineageNodeMaps.dryRunNonIncrementalQueryByNodeName,
-                    "compiledQuerySchema": compiledQuerySchema,
                     "dataformTags": dataformTags,
                 });
                 return;
@@ -1219,7 +1178,6 @@ export class CompiledQueryPanel {
                 this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
                 await this.postMessage({
-                    "compiledQuerySchema": null,
                 });
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             }
@@ -1254,7 +1212,6 @@ export class CompiledQueryPanel {
             this.sendCompileStatus();
             this.sendNoActions(undefined, { kind: 'unsupported file type', message: `File type not supported. Supported file types are sqlx, js` });
             await this.postMessage({
-                "compiledQuerySchema": null,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
@@ -1265,7 +1222,6 @@ export class CompiledQueryPanel {
             this.sendCompileStatus({ inProject: false });
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
             await this.postMessage({
-                "compiledQuerySchema": null,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
@@ -1273,7 +1229,6 @@ export class CompiledQueryPanel {
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: curFileMeta?.errors?.errorGettingFileNameFromDocument });
             await this.postMessage({
-                "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
@@ -1291,7 +1246,6 @@ export class CompiledQueryPanel {
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'no sql', message: curFileMeta.errors.queryMetaError });
             await this.postMessage({
-                "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
@@ -1326,7 +1280,6 @@ export class CompiledQueryPanel {
             // The compile status has named the errors; with none to name, the file still has nothing to show
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, curFileMeta.errors.dataformCompilationErrors.length === 0 ? { kind: 'other' } : undefined);
             await this.postMessage({
-                "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
             this.updateDataformBlock({ possibleResolutions: curFileMeta.possibleResolutions ?? [], projectConfig: undefined, packageJson: undefined });
@@ -1369,7 +1322,6 @@ export class CompiledQueryPanel {
                     "compilationTimeMs": curFileMeta.compilationTimeMs,
                     "dataformTags": dataformTags,
                     "workspaceFolder": workspaceFolder,
-                    "compiledQuerySchema": null,
                 });
                 // The validation of a graph is a dry run of the statement that would create it
                 this.sendBigQuery({ results: [], tables: {}, dryRunning: propertyGraphs.map((graph) => ({ action: targetId(graph.target), script: 'validation', incremental: false })) });
@@ -1399,7 +1351,6 @@ export class CompiledQueryPanel {
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.` });
                 await this.postMessage({
                     "relativeFilePath": relativeFilePathForGraphs,
-                    "compiledQuerySchema": null,
                     "workspaceFolder": workspaceFolder,
                 });
                 this.sendBigQuery({ dryRunning: [] });
@@ -1456,7 +1407,6 @@ export class CompiledQueryPanel {
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.` });
             await this.postMessage({
-                "compiledQuerySchema": null,
                 "workspaceFolder": workspaceFolder,
             });
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
@@ -1477,7 +1427,6 @@ export class CompiledQueryPanel {
             "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
             "lineageMetadata": curFileMeta.lineageMetadata,
             "compilationTimeMs": curFileMeta.compilationTimeMs,
-            "compiledQuerySchema": compiledQuerySchema,
             "dataformTags": dataformTags,
             "workspaceFolder": workspaceFolder,
     });
@@ -1522,11 +1471,6 @@ export class CompiledQueryPanel {
         // Filter out test nodes as they don't have a table to check last modified time for
         const tablesForLastModified = shown.filter(({ model }) => model.type !== "test" && model.target);
 
-        const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
-        const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
-        const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
-        const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
-        const testQueriesMeta: { name: string; testQuery: string; expectedOutputQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.testQueries ?? [];
 
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             perfTimed('dryRuns', () => dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document!, diagnosticCollection, false)),
@@ -1536,7 +1480,7 @@ export class CompiledQueryPanel {
             // Read again so the prod tables we cannot read keep their dev refs, then show and dry run that
             return this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, await getCurrentFileMetadata(false), false);
         }
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults } = dryRunResults;
+        const { mainQuery: dryRunResult } = dryRunResults;
         // What BigQuery knows of each table, by its action. Nothing is known when there is no BigQuery client
         const tables: BigQuerySlice['tables'] = {};
         (_modelsLastUpdateTimesMeta ?? []).forEach((meta, index) => {
@@ -1555,106 +1499,7 @@ export class CompiledQueryPanel {
             currencySymbol = currencySymbolMapping[currency];
         }
 
-        const formatCost = (result: BigQueryDryRunResponse | undefined, type: string) => formatDryRunCostSummary(result, type, currencySymbol);
-
-        const isJsFile = fileMetadata.queryMeta.type === "js";
-
-        const nodeType = fileMetadata.queryMeta.type;
-        const hasTableOrViewNodes = fileMetadata.tables.some((t: any) => t.type === "table" || t.type === "view");
-        const hasOperationsNodes = fileMetadata.tables.some((t: any) => t.type === "operations");
-        const dryRunStatByNodeType: Record<string, string> = {};
-        if (nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) {
-            const cost = formatCost(dryRunResult, "");
-            if (cost) { dryRunStatByNodeType["table"] = cost; dryRunStatByNodeType["view"] = cost; }
-        }
-        if (nodeType === "operations" || (isJsFile && hasOperationsNodes && !hasTableOrViewNodes)) {
-            const cost = formatCost(dryRunResult, "");
-            if (cost) { dryRunStatByNodeType["operations"] = cost; }
-        }
-        const hasIncrementalNodes = fileMetadata.tables.some((t: any) => t.type === "incremental");
-        if (nodeType === "incremental" || (isJsFile && hasIncrementalNodes)) {
-            const parts = [formatCost(nonIncrementalDryRunResult, ""), formatCost(incrementalDryRunResult, "Incremental")].filter(Boolean);
-            if (parts.length) { dryRunStatByNodeType["incremental"] = parts.join("<br>"); }
-        }
-        { const cost = formatCost(assertionDryRunResult, ""); if (cost) { dryRunStatByNodeType["assertion"] = cost; } }
-        const dryRunStatByNodeName: Record<string, string> = {};
-        (perAssertionDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && assertionQueriesMeta[i]) {
-                dryRunStatByNodeName[assertionQueriesMeta[i].targetName] = cost;
-            }
-        });
         this.updateDataformBlock({ packageJson: curFileMeta.packageJsonContent ?? undefined });
-        (perTableDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && tableQueriesMeta[i]) {
-                dryRunStatByNodeName[tableQueriesMeta[i].targetName] = cost;
-            }
-        });
-        (perNonIncrementalDryRunResults ?? []).forEach((nonIncResult: BigQueryDryRunResponse, i: number) => {
-            const incResult = (perIncrementalDryRunResults ?? [])[i];
-            const nonIncCost = formatCost(nonIncResult, "Non incremental");
-            const incCost = formatCost(incResult, "Incremental");
-            const parts = [nonIncCost, incCost].filter(Boolean);
-            if (parts.length > 0 && incrementalQueriesMeta[i]) {
-                dryRunStatByNodeName[incrementalQueriesMeta[i].targetName] = parts.join("<br>");
-            }
-        });
-        (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && operationQueriesMeta[i]) {
-                dryRunStatByNodeName[operationQueriesMeta[i].targetName] = cost;
-            }
-        });
-        {
-            const testCost = formatCost(testDryRunResult, "Input");
-            const expectedCost = formatCost(expectedOutputDryRunResult, "Expected");
-            const parts = [testCost, expectedCost].filter(Boolean);
-            if (parts.length) { dryRunStatByNodeType["test"] = parts.join("<br>"); }
-        }
-        (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const inputCost = formatCost(result, "Input");
-            const expectedCost = formatCost(perExpectedOutputDryRunResults?.[i], "Expected");
-            const parts = [inputCost, expectedCost].filter(Boolean);
-            const combined = parts.join("<br>");
-            if (combined && testQueriesMeta[i]) {
-                dryRunStatByNodeName[testQueriesMeta[i].name] = combined;
-            }
-        });
-
-
-        // Build aggregate (node-type-keyed) error maps as fallback for single-node files
-        const dryRunErrorsByNodeType: Record<string, DryRunAnnotation> = {};
-        const dryRunIncrementalErrorsByNodeType: Record<string, DryRunAnnotation> = {};
-        const dryRunExpectedOutputErrorsByNodeType: Record<string, DryRunAnnotation> = {};
-
-        if ((nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["table"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
-            dryRunErrorsByNodeType["view"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
-        }
-        if ((nodeType === "operations" || (isJsFile && hasOperationsNodes && !hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["operations"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
-        }
-        if (nodeType === "incremental" || (isJsFile && hasIncrementalNodes)) {
-            if (incrementalDryRunResult?.error?.hasError) {
-                dryRunIncrementalErrorsByNodeType["incremental"] = { message: incrementalDryRunResult.error.message, location: incrementalDryRunResult.error.location };
-            }
-            if (nonIncrementalDryRunResult?.error?.hasError) {
-                dryRunErrorsByNodeType["incremental"] = { message: nonIncrementalDryRunResult.error.message, location: nonIncrementalDryRunResult.error.location };
-            }
-        }
-        if (assertionDryRunResult?.error?.hasError && !(perAssertionDryRunResults?.length)) {
-            dryRunErrorsByNodeType["assertion"] = { message: assertionDryRunResult.error.message, location: assertionDryRunResult.error.location };
-        }
-        if (testDryRunResult?.error?.hasError && !(perTestDryRunResults?.length)) {
-            dryRunErrorsByNodeType["test"] = { message: testDryRunResult.error.message, location: testDryRunResult.error.location };
-        }
-        if (expectedOutputDryRunResult?.error?.hasError) {
-            dryRunExpectedOutputErrorsByNodeType["test"] = { message: expectedOutputDryRunResult.error.message, location: expectedOutputDryRunResult.error.location };
-        }
-
-        // Per-node maps are derived from the enriched query arrays (set by dryRunOrchestrator)
-        const { dryRunErrorsByNodeName, dryRunIncrementalErrorsByNodeName, dryRunExpectedOutputErrorsByNodeName, dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName } = deriveNodeMapsFromQueryMeta(fileMetadata.queryMeta);
 
         // errorMessage is now null for dry-run errors; BigQuery client auth errors arrive via a separate path
         const errorMessage = null;
@@ -1692,18 +1537,6 @@ export class CompiledQueryPanel {
                 "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
                 "lineageMetadata": curFileMeta.lineageMetadata,
                 "compilationTimeMs": curFileMeta.compilationTimeMs,
-                "dryRunStatByNodeType": dryRunStatByNodeType,
-                "dryRunStatByNodeName": dryRunStatByNodeName,
-                "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
-                "dryRunErrorsByNodeName": dryRunErrorsByNodeName,
-                "dryRunIncrementalErrorsByNodeName": dryRunIncrementalErrorsByNodeName,
-                "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
-                "dryRunExpectedOutputErrorsByNodeName": dryRunExpectedOutputErrorsByNodeName,
-                "dryRunExpectedOutputErrorsByNodeType": dryRunExpectedOutputErrorsByNodeType,
-                "dryRunQueryByNodeName": dryRunQueryByNodeName,
-                "dryRunIncrementalQueryByNodeName": dryRunIncrementalQueryByNodeName,
-                "dryRunNonIncrementalQueryByNodeName": dryRunNonIncrementalQueryByNodeName,
-                "compiledQuerySchema": compiledQuerySchema,
                 "dataformTags": dataformTags,
             });
             this.sendBigQuery({ results: dryRunResults.dryRuns.map(({ action, script, response }) => toDryRunResult(action, script, dryRunCompile, response)), dryRunning: [], tables, currencySymbol });
@@ -1715,11 +1548,6 @@ export class CompiledQueryPanel {
                 curFileMeta,
                 targetTablesOrViews,
                 errorMessage,
-                dryRunStatByNodeType,
-                dryRunStatByNodeName,
-                dryRunErrorsByNodeType,
-                dryRunIncrementalErrorsByNodeType,
-                dryRunExpectedOutputErrorsByNodeType,
                 location,
                 compilerOptions
             };
