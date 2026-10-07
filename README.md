@@ -21,6 +21,8 @@ A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and 
 
 ## Installation
 
+These steps are for a Dataform project. For a dbt project, see [dbt projects](#dbt-projects).
+
 1. Install the extension from the [marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode).
 2. [Install Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
@@ -52,6 +54,80 @@ A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and 
 * ️▶️ [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
 * ️▶️ [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
 * ️▶️ [Dataform workspace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
+
+---
+
+## dbt projects
+
+From version 2.0.0 the extension works in a dbt project on BigQuery, beside Dataform. It uses the dbt you have installed: dbt Core 1.8 or later with the BigQuery adapter, or dbt v2. It installs nothing.
+
+### Set-up
+
+1. Install dbt, in one of these ways:
+
+   ```bash
+   pip install dbt-core dbt-bigquery
+   ```
+
+   ```bash
+   brew install dbt-labs/dbt/dbt
+   ```
+
+2. Sign in for BigQuery, as for Dataform:
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
+3. **Open the folder that has `dbt_project.yml` at its root.** The extension looks for a project at the root of each workspace folder, not in sub-folders. For a dbt project inside a larger repository, open the project's own folder, or add it to the workspace with **File > Add Folder to Workspace**.
+
+The extension looks for dbt in this order and uses the first it finds: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, then common install directories. The panel's **Project** tab says which dbt is in use and how it was found.
+
+### What works
+
+| | In a dbt project |
+|---|---|
+| Compiled query | The model in the editor with the tests that read it, each in its own section. Hooks are shown as written. |
+| Dry run | Size and cost of each compiled query, and BigQuery's error at its line and column. |
+| Schema | The columns and types of the compiled query, with the descriptions from your YAML. |
+| Preview | Runs the compiled query and shows the rows. For a test, the rows that fail it. |
+| Run | `dbt build` in a terminal, for the file, with dependencies, with dependents, as a full refresh, or by tag. |
+| dbt target | Shown in the panel. Pick another there; the choice is yours alone and is kept for the workspace. |
+| Compile errors | Shown in the panel with a link to the file, and marked in the editor where dbt gave a line. |
+| Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
+
+Not in a dbt project yet: the dependency graph, column lineage, defer to prod, running through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover, completion and go-to-definition in `.sql` files.
+
+### How it compiles
+
+* **dbt v2** compiles the whole project on every save.
+* **dbt Core** compiles the file you are looking at, with its tests. A file you have not looked at since the last save is compiled when you open it.
+* **A dbt v2 project with `on-run-start` or `on-run-end` hooks is only parsed**, because dbt v2 runs those hooks against the warehouse on every compile. The panel then shows the SQL as written and offers to compile with hooks.
+* dbt writes its artifacts for these compiles into the extension's storage, not into your project's `target/`.
+
+### Where BigQuery jobs run
+
+A dry run or a preview is a BigQuery job, and a job runs in a GCP project. There are two rules:
+
+* **In a dbt project**, a job runs in the project of the table it is for, and BigQuery picks the location.
+* **In a Dataform project**, a job runs in the default project of your credentials, as it always has.
+
+The settings `gcpProjectId` and `gcpLocation` override both.
+
+### Settings for dbt
+
+| Setting | What it is |
+|---|---|
+| `vscode-dataform-tools.dbtExecutablePath` | The dbt to use, when you do not want the one the extension finds. |
+| `vscode-dataform-tools.dbtTarget` | The dbt target for everyone who uses the workspace. Empty lets dbt choose. |
+| `vscode-dataform-tools.dbtVars` | dbt's `--vars`, for compiles and runs. |
+| `vscode-dataform-tools.dbtProfilesDir` | dbt's `--profiles-dir`, for compiles and runs. |
+| `vscode-dataform-tools.dbtCompileWithHooks` | Compile a dbt v2 project that has on-run hooks. The hooks then run on every save. |
+| `vscode-dataform-tools.backend` | Only for a folder that is both a Dataform and a dbt project: which one a file belongs to when its type does not say. |
+
+### Remote hosts
+
+The extension works over Remote SSH, in dev containers and in WSL, for both Dataform and dbt: it runs where your project is, and uses the dbt, the Dataform CLI and the credentials of that machine. A dev container with a dbt project is in [`.devcontainer/dbt`](.devcontainer/dbt/README.md).
 
 ---
 
@@ -199,7 +275,7 @@ Interactive inspector to explore dependencies, apply a common filter across all 
 
 ## Commands
 
-Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> on Mac and searching for the following. These key bindings can also be attached to a keybinding to further streamline your workflow.
+Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> on Mac and searching for the following. Commands in the category "Dataform/dbt" work in both kinds of project; the others are for Dataform and are not listed while a file of a dbt project is in focus. These key bindings can also be attached to a keybinding to further streamline your workflow.
 
 <table>
   <thead>
