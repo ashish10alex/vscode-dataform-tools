@@ -44,7 +44,7 @@ import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineag
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
-import { currentDataformRoot, initProjects, projects, requiredTools } from './project';
+import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -478,7 +478,12 @@ export async function activate(context: vscode.ExtensionContext) {
     endActivateSpan();
 
     // Internal: read by `just bench` (src/bench), not a public API
-    return { __perf: { getPerfSnapshot, resetPerf }, __panel: { onDidPostMessage: onDidPostPanelMessage, forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices() } };
+    return {
+        __perf: { getPerfSnapshot, resetPerf },
+        __panel: { onDidPostMessage: onDidPostPanelMessage, forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices() },
+        // What the tests of a dbt workspace read (src/dbtWorkspace)
+        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext() },
+    };
 }
 
 // This method is called when your extension is deactivated

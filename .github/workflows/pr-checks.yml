@@ -28,6 +28,7 @@ jobs:
         run: npm install --global @dataform/cli
 
       # `npm test` type-checks, builds and lints first (pretest), then runs the Backends' tests in plain Node, and the
-      # unit tests and the recorded panel output (src/panelRecordings) in VS Code, which needs a display.
+      # unit tests, the recorded panel output (src/panelRecordings) and a dbt workspace (src/dbtWorkspace) in VS Code,
+      # which needs a display.
       - name: Type-check, lint and test
         run: xvfb-run -a npm test
