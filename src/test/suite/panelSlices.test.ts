@@ -218,6 +218,15 @@ suite('panel slices: the dbt block', () => {
         assert.strictEqual(Object.values(block.project?.actions ?? {}).reduce((sum, count) => sum + count, 0), Object.keys(built.graph.actions).length);
     });
 
+    test('the dbt target: the names to choose from, the profile default, the setting, and whether the choice is an override', () => {
+        const chosen = dbtBlock({ target: 'ci', targetOverridden: true, targetSetting: 'dev', targets: { names: ['dev', 'ci', 'prod'], defaultName: 'dev' } }, 1);
+        assert.deepStrictEqual(chosen.target, { name: 'ci', overridden: true, names: ['dev', 'ci', 'prod'], profileDefault: 'dev', setting: 'dev' });
+        // A profile that could not be read: no names, so the panel takes a typed one
+        assert.deepStrictEqual(dbtBlock({ target: 'stagin', targetOverridden: true }, 1).target, { name: 'stagin', overridden: true, names: [] });
+        // Nothing chosen, nothing set, and dbt has not said yet
+        assert.deepStrictEqual(dbtBlock({ targets: { names: ['dev'] } }, 1).target, { overridden: false, names: ['dev'] });
+    });
+
     test('a Project of another warehouse is not a BigQuery one', () => {
         const block = dbtBlock({ data: { ...built.dbt, adapterType: 'snowflake' }, graph: built.graph }, 1);
         assert.deepStrictEqual([block.warehouse, block.bigQuery], ['snowflake', false]);

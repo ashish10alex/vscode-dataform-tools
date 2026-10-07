@@ -141,7 +141,7 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
     test("the panel is told what only a dbt Project has: the dbt found, its dbt target, its warehouse", async () => {
         const block = slices.dbt;
         assert.deepStrictEqual(block?.dbt, { path: standIn, foundBy: 'the dbtExecutablePath setting', flavour: 'dbt v2', version: '2.9.9' });
-        assert.deepStrictEqual([block?.looking, block?.target, block?.hooksNotice], [false, { name: 'dev', overridden: false, names: [] }, false]);
+        assert.deepStrictEqual([block?.looking, block?.target, block?.hooksNotice], [false, { name: 'dev', overridden: false, names: ['dev', 'ci'], profileDefault: 'dev' }, false]);
         assert.deepStrictEqual([block?.warehouse, block?.bigQuery, block?.project?.name, block?.project?.profile], ['bigquery', true, 'xf_example', 'xf_example']);
         assert.strictEqual(block?.project?.actions.seed, 1);
         assert.deepStrictEqual(block?.macros, []);
@@ -242,6 +242,47 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
         await until('stg_orders to be compiled again', () => slices.file?.file === 'models/staging/stg_orders.sql' && sqlOf('stg_orders') === true && slices.compile?.status === 'compiled');
         assert.deepStrictEqual(selects().at(-1), ['compile', '--select', `path:${path.join('models', 'staging', 'stg_orders.sql')}`]);
         assert.ok(selects().every(([command]) => command === 'compile'), 'dbt-core was asked for something other than a selected compile');
+    });
+
+    test('a dbt target chosen in the panel overrides the setting, privately, and compiles again', async () => {
+        // With the stand-in for dbt v2 again, which says which dbt target it used
+        await settings().update('dbtExecutablePath', standIn, vscode.ConfigurationTarget.Global);
+        await show('models/marts/fct_orders.sql');
+        await until('the model, compiled by dbt v2', () => slices.file?.file === 'models/marts/fct_orders.sql' && slices.dbt?.dbt?.version === '2.9.9' && slices.compile?.status === 'compiled' && slices.file.actions[0]?.sqlPresent === true && slices.file.compile === slices.compile.compile);
+        await sleep(300);
+        fs.rmSync(path.join(dir, 'ran.jsonl'), { force: true });
+        /** The `--target` of each dbt command run since, or null where it had none */
+        const targets = () => ran().map((args) => (args.includes('--target') ? args[args.indexOf('--target') + 1] : null));
+        const compiledAgain = async (what: string, count: number) => until(what, () => ran().length === count && slices.compile?.status === 'compiled');
+
+        await panel.dbtMessage({ command: 'dbt.setTarget', name: 'ci' });
+        await compiledAgain('the compile with the chosen dbt target', 1);
+        assert.deepStrictEqual(targets(), ['ci']);
+        assert.deepStrictEqual(slices.dbt?.target, { name: 'ci', overridden: true, names: ['dev', 'ci'], profileDefault: 'dev' });
+        // The choice is not written to any settings file
+        assert.strictEqual(settings().get('dbtTarget') ?? null, null);
+        // Each dbt target has its own artifacts
+        const paths = () => ran().map((args) => args[args.indexOf('--target-path') + 1]);
+
+        // The team's default changes: the override still holds, so nothing is compiled
+        await settings().update('dbtTarget', 'dev', vscode.ConfigurationTarget.Global);
+        await until('the setting in the block', () => slices.dbt?.target.setting === 'dev');
+        await sleep(300);
+        assert.deepStrictEqual(targets(), ['ci']);
+        assert.deepStrictEqual([slices.dbt?.target.name, slices.dbt?.target.overridden], ['ci', true]);
+
+        // The way back: the setting is in force again
+        await panel.dbtMessage({ command: 'dbt.setTarget', name: null });
+        await compiledAgain('the compile with the setting', 2);
+        assert.deepStrictEqual(targets(), ['ci', 'dev']);
+        assert.deepStrictEqual(slices.dbt?.target, { name: 'dev', overridden: false, names: ['dev', 'ci'], profileDefault: 'dev', setting: 'dev' });
+        assert.notStrictEqual(paths()[0], paths()[1]);
+
+        // No setting and no choice: dbt chooses, and the panel shows what it said it chose
+        await settings().update('dbtTarget', undefined, vscode.ConfigurationTarget.Global);
+        await compiledAgain('the compile with no dbt target named', 3);
+        assert.deepStrictEqual(targets(), ['ci', 'dev', null]);
+        assert.deepStrictEqual(slices.dbt?.target, { name: 'dev', overridden: false, names: ['dev', 'ci'], profileDefault: 'dev' });
     });
 
     test('a dbt v2 Project with hooks is only parsed, until the offer to compile with hooks is taken', async () => {

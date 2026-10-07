@@ -251,8 +251,12 @@ export interface DbtBlock extends Slice {
         name?: string;
         /** A private override of the `dbtTarget` setting is in force */
         overridden: boolean;
-        /** The dbt targets of the Project's profile, where they could be read */
+        /** The dbt targets of the Project's profile, where they could be read. Empty when not: the panel then takes a typed name */
         names: string[];
+        /** The one the profile names as its default, where that could be read */
+        profileDefault?: string;
+        /** The `dbtTarget` setting, the team's default: what the way back from an override goes to. Unset when dbt chooses */
+        setting?: string;
     };
     /** Shown read-only */
     vars?: string;
