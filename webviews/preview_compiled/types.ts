@@ -85,7 +85,7 @@ export interface WebviewState {
   };
   tagDryRunStatsMeta?: {
       tagDryRunStatsList?: any[];
-      error?: { message: string };
+      error?: string;
   };
   compilerOptions?: string;
   workflowUrls?: WorkflowUrlEntry[];
