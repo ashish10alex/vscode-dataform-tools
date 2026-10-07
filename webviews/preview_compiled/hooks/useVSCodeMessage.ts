@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { WebviewState } from "../types";
 import { legacyStateReader } from "../../../src/shared/panelLegacyState";
+import { PanelSlices, applyMessage, initialSlices } from "../../../src/shared/panelState";
 
 declare global {
   interface Window {
-    initialState?: WebviewState;
+    initialState?: Partial<WebviewState>;
   }
 }
 
 export const useVSCodeMessage = () => {
-  const [state, setState] = useState<WebviewState>(window.initialState || {});
+  const [state, setState] = useState<WebviewState>({ ...window.initialState, ...initialSlices(window.initialState) });
 
   useEffect(() => {
     // Some of the state arrives as slices of the panel contract; the components still read flat fields
@@ -17,9 +18,13 @@ export const useVSCodeMessage = () => {
     const handleMessage = (event: MessageEvent) => {
       const message: any = toLegacyState(event.data);
       setState((prevState) => {
+        // The slices as they were sent, for the components that read them
+        const { project, file, compile, bigquery, dataform, dbt } = prevState;
+        const slices: PanelSlices = applyMessage({ project, file, compile, bigquery, dataform, dbt }, event.data, prevState.relativeFilePath);
         const nextState = {
           ...prevState,
           ...message,
+          ...slices,
           compilationBackend:
             message.compilationBackend ??
             message.compilationInfo?.backend ??

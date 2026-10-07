@@ -20,7 +20,13 @@ export interface DryRunErrorAnnotation {
   location?: { line: number; column: number };
 }
 
-export interface WebviewState {
+import type { PanelSlices } from "../../src/shared/panelState";
+
+/**
+ * What the panel knows. The slices are what the host sent; the other fields are the flat state the host used to
+ * send, worked out from the slices for the components that still read it.
+ */
+export interface WebviewState extends PanelSlices {
   snoozeEndTime?: number | null;
   /** Null when defer to prod is off */
   deferral?: DeferralView | null;

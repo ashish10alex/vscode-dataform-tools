@@ -1630,6 +1630,17 @@ export class CompiledQueryPanel {
         if (initialState.compilationInfo === undefined) {
             initialState.compilationInfo = getCompilationInfo();
         }
+        // The panel reads these from the `dataform` block: the block starts with what the first page is given
+        this.dataformBlock = {
+            ...this.dataformBlock,
+            compilerOptions: initialState.compilerOptions ?? '',
+            compilationMode: initialState.compilationBackend,
+            dataformCoreVersion: initialState.dataformCoreVersion ?? undefined,
+            snoozeEndTime: initialState.snoozeEndTime ?? null,
+            lastRun: initialState.lastRun ?? null,
+            compilationInfo: initialState.compilationInfo ?? undefined,
+        };
+        initialState.dataform = this.dataformBlock;
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const nonce = getNonce();

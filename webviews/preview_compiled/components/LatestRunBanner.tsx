@@ -231,7 +231,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     // Full width covers the whole panel with the run details, giving the actions table room.
     const [fullWidth, setFullWidth] = useState(false);
     const showDetails = expanded || fullWidth;
-    const items = state.workflowUrls || [];
+    const items = state.dataform.workflowUrls || [];
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
     const actionRows = useMemo<WorkflowAction[]>(() => latest?.actions ?? [], [latest?.actions]);
     const totalDurationMs = workflowDurationMs(latest);
