@@ -11,6 +11,11 @@ export interface PanelSlices {
     project?: ProjectSlice;
     file?: FileSlice;
     compile?: CompileStatus;
+    /**
+     * How the last compile that finished stands, kept while the next one runs: what was wrong before a compile
+     * started is still wrong until it ends. Unset before any has finished.
+     */
+    settled?: CompileStatus;
     bigquery?: BigQuerySlice;
     /** Always there, so that a component need not ask whether one has arrived */
     dataform: DataformBlock;
@@ -25,7 +30,8 @@ export const EMPTY_DATAFORM_BLOCK: DataformBlock = {
 
 /** The slices the panel starts with: those the host put in its first page, if any */
 export function initialSlices(baked: Partial<PanelSlices> = {}): PanelSlices {
-    return { ...baked, dataform: baked.dataform ?? EMPTY_DATAFORM_BLOCK };
+    const settled = baked.compile && baked.compile.status !== 'compiling' ? { settled: baked.compile } : {};
+    return { ...baked, ...settled, dataform: baked.dataform ?? EMPTY_DATAFORM_BLOCK };
 }
 
 /** What of the `dataform` block belongs to the file on show, and is not to be shown for the next one */
@@ -53,7 +59,7 @@ export function applyMessage(slices: PanelSlices, message: unknown, fileOnShow: 
         case 'file':
             return { ...slices, file: sent.value };
         case 'compile status':
-            return { ...slices, compile: sent.value };
+            return sent.value.status === 'compiling' ? { ...slices, compile: sent.value } : { ...slices, compile: sent.value, settled: sent.value };
         case 'bigquery':
             return { ...slices, bigquery: sent.value };
         case 'dbt':

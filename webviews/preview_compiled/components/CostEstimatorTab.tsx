@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { panelProblem } from "../utils/panelProblem";
 import { WebviewState } from '../types';
 import { vscode } from '../utils/vscode';
 import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
@@ -136,12 +137,15 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       });
   };
 
+  // What is wrong with the file or its compile is shown here too, ahead of the estimate's own error
+  const panelMessage = panelProblem(state).message;
+
   useEffect(() => {
       // Clear loading if we get a result or error
-       if (state.dataform.tagCostEstimate || state.errorMessage) {
+       if (state.dataform.tagCostEstimate || panelMessage) {
            setLoading(false);
        }
-  }, [state.dataform.tagCostEstimate, state.errorMessage]);
+  }, [state.dataform.tagCostEstimate, panelMessage]);
 
   const data = useMemo(() => {
       // The contract leaves a row's shape to the host
@@ -293,13 +297,13 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </label>
             </div>
 
-            {(state.errorMessage || state.dataform.tagCostEstimate?.error) && (
+            {(panelMessage || state.dataform.tagCostEstimate?.error) && (
                 <div className="mt-4 p-3 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] rounded flex items-start gap-2 text-sm text-[var(--vscode-errorForeground)]">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <div>
                         <div className="font-semibold mb-0.5">Estimation Failed</div>
                         <div className="opacity-90">
-                            {state.errorMessage || state.dataform.tagCostEstimate?.error}
+                            {panelMessage || state.dataform.tagCostEstimate?.error}
                         </div>
                     </div>
                 </div>
@@ -311,7 +315,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 <DataTable columns={columns} data={data} searchPlaceholder="Filter costs..." />
              ) : (
                 <div className="text-center text-[var(--vscode-descriptionForeground)] mt-8">
-                     {!state.errorMessage && !state.dataform.tagCostEstimate?.error && (
+                     {!panelMessage && !state.dataform.tagCostEstimate?.error && (
                          "Select one or more tags and click Estimate Cost to see results."
                      )}
                  </div>

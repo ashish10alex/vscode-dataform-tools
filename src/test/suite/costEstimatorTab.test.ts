@@ -27,10 +27,11 @@ suite('CostEstimatorTab', () => {
         assert.ok(!html.includes(PROMPT));
     });
 
-    test('shows the panel error message ahead of the error of the estimate', () => {
-        const html = render({ error: 'Access Denied' }, { errorMessage: 'No tags selected' });
+    test('shows what is wrong with the file ahead of the error of the estimate', () => {
+        const file = { compile: 1, file: 'definitions/a.sqlx', role: 'not compiled' as const, actions: [], problem: { kind: 'other' as const, message: 'Unable to retrieve metadata' } };
+        const html = render({ error: 'Access Denied' }, { file });
 
-        assert.ok(html.includes('No tags selected'));
+        assert.ok(html.includes('Unable to retrieve metadata'));
         assert.ok(!html.includes('Access Denied'));
     });
 

@@ -21,6 +21,7 @@ import { ProjectConfigTab } from './components/ProjectConfigTab';
 import { CompilationError } from './components/CompilationError';
 import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
+import { panelProblem } from './utils/panelProblem';
 
 function HeaderRightActions({
   snoozeEndTime,
@@ -58,6 +59,7 @@ function HeaderRightActions({
 
 function App() {
   const state = useVSCodeMessage();
+  const problem = panelProblem(state);
   const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
   const [now, setNow] = useState(Date.now());
 
@@ -137,7 +139,8 @@ function App() {
 
   const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
 
-  const showSkeleton = !!state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !state.declarations && !state.errorMessage && !state.compilationErrors;
+  // While a compile runs no error is on show, so only what the file has to show keeps the skeleton away
+  const showSkeleton = problem.compiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !state.declarations;
 
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
@@ -304,7 +307,7 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
-        {state.recompiling && (() => {
+        {problem.compiling && (() => {
           const backend = state.dataform.compilationMode || state.dataform.compilationInfo?.backend || 'cli';
           const isApi = backend === 'api';
           const backendLabel = isApi ? 'API' : 'CLI';
@@ -346,10 +349,10 @@ function App() {
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} backend={state.dataform.compilationMode || state.dataform.compilationInfo?.backend} />
         )}
 
-{(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
+{(problem.type === CompilationErrorType.COMPILATION_ERROR ||
           (!isPropertyGraphFile && (
             !state.models?.length ||
-            (state.missingExecutables && state.missingExecutables.length > 0)
+            problem.missingTools.length > 0
           ))) && (
           <CompilationError state={state} />
         )}

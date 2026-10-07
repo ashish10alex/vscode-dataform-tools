@@ -5,6 +5,7 @@ import { vscode } from '../utils/vscode';
 import { WebviewState, CompilationErrorType } from '../types';
 import { CompilerOverrides } from './CompilerOverrides';
 import { CompilationInfoBadge } from './CompilationInfoBadge';
+import { panelProblem } from '../utils/panelProblem';
 
 interface CompilationErrorProps {
   state: WebviewState;
@@ -90,14 +91,12 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 
 export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => {
   const {
-    errorMessage,
-    errorType,
-    recompiling,
-    missingExecutables,
     relativeFilePath,
     workspaceFolder,
-    compilationErrors,
   } = state;
+  const { type: errorType, message: errorMessage, compiling: recompiling, missingTools: missingExecutables, compileErrors } = panelProblem(state);
+  // As the sections below name an error's parts
+  const compilationErrors = compileErrors.map((error) => ({ error: error.message, fileName: error.fileName ?? '', lineNumber: error.line, sourceContext: error.sourceContext }));
   const { possibleResolutions, compilationInfo } = state.dataform;
   // The selected backend, not compilationInfo: an API compile that fails early records no info,
   // which would leave the last CLI compile describing the error.

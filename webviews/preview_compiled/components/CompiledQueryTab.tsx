@@ -40,6 +40,7 @@ import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSele
 import { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
+import { panelProblem } from "../utils/panelProblem";
 
 const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
 const PRIMARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]`;
@@ -73,6 +74,7 @@ interface CompiledQueryTabProps {
 export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   state,
 }) => {
+  const { compiling, message: problemMessage } = panelProblem(state);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [fullRefresh, setFullRefresh] = useState(false);
@@ -285,10 +287,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   };
 
   useEffect(() => {
-      if (state.lineageMetadata || state.errorMessage) {
+      if (state.lineageMetadata || problemMessage) {
           setLoadingLineage(false);
       }
-  }, [state.lineageMetadata, state.errorMessage]);
+  }, [state.lineageMetadata, problemMessage]);
 
   const queryLabelByType = (type: string) => {
     if (type === 'view') {return 'View';};
@@ -307,9 +309,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
             {state.relativeFilePath || " "}
           </span>
-          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={state.recompiling} />
+          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={compiling} />
         </div>
-        <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
+        <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={compiling} onRerunDispatched={handleRerunDispatched} />
         <PropertyGraphSection state={state} />
       </div>
     );
@@ -322,12 +324,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
               {state.relativeFilePath || " "}
           </span>
-          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={state.recompiling} />
+          <CompilationInfoBadge info={state.dataform.compilationInfo} backend={state.dataform.compilationMode} recompiling={compiling} />
           <div className="flex-grow"></div>
-          <button onClick={handleFormat} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+          <button onClick={handleFormat} disabled={formatting || compiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
               <Wand2 className="w-3 h-3 mr-1.5" /> Format
           </button>
-          <button onClick={handleLint} disabled={formatting || state.recompiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+          <button onClick={handleLint} disabled={formatting || compiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
               <ShieldCheck className="w-3 h-3 mr-1.5" /> Lint
           </button>
       </div>
@@ -378,7 +380,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     ))}
                   </div>
                 )}
-                {state.dryRunning && !state.recompiling && (
+                {state.dryRunning && !compiling && (
                   <Loader2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
                 )}
                 <div className="flex items-center">
@@ -619,20 +621,20 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           {/* Explore & inspect: read-only, so none of the run modifiers apply */}
           <div className="flex flex-wrap items-center gap-2">
               <div role="group" aria-label="Explore dependencies" className="inline-flex rounded border border-[var(--vscode-widget-border)] overflow-hidden">
-                  <button onClick={handleDependencyGraph} disabled={state.recompiling} className={SEGMENT_BUTTON} title="Open the dependency graph">
+                  <button onClick={handleDependencyGraph} disabled={compiling} className={SEGMENT_BUTTON} title="Open the dependency graph">
                       <Network className="w-4 h-4 mr-1.5" /> Graph
                   </button>
-                  <button onClick={handleDependencyInspector} disabled={state.recompiling} className={clsx(SEGMENT_BUTTON, "border-l border-[var(--vscode-widget-border)]")} title="Inspect upstream and downstream dependencies">
+                  <button onClick={handleDependencyInspector} disabled={compiling} className={clsx(SEGMENT_BUTTON, "border-l border-[var(--vscode-widget-border)]")} title="Inspect upstream and downstream dependencies">
                       <ListTree className="w-4 h-4 mr-1.5" /> Inspector
                   </button>
               </div>
-              <button onClick={handlePreviewResults} disabled={state.recompiling} className={SECONDARY_BUTTON} title="Preview the query results">
+              <button onClick={handlePreviewResults} disabled={compiling} className={SECONDARY_BUTTON} title="Preview the query results">
                   <Eye className="w-4 h-4 mr-1.5" /> Preview Data
               </button>
               {canCheckColumnImpact && (
                   <button
                       onClick={handleColumnImpact}
-                      disabled={state.recompiling || state.dryRunning}
+                      disabled={compiling || state.dryRunning}
                       className={SECONDARY_BUTTON}
                       title={changedColumns
                           ? `This dry run drops or retypes ${changedColumns} column${changedColumns === 1 ? '' : 's'} against prod. Show every column's lineage, those first (Dataplex lineage)`
@@ -654,7 +656,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               {showTestRun && (
                   <button
                       onClick={handleRunTest}
-                      disabled={state.recompiling}
+                      disabled={compiling}
                       className={hasRunnableActions ? SECONDARY_BUTTON : PRIMARY_BUTTON}
                   >
                       <Play className="w-4 h-4 mr-1.5" /> Run Tests
@@ -668,7 +670,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                               isRemoteMode={isRemoteMode}
                               hasTags={hasTags}
                               running={runningModel}
-                              disabled={!!state.recompiling}
+                              disabled={compiling}
                               onRun={handleRun}
                               onBackendChange={setPreferredBackend}
                               onRunTag={() => setTagPopoverOpen(true)}
@@ -676,7 +678,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       ) : (
                           <button
                               onClick={() => setTagPopoverOpen(o => !o)}
-                              disabled={runningModel || state.recompiling}
+                              disabled={runningModel || compiling}
                               className={PRIMARY_BUTTON}
                               title="Run by tag via Dataform API"
                               aria-haspopup="dialog"
@@ -728,7 +730,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               <RunChangedButton
                   changedActions={state.dataform.changedActions}
                   isRemoteMode={isRemoteMode}
-                  disabled={runningModel || !!state.recompiling}
+                  disabled={runningModel || compiling}
                   includeDependencies={includeDependencies}
                   includeDependents={includeDependents}
                   fullRefresh={fullRefresh}
@@ -750,7 +752,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </div>
           )}
 
-          <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={state.recompiling} onRerunDispatched={handleRerunDispatched} />
+          <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={compiling} onRerunDispatched={handleRerunDispatched} />
           <LatestRunBanner state={state} submittingSince={submittingSince} />
       </div>
 

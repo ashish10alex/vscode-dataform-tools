@@ -19,8 +19,8 @@ export const useVSCodeMessage = () => {
       const message: any = toLegacyState(event.data);
       setState((prevState) => {
         // The slices as they were sent, for the components that read them
-        const { project, file, compile, bigquery, dataform, dbt } = prevState;
-        const slices: PanelSlices = applyMessage({ project, file, compile, bigquery, dataform, dbt }, event.data, prevState.relativeFilePath);
+        const { project, file, compile, settled, bigquery, dataform, dbt } = prevState;
+        const slices: PanelSlices = applyMessage({ project, file, compile, settled, bigquery, dataform, dbt }, event.data, prevState.relativeFilePath);
         const nextState = {
           ...prevState,
           ...message,

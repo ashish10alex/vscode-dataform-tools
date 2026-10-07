@@ -5,6 +5,7 @@ import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { IncludedTargetsList } from './IncludedTargetsList';
+import { panelProblem } from '../utils/panelProblem';
 
 interface WorkflowURLsTabProps {
     state: WebviewState;
@@ -75,7 +76,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
 
     return (
         <div className="flex flex-col space-y-4">
-            {!isBlockingError(state.errorType) && (
+            {!isBlockingError(panelProblem(state).type ?? undefined) && (
                 <div className="flex flex-col gap-3 bg-[var(--vscode-sideBar-background)] p-4 rounded-lg border border-[var(--vscode-widget-border)] shadow-sm">
                     <div className="text-sm">
                         <h3 className="font-semibold text-[var(--vscode-foreground)] mb-1">Trigger Execution via API</h3>
