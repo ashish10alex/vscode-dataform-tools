@@ -7,7 +7,8 @@ import { repeatDbtRun, runDbt } from './dbtRun';
 import type { ProjectState } from './registry';
 
 /*
- * The extension's commands in a dbt Project (xf#63): the sixteen that work for both Backends, as they act on dbt.
+ * The extension's commands in a dbt Project (xf#63): the sixteen that work for both Backends, as they act on dbt. The
+ * seventeenth, the dependency graph, is drawn by ../views/depedancyGraphPanel.ts.
  * Each takes the file of a dbt Project it is for; the caller finds it (the editor in focus, else the file the panel
  * shows) and falls through to Dataform when there is none.
  */
