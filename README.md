@@ -83,7 +83,7 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 ### What works
 
 | | In a dbt project |
-|---|---|
+| --- | --- |
 | Compiled query | The model in the editor with the tests that read it, each in its own section. Hooks are shown as written. |
 | Dry run | Size and cost of each compiled query, and BigQuery's error at its line and column. |
 | Schema | The columns and types of the compiled query, with the descriptions from your YAML. |
@@ -91,14 +91,27 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 | Run | `dbt build` in a terminal, for the file, with dependencies, with dependents, as a full refresh, or by tag. |
 | dbt target | Shown in the panel. Pick another there; the choice is yours alone and is kept for the workspace. |
 | Compile errors | Shown in the panel with a link to the file, and marked in the editor where dbt gave a line. |
+| Dry-run errors | BigQuery's errors are marked in the editor too. See [In the editor](#in-the-editor). |
+| Go to definition | From a `ref()` to its model, seed or snapshot; from a `source()` to its table in the YAML file; from a macro call to its `{% macro %}` line. Also from a `ref()` or `source()` written in a YAML file. |
+| Hover | On a `ref()` or `source()`: the table in BigQuery, its description, partitioning, row count and columns. On a column name: its type and description, in each table the file reads that has it. |
+| Completions | Model, seed and snapshot names inside `ref('`; sources and their tables inside `source('`; column names after an alias and a dot, and of every table the file reads. |
 | Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
 
-Not in a dbt project yet: the dependency graph, column lineage, defer to prod, running through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover, completion and go-to-definition in `.sql` files.
+Not in a dbt project yet: the dependency graph, column lineage, defer to prod, running through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover and completions for macros.
+
+### In the editor
+
+Go to definition, hover and completions work in the `.sql` files of a dbt project as soon as one is open in the editor: the extension parses the project then, in the background, without the panel.
+
+* **The language of your `.sql` files is not changed.** The extension claims no language, grammar or file icon for `.sql`. It answers for the files under the folder that has `dbt_project.yml`, whatever SQL extension colours them.
+* **Beside another dbt extension these features stand down.** VS Code shows what every extension offers, so two dbt extensions would give each hover and suggestion twice. While the dbt extension of dbt Labs or Power User for dbt is installed and enabled, go to definition, hover and completions of this extension are off, and the output channel says so. Set `vscode-dataform-tools.dbtEditorFeatures` to `on` to have both, or to `off` to never have these.
+* **Schemas are read from BigQuery once per compile.** The first hover or completion that needs a table asks BigQuery for it. The answer is kept in memory until the project is next parsed or compiled, so a save reads it afresh.
+* **Dry-run errors.** BigQuery reports an error at a line of the compiled query. When that line is in your file unchanged, the error is marked there. When Jinja built the line, the error is marked on the first line of the file and says where it is in the compiled query; the panel shows it in place. An error in a generic test is marked on the line of the YAML file that declares the test.
+* **A save without the panel.** A save opens the panel unless `showCompiledQueryInVerticalSplitOnSave` is off. When the panel stays closed, a save still compiles the file and dry-runs its model and tests, so the errors are marked. Set `vscode-dataform-tools.dbtDryRunOnSave` to `false` to have such a save only parse the project. Without BigQuery credentials nothing is dry-run and nothing is marked.
 
 ### How it compiles
 
-* **dbt v2** compiles the whole project on every save.
-* **dbt Core** compiles the file you are looking at, with its tests. A file you have not looked at since the last save is compiled when you open it.
+* **dbt Core and dbt v2** compile the file you are looking at, with its tests, and never the whole project. A file you have not looked at since the last save is compiled when you open it.
 * **A dbt v2 project with `on-run-start` or `on-run-end` hooks is only parsed**, because dbt v2 runs those hooks against the warehouse on every compile. The panel then shows the SQL as written and offers to compile with hooks.
 * dbt writes its artifacts for these compiles into the extension's storage, not into your project's `target/`.
 
@@ -114,12 +127,14 @@ The settings `gcpProjectId` and `gcpLocation` override both.
 ### Settings for dbt
 
 | Setting | What it is |
-|---|---|
+| --- | --- |
 | `vscode-dataform-tools.dbtExecutablePath` | The dbt to use, when you do not want the one the extension finds. |
 | `vscode-dataform-tools.dbtTarget` | The dbt target for everyone who uses the workspace. Empty lets dbt choose. |
 | `vscode-dataform-tools.dbtVars` | dbt's `--vars`, for compiles and runs. |
 | `vscode-dataform-tools.dbtProfilesDir` | dbt's `--profiles-dir`, for compiles and runs. |
 | `vscode-dataform-tools.dbtCompileWithHooks` | Compile a dbt v2 project that has on-run hooks. The hooks then run on every save. |
+| `vscode-dataform-tools.dbtEditorFeatures` | Go to definition, hover and completions in dbt files: `auto` (off beside another dbt extension), `on` or `off`. |
+| `vscode-dataform-tools.dbtDryRunOnSave` | Compile and dry-run a dbt file on save while the panel is closed. Off, a save only parses. |
 | `vscode-dataform-tools.backend` | Only for a folder that is both a Dataform and a dbt project: which one a file belongs to when its type does not say. |
 
 ### Remote hosts
@@ -463,8 +478,8 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
 
 If this extension saves you time and makes working with Dataform or dbt easier, consider supporting the project:
 
-- 📝 **Leave a review** on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode)
-- ☕ **Buy me a coffee**:
+* 📝 **Leave a review** on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode)
+* ☕ **Buy me a coffee**:
   <a href="https://buymeacoffee.com/ashishalexj">
     <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee" height="25">
   </a>

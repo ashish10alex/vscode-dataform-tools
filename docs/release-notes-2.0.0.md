@@ -17,6 +17,8 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
   * **Run**: `dbt build` in a terminal for the file, with dependencies, with dependents, as a full refresh, or by tag. The button names the dbt target, and the first run against a dbt target that is not the profile's default asks first.
   * **dbt target control** in the panel, with a private choice per workspace; settings `dbtTarget`, `dbtVars`, `dbtProfilesDir`.
   * **Compile errors** in the panel with links, and marked in the editor where dbt gave a line.
+  * **In the editor**: go to definition from a `ref()`, a `source()` and a macro call; hover on a `ref()` or `source()` with the table's description, partitioning, row count and columns, and on a column name with its type and description; completions for model, source and column names. The language of `.sql` files is not changed. These stand down beside the dbt extension of dbt Labs or Power User for dbt, unless `dbtEditorFeatures` is `on`.
+  * **Dry-run errors in the editor**: on the line of your file when it is in the compiled query unchanged, else on the first line with the place in the compiled query. A save dry-runs also while the panel is closed; `dbtDryRunOnSave` turns that off.
   * **Finding dbt**: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` or `venv`, the Python extension's environment, `PATH`, common install directories. The panel says which was found.
   * **dbt v2 projects with on-run hooks are only parsed** unless `dbtCompileWithHooks` is on, because dbt v2 runs those hooks on every compile.
 * **Several projects in one window**: with several workspace folders, the project follows the file in the editor. A folder may be a Dataform project, a dbt project, or both.
@@ -34,6 +36,6 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
 
 ### Not in a dbt project yet
 
-The dependency graph, column lineage, defer to prod, runs through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover, completion and go-to-definition in `.sql` files.
+The dependency graph, column lineage, defer to prod, runs through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover and completions for macros.
 
 dbt and dbt Core are trademarks of dbt Labs, LLC.
