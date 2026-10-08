@@ -5,7 +5,7 @@ import { compilationInfoParts, compilationInfoTooltip, customCliLabel } from "..
 import { vscode } from "../utils/vscode";
 
 /** Re-renders every `intervalMs` so relative times ("3 min ago") stay current. */
-function useNow(intervalMs: number) {
+export function useNow(intervalMs: number) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), intervalMs);

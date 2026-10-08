@@ -66,25 +66,23 @@ const viewOf = (file: string) => dbtView(after({ manifest: v2, file, state: comp
 suite('the dbt panel: a file with SQL', () => {
     test('a model is shown with its tests beneath it, three tabs, and a link to its table', () => {
         const view = viewOf(MODEL);
-        assert.deepStrictEqual([view.page, view.file, view.what], ['panel', MODEL, 'model · table']);
+        assert.deepStrictEqual([view.page, view.file], ['panel', MODEL]);
         assert.deepStrictEqual(view.tabs, ['compiled', 'schema', 'project']);
         assert.deepStrictEqual(view.actions.map((action) => action.kind), ['table', 'test', 'test']);
-        assert.deepStrictEqual(view.target && [view.target.text, view.target.link, view.target.buildsNothing], ['alex-personal-dev-01.xf_example.dim_customers', true, false]);
+        assert.strictEqual(view.actions[0].buildsTable, true);
         assert.deepStrictEqual(view.status, { kind: 'compiled', compiledAt: 1000, durationMs: 2100 });
         assert.deepStrictEqual([view.outdated, view.skeleton, view.parsedOnly, view.card, view.errors.length], [false, false, false, undefined, 0]);
         assert.deepStrictEqual(view.readsFrom.map((neighbour) => neighbour.target.name), ['stg_customers', 'stg_orders', 'stg_payments']);
     });
 
-    test('an ephemeral model has a Target that is no link, and says it builds nothing', () => {
+    test('an ephemeral model builds no table, so its card is no link', () => {
         const view = viewOf('models/intermediate/int_customer_countries.sql');
-        assert.strictEqual(view.what, 'model · ephemeral');
-        assert.deepStrictEqual(view.target && [view.target.link, view.target.buildsNothing], [false, true]);
+        const [model] = view.actions;
+        assert.deepStrictEqual([model.kind, model.buildsTable], ['ephemeral', false]);
     });
 
-    test('a test file is shown with the model it tests, and names no Target of its own', () => {
+    test('a test file is shown with the model it tests', () => {
         const view = viewOf('tests/assert_positive_order_totals.sql');
-        assert.strictEqual(view.what, 'test');
-        assert.strictEqual(view.target, undefined);
         assert.deepStrictEqual(view.actions.map((action) => action.kind), ['incremental', 'test', 'test', 'test', 'unit test']);
     });
 
@@ -93,7 +91,6 @@ suite('the dbt panel: a file with SQL', () => {
         const view = dbtView(after({ manifest: snowflake, file: MODEL, state: compiled() }));
         assert.strictEqual(view.otherWarehouse, 'snowflake');
         assert.deepStrictEqual(view.tabs, ['compiled', 'project']);
-        assert.strictEqual(view.target?.link, false);
         assert.strictEqual(view.actions.length, 3);
     });
 });
@@ -101,28 +98,25 @@ suite('the dbt panel: a file with SQL', () => {
 suite('the dbt panel: a file with no SQL', () => {
     test('a seed: what it is, its Target and what uses it', () => {
         const view = viewOf('seeds/country_codes.csv');
-        assert.deepStrictEqual([view.what, view.actions.length, view.tabs], ['seed', 0, ['compiled', 'project']]);
+        assert.deepStrictEqual([view.actions.length, view.tabs], [0, ['compiled', 'project']]);
         assert.strictEqual(view.card?.title, 'Seed: country_codes');
         assert.deepStrictEqual(view.card?.rows.find((row) => row.label === 'Used by'), { label: 'Used by', value: 'int_customer_countries' });
     });
 
     test('the sources of a YAML file, as a flat list under the names dbt gives them', () => {
         const view = viewOf('models/staging/_sources.yml');
-        assert.strictEqual(view.what, '3 sources');
-        assert.strictEqual(view.target, undefined);
+        assert.strictEqual(view.card?.title, 'Sources defined in this file');
         assert.deepStrictEqual(view.card?.rows.map((row) => row.label), ['raw.customers', 'raw.orders', 'raw.payments', 'File']);
         assert.strictEqual(view.card?.rows[1].value, 'alex-personal-dev-01.raw.orders');
     });
 
     test('a macro file names its macros', () => {
         const view = viewOf('macros/audit.sql');
-        assert.strictEqual(view.what, 'macros');
         assert.strictEqual(view.card?.title, 'Macros: create_cents_to_dollars_udf, record_run_in_audit_log');
     });
 
     test('dbt_project.yml: the Project, its profile and how many actions of each sort', () => {
         const view = viewOf('dbt_project.yml');
-        assert.strictEqual(view.what, 'project settings');
         assert.strictEqual(view.card?.title, 'dbt Project: xf_example');
         assert.deepStrictEqual(view.card?.rows.slice(2), [
             { label: 'Profile', value: 'xf_example' },
@@ -209,7 +203,7 @@ suite('the dbt panel: while dbt works', () => {
     test('before anything is known it waits, and says when dbt is being looked for', () => {
         const waiting = dbtView(after({ file: MODEL, state: { inProject: true, errors: [] }, dbt: null, looking: true }));
         assert.deepStrictEqual(waiting.status, { kind: 'waiting', text: 'Looking for dbt…' });
-        assert.deepStrictEqual([waiting.actions.length, waiting.card, waiting.what], [0, undefined, '']);
+        assert.deepStrictEqual([waiting.actions.length, waiting.card], [0, undefined]);
     });
 
     test('the first compile of a Project shows placeholder lines', () => {
@@ -232,14 +226,14 @@ suite('the dbt panel: while dbt works', () => {
         const macro = after({ manifest: nothing, file: 'macros/audit.sql', state: compiled(), dbt: CORE });
         const view = dbtView(after({ manifest: nothing, file: MODEL, state: { ...compiled(), compiling: { showingPrevious: true, startedAt: 9, file: MODEL } }, dbt: CORE }, macro));
         assert.deepStrictEqual(view.status, { kind: 'first compile', text: 'Compiling this file for the first time since the last save…', startedAt: 9 });
-        assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length, view.what], [true, false, 0, 'model · table']);
+        assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length], [true, false, 0]);
     });
 
     test('while the compile for another file runs, the last file is not shown under the new name', () => {
         const macro = after({ manifest: v2, file: 'macros/audit.sql', state: compiled() });
         const next = applyMessage(macro, { slice: 'compile status', value: compileStatusSlice({ ...compiled(), compiling: { showingPrevious: true, startedAt: 9, file: MODEL } }, 1) });
         const view = dbtView(next);
-        assert.deepStrictEqual([view.file, view.skeleton, view.card, view.what], [MODEL, true, undefined, '']);
+        assert.deepStrictEqual([view.file, view.skeleton, view.card], [MODEL, true, undefined]);
     });
 
     test('a Project parsed for its hooks shows the SQL as written, the offer, and no Schema tab', () => {
@@ -279,7 +273,7 @@ suite('the dbt panel: when something is wrong', () => {
 
     test('on dbt-core one error anywhere leaves no graph: the card stands alone', () => {
         const view = dbtView(after({ manifest: { metadata: {} }, file: MODEL, dbt: CORE, state: compiled(elsewhere) }));
-        assert.deepStrictEqual([view.errors, view.errorsElsewhere, view.actions.length, view.card, view.what], [elsewhere, [], 0, undefined, '']);
+        assert.deepStrictEqual([view.errors, view.errorsElsewhere, view.actions.length, view.card], [elsewhere, [], 0, undefined]);
         assert.deepStrictEqual(view.status, { kind: 'failed', text: 'Compile failed' });
     });
 
