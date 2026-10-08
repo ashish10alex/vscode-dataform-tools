@@ -8,7 +8,7 @@ import { DbtManifest, buildDbtGraph } from '../../backend/dbt/graph';
 import { CompileState, actionsNamed, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../../panel/slices';
 import type { DbtBlock } from '../../shared/panelContract';
 import type { DryRunResult } from '../../bigquery/dryRunService';
-import { dbtDryRunOf, dbtView, incrementalCase } from '../../shared/panelDbtView';
+import { dbtDryRunOf, dbtView, incrementalCase, testedBy } from '../../shared/panelDbtView';
 import { PanelSlices, applyMessage, initialSlices } from '../../shared/panelState';
 import { findProjectRoot } from './helper';
 
@@ -23,6 +23,7 @@ const backend = new DbtBackend();
 const V2: DbtBlock['dbt'] = { path: '/work/shop/.venv/bin/dbt', foundBy: "the Project's .venv", flavour: 'dbt v2', version: '2.0.6' };
 const CORE: DbtBlock['dbt'] = { path: '/usr/local/bin/dbt', foundBy: 'PATH', flavour: 'dbt-core', version: '1.12.5' };
 const MODEL = 'models/marts/dim_customers.sql';
+const TEST = 'tests/assert_positive_order_totals.sql';
 
 const compiled = (errors: CompileError[] = [], notice?: string): CompileState => ({ inProject: true, errors, compiled: { compiledAt: 1000, durationMs: 2100, ...(notice ? { notice } : {}) } });
 
@@ -44,7 +45,6 @@ interface Scene {
     dbt?: DbtBlock['dbt'] | null;
     looking?: boolean;
     parsedForHooks?: boolean;
-    completing?: boolean;
 }
 
 /** The panel's slices after the host's four messages for a file, on top of what it had */
@@ -52,7 +52,7 @@ function after(scene: Scene, before: PanelSlices = initialSlices()): PanelSlices
     const built = scene.manifest ? buildDbtGraph(scene.manifest) : undefined;
     const shown = fileSlice(built?.graph, backend, scene.file, 1);
     const tool = scene.dbt === null ? {} : { dbt: scene.dbt ?? V2 };
-    const block = dbtBlock({ ...tool, looking: scene.looking, target: 'dev', profile: 'xf_example', parsedForHooks: scene.parsedForHooks, completing: scene.completing, data: built?.dbt, graph: built?.graph, shown: actionsNamed(shown), file: scene.file }, 1);
+    const block = dbtBlock({ ...tool, looking: scene.looking, target: 'dev', profile: 'xf_example', parsedForHooks: scene.parsedForHooks, data: built?.dbt, graph: built?.graph, shown: actionsNamed(shown), file: scene.file }, 1);
     return [
         { slice: 'project', value: projectSlice({ root: '/work/shop' }, backend, built?.graph, 1) },
         { slice: 'dbt', value: block },
@@ -81,9 +81,28 @@ suite('the dbt panel: a file with SQL', () => {
         assert.deepStrictEqual([model.kind, model.buildsTable], ['ephemeral', false]);
     });
 
-    test('a test file is shown with the model it tests', () => {
-        const view = viewOf('tests/assert_positive_order_totals.sql');
-        assert.deepStrictEqual(view.actions.map((action) => action.kind), ['incremental', 'test', 'test', 'test', 'unit test']);
+    test('a test file shows only its test, which links to the model it tests, and has no Schema tab', () => {
+        const slices = after({ manifest: v2, file: TEST, state: compiled() });
+        const view = dbtView(slices);
+        assert.deepStrictEqual(view.actions.map((action) => [action.kind, action.fileName]), [['test', TEST]]);
+        assert.deepStrictEqual(view.tabs, ['compiled', 'project']);
+        const tested = testedBy(slices, view.actions, view.actions[0]);
+        assert.deepStrictEqual([tested?.name, tested?.fileName], ['fct_orders', 'models/marts/fct_orders.sql']);
+    });
+
+    test('a YAML file of tests shows the tests it defines, and no model', () => {
+        const view = viewOf('models/marts/_marts.yml');
+        assert.ok(view.actions.length > 2);
+        assert.ok(view.actions.every((action) => action.fileName === 'models/marts/_marts.yml' && (action.kind === 'test' || action.kind === 'unit test')));
+        assert.strictEqual(view.tabs.includes('schema'), false);
+    });
+
+    test("in a model's file a test has no link to the model, which is on show", () => {
+        const slices = after({ manifest: v2, file: MODEL, state: compiled() });
+        const view = dbtView(slices);
+        const tests = view.actions.filter((action) => action.kind === 'test');
+        assert.ok(tests.length > 0);
+        assert.ok(tests.every((action) => testedBy(slices, view.actions, action) === undefined));
     });
 
     test('a Project of another warehouse has one notice and no Schema tab', () => {
@@ -102,7 +121,7 @@ suite('the dbt panel: the Data Lineage of a file', () => {
         const { lineage } = viewOf(MODEL);
         assert.strictEqual(lineage?.subjects.length, 1);
         const [model] = lineage!.subjects;
-        assert.deepStrictEqual([model.name, model.own, model.fileName], ['dim_customers', true, MODEL]);
+        assert.deepStrictEqual([model.name, model.ofTests, model.fileName], ['dim_customers', undefined, MODEL]);
         assert.deepStrictEqual(names(model.dependencies), ['stg_customers', 'stg_orders', 'stg_payments']);
         assert.deepStrictEqual(names(model.dependents), ['customer_segments v1', 'customer_segments v2', 'revenue_by_country', 'revenue_report']);
         assert.deepStrictEqual(model.tests.map((row) => row.kind), ['test', 'test']);
@@ -129,25 +148,30 @@ suite('the dbt panel: the Data Lineage of a file', () => {
         assert.strictEqual(model.dependencies.some((row) => row.buildsTable), false);
     });
 
-    test("a test's file has the lineage of the model it tests, and says it is not the file's own", () => {
-        const { lineage } = viewOf('tests/assert_positive_order_totals.sql');
-        assert.deepStrictEqual(lineage!.subjects.map((subject) => [subject.name, subject.own, subject.fileName]), [['fct_orders', false, 'models/marts/fct_orders.sql']]);
-        assert.deepStrictEqual(names(lineage!.subjects[0].dependents), ['daily_revenue', 'revenue_report']);
-        assert.strictEqual(lineage!.counts.tests, 4);
+    test("a test's file has the lineage of the test: what it reads, and nothing that reads it", () => {
+        const view = viewOf(TEST);
+        assert.deepStrictEqual(view.lineage!.subjects.map((subject) => [subject.name, subject.ofTests, subject.fileName, names(subject.dependencies)]), [
+            ['assert_positive_order_totals', 1, TEST, ['fct_orders']],
+        ]);
+        assert.deepStrictEqual(view.lineage!.counts, { dependencies: 1, dependents: 0, tests: 0 });
     });
 
-    test('a YAML file of tests has one group for each model they test', () => {
-        const { lineage } = viewOf('models/marts/_marts.yml');
-        assert.deepStrictEqual(lineage!.subjects.map((subject) => [subject.name, subject.own]), [['dim_customers', false], ['fct_orders', false]]);
+    test('a YAML file of tests lists once what its tests read', () => {
+        const view = viewOf('models/marts/_marts.yml');
+        const tests = view.actions.length;
+        assert.ok(tests > 2);
+        assert.deepStrictEqual(view.lineage!.subjects.map((subject) => [subject.name, subject.ofTests, names(subject.dependencies)]), [
+            [`${tests} tests`, tests, ['dim_customers', 'fct_orders']],
+        ]);
     });
 
     test('a file of sources has one group for each, with what reads it', () => {
         const view = viewOf('models/staging/_sources.yml');
         assert.strictEqual(view.card?.title, 'Sources defined in this file');
-        assert.deepStrictEqual(view.lineage!.subjects.map((subject) => [subject.name, subject.own, names(subject.dependents)]), [
-            ['raw.customers', true, ['customers_snapshot', 'stg_customers']],
-            ['raw.orders', true, ['stg_orders']],
-            ['raw.payments', true, ['stg_payments']],
+        assert.deepStrictEqual(view.lineage!.subjects.map((subject) => [subject.name, names(subject.dependents)]), [
+            ['raw.customers', ['customers_snapshot', 'stg_customers']],
+            ['raw.orders', ['stg_orders']],
+            ['raw.payments', ['stg_payments']],
         ]);
         assert.deepStrictEqual(view.lineage!.counts, { dependencies: 0, dependents: 4, tests: 0 });
     });
@@ -321,25 +345,6 @@ suite('the dbt panel: while dbt works', () => {
         const shown = after({ ...parsed, state: compiled([], 'SQL not compiled: hooks') });
         const view = dbtView(after({ ...parsed, state: { ...compiled([], 'SQL not compiled: hooks'), compiling: { showingPrevious: true, startedAt: 9, file: 'models/orders.sql' } } }, shown));
         assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length], [false, true, 1]);
-    });
-
-    test('a test file shows its test compiled while the model it is shown with is compiled, and Run is not held back', () => {
-        const TEST = 'tests/assert_positive_order_totals.sql';
-        const alone = onlyCompiled(core, [TEST]);
-        const shown = after({ manifest: alone, file: TEST, state: compiled(), dbt: CORE, completing: true });
-        const view = dbtView(shown);
-        assert.deepStrictEqual([view.completing, view.outdated, view.skeleton], [true, false, false]);
-        assert.strictEqual(view.status?.kind, 'compiled');
-        // The test has its SQL; its model and that model's other tests are waiting for theirs
-        const own = view.actions.filter((action) => action.fileName === TEST);
-        assert.deepStrictEqual(own.map((action) => action.sqlPresent), [true]);
-        assert.ok(view.actions.filter((action) => action.fileName !== TEST && action.sections.length > 0).every((action) => !action.sqlPresent));
-        assert.strictEqual(view.run?.blocked, undefined);
-        // Once it has ended, nothing is said to be on its way
-        assert.strictEqual(dbtView(after({ manifest: core, file: TEST, state: compiled(), dbt: CORE })).completing, false);
-        // A compile that replaces it is a compile like any other
-        const saved = dbtView(after({ manifest: alone, file: TEST, state: { ...compiled(), compiling: { showingPrevious: true, startedAt: 9, file: TEST } }, dbt: CORE, completing: true }, shown));
-        assert.deepStrictEqual([saved.completing, saved.outdated], [false, true]);
     });
 
     test('while the compile for another file runs, the last file is not shown under the new name', () => {

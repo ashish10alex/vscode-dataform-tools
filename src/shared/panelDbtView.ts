@@ -48,11 +48,6 @@ export interface DbtView {
     outdated: boolean;
     /** Placeholder lines stand in for SQL that is being compiled */
     skeleton: boolean;
-    /**
-     * The file is a test's and is compiled; the model it is shown with, and that model's other tests, are being
-     * compiled now. An action on show that has no compiled SQL yet is waiting for that
-     */
-    completing: boolean;
     /** The Project was only parsed because it has on-run hooks: the panel offers to compile with them */
     parsedOnly: boolean;
     /** The warehouse of a Project that is not a BigQuery one */
@@ -83,11 +78,12 @@ export interface LineageRow extends ActionReference {
     buildsTable: boolean;
 }
 
-/** An action whose neighbours the Data Lineage lists */
+/** An action whose neighbours the Data Lineage lists, or the file's tests taken together */
 export interface LineageSubject extends ActionReference {
+    /** For the file's tests: the test's name when there is one, else how many there are, e.g. "12 tests" */
     name: string;
-    /** The open file defines it. False for the model that the file's test tests */
-    own: boolean;
+    /** Set when the subject is the file's tests: how many. Nothing reads a test, so only `dependencies` is filled */
+    ofTests?: number;
     dependencies: LineageRow[];
     /** What reads it, tests apart */
     dependents: LineageRow[];
@@ -95,7 +91,7 @@ export interface LineageSubject extends ActionReference {
 }
 
 export interface DbtLineage {
-    /** One for each action of the file that is not a test, and one for each action a test of the file tests */
+    /** One for each action of the file that is not a test, and one for the file's tests together */
     subjects: LineageSubject[];
     /** Over all subjects, a neighbour of two of them counted once */
     counts: { dependencies: number; dependents: number; tests: number };
@@ -178,30 +174,25 @@ export function dbtNameOf(slices: Pick<PanelSlices, 'dbt'>, action: Pick<PanelAc
 const PACKAGE_FILE = /^dbt_packages\/([^/]+)\//;
 
 /**
- * The Data Lineage of the file: the neighbours of each action it defines. A test's neighbours say little (it reads
- * the model it tests, and nothing reads it), so a test stands aside for the action it tests; a test that tests no
- * single action is listed for itself.
+ * The Data Lineage of the file: the neighbours of each action it defines. Its tests are one subject together, with
+ * what they read listed once: nothing reads a test, and a YAML file can define dozens that read the same few models.
  */
 export function lineageOf(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): DbtLineage | undefined {
-    const subjects: PanelAction[] = [];
-    for (const action of file.actions.filter((candidate) => candidate.fileName === file.file)) {
-        const home = action.home && file.actions.find((candidate) => candidate.id === targetId(action.home!));
-        const subject = isTestKind(action.kind) && home ? home : action;
-        if (!subjects.includes(subject)) {
-            subjects.push(subject);
-        }
-    }
-    if (subjects.length === 0) {
+    const own = file.actions.filter((candidate) => candidate.fileName === file.file);
+    const subjects = own.filter((action) => !isTestKind(action.kind));
+    const tests = own.filter((action) => isTestKind(action.kind));
+    if (subjects.length + tests.length === 0) {
         return undefined;
     }
     const bigQuery = slices.dbt?.bigQuery !== false;
     const among = new Set(subjects.map((subject) => subject.id));
+    const grouped = subjects.length + (tests.length > 0 ? 1 : 0) > 1;
     const rows = (neighbours: ActionReference[]): LineageRow[] => {
         const seen = new Set<string>();
         return neighbours.flatMap((neighbour) => {
             const id = targetId(neighbour.target);
             // A file's own actions are not each other's neighbours here
-            if (seen.has(id) || (subjects.length > 1 && among.has(id))) {
+            if (seen.has(id) || (grouped && among.has(id))) {
                 return [];
             }
             seen.add(id);
@@ -217,13 +208,41 @@ export function lineageOf(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): Db
     const listed = subjects.map((subject): LineageSubject => ({
         target: subject.target, kind: subject.kind, fileName: subject.fileName,
         name: dbtNameOf(slices, subject),
-        own: subject.fileName === file.file,
         dependencies: rows(subject.dependencies),
         dependents: rows(subject.dependents.filter((dependent) => !isTestKind(dependent.kind))),
         tests: rows(subject.dependents.filter((dependent) => isTestKind(dependent.kind))),
     }));
+    if (tests.length > 0) {
+        const [first] = tests;
+        const read = rows(tests.flatMap((test) => test.dependencies));
+        // Beside the file's other actions, tests that read only those have nothing to add
+        if (read.length > 0 || listed.length === 0) {
+            listed.push({
+                target: first.target, kind: first.kind, fileName: first.fileName,
+                name: tests.length === 1 ? dbtNameOf(slices, first) : `${tests.length} tests`,
+                ofTests: tests.length,
+                dependencies: read, dependents: [], tests: [],
+            });
+        }
+    }
     const count = (group: 'dependencies' | 'dependents' | 'tests') => new Set(listed.flatMap((subject) => subject[group].map((row) => targetId(row.target)))).size;
     return { subjects: listed, counts: { dependencies: count('dependencies'), dependents: count('dependents'), tests: count('tests') } };
+}
+
+/**
+ * The action a test tests, as a link for the test's card, when that action is not on show itself: in a test's own
+ * file, where the test is shown alone.
+ */
+export function testedBy(slices: Pick<PanelSlices, 'dbt'>, shown: PanelAction[], test: PanelAction): LineageRow | undefined {
+    if (!test.home) {
+        return undefined;
+    }
+    const id = targetId(test.home);
+    const home = test.dependencies.find((dependency) => targetId(dependency.target) === id);
+    if (!home || shown.some((action) => action.id === id)) {
+        return undefined;
+    }
+    return { ...home, name: dbtNameOf(slices, { id, target: home.target }), buildsTable: false };
 }
 
 /** The card of a file whose actions have no SQL: a seed, sources, exposures */
@@ -343,7 +362,7 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const graph = hasGraph(last);
     const view: DbtView = {
         page: 'panel', lookedIn: [], file: named, tabs: ['compiled', 'project'],
-        outdated: false, skeleton: false, completing: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [],
+        outdated: false, skeleton: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [],
     };
 
     if (!compiling && compile?.status === 'tool not found') {
@@ -368,7 +387,6 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const awaitsSql = last?.status !== 'parsed only' && withSql.some((action) => action.fileName === named && !action.sqlPresent);
     view.skeleton = !!compiling && (!file || !graph || awaitsSql);
     view.outdated = !!compiling && !view.skeleton;
-    view.completing = !compiling && block?.completing === true;
 
     if (graph && file && !view.skeleton) {
         if (file.role === 'actions') {
@@ -384,7 +402,8 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     }
 
     view.parsedOnly = last?.status === 'parsed only' && block?.hooksNotice !== false;
-    const dryRun = withSql.some((action) => action.sections.some((section) => section.dryRun.length > 0));
+    // The Schema tab is of what the actions build, and a test builds nothing
+    const dryRun = withSql.some((action) => !isTestKind(action.kind) && action.sections.some((section) => section.dryRun.length > 0));
     if (last?.status === 'compiled' && view.actions.length > 0 && dryRun && !view.otherWarehouse) {
         view.tabs = ['compiled', 'schema', 'project'];
     }

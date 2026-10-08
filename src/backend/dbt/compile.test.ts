@@ -30,12 +30,11 @@ suite('compiling a dbt Project', () => {
     const ran = (): string[][] => fs.existsSync(path.join(dir, 'ran.jsonl'))
         ? fs.readFileSync(path.join(dir, 'ran.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line) as string[]).map((args) => [args[0], ...args.slice(10)])
         : [];
-    const request = (overrides: Partial<DbtOptions> & { file?: string; withFiles?: string[] } = {}) => {
-        const { file, withFiles, ...options } = overrides;
+    const request = (overrides: Partial<DbtOptions> & { file?: string } = {}) => {
+        const { file, ...options } = overrides;
         return {
             root,
             file,
-            withFiles,
             options: { binary: fake, flavour: 'dbt v2' as const, label: 'dbt 2.0.6', artifactDir: path.join(dir, 'artifacts'), env: { ...process.env, FAKE_DBT_DIR: dir }, ...options },
             logger,
             signal: new AbortController().signal,
@@ -99,13 +98,6 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
             fs.utimesSync(path.join(root, 'dbt_project.yml'), later, later);
             await compiler.compile(request({ file: 'models/marts/fct_orders.sql' }));
             assert.deepStrictEqual(ran().slice(3), [['parse'], selected]);
-        });
-
-        test('the files asked for with the file on show are selected with it', async () => {
-            plan('parse', { manifest: fullManifestPath('dbt-v2') });
-            plan('compile', { manifest: fullManifestPath('dbt-v2') });
-            await new DbtCompiler().compile(request({ file: 'tests/assert_positive_order_totals.sql', withFiles: ['models/marts/fct_orders.sql'] }));
-            assert.deepStrictEqual(ran().at(-1), ['compile', '--select', `path:${path.join('tests', 'assert_positive_order_totals.sql')}`, `path:${path.join('models', 'marts', 'fct_orders.sql')}`]);
         });
 
         test('with no file on show it parses once, and never compiles the whole Project', async () => {

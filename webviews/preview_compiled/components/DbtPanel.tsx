@@ -7,7 +7,7 @@ import type { OptionType } from "../../dependancy_graph/components/StyledSelect"
 import { ModifierSwitch } from "./ModifierSwitch";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
-import { DbtCard, DbtLineage, DbtStatusLine, DbtTab, DbtView, LineageRow, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
+import { DbtCard, DbtLineage, DbtStatusLine, DbtTab, DbtView, LineageRow, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase, testedBy } from "../../../src/shared/panelDbtView";
 import { dryRunCostSummary } from "../../../src/shared/panelBigQueryView";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { renderDryRunStatLine } from "./CompiledQueryTab";
@@ -231,6 +231,8 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
   const previewed = view.actions.find((action) => action.sqlPresent && action.sections.some((section) => section.compiled && section.dryRun.length > 0));
   const section = previewed?.sections.find((candidate) => candidate.compiled && candidate.dryRun.length > 0);
   const canPreview = bigQuery && !!previewed && !!section;
+  // In a file of tests the first action is a test, whose rows are those that fail it
+  const ofTest = !!previewed && isTestKind(previewed);
   const run = view.run;
   if (!canPreview && !run) {
     return null;
@@ -248,10 +250,10 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
             type="button"
             className={clsx(TOOLBAR_SECONDARY, "border-0")}
             disabled={view.outdated}
-            title="Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"
+            title={ofTest ? "Runs the test's query and shows the rows that fail it. It costs what the query costs" : "Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"}
             onClick={() => vscode.postMessage({ command: "preview", action: previewed!.target, section: section!.title })}
           >
-            <Eye className="w-4 h-4 mr-1.5" /> Preview Data
+            <Eye className="w-4 h-4 mr-1.5" /> {ofTest ? "Preview failing rows" : "Preview Data"}
           </button>
         </div>
       )}
@@ -516,10 +518,10 @@ function DataLineage({ lineage }: { lineage: DbtLineage }) {
   const [open, setOpen] = useState(false);
   const { subjects, counts } = lineage;
   const [only] = subjects;
-  // A test's file shows the lineage of the model it tests, and says so
-  const of = subjects.length === 1 && !only.own ? only : undefined;
+  // A file of tests has the lineage of its tests, and says so. Nothing reads a test, so no dependents are counted
+  const of = subjects.length === 1 && only.ofTests ? only : undefined;
   const grouped = subjects.length > 1;
-  const summary = [counted(counts.dependencies, "dependency", "dependencies"), counted(counts.dependents, "dependent", "dependents"), ...(counts.tests > 0 ? [counted(counts.tests, "test", "tests")] : [])].join(" · ");
+  const summary = [counted(counts.dependencies, "dependency", "dependencies"), ...(of ? [] : [counted(counts.dependents, "dependent", "dependents")]), ...(counts.tests > 0 ? [counted(counts.tests, "test", "tests")] : [])].join(" · ");
   return (
     <div data-dbt="lineage" className="bg-[var(--vscode-sideBar-background)] rounded-xl border border-[var(--vscode-widget-border)]/60 overflow-hidden">
       <div className="flex items-center flex-wrap gap-x-3 px-4 py-3 hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors">
@@ -527,14 +529,7 @@ function DataLineage({ lineage }: { lineage: DbtLineage }) {
           {open ? <ChevronDown className="w-4 h-4 mr-2 text-zinc-400" /> : <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />}
           <span className="font-semibold">Data Lineage{of ? " of" : ""}</span>
         </button>
-        {of &&
-          (of.fileName ? (
-            <button type="button" title={`Open ${of.fileName}`} className={LINK} onClick={() => vscode.postMessage({ command: "openAction", action: of.target })}>
-              {of.name}
-            </button>
-          ) : (
-            <span className="font-mono text-sm">{of.name}</span>
-          ))}
+        {of && <span className="font-mono text-sm">{of.name}</span>}
         <span className={clsx("text-xs", MUTED)}>{summary}</span>
       </div>
       {open && (
@@ -549,7 +544,7 @@ function DataLineage({ lineage }: { lineage: DbtLineage }) {
               )}
               <div className={clsx("space-y-4", grouped && "pl-3 border-l border-[var(--vscode-widget-border)]")}>
                 <LineageRows group="dependencies" title="Dependencies" rows={subject.dependencies} empty={grouped ? undefined : "No dependencies"} />
-                <LineageRows group="dependents" title="Dependents" rows={subject.dependents} empty={grouped && subject.dependencies.length + subject.tests.length > 0 ? undefined : "No dependents in this Project"} />
+                <LineageRows group="dependents" title="Dependents" rows={subject.dependents} empty={subject.ofTests || (grouped && subject.dependencies.length + subject.tests.length > 0) ? undefined : "No dependents in this Project"} />
                 <LineageRows group="tests" title="Tests" rows={subject.tests} />
               </div>
             </div>
@@ -608,6 +603,7 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
   const { database, schema, name } = action.target;
   // A test builds nothing either, but that needs no saying
   const buildsNothing = !action.buildsTable && action.kind !== "test" && action.kind !== "unit test" && action.kind !== "source";
+  const tested = testedBy(state, view.actions, action);
   return (
     <div data-dbt="action" data-kind={action.kind} className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-7 pb-4 rounded-xl border border-[var(--vscode-widget-border)]/60 flex flex-col space-y-2 group">
       <div className="absolute top-2 left-2 flex items-center gap-1.5">
@@ -617,12 +613,8 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
       {view.outdated ? (
         <span className={clsx("absolute top-2 right-2 text-xs", WARNING)}>outdated</span>
       ) : asWritten ? (
-        // No compiled SQL, so no cost. Why is said once for the file; while its model is compiled, the cost is on its way
-        view.completing && (
-          <span data-dbt="completing" title="Compiling this action, to dry-run it" className="absolute top-2 right-2">
-            <Loader2 className="w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
-          </span>
-        )
+        // No compiled SQL, so no cost. Why is said once for the file
+        null
       ) : running ? (
         <Loader2 data-dry-run="running" className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
       ) : stat ? (
@@ -660,6 +652,18 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
           </div>
         )}
         {buildsNothing && <span className={clsx("text-xs", MUTED)}>builds nothing</span>}
+        {tested && (
+          <span data-dbt="tested" className={clsx("flex items-center gap-x-1.5 text-xs", MUTED)}>
+            tests
+            {tested.fileName ? (
+              <button type="button" title={`Open ${tested.fileName}`} className={LINK} onClick={() => vscode.postMessage({ command: "openAction", action: tested.target })}>
+                {tested.name}
+              </button>
+            ) : (
+              <span className="font-mono text-sm">{tested.name}</span>
+            )}
+          </span>
+        )}
         {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs font-mono opacity-80", MUTED)}>{action.fileName}</span>}
       </div>
       {link && table && !table.missing && (

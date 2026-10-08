@@ -276,10 +276,15 @@ suite('panel slices: the dbt block', () => {
     });
 
     test('a test says which action it tests, and no other action does', () => {
-        const shown = fileSlice(built.graph, dbt, 'tests/assert_positive_order_totals.sql', 3).actions;
+        const shown = fileSlice(built.graph, dbt, 'models/marts/fct_orders.sql', 3).actions;
         const model = shown.find((action) => action.kind === 'incremental')!;
         assert.strictEqual(model.home, undefined);
         assert.deepStrictEqual(shown.filter((action) => action !== model).map((action) => action.home), shown.slice(1).map(() => model.target));
+    });
+
+    test("a test's file has the test alone, which still says which action it tests", () => {
+        const shown = fileSlice(built.graph, dbt, 'tests/assert_positive_order_totals.sql', 3).actions;
+        assert.deepStrictEqual(shown.map((action) => [action.kind, action.home?.name]), [['test', 'fct_orders']]);
     });
 
     test('the macros of the file on show, and of no other', () => {
