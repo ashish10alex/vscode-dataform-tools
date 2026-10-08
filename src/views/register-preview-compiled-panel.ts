@@ -1,6 +1,6 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projects, requiredTools } from '../project';
-import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
+import { CompileReason, completeDbtCompile, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
 import type { DryRunResult } from '../bigquery/dryRunService';
@@ -690,6 +690,11 @@ export class CompiledQueryPanel {
         panel.sendDbt();
         // Not waited for: the SQL is on show, and the dry runs fill in as they arrive
         panel.dryRunDbt().catch((error) => logger.error(`dbt: the dry runs of ${file} failed: ${error}`));
+        // A test file: the model its tests are shown with is compiled next, with that model's other tests
+        if ((await completeDbtCompile(project, file)) && panel.dbtOnShow?.project === project && panel.dbtOnShow.file === file) {
+            panel.sendDbt();
+            panel.dryRunDbt(true).catch((error) => logger.error(`dbt: the dry runs of ${file} failed: ${error}`));
+        }
     }
 
     /** Counts the showings of a dbt file, so that dry runs asked for an earlier one are dropped when they arrive */
@@ -705,10 +710,14 @@ export class CompiledQueryPanel {
 
     /**
      * Dry-runs every action on show that has a compiled query, at once, and sends the panel each result as it
-     * arrives (xf#53). Nothing is asked of BigQuery while a compile runs, for a Project that was only parsed, or
-     * for a Project of another warehouse.
+     * arrives (xf#53). It also asks when the table of each action on show was last changed, which needs no compiled
+     * query. Nothing is asked of BigQuery while a compile runs or for a Project of another warehouse, and nothing is
+     * dry-run for a Project that was only parsed.
+     *
+     * @param completed The compile on show is the second one of a test file (see `completeDbtCompile`): what
+     * BigQuery has said of a script that the second compile left as it was is kept, and not asked for again
      */
-    private async dryRunDbt() {
+    private async dryRunDbt(completed = false) {
         const shown = this.dbtOnShow;
         const last = shown?.project.dbtBackend?.lastResult;
         if (!shown || !last) {
@@ -717,28 +726,35 @@ export class CompiledQueryPanel {
         const { project, file } = shown;
         const state = dbtCompileState(project.root);
         const adapter = last.dbt?.adapterType;
-        if (state.compiling || !state.compiled || last.parsedOnly || (adapter && adapter !== 'bigquery')) {
+        if (state.compiling || !state.compiled || (adapter && adapter !== 'bigquery')) {
             return;
         }
-        const seq = this.dbtDryRunSeq;
         const compile = project.compileNumber;
-        const actions = dbtActionsToDryRun(last.graph, fileSlice(last.graph, project.dbtBackend!, file, compile).actions.map((action) => action.id));
-        if (actions.length === 0) {
-            return;
-        }
+        const onShow = fileSlice(last.graph, project.dbtBackend!, file, compile).actions.map((action) => action.id);
+        const wanted = last.parsedOnly ? [] : dbtActionsToDryRun(last.graph, onShow);
+        const kept = completed
+            ? this.bigQuery.results
+                .filter((result) => wanted.some((action) => action.id === result.action && dryRunScripts(action).some((script) => script.name === result.script && script.incremental === result.incremental && script.sql === result.sql)))
+                .map((result) => ({ ...result, compile }))
+            : [];
+        const actions = wanted.filter((action) => !kept.some((result) => result.action === action.id));
+        // The dry runs of the first compile that are still out are for the second to ask again
+        const seq = completed ? ++this.dbtDryRunSeq : this.dbtDryRunSeq;
         const out = (done: DryRunResult[]): DryRunKey[] => actions
             .filter((action) => !done.some((result) => result.action === action.id))
             .flatMap((action) => dryRunScripts(action).map((script) => ({ action: action.id, script: script.name, incremental: script.incremental })));
-        const results: DryRunResult[] = [];
-        this.sendDbtBigQuery(seq, compile, { results: [], tables: {}, dryRunning: out([]) });
-        const tables = tablesOfActions(actions).then((found) => {
+        const results: DryRunResult[] = [...kept];
+        this.sendDbtBigQuery(seq, compile, { results: [...results], tables: completed ? this.bigQuery.tables : {}, dryRunning: out(results) });
+        const tables = tablesOfActions(onShow.map((id) => last.graph.actions[id]).filter((action) => action !== undefined)).then((found) => {
             this.sendDbtBigQuery(seq, compile, { tables: found });
         });
-        await dryRunDbtActions(actions, compile, (arrived) => {
-            results.push(...arrived);
-            const currency = results.find((result) => result.cost)?.cost?.currency as SupportedCurrency | undefined;
-            this.sendDbtBigQuery(seq, compile, { results: [...results], dryRunning: out(results), ...(currency && currencySymbolMapping[currency] ? { currencySymbol: currencySymbolMapping[currency] } : {}) });
-        });
+        if (actions.length > 0) {
+            await dryRunDbtActions(actions, compile, (arrived) => {
+                results.push(...arrived);
+                const currency = results.find((result) => result.cost)?.cost?.currency as SupportedCurrency | undefined;
+                this.sendDbtBigQuery(seq, compile, { results: [...results], dryRunning: out(results), ...(currency && currencySymbolMapping[currency] ? { currencySymbol: currencySymbolMapping[currency] } : {}) });
+            });
+        }
         await tables;
     }
 
@@ -764,6 +780,7 @@ export class CompiledQueryPanel {
             profilesDir: settings.profilesDir,
             profile: targets?.profile,
             parsedForHooks: last?.parsedOnly === true && !!last.notice,
+            completing: !!state.completing,
             data: last?.dbt,
             graph: last?.graph,
             shown: shown.actions.map((action) => action.id),

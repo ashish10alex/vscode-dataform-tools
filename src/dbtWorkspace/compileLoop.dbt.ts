@@ -34,6 +34,8 @@ suite('the compile loop of a dbt Project', function () {
     let panel: PanelApi;
     let standIn: string;
     const statuses: string[] = [];
+    /** Whether each `dbt` block the panel was sent said that a second compile was running */
+    const completingSent: boolean[] = [];
     const settings = () => vscode.workspace.getConfiguration('vscode-dataform-tools');
     /** The commands the stand-in was run with, without `--version` */
     const ran = () => (fs.existsSync(path.join(dir, 'ran.jsonl')) ? fs.readFileSync(path.join(dir, 'ran.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line) as string[]) : []);
@@ -74,6 +76,7 @@ suite('the compile loop of a dbt Project', function () {
                 slices.file = value as FileSlice;
             } else if (slice === 'dbt') {
                 slices.dbt = value as DbtBlock;
+                completingSent.push(slices.dbt.completing === true);
             } else if (slice === 'run status') {
                 slices.run = value as RunStatusSlice;
             } else if (slice === 'bigquery') {
@@ -296,6 +299,69 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
         await until('stg_orders to be compiled again', () => slices.file?.file === 'models/staging/stg_orders.sql' && sqlOf('stg_orders') === true && slices.compile?.status === 'compiled');
         assert.deepStrictEqual(selects().at(-1), ['compile', '--select', `path:${path.join('models', 'staging', 'stg_orders.sql')}`]);
         assert.ok(selects().every(([command]) => command === 'compile'), 'dbt-core was asked for something other than a selected compile');
+    });
+
+    test('a test file is compiled alone first, then with the model it is shown with and that model\'s other tests', async () => {
+        // A stand-in for dbt-core that takes several paths, and compiles a model's tests with it
+        const standIn = path.join(dir, 'dbt-core-paths');
+        fs.writeFileSync(standIn, `#!/usr/bin/env node
+const fs = require('fs'), path = require('path');
+const args = process.argv.slice(2), dir = ${JSON.stringify(dir)};
+if (args[0] === '--version') { console.log('Core:\\n  - installed: 1.9.8\\n\\nPlugins:\\n  - bigquery: 1.9.8'); return; }
+fs.appendFileSync(path.join(dir, 'ran.jsonl'), JSON.stringify(args) + '\\n');
+const target = args[args.indexOf('--target-path') + 1];
+const manifest = JSON.parse(fs.readFileSync(${JSON.stringify(path.join(manifests, 'dbt-core.json'))}, 'utf8'));
+const paths = args.filter((arg) => arg.startsWith('path:')).map((arg) => arg.replace('path:', ''));
+const selected = Object.values(manifest.nodes).filter((node) => paths.includes(node.original_file_path));
+const ids = selected.filter((node) => node.resource_type === 'model').map((node) => node.unique_id);
+for (const node of Object.values(manifest.nodes)) {
+    const wanted = selected.includes(node) || (node.resource_type === 'test' && (node.depends_on.nodes || []).some((id) => ids.includes(id)));
+    if (!wanted) { node.compiled = false; node.compiled_code = null; }
+}
+// The second compile takes long enough to be seen
+setTimeout(() => {
+    fs.mkdirSync(target, { recursive: true });
+    fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
+}, paths.length > 1 ? 400 : 0);
+`, { mode: 0o755 });
+        const TEST = 'tests/assert_positive_order_totals.sql';
+        const testPath = `path:${path.join('tests', 'assert_positive_order_totals.sql')}`;
+        await show('macros/audit.sql');
+        await until('the macro file', () => slices.file?.file === 'macros/audit.sql');
+        await settings().update('dbtExecutablePath', standIn, vscode.ConfigurationTarget.Global);
+        await until('the other dbt-core', () => slices.dbt?.dbt?.version === '1.9.8' && slices.compile?.status !== 'compiling');
+        await sleep(300);
+        fs.rmSync(path.join(dir, 'ran.jsonl'), { force: true });
+        const selects = () => ran().map((args) => [args[0], ...args.slice(args.indexOf('--select'))]);
+        const sent = completingSent.length;
+        const statusesBefore = statuses.length;
+
+        await show(TEST);
+        // First the test alone, with its cost asked for while its model is compiled
+        await until('the test, compiled alone', () => slices.file?.file === TEST && slices.file.actions.find((action) => action.fileName === TEST)?.sqlPresent === true);
+        const alone = slices.file!;
+        const first = slices.compile!;
+        assert.deepStrictEqual(alone.actions.filter((action) => action.fileName !== TEST && action.sections.length > 0).map((action) => action.sqlPresent), [false, false, false]);
+        assert.strictEqual(first.status, 'compiled');
+        await until('the model and its other tests', () => slices.file?.file === TEST && slices.file.actions.every((action) => action.sqlPresent) && slices.dbt?.completing === undefined);
+        assert.deepStrictEqual(selects(), [['compile', '--select', testPath], ['compile', '--select', testPath, `path:${path.join('models', 'marts', 'fct_orders.sql')}`]]);
+        assert.ok(completingSent.slice(sent).includes(true), 'the panel was not told of the second compile');
+        // The panel was never told to wait for the second compile, and the time on show is the first one's
+        assert.strictEqual(statuses.slice(statusesBefore).filter((status) => status === 'compiling').length, 1);
+        assert.strictEqual(slices.compile?.status === 'compiled' && first.status === 'compiled' && slices.compile.compiledAt, first.status === 'compiled' && first.compiledAt);
+        assert.strictEqual(slices.file?.compile, slices.compile?.compile);
+        // Everything on show is dry-run for the second compile, the test included
+        const compile = slices.compile?.compile;
+        await until('the dry runs of all four', () => slices.bigquery?.compile === compile && slices.bigquery?.dryRunning.length === 0 && slices.bigquery?.results.length === 4);
+        assert.ok(slices.bigquery?.results.every((result) => result.compile === compile));
+
+        // Shown again, nothing is compiled: neither the test nor its model
+        await show('macros/audit.sql');
+        await until('the macro file', () => slices.file?.file === 'macros/audit.sql');
+        await show(TEST);
+        await until('the test again', () => slices.file?.file === TEST);
+        await sleep(300);
+        assert.strictEqual(ran().length, 2);
     });
 
     test('a dbt target chosen in the panel overrides the setting, privately, and compiles again', async () => {

@@ -47,6 +47,11 @@ export class DbtBackend implements Backend<DbtOptions> {
         this.last = undefined;
     }
 
+    /** Puts `result` back as the last one: a compile that added nothing to it does not replace it */
+    keep(result: DbtCompileResult) {
+        this.last = result;
+    }
+
     async compile(request: BackendRequest<DbtOptions> & CompileScope): Promise<DbtCompileResult> {
         const result = await this.compiler.compile(request);
         request.signal.throwIfAborted();

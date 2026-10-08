@@ -47,6 +47,11 @@ export interface DbtView {
     outdated: boolean;
     /** Placeholder lines stand in for SQL that is being compiled */
     skeleton: boolean;
+    /**
+     * The file is a test's and is compiled; the model it is shown with, and that model's other tests, are being
+     * compiled now. An action on show that has no compiled SQL yet is waiting for that
+     */
+    completing: boolean;
     /** The Project was only parsed because it has on-run hooks: the panel offers to compile with them */
     parsedOnly: boolean;
     /** The warehouse of a Project that is not a BigQuery one */
@@ -258,7 +263,7 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const graph = hasGraph(last);
     const view: DbtView = {
         page: 'panel', lookedIn: [], file: named, tabs: ['compiled', 'project'],
-        outdated: false, skeleton: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [], readsFrom: [],
+        outdated: false, skeleton: false, completing: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [], readsFrom: [],
     };
 
     if (!compiling && compile?.status === 'tool not found') {
@@ -283,6 +288,7 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const awaitsSql = last?.status !== 'parsed only' && withSql.some((action) => action.fileName === named && !action.sqlPresent);
     view.skeleton = !!compiling && (!file || !graph || awaitsSql);
     view.outdated = !!compiling && !view.skeleton;
+    view.completing = !compiling && block?.completing === true;
 
     if (graph && file && !view.skeleton) {
         if (withSql.length > 0) {

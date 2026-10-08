@@ -117,6 +117,11 @@ export interface CompileState {
     unsupportedVersion?: { tool: Tool; version: string; message: string };
     /** A compile is running */
     compiling?: { showingPrevious: boolean; startedAt: number; command?: string; file?: string };
+    /**
+     * The last compile's result is on show and a second compile adds to it: `files` are the models the tests of the
+     * file on show are shown with (dbt only, see `completeDbtCompile`). Not a compile the panel waits for
+     */
+    completing?: { startedAt: number; files: string[] };
     /** The last compile that finished with a graph. `notice` is set when the Project was only parsed */
     compiled?: { compiledAt: number; durationMs?: number; notice?: string };
     /** The errors of the last compile that finished */
@@ -191,6 +196,8 @@ export interface DbtBlockInput {
     profile?: string;
     /** The last compile only parsed the Project, because it has on-run hooks */
     parsedForHooks?: boolean;
+    /** A second compile is running, for the models the file's tests are shown with */
+    completing?: boolean;
     /** What the last compile's manifest said beside the graph */
     data?: DbtProjectData;
     graph?: CompiledGraph;
@@ -219,6 +226,7 @@ export function dbtBlock(input: DbtBlockInput, compile: CompileNumber): DbtBlock
             ...(input.targetSetting ? { setting: input.targetSetting } : {}),
         },
         hooksNotice: input.parsedForHooks === true,
+        ...(input.completing ? { completing: true } : {}),
         bigQuery: !data?.adapterType || data.adapterType === BIGQUERY,
         names: {},
         macros: [],

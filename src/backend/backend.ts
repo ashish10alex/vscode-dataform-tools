@@ -37,6 +37,11 @@ export interface CompileScope {
      * actions (ADR 0003).
      */
     file?: string;
+    /**
+     * More files whose actions are wanted with `file`'s, relative to the Project root with forward slashes: those of
+     * the models a test file's tests are shown with. A Backend that compiles the whole Project ignores them
+     */
+    withFiles?: string[];
 }
 
 /** One error the tool reported while compiling */
