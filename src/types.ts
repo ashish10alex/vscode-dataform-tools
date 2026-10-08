@@ -536,7 +536,7 @@ export type LastModifiedTimeMeta = {
 export type DependancyModelMetadata = {
     id: string;
     type: string;
-    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean, isAssertion: boolean, fullTableName: string };
+    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean, isAssertion: boolean, fullTableName: string, actionId?: string, noTable?: boolean };
 };
 
 /** Which step of the lookup found an executable */

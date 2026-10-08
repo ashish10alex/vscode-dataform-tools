@@ -96,8 +96,9 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 | Hover | On a `ref()` or `source()`: the table in BigQuery, its description, partitioning, row count and columns. On a column name: its type and description, in each table the file reads that has it. |
 | Completions | Model, seed and snapshot names inside `ref('`; sources and their tables inside `source('`; column names after an alias and a dot, and of every table the file reads. |
 | Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
+| Dependency graph | **Graph** in the panel, or *Show dependency graph*. Every model, seed, snapshot, source, test and exposure, centred on the file in the editor. Tests are hidden until you tick *Show tests*. Read from a parse of the project, so nothing needs compiling first. |
 
-Not in a dbt project yet: the dependency graph, column lineage, defer to prod, running through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover and completions for macros.
+Not in a dbt project yet: the dependency inspector, column lineage, defer to prod, running through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover and completions for macros.
 
 ### In the editor
 

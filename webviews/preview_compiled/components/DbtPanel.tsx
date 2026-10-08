@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Play, Tag, Terminal } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Network, Play, Tag, Terminal } from "lucide-react";
 import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
@@ -212,7 +212,7 @@ function DbtRunButton({ target, disabled, title, hasTags, onRun, onRunTag }: { t
 }
 
 /**
- * The toolbar of a dbt file's Compiled query tab, laid out as Dataform's: a row with Preview Data, then a row with
+ * The toolbar of a dbt file's Compiled query tab, laid out as Dataform's: a row with Graph and Preview Data, then a row with
  * Run and the switches that say how far the run reaches, then the last run. A run is `dbt build` in the extension's
  * terminal (xf#54); the switches apply to a run of the file and to a run by tag alike.
  */
@@ -234,7 +234,9 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
   // In a file of tests the first action is a test, whose rows are those that fail it
   const ofTest = !!previewed && isTestKind(previewed);
   const run = view.run;
-  if (!canPreview && !run) {
+  // The graph centres on the file's first action, and is drawn from a parse, so it needs no compiled SQL
+  const canGraph = view.actions.length > 0;
+  if (!canPreview && !run && !canGraph) {
     return null;
   }
   const blocked = run?.blocked !== undefined;
@@ -244,21 +246,33 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
   };
   return (
     <div data-dbt="toolbar" className="flex flex-col gap-3">
-      {canPreview && (
+      {(canGraph || canPreview) && (
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className={clsx(TOOLBAR_SECONDARY, "border-0")}
-            disabled={view.outdated}
-            title={ofTest ? "Runs the test's query and shows the rows that fail it. It costs what the query costs" : "Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"}
-            onClick={() => vscode.postMessage({ command: "preview", action: previewed!.target, section: section!.title })}
-          >
-            <Eye className="w-4 h-4 mr-1.5" /> {ofTest ? "Preview failing rows" : "Preview Data"}
-          </button>
+          {canGraph && (
+            <button
+              type="button"
+              className={clsx(TOOLBAR_SECONDARY, "border-0")}
+              title="Open the dependency graph of the project, centred on this file"
+              onClick={() => vscode.postMessage({ command: "showDependencyGraph" })}
+            >
+              <Network className="w-4 h-4 mr-1.5" /> Graph
+            </button>
+          )}
+          {canPreview && (
+            <button
+              type="button"
+              className={clsx(TOOLBAR_SECONDARY, "border-0")}
+              disabled={view.outdated}
+              title={ofTest ? "Runs the test's query and shows the rows that fail it. It costs what the query costs" : "Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"}
+              onClick={() => vscode.postMessage({ command: "preview", action: previewed!.target, section: section!.title })}
+            >
+              <Eye className="w-4 h-4 mr-1.5" /> {ofTest ? "Preview failing rows" : "Preview Data"}
+            </button>
+          )}
         </div>
       )}
       {run && (
-        <div className={clsx("flex flex-wrap items-center gap-x-2 gap-y-2", canPreview && "pt-3 border-t border-[var(--vscode-widget-border)]")}>
+        <div className={clsx("flex flex-wrap items-center gap-x-2 gap-y-2", (canGraph || canPreview) && "pt-3 border-t border-[var(--vscode-widget-border)]")}>
           <div className="relative">
             <DbtRunButton
               target={state.dbt?.target.name}
