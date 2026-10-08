@@ -33,7 +33,8 @@ export function initChangedActions(context: vscode.ExtensionContext) {
     storageRoot = path.join(context.globalStorageUri.fsPath, 'changed-actions');
 }
 
-function getStorageRoot(): string {
+/** Where bases are kept: the snapshots being compiled or parsed, and what each one gave */
+export function getStorageRoot(): string {
     if (!storageRoot) {
         throw new Error('Changed actions used before initialisation');
     }
@@ -72,7 +73,7 @@ async function resolveBaseRef(workspaceFolder: string, branch: string): Promise<
     throw new Error(`Neither origin/${branch} nor ${branch} exists. Set \`vscode-dataform-tools.defaultBranch\` to your default branch.`);
 }
 
-interface ChangeBase {
+export interface ChangeBase {
     baseRef: string;
     mergeBaseSha: string;
     headLabel: string;
@@ -87,10 +88,10 @@ interface ChangeBase {
 
 /**
  * Locally the working tree is compared with the merge-base of the default branch and HEAD. Remote mode
- * compiles pushed commits only, so there it is the merge-base with the pushed commit.
+ * compiles pushed commits only, so there it is the merge-base with the pushed commit. A dbt Project is always
+ * compared locally.
  */
-async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
-    const remote = isRemoteMode();
+export async function resolveChangeBase(workspaceFolder: string, remote = isRemoteMode()): Promise<ChangeBase> {
     const defaultBranch = getDefaultBranch(workspaceFolder);
     const baseRef = await resolveBaseRef(workspaceFolder, defaultBranch);
     // A detached HEAD reports "HEAD", so it counts as a feature branch

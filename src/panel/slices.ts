@@ -212,6 +212,7 @@ export interface DbtBlockInput {
     shown?: ActionId[];
     /** The file on show, relative to the Project root with forward slashes */
     file?: string;
+    changedActions?: DbtBlock['changedActions'];
 }
 
 const BIGQUERY = 'bigquery';
@@ -248,6 +249,9 @@ export function dbtBlock(input: DbtBlockInput, compile: CompileNumber): DbtBlock
     }
     if (data?.adapterType) {
         block.warehouse = data.adapterType;
+    }
+    if (input.changedActions) {
+        block.changedActions = input.changedActions;
     }
     if (data && graph) {
         const actions: Partial<Record<Kind, number>> = {};

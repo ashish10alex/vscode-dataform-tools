@@ -29,8 +29,8 @@ suite('the dbt Backend', () => {
         }
     });
 
-    test('can run, and cannot list Changed Actions', () => {
-        assert.deepStrictEqual(backendParts(new DbtBackend()), { runner: true, changes: false });
+    test('can run and can list Changed Actions', () => {
+        assert.deepStrictEqual(backendParts(new DbtBackend()), { runner: true, changes: true });
         assert.strictEqual(new DbtBackend().name, 'dbt');
     });
 

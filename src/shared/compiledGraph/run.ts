@@ -10,6 +10,12 @@ export interface RunOptions {
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
+    /**
+     * Runs what changed since a base instead, as the tool finds it when the run starts: with no `actions` all of
+     * it, else those of `actions` that still differ. `base` is what `Changes.changedActions` takes. Only a Backend
+     * whose tool can select what changed reads this: dbt, with `state:modified`.
+     */
+    changed?: { base: string };
 }
 
 /** What a run of some actions is recorded as, so that it can be repeated */

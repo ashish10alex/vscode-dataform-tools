@@ -104,7 +104,7 @@
             },
             {
                 "command": "vscode-dataform-tools.runChangedActions",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run changed actions (vs default branch)"
             },
             {
@@ -504,10 +504,6 @@
                 },
                 {
                     "command": "vscode-dataform-tools.dependencyInspector",
-                    "when": "vscode-dataform-tools.backend != dbt"
-                },
-                {
-                    "command": "vscode-dataform-tools.runChangedActions",
                     "when": "vscode-dataform-tools.backend != dbt"
                 },
                 {

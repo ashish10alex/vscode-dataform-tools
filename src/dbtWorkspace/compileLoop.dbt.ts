@@ -134,7 +134,7 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
 
         assert.strictEqual(slices.project?.backend, 'dbt');
         assert.strictEqual(slices.project?.root, workspaceFolder);
-        assert.deepStrictEqual(slices.project?.parts, { runner: true, changes: false });
+        assert.deepStrictEqual(slices.project?.parts, { runner: true, changes: true });
         assert.ok(slices.project?.tags.includes('marts'));
         assert.ok(statuses.includes('compiling'), `The panel was never told a compile was running: ${statuses.join(', ')}`);
 

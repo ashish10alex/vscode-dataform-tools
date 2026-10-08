@@ -50,11 +50,12 @@ suite('panel contract', () => {
             'dataform.openBigQueryJob': true, 'dataform.showDependencyInspector': true, 'dataform.showColumnLineage': true,
             'dataform.loadLineage': true, 'dataform.loadPropertyGraphElementSchema': true, 'dataform.runGeneratedQuery': true,
             'dbt.setTarget': true, 'dbt.compileWithHooks': true, 'dbt.chooseExecutable': true, 'dbt.lookForDbtAgain': true,
+            'dbt.computeChangedActions': true, 'dbt.runChangedActions': true,
         };
         const names = Object.keys(commands);
         assert.strictEqual(names.filter((name) => !name.includes('.')).length, 15);
         assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 31);
-        assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 4);
+        assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 6);
     });
 
     test('a message names an action by its Target, and a slice names its compile', () => {

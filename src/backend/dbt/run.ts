@@ -14,23 +14,41 @@ import type { DbtOptions } from './options';
 
 type RunRequest = Pick<BackendRequest<Pick<DbtOptions, 'binary' | 'target' | 'vars' | 'profilesDir'>>, 'root' | 'options'> & { run: RunOptions };
 
+/** The names dbt selects the actions by. Throws when one has no name dbt can select, or there are none */
+function namesOf(actions: ActionId[], names: Record<ActionId, DbtName>): string[] {
+    const unnamed = actions.filter((action) => !names[action]?.qualifiedName);
+    if (unnamed.length > 0 || actions.length === 0) {
+        throw new Error(unnamed.length > 0 ? `dbt cannot select ${unnamed.join(', ')}: no dbt name is known for ${unnamed.length === 1 ? 'it' : 'them'}` : 'Nothing to run');
+    }
+    return actions.map((action) => names[action].qualifiedName);
+}
+
 /**
  * The arguments of the run, without the binary. Actions are selected by their fully qualified names, which both
  * engines match to exactly one action, and tags as `tag:<name>`, which dbt unions; `+` in front adds what the
  * selection reads from, `+` behind what reads from it. Throws when an action has no name dbt can select.
+ *
+ * A run of what changed selects `state:modified` against the base's manifest (`--state`), so dbt finds what changed
+ * when the run starts. With actions it selects those of them that still differ, each as an intersection with its
+ * name: a path would not do, since `path:` of a YAML file also matches the models the file documents, and in dbt v2
+ * misses the tests it declares. A `+` goes on both sides of an intersection, which for an action that differs gives
+ * what it reads from, or what reads from it.
  */
 export function dbtRunArguments({ options, run }: Omit<RunRequest, 'root'>, names: Record<ActionId, DbtName>): string[] {
+    const reach = (selector: string) => `${run.includeDependencies ? '+' : ''}${selector}${run.includeDependents ? '+' : ''}`;
     let selectors: string[];
-    if (run.tags.length > 0) {
-        selectors = run.tags.map((tag) => `tag:${tag}`);
+    if (run.changed) {
+        const changed = reach('state:modified');
+        selectors = run.actions.length > 0 ? namesOf(run.actions, names).map((name) => `${changed},${reach(name)}`) : [changed];
+    } else if (run.tags.length > 0) {
+        selectors = run.tags.map((tag) => reach(`tag:${tag}`));
     } else {
-        const unnamed = run.actions.filter((action) => !names[action]?.qualifiedName);
-        if (unnamed.length > 0 || run.actions.length === 0) {
-            throw new Error(unnamed.length > 0 ? `dbt cannot select ${unnamed.join(', ')}: no dbt name is known for ${unnamed.length === 1 ? 'it' : 'them'}` : 'Nothing to run');
-        }
-        selectors = run.actions.map((action) => names[action].qualifiedName);
+        selectors = namesOf(run.actions, names).map(reach);
     }
-    const args = ['build', '--select', ...selectors.map((selector) => `${run.includeDependencies ? '+' : ''}${selector}${run.includeDependents ? '+' : ''}`)];
+    const args = ['build', '--select', ...selectors];
+    if (run.changed) {
+        args.push('--state', run.changed.base);
+    }
     if (run.fullRefresh) {
         args.push('--full-refresh');
     }

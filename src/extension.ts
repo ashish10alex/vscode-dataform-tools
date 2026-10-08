@@ -50,12 +50,13 @@ import { backendContext, currentDataformRoot, initProjects, projects, requiredTo
 import { dbtTool, initDbtTools } from './project/dbtTool';
 import { clearDbtArtifacts, compileDbtProject, forgetDbtCompile, initDbtCompile } from './project/dbtCompile';
 import { initDbtRuns, lastDbtRun } from './project/dbtRun';
+import { initDbtChanges } from './project/dbtChanges';
 import { initDbtDiagnostics } from './project/dbtDiagnostics';
 import { initDbtEditor } from './project/dbtEditor';
 import { initDbtWithoutPanel, setDbtWithoutPanel } from './project/dbtWithoutPanel';
 import { heldTableCount, initDbtSchemas, setTableFetch } from './project/dbtSchemas';
 import { setDbtDryRun } from './project/dbtBigQuery';
-import { dbtPreviewFile, dbtRerun, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
+import { dbtPreviewFile, dbtRerun, dbtRunChanged, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
@@ -107,6 +108,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initDbtTools(context);
     initDbtCompile(context);
     initDbtRuns(context);
+    initDbtChanges(context);
     initDbtDiagnostics(context);
     initDbtSchemas(context);
     initDbtEditor(context);
@@ -421,7 +423,11 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runChangedActions', (args?: RunChangedActionsArgs) => runChangedActionsCommand(context, "cli", args)),
+        // In a dbt Project, what changed is what dbt finds changed (`state:modified`)
+        vscode.commands.registerCommand('vscode-dataform-tools.runChangedActions', (args?: RunChangedActionsArgs) => {
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            return dbt ? dbtRunChanged(dbt, args) : runChangedActionsCommand(context, "cli", args);
+        }),
         vscode.commands.registerCommand('vscode-dataform-tools.runChangedActionsApi', (args?: RunChangedActionsArgs) => runChangedActionsCommand(context, "api", args)),
     );
 
