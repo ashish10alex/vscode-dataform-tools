@@ -44,6 +44,15 @@ export function getProdCompilerOptions(workspaceFolder: string): string | undefi
     return getDataformCompilerOptions().trim() ? "" : undefined;
 }
 
+/**
+ * Whether the `prodCompilerOptions` setting is set at any level, even to "", which says the project's default
+ * targets are prod. Unset, column impact says it compared with the default targets, which may be dev tables.
+ */
+export function isProdCompilerOptionsSet(workspaceFolder: string): boolean {
+    const setting = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).inspect<string>('prodCompilerOptions');
+    return [setting?.globalValue, setting?.workspaceValue, setting?.workspaceFolderValue].some((value) => value !== undefined);
+}
+
 function hash(value: string): string {
     return crypto.createHash('sha1').update(value).digest('hex').slice(0, 12);
 }
