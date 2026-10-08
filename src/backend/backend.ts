@@ -7,8 +7,9 @@ import type { CompileFiles } from './compileFiles';
  * A Backend takes plain data and returns plain data, asynchronously, and never imports `vscode`: the host resolves
  * its options from settings and passes them in, so a Backend runs in plain Node against recorded tool output.
  *
- * Every Backend can compile and can say which files affect a compile. Running and listing Changed Actions are
- * optional parts: an absent part means unsupported, and the host hides the controls for it (`backendParts`).
+ * Every Backend can compile and can say which files affect a compile. Running, listing Changed Actions and answering
+ * the editor are optional parts: an absent part means unsupported, and the host hides the controls for it
+ * (`backendParts`) or registers nothing for it.
  */
 
 /** Where a Backend writes what it has to say. The host's logger fits it */
@@ -84,6 +85,61 @@ export interface Changes<Options> {
     changedActions(request: BackendRequest<Options> & { base: string }): Promise<ChangedActions>;
 }
 
+/** A place in the text of a file of the Project that the editor asks about */
+export interface EditorDocument {
+    /** Relative to the Project root with forward slashes */
+    file: string;
+    /** As it is in the editor, saved or not */
+    text: string;
+    offset: number;
+}
+
+/** Where something is defined */
+export interface EditorPlace {
+    /** Relative to the Project root with forward slashes */
+    fileName: string;
+    /**
+     * The line of that file, from 0, given its text. The host reads the file, since it may be open and unsaved.
+     * Unset when the place is the file as a whole; undefined from it when the text no longer has the definition.
+     */
+    lineIn?(text: string): number | undefined;
+}
+
+/** A stretch of a document's text, by offset */
+export interface EditorRange {
+    start: number;
+    end: number;
+}
+
+/** A column name in a document, with the Actions whose table it may be a column of */
+export interface EditorColumn extends EditorRange {
+    word: string;
+    /** Written after a name and a dot. `tables` is then the one table of that name, or empty when it names none */
+    qualified: boolean;
+    tables: ActionId[];
+}
+
+/** The names that can be written at a place, replacing the text from `start` to the place */
+export interface EditorNames {
+    start: number;
+    names: Array<{ name: string; detail?: string; id?: ActionId }>;
+}
+
+/**
+ * The optional part of a Backend that answers the editor's questions about the text of a file, from the last
+ * compile. Every answer is undefined before the first compile, and where the text has nothing to answer about.
+ */
+export interface Editor {
+    /** Where the thing named at the place is defined */
+    definitionAt(document: EditorDocument): (EditorRange & { place: EditorPlace }) | undefined;
+    /** The Action whose table the text at the place reads */
+    tableAt(document: EditorDocument): (EditorRange & { id: ActionId }) | undefined;
+    /** The column name at the place, or with `typing` the part of one written up to it */
+    columnAt(document: EditorDocument, typing?: boolean): EditorColumn | undefined;
+    /** The names of Actions that can be written at the place */
+    namesAt(document: EditorDocument): EditorNames | undefined;
+}
+
 export interface Backend<Options = unknown> {
     readonly name: BackendName;
     /**
@@ -95,11 +151,12 @@ export interface Backend<Options = unknown> {
     readonly compileFiles: CompileFiles;
     readonly runner?: Runner<Options>;
     readonly changes?: Changes<Options>;
+    readonly editor?: Editor;
 }
 
 export type BackendPart = 'runner' | 'changes';
 
-/** Which optional parts the Backend has, for the host to turn into context keys */
+/** Which of the optional parts with controls of their own the Backend has, for the host to turn into context keys and the panel to read. The `editor` part has no control to hide */
 export function backendParts(backend: Backend<never>): Record<BackendPart, boolean> {
     return { runner: backend.runner !== undefined, changes: backend.changes !== undefined };
 }

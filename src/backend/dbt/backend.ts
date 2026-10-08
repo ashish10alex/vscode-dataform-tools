@@ -1,6 +1,7 @@
-import type { Backend, BackendRequest, CompileScope, Runner } from '../backend';
+import type { Backend, BackendRequest, CompileScope, Editor, Runner } from '../backend';
 import type { CompileFiles } from '../compileFiles';
 import { DbtCompileResult, DbtCompiler } from './compile';
+import { dbtEditor } from './editor';
 import type { DbtOptions } from './options';
 import { dbtRunCommand } from './run';
 
@@ -18,7 +19,8 @@ export const DBT_COMPILE_FILES: CompileFiles = {
 /**
  * The dbt Backend of one Project. It compiles with the dbt the host found (see compile.ts for how, which differs by
  * engine) and gives the command line of a run. Besides the Compiled Graph it keeps what the last compile learnt
- * that only dbt features read: what dbt calls each action, the macros, the active dbt target. It has no "changes"
+ * that only dbt features read: what dbt calls each action, the macros, the active dbt target. Its `editor` part
+ * answers from those. It has no "changes"
  * part: Changed Actions are not offered for dbt yet.
  */
 export class DbtBackend implements Backend<DbtOptions> {
@@ -31,6 +33,8 @@ export class DbtBackend implements Backend<DbtOptions> {
     readonly runner: Runner<DbtOptions> = {
         command: (request) => dbtRunCommand(request, this.last?.dbt?.names ?? {}),
     };
+    /** Answers from the last compile, and nothing before it or when dbt wrote no manifest */
+    readonly editor: Editor = dbtEditor(() => (this.last?.dbt ? { graph: this.last.graph, dbt: this.last.dbt } : undefined));
     private readonly compiler = new DbtCompiler();
     private last: DbtCompileResult | undefined;
 
