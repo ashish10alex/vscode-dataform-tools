@@ -99,6 +99,14 @@ if (mode.includes('hang')) {
         assert.ok(!fs.existsSync(manifestPathIn(options().artifactDir)));
     });
 
+    test('the SQL an earlier run compiled is deleted first, so dbt v2 does not write it into the next manifest', async () => {
+        const compiled = path.join(path.dirname(manifestPathIn(options().artifactDir)), 'compiled', 'shop', 'models');
+        fs.mkdirSync(compiled, { recursive: true });
+        fs.writeFileSync(path.join(compiled, 'orders.sql'), 'select 1');
+        await invokeDbt(request({ env: { ...process.env, FAKE_DBT: 'manifest' } }), 'parse');
+        assert.ok(!fs.existsSync(path.join(compiled, 'orders.sql')));
+    });
+
     test('rejects when dbt cannot be started', async () => {
         await assert.rejects(invokeDbt(request({ binary: path.join(dir, 'no-such-dbt') }), 'parse'), /Could not run .*no-such-dbt/);
     });

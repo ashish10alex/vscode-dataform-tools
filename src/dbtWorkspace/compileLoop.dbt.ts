@@ -117,9 +117,10 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         await vscode.commands.executeCommand('vscode-dataform-tools.showCompiledQueryWtDryRun');
         await until('the compile to end', () => slices.compile?.status === 'compiled' && slices.file?.role === 'actions');
 
-        // dbt v2: parse first, then the whole Project, with private artifacts
+        // dbt v2: parse first, then the file on show, with private artifacts
         assert.deepStrictEqual(ran().map((args) => args[0]), ['parse', 'compile']);
         const compile = ran()[1];
+        assert.deepStrictEqual(compile.slice(compile.indexOf('--select')), ['--select', `path:${path.join('models', 'marts', 'fct_orders.sql')}`]);
         assert.strictEqual(compile[compile.indexOf('--project-dir') + 1], workspaceFolder);
         const targetPath = compile[compile.indexOf('--target-path') + 1];
         assert.ok(!targetPath.startsWith(workspaceFolder!), `dbt was told to write into the Project: ${targetPath}`);
@@ -208,7 +209,7 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         assert.deepStrictEqual(Object.values(slices.dbt?.names ?? {}).sort(), ['raw.customers', 'raw.orders', 'raw.payments']);
     });
 
-    test('on dbt v2, showing another file reads the graph in memory', async () => {
+    test('showing a file whose actions the last compile compiled reads the graph in memory', async () => {
         const before = ran().length;
         const compileBefore = slices.compile?.compile;
         await show('models/staging/stg_orders.sql');

@@ -77,13 +77,13 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
     });
 
     suite('dbt v2', () => {
-        test('parses first, and compiles the whole Project when it has no on-run hook', async () => {
+        test('parses first, and compiles only the actions of the file on show when the Project has no on-run hook', async () => {
             plan('parse', { manifest: fullManifestPath('dbt-v2') });
             plan('compile', { manifest: fullManifestPath('dbt-v2') });
             const compiler = new DbtCompiler();
             const result = await compiler.compile(request({ file: 'models/marts/fct_orders.sql' }));
-            // No --select: every action's SQL is fresh, whichever file is on show
-            assert.deepStrictEqual(ran(), [['parse'], ['compile']]);
+            const selected = ['compile', '--select', `path:${path.join('models', 'marts', 'fct_orders.sql')}`];
+            assert.deepStrictEqual(ran(), [['parse'], selected]);
             assert.deepStrictEqual(result.commands.map((args) => args[0]), ['parse', 'compile']);
             assert.strictEqual(result.parsedOnly, false);
             assert.strictEqual(result.notice, undefined);
@@ -92,12 +92,23 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
             assert.strictEqual(result.dbt?.projectName, 'xf_example');
 
             // The parse is not repeated while the files that could add a hook are as they were
-            await compiler.compile(request());
-            assert.deepStrictEqual(ran(), [['parse'], ['compile'], ['compile']]);
+            await compiler.compile(request({ file: 'models/marts/fct_orders.sql' }));
+            assert.deepStrictEqual(ran(), [['parse'], selected, selected]);
             const later = new Date(Date.now() + 5000);
             fs.utimesSync(path.join(root, 'dbt_project.yml'), later, later);
+            await compiler.compile(request({ file: 'models/marts/fct_orders.sql' }));
+            assert.deepStrictEqual(ran().slice(3), [['parse'], selected]);
+        });
+
+        test('with no file on show it parses once, and never compiles the whole Project', async () => {
+            plan('parse', { manifest: fullManifestPath('dbt-v2') });
+            const compiler = new DbtCompiler();
+            const result = await compiler.compile(request());
+            assert.deepStrictEqual(ran(), [['parse']]);
+            assert.deepStrictEqual([result.parsedOnly, result.notice], [false, undefined]);
+            // Known to have no hook, it is parsed all the same
             await compiler.compile(request());
-            assert.deepStrictEqual(ran().slice(3), [['parse'], ['compile']]);
+            assert.deepStrictEqual(ran(), [['parse'], ['parse']]);
         });
 
         test('a Project with on-run hooks is left parsed, and the notice says why', async () => {
@@ -114,11 +125,11 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
             assert.deepStrictEqual(ran(), [['parse'], ['parse']]);
         });
 
-        test('with compileWithHooks it compiles without parsing first', async () => {
+        test('with compileWithHooks it compiles the file on show without parsing first', async () => {
             plan('parse', { manifest: fullManifestPath('dbt-v2-hooks-parsed') });
             plan('compile', { manifest: fullManifestPath('dbt-v2') });
-            const result = await new DbtCompiler().compile(request({ compileWithHooks: true }));
-            assert.deepStrictEqual(ran(), [['compile']]);
+            const result = await new DbtCompiler().compile(request({ compileWithHooks: true, file: 'models/orders.sql' }));
+            assert.deepStrictEqual(ran(), [['compile', '--select', `path:${path.join('models', 'orders.sql')}`]]);
             assert.strictEqual(result.parsedOnly, false);
             assert.strictEqual(result.notice, undefined);
         });
@@ -140,7 +151,7 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
         test('errors of a compile that still wrote a manifest come with its graph', async () => {
             plan('parse', { manifest: fullManifestPath('dbt-v2') });
             plan('compile', { manifest: fullManifestPath('dbt-v2'), stdout: readDbtLog('dbt-v2-macro').stdout, exit: 1 });
-            const result = await new DbtCompiler().compile(request());
+            const result = await new DbtCompiler().compile(request({ file: 'models/marts/fct_orders.sql' }));
             assert.deepStrictEqual(result.errors.map((error) => error.code), ['dbt1501']);
             assert.strictEqual(result.graph.actions[`${P}.xf_example.fct_orders`].sqlPresent, true);
         });

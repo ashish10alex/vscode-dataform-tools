@@ -14,9 +14,8 @@ import type { ProjectState } from './registry';
  * saved and when another file is shown; this decides whether one is needed and runs it.
  *
  * - One compile per Project at a time, and the latest request wins: a newer one ends the dbt that is running.
- * - A save always compiles. On dbt v2 that compiles the whole Project, so showing another file reads the graph in
- *   memory. On dbt-core it compiles the saved file's actions only, so showing a file whose actions have no compiled
- *   SQL compiles again, for that file.
+ * - A save always compiles, and only the saved file's actions, so showing a file whose actions have no compiled SQL
+ *   compiles again, for that file.
  * - dbt writes its artifacts and logs under the extension's storage for the workspace, one directory per Project,
  *   dbt binary and dbt target, never into the Project's own `target/`.
  */
@@ -124,18 +123,19 @@ export async function dbtOptions(root: string): Promise<DbtOptions | undefined> 
 
 /**
  * Whether showing `file` needs a compile: there is no result yet, the last one was made with other options (another
- * dbt, dbt target or variables), or the engine is dbt-core and an action of the file has a query that the last
- * compile did not compile. The tests shown with the file's actions count as the file's.
+ * dbt, dbt target or variables), or an action of the file has a query that the last compile did not compile. The
+ * tests shown with the file's actions count as the file's. A Project that was only parsed, for its on-run hooks or
+ * its errors, is not compiled for a showing: nothing but a save changes what a compile of it gives.
  */
 function needsCompile(project: ProjectState, file: string | undefined, options: DbtOptions): boolean {
     const last = project.dbtBackend?.lastResult;
     if (!last || compiledWith.get(project.root) !== optionsKey(options)) {
         return true;
     }
-    if (options.flavour !== 'dbt-core' || !file) {
+    if (last.parsedOnly || !file) {
         return false;
     }
-    // The file's actions, and the tests of those: dbt-core compiles a model's tests with it. Not what a test of the
+    // The file's actions, and the tests of those: dbt compiles a model's tests with it. Not what a test of the
     // file is shown with, its model and that model's other tests: selecting the test's file does not compile those,
     // so asking for them would compile on every showing
     const own = actionsInFile(last.graph, file);
