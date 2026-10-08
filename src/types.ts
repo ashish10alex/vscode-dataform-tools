@@ -727,7 +727,8 @@ export interface ChangedActionsView {
     defaultBranch?: string;
     /** The checked-out branch is the one being compared against, so only local edits can show up */
     onDefaultBranch?: boolean;
-    changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config')[] }[];
+    /** `macro` is a dbt Project's only: a macro the action calls differs */
+    changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config' | 'macro')[] }[];
     deleted?: { target: string; fileName: string; type: string }[];
     error?: string;
 }

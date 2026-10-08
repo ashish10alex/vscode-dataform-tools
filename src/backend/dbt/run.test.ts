@@ -32,6 +32,32 @@ suite('the command line of a dbt run', () => {
         assert.deepStrictEqual(dbtRunArguments({ options, run: run({ tags: ['daily', 'hourly'], includeDependencies: true }) }, names), ['build', '--select', '+tag:daily', '+tag:hourly']);
     });
 
+    test('a run of what changed selects state:modified against the base', () => {
+        const changed = { base: '/store/base/target' };
+        assert.deepStrictEqual(dbtRunArguments({ options, run: run({ changed }) }, names), ['build', '--select', 'state:modified', '--state', '/store/base/target']);
+        assert.deepStrictEqual(dbtRunArguments({ options, run: run({ changed, includeDependencies: true, includeDependents: true, fullRefresh: true }) }, names), [
+            'build', '--select', '+state:modified+', '--state', '/store/base/target', '--full-refresh',
+        ]);
+    });
+
+    test('kept to some actions, it selects those of them that still differ, each by its name', () => {
+        const changed = { base: '/store/base/target' };
+        const actions = [`${P}.xf_example.fct_orders`, `${P}.xf_example_reference.country_codes`];
+        assert.deepStrictEqual(dbtRunArguments({ options, run: run({ changed, actions }) }, names), [
+            'build', '--select', 'state:modified,xf_example.marts.fct_orders', 'state:modified,xf_example.country_codes', '--state', '/store/base/target',
+        ]);
+        // The + goes on both sides: what a changed action reads from is what it and the changes read from
+        assert.deepStrictEqual(dbtRunArguments({ options, run: run({ changed, actions: [actions[0]], includeDependencies: true }) }, names).slice(2, 3), ['+state:modified,+xf_example.marts.fct_orders']);
+        assert.deepStrictEqual(dbtRunArguments({ options, run: run({ changed, actions: [actions[0]], includeDependents: true }) }, names).slice(2, 3), ['state:modified+,xf_example.marts.fct_orders+']);
+        assert.throws(() => dbtRunArguments({ options, run: run({ changed, actions: ['exposure.revenue_dashboard'] }) }, names), /dbt cannot select exposure\.revenue_dashboard/);
+    });
+
+    test('the base and an intersection are quoted for the shell that needs it', () => {
+        const request = { root: '/work/shop', options: { binary: 'dbt' }, run: run({ changed: { base: '/Application Support/base/target' }, actions: [`${P}.xf_example.fct_orders`] }) };
+        assert.strictEqual(dbtRunCommand(request, names, 'darwin'), `dbt build --select state:modified,xf_example.marts.fct_orders --state '/Application Support/base/target'`);
+        assert.strictEqual(dbtRunCommand(request, names, 'win32'), `dbt build --select "state:modified,xf_example.marts.fct_orders" --state "/Application Support/base/target"`);
+    });
+
     test('runs with the dbt target, variables and profiles directory of compiles', () => {
         const all = { binary: 'dbt', target: 'ci', vars: '{"day": "2024-01-01"}', profilesDir: '/work/profiles' };
         assert.deepStrictEqual(dbtRunArguments({ options: all, run: run({ tags: ['daily'] }) }, names).slice(3), [

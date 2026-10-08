@@ -283,6 +283,8 @@ export interface DbtBlock extends Slice {
     names: Record<ActionId, string>;
     /** The names of the macros and generic tests the file on show defines */
     macros: string[];
+    /** The "Run changed" state. Unset until it is known whether the Project is in a git repository */
+    changedActions?: ChangedActionsView;
 }
 
 // ---- Host to panel
@@ -389,7 +391,11 @@ export type DbtPanelMessage =
     /** Compile with on-run hooks from now on, or stop */
     | { command: 'dbt.compileWithHooks'; on: boolean }
     | { command: 'dbt.chooseExecutable' }
-    | { command: 'dbt.lookForDbtAgain' };
+    | { command: 'dbt.lookForDbtAgain' }
+    /** Ask dbt what changed since the merge-base with the default branch (`state:modified`) */
+    | { command: 'dbt.computeChangedActions' }
+    /** `dbt build` of what changed; with `files`, of the changes in those files only */
+    | ({ command: 'dbt.runChangedActions'; files?: string[] } & RunScope);
 
 export type PanelMessage = SharedPanelMessage | DataformPanelMessage | DbtPanelMessage;
 

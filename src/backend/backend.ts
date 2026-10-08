@@ -1,5 +1,5 @@
 import type { BackendName } from '../project/detection';
-import type { ActionId, CompiledGraph, RunOptions } from '../shared/compiledGraph';
+import type { ActionId, CompiledGraph, Kind, RunOptions, Target } from '../shared/compiledGraph';
 import type { CompileFiles } from './compileFiles';
 
 /*
@@ -64,13 +64,22 @@ export interface CompileResult {
     notice?: string;
 }
 
-/** new: not at the base; sql: a query differs; config: a setting that changes what is built differs */
-export type ChangeReason = 'new' | 'sql' | 'config';
+/** new: not at the base; sql: a query differs; config: a setting that changes what is built differs; macro: a macro the action calls differs */
+export type ChangeReason = 'new' | 'sql' | 'config' | 'macro';
+
+/** An action of a list of Changed Actions. It says what a list shows of it, since one the Project no longer defines is in no Compiled Graph */
+export interface ChangedAction {
+    id: ActionId;
+    target: Target;
+    kind: Kind;
+    /** Relative to the Project root with forward slashes. Empty when the tool names no file */
+    fileName: string;
+}
 
 export interface ChangedActions {
-    changed: Array<{ id: ActionId; reasons: ChangeReason[] }>;
+    changed: Array<ChangedAction & { reasons: ChangeReason[] }>;
     /** Actions at the base that the Project no longer defines */
-    deleted: ActionId[];
+    deleted: ChangedAction[];
 }
 
 /** The optional part of a Backend that runs a Project's actions with its tool's command line */
@@ -81,7 +90,11 @@ export interface Runner<Options> {
 
 /** The optional part of a Backend that lists Changed Actions */
 export interface Changes<Options> {
-    /** The actions whose compiled output differs from the Project at the commit `base` */
+    /**
+     * The actions that differ from the Project at the base. `base` is where the Backend's tool left the Project as it
+     * is at the base commit, which the host has it make from a copy of that commit: for dbt, the directory of the
+     * manifest `dbt parse` wrote of it.
+     */
     changedActions(request: BackendRequest<Options> & { base: string }): Promise<ChangedActions>;
 }
 

@@ -3,11 +3,14 @@ import type { Action, CompiledGraph, RunOptions } from '../shared/compiledGraph'
 import { actionsInFile, isRunnable, isTestKind, previewSection, siblingsOf } from '../shared/compiledGraph';
 import { previewDbtAction } from './dbtBigQuery';
 import { compileDbtProject } from './dbtCompile';
-import { repeatDbtRun, runDbt } from './dbtRun';
+import { describeComparison } from '../shared/changeComparison';
+import { noChangesMessage } from '../changedActions';
+import { DbtChangesResult, listDbtChangedActions, repeatLastDbtRun, runDbtChangedActions } from './dbtChanges';
+import { runDbt } from './dbtRun';
 import type { ProjectState } from './registry';
 
 /*
- * The extension's commands in a dbt Project (xf#63): the sixteen that work for both Backends, as they act on dbt.
+ * The extension's commands in a dbt Project (xf#63): the seventeen that work for both Backends, as they act on dbt.
  * Each takes the file of a dbt Project it is for; the caller finds it (the editor in focus, else the file the panel
  * shows) and falls through to Dataform when there is none.
  */
@@ -154,7 +157,88 @@ export async function dbtRunWithOptions(target: DbtFile) {
 
 /** Sends the Project's last run to the terminal again */
 export async function dbtRerun(target: DbtFile) {
-    await repeatDbtRun(target.project);
+    await repeatLastDbtRun(target.project);
+}
+
+type ChangedRunItem = vscode.QuickPickItem & { scope?: Pick<RunScope, 'includeDependencies' | 'includeDependents'> };
+
+/**
+ * Asks how far a run of what changed reaches, in a picker that also lists what changed, as Dataform's does. The rows
+ * of actions are only to read: accepting one keeps the picker open.
+ */
+function pickChangedRun(result: DbtChangesResult): Promise<ChangedRunItem['scope']> {
+    const count = result.changed.length;
+    const items: ChangedRunItem[] = [
+        { label: '$(play) Run', description: `${count} changed action${count === 1 ? '' : 's'}`, scope: { includeDependencies: false, includeDependents: false } },
+        { label: '$(play) Run with dependents', scope: { includeDependencies: false, includeDependents: true } },
+        { label: '$(play) Run with dependencies', scope: { includeDependencies: true, includeDependents: false } },
+    ];
+    let file: string | undefined;
+    for (const action of result.changed) {
+        if (action.fileName !== file) {
+            file = action.fileName;
+            items.push({ label: action.fileName, kind: vscode.QuickPickItemKind.Separator });
+        }
+        items.push({ label: action.target.name, description: `${action.kind} · ${action.reasons.join(', ')}` });
+    }
+    for (const action of result.deleted) {
+        items.push({ label: `$(trash) ${action.target.name}`, description: 'removed on this branch, not run' });
+    }
+    const picker = vscode.window.createQuickPick<ChangedRunItem>();
+    picker.title = `Changed actions ${describeComparison(result.headRef, result.baseRef)} @ ${result.mergeBaseSha.slice(0, 7)} (${result.headLabel})`;
+    picker.placeholder = 'Select run type';
+    picker.items = items;
+    picker.matchOnDescription = true;
+    return new Promise((resolve) => {
+        let accepted: ChangedRunItem['scope'];
+        picker.onDidAccept(() => {
+            const scope = picker.selectedItems[0]?.scope;
+            if (scope) {
+                accepted = scope;
+                picker.hide();
+            }
+        });
+        picker.onDidHide(() => {
+            picker.dispose();
+            resolve(accepted);
+        });
+        picker.show();
+    });
+}
+
+/**
+ * "Run changed actions" for dbt: asks dbt what changed since the merge-base with the default branch, shows it, and
+ * sends `dbt build --select state:modified` to the terminal. With `scope`, from a keybinding's arguments, nothing
+ * is asked.
+ */
+export async function dbtRunChanged(target: DbtFile, scope?: Partial<RunScope>) {
+    let result: DbtChangesResult | undefined;
+    try {
+        result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Working out changed actions…' }, () => listDbtChangedActions(target.project));
+    } catch (error) {
+        vscode.window.showErrorMessage(`Could not work out changed actions: ${error instanceof Error ? error.message : String(error)}`);
+        return;
+    }
+    if (!result) {
+        return;
+    }
+    if (result.changed.length === 0) {
+        vscode.window.showInformationMessage(noChangesMessage(result));
+        return;
+    }
+    if (scope && (scope.includeDependencies !== undefined || scope.includeDependents !== undefined || scope.fullRefresh !== undefined)) {
+        await runDbtChangedActions(target.project, { includeDependencies: !!scope.includeDependencies, includeDependents: !!scope.includeDependents, fullRefresh: !!scope.fullRefresh }, result);
+        return;
+    }
+    const reach = await pickChangedRun(result);
+    if (!reach) {
+        return;
+    }
+    const refresh = await vscode.window.showQuickPick(['no', 'yes'], { placeHolder: 'full refresh' });
+    if (!refresh) {
+        return;
+    }
+    await runDbtChangedActions(target.project, { ...reach, fullRefresh: refresh === 'yes' }, result);
 }
 
 /** Runs the compiled query of the file's first action that has one, and shows its rows */

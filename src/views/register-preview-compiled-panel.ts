@@ -5,7 +5,8 @@ import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
 import { savedWithoutPanel } from '../project/dbtWithoutPanel';
 import type { DryRunResult } from '../bigquery/dryRunService';
-import { lastDbtRun, onDidRunDbt, repeatDbtRun, runDbt } from '../project/dbtRun';
+import { lastDbtRun, onDidRunDbt, runDbt } from '../project/dbtRun';
+import { dbtChangesResult, dbtChangesView, forgetDbtChanges, listDbtChangedActions, onDidChangeDbtChanges, repeatLastDbtRun, runDbtChangedActions } from '../project/dbtChanges';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
 import { CompileState, actionsNamed, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../panel/slices';
 import { SliceSender } from '../panel/sliceSender';
@@ -319,6 +320,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push(onDidChangeDbtTool((root) => CompiledQueryPanel.centerPanel?.dbtToolChanged(root)));
     // And a run of it sent to the terminal, from the panel or from a command
     context.subscriptions.push(onDidRunDbt((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
+    context.subscriptions.push(onDidChangeDbtChanges((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
     // And the settings a dbt compile is made with: another dbt target, other variables or profiles are another result
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (['dbtTarget', 'dbtVars', 'dbtProfilesDir'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
@@ -446,6 +448,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     // A checkout, commit or pull changes the project without saving a file, so treat it like a save.
     watchGitHead(context, async (repositoryRoot) => {
+        // A dbt Project's list of changed actions belongs to the previous branch too
+        forgetDbtChanges({ repository: repositoryRoot });
         const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
         const relative = doc ? path.relative(repositoryRoot, doc.fileName) : '..';
         if (!doc || relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -774,6 +778,7 @@ export class CompiledQueryPanel {
             graph: last?.graph,
             shown: actionsNamed(shown),
             file,
+            changedActions: dbtChangesView(project.root),
         }, project.compileNumber);
         return {
             project: projectSlice({ root: project.root }, backend, last?.graph, project.compileNumber),
@@ -868,7 +873,7 @@ export class CompiledQueryPanel {
             return false;
         }
         if (message.command === 'repeatLastRun') {
-            await repeatDbtRun(shown.project);
+            await repeatLastDbtRun(shown.project);
             return true;
         }
         const { includeDependencies, includeDependents, fullRefresh } = message;
@@ -902,7 +907,19 @@ export class CompiledQueryPanel {
             case 'dbt.lookForDbtAgain':
                 await lookForDbt(project.root);
                 return;
+            case 'dbt.computeChangedActions':
+                // The panel is told why there is no list
+                await listDbtChangedActions(project).catch(() => undefined);
+                return;
+            case 'dbt.runChangedActions': {
+                const { includeDependencies, includeDependents, fullRefresh, files } = message;
+                // The list on show is what the user chose from
+                await runDbtChangedActions(project, { includeDependencies, includeDependents, fullRefresh, ...(Array.isArray(files) ? { files } : {}) }, dbtChangesResult(project.root));
+                return;
+            }
             case 'dbt.setTarget':
+                // What changed was worked out with the other dbt target
+                forgetDbtChanges({ file: path.join(project.root, file) });
                 await setDbtTargetOverride(project.root, message.name);
                 // Another dbt target is another result: this compiles, and replaces a compile that is running
                 await CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, project, file, 'switch');
@@ -1509,6 +1526,8 @@ export class CompiledQueryPanel {
               case 'dbt.compileWithHooks':
               case 'dbt.chooseExecutable':
               case 'dbt.lookForDbtAgain':
+              case 'dbt.computeChangedActions':
+              case 'dbt.runChangedActions':
                 await panel.onDbtMessage(message);
                 return;
               default: {

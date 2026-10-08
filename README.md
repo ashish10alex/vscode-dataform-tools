@@ -89,6 +89,7 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 | Schema | The columns and types of the compiled query, with the descriptions from your YAML. |
 | Preview | Runs the compiled query and shows the rows. For a test, the rows that fail it. |
 | Run | `dbt build` in a terminal, for the file, with dependencies, with dependents, as a full refresh, or by tag. |
+| Run Changed | The actions that differ from the merge-base with the default branch, as dbt finds them (`state:modified`). The panel lists them by file with why each changed, and runs all of them or the files you tick. |
 | dbt target | Shown in the panel. Pick another there; the choice is yours alone and is kept for the workspace. |
 | Compile errors | Shown in the panel with a link to the file, and marked in the editor where dbt gave a line. |
 | Dry-run errors | BigQuery's errors are marked in the editor too. See [In the editor](#in-the-editor). |
@@ -97,7 +98,7 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 | Completions | Model, seed and snapshot names inside `ref('`; sources and their tables inside `source('`; column names after an alias and a dot, and of every table the file reads. |
 | Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
 
-Not in a dbt project yet: the dependency graph, column lineage, defer to prod, running through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover and completions for macros.
+Not in a dbt project yet: the dependency graph, column lineage, defer to prod, running through an API, the cost estimate of a tag, formatting, and hover and completions for macros.
 
 ### In the editor
 
@@ -114,6 +115,7 @@ Go to definition, hover and completions work in the `.sql` files of a dbt projec
 * **dbt Core and dbt v2** compile the file you are looking at, with its tests, and never the whole project. A file you have not looked at since the last save is compiled when you open it.
 * **A dbt v2 project with `on-run-start` or `on-run-end` hooks is only parsed**, because dbt v2 runs those hooks against the warehouse on every compile. The panel then shows the SQL as written and offers to compile with hooks.
 * dbt writes its artifacts for these compiles into the extension's storage, not into your project's `target/`.
+* **Run Changed needs no manifest from you.** The extension takes the merge-base with `defaultBranch` out of git, parses it with your dbt, dbt target and variables, and keeps that manifest by commit in its own storage. It runs `dbt build --select state:modified --state <that manifest>`. The list is worked out when you open the button's popover, not in the background. It does not defer: an upstream table that is not built in your dbt target must be built first, which the `+Deps` switch does.
 
 ### Where BigQuery jobs run
 
