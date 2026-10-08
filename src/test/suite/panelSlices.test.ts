@@ -9,7 +9,7 @@ import type { DryRunResult } from '../../bigquery/dryRunService';
 import { SliceSender } from '../../panel/sliceSender';
 import { DbtBackend } from '../../backend/dbt';
 import { buildDbtGraph } from '../../backend/dbt/graph';
-import { bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../../panel/slices';
+import { actionsNamed, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../../panel/slices';
 import { Action, buildCompiledGraph, madeUpTarget, targetId, titledSections } from '../../shared/compiledGraph';
 import type { HostMessage } from '../../shared/panelContract';
 import { findProjectRoot } from './helper';
@@ -265,6 +265,21 @@ suite('panel slices: the dbt block', () => {
         assert.deepStrictEqual(model.names, {});
         const versioned = dbtBlock({ data: built.dbt, graph: built.graph, shown: shownIn('models/marts/customer_segments_v2.sql'), file: 'models/marts/customer_segments_v2.sql' }, 3);
         assert.deepStrictEqual(Object.values(versioned.names), ['customer_segments v2']);
+    });
+
+    test("names the neighbours of the actions on show too, for the Data Lineage", () => {
+        const file = 'models/staging/stg_orders.sql';
+        const shown = fileSlice(built.graph, dbt, file, 3);
+        // The model reads a source, which dbt does not call by its table's name
+        assert.strictEqual(Object.values(dbtBlock({ data: built.dbt, graph: built.graph, shown: shown.actions.map((action) => action.id), file }, 3).names).includes('raw.orders'), false);
+        assert.strictEqual(Object.values(dbtBlock({ data: built.dbt, graph: built.graph, shown: actionsNamed(shown), file }, 3).names).includes('raw.orders'), true);
+    });
+
+    test('a test says which action it tests, and no other action does', () => {
+        const shown = fileSlice(built.graph, dbt, 'tests/assert_positive_order_totals.sql', 3).actions;
+        const model = shown.find((action) => action.kind === 'incremental')!;
+        assert.strictEqual(model.home, undefined);
+        assert.deepStrictEqual(shown.filter((action) => action !== model).map((action) => action.home), shown.slice(1).map(() => model.target));
     });
 
     test('the macros of the file on show, and of no other', () => {

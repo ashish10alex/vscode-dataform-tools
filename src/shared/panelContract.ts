@@ -81,6 +81,8 @@ export interface PanelAction extends ActionReference {
     runnable: boolean;
     dependencies: ActionReference[];
     dependents: ActionReference[];
+    /** For a test, the one action it tests, when there is one: it is among the actions shown */
+    home?: Target;
 }
 
 /** What the file is to its Project */

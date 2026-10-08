@@ -13,9 +13,11 @@ import {
     buildsTable,
     dependenciesOf,
     dependentsOf,
+    homeAction,
     isMadeUpTarget,
     isRunnable,
     siblingsOf,
+    targetId,
 } from '../shared/compiledGraph';
 import type {
     ActionReference,
@@ -63,6 +65,10 @@ function panelAction(graph: CompiledGraph, action: Action): PanelAction {
         dependencies: dependenciesOf(graph, action.id).map(reference),
         dependents: dependentsOf(graph, action.id).map(reference),
     };
+    const home = homeAction(graph, action);
+    if (home) {
+        shown.home = home.target;
+    }
     if (action.description) {
         shown.description = action.description;
     }
@@ -105,6 +111,11 @@ export function fileSlice(graph: CompiledGraph | undefined, backend: Backend<nev
     }
     shown.push(...also.filter((action) => !shown.includes(action)));
     return { compile, file, role: 'actions', actions: shown.map((action) => panelAction(graph, action)) };
+}
+
+/** The actions the panel names for a file: those it shows and their neighbours, which its Data Lineage lists */
+export function actionsNamed(file: FileSlice): ActionId[] {
+    return [...new Set(file.actions.flatMap((action) => [action.id, ...[...action.dependencies, ...action.dependents].map((neighbour) => targetId(neighbour.target))]))];
 }
 
 /** What the host knows of a Project's compile, from which its one status is worked out */
@@ -194,7 +205,7 @@ export interface DbtBlockInput {
     /** What the last compile's manifest said beside the graph */
     data?: DbtProjectData;
     graph?: CompiledGraph;
-    /** The actions on show: those of the `file` slice sent with this block */
+    /** The actions the panel names: those of the `file` slice sent with this block, and their neighbours */
     shown?: ActionId[];
     /** The file on show, relative to the Project root with forward slashes */
     file?: string;

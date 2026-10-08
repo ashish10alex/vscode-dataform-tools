@@ -7,7 +7,7 @@ import type { OptionType } from "../../dependancy_graph/components/StyledSelect"
 import { ModifierSwitch } from "./ModifierSwitch";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
-import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
+import { DbtCard, DbtLineage, DbtStatusLine, DbtTab, DbtView, LineageRow, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase } from "../../../src/shared/panelDbtView";
 import { dryRunCostSummary } from "../../../src/shared/panelBigQueryView";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { renderDryRunStatLine } from "./CompiledQueryTab";
@@ -460,6 +460,106 @@ function ErrorCard({ error, flavour }: { error: CompileError; flavour?: "dbt-cor
   );
 }
 
+const LINK = "p-0 bg-transparent border-0 cursor-pointer text-left font-mono text-sm text-[var(--vscode-textLink-foreground)] hover:underline break-all";
+const LINEAGE_DOT = { dependencies: "bg-[var(--vscode-symbolIcon-functionForeground)]", dependents: "bg-[var(--vscode-symbolIcon-stringForeground)]", tests: "bg-[var(--vscode-symbolIcon-methodForeground)]" };
+
+/** Neighbours of one group, each a link that opens its file */
+function LineageRows({ group, title, rows, empty }: { group: keyof typeof LINEAGE_DOT; title: string; rows: LineageRow[]; empty?: string }) {
+  if (rows.length === 0 && !empty) {
+    return null;
+  }
+  return (
+    <div data-lineage={group}>
+      <h4 className="text-sm font-semibold text-[var(--vscode-descriptionForeground)] mt-0 mb-2 uppercase tracking-wider">{title}</h4>
+      {rows.length === 0 ? (
+        <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">{empty}</span>
+      ) : (
+        <ul className="space-y-1 pl-2 m-0 list-none">
+          {rows.map((row, index) => (
+            <li key={index} className="flex items-center flex-wrap gap-x-2 text-sm">
+              <span className={clsx("w-1.5 h-1.5 rounded-full opacity-70 flex-shrink-0", LINEAGE_DOT[group])}></span>
+              {row.fileName ? (
+                <button type="button" title={`Open ${row.fileName}`} className={LINK} onClick={() => vscode.postMessage({ command: "openAction", action: row.target })}>
+                  {row.name}
+                </button>
+              ) : (
+                <span className="font-mono text-sm break-all">{row.name}</span>
+              )}
+              <span className={clsx("text-xs", MUTED)}>{row.kind}</span>
+              {row.package && <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--vscode-widget-border)]", MUTED)} title={`In the installed package ${row.package}, not in this Project`}>package {row.package}</span>}
+              {row.buildsTable && (
+                <a
+                  href={getUrlToNavigateToTableInBigQuery(row.target.database, row.target.schema, row.target.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Open ${[row.target.database, row.target.schema, row.target.name].filter(Boolean).join(".")} in BigQuery`}
+                  className="p-0.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-textLink-foreground)]"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+const counted = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+/**
+ * What the file's actions read and what reads them, as Dataform's Data Lineage (CompiledQueryTab.tsx): closed until
+ * asked for, with how many there are in its header. A name opens the neighbour's file.
+ */
+function DataLineage({ lineage }: { lineage: DbtLineage }) {
+  const [open, setOpen] = useState(false);
+  const { subjects, counts } = lineage;
+  const [only] = subjects;
+  // A test's file shows the lineage of the model it tests, and says so
+  const of = subjects.length === 1 && !only.own ? only : undefined;
+  const grouped = subjects.length > 1;
+  const summary = [counted(counts.dependencies, "dependency", "dependencies"), counted(counts.dependents, "dependent", "dependents"), ...(counts.tests > 0 ? [counted(counts.tests, "test", "tests")] : [])].join(" · ");
+  return (
+    <div data-dbt="lineage" className="bg-[var(--vscode-sideBar-background)] rounded-xl border border-[var(--vscode-widget-border)]/60 overflow-hidden">
+      <div className="flex items-center flex-wrap gap-x-3 px-4 py-3 hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors">
+        <button type="button" aria-expanded={open} className="flex items-center p-0 border-0 bg-transparent cursor-pointer text-left text-[var(--vscode-foreground)]" onClick={() => setOpen(!open)}>
+          {open ? <ChevronDown className="w-4 h-4 mr-2 text-zinc-400" /> : <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />}
+          <span className="font-semibold">Data Lineage{of ? " of" : ""}</span>
+        </button>
+        {of &&
+          (of.fileName ? (
+            <button type="button" title={`Open ${of.fileName}`} className={LINK} onClick={() => vscode.postMessage({ command: "openAction", action: of.target })}>
+              {of.name}
+            </button>
+          ) : (
+            <span className="font-mono text-sm">{of.name}</span>
+          ))}
+        <span className={clsx("text-xs", MUTED)}>{summary}</span>
+      </div>
+      {open && (
+        <div role="region" className="p-4 border-t border-[var(--vscode-widget-border)] space-y-4">
+          {subjects.map((subject, index) => (
+            <div key={index} data-lineage="subject" className="space-y-3">
+              {grouped && (
+                <div className="flex items-center gap-x-2 text-sm">
+                  <span className="font-mono font-semibold">{subject.name}</span>
+                  <span className={clsx("text-xs", MUTED)}>{subject.kind}</span>
+                </div>
+              )}
+              <div className={clsx("space-y-4", grouped && "pl-3 border-l border-[var(--vscode-widget-border)]")}>
+                <LineageRows group="dependencies" title="Dependencies" rows={subject.dependencies} empty={grouped ? undefined : "No dependencies"} />
+                <LineageRows group="dependents" title="Dependents" rows={subject.dependents} empty={grouped && subject.dependencies.length + subject.tests.length > 0 ? undefined : "No dependents in this Project"} />
+                <LineageRows group="tests" title="Tests" rows={subject.tests} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Card({ card }: { card: DbtCard }) {
   return (
     <div data-dbt="card" className={clsx(BOX, "p-4")}>
@@ -696,26 +796,11 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
           ))}
         </div>
       )}
-      {view.readsFrom.length > 0 && (
-        <div data-dbt="reads from" className={clsx("text-xs flex flex-wrap items-center gap-x-4 gap-y-1", MUTED)}>
-          <span>reads from</span>
-          {view.readsFrom.map((neighbour, index) => (
-            <span key={index}>
-              {neighbour.fileName ? (
-                <button type="button" title={`Open ${neighbour.fileName}`} className="p-0 bg-transparent border-0 cursor-pointer font-mono text-xs text-[var(--vscode-textLink-foreground)] hover:underline" onClick={() => vscode.postMessage({ command: "openAction", action: neighbour.target })}>
-                  {neighbour.target.name}
-                </button>
-              ) : (
-                <span className="font-mono text-[var(--vscode-foreground)]">{neighbour.target.name}</span>
-              )}{" "}
-              {neighbour.kind}
-            </span>
-          ))}
-        </div>
-      )}
+      {view.lineage && !view.card && <DataLineage lineage={view.lineage} />}
       <Toolbar state={state} view={view} />
       <SqlBlocks state={state} view={view} />
       {view.card && <Card card={view.card} />}
+      {view.lineage && view.card && <DataLineage lineage={view.lineage} />}
       {view.skeleton && (
         <div data-dbt="skeleton" className="space-y-2 animate-pulse">
           {[80, 62, 91, 48, 70].map((width) => (
