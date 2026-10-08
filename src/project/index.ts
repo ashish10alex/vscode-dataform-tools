@@ -19,6 +19,10 @@ const activeProjectChanged = new vscode.EventEmitter<ProjectState | undefined>()
 /** Fires when the active Project changes, see `ProjectRegistry.active` */
 export const onDidChangeActiveProject = activeProjectChanged.event;
 
+const projectsChanged = new vscode.EventEmitter<void>();
+/** Fires when the window's Projects are no longer the ones they were: one was added or removed */
+export const onDidChangeProjects = projectsChanged.event;
+
 function workspaceFolderPaths(): string[] {
     return (vscode.workspace.workspaceFolders ?? []).filter((folder) => folder.uri.scheme === 'file').map((folder) => folder.uri.fsPath);
 }
@@ -113,6 +117,7 @@ function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.acti
         logger.debug(`Projects: ${description}`);
         // The Project picker is only worth listing when there is something to pick
         vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.multipleProjects', found.length > 1);
+        projectsChanged.fire();
     }
     if (editor?.document.uri.scheme === 'file') {
         const file = editor.document.uri.fsPath;

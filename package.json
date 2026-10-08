@@ -744,6 +744,22 @@
                     "scope": "resource",
                     "markdownDescription": "**Compile a dbt project that has `on-run-start` or `on-run-end` hooks**, with dbt v2.\n\ndbt v2 runs those hooks against the warehouse every time it compiles. So by default the extension only parses such a project: the compiled query panel shows the SQL as written, and nothing is dry-run.\n\nTurn this on to compile it anyway. **The hooks then run on every save.** The panel offers this where it applies. It has no effect with dbt-core, which does not run hooks when it compiles."
                 },
+                "vscode-dataform-tools.dbtEditorFeatures": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "on",
+                        "off"
+                    ],
+                    "enumDescriptions": [
+                        "On, unless another dbt extension that offers the same is installed and enabled: the dbt extension of dbt Labs, or Power User for dbt.",
+                        "On, also beside another dbt extension. You may then see each hover and suggestion twice.",
+                        "Off."
+                    ],
+                    "default": "auto",
+                    "scope": "resource",
+                    "markdownDescription": "**Go to definition, hover and completions in the files of a dbt project**: for `ref()`, `source()`, macro calls and column names.\n\nVS Code shows what every extension offers for a file, so two dbt extensions give two hovers and each suggestion twice. With `auto` these features stand down while the dbt extension of dbt Labs (`dbtLabsInc.dbt`) or Power User for dbt (`innoverio.vscode-dbt-power-user`) is installed and enabled; the output channel says so when they do. `on` keeps them beside those extensions.\n\nThis does not change the language of `.sql` files, and it does not govern the dry-run error markers."
+                },
                 "vscode-dataform-tools.gcloudExecutablePath": {
                     "type": "string",
                     "default": null,

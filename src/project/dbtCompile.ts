@@ -169,6 +169,19 @@ export async function compileDbtProject(project: ProjectState, file: string | un
     }
 }
 
+/**
+ * Drops what is known of the Project's compiles, as if none had run: the next showing of a file compiles. A compile
+ * that is running is cancelled.
+ */
+export function forgetDbtCompile(project: ProjectState) {
+    running.get(project.root)?.abort(new Error('Forgotten'));
+    running.delete(project.root);
+    project.dbtBackend?.reset();
+    compiledWith.delete(project.root);
+    states.delete(project.root);
+    changed.fire(project.root);
+}
+
 /** Whether a compile of the Project has been asked for and has not ended */
 export function dbtCompilePending(root: string): boolean {
     return running.has(root);

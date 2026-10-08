@@ -51,6 +51,12 @@ export class DbtBackend implements Backend<DbtOptions> {
         this.last = undefined;
     }
 
+    /** Drops the last result and what the compiles learnt of the Project, as a Backend just made has neither */
+    reset() {
+        this.last = undefined;
+        this.compiler.forget();
+    }
+
     async compile(request: BackendRequest<DbtOptions> & CompileScope): Promise<DbtCompileResult> {
         const result = await this.compiler.compile(request);
         request.signal.throwIfAborted();
