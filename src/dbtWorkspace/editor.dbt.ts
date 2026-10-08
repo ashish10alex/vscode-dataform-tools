@@ -55,6 +55,24 @@ suite('the editor features of a dbt Project', function () {
         return found.flatMap((hover) => hover.contents.map((content) => (typeof content === 'string' ? content : content.value)));
     }
 
+    /**
+     * What is offered at the `|` of `line`, written as the first line of the file, by this extension's provider alone:
+     * its entries have a range, which the editor's own word suggestions do not. Each as "label [beside it] (detail)".
+     */
+    async function completions(document: vscode.TextDocument, line: string): Promise<string[]> {
+        const edit = new vscode.WorkspaceEdit();
+        edit.insert(document.uri, new vscode.Position(0, 0), `${line.replace('|', '')}\n`);
+        await vscode.workspace.applyEdit(edit);
+        try {
+            const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, new vscode.Position(0, line.indexOf('|')));
+            return list.items
+                .filter((item) => item.kind === vscode.CompletionItemKind.Reference || item.kind === vscode.CompletionItemKind.Field)
+                .map((item) => (typeof item.label === 'string' ? `${item.label} (${item.detail})` : `${item.label.label} [${item.label.description}] (${item.detail})`));
+        } finally {
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+        }
+    }
+
     async function until<T>(what: string, read: () => Promise<T>, wanted: (value: T) => boolean): Promise<T> {
         let value = await read();
         for (let waited = 0; waited < 20_000 && !wanted(value); waited += 100) {
@@ -173,6 +191,29 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         }
         // A word that is no column of them, and SQL inside Jinja
         assert.deepStrictEqual(await hovers(document, 'left join', 1), []);
+    });
+
+    test('inside a ref() the models, seeds and snapshots are offered, and inside a source() its sources, then their tables', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        const refs = await completions(document, "select * from {{ ref('|') }}");
+        assert.strictEqual(refs.length, 11, refs.join(', '));
+        assert.ok(refs.includes('stg_orders (view)') && refs.includes('country_codes (seed)') && refs.includes('customers_snapshot (snapshot)'), refs.join(', '));
+        assert.deepStrictEqual(await completions(document, '{{ source("|") }}'), ['raw (source)']);
+        assert.deepStrictEqual(await completions(document, "{{ source('raw', '|') }}"), ['customers (source)', 'orders (source)', 'payments (source)']);
+        // Not in another call, and not in a string of the SQL
+        assert.deepStrictEqual(await completions(document, "{{ config(alias='|') }}"), []);
+        assert.deepStrictEqual(await completions(document, "select '|'"), []);
+    });
+
+    test('after an alias and a dot the columns of its table are offered, and elsewhere those of every table the file reads', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        assert.deepStrictEqual(await completions(document, 'select o.| from x'), ['order_id [stg_orders] (INT64 \u00B7 stg_orders (view))', 'status [stg_orders] (STRING \u00B7 stg_orders (view))']);
+        // stg_payments is not built: what its YAML documents, which is nothing
+        assert.deepStrictEqual(await completions(document, 'select p.| from x'), []);
+        // A name that is no alias of the file, such as a CTE's
+        assert.deepStrictEqual(await completions(document, 'select cte.| from x'), []);
+        const bare = await completions(document, 'select sta| from x');
+        assert.deepStrictEqual(bare, ['order_id [stg_orders] (INT64 \u00B7 stg_orders (view))', 'status [stg_orders] (STRING \u00B7 stg_orders (view))']);
     });
 
     test('the held schemas are dropped when the Project compiles again', async () => {

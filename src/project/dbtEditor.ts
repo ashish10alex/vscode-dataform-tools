@@ -116,6 +116,53 @@ class DbtHoverProvider implements vscode.HoverProvider {
     }
 }
 
+/**
+ * Completions (piece 7.7): inside the quotes of a `ref()` or `source()`, the names it can take; in the SQL of the
+ * file, column names: after an alias and a dot the columns of that table, elsewhere those of every table the file
+ * reads, each with its table.
+ */
+class DbtCompletionProvider implements vscode.CompletionItemProvider {
+    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
+        const dbt = dbtDocument(document);
+        const graph = dbt?.project.dbtBackend?.lastResult?.graph;
+        if (!dbt || !graph) {
+            return undefined;
+        }
+        const names = dbt.editor.namesAt(at(dbt, document, position));
+        if (names) {
+            const range = new vscode.Range(document.positionAt(names.start), position);
+            return names.names.map(({ name, detail, id }) => {
+                const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Reference);
+                item.range = range;
+                item.detail = detail;
+                const action = id === undefined ? undefined : graph.actions[id];
+                if (action?.description) {
+                    item.documentation = new vscode.MarkdownString(action.description);
+                }
+                return item;
+            });
+        }
+        const column = dbt.editor.columnAt(at(dbt, document, position), true);
+        if (!column || column.tables.length === 0) {
+            return undefined;
+        }
+        const range = new vscode.Range(document.positionAt(column.start), position);
+        const columns = await columnsOfTables(dbt.project.root, column.tables.map((id) => graph.actions[id]));
+        return columns.map((each) => {
+            // The table is said beside the name, so that one name in two tables is two entries that can be told apart
+            const item = new vscode.CompletionItem({ label: each.name, description: each.action.target.name }, vscode.CompletionItemKind.Field);
+            item.range = range;
+            item.detail = [each.type, `${each.action.target.name} (${each.action.kind})`].filter(Boolean).join(' \u00B7 ');
+            item.insertText = each.name;
+            item.filterText = each.name;
+            if (each.description) {
+                item.documentation = new vscode.MarkdownString(each.description);
+            }
+            return item;
+        });
+    }
+}
+
 /** The files of a dbt Project that the features reach, by path and with no language */
 export function dbtSelector(root: string, extensions: string): vscode.DocumentSelector {
     return { scheme: 'file', pattern: new vscode.RelativePattern(vscode.Uri.file(root), `**/*.${extensions}`) };
@@ -142,6 +189,8 @@ function register() {
         // Go to definition also from a ref() or source() written in a YAML file
         registered.push(vscode.languages.registerDefinitionProvider(dbtSelector(project.root, '{sql,yml,yaml}'), new DbtDefinitionProvider()));
         registered.push(vscode.languages.registerHoverProvider(dbtSelector(project.root, 'sql'), new DbtHoverProvider()));
+        // Asked for at a quote, which starts an argument, and at a dot, which follows an alias
+        registered.push(vscode.languages.registerCompletionItemProvider(dbtSelector(project.root, 'sql'), new DbtCompletionProvider(), "'", '"', '.'));
     }
     // Said once for each state, not on every look
     if (says.join('\n') !== said) {
