@@ -3,6 +3,7 @@ import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDatafo
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
+import { savedWithoutPanel } from '../project/dbtWithoutPanel';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import { lastDbtRun, onDidRunDbt, repeatDbtRun, runDbt } from '../project/dbtRun';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
@@ -415,6 +416,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 activeDocumentObj = document;
                 const shown = dbtFileOf(vscode.window.activeTextEditor?.document) ?? dbt;
                 await CompiledQueryPanel.showDbt(context.extensionUri, context, shown.project, shown.file, 'save');
+            } else if (affectsCompile(DBT_COMPILE_FILES, dbt.file)) {
+                // With the panel closed the Project is still read again, for the editor
+                await savedWithoutPanel(dbt, dbtFileOf(vscode.window.activeTextEditor?.document));
             }
             return;
         }
@@ -735,7 +739,7 @@ export class CompiledQueryPanel {
             this.sendDbtBigQuery(seq, compile, { tables: found });
         });
         if (actions.length > 0) {
-            await dryRunDbtActions(actions, compile, (arrived) => {
+            await dryRunDbtActions(project.root, actions, compile, (arrived) => {
                 results.push(...arrived);
                 const currency = results.find((result) => result.cost)?.cost?.currency as SupportedCurrency | undefined;
                 this.sendDbtBigQuery(seq, compile, { results: [...results], dryRunning: out(results), ...(currency && currencySymbolMapping[currency] ? { currencySymbol: currencySymbolMapping[currency] } : {}) });

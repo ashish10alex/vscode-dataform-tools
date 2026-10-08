@@ -13,6 +13,31 @@ export interface ErrorPlace {
     end: number;
 }
 
+/**
+ * Where a line of a compiled query is in the source it was compiled from: the one line of the source that reads the
+ * same, indentation aside. Undefined when no line does or several do, as for a line that Jinja built: a marker is
+ * then placed by other means (piece 7.9 of the build plan).
+ */
+export function placeCompiledLine(compiledLine: string | undefined, source: string): ErrorPlace | undefined {
+    const wanted = compiledLine?.trim();
+    if (!wanted) {
+        return undefined;
+    }
+    let place: ErrorPlace | undefined;
+    const lines = source.split('\n');
+    for (let line = 0; line < lines.length; line++) {
+        const text = lines[line].replace(/\r$/, '');
+        if (text.trim() !== wanted) {
+            continue;
+        }
+        if (place) {
+            return undefined;
+        }
+        place = { line, start: text.length - text.trimStart().length, end: text.trimEnd().length };
+    }
+    return place;
+}
+
 /** The name in "depends on a node named 'x'", which both engines say of a `ref()` to nothing */
 const MISSING_REF = /depends on a node named '([^']+)'/;
 

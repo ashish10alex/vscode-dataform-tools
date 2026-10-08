@@ -3,7 +3,8 @@ import path from 'path';
 import * as vscode from 'vscode';
 import type { Editor, EditorDocument } from '../backend';
 import { logger } from '../logger';
-import { Action, slashPath } from '../shared/compiledGraph';
+import { Action, actionsInFile, slashPath } from '../shared/compiledGraph';
+import { dbtDryRunResults } from './dbtBigQuery';
 import { formatTimestamp } from '../utils';
 import { TableColumn, columnHoverText, columnsOf, tableHoverText } from './dbtHoverText';
 import { heldTable } from './dbtSchemas';
@@ -94,6 +95,16 @@ export async function columnsOfTables(root: string, actions: Action[]): Promise<
     return tables.flat();
 }
 
+/** The columns the file's own queries give, from the dry runs of the Project's latest compile. None before a save has dry-run them */
+function ownColumns(dbt: DbtDocument): TableColumn[] {
+    const graph = dbt.project.dbtBackend?.lastResult?.graph;
+    const results = dbtDryRunResults(dbt.project.root, dbt.project.compileNumber);
+    return (graph ? actionsInFile(graph, dbt.file) : []).flatMap((action) => {
+        const fields = results.find((result) => result.action === action.id && result.schema)?.schema?.fields;
+        return fields ? columnsOf(action, { state: 'found', fields }) : [];
+    });
+}
+
 class DbtHoverProvider implements vscode.HoverProvider {
     async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
         const dbt = dbtDocument(document);
@@ -108,10 +119,12 @@ class DbtHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(new vscode.MarkdownString(tableHoverText(action, await heldTable(dbt.project.root, action), formatTimestamp)), range(table));
         }
         const column = dbt.editor.columnAt(at(dbt, document, position));
-        if (!column || column.tables.length === 0) {
+        if (!column) {
             return undefined;
         }
-        const text = columnHoverText(column.word, await columnsOfTables(dbt.project.root, column.tables.map((id) => graph.actions[id])));
+        const text = columnHoverText(column.word, await columnsOfTables(dbt.project.root, column.tables.map((id) => graph.actions[id])))
+            // No table the file reads has it: a column the file's own query gives, as its last dry run said
+            || (column.qualified ? '' : columnHoverText(column.word, ownColumns(dbt)));
         return text ? new vscode.Hover(new vscode.MarkdownString(text), range(column)) : undefined;
     }
 }

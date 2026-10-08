@@ -138,6 +138,8 @@ export interface Editor {
     columnAt(document: EditorDocument, typing?: boolean): EditorColumn | undefined;
     /** The names of Actions that can be written at the place */
     namesAt(document: EditorDocument): EditorNames | undefined;
+    /** Where the Action is defined: its file, and its entry in it when the file defines several */
+    placeOf(id: ActionId): EditorPlace | undefined;
 }
 
 export interface Backend<Options = unknown> {

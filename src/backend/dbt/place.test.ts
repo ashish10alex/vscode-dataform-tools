@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { namesMissingRef, placeDbtError } from './place';
+import { namesMissingRef, placeCompiledLine, placeDbtError } from './place';
 
 const SOURCE = `{{ config(materialized='table') }}
 
@@ -40,5 +40,21 @@ suite('dbt: where a compile error is in its file', () => {
 
     test('a file with Windows line ends is placed the same', () => {
         assert.deepStrictEqual(placeDbtError({ message: 'x', line: 4 }, SOURCE.replace(/\n/g, '\r\n')), { line: 3, start: 2, end: 31 });
+    });
+});
+
+suite('dbt: where a line of the compiled query is in its source', () => {
+    const MODEL = `select\n  o.order_id,\n  sum(p.amuont) as amount\nfrom {{ ref('stg_orders') }} as o\nwhere o.order_id > 0\n   or o.order_id > 0\n`;
+
+    test('the one line of the source that reads the same, indentation aside', () => {
+        assert.deepStrictEqual(placeCompiledLine('    sum(p.amuont) as amount', MODEL), { line: 2, start: 2, end: 25 });
+        assert.deepStrictEqual(placeCompiledLine('select', 'select\r\n  1\r\n'), { line: 0, start: 0, end: 6 });
+    });
+
+    test('nowhere for a line that Jinja built, a line the source has twice in other words, or no line', () => {
+        assert.strictEqual(placeCompiledLine('from `p`.`d`.`stg_orders` as o', MODEL), undefined);
+        assert.strictEqual(placeCompiledLine('1', 'select\n  1,\n  1\n'.replace(',', '')), undefined);
+        assert.strictEqual(placeCompiledLine('   ', MODEL), undefined);
+        assert.strictEqual(placeCompiledLine(undefined, MODEL), undefined);
     });
 });

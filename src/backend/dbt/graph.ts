@@ -30,6 +30,10 @@ interface ManifestNode {
     compiled_code?: string | null;
     url?: string | null;
     attached_node?: string | null;
+    /** Of a generic test: the column it was declared under, when it was declared under one */
+    column_name?: string | null;
+    /** Of a generic test: the test it is an instance of, e.g. `not_null` */
+    test_metadata?: { name?: string | null } | null;
     /** In the order the YAML lists them */
     columns?: Record<string, { name: string; description?: string | null }> | null;
     depends_on?: { nodes?: string[] | null } | null;
@@ -72,6 +76,17 @@ export interface DbtName {
     latest?: boolean;
     /** Of a source: the name of the group of tables it is in, the first argument of `source()` */
     sourceName?: string;
+    /** Of a generic test: what its YAML file declares it by, since no entry there has its name */
+    test?: DbtTestDeclaration;
+}
+
+/** How a YAML file declares a generic test: the test's own name, under a model or source table and maybe a column of it */
+export interface DbtTestDeclaration {
+    /** As the YAML writes it, e.g. `not_null` */
+    name: string;
+    /** The `name:` of the model, seed, snapshot or source table it is declared under */
+    under?: string;
+    column?: string;
 }
 
 /** A macro or generic test of the Project or of a package it installed */
@@ -86,7 +101,7 @@ export interface DbtMacro {
 
 /**
  * What the dbt Backend keeps of a manifest beside the Compiled Graph, private to it: nothing Backend-neutral reads
- * this. The panel does not use the names and macros yet; the editor features after 2.0.0 will.
+ * this. The run commands and the `editor` part (editor.ts) read the names and macros.
  */
 export interface DbtProjectData {
     dbtVersion: string;
@@ -225,6 +240,14 @@ class Reader {
         const actions = entries.map(({ node, kind, target, disabled }) => {
             const action = this.action(node, kind, target, disabled, targets);
             const name = nameOf(node);
+            if (name && node.test_metadata?.name) {
+                const attached = node.attached_node ? (this.manifest.nodes?.[node.attached_node] ?? this.manifest.sources?.[node.attached_node]) : undefined;
+                name.test = {
+                    name: node.test_metadata.name,
+                    ...(attached ? { under: attached.name } : {}),
+                    ...(node.column_name ? { column: node.column_name } : {}),
+                };
+            }
             if (name && !Object.hasOwn(names, action.id)) {
                 names[action.id] = name;
             }

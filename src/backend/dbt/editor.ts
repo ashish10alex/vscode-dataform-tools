@@ -2,7 +2,7 @@ import type { ActionId, CompiledGraph, Kind } from '../../shared/compiledGraph';
 import type { Editor, EditorDocument, EditorPlace } from '../backend';
 import type { DbtGraph, DbtMacro, DbtName } from './graph';
 import { JinjaCall, callAt, columnAt, jinjaCalls, tableAliases, typingArgument } from './jinja';
-import { definitionLine } from './locate';
+import { definitionLine, testLine } from './locate';
 
 /*
  * The dbt Backend's `editor` part (piece 7.4 of the build plan): what a `ref()`, a `source()` or a macro call in the
@@ -88,12 +88,17 @@ class DbtEditor {
         return this.nearest(candidates, (macro) => macro.package, file);
     }
 
-    private placeOf(id: ActionId): EditorPlace | undefined {
+    placeOf(id: ActionId): EditorPlace | undefined {
         const action = this.graph.actions[id];
         if (!action?.fileName) {
             return undefined;
         }
         const name = this.data.dbt.names[id];
+        // A generic test has no entry of its name: it is declared under what it tests
+        const test = name?.test;
+        if (isYaml(action.fileName) && test) {
+            return { fileName: action.fileName, lineIn: (text) => testLine(text, test) };
+        }
         // A model's file is the model. What a YAML file defines is one entry of many in it
         return isYaml(action.fileName) && name ? { fileName: action.fileName, lineIn: (text) => definitionLine(text, name) } : { fileName: action.fileName };
     }
@@ -219,5 +224,6 @@ export function dbtEditor(last: () => DbtGraph | undefined): Editor {
         tableAt: (document) => editor()?.tableAt(document),
         columnAt: (document, typing) => editor()?.columnAt(document, typing),
         namesAt: (document) => editor()?.namesAt(document),
+        placeOf: (id) => editor()?.placeOf(id),
     };
 }
