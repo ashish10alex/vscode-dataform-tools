@@ -62,7 +62,7 @@ export interface ActionReference {
     fileName: string;
 }
 
-/** An action shown in the panel: one the file defines, or a test shown with one of those */
+/** An action shown in the panel: one the file defines, or a test of one of those */
 export interface PanelAction extends ActionReference {
     id: ActionId;
     /** The action builds nothing and its Target is made up: it is never shown as a BigQuery link */
@@ -81,7 +81,7 @@ export interface PanelAction extends ActionReference {
     runnable: boolean;
     dependencies: ActionReference[];
     dependents: ActionReference[];
-    /** For a test, the one action it tests, when there is one: it is among the actions shown */
+    /** For a test, the one action it tests, when there is one. It is on show only when its own file is */
     home?: Target;
 }
 
@@ -267,11 +267,6 @@ export interface DbtBlock extends Slice {
     profilesDir?: string;
     /** The Project has on-run hooks and was only parsed: the panel offers to compile with hooks */
     hooksNotice: boolean;
-    /**
-     * The file on show is a test's, and the model it is shown with is being compiled, with that model's other tests:
-     * their cards say that their cost is on its way. The test's own SQL and cost stay as they are meanwhile
-     */
-    completing?: true;
     /** The warehouse the Project's profile is for, as dbt names its adapter, e.g. "bigquery". Unset until a compile has said */
     warehouse?: string;
     /** False for a Project of another warehouse: no dry run, cost, schema, preview or run */

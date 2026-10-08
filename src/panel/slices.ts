@@ -16,6 +16,7 @@ import {
     homeAction,
     isMadeUpTarget,
     isRunnable,
+    isTestKind,
     siblingsOf,
     targetId,
 } from '../shared/compiledGraph';
@@ -87,7 +88,7 @@ function roleWithoutActions(backend: Backend<never>, file: string): FileRole {
 }
 
 /**
- * The file slice: the actions `file` defines and the tests shown with them, each with its SQL and its neighbours.
+ * The file slice: the actions `file` defines and the tests of those, each with its SQL and its neighbours.
  * Nothing else of the Compiled Graph is in it, so its size does not grow with the Project.
  *
  * @param file Relative to the Project root with forward slashes
@@ -100,10 +101,12 @@ export function fileSlice(graph: CompiledGraph | undefined, backend: Backend<nev
     if (!graph || defined.length + also.length === 0) {
         return { compile, file, role: roleWithoutActions(backend, file), actions: [] };
     }
-    // An action's siblings are its file's actions and the tests that read them, already in display order
+    // An action's siblings are its file's actions and the tests that read them, already in display order. A dbt test
+    // is shown alone: the action it tests, and that action's other tests, are another file's to show
+    const alone = (action: Action) => backend.name === 'dbt' && isTestKind(action.kind);
     const shown: Action[] = [];
     for (const action of defined) {
-        for (const sibling of siblingsOf(graph, action)) {
+        for (const sibling of alone(action) ? [action] : siblingsOf(graph, action)) {
             if (!shown.includes(sibling)) {
                 shown.push(sibling);
             }
@@ -128,11 +131,6 @@ export interface CompileState {
     unsupportedVersion?: { tool: Tool; version: string; message: string };
     /** A compile is running */
     compiling?: { showingPrevious: boolean; startedAt: number; command?: string; file?: string };
-    /**
-     * The last compile's result is on show and a second compile adds to it: `files` are the models the tests of the
-     * file on show are shown with (dbt only, see `completeDbtCompile`). Not a compile the panel waits for
-     */
-    completing?: { startedAt: number; files: string[] };
     /** The last compile that finished with a graph. `notice` is set when the Project was only parsed */
     compiled?: { compiledAt: number; durationMs?: number; notice?: string };
     /** The errors of the last compile that finished */
@@ -207,8 +205,6 @@ export interface DbtBlockInput {
     profile?: string;
     /** The last compile only parsed the Project, because it has on-run hooks */
     parsedForHooks?: boolean;
-    /** A second compile is running, for the models the file's tests are shown with */
-    completing?: boolean;
     /** What the last compile's manifest said beside the graph */
     data?: DbtProjectData;
     graph?: CompiledGraph;
@@ -237,7 +233,6 @@ export function dbtBlock(input: DbtBlockInput, compile: CompileNumber): DbtBlock
             ...(input.targetSetting ? { setting: input.targetSetting } : {}),
         },
         hooksNotice: input.parsedForHooks === true,
-        ...(input.completing ? { completing: true } : {}),
         bigQuery: !data?.adapterType || data.adapterType === BIGQUERY,
         names: {},
         macros: [],
