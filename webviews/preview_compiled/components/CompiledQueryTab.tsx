@@ -292,6 +292,10 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     vscode.postMessage({ command: "openAction", action: { database, schema, name } });
   };
 
+  // How many the closed section holds, a target that two of the file's actions read counted once. Dataplex's are loaded on request
+  const dependencyCount = new Set((view.models ?? []).flatMap((model: any) => (model.dependencyTargets ?? []).map((target: any) => `${target.database}.${target.schema}.${target.name}`))).size;
+  const lineageCounts = `${dependencyCount} ${dependencyCount === 1 ? "dependency" : "dependencies"} · ${localDependentIds.size} ${localDependentIds.size === 1 ? "dependent" : "dependents"}`;
+
   const handleLineageMetadata = () => {
     setLoadingLineage(true);
     vscode.postMessage({ command: "dataform.loadLineage" });
@@ -507,6 +511,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
           )}
           <span className="font-semibold text-[var(--vscode-foreground)]">Data Lineage</span>
+          <span className="ml-3 text-xs text-[var(--vscode-descriptionForeground)]">{lineageCounts}</span>
         </div>
 
         {isLineageOpen && (
