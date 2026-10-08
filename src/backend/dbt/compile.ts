@@ -73,6 +73,11 @@ export class DbtCompiler {
     /** By Project root: the fingerprint of its hook files when a parse found no hook in them */
     private readonly hookless = new Map<string, string>();
 
+    /** Forgets which Projects have no hooks: the next compile of a dbt v2 Project parses it first again */
+    forget() {
+        this.hookless.clear();
+    }
+
     async compile(request: CompileRequest): Promise<DbtCompileResult> {
         const { root, options } = request;
         const commands: string[][] = [];

@@ -48,9 +48,10 @@ import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
 import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
 import { dbtTool, initDbtTools } from './project/dbtTool';
-import { clearDbtArtifacts, initDbtCompile } from './project/dbtCompile';
+import { clearDbtArtifacts, compileDbtProject, forgetDbtCompile, initDbtCompile } from './project/dbtCompile';
 import { initDbtRuns, lastDbtRun } from './project/dbtRun';
 import { initDbtDiagnostics } from './project/dbtDiagnostics';
+import { initDbtEditor } from './project/dbtEditor';
 import { dbtPreviewFile, dbtRerun, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
@@ -104,6 +105,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initDbtCompile(context);
     initDbtRuns(context);
     initDbtDiagnostics(context);
+    initDbtEditor(context);
     initProdTargets(context);
     initCliCompileCache(context);
 
@@ -512,7 +514,11 @@ export async function activate(context: vscode.ExtensionContext) {
             dbtRunMessage: (message: DbtRunMessage) => CompiledQueryPanel.centerPanel?.onDbtRunMessage(message),
         },
         // What the tests of a dbt workspace read (src/dbtWorkspace)
-        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool, lastDbtRun },
+        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool, lastDbtRun,
+            /** For tests: compiles a dbt Project for a file as showing it in the panel does, and drops what its compiles left */
+            compileDbt: async (root: string, file: string) => { const project = projects.find(root, 'dbt'); if (project) { await compileDbtProject(project, file, 'open'); } },
+            forgetDbt: (root: string) => { const project = projects.find(root, 'dbt'); if (project) { forgetDbtCompile(project); } },
+        },
     };
 }
 

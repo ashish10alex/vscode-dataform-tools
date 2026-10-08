@@ -1,0 +1,133 @@
+import fs from 'fs';
+import path from 'path';
+import * as vscode from 'vscode';
+import type { Editor, EditorDocument } from '../backend';
+import { logger } from '../logger';
+import { slashPath } from '../shared/compiledGraph';
+import { fileBackendHints, onDidChangeProjects, projects } from './index';
+import type { ProjectState } from './registry';
+
+/*
+ * The editor features of a dbt Project (Step 7 of the build plan). No language is claimed for `.sql`: each provider
+ * is registered for the files under a dbt Project's root by path, so it answers whatever language id another
+ * extension gave them, and no other folder's `.sql` is touched. The answers come from the dbt Backend's `editor`
+ * part; nothing here starts dbt or waits for it.
+ *
+ * VS Code adds every extension's providers together, so beside another dbt extension the features stand down unless
+ * the `dbtEditorFeatures` setting says otherwise.
+ */
+
+/** The dbt extensions that offer the same features: dbt Labs' own, and Power User for dbt */
+export const OTHER_DBT_EXTENSIONS = ['dbtLabsInc.dbt', 'innoverio.vscode-dbt-power-user'];
+
+export type DbtEditorFeatures = 'auto' | 'on' | 'off';
+
+/** Whether the features are on, and why not when they are not */
+export function dbtEditorFeaturesOn(setting: unknown, installed: (id: string) => boolean): { on: true } | { on: false; because: string } {
+    if (setting === 'off') {
+        return { on: false, because: 'the setting "vscode-dataform-tools.dbtEditorFeatures" is "off"' };
+    }
+    const other = setting === 'on' ? undefined : OTHER_DBT_EXTENSIONS.find(installed);
+    return other
+        ? { on: false, because: `the extension ${other} is installed and offers the same. Set "vscode-dataform-tools.dbtEditorFeatures" to "on" to have both` }
+        : { on: true };
+}
+
+/** A document of a dbt Project, as its Backend's `editor` part takes it */
+interface DbtDocument {
+    project: ProjectState;
+    editor: Editor;
+    file: string;
+    text: string;
+}
+
+function dbtDocument(document: vscode.TextDocument): DbtDocument | undefined {
+    if (document.uri.scheme !== 'file') {
+        return undefined;
+    }
+    // A folder that is both a Dataform and a dbt Project: the file is asked about only as its own Backend's
+    const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+    const project = found.kind === 'project' ? (found.project as ProjectState) : undefined;
+    const editor = project?.dbtBackend?.editor;
+    if (!project || !editor) {
+        return undefined;
+    }
+    return { project, editor, file: slashPath(path.relative(project.root, document.uri.fsPath)), text: document.getText() };
+}
+
+const at = (dbt: DbtDocument, document: vscode.TextDocument, position: vscode.Position): EditorDocument => ({ file: dbt.file, text: dbt.text, offset: document.offsetAt(position) });
+
+/** The text of a file as it is in an editor, saved or not, else as it is on disk */
+async function textOf(file: string): Promise<string | undefined> {
+    const open = vscode.workspace.textDocuments.find((document) => document.uri.scheme === 'file' && document.uri.fsPath === file);
+    return open ? open.getText() : fs.promises.readFile(file, 'utf8').catch(() => undefined);
+}
+
+class DbtDefinitionProvider implements vscode.DefinitionProvider {
+    async provideDefinition(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.LocationLink[] | undefined> {
+        const dbt = dbtDocument(document);
+        const found = dbt?.editor.definitionAt(at(dbt, document, position));
+        if (!dbt || !found) {
+            return undefined;
+        }
+        const target = path.join(dbt.project.root, found.place.fileName);
+        const text = found.place.lineIn ? await textOf(target) : undefined;
+        if (found.place.lineIn && text === undefined) {
+            return undefined;
+        }
+        // The entry's line when it is still in the file, else the top of the file that had it at the last compile
+        const line = (text !== undefined && found.place.lineIn?.(text)) || 0;
+        return [{
+            originSelectionRange: new vscode.Range(document.positionAt(found.start), document.positionAt(found.end)),
+            targetUri: vscode.Uri.file(target),
+            targetRange: new vscode.Range(line, 0, line, 0),
+        }];
+    }
+}
+
+/** The files of a dbt Project that the features reach, by path and with no language */
+export function dbtSelector(root: string, extensions: string): vscode.DocumentSelector {
+    return { scheme: 'file', pattern: new vscode.RelativePattern(vscode.Uri.file(root), `**/*.${extensions}`) };
+}
+
+let registered: vscode.Disposable[] = [];
+let said = '';
+
+function register() {
+    registered.forEach((each) => each.dispose());
+    registered = [];
+    const says: string[] = [];
+    for (const project of projects.projects) {
+        if (!project.dbtBackend?.editor) {
+            continue;
+        }
+        const setting = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(project.root)).get<string>('dbtEditorFeatures');
+        const features = dbtEditorFeaturesOn(setting, (id) => vscode.extensions.getExtension(id) !== undefined);
+        if (!features.on) {
+            says.push(`dbt: go to definition, hover and completions are off in ${project.root}, because ${features.because}.`);
+            continue;
+        }
+        says.push(`dbt: go to definition, hover and completions are on in ${project.root}.`);
+        // Go to definition also from a ref() or source() written in a YAML file
+        registered.push(vscode.languages.registerDefinitionProvider(dbtSelector(project.root, '{sql,yml,yaml}'), new DbtDefinitionProvider()));
+    }
+    // Said once for each state, not on every look
+    if (says.join('\n') !== said) {
+        said = says.join('\n');
+        says.forEach((each) => logger.info(each));
+    }
+}
+
+export function initDbtEditor(context: vscode.ExtensionContext) {
+    register();
+    context.subscriptions.push(
+        { dispose: () => registered.forEach((each) => each.dispose()) },
+        onDidChangeProjects(register),
+        vscode.extensions.onDidChange(register),
+        vscode.workspace.onDidChangeConfiguration((event) => {
+            if (event.affectsConfiguration('vscode-dataform-tools.dbtEditorFeatures')) {
+                register();
+            }
+        }),
+    );
+}
