@@ -13,7 +13,7 @@ import { PanelSlices, fileOnShow } from './panelState';
 
 export type DbtTab = 'compiled' | 'schema' | 'project';
 
-/** The one line under the tabs that says how the compile stands */
+/** The one line next to the file's name that says how the compile stands */
 export type DbtStatusLine =
     /** Nothing is known yet: dbt is being looked for, or the first compile has not been asked for */
     | { kind: 'waiting'; text: string }
@@ -41,10 +41,6 @@ export interface DbtView {
     unsupported?: string;
     /** The file the panel names, relative to the Project root. Empty before the host has named one */
     file: string;
-    /** What the file is, in a few words, e.g. "model · table", "2 sources", "macros" */
-    what: string;
-    /** The Target of the file's one action, when it has exactly one that is not a test */
-    target?: { target: Target; text: string; /** Shown as a link to the table in BigQuery */ link: boolean; buildsNothing: boolean };
     tabs: DbtTab[];
     status?: DbtStatusLine;
     /** The SQL on show is the last compile's, and another is running */
@@ -69,13 +65,6 @@ export interface DbtView {
      * actions; `blocked` while there is no fresh compile to run from, and says why.
      */
     run?: { targets: Target[]; blocked?: string };
-}
-
-const MODEL_KINDS: ReadonlySet<Kind> = new Set<Kind>(['table', 'view', 'incremental', 'materialized view', 'ephemeral']);
-
-/** A Kind as the panel names it for dbt: a model says how it is materialized */
-export function dbtKindLabel(kind: Kind): string {
-    return MODEL_KINDS.has(kind) ? `model · ${kind}` : kind;
 }
 
 export function targetText(target: Target): string {
@@ -149,24 +138,6 @@ export function incrementalCase(slices: Pick<PanelSlices, 'bigquery' | 'file'>, 
 /** What dbt calls the action: its name there when that differs from its Target's, e.g. a source's */
 export function dbtNameOf(slices: Pick<PanelSlices, 'dbt'>, action: Pick<PanelAction, 'id' | 'target'>): string {
     return slices.dbt?.names[action.id] ?? action.target.name;
-}
-
-function whatOf(file: FileSlice | undefined, macros: string[], graph: boolean): string {
-    if (!file || !graph) {
-        return '';
-    }
-    if (file.role === 'project settings') {
-        return 'project settings';
-    }
-    if (file.role !== 'actions') {
-        return macros.length > 0 ? 'macros' : file.role === 'helper' ? 'no action' : 'not compiled';
-    }
-    const own = file.actions.filter((action) => action.fileName === file.file);
-    const kinds = [...new Set(own.map((action) => action.kind))];
-    if (own.length === 1) {
-        return dbtKindLabel(own[0].kind);
-    }
-    return kinds.length === 1 ? plural(own.length, kinds[0]) : plural(own.length, 'action');
 }
 
 /** The card of a file whose actions have no SQL: a seed, sources, exposures */
@@ -286,15 +257,15 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const last = compiling ? settled : compile;
     const graph = hasGraph(last);
     const view: DbtView = {
-        page: 'panel', lookedIn: [], file: named, what: whatOf(file, block?.macros ?? [], graph), tabs: ['compiled', 'project'],
+        page: 'panel', lookedIn: [], file: named, tabs: ['compiled', 'project'],
         outdated: false, skeleton: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [], readsFrom: [],
     };
 
     if (!compiling && compile?.status === 'tool not found') {
-        return { ...view, page: 'tool missing', lookedIn: compile.lookedIn, what: '', tabs: [] };
+        return { ...view, page: 'tool missing', lookedIn: compile.lookedIn, tabs: [] };
     }
     if (!compiling && compile?.status === 'version unsupported') {
-        return { ...view, page: 'unsupported', unsupported: compile.message, what: '' };
+        return { ...view, page: 'unsupported', unsupported: compile.message };
     }
     if (block && !block.bigQuery && block.warehouse) {
         view.otherWarehouse = block.warehouse;
@@ -323,13 +294,6 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
         }
     }
 
-    const primary = file?.actions.filter((action) => action.fileName === named && action.kind !== 'test' && action.kind !== 'unit test') ?? [];
-    if (graph && primary.length === 1) {
-        const [action] = primary;
-        const bigQuery = block?.bigQuery !== false;
-        view.target = { target: action.target, text: targetText(action.target), link: action.buildsTable && bigQuery, buildsNothing: !action.buildsTable && action.kind !== 'source' };
-    }
-
     view.parsedOnly = last?.status === 'parsed only' && block?.hooksNotice !== false;
     const dryRun = withSql.some((action) => action.sections.some((section) => section.dryRun.length > 0));
     if (last?.status === 'compiled' && view.actions.length > 0 && dryRun && !view.otherWarehouse) {
@@ -353,7 +317,6 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     } else if (last?.status === 'compiled') {
         if (view.errors.length > 0 && view.actions.length === 0) {
             view.status = { kind: 'failed', text: 'Compile failed' };
-            view.what = '';
         } else if (withSql.length > 0 && withSql.every((action) => !action.sqlPresent)) {
             // dbt v2 stops at a parse when the Project has errors: the SQL on show is as written
             view.status = { kind: 'parsed', compiledAt: last.compiledAt };

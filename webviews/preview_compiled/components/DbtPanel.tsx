@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Play, Tag } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Play, Tag, Terminal } from "lucide-react";
 import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
@@ -11,6 +11,8 @@ import { DbtCard, DbtStatusLine, DbtTab, DbtView, dbtDryRunOf, dbtErrorFoot, dbt
 import { dryRunCostSummary } from "../../../src/shared/panelBigQueryView";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { renderDryRunStatLine } from "./CompiledQueryTab";
+import { useNow } from "./CompilationInfoBadge";
+import { formatRelativeTime } from "../utils/compilationInfoFormat";
 import type { ColumnMetadata } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { CodeBlock } from "../../components/CodeBlock";
@@ -51,31 +53,45 @@ function useElapsed(startedAt: number | undefined): number {
 
 const engineLabel = (dbt: DbtBlock["dbt"]) => (dbt ? [dbt.flavour, dbt.version].filter(Boolean).join(" ") : "");
 
-function StatusLine({ status }: { status: DbtStatusLine }) {
+/**
+ * How the compile stands, as Dataform's compilation info (CompilationInfoBadge.tsx): the engine that compiled, how
+ * long it took and how long ago. While dbt works, and when the compile failed, the same line says so.
+ */
+function StatusLine({ status, engine }: { status: DbtStatusLine; engine: string }) {
+  const now = useNow(30_000);
   const running = status.kind === "first compile" || status.kind === "recompiling";
   const elapsed = useElapsed(running ? status.startedAt : undefined);
   if (status.kind === "compiled" || status.kind === "parsed") {
-    const took = status.kind === "compiled" && status.durationMs !== undefined ? ` · took ${seconds(status.durationMs)}` : "";
+    const took = status.kind === "parsed" ? "parsed" : status.durationMs !== undefined ? `${(status.durationMs / 1000).toFixed(2)}s` : undefined;
     return (
-      <div data-status={status.kind} className={clsx("px-4 py-2 text-xs border-b border-[var(--vscode-widget-border)]", MUTED)}>
-        {status.kind === "compiled" ? "Compiled" : "Parsed"} at {new Date(status.compiledAt).toLocaleTimeString()}
-        {took}
-        {status.kind === "compiled" ? " · everything below is from this compile" : ""}
+      <div data-status={status.kind} className={clsx("flex flex-wrap items-center gap-1.5 text-xs", MUTED)} title={`${status.kind === "compiled" ? "Compiled" : "Parsed"} at ${new Date(status.compiledAt).toLocaleString()}`}>
+        <Terminal className="w-3 h-3" />
+        <span>{[engine || "dbt", took, formatRelativeTime(status.compiledAt, now)].filter(Boolean).join(" · ")}</span>
       </div>
     );
   }
   return (
-    <div data-status={status.kind} className={clsx("px-4 py-2 text-xs border-b border-[var(--vscode-widget-border)] flex flex-wrap items-center gap-2", status.kind === "failed" ? ERROR : running ? WARNING : MUTED)}>
-      {running && <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />}
+    <div data-status={status.kind} className={clsx("flex flex-wrap items-center gap-1.5 text-xs", status.kind === "failed" ? ERROR : running ? WARNING : MUTED)}>
+      {running && <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />}
       <span>{status.text}</span>
       {running && <span className={clsx("font-mono", MUTED)}>{[status.command, seconds(elapsed)].filter(Boolean).join(" · ")}</span>}
     </div>
   );
 }
 
+/** The name of the file on show, as a Dataform file's (CompiledQueryTab.tsx) */
+function FileChip({ file }: { file: string }) {
+  return (
+    <span data-dbt="file" className={clsx("text-sm font-mono bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded break-all", MUTED)}>
+      {file || " "}
+    </span>
+  );
+}
+
 function ToolMissing({ view, looking }: { view: DbtView; looking: boolean }) {
   return (
     <div className="p-4 space-y-4">
+      <div><FileChip file={view.file} /></div>
       <h2 className="text-lg font-semibold m-0">dbt was not found for this Project</h2>
       {view.lookedIn.length > 0 && (
         <div>
@@ -490,6 +506,8 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
   const table = state.bigquery && state.file && state.bigquery.compile === state.file.compile ? state.bigquery.tables[action.id] : undefined;
   const link = action.buildsTable && bigQuery;
   const { database, schema, name } = action.target;
+  // A test builds nothing either, but that needs no saying
+  const buildsNothing = !action.buildsTable && action.kind !== "test" && action.kind !== "unit test" && action.kind !== "source";
   return (
     <div data-dbt="action" data-kind={action.kind} className="relative bg-[var(--vscode-sideBar-background)] px-4 pt-7 pb-4 rounded-xl border border-[var(--vscode-widget-border)]/60 flex flex-col space-y-2 group">
       <div className="absolute top-2 left-2 flex items-center gap-1.5">
@@ -536,6 +554,7 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
             <span className="font-semibold break-all">{dbtNameOf(state, action)}</span>
           </div>
         )}
+        {buildsNothing && <span className={clsx("text-xs", MUTED)}>builds nothing</span>}
         {action.fileName && action.fileName !== view.file && <span className={clsx("text-xs font-mono opacity-80", MUTED)}>{action.fileName}</span>}
       </div>
       {link && table && !table.missing && (
@@ -643,8 +662,16 @@ function SqlBlocks({ state, view }: { state: PanelSlices; view: DbtView }) {
 
 function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   const notice = state.settled?.status === "parsed only" ? state.settled.notice : undefined;
+  const block = state.dbt;
   return (
     <div className="space-y-4">
+      {/* Filename + compile time, then the dbt target where a Dataform file has Format and Lint */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FileChip file={view.file} />
+        {view.status && <StatusLine status={view.status} engine={engineLabel(block?.dbt)} />}
+        <div className="flex-grow"></div>
+        {block && <TargetControl block={block} />}
+      </div>
       {view.parsedOnly && (
         <div data-dbt="parsed only" className="rounded border border-[var(--vscode-inputValidation-warningBorder)] bg-[var(--vscode-inputValidation-warningBackground)] p-3 text-sm">
           <div className={clsx("font-semibold", WARNING)}>Parsed, not compiled</div>
@@ -834,37 +861,10 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
   }, []);
 
   const block = state.dbt;
-  const engine = engineLabel(block?.dbt);
   const looking = block?.looking === true;
 
   return (
     <div data-backend="dbt" className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
-      <div className="px-4 pt-3 pb-3 flex flex-wrap items-start gap-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
-        <div className="min-w-0">
-          <div className="font-mono text-sm break-all">{view.file}</div>
-          {(view.what || view.target) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-              {view.what && <span className="px-1.5 py-0.5 rounded border border-[var(--vscode-widget-border)]">{view.what}</span>}
-              {view.target &&
-                (view.target.link ? (
-                  <a className="font-mono text-[var(--vscode-textLink-foreground)]" target="_blank" rel="noopener noreferrer" href={getUrlToNavigateToTableInBigQuery(view.target.target.database, view.target.target.schema, view.target.target.name)}>
-                    {view.target.text}
-                  </a>
-                ) : (
-                  <span className={clsx("font-mono", MUTED)}>
-                    {view.target.text}
-                    {view.target.buildsNothing ? "  (builds nothing)" : ""}
-                  </span>
-                ))}
-            </div>
-          )}
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
-          {engine && <span className={clsx("font-mono", MUTED)}>{engine}</span>}
-          {block && view.page !== "tool missing" && <TargetControl block={block} />}
-        </div>
-      </div>
-
       {view.tabs.length > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--vscode-widget-border)]">
           {view.tabs.map((name) => (
@@ -888,12 +888,11 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
         </div>
       )}
 
-      {view.page === "panel" && view.status && <StatusLine status={view.status} />}
-
       <div className="flex-1 overflow-auto">
         {view.page === "tool missing" && <ToolMissing view={view} looking={looking} />}
         {view.page === "unsupported" && tab !== "project" && (
           <div className="p-4 space-y-4">
+            <div><FileChip file={view.file} /></div>
             <h2 className="text-lg font-semibold m-0">This dbt cannot be used</h2>
             <p className="m-0 text-sm">{view.unsupported}</p>
             <ToolButtons looking={looking} />
