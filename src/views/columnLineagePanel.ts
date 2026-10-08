@@ -211,7 +211,7 @@ export class ColumnLineagePanel {
         }
         const run = ++this.impactRun;
         const current = () => run === this.impactRun;
-        const empty = { changedCount: 0, atRisk: [], safe: [], unchecked: [] };
+        const empty = { changedCount: 0, atRisk: [], safe: [], new: [], unchecked: [] };
         this.impactSource = undefined;
         this.setImpact({ ...empty, status: 'running', progress: { phase: 'Working out changed actions', done: 0, total: 0 } });
         try {
