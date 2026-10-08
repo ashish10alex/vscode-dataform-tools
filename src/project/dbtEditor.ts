@@ -3,7 +3,10 @@ import path from 'path';
 import * as vscode from 'vscode';
 import type { Editor, EditorDocument } from '../backend';
 import { logger } from '../logger';
-import { slashPath } from '../shared/compiledGraph';
+import { Action, slashPath } from '../shared/compiledGraph';
+import { formatTimestamp } from '../utils';
+import { TableColumn, columnHoverText, columnsOf, tableHoverText } from './dbtHoverText';
+import { heldTable } from './dbtSchemas';
 import { fileBackendHints, onDidChangeProjects, projects } from './index';
 import type { ProjectState } from './registry';
 
@@ -85,6 +88,34 @@ class DbtDefinitionProvider implements vscode.DefinitionProvider {
     }
 }
 
+/** The columns of the tables of `actions`, from the held schemas: asked of BigQuery at the first need */
+export async function columnsOfTables(root: string, actions: Action[]): Promise<TableColumn[]> {
+    const tables = await Promise.all(actions.map(async (action) => columnsOf(action, await heldTable(root, action))));
+    return tables.flat();
+}
+
+class DbtHoverProvider implements vscode.HoverProvider {
+    async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
+        const dbt = dbtDocument(document);
+        const graph = dbt?.project.dbtBackend?.lastResult?.graph;
+        if (!dbt || !graph) {
+            return undefined;
+        }
+        const range = (found: { start: number; end: number }) => new vscode.Range(document.positionAt(found.start), document.positionAt(found.end));
+        const table = dbt.editor.tableAt(at(dbt, document, position));
+        if (table) {
+            const action = graph.actions[table.id];
+            return new vscode.Hover(new vscode.MarkdownString(tableHoverText(action, await heldTable(dbt.project.root, action), formatTimestamp)), range(table));
+        }
+        const column = dbt.editor.columnAt(at(dbt, document, position));
+        if (!column || column.tables.length === 0) {
+            return undefined;
+        }
+        const text = columnHoverText(column.word, await columnsOfTables(dbt.project.root, column.tables.map((id) => graph.actions[id])));
+        return text ? new vscode.Hover(new vscode.MarkdownString(text), range(column)) : undefined;
+    }
+}
+
 /** The files of a dbt Project that the features reach, by path and with no language */
 export function dbtSelector(root: string, extensions: string): vscode.DocumentSelector {
     return { scheme: 'file', pattern: new vscode.RelativePattern(vscode.Uri.file(root), `**/*.${extensions}`) };
@@ -110,6 +141,7 @@ function register() {
         says.push(`dbt: go to definition, hover and completions are on in ${project.root}.`);
         // Go to definition also from a ref() or source() written in a YAML file
         registered.push(vscode.languages.registerDefinitionProvider(dbtSelector(project.root, '{sql,yml,yaml}'), new DbtDefinitionProvider()));
+        registered.push(vscode.languages.registerHoverProvider(dbtSelector(project.root, 'sql'), new DbtHoverProvider()));
     }
     // Said once for each state, not on every look
     if (says.join('\n') !== said) {

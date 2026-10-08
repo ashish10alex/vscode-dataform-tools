@@ -52,6 +52,7 @@ import { clearDbtArtifacts, compileDbtProject, forgetDbtCompile, initDbtCompile 
 import { initDbtRuns, lastDbtRun } from './project/dbtRun';
 import { initDbtDiagnostics } from './project/dbtDiagnostics';
 import { initDbtEditor } from './project/dbtEditor';
+import { heldTableCount, initDbtSchemas, setTableFetch } from './project/dbtSchemas';
 import { dbtPreviewFile, dbtRerun, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
@@ -105,6 +106,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initDbtCompile(context);
     initDbtRuns(context);
     initDbtDiagnostics(context);
+    initDbtSchemas(context);
     initDbtEditor(context);
     initProdTargets(context);
     initCliCompileCache(context);
@@ -517,6 +519,8 @@ export async function activate(context: vscode.ExtensionContext) {
         __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), backendContext: () => backendContext(), dbtTool, lastDbtRun,
             /** For tests: compiles a dbt Project for a file as showing it in the panel does, and drops what its compiles left */
             compileDbt: async (root: string, file: string) => { const project = projects.find(root, 'dbt'); if (project) { await compileDbtProject(project, file, 'open'); } },
+            /** For tests: what asks BigQuery for a table's schema, and how many are held */
+            setTableFetch, heldTableCount,
             forgetDbt: (root: string) => { const project = projects.find(root, 'dbt'); if (project) { forgetDbtCompile(project); } },
         },
     };

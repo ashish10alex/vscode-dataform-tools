@@ -19,7 +19,15 @@ suite('the editor features of a dbt Project', function () {
     const settings = () => vscode.workspace.getConfiguration('vscode-dataform-tools');
     let dir: string;
     let standIn: string;
-    let api: { compileDbt(root: string, file: string): Promise<void>; forgetDbt(root: string): void; dbtTool(root: string): Promise<{ path?: string }> };
+    let api: {
+        compileDbt(root: string, file: string): Promise<void>;
+        forgetDbt(root: string): void;
+        dbtTool(root: string): Promise<{ path?: string }>;
+        setTableFetch(fetch: ((action: { id: string; target: { name: string } }) => Promise<unknown>) | undefined): void;
+        heldTableCount(root: string): number;
+    };
+    /** The tables BigQuery was asked for, in order */
+    const asked: string[] = [];
 
     async function show(relativePath: string) {
         const document = await vscode.workspace.openTextDocument(path.join(workspaceFolder!, relativePath));
@@ -37,6 +45,14 @@ suite('the editor features of a dbt Project', function () {
             const range = 'targetUri' in each ? each.targetRange : each.range;
             return `${path.relative(workspaceFolder!, uri.fsPath).split(path.sep).join('/')}:${range.start.line}`;
         });
+    }
+
+    /** What a hover just inside `needle` of a file says, each extension's part as Markdown */
+    async function hovers(document: vscode.TextDocument, needle: string, into = 1): Promise<string[]> {
+        const offset = document.getText().indexOf(needle);
+        assert.ok(offset >= 0, `${document.fileName} has no ${needle}`);
+        const found = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', document.uri, document.positionAt(offset + into));
+        return found.flatMap((hover) => hover.contents.map((content) => (typeof content === 'string' ? content : content.value)));
     }
 
     async function until<T>(what: string, read: () => Promise<T>, wanted: (value: T) => boolean): Promise<T> {
@@ -58,6 +74,13 @@ suite('the editor features of a dbt Project', function () {
         const extension = vscode.extensions.getExtension(EXTENSION_ID);
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
         api = (await extension.activate())?.__projects;
+        // BigQuery's answers: stg_payments is not built yet
+        api.setTableFetch(async (action) => {
+            asked.push(action.target.name);
+            return action.target.name === 'stg_payments'
+                ? { state: 'missing' }
+                : { state: 'found', rows: 42, fields: [{ name: 'order_id', type: 'INT64' }, { name: 'status', type: 'STRING', description: 'From BigQuery' }] };
+        });
         dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dbt-editor-')));
         standIn = path.join(dir, 'dbt');
         fs.writeFileSync(standIn, `#!/usr/bin/env node
@@ -82,6 +105,7 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
             // Nothing of this suite's compile is left for the next one to find
             await until('the stand-in for dbt to be let go', () => api.dbtTool(workspaceFolder!), (tool) => tool.path !== standIn);
             api.forgetDbt(workspaceFolder!);
+            api.setTableFetch(undefined);
             fs.rmSync(dir, { recursive: true, force: true });
         }
     });
@@ -114,6 +138,52 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         } finally {
             await vscode.commands.executeCommand('workbench.action.files.revert');
         }
+    });
+
+    test('a hover on a ref() says what the Project and BigQuery know of the table, which is asked of BigQuery once', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        asked.length = 0;
+        const [text] = await hovers(document, "'stg_orders'", 3);
+        assert.ok(text.startsWith('#### [alex-personal-dev-01.xf_example.stg_orders](https://console.cloud.google.com/bigquery?'), text);
+        assert.ok(text.includes('**Kind:** view \u00B7 `models/staging/stg_orders.sql`'), text);
+        assert.ok(text.includes('**Rows:** 42'), text);
+        assert.ok(text.includes('| status | STRING |'), text);
+        await hovers(document, "'stg_orders'", 3);
+        assert.deepStrictEqual(asked, ['stg_orders']);
+        assert.strictEqual(api.heldTableCount(workspaceFolder!), 1);
+
+        const [missing] = await hovers(document, "'stg_payments'", 3);
+        assert.ok(missing.includes('_Not built yet: BigQuery has no table of this name._'), missing);
+    });
+
+    test('a hover on a column says which tables the file reads have it, through its alias when it has one', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        // The description is the one the Project's YAML gives the column, not BigQuery's
+        assert.deepStrictEqual(await hovers(document, 'o.status', 3), ['**status** `STRING` \u00B7 stg_orders (view)\n\nWhere the order is: `placed`, `shipped`, `completed` or `returned`.']);
+        // `p` is stg_payments, which has no table yet, and whose YAML documents no column of the name
+        assert.deepStrictEqual(await hovers(document, 'p.amount', 3), []);
+        // A bare name: every table the file reads
+        const edit = new vscode.WorkspaceEdit();
+        edit.insert(document.uri, new vscode.Position(0, 0), 'select order_id from x\n');
+        await vscode.workspace.applyEdit(edit);
+        try {
+            assert.deepStrictEqual(await hovers(document, 'order_id from x', 3), ['**order_id** `INT64` \u00B7 stg_orders (view)']);
+        } finally {
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+        }
+        // A word that is no column of them, and SQL inside Jinja
+        assert.deepStrictEqual(await hovers(document, 'left join', 1), []);
+    });
+
+    test('the held schemas are dropped when the Project compiles again', async () => {
+        assert.ok(api.heldTableCount(workspaceFolder!) > 0);
+        const document = await show('models/marts/fct_orders.sql');
+        await document.save();
+        await vscode.commands.executeCommand('vscode-dataform-tools.showCompiledQueryWtDryRun');
+        await until('the schemas to be dropped', async () => api.heldTableCount(workspaceFolder!), (count) => count === 0);
+        asked.length = 0;
+        await until('the next hover', () => hovers(document, "'stg_orders'", 3), (found) => found.length === 1);
+        assert.deepStrictEqual(asked, ['stg_orders']);
     });
 
     test('the setting turns the features off and on again', async () => {
