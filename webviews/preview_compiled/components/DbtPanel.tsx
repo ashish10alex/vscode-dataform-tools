@@ -231,6 +231,8 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
   const previewed = view.actions.find((action) => action.sqlPresent && action.sections.some((section) => section.compiled && section.dryRun.length > 0));
   const section = previewed?.sections.find((candidate) => candidate.compiled && candidate.dryRun.length > 0);
   const canPreview = bigQuery && !!previewed && !!section;
+  // In a file of tests the first action is a test, whose rows are those that fail it
+  const ofTest = !!previewed && isTestKind(previewed);
   const run = view.run;
   if (!canPreview && !run) {
     return null;
@@ -248,10 +250,10 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
             type="button"
             className={clsx(TOOLBAR_SECONDARY, "border-0")}
             disabled={view.outdated}
-            title="Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"
+            title={ofTest ? "Runs the test's query and shows the rows that fail it. It costs what the query costs" : "Preview the query results: runs the compiled query and shows its rows. It costs what the query costs"}
             onClick={() => vscode.postMessage({ command: "preview", action: previewed!.target, section: section!.title })}
           >
-            <Eye className="w-4 h-4 mr-1.5" /> Preview Data
+            <Eye className="w-4 h-4 mr-1.5" /> {ofTest ? "Preview failing rows" : "Preview Data"}
           </button>
         </div>
       )}
