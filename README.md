@@ -83,7 +83,7 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 ### What works
 
 | | In a dbt project |
-|---|---|
+| --- | --- |
 | Compiled query | The model in the editor with the tests that read it, each in its own section. Hooks are shown as written. |
 | Dry run | Size and cost of each compiled query, and BigQuery's error at its line and column. |
 | Schema | The columns and types of the compiled query, with the descriptions from your YAML. |
@@ -127,7 +127,7 @@ The settings `gcpProjectId` and `gcpLocation` override both.
 ### Settings for dbt
 
 | Setting | What it is |
-|---|---|
+| --- | --- |
 | `vscode-dataform-tools.dbtExecutablePath` | The dbt to use, when you do not want the one the extension finds. |
 | `vscode-dataform-tools.dbtTarget` | The dbt target for everyone who uses the workspace. Empty lets dbt choose. |
 | `vscode-dataform-tools.dbtVars` | dbt's `--vars`, for compiles and runs. |
@@ -478,8 +478,8 @@ Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd>
 
 If this extension saves you time and makes working with Dataform or dbt easier, consider supporting the project:
 
-- 📝 **Leave a review** on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode)
-- ☕ **Buy me a coffee**:
+* 📝 **Leave a review** on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode)
+* ☕ **Buy me a coffee**:
   <a href="https://buymeacoffee.com/ashishalexj">
     <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee" height="25">
   </a>
