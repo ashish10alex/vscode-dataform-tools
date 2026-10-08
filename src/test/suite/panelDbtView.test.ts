@@ -44,6 +44,7 @@ interface Scene {
     dbt?: DbtBlock['dbt'] | null;
     looking?: boolean;
     parsedForHooks?: boolean;
+    completing?: boolean;
 }
 
 /** The panel's slices after the host's four messages for a file, on top of what it had */
@@ -51,7 +52,7 @@ function after(scene: Scene, before: PanelSlices = initialSlices()): PanelSlices
     const built = scene.manifest ? buildDbtGraph(scene.manifest) : undefined;
     const shown = fileSlice(built?.graph, backend, scene.file, 1);
     const tool = scene.dbt === null ? {} : { dbt: scene.dbt ?? V2 };
-    const block = dbtBlock({ ...tool, looking: scene.looking, target: 'dev', profile: 'xf_example', parsedForHooks: scene.parsedForHooks, data: built?.dbt, graph: built?.graph, shown: actionsNamed(shown), file: scene.file }, 1);
+    const block = dbtBlock({ ...tool, looking: scene.looking, target: 'dev', profile: 'xf_example', parsedForHooks: scene.parsedForHooks, completing: scene.completing, data: built?.dbt, graph: built?.graph, shown: actionsNamed(shown), file: scene.file }, 1);
     return [
         { slice: 'project', value: projectSlice({ root: '/work/shop' }, backend, built?.graph, 1) },
         { slice: 'dbt', value: block },
@@ -320,6 +321,25 @@ suite('the dbt panel: while dbt works', () => {
         const shown = after({ ...parsed, state: compiled([], 'SQL not compiled: hooks') });
         const view = dbtView(after({ ...parsed, state: { ...compiled([], 'SQL not compiled: hooks'), compiling: { showingPrevious: true, startedAt: 9, file: 'models/orders.sql' } } }, shown));
         assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length], [false, true, 1]);
+    });
+
+    test('a test file shows its test compiled while the model it is shown with is compiled, and Run is not held back', () => {
+        const TEST = 'tests/assert_positive_order_totals.sql';
+        const alone = onlyCompiled(core, [TEST]);
+        const shown = after({ manifest: alone, file: TEST, state: compiled(), dbt: CORE, completing: true });
+        const view = dbtView(shown);
+        assert.deepStrictEqual([view.completing, view.outdated, view.skeleton], [true, false, false]);
+        assert.strictEqual(view.status?.kind, 'compiled');
+        // The test has its SQL; its model and that model's other tests are waiting for theirs
+        const own = view.actions.filter((action) => action.fileName === TEST);
+        assert.deepStrictEqual(own.map((action) => action.sqlPresent), [true]);
+        assert.ok(view.actions.filter((action) => action.fileName !== TEST && action.sections.length > 0).every((action) => !action.sqlPresent));
+        assert.strictEqual(view.run?.blocked, undefined);
+        // Once it has ended, nothing is said to be on its way
+        assert.strictEqual(dbtView(after({ manifest: core, file: TEST, state: compiled(), dbt: CORE })).completing, false);
+        // A compile that replaces it is a compile like any other
+        const saved = dbtView(after({ manifest: alone, file: TEST, state: { ...compiled(), compiling: { showingPrevious: true, startedAt: 9, file: TEST } }, dbt: CORE, completing: true }, shown));
+        assert.deepStrictEqual([saved.completing, saved.outdated], [false, true]);
     });
 
     test('while the compile for another file runs, the last file is not shown under the new name', () => {

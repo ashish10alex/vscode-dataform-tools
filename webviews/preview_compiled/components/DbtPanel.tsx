@@ -617,7 +617,12 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
       {view.outdated ? (
         <span className={clsx("absolute top-2 right-2 text-xs", WARNING)}>outdated</span>
       ) : asWritten ? (
-        <span className={clsx("absolute top-2 right-2 text-xs", MUTED)}>not compiled</span>
+        // No compiled SQL, so no cost. Why is said once for the file; while its model is compiled, the cost is on its way
+        view.completing && (
+          <span data-dbt="completing" title="Compiling this action, to dry-run it" className="absolute top-2 right-2">
+            <Loader2 className="w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
+          </span>
+        )
       ) : running ? (
         <Loader2 data-dry-run="running" className="absolute top-2 right-2 w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)] animate-spin" />
       ) : stat ? (
