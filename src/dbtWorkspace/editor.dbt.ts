@@ -26,7 +26,24 @@ suite('the editor features of a dbt Project', function () {
         setTableFetch(fetch: ((action: { id: string; target: { name: string } }) => Promise<unknown>) | undefined): void;
         heldTableCount(root: string): number;
         setDbtWithoutPanel(on: boolean): void;
+        setDbtDryRun(run: ((sql: string, action: { target: { name: string } }) => Promise<unknown>) | undefined): void;
     };
+    /** The actions BigQuery was asked to dry-run, in order */
+    const dryRan: string[] = [];
+    const dryRunMarkers = (relativePath: string) => vscode.languages.getDiagnostics(vscode.Uri.file(path.join(workspaceFolder!, relativePath)))
+        .filter((diagnostic) => diagnostic.source === 'BigQuery dry run')
+        .map((diagnostic) => `${diagnostic.range.start.line}:${diagnostic.range.start.character}-${diagnostic.range.end.character} ${diagnostic.message}`);
+
+    /** Saves the file as it is: a change and its undoing, so that there is something to save */
+    async function save(document: vscode.TextDocument) {
+        const edit = new vscode.WorkspaceEdit();
+        edit.insert(document.uri, new vscode.Position(0, 0), ' ');
+        await vscode.workspace.applyEdit(edit);
+        const undo = new vscode.WorkspaceEdit();
+        undo.delete(document.uri, new vscode.Range(0, 0, 0, 1));
+        await vscode.workspace.applyEdit(undo);
+        await document.save();
+    }
     /** The commands the stand-in was run with, without `--version` */
     const ran = () => (fs.existsSync(path.join(dir, 'ran.jsonl')) ? fs.readFileSync(path.join(dir, 'ran.jsonl'), 'utf8').trim().split('\n').map((line) => (JSON.parse(line) as string[])[0]) : []);
     /** The tables BigQuery was asked for, in order */
@@ -120,6 +137,9 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
     });
 
     suiteTeardown(async function () {
+        api?.setDbtDryRun(undefined);
+        await settings().update('dbtDryRunOnSave', undefined, vscode.ConfigurationTarget.Global);
+        await settings().update('showCompiledQueryInVerticalSplitOnSave', undefined, vscode.ConfigurationTarget.Global);
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         if (dir) {
             await settings().update('dbtExecutablePath', undefined, vscode.ConfigurationTarget.Global);
@@ -239,6 +259,100 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         asked.length = 0;
         await until('the next hover', () => hovers(document, "'stg_orders'", 3), (found) => found.length === 1);
         assert.deepStrictEqual(asked, ['stg_orders']);
+    });
+
+    test('a save with the panel closed compiles the file and dry-runs it, and marks what BigQuery says in the editor', async () => {
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        // Longer than the debounce of a save, so that nothing of the tests above is still to come
+        await sleep(1500);
+        // A save opens the panel unless this is off: with it off, the panel stays closed
+        await settings().update('showCompiledQueryInVerticalSplitOnSave', false, vscode.ConfigurationTarget.Global);
+        // BigQuery's answers: an error in a line of the model that is as written, one in a generic test, one in a line Jinja built
+        const wrong: Record<string, string> = { fct_orders: 'sum(p.amount)', not_null_fct_orders_order_id: 'select', assert_positive_order_totals: 'fct_orders' };
+        api.setDbtDryRun(async (sql, action) => {
+            dryRan.push(action.target.name);
+            const needle = wrong[action.target.name];
+            const line = needle ? sql.split('\n').findIndex((text) => text.includes(needle)) + 1 : 0;
+            return line > 0
+                ? { error: { hasError: true, message: `Unrecognized name near ${needle}`, location: { line, column: 3 } } }
+                : { error: { hasError: false, message: '' }, statistics: { totalBytesProcessed: 10 }, schema: { fields: [{ name: 'amount', type: 'NUMERIC' }] } };
+        });
+        const document = await show('models/marts/fct_orders.sql');
+        // Nothing is marked for the dry runs of the tests above, which had no credentials to ask BigQuery with
+        assert.deepStrictEqual(dryRunMarkers('models/marts/fct_orders.sql'), []);
+        dryRan.length = 0;
+        const before = ran().length;
+        await save(document);
+        await until('the dry-run markers', async () => dryRunMarkers('models/marts/fct_orders.sql'), (found) => found.length > 0);
+        assert.deepStrictEqual(ran().slice(before), ['compile']);
+        assert.deepStrictEqual([...dryRan].sort(), ['assert_positive_order_totals', 'fct_orders', 'not_null_fct_orders_order_id', 'unique_fct_orders_order_id']);
+
+        // On the line of the source that is the compiled line
+        const sumLine = document.getText().split('\n').findIndex((text) => text.includes('sum(p.amount)'));
+        assert.deepStrictEqual(dryRunMarkers('models/marts/fct_orders.sql'), [`${sumLine}:2-25 Unrecognized name near sum(p.amount)`]);
+        // A generic test: on the line of the YAML file that declares it, saying where in the compiled query
+        const yaml = fs.readFileSync(path.join(workspaceFolder!, 'models/marts/_marts.yml'), 'utf8').split('\n');
+        const [inYaml] = dryRunMarkers('models/marts/_marts.yml');
+        const declared = yaml.findIndex((text, index) => index > yaml.findIndex((line) => line.includes('- name: fct_orders')) && text.includes('data_tests: [unique, not_null]'));
+        assert.ok(inYaml.startsWith(`${declared}:8-`), inYaml);
+        assert.ok(inYaml.includes('test not_null_fct_orders_order_id: Unrecognized name near select') && inYaml.includes('Open the Compiled Query panel'), inYaml);
+        // A line that Jinja built: on the first line of the singular test's own file
+        const [inTest] = dryRunMarkers('tests/assert_positive_order_totals.sql');
+        assert.ok(inTest.startsWith('0:0-') && /The error is in the compiled query at line \d+, column 3\./.test(inTest), inTest);
+        // The panel was not opened for it
+        assert.deepStrictEqual(vscode.window.tabGroups.all.flatMap((group) => group.tabs.map((tab) => tab.label)), ['fct_orders.sql']);
+    });
+
+    test("a hover on a column that only the file's own query gives says what its dry run said", async () => {
+        const document = await show('models/staging/stg_orders.sql');
+        await save(document);
+        await until('the dry run of the file', async () => dryRan.includes('stg_orders'), (done) => done);
+        // `amount` is no column of the source the file reads, as BigQuery is made to answer here
+        const edit = new vscode.WorkspaceEdit();
+        edit.insert(document.uri, new vscode.Position(0, 0), 'select amount from x\n');
+        await vscode.workspace.applyEdit(edit);
+        try {
+            await until('the hover', () => hovers(document, 'amount from x', 3), (found) => found.length > 0);
+            assert.deepStrictEqual(await hovers(document, 'amount from x', 3), ['**amount** `NUMERIC` \u00B7 stg_orders (view)']);
+        } finally {
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+        }
+    });
+
+    test('with the panel open a save is the panel\'s to compile and dry-run, once, and its errors are marked the same', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        await vscode.commands.executeCommand('vscode-dataform-tools.showCompiledQueryWtDryRun');
+        await until('the dry runs of the panel', async () => dryRan.filter((name) => name === 'fct_orders').length, (count) => count >= 2);
+        // Longer than the debounce of a save, so that nothing of the above is still to come
+        await sleep(1500);
+        dryRan.length = 0;
+        const before = ran().length;
+        await save(document);
+        await until('the dry runs of the save', async () => dryRan.length, (count) => count >= 4);
+        await sleep(1000);
+        assert.deepStrictEqual([ran().slice(before), dryRan.length], [['compile'], 4]);
+        assert.strictEqual(dryRunMarkers('models/marts/fct_orders.sql').length, 1);
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await sleep(1000);
+    });
+
+    test('with dbtDryRunOnSave off a save only parses, and the markers of the last compile go', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        dryRan.length = 0;
+        await save(document);
+        await until('the dry runs of a save', async () => dryRan.length, (count) => count === 4);
+        await until('their markers', async () => dryRunMarkers('models/marts/fct_orders.sql'), (found) => found.length > 0);
+        await settings().update('dbtDryRunOnSave', false, vscode.ConfigurationTarget.Global);
+        dryRan.length = 0;
+        const before = ran().length;
+        await save(document);
+        await until('the parse', async () => ran().slice(before), (commands) => commands.length > 0);
+        await until('the markers to go', async () => dryRunMarkers('models/marts/fct_orders.sql'), (found) => found.length === 0);
+        await sleep(500);
+        assert.deepStrictEqual([ran().slice(before), dryRan], [['parse'], []]);
+        // The editor features still have the graph
+        assert.deepStrictEqual(await definitions(document, "'stg_orders'", 3), ['models/staging/stg_orders.sql:0']);
+        await settings().update('dbtDryRunOnSave', undefined, vscode.ConfigurationTarget.Global);
     });
 
     test('the setting turns the features off and on again', async () => {

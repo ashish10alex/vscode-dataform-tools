@@ -760,6 +760,12 @@
                     "scope": "resource",
                     "markdownDescription": "**Go to definition, hover and completions in the files of a dbt project**: for `ref()`, `source()`, macro calls and column names.\n\nVS Code shows what every extension offers for a file, so two dbt extensions give two hovers and each suggestion twice. With `auto` these features stand down while the dbt extension of dbt Labs (`dbtLabsInc.dbt`) or Power User for dbt (`innoverio.vscode-dbt-power-user`) is installed and enabled; the output channel says so when they do. `on` keeps them beside those extensions.\n\nThis does not change the language of `.sql` files, and it does not govern the dry-run error markers."
                 },
+                "vscode-dataform-tools.dbtDryRunOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "scope": "resource",
+                    "markdownDescription": "**Compile and dry-run a dbt file when it is saved, also while the compiled query panel is closed.**\n\nA save opens the panel unless `showCompiledQueryInVerticalSplitOnSave` is off, and the open panel always compiles and dry-runs. This setting is for a panel that stays closed.\n\nThe model and the tests of it are dry-run in BigQuery, which costs nothing, and BigQuery's errors are marked in the editor. An error in a line that Jinja built is marked on the first line of the file, and the panel shows where it is in the compiled query.\n\nTurn this off to have a save only parse the project while the panel is closed: dbt's own errors are still marked, and go to definition, hover and completions still work.\n\nA dbt v2 project that has `on-run-start` or `on-run-end` hooks is only parsed either way, unless `dbtCompileWithHooks` is on."
+                },
                 "vscode-dataform-tools.gcloudExecutablePath": {
                     "type": "string",
                     "default": null,

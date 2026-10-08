@@ -54,6 +54,7 @@ import { initDbtDiagnostics } from './project/dbtDiagnostics';
 import { initDbtEditor } from './project/dbtEditor';
 import { initDbtWithoutPanel, setDbtWithoutPanel } from './project/dbtWithoutPanel';
 import { heldTableCount, initDbtSchemas, setTableFetch } from './project/dbtSchemas';
+import { setDbtDryRun } from './project/dbtBigQuery';
 import { dbtPreviewFile, dbtRerun, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
 import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
@@ -522,7 +523,7 @@ export async function activate(context: vscode.ExtensionContext) {
             /** For tests: compiles a dbt Project for a file as showing it in the panel does, and drops what its compiles left */
             compileDbt: async (root: string, file: string) => { const project = projects.find(root, 'dbt'); if (project) { await compileDbtProject(project, file, 'open'); } },
             /** For tests: what asks BigQuery for a table's schema, and how many are held */
-            setTableFetch, heldTableCount,
+            setTableFetch, heldTableCount, setDbtDryRun,
             /** For tests: whether a dbt Project is parsed, and compiled on save, while the panel is closed */
             setDbtWithoutPanel,
             forgetDbt: (root: string) => { const project = projects.find(root, 'dbt'); if (project) { forgetDbtCompile(project); } },
