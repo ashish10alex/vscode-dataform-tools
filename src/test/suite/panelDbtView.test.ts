@@ -229,6 +229,21 @@ suite('the dbt panel: while dbt works', () => {
         assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length], [true, false, 0]);
     });
 
+    test('on dbt v2 too, a file not compiled yet shows placeholder lines while it is', () => {
+        const nothing = onlyCompiled(v2, []);
+        const macro = after({ manifest: nothing, file: 'macros/audit.sql', state: compiled() });
+        const view = dbtView(after({ manifest: nothing, file: MODEL, state: { ...compiled(), compiling: { showingPrevious: true, startedAt: 9, file: MODEL } } }, macro));
+        assert.deepStrictEqual(view.status, { kind: 'first compile', text: 'Compiling this file for the first time since the last save…', startedAt: 9 });
+        assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length], [true, false, 0]);
+    });
+
+    test('a Project parsed for its hooks keeps the SQL as written on show while it is parsed again', () => {
+        const parsed = { manifest: manifest('dbt-v2-hooks-parsed'), file: 'models/orders.sql', parsedForHooks: true };
+        const shown = after({ ...parsed, state: compiled([], 'SQL not compiled: hooks') });
+        const view = dbtView(after({ ...parsed, state: { ...compiled([], 'SQL not compiled: hooks'), compiling: { showingPrevious: true, startedAt: 9, file: 'models/orders.sql' } } }, shown));
+        assert.deepStrictEqual([view.skeleton, view.outdated, view.actions.length], [false, true, 1]);
+    });
+
     test('while the compile for another file runs, the last file is not shown under the new name', () => {
         const macro = after({ manifest: v2, file: 'macros/audit.sql', state: compiled() });
         const next = applyMessage(macro, { slice: 'compile status', value: compileStatusSlice({ ...compiled(), compiling: { showingPrevious: true, startedAt: 9, file: MODEL } }, 1) });

@@ -10,14 +10,14 @@ import type { DbtOptions } from './options';
 import { activeDbtTarget } from './targets';
 
 /*
- * How a dbt Project is compiled, which differs by engine (ADR 0003):
+ * How a dbt Project is compiled (ADR 0003):
  *
- * - dbt v2 compiles the whole Project every time. It runs the Project's on-run hooks against the warehouse when it
- *   compiles, so the Project is parsed first, and a Project that has hooks is left parsed, with a notice, unless
- *   `compileWithHooks` is on.
- * - dbt-core compiles only the actions of the file on show (`--select path:<file>`), which brings the tests of
- *   those actions with it and leaves every other action without compiled SQL. With no file it parses. It never
- *   compiles the whole Project.
+ * - Either engine compiles only the actions of the file on show (`--select path:<file>`), which brings the tests of
+ *   those actions with it and leaves every other action without compiled SQL. With no file it parses. The whole
+ *   Project is never compiled.
+ * - dbt v2 runs the Project's on-run hooks against the warehouse when it compiles, `--select` included, so the
+ *   Project is parsed first, and a Project that has hooks is left parsed, with a notice, unless `compileWithHooks`
+ *   is on.
  */
 
 export interface DbtCompileResult extends CompileResult {
@@ -74,23 +74,9 @@ export class DbtCompiler {
     private readonly hookless = new Map<string, string>();
 
     async compile(request: CompileRequest): Promise<DbtCompileResult> {
-        return request.options.flavour === 'dbt-core' ? this.compileWithCore(request) : this.compileWithV2(request);
-    }
-
-    private async compileWithCore(request: CompileRequest): Promise<DbtCompileResult> {
-        if (!request.file) {
-            return { ...(await run(request, 'parse')), parsedOnly: false };
-        }
-        // By path, so that nothing has to be known of the Project beforehand. A file that defines no action (a
-        // macro, the Project's settings) selects nothing, which dbt-core answers with the parsed Project
-        const file = request.file.split('/').join(path.sep);
-        return { ...(await run(request, 'compile', ['--select', `path:${file}`])), parsedOnly: false };
-    }
-
-    private async compileWithV2(request: CompileRequest): Promise<DbtCompileResult> {
         const { root, options } = request;
         const commands: string[][] = [];
-        if (!options.compileWithHooks && this.hookless.get(root) !== hookFingerprint(root)) {
+        if (options.flavour === 'dbt v2' && !options.compileWithHooks && this.hookless.get(root) !== hookFingerprint(root)) {
             // Taken before the parse, so that a change made while it runs is not missed
             const fingerprint = hookFingerprint(root);
             const parsed = await run(request, 'parse');
@@ -105,9 +91,18 @@ export class DbtCompiler {
                 return { ...parsed, parsedOnly: true };
             }
             this.hookless.set(root, fingerprint);
+            if (!request.file) {
+                return { ...parsed, parsedOnly: false };
+            }
             commands.push(...parsed.commands);
         }
-        const compiled = await run(request, 'compile');
+        if (!request.file) {
+            return { ...(await run(request, 'parse')), parsedOnly: false };
+        }
+        // By path, so that nothing has to be known of the Project beforehand. A file that defines no action (a
+        // macro, the Project's settings) selects nothing, which dbt answers with the parsed Project
+        const file = request.file.split('/').join(path.sep);
+        const compiled = await run(request, 'compile', ['--select', `path:${file}`]);
         return { ...compiled, commands: [...commands, ...compiled.commands], parsedOnly: false };
     }
 }

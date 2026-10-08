@@ -80,7 +80,9 @@ function killTree(child: ChildProcess) {
 
 /**
  * Runs `command` from the Project root and waits for it to end. The manifest of an earlier run is deleted first, so
- * what a failed run leaves is never taken for its own. `onLine` is given each line of stdout as it comes.
+ * what a failed run leaves is never taken for its own. So is the SQL an earlier run compiled: dbt v2 writes the
+ * `compiled` files it finds into the manifest as the SQL of actions this run did not compile, even when their
+ * source has changed since. `onLine` is given each line of stdout as it comes.
  *
  * Resolves whatever dbt's exit status: a Project with errors is not a failure to run. Rejects when dbt could not be
  * started, and with the signal's reason when the signal is aborted, which ends dbt's process tree.
@@ -96,6 +98,7 @@ export async function invokeDbt(
     const manifestPath = manifestPathIn(options.artifactDir);
     await fs.promises.mkdir(options.artifactDir, { recursive: true });
     await fs.promises.rm(manifestPath, { force: true });
+    await fs.promises.rm(path.join(path.dirname(manifestPath), 'compiled'), { recursive: true, force: true });
 
     const args = dbtArguments(command, root, options, extra);
     logger.debug(`dbt: ${options.binary} ${args.join(' ')}`);

@@ -34,7 +34,7 @@ export interface CompileScope {
     /**
      * The file whose actions are wanted, relative to the Project root with forward slashes: the one on show. A
      * Backend that compiles the whole Project every time ignores it; the dbt Backend compiles only that file's
-     * actions when the engine is dbt-core (ADR 0003).
+     * actions (ADR 0003).
      */
     file?: string;
 }

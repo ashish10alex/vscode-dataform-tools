@@ -5,7 +5,7 @@ This is the ordered list of pieces to build so the extension supports dbt Projec
 ## Where the decisions live
 
 - [ADR 0002](adr/0002-one-compiled-graph-behind-a-backend-seam.md): the Compiled Graph and the Backend seam.
-- [ADR 0003](adr/0003-dbt-compile-loop-differs-by-engine.md): the dbt compile loop.
+- [ADR 0003](adr/0003-dbt-compiles-only-the-open-file.md): the dbt compile loop.
 - The planning map and its tickets: [ashish10alex/xf#39](https://github.com/ashish10alex/xf/issues/39). Each piece below names the ticket that decided it, as `xf#N`.
 - The panel mock-up: [dbt-compiled-query-panel-prototype.html](https://github.com/ashish10alex/xf/blob/prototype/dbt-compiled-query-panel/prototype/dbt-compiled-query-panel-prototype.html).
 - xf, the reference implementation, and its ADR 0002. Its dbt decisions stand unless a ticket says otherwise.
@@ -84,7 +84,7 @@ Starts once 2.1 and 2.2 have merged. Nothing here imports `vscode`.
 | D3 Running dbt | `--project-dir`, private `--target-path` and `--log-path`, `--log-format json`, `--target`, vars, profiles directory, `--no-version-check`. Delete the old manifest before each run. Stream stdout. Kill the process tree on cancel. | xf#42, xf#48 |
 | D4 Errors | Read errors from the JSON log text for both engines, strip colour codes, parse positions; an unrecognised position form still yields the error, without a position. | xf#42, xf#65 |
 | D5 Probe | One `dbt --version` per resolved binary gives flavour, version and whether the BigQuery adapter is present. Unrecognised output is treated as dbt v2. dbt-core below 1.8 is refused with a message. | xf#48, xf#49 |
-| D6 Compile strategy | dbt v2: whole compile, but parse first and return a parsed-only graph with a notice when the Project has on-run hooks, unless compile-with-hooks is on. dbt-core: `--select` the given file's actions and their tests; a parse when the file has no SQL of its own; never a whole compile. | xf#48, ADR 0003 |
+| D6 Compile strategy | Either engine: `--select` the given file's actions and their tests; a parse when no file is given; never a whole compile. dbt v2: parse first and return a parsed-only graph with a notice when the Project has on-run hooks, unless compile-with-hooks is on. | xf#48, ADR 0003 |
 | D7 Runner | Command lines for `dbt build`: select by fully qualified name, `+` for dependencies and dependents, `--full-refresh`, `tag:<name>`, with shell quoting a user can paste. | xf#54 |
 | D8 dbt targets | List names from the `outputs` keys of the Project's profile, looking in the profiles-directory option, `$DBT_PROFILES_DIR`, the Project root, `~/.dbt`. Read key names only. Report the active one from dbt's log. | xf#50 |
 | D9 Files that matter | The list of files whose change affects a dbt compile, from xf's watch spec. | xf#41, xf#46 |
@@ -95,7 +95,7 @@ Starts once 2.1 and 2.2 have merged. Nothing here imports `vscode`.
 |---|---|---|
 | 5.1 Activation and context | Add `workspaceContains:dbt_project.yml`. Set a context key for the active Project's Backend and its optional parts. Claim no language for `.sql`. | xf#47 |
 | 5.2 Finding dbt | Host-side order: `dbtExecutablePath`, `$DBT_BIN`, the Project's `.venv` then `venv`, the Python extension's environment (soft dependency), `PATH`, known directories. Probe in the background after activation. Re-resolve on setting change, environment change, or the file disappearing. | xf#49 |
-| 5.3 Host compile loop | Compile when the panel is first opened, on save and on switching files. One compile per Project, latest request wins. On dbt-core, any save discards other actions' SQL. Artifacts under the extension's workspace storage, one directory per dbt binary and dbt target, pruned after 30 days unused; `clearExtensionCache` clears them. | xf#48 |
+| 5.3 Host compile loop | Compile when the panel is first opened, on save and on switching files. One compile per Project, latest request wins. Any compile discards other actions' SQL. Artifacts under the extension's workspace storage, one directory per dbt binary and dbt target, pruned after 30 days unused; `clearExtensionCache` clears them. | xf#48 |
 | 5.4 Panel states | Tabs: Compiled query, Schema, Project. A model with its tests stacked beneath, collapsed. Hooks as written. The incremental note. Cards for files with no SQL. Outdated-while-compiling and first-view states. The parsed-only notice with its offer. dbt not found. Not a BigQuery Project. As drawn in the mock-up. | xf#52 |
 | 5.5 dbt target control | In the panel beside Run; a list of names or free text; a private per-workspace override of `dbtTarget` with a way back; `dbtVars` and `dbtProfilesDir` shown read-only. A change recompiles. | xf#50 |
 | 5.6 BigQuery for dbt | Dry-run every shown section with a compiled SELECT automatically; preview by running it; nothing for seeds, sources, exposures and unit tests; errors in the panel only. | xf#53 |

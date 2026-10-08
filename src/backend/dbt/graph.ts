@@ -253,7 +253,7 @@ class Reader {
             tags: node.tags ?? [],
             sections,
             // An action with a query has its SQL only when this compile compiled it: a parse compiles nothing, and
-            // dbt-core compiles what it was asked to
+            // a compile compiles what it was asked to
             sqlPresent: !hasQuery || !!node.compiled_code,
             dependencyTargets: (node.depends_on?.nodes ?? []).flatMap((id) => targets.get(id) ?? []),
         };

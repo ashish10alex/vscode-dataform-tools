@@ -278,8 +278,9 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     view.errors = own;
     view.errorsElsewhere = allErrors.filter((error) => !own.includes(error));
 
-    // dbt-core compiles a file when it is shown: until then its actions are in the graph without their SQL
-    const awaitsSql = block?.dbt?.flavour === 'dbt-core' && withSql.some((action) => action.fileName === named && !action.sqlPresent);
+    // A file is compiled when it is shown: until then its actions are in the graph without their SQL. A Project
+    // parsed for its hooks stays as written, whatever is compiling
+    const awaitsSql = last?.status !== 'parsed only' && withSql.some((action) => action.fileName === named && !action.sqlPresent);
     view.skeleton = !!compiling && (!file || !graph || awaitsSql);
     view.outdated = !!compiling && !view.skeleton;
 

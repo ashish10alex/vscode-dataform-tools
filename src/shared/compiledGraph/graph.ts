@@ -123,7 +123,7 @@ export interface Action {
     /** The action's SQL in execution order */
     sections: SqlSection[];
     /**
-     * False when this compile left the action's SQL out (a dbt Project that was only parsed, or an action dbt-core
+     * False when this compile left the action's SQL out (a dbt Project that was only parsed, or an action dbt
      * was not asked to compile), which is not the same as an action that has no SQL: a seed has `sqlPresent` true
      * and no sections.
      */
