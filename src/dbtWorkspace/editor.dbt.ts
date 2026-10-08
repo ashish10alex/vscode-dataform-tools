@@ -25,7 +25,10 @@ suite('the editor features of a dbt Project', function () {
         dbtTool(root: string): Promise<{ path?: string }>;
         setTableFetch(fetch: ((action: { id: string; target: { name: string } }) => Promise<unknown>) | undefined): void;
         heldTableCount(root: string): number;
+        setDbtWithoutPanel(on: boolean): void;
     };
+    /** The commands the stand-in was run with, without `--version` */
+    const ran = () => (fs.existsSync(path.join(dir, 'ran.jsonl')) ? fs.readFileSync(path.join(dir, 'ran.jsonl'), 'utf8').trim().split('\n').map((line) => (JSON.parse(line) as string[])[0]) : []);
     /** The tables BigQuery was asked for, in order */
     const asked: string[] = [];
 
@@ -105,6 +108,7 @@ suite('the editor features of a dbt Project', function () {
 const fs = require('fs'), path = require('path');
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log('dbt 2.9.9'); return; }
+fs.appendFileSync(${JSON.stringify(path.join(dir, 'ran.jsonl'))}, JSON.stringify(args) + '\\n');
 const target = args[args.indexOf('--target-path') + 1];
 fs.mkdirSync(target, { recursive: true });
 fs.copyFileSync(${JSON.stringify(path.join(manifests, 'dbt-v2.json'))}, path.join(target, 'manifest.json'));
@@ -128,11 +132,21 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         }
     });
 
+    test('a Project is parsed when one of its files is first shown, with the panel closed, and not again for the next file', async () => {
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        // As a window that has just opened the Project: nothing known of it, and nothing asked
+        api.forgetDbt(workspaceFolder!);
+        api.setDbtWithoutPanel(true);
+        const document = await show('models/marts/fct_orders.sql');
+        await until('the definition of a ref()', () => definitions(document, "'stg_orders'", 3), (found) => found.length > 0);
+        assert.deepStrictEqual(ran(), ['parse']);
+        await show('models/staging/stg_orders.sql');
+        await sleep(500);
+        assert.deepStrictEqual(ran(), ['parse']);
+    });
+
     test('go to definition from a ref() leads to the model, whatever the language of the .sql file', async () => {
         const document = await show('models/marts/fct_orders.sql');
-        // Nothing before the Project's first compile
-        assert.deepStrictEqual(await definitions(document, "'stg_orders'", 3), []);
-        await api.compileDbt(workspaceFolder!, 'models/marts/fct_orders.sql');
         assert.deepStrictEqual(await definitions(document, "'stg_orders'", 3), ['models/staging/stg_orders.sql:0']);
         // No language is claimed: the file keeps the id it had, and a change of it changes nothing
         const plain = await vscode.languages.setTextDocumentLanguage(document, 'plaintext');

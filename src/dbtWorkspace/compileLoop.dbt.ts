@@ -32,6 +32,7 @@ suite('the compile loop of a dbt Project', function () {
     /** Every `bigquery` slice the panel was sent, in order */
     const bigQuerySent: BigQuerySlice[] = [];
     let panel: PanelApi;
+    let withoutPanel: ((on: boolean) => void) | undefined;
     let standIn: string;
     const statuses: string[] = [];
     const settings = () => vscode.workspace.getConfiguration('vscode-dataform-tools');
@@ -62,7 +63,11 @@ suite('the compile loop of a dbt Project', function () {
         assert.ok(workspaceFolder, 'No workspace folder: run with `vscode-test --label dbt`');
         const extension = vscode.extensions.getExtension(EXTENSION_ID);
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
-        panel = (await extension.activate())?.__panel;
+        const exports = await extension.activate();
+        panel = exports?.__panel;
+        // This suite counts the runs of dbt that the panel asks for: none is to come from a file merely being shown
+        exports?.__projects.setDbtWithoutPanel(false);
+        withoutPanel = exports?.__projects.setDbtWithoutPanel;
         subscription = panel.onDidPostMessage((message) => {
             const { slice, value } = message as { slice?: string; value?: unknown };
             if (slice === 'project') {
@@ -99,6 +104,7 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
     });
 
     suiteTeardown(async function () {
+        withoutPanel?.(true);
         subscription?.dispose();
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         if (dir) {

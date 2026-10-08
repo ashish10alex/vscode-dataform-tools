@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
-import { suite, suiteSetup, test } from 'mocha';
+import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
 
 /*
 The extension in a dbt workspace: opens the example dbt Project (src/test/fixtures/xf-examples/projects/dbt) in the
@@ -27,6 +27,7 @@ interface ProjectsApi {
     list(): Array<{ root: string; backend: string }>;
     backendContext(): { backend: string; canRun: boolean; listsChangedActions: boolean };
     dbtTool(root: string): Promise<DbtTool>;
+    setDbtWithoutPanel(on: boolean): void;
 }
 
 suite('a dbt workspace', function () {
@@ -39,7 +40,11 @@ suite('a dbt workspace', function () {
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
         api = (await extension.activate())?.__projects;
         assert.ok(api, 'The extension does not expose __projects');
+        // No dbt is to be run by this suite: the machine's own may be found, and would be run on the example Project
+        api.setDbtWithoutPanel(false);
     });
+
+    suiteTeardown(() => api?.setDbtWithoutPanel(true));
 
     test('is found as one dbt Project, whose Backend can run and does not list Changed Actions', () => {
         assert.deepStrictEqual(api.list(), [{ root: workspaceFolder, backend: 'dbt' }]);
