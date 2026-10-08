@@ -6,12 +6,13 @@ import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions
 import type { DryRunResult } from '../bigquery/dryRunService';
 import { lastDbtRun, onDidRunDbt, repeatDbtRun, runDbt } from '../project/dbtRun';
 import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
-import { CompileState, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../panel/slices';
+import { CompileState, actionsNamed, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../panel/slices';
 import { SliceSender } from '../panel/sliceSender';
 import { affectsCompile } from '../backend';
 import { DBT_COMPILE_FILES, listDbtTargets } from '../backend/dbt';
 import { toDryRunResult } from '../bigquery/dryRunService';
-import { ActionId, dryRunScripts, slashPath, targetId } from '../shared/compiledGraph';
+import { ActionId, dryRunScripts, homeAction, slashPath, targetId } from '../shared/compiledGraph';
+import { definitionLine } from '../backend/dbt/locate';
 import { fileModels } from '../shared/panelFileView';
 import type { PanelSlices } from '../shared/panelState';
 import { applyDeferralToAction } from '../defer/deferRules';
@@ -783,7 +784,7 @@ export class CompiledQueryPanel {
             completing: !!state.completing,
             data: last?.dbt,
             graph: last?.graph,
-            shown: shown.actions.map((action) => action.id),
+            shown: actionsNamed(shown),
             file,
         }, project.compileNumber);
         return {
@@ -850,9 +851,20 @@ export class CompiledQueryPanel {
         if (!shown) {
             return false;
         }
-        const action = shown.project.dbtBackend?.lastResult?.graph.actions[targetId(target)];
-        if (action?.fileName) {
-            vscode.window.showTextDocument(Uri.file(path.join(shown.project.root, action.fileName)), { viewColumn: vscode.ViewColumn.One, preview: false })
+        const last = shown.project.dbtBackend?.lastResult;
+        const action = last?.graph.actions[targetId(target)];
+        if (last && action?.fileName) {
+            const file = Uri.file(path.join(shown.project.root, action.fileName));
+            // A YAML file defines many things: the editor goes to this one's entry. A generic test has no entry
+            // of its own, so to that of what it tests
+            const named = /\.ya?ml$/i.test(action.fileName) ? homeAction(last.graph, action) ?? action : undefined;
+            const name = named && last.dbt?.names[named.id];
+            vscode.workspace.openTextDocument(file)
+                .then((document) => {
+                    const line = name ? definitionLine(document.getText(), name) : undefined;
+                    const at = new vscode.Position(line ?? 0, 0);
+                    return vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false, ...(line !== undefined ? { selection: new vscode.Range(at, at) } : {}) });
+                })
                 .then(undefined, (error) => logger.error(`dbt: could not open ${action.fileName}: ${error}`));
         }
         return true;

@@ -5,7 +5,7 @@ import { suite, test } from 'mocha';
 import type { CompileError } from '../../backend';
 import { DbtBackend } from '../../backend/dbt';
 import { DbtManifest, buildDbtGraph } from '../../backend/dbt/graph';
-import { CompileState, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../../panel/slices';
+import { CompileState, actionsNamed, compileStatusSlice, dbtBlock, fileSlice, projectSlice } from '../../panel/slices';
 import type { DbtBlock } from '../../shared/panelContract';
 import type { DryRunResult } from '../../bigquery/dryRunService';
 import { dbtDryRunOf, dbtView, incrementalCase } from '../../shared/panelDbtView';
@@ -52,7 +52,7 @@ function after(scene: Scene, before: PanelSlices = initialSlices()): PanelSlices
     const built = scene.manifest ? buildDbtGraph(scene.manifest) : undefined;
     const shown = fileSlice(built?.graph, backend, scene.file, 1);
     const tool = scene.dbt === null ? {} : { dbt: scene.dbt ?? V2 };
-    const block = dbtBlock({ ...tool, looking: scene.looking, target: 'dev', profile: 'xf_example', parsedForHooks: scene.parsedForHooks, completing: scene.completing, data: built?.dbt, graph: built?.graph, shown: shown.actions.map((action) => action.id), file: scene.file }, 1);
+    const block = dbtBlock({ ...tool, looking: scene.looking, target: 'dev', profile: 'xf_example', parsedForHooks: scene.parsedForHooks, completing: scene.completing, data: built?.dbt, graph: built?.graph, shown: actionsNamed(shown), file: scene.file }, 1);
     return [
         { slice: 'project', value: projectSlice({ root: '/work/shop' }, backend, built?.graph, 1) },
         { slice: 'dbt', value: block },
@@ -73,7 +73,6 @@ suite('the dbt panel: a file with SQL', () => {
         assert.strictEqual(view.actions[0].buildsTable, true);
         assert.deepStrictEqual(view.status, { kind: 'compiled', compiledAt: 1000, durationMs: 2100 });
         assert.deepStrictEqual([view.outdated, view.skeleton, view.parsedOnly, view.card, view.errors.length], [false, false, false, undefined, 0]);
-        assert.deepStrictEqual(view.readsFrom.map((neighbour) => neighbour.target.name), ['stg_customers', 'stg_orders', 'stg_payments']);
     });
 
     test('an ephemeral model builds no table, so its card is no link', () => {
@@ -96,12 +95,91 @@ suite('the dbt panel: a file with SQL', () => {
     });
 });
 
+suite('the dbt panel: the Data Lineage of a file', () => {
+    const names = (rows: Array<{ name: string }>) => rows.map((row) => row.name).sort();
+
+    test("a model: what it reads, what reads it, and its tests apart from those", () => {
+        const { lineage } = viewOf(MODEL);
+        assert.strictEqual(lineage?.subjects.length, 1);
+        const [model] = lineage!.subjects;
+        assert.deepStrictEqual([model.name, model.own, model.fileName], ['dim_customers', true, MODEL]);
+        assert.deepStrictEqual(names(model.dependencies), ['stg_customers', 'stg_orders', 'stg_payments']);
+        assert.deepStrictEqual(names(model.dependents), ['customer_segments v1', 'customer_segments v2', 'revenue_by_country', 'revenue_report']);
+        assert.deepStrictEqual(model.tests.map((row) => row.kind), ['test', 'test']);
+        assert.deepStrictEqual(lineage!.counts, { dependencies: 3, dependents: 4, tests: 2 });
+    });
+
+    test('a neighbour is a link to its file, and to BigQuery when it builds a table', () => {
+        const [model] = viewOf(MODEL).lineage!.subjects;
+        const staging = model.dependencies.find((row) => row.name === 'stg_customers')!;
+        assert.deepStrictEqual([staging.fileName, staging.buildsTable, staging.package], ['models/staging/stg_customers.sql', true, undefined]);
+        const analysis = model.dependents.find((row) => row.name === 'revenue_by_country')!;
+        assert.deepStrictEqual([analysis.kind, analysis.buildsTable], ['analysis', false]);
+        assert.strictEqual(model.tests.every((row) => !row.buildsTable && row.fileName === 'models/marts/_marts.yml'), true);
+    });
+
+    test('a source is named as dbt names it', () => {
+        const [model] = viewOf('models/staging/stg_orders.sql').lineage!.subjects;
+        assert.deepStrictEqual(model.dependencies.map((row) => [row.name, row.kind, row.fileName, row.buildsTable]), [['raw.orders', 'source', 'models/staging/_sources.yml', true]]);
+    });
+
+    test('no BigQuery link in a Project of another warehouse', () => {
+        const snowflake: DbtManifest = { ...v2, metadata: { ...v2.metadata, adapter_type: 'snowflake' } };
+        const [model] = dbtView(after({ manifest: snowflake, file: MODEL, state: compiled() })).lineage!.subjects;
+        assert.strictEqual(model.dependencies.some((row) => row.buildsTable), false);
+    });
+
+    test("a test's file has the lineage of the model it tests, and says it is not the file's own", () => {
+        const { lineage } = viewOf('tests/assert_positive_order_totals.sql');
+        assert.deepStrictEqual(lineage!.subjects.map((subject) => [subject.name, subject.own, subject.fileName]), [['fct_orders', false, 'models/marts/fct_orders.sql']]);
+        assert.deepStrictEqual(names(lineage!.subjects[0].dependents), ['daily_revenue', 'revenue_report']);
+        assert.strictEqual(lineage!.counts.tests, 4);
+    });
+
+    test('a YAML file of tests has one group for each model they test', () => {
+        const { lineage } = viewOf('models/marts/_marts.yml');
+        assert.deepStrictEqual(lineage!.subjects.map((subject) => [subject.name, subject.own]), [['dim_customers', false], ['fct_orders', false]]);
+    });
+
+    test('a file of sources has one group for each, with what reads it', () => {
+        const view = viewOf('models/staging/_sources.yml');
+        assert.strictEqual(view.card?.title, 'Sources defined in this file');
+        assert.deepStrictEqual(view.lineage!.subjects.map((subject) => [subject.name, subject.own, names(subject.dependents)]), [
+            ['raw.customers', true, ['customers_snapshot', 'stg_customers']],
+            ['raw.orders', true, ['stg_orders']],
+            ['raw.payments', true, ['stg_payments']],
+        ]);
+        assert.deepStrictEqual(view.lineage!.counts, { dependencies: 0, dependents: 4, tests: 0 });
+    });
+
+    test('a seed and an exposure have it too, though they have no SQL', () => {
+        assert.deepStrictEqual(names(viewOf('seeds/country_codes.csv').lineage!.subjects[0].dependents), ['int_customer_countries']);
+        assert.deepStrictEqual(names(viewOf('models/reporting/_exposures.yml').lineage!.subjects[0].dependencies), ['daily_revenue', 'revenue_report']);
+    });
+
+    test('a neighbour of an installed package says which', () => {
+        const packaged: DbtManifest = JSON.parse(JSON.stringify(v2));
+        const staging = packaged.nodes!['model.xf_example.stg_customers']!;
+        staging.package_name = 'shop_utils';
+        staging.original_file_path = 'models/stg_customers.sql';
+        const [model] = dbtView(after({ manifest: packaged, file: MODEL, state: compiled() })).lineage!.subjects;
+        const row = model.dependencies.find((candidate) => candidate.name === 'stg_customers')!;
+        assert.deepStrictEqual([row.package, row.fileName], ['shop_utils', 'dbt_packages/shop_utils/models/stg_customers.sql']);
+    });
+
+    test('none for a file that defines no action, nor while its first compile runs', () => {
+        assert.strictEqual(viewOf('dbt_project.yml').lineage, undefined);
+        assert.strictEqual(dbtView(after({ file: MODEL, state: { inProject: true, errors: [], compiling: { showingPrevious: false, startedAt: 1 } } })).lineage, undefined);
+    });
+});
+
 suite('the dbt panel: a file with no SQL', () => {
-    test('a seed: what it is, its Target and what uses it', () => {
+    test('a seed: what it is and its Target', () => {
         const view = viewOf('seeds/country_codes.csv');
         assert.deepStrictEqual([view.actions.length, view.tabs], [0, ['compiled', 'project']]);
         assert.strictEqual(view.card?.title, 'Seed: country_codes');
-        assert.deepStrictEqual(view.card?.rows.find((row) => row.label === 'Used by'), { label: 'Used by', value: 'int_customer_countries' });
+        // What uses it is in the Data Lineage, as links
+        assert.deepStrictEqual(view.card?.rows.map((row) => row.label), ['What it is', 'File', 'Target']);
     });
 
     test('the sources of a YAML file, as a flat list under the names dbt gives them', () => {

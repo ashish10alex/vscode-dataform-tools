@@ -2,6 +2,7 @@ import type { CompileError } from '../backend/backend';
 import { namesMissingRef } from '../backend/dbt/place';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import type { Kind, Target } from './compiledGraph';
+import { isMadeUpTarget, isTestKind, kindHasTable, targetId } from './compiledGraph/graph';
 import type { ActionReference, CompileStatus, FileSlice, PanelAction } from './panelContract';
 import { PanelSlices, fileOnShow } from './panelState';
 
@@ -63,13 +64,41 @@ export interface DbtView {
     /** The actions drawn as sections, in order. Empty when a card is drawn instead */
     actions: PanelAction[];
     card?: DbtCard;
-    /** What the file's first action reads from */
-    readsFrom: ActionReference[];
+    /** The neighbours of the file's actions, each a link to its file. Unset when the file defines no action */
+    lineage?: DbtLineage;
     /**
      * Run is offered: the file defines an action a run can execute, in a BigQuery Project. `targets` are those
      * actions; `blocked` while there is no fresh compile to run from, and says why.
      */
     run?: { targets: Target[]; blocked?: string };
+}
+
+/** A neighbour in the Data Lineage */
+export interface LineageRow extends ActionReference {
+    /** What dbt calls it */
+    name: string;
+    /** The installed package its file is in, when it is not the Project's own */
+    package?: string;
+    /** It builds a table at its Target, so a BigQuery link can be offered */
+    buildsTable: boolean;
+}
+
+/** An action whose neighbours the Data Lineage lists */
+export interface LineageSubject extends ActionReference {
+    name: string;
+    /** The open file defines it. False for the model that the file's test tests */
+    own: boolean;
+    dependencies: LineageRow[];
+    /** What reads it, tests apart */
+    dependents: LineageRow[];
+    tests: LineageRow[];
+}
+
+export interface DbtLineage {
+    /** One for each action of the file that is not a test, and one for each action a test of the file tests */
+    subjects: LineageSubject[];
+    /** Over all subjects, a neighbour of two of them counted once */
+    counts: { dependencies: number; dependents: number; tests: number };
 }
 
 export function targetText(target: Target): string {
@@ -145,6 +174,58 @@ export function dbtNameOf(slices: Pick<PanelSlices, 'dbt'>, action: Pick<PanelAc
     return slices.dbt?.names[action.id] ?? action.target.name;
 }
 
+/** Where `dbt deps` installs packages (src/backend/dbt/graph.ts) */
+const PACKAGE_FILE = /^dbt_packages\/([^/]+)\//;
+
+/**
+ * The Data Lineage of the file: the neighbours of each action it defines. A test's neighbours say little (it reads
+ * the model it tests, and nothing reads it), so a test stands aside for the action it tests; a test that tests no
+ * single action is listed for itself.
+ */
+export function lineageOf(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): DbtLineage | undefined {
+    const subjects: PanelAction[] = [];
+    for (const action of file.actions.filter((candidate) => candidate.fileName === file.file)) {
+        const home = action.home && file.actions.find((candidate) => candidate.id === targetId(action.home!));
+        const subject = isTestKind(action.kind) && home ? home : action;
+        if (!subjects.includes(subject)) {
+            subjects.push(subject);
+        }
+    }
+    if (subjects.length === 0) {
+        return undefined;
+    }
+    const bigQuery = slices.dbt?.bigQuery !== false;
+    const among = new Set(subjects.map((subject) => subject.id));
+    const rows = (neighbours: ActionReference[]): LineageRow[] => {
+        const seen = new Set<string>();
+        return neighbours.flatMap((neighbour) => {
+            const id = targetId(neighbour.target);
+            // A file's own actions are not each other's neighbours here
+            if (seen.has(id) || (subjects.length > 1 && among.has(id))) {
+                return [];
+            }
+            seen.add(id);
+            const inPackage = PACKAGE_FILE.exec(neighbour.fileName)?.[1];
+            return [{
+                ...neighbour,
+                name: dbtNameOf(slices, { id, target: neighbour.target }),
+                ...(inPackage ? { package: inPackage } : {}),
+                buildsTable: bigQuery && kindHasTable(neighbour.kind) && !isMadeUpTarget(neighbour.target),
+            }];
+        });
+    };
+    const listed = subjects.map((subject): LineageSubject => ({
+        target: subject.target, kind: subject.kind, fileName: subject.fileName,
+        name: dbtNameOf(slices, subject),
+        own: subject.fileName === file.file,
+        dependencies: rows(subject.dependencies),
+        dependents: rows(subject.dependents.filter((dependent) => !isTestKind(dependent.kind))),
+        tests: rows(subject.dependents.filter((dependent) => isTestKind(dependent.kind))),
+    }));
+    const count = (group: 'dependencies' | 'dependents' | 'tests') => new Set(listed.flatMap((subject) => subject[group].map((row) => targetId(row.target)))).size;
+    return { subjects: listed, counts: { dependencies: count('dependencies'), dependents: count('dependents'), tests: count('tests') } };
+}
+
 /** The card of a file whose actions have no SQL: a seed, sources, exposures */
 function cardOfActions(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): DbtCard {
     const kinds = [...new Set(file.actions.map((action) => action.kind))];
@@ -157,7 +238,6 @@ function cardOfActions(slices: Pick<PanelSlices, 'dbt'>, file: FileSlice): DbtCa
                 { label: 'What it is', value: 'A CSV file dbt loads as a table' },
                 fileRow,
                 { label: 'Target', value: targetText(seed.target) },
-                { label: 'Used by', value: seed.dependents.map((dependent) => dependent.target.name).join(', ') || 'nothing' },
             ],
             foot: 'No SQL, so no dry run, cost, schema or preview.',
         };
@@ -263,7 +343,7 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     const graph = hasGraph(last);
     const view: DbtView = {
         page: 'panel', lookedIn: [], file: named, tabs: ['compiled', 'project'],
-        outdated: false, skeleton: false, completing: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [], readsFrom: [],
+        outdated: false, skeleton: false, completing: false, parsedOnly: false, errors: [], errorsElsewhere: [], actions: [],
     };
 
     if (!compiling && compile?.status === 'tool not found') {
@@ -291,9 +371,11 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     view.completing = !compiling && block?.completing === true;
 
     if (graph && file && !view.skeleton) {
+        if (file.role === 'actions') {
+            view.lineage = lineageOf(slices, file);
+        }
         if (withSql.length > 0) {
             view.actions = file.actions;
-            view.readsFrom = file.actions[0].dependencies;
         } else if (file.role === 'actions') {
             view.card = cardOfActions(slices, file);
         } else if (own.length === 0) {
