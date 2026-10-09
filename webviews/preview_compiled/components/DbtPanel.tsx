@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Network, Play, Tag, Terminal } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, Network, Play, Tag, Terminal } from "lucide-react";
 import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { ModifierSwitch } from "./ModifierSwitch";
+import { HeaderTab, PanelHeader, ReportIssueLink } from "./PanelHeader";
 import { ProjectInfoTab, useProjectInfoRequest } from "./ProjectInfoTab";
 import { ProjectLabel } from "./ProjectLabel";
 import { RunChangedButton } from "./RunChangedButton";
@@ -947,26 +948,12 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
   return (
     <div data-backend="dbt" className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
       {view.tabs.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--vscode-widget-border)]">
-          {view.tabs.map((name) => (
-            <button
-              key={name}
-              onClick={() => setChosen(name)}
-              className={clsx(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                tab === name
-                  ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                  : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent bg-transparent",
-              )}
-            >
-              {TAB_LABEL[name]}
-            </button>
+        <PanelHeader
+          tabs={view.tabs.map((name) => (
+            <HeaderTab key={name} active={tab === name} onClick={() => setChosen(name)}>{TAB_LABEL[name]}</HeaderTab>
           ))}
-          <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" target="_blank" rel="noopener noreferrer" className={clsx("ml-auto flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110")}>
-            Report an issue
-            <MessageSquareWarning className="w-3 h-3 ml-1" />
-          </a>
-        </div>
+          actions={<ReportIssueLink />}
+        />
       )}
 
       <div className="flex-1 overflow-auto">
