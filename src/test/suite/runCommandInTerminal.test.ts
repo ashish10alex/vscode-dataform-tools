@@ -1,4 +1,7 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
 import { runCommandInTerminal } from '../../utils/vscodeUi';
@@ -58,6 +61,50 @@ suite('runCommandInTerminal', () => {
             assert.strictEqual(second.name, 'dataform');
         } finally {
             second.dispose();
+        }
+    });
+
+    test('the first command in a new terminal is not cancelled by a virtual environment activated in it (#497)', async function () {
+        if (process.platform === 'win32') {
+            this.skip();
+        }
+        this.timeout(30 * 1000);
+        for (const terminal of vscode.window.terminals.filter((t) => t.name === 'dataform')) {
+            terminal.dispose();
+        }
+        for (let i = 0; i < 50 && vscode.window.terminals.some((t) => t.name === 'dataform'); i++) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        // Each command leaves a file when it has run to the end: what the shell reports of command lines is not reliable
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xf-497-'));
+        const activatedFile = path.join(dir, 'activated');
+        const ranFile = path.join(dir, 'ran');
+        // As the Python extension does in every new terminal: Ctrl+C, then the activation, once the shell has started
+        let activated = false;
+        const python = vscode.window.onDidChangeTerminalShellIntegration(({ terminal, shellIntegration }) => {
+            if (terminal.name === 'dataform' && !activated) {
+                activated = true;
+                terminal.sendText('\x03', false);
+                shellIntegration.executeCommand(`sleep 1 && touch '${activatedFile}'`);
+            }
+        });
+        let terminal: vscode.Terminal | undefined;
+        try {
+            // Runs to the end, and after the activation
+            terminal = runCommandInTerminal(`sleep 2 && test -e '${activatedFile}' && touch '${ranFile}'`);
+            for (let i = 0; i < 200 && !fs.existsSync(ranFile); i++) {
+                await new Promise((r) => setTimeout(r, 100));
+            }
+            if (!activated) {
+                // The shell has no shell integration here, so no activation could be imitated
+                this.skip();
+            }
+            assert.ok(fs.existsSync(activatedFile), 'the activation did not run');
+            assert.ok(fs.existsSync(ranFile), 'the command was cancelled, or ran before the activation');
+        } finally {
+            python.dispose();
+            terminal?.dispose();
+            fs.rmSync(dir, { recursive: true, force: true });
         }
     });
 });

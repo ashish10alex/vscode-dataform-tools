@@ -358,7 +358,8 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
         window.createTerminal = (options: unknown) => {
             const terminal = { options: options as vscode.TerminalOptions, sent: [] as string[] };
             terminals.push(terminal);
-            return { show: () => undefined, sendText: (text: string) => terminal.sent.push(text), exitStatus: undefined };
+            // Its shell has started, so a run waits only a moment before it is sent (#497)
+            return { show: () => undefined, sendText: (text: string) => terminal.sent.push(text), exitStatus: undefined, shellIntegration: {} };
         };
         window.showWarningMessage = (message: unknown, options: unknown) => {
             asked.push({ message: String(message), detail: (options as vscode.MessageOptions)?.detail });
