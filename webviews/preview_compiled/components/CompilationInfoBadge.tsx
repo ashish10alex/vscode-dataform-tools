@@ -30,10 +30,11 @@ export function CompilationInfoBadge({ info, mode: selected, recompiling, classN
   const Icon = mode === "api" ? Cloud : Terminal;
   const cliLabel = current && customCliLabel(current);
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 text-xs ${className ?? "text-[var(--vscode-descriptionForeground)]"}`} title={current ? compilationInfoTooltip(current) : undefined}>
+    // A custom CLI's path can be long: it is cut short on the one line, where wrapping would give it a line or two of its own
+    <div className={`flex ${cliLabel ? "min-w-0 [&>*]:flex-shrink-0 [&>*]:whitespace-nowrap" : "flex-wrap"} items-center gap-1.5 text-xs ${className ?? "text-[var(--vscode-descriptionForeground)]"}`} title={current ? compilationInfoTooltip(current) : undefined}>
       <Icon className="w-3 h-3" />
       <span>{current ? compilationInfoParts(current, now).join(" · ") : mode === "api" ? "API" : "CLI"}</span>
-      {cliLabel && <span className="font-mono opacity-80">via {cliLabel}</span>}
+      {cliLabel && <span className="font-mono opacity-80 !flex-shrink min-w-[3rem] truncate">via {cliLabel}</span>}
       {current?.stale && (
         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[var(--vscode-editorWarning-foreground)] border border-[var(--vscode-editorWarning-foreground)]">
           <AlertTriangle className="w-3 h-3" /> outdated
