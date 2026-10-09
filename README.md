@@ -45,6 +45,8 @@ These steps are for a Dataform project. For a dbt project, see [dbt projects](#d
    pip install sqlfluff
    ```
 
+5. **Open the folder that has `workflow_settings.yaml` or `dataform.json`, or a folder above it.** The project of a file is the nearest folder above it that has a settings file, up to the folder you opened. So a Dataform project inside a larger repository works with the repository open. The extension does not look above the folder you opened.
+
 > [!NOTE]
 > Trouble installing or looking for a specific customization ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 
@@ -127,6 +129,17 @@ A dry run or a preview is a BigQuery job, and a job runs in a GCP project. There
 * **In a Dataform project**, a job runs in the default project of your credentials, as it always has.
 
 The settings `gcpProjectId` and `gcpLocation` override both.
+
+### A folder that is both a Dataform and a dbt project
+
+A folder that has `workflow_settings.yaml` or `dataform.json`, and also `dbt_project.yml`, is two projects. There, the file says which project it belongs to:
+
+| File | Project |
+|---|---|
+| `.sqlx` | Dataform |
+| `.sql`, `.csv`, `.py` | dbt |
+| YAML, `.js`, `.json` | The one that compiles an action from it. |
+| A file that neither claims | The `vscode-dataform-tools.backend` setting. Left empty, the extension asks once and remembers the answer for the workspace. |
 
 ### Settings for dbt
 
