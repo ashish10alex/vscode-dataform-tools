@@ -389,7 +389,8 @@ suite('the dbt panel: when something is wrong', () => {
     test('dbt not found: the places looked in, and nothing else', () => {
         const lookedIn = ['the dbtExecutablePath setting (not set)', 'PATH'];
         const view = dbtView(after({ file: MODEL, dbt: null, state: { inProject: true, errors: [], missingTool: { tool: 'dbt', lookedIn } } }));
-        assert.deepStrictEqual([view.page, view.lookedIn, view.tabs, view.status], ['tool missing', lookedIn, [], undefined]);
+        // The Project tab stays: it says where dbt was looked for, and what else is in use
+        assert.deepStrictEqual([view.page, view.lookedIn, view.tabs, view.status], ['tool missing', lookedIn, ['compiled', 'project'], undefined]);
     });
 
     test('a dbt that is too old says so', () => {

@@ -1,4 +1,4 @@
-import type { BigQuerySlice, CompileStatus, DataformBlock, DbtBlock, FileSlice, HostMessage, ProjectSlice, RunStatusSlice } from './panelContract';
+import type { BigQuerySlice, CompileStatus, DataformBlock, DbtBlock, FileSlice, HostMessage, ProjectInfoSlice, ProjectSlice, RunStatusSlice } from './panelContract';
 import { fileModels } from './panelFileView';
 
 /*
@@ -32,6 +32,8 @@ export interface PanelSlices {
     /** Always there, so that a component need not ask whether one has arrived */
     dataform: DataformBlock;
     dbt?: DbtBlock;
+    /** What the Project tab shows. Unset until the tab has been shown, and when the Project on show is another one */
+    projectInfo?: ProjectInfoSlice;
 }
 
 /** The `dataform` block before the host has said anything */
@@ -106,6 +108,8 @@ function withSlice(slices: PanelSlices, message: unknown): PanelSlices {
             return { ...slices, dbt: sent.value };
         case 'run status':
             return { ...slices, run: sent.value };
+        case 'project info':
+            return { ...slices, projectInfo: sent.value ?? undefined };
         case 'dataform': {
             if (!sent.touched) {
                 return { ...slices, dataform: sent.value };

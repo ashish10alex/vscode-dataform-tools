@@ -206,6 +206,11 @@
                 "title": "Show compiled Query in web view"
             },
             {
+                "command": "vscode-dataform-tools.showProjectInfo",
+                "category": "Dataform/dbt",
+                "title": "Show Project Info"
+            },
+            {
                 "command": "vscode-dataform-tools.snoozeCompilation",
                 "category": "Dataform/dbt",
                 "title": "Snooze compilation (5 minutes)"

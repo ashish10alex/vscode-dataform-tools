@@ -1,5 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
+import { ProjectState, activateProject, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
@@ -12,6 +12,7 @@ import { CompileState, actionsNamed, bigQuerySlice, compileStatusSlice, dbtBlock
 import { SliceSender } from '../panel/sliceSender';
 import { affectsCompile } from '../backend';
 import { DBT_COMPILE_FILES, listDbtTargets } from '../backend/dbt';
+import { ProjectInfoWatch } from '../project/projectInfo';
 import { toDryRunResult } from '../bigquery/dryRunService';
 import { ActionId, dryRunScripts, homeAction, slashPath, targetId } from '../shared/compiledGraph';
 import { definitionLine } from '../backend/dbt/locate';
@@ -333,6 +334,20 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             CompiledQueryPanel.centerPanel?.dbtOptionsChanged();
         }
     }));
+    // The Project tab names the settings in effect, and the tools the path settings choose
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('vscode-dataform-tools')) {
+            CompiledQueryPanel.centerPanel?.projectInfoChanged();
+        }
+    }));
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.showProjectInfo', async () => {
+            const project = await projectForInfo();
+            if (project) {
+                await CompiledQueryPanel.showProjectInfo(context.extensionUri, context, project);
+            }
+        }),
+    );
 
 
     const triggerCompilationForDocument = async (document: vscode.TextDocument, spanName: string = 'recompilePreview') => {
@@ -390,6 +405,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         if (root === currentDataformRoot()) {
             CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
         }
+        CompiledQueryPanel.centerPanel?.projectInfoChanged();
     });
 
     recompileActiveDocument = async () => {
@@ -459,6 +475,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     watchGitHead(context, async (repositoryRoot) => {
         // A dbt Project's list of changed actions belongs to the previous branch too
         forgetDbtChanges({ repository: repositoryRoot });
+        // The Project tab names the branch
+        CompiledQueryPanel.centerPanel?.projectInfoChanged();
         const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
         const relative = doc ? path.relative(repositoryRoot, doc.fileName) : '..';
         if (!doc || relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -483,6 +501,36 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     context.subscriptions.push({ dispose: () => clearTimeout(saveFallbackTimer) });
 }
 
+
+/**
+ * The Project "Show Project Info" is about: that of the file in focus, else the active one, which is the only one
+ * when the window has one. With several and none active, the user is asked.
+ */
+async function projectForInfo(): Promise<ProjectState | undefined> {
+    const document = vscode.window.activeTextEditor?.document;
+    if (document?.uri.scheme === 'file') {
+        const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+        if (found.kind === 'project') {
+            return found.project as ProjectState;
+        }
+    }
+    if (projects.active) {
+        return projects.active;
+    }
+    const all = projects.projects;
+    if (all.length === 0) {
+        void vscode.window.showInformationMessage('There is no Dataform or dbt project in this window: no folder here has a workflow_settings.yaml, dataform.json or dbt_project.yml.');
+        return undefined;
+    }
+    const picked = await vscode.window.showQuickPick(
+        all.map((project) => ({ label: projectLabel(project.root) ?? path.basename(project.root), description: project.backend === 'dbt' ? 'dbt' : 'Dataform', detail: project.root, project })),
+        { placeHolder: 'Show the info of which project?' },
+    );
+    if (picked) {
+        activateProject(picked.project);
+    }
+    return picked?.project;
+}
 
 /** The dbt Project a document is in, and the document's path from its root, when it is in one */
 export function dbtFileOf(document: vscode.TextDocument | undefined): { project: ProjectState; file: string } | undefined {
@@ -515,6 +563,7 @@ export class CompiledQueryPanel {
     private renderSeq = 0;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true, renderDataform = true) {
+        this.info = new ProjectInfoWatch(extensionContext, (slice) => this.slices.send('project info', slice));
         CompiledQueryPanel.registerListeners(this, extensionContext);
         // A panel opened on a file of a dbt Project is drawn by `showDbt`
         if (renderDataform) {
@@ -558,11 +607,111 @@ export class CompiledQueryPanel {
     public resendAll() {
         this.slices.resend();
         this.postMessage({ slice: 'dataform', value: this.dataformBlock });
+        if (this.projectTabWanted) {
+            this.postMessage({ event: 'show project info' });
+        }
     }
 
     /** Tells the panel of something that happened once, see `HostEvent` */
     public sendEvent(event: HostEvent) {
         this.postMessage(event);
+    }
+
+    /** What the Project tab shows, looked up while the tab is on show */
+    private readonly info: ProjectInfoWatch;
+    /** The Project the panel was opened for by "Show Project Info" with no file of it in focus. Unset once a file is shown */
+    private projectWithoutFile: ProjectState | undefined;
+    /** The command asked for the Project tab, and the panel has not yet said that it shows it */
+    private projectTabWanted = false;
+
+    /** The Project the panel is about: that of the file on show, else the one it was opened for */
+    private infoProject(): ProjectState | undefined {
+        if (this.dbtOnShow) {
+            return this.dbtOnShow.project;
+        }
+        if (this.projectWithoutFile) {
+            return this.projectWithoutFile;
+        }
+        const root = currentDataformRoot();
+        return root ? projects.find(root, 'dataform') : undefined;
+    }
+
+    /** Something the Project tab shows may have changed: the Project on show, a setting, a compile, the branch */
+    public projectInfoChanged() {
+        if (this.centerPanelDisposed) {
+            return;
+        }
+        this.info.setProject(this.infoProject());
+        this.info.changed();
+    }
+
+    /** Has the panel show its Project tab. Said again when its page begins to listen, until the panel shows the tab */
+    private wantProjectTab() {
+        this.projectTabWanted = true;
+        this.postMessage({ event: 'show project info' });
+    }
+
+    /**
+     * "Show Project Info": opens the panel when there is none, and has it show the Project tab. With a file of the
+     * Project in focus the panel is opened on that file, as ever; without one it is opened on the Project alone.
+     */
+    public static async showProjectInfo(extensionUri: Uri, extensionContext: ExtensionContext, project: ProjectState) {
+        const document = vscode.window.activeTextEditor?.document;
+        const ofDocument = document?.uri.scheme === 'file' ? projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath)) : undefined;
+        const fileInFocus = ofDocument?.kind === 'project' && ofDocument.project === project;
+        let panel = CompiledQueryPanel.centerPanel;
+        if (!panel || panel.centerPanelDisposed) {
+            if (fileInFocus) {
+                await CompiledQueryPanel.getInstance(extensionUri, extensionContext, true, true, undefined);
+            } else {
+                CompiledQueryPanel.openWithoutFile(extensionUri, extensionContext, project);
+            }
+            panel = CompiledQueryPanel.centerPanel;
+        } else {
+            panel.webviewPanel.reveal(undefined, true);
+            if (fileInFocus && panel.infoProject() !== project) {
+                // The panel was hidden while the editor moved to another Project: it shows the file in focus first
+                await CompiledQueryPanel.getInstance(extensionUri, extensionContext, false, true, undefined);
+            } else if (!fileInFocus && panel.infoProject() !== project) {
+                panel.projectWithoutFile = project;
+            }
+        }
+        if (!panel || panel.centerPanelDisposed) {
+            return;
+        }
+        panel.info.setProject(panel.infoProject());
+        panel.wantProjectTab();
+    }
+
+    /** Opens the panel on a Project with no file of it to show: its page says so, and the Project tab has the rest */
+    private static openWithoutFile(extensionUri: Uri, extensionContext: ExtensionContext, project: ProjectState) {
+        const webviewPanel = window.createWebviewPanel(
+            CompiledQueryPanel.viewType,
+            "Compiled Query",
+            { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
+            { enableFindWidget: true, retainContextWhenHidden: true, enableScripts: true, localResourceRoots: [Uri.joinPath(extensionUri, "media"), Uri.joinPath(extensionUri, "dist")] },
+        );
+        const panel = new CompiledQueryPanel(webviewPanel, extensionUri, extensionContext, true, undefined, false, false);
+        CompiledQueryPanel.centerPanel = panel;
+        panel.projectWithoutFile = project;
+        panel.hasPage = true;
+        // The next editor that takes focus is another file than this: the panel then shows it
+        activeEditorFileName = project.root;
+        const noFile: FileSlice = { compile: project.compileNumber, file: '', role: 'not compiled', actions: [], problem: { kind: 'other', message: 'No file of the Project is open. Open one to see its compiled query.' } };
+        if (project.backend === 'dbt' && project.dbtBackend) {
+            const sent = panel.dbtSlices(project, '');
+            webviewPanel.webview.html = panel.pageWith(webviewPanel.webview, { dataform: panel.dataformBlock, project: sent.project, dbt: sent.dbt, compile: sent.compile, file: noFile });
+            return;
+        }
+        const backend = project.dataformBackend;
+        const info = getCompilationInfo(project.root);
+        panel.dataformBlock = { ...panel.dataformBlock, compilationMode: isRemoteMode() ? 'api' : 'cli', snoozeEndTime: snoozeManager.getSnoozeEndTime() ?? null, lastRun: getLastRunView() ?? null, compilationInfo: info ?? undefined };
+        webviewPanel.webview.html = panel.pageWith(webviewPanel.webview, {
+            dataform: panel.dataformBlock,
+            ...(backend ? { project: projectSlice({ root: project.root, label: projectLabel(project.root) }, backend, backend.graph, project.compileNumber) } : {}),
+            compile: compileStatusSlice({ inProject: true, errors: [], ...(info ? { compiled: { compiledAt: info.compiledAt } } : {}) }, project.compileNumber),
+            file: noFile,
+        });
     }
 
     /** What only a Dataform Project has, as the panel was last told */
@@ -601,6 +750,7 @@ export class CompiledQueryPanel {
         if (backend && root) {
             this.slices.send('project', projectSlice({ root, label: projectLabel(root) }, backend, compiledGraph(), compileNumber()));
         }
+        this.projectInfoChanged();
     }
 
     /**
@@ -697,6 +847,7 @@ export class CompiledQueryPanel {
             CompiledQueryPanel.centerPanel = panel;
         }
         panel.dbtOnShow = { project, file };
+        panel.projectWithoutFile = undefined;
         // What BigQuery said of the last file, or of the last compile, is not for this one
         panel.sendDbtBigQuery(++panel.dbtDryRunSeq, project.compileNumber, { results: [], dryRunning: [], tables: {} });
         // Any Dataform render still in flight is no longer wanted
@@ -824,6 +975,7 @@ export class CompiledQueryPanel {
         this.slices.send('compile status', slices.compile);
         this.slices.send('file', slices.file);
         this.slices.send('run status', runStatusSlice(lastDbtRun(shown.project.root), shown.project.compileNumber));
+        this.projectInfoChanged();
     }
 
     /**
@@ -959,7 +1111,7 @@ export class CompiledQueryPanel {
             return;
         }
         const leaving = CompiledQueryPanel.centerPanel;
-        if (leaving?.dbtOnShow) {
+        if (leaving?.dbtOnShow || leaving?.projectWithoutFile?.backend === 'dbt') {
             leaving.dbtOnShow = undefined;
             // Dry runs still out for it are dropped when they arrive
             leaving.dbtDryRunSeq++;
@@ -1043,6 +1195,7 @@ export class CompiledQueryPanel {
 
         panel.webviewPanel.onDidDispose(() => {
                 panel.centerPanelDisposed = true;
+                panel.info.dispose();
                 if(this.centerPanel === panel){
                     this.centerPanel = undefined;
                 }
@@ -1542,6 +1695,19 @@ export class CompiledQueryPanel {
                     vscode.env.openExternal(vscode.Uri.parse(message.url));
                 }
                 return;
+              case 'projectInfoShown':
+                panel.projectTabWanted = false;
+                panel.info.show(panel.infoProject());
+                return;
+              case 'projectInfoHidden':
+                panel.info.hide();
+                return;
+              case 'refreshProjectInfo':
+                panel.info.refresh();
+                return;
+              case 'followInfoLink':
+                await panel.info.follow(message.link);
+                return;
               case 'dbt.setTarget':
               case 'dbt.compileWithHooks':
               case 'dbt.chooseExecutable':
@@ -1583,6 +1749,8 @@ export class CompiledQueryPanel {
             return;
         }
         const renderId = ++this.renderSeq;
+        // A file is being shown: the panel is no longer on a Project alone
+        this.projectWithoutFile = undefined;
         const webview = this.webviewPanel.webview;
         const compilerOptions = extensionConfiguration().get<string>('compilerOptions');
 
