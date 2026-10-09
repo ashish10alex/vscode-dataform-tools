@@ -30,6 +30,20 @@ suite('the editor features of a dbt Project', function () {
     };
     /** The actions BigQuery was asked to dry-run, in order */
     const dryRan: string[] = [];
+    /** By the name of an action, the text of its compiled query that BigQuery is made to find wrong */
+    let wrong: Record<string, string> = {};
+    /**
+     * BigQuery's answer to a dry run. The suite never asks the real one: a machine that has credentials would, and
+     * its answers would come late and differ from those of a machine that has none.
+     */
+    const dryRun = async (sql: string, action: { target: { name: string } }) => {
+        dryRan.push(action.target.name);
+        const needle = wrong[action.target.name];
+        const line = needle ? sql.split('\n').findIndex((text) => text.includes(needle)) + 1 : 0;
+        return line > 0
+            ? { error: { hasError: true, message: `Unrecognized name near ${needle}`, location: { line, column: 3 } } }
+            : { error: { hasError: false, message: '' }, statistics: { totalBytesProcessed: 10 }, schema: { fields: [{ name: 'amount', type: 'NUMERIC' }] } };
+    };
     const dryRunMarkers = (relativePath: string) => vscode.languages.getDiagnostics(vscode.Uri.file(path.join(workspaceFolder!, relativePath)))
         .filter((diagnostic) => diagnostic.source === 'BigQuery dry run')
         .map((diagnostic) => `${diagnostic.range.start.line}:${diagnostic.range.start.character}-${diagnostic.range.end.character} ${diagnostic.message}`);
@@ -112,6 +126,7 @@ suite('the editor features of a dbt Project', function () {
         const extension = vscode.extensions.getExtension(EXTENSION_ID);
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
         api = (await extension.activate())?.__projects;
+        api.setDbtDryRun(dryRun);
         // BigQuery's answers: stg_payments is not built yet
         api.setTableFetch(async (action) => {
             asked.push(action.target.name);
@@ -283,17 +298,11 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         // A save opens the panel unless this is off: with it off, the panel stays closed
         await settings().update('showCompiledQueryInVerticalSplitOnSave', false, vscode.ConfigurationTarget.Global);
         // BigQuery's answers: an error in a line of the model that is as written, one in a generic test, one in a line Jinja built
-        const wrong: Record<string, string> = { fct_orders: 'sum(p.amount)', not_null_fct_orders_order_id: 'select', assert_positive_order_totals: 'fct_orders' };
-        api.setDbtDryRun(async (sql, action) => {
-            dryRan.push(action.target.name);
-            const needle = wrong[action.target.name];
-            const line = needle ? sql.split('\n').findIndex((text) => text.includes(needle)) + 1 : 0;
-            return line > 0
-                ? { error: { hasError: true, message: `Unrecognized name near ${needle}`, location: { line, column: 3 } } }
-                : { error: { hasError: false, message: '' }, statistics: { totalBytesProcessed: 10 }, schema: { fields: [{ name: 'amount', type: 'NUMERIC' }] } };
-        });
+        wrong = { fct_orders: 'sum(p.amount)', not_null_fct_orders_order_id: 'select', assert_positive_order_totals: 'fct_orders' };
+        // Nothing of the dry runs above is kept
+        api.setDbtDryRun(dryRun);
         const document = await show('models/marts/fct_orders.sql');
-        // Nothing is marked for the dry runs of the tests above, which had no credentials to ask BigQuery with
+        // Nothing is marked for the dry runs of the tests above, which BigQuery found nothing wrong in
         assert.deepStrictEqual(dryRunMarkers('models/marts/fct_orders.sql'), []);
         dryRan.length = 0;
         const before = ran().length;
