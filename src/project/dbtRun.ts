@@ -57,7 +57,8 @@ export function needsConfirmation(target: string | undefined, profileDefault: st
 function terminalFor(root: string): vscode.Terminal {
     let terminal = terminals.get(root);
     if (!terminal || terminal.exitStatus !== undefined || !vscode.window.terminals.includes(terminal)) {
-        terminal = createTerminalWhenReady({ name: 'dbt', cwd: root });
+        // On Windows the shell is cmd, whatever the user's own is: the command line is quoted for the one shell
+        terminal = createTerminalWhenReady({ name: 'dbt', cwd: root, ...(process.platform === 'win32' ? { shellPath: process.env.ComSpec || 'cmd.exe' } : {}) });
         terminals.set(root, terminal);
     }
     return terminal;
@@ -103,7 +104,7 @@ export async function runDbt(project: ProjectState, request: RunOptions): Promis
     const terminal = terminalFor(root);
     terminal.show();
     // A new terminal is waited on, so that a virtual environment activated in it does not cancel the run (#497)
-    await sendTextWhenReady(terminal, process.platform === 'win32' ? `cmd /C ${command}` : command);
+    await sendTextWhenReady(terminal, command);
     const run: DbtRun = { request, command, startedAt: Date.now() };
     lastRuns.set(root, run);
     logger.info(`dbt: sent to the terminal, from ${root}: ${command}`);

@@ -11,21 +11,22 @@ function posixQuote(argument: string): string {
 }
 
 /**
- * Double-quotes an argument that PowerShell or cmd would split or treat specially; both read "..." the same. Inside
- * double quotes PowerShell still expands $ and `, and the two disagree on escaping a ", so an argument with those is
- * single-quoted instead, as PowerShell (the default in VS Code's terminal on Windows) reads it.
+ * Quotes an argument for cmd, which is the shell of the terminal a run is sent to on Windows, so that the program
+ * gets it as it is. There are two readers. The program splits its command line by the C runtime's rules: "..." is one
+ * argument, a " inside is written \", and backslashes are doubled before a ". cmd reads the line first, and takes
+ * & | < > ( ) ^ as its own outside quotes; it does not know \", so with a " inside it loses track of what is quoted,
+ * and inside quotes it still expands %NAME%. An argument with a " or a % therefore has every character cmd would
+ * read put after a ^, the quotes included, which leaves cmd nothing to interpret.
  */
 function windowsQuote(argument: string): string {
-    if (/[$`"]/.test(argument)) {
-        return `'${argument.replaceAll("'", "''")}'`;
-    }
-    if (argument !== '' && !/[ \t&|<>^()%!;,=@'{}[\]#]/.test(argument)) {
+    if (argument !== '' && !/[ \t&|<>^()%!;,=@'"{}[\]#]/.test(argument)) {
         return argument;
     }
-    return `"${argument}"`;
+    const quoted = `"${argument.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"`;
+    return /["%]/.test(argument) ? quoted.replace(/[()%!^"<>&|]/g, '^$&') : quoted;
 }
 
-/** The arguments as one command line, quoted for the shells of `platform` */
+/** The arguments as one command line, quoted for the shell a run is sent to on `platform`: a POSIX shell, or cmd on Windows */
 export function shellJoin(args: string[], platform: NodeJS.Platform = process.platform): string {
     return args.map(platform === 'win32' ? windowsQuote : posixQuote).join(' ');
 }

@@ -121,7 +121,10 @@ const ready = new WeakMap<vscode.Terminal, Promise<void>>();
  */
 export function createTerminalWhenReady(options: vscode.TerminalOptions): vscode.Terminal {
     const terminal = vscode.window.createTerminal({ ...options, hideFromUser: true });
-    ready.set(terminal, whenTerminalReady(terminal));
+    // cmd has no shell integration to wait for, and starts at once
+    const waits = defaultTerminalWaits();
+    const isCmd = /(^|[\\/])cmd(\.exe)?$/i.test(options.shellPath ?? '');
+    ready.set(terminal, whenTerminalReady(terminal, vscode.window, isCmd ? { ...waits, shellIntegration: waits.quiet } : waits));
     return terminal;
 }
 

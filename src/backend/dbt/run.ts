@@ -77,7 +77,7 @@ function binaryName(binary: string, root: string): string {
     return relative.includes(path.sep) ? relative : `.${path.sep}${relative}`;
 }
 
-/** The command line that runs `run` from the Project root, quoted so that a user can paste it into a shell */
+/** The command line that runs `run` from the Project root, quoted so that a user can paste it into a shell: on Windows into cmd, which is the shell of the terminal a run is sent to */
 export function dbtRunCommand(request: RunRequest, names: Record<ActionId, DbtName>, platform: NodeJS.Platform = process.platform): string {
     return shellJoin([binaryName(request.options.binary, request.root), ...dbtRunArguments(request, names)], platform);
 }

@@ -73,7 +73,7 @@ suite('the command line of a dbt run', () => {
     test('the command line can be pasted into a shell', () => {
         const request = { root: '/work/shop', options: { binary: 'dbt', target: 'ci', vars: '{"day": "2024-01-01"}' }, run: run({ actions: [`${P}.xf_example.fct_orders`], includeDependencies: true }) };
         assert.strictEqual(dbtRunCommand(request, names, 'darwin'), `dbt build --select +xf_example.marts.fct_orders --target ci --vars '{"day": "2024-01-01"}'`);
-        assert.strictEqual(dbtRunCommand(request, names, 'win32'), `dbt build --select +xf_example.marts.fct_orders --target ci --vars '{"day": "2024-01-01"}'`);
+        assert.strictEqual(dbtRunCommand(request, names, 'win32'), `dbt build --select +xf_example.marts.fct_orders --target ci --vars ^"{\\^"day\\^": \\^"2024-01-01\\^"}^"`);
     });
 
     test("names the Project's own dbt by its path from the root", () => {
@@ -85,8 +85,11 @@ suite('the command line of a dbt run', () => {
         assert.strictEqual(command('dbt'), 'dbt');
     });
 
-    test('quoting, for POSIX shells and for PowerShell and cmd', () => {
+    test('quoting, for POSIX shells and for cmd', () => {
         assert.strictEqual(shellJoin(['dbt', 'a b', "it's", '', 'tag:x', '+a.b+'], 'linux'), `dbt 'a b' 'it'\\''s' '' tag:x +a.b+`);
-        assert.strictEqual(shellJoin(['dbt', 'a b', 'C:\\Program Files\\dbt.exe', '$x', "o'k \"q\"", ''], 'win32'), `dbt "a b" "C:\\Program Files\\dbt.exe" '$x' 'o''k "q"' ""`);
+        assert.strictEqual(shellJoin(['dbt', 'a b', 'C:\\Program Files\\dbt.exe', '$x', "it's", ''], 'win32'), `dbt "a b" "C:\\Program Files\\dbt.exe" $x "it's" ""`);
+        // What cmd would read is put after a ^ when the argument has a quote or a %, and backslashes are doubled before a quote
+        assert.strictEqual(shellJoin(['--vars', '{"run_date": "2026-01-01"}'], 'win32'), `--vars ^"{\\^"run_date\\^": \\^"2026-01-01\\^"}^"`);
+        assert.strictEqual(shellJoin(['a&b', 'a"b&c', '100%', 'C:\\a b\\', 'q\\"'], 'win32'), `"a&b" ^"a\\^"b^&c^" ^"100^%^" "C:\\a b\\\\" ^"q\\\\\\^"^"`);
     });
 });
