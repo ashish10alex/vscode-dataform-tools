@@ -42,9 +42,9 @@ function isRunnableFile(file: string): boolean {
     }
 }
 
-/** The file names a dbt goes by in a directory of executables */
+/** The file names a dbt goes by in a directory of executables. Not `dbt.cmd` or `dbt.bat`: dbt is run without a shell, and Node runs no batch file so */
 function names(platform: NodeJS.Platform): string[] {
-    return platform === 'win32' ? ['dbt.exe', 'dbt.cmd', 'dbt.bat'] : ['dbt'];
+    return platform === 'win32' ? ['dbt.exe'] : ['dbt'];
 }
 
 /** Finds the Project's dbt */

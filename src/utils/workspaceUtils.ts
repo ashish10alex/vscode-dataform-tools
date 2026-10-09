@@ -29,8 +29,10 @@ export function getRelativePath(filePath: string) {
 /**
  * The Project picker: asks which Dataform Project to work in when the window holds several, and makes it the active
  * Project. With one there is nothing to ask. Returns its root.
+ *
+ * @param activate False leaves the active Project as it is, for a caller that only needs the root
  */
-export async function selectWorkspaceFolder(): Promise<string | undefined> {
+export async function selectWorkspaceFolder(activate = true): Promise<string | undefined> {
     const dataformProjects = projects.projects.filter((project) => project.backend === 'dataform');
     if (dataformProjects.length === 0) {
         return undefined;
@@ -44,7 +46,9 @@ export async function selectWorkspaceFolder(): Promise<string | undefined> {
         }
         picked = selection.project;
     }
-    activateProject(picked);
+    if (activate) {
+        activateProject(picked);
+    }
     workspaceFolder = picked.root;
     return workspaceFolder;
 }
@@ -87,7 +91,8 @@ export async function getWorkspaceFolder(options: { explain?: boolean } = {}): P
     if (workspaceFolder && projects.find(workspaceFolder, 'dataform')) {
         return workspaceFolder;
     }
-    workspaceFolder = await selectWorkspaceFolder();
+    // A dbt Project that is active stays so: its file has focus
+    workspaceFolder = await selectWorkspaceFolder(!active);
     if (workspaceFolder === undefined) {
         logger.debug('No Dataform Project to work in');
         if (options.explain) {

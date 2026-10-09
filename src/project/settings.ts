@@ -11,8 +11,12 @@ import { projectFileSettings, SETTINGS_SECTION, settingsFileOf } from './setting
 function projectBelowAFolder(scope: vscode.Uri | undefined): string | undefined {
     let root: string | undefined;
     if (scope?.scheme === 'file') {
-        const found = projects.forFile(scope.fsPath);
-        root = found.kind === 'project' ? found.project.root : found.kind === 'ambiguous' ? found.candidates[0].root : undefined;
+        // A known Project's root, as most callers give, needs no look at the directories above it
+        root = projects.projects.find((project) => project.root === scope.fsPath)?.root;
+        if (!root) {
+            const found = projects.forFile(scope.fsPath);
+            root = found.kind === 'project' ? found.project.root : found.kind === 'ambiguous' ? found.candidates[0].root : undefined;
+        }
     } else if (!scope) {
         root = projects.active?.root;
     }

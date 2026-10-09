@@ -238,7 +238,13 @@ class Reader {
 
     read(): DbtGraph {
         const entries = this.entries();
-        const targets = new Map(entries.map(({ node, target }) => [node.unique_id, target]));
+        // The first with an ID wins, as its action does: a disabled definition comes after the one dbt builds
+        const targets = new Map<string, Target>();
+        for (const { node, target } of entries) {
+            if (!targets.has(node.unique_id)) {
+                targets.set(node.unique_id, target);
+            }
+        }
 
         const names: Record<ActionId, DbtName> = {};
         const actions = entries.map(({ node, kind, target, disabled }) => {

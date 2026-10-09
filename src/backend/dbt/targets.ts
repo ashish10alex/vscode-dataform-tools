@@ -50,12 +50,36 @@ function readYaml(file: string): Record<string, unknown> | undefined {
  * the user type a name.
  */
 export function listDbtTargets(root: string, options: { profilesDir?: string; env?: NodeJS.ProcessEnv; homeDir?: string } = {}): DbtTargets | undefined {
-    const profile = readYaml(path.join(root, 'dbt_project.yml'))?.profile;
+    const projectFile = path.join(root, 'dbt_project.yml');
+    // dbt takes the first profiles.yml it finds, and does not look further when the profile is not in it
+    const profilesFile = profilesDirectories(root, options).map((dir) => path.join(dir, 'profiles.yml')).find((file) => fs.existsSync(file));
+    const stamp = `${stampOf(projectFile)}\n${profilesFile ? stampOf(profilesFile) : ''}`;
+    const known = held.get(root);
+    if (known?.stamp === stamp) {
+        return known.targets;
+    }
+    const targets = readDbtTargets(projectFile, profilesFile);
+    held.set(root, { stamp, targets });
+    return targets;
+}
+
+/** By Project root: the dbt targets as last read, and the state of the two files they were read from. Read again only when a file has changed */
+const held = new Map<string, { stamp: string; targets: DbtTargets | undefined }>();
+
+function stampOf(file: string): string {
+    try {
+        const stat = fs.statSync(file);
+        return `${file} ${stat.size} ${stat.mtimeMs}`;
+    } catch {
+        return file;
+    }
+}
+
+function readDbtTargets(projectFile: string, profilesFile: string | undefined): DbtTargets | undefined {
+    const profile = readYaml(projectFile)?.profile;
     if (typeof profile !== 'string' || profile === '') {
         return undefined;
     }
-    // dbt takes the first profiles.yml it finds, and does not look further when the profile is not in it
-    const profilesFile = profilesDirectories(root, options).map((dir) => path.join(dir, 'profiles.yml')).find((file) => fs.existsSync(file));
     const entry = profilesFile ? readYaml(profilesFile)?.[profile] : undefined;
     if (!profilesFile || !entry || typeof entry !== 'object') {
         return undefined;

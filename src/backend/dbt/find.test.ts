@@ -60,7 +60,10 @@ suite('finding dbt', () => {
     test('on Windows a venv keeps its dbt in Scripts, and dbt has an extension', () => {
         const scripts = path.join(root, '.venv', 'Scripts', 'dbt.exe');
         assert.strictEqual(search([scripts], { platform: 'win32' }).found?.path, scripts);
-        const shim = path.join('C:\\tools', 'dbt.cmd');
-        assert.strictEqual(search([shim], { platform: 'win32', env: { Path: 'C:\\Windows;C:\\tools' } }).found?.foundBy, 'PATH');
+        const onPath = path.join('C:\\tools', 'dbt.exe');
+        assert.strictEqual(search([onPath], { platform: 'win32', env: { Path: 'C:\\Windows;C:\\tools' } }).found?.foundBy, 'PATH');
+        // A batch file cannot be run without a shell, so it is passed over for a dbt.exe further along
+        const shim = path.join('C:\\shims', 'dbt.cmd');
+        assert.strictEqual(search([shim, onPath], { platform: 'win32', env: { Path: 'C:\\shims;C:\\tools' } }).found?.path, onPath);
     });
 });

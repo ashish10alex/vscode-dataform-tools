@@ -89,7 +89,7 @@ export function executableIsAvailable(name: string, showErrorOnNotFound: boolean
 /** The Dataform CLI to run for a workspace: `<workspace>/node_modules/.bin/dataform` when dataformCliScope is `local`, otherwise the one found on PATH or in common locations. */
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
-    const dataformCliScope: string | undefined = extensionConfiguration().get('dataformCliScope');
+    const dataformCliScope: string | undefined = extensionConfiguration(vscode.Uri.file(workspaceFolder)).get('dataformCliScope');
     logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
 
     if (dataformCliScope === 'local') {

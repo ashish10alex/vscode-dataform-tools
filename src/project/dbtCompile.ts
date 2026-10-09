@@ -214,9 +214,10 @@ async function compileIfNeeded(project: ProjectState, dbtBackend: NonNullable<Pr
         return;
     }
     if (reason !== 'save' && !needsCompile(project, file, options)) {
-        // What a tool that has since been found or fixed left behind is no longer true
-        if (previous.missingTool || previous.unsupportedVersion) {
-            setState(root, { ...previous, missingTool: undefined, unsupportedVersion: undefined });
+        // What a tool that has since been found or fixed left behind is no longer true, and neither is a compile
+        // that this request ended
+        if (previous.missingTool || previous.unsupportedVersion || previous.compiling) {
+            setState(root, { ...previous, missingTool: undefined, unsupportedVersion: undefined, compiling: undefined });
         }
         return;
     }

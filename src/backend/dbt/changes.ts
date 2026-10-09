@@ -87,20 +87,30 @@ function settingsOf(resource: Compared): string {
 function macroDiffers(base: DbtManifest, head: DbtManifest): (id: string) => boolean {
     const baseMacros = (base.macros ?? {}) as Record<string, ComparedMacro | undefined>;
     const headMacros = (head.macros ?? {}) as Record<string, ComparedMacro | undefined>;
-    const known = new Map<string, boolean>();
-    const differs = (id: string): boolean => {
-        const cached = known.get(id);
-        if (cached !== undefined) {
-            return cached;
+    // Those whose own text differs, then every macro that calls one that differs: macros that call each other end
+    const differing = new Set<string>();
+    const callers = new Map<string, string[]>();
+    for (const [id, macro] of Object.entries(headMacros)) {
+        if (!macro) {
+            continue;
         }
-        // Until it is known, so that macros that call each other end
-        known.set(id, false);
-        const macro = headMacros[id];
-        const result = !!macro && (baseMacros[id]?.macro_sql !== macro.macro_sql || (macro.depends_on?.macros ?? []).some(differs));
-        known.set(id, result);
-        return result;
-    };
-    return differs;
+        if (baseMacros[id]?.macro_sql !== macro.macro_sql) {
+            differing.add(id);
+        }
+        for (const called of macro.depends_on?.macros ?? []) {
+            callers.set(called, [...(callers.get(called) ?? []), id]);
+        }
+    }
+    const reached = [...differing];
+    for (let id = reached.pop(); id !== undefined; id = reached.pop()) {
+        for (const caller of callers.get(id) ?? []) {
+            if (!differing.has(caller)) {
+                differing.add(caller);
+                reached.push(caller);
+            }
+        }
+    }
+    return (id) => differing.has(id);
 }
 
 /**
