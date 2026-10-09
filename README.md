@@ -76,7 +76,7 @@ From version 2.0.0 the extension works in a dbt project on BigQuery, beside Data
    gcloud auth application-default login
    ```
 
-3. **Open the folder that has `dbt_project.yml` at its root.** The extension looks for a project at the root of each workspace folder, not in sub-folders. For a dbt project inside a larger repository, open the project's own folder, or add it to the workspace with **File > Add Folder to Workspace**.
+3. **Open the folder that has `dbt_project.yml`, or a folder above it.** The project of a file is the nearest folder above it that has a settings file, up to the folder you opened. So a dbt project inside a larger repository works with the repository open. The extension does not look above the folder you opened.
 
 The extension looks for dbt in this order and uses the first it finds: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, then common install directories. The panel's **Project** tab says which dbt is in use and how it was found.
 

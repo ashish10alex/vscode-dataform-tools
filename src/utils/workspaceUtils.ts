@@ -6,9 +6,16 @@ import { activateProject, detectProjects, projects } from '../project';
 
 const supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
+/** The root of the Project `filePath` is in, whichever its Backend */
+function projectRootOf(filePath: string): string | undefined {
+    const found = projects.forFile(filePath);
+    return found.kind === 'project' ? found.project.root : found.kind === 'ambiguous' ? found.candidates[0].root : undefined;
+}
+
+/** The path of a file from the root of its Project, which is how a compile result names it */
 export function getRelativePath(filePath: string) {
-    const fileUri = vscode.Uri.file(filePath);
-    let relativePath = vscode.workspace.asRelativePath(fileUri);
+    const root = projectRootOf(filePath);
+    let relativePath = root ? path.relative(root, filePath) : vscode.workspace.asRelativePath(vscode.Uri.file(filePath));
     if (isRunningOnWindows) {
         relativePath = path.win32.normalize(relativePath);
     }
@@ -84,7 +91,7 @@ export async function getWorkspaceFolder(options: { explain?: boolean } = {}): P
     if (workspaceFolder === undefined) {
         logger.debug('No Dataform Project to work in');
         if (options.explain) {
-            vscode.window.showInformationMessage('No Dataform project found. Open a folder that has workflow_settings.yaml or dataform.json at its root.');
+            vscode.window.showInformationMessage('No Dataform project found. Open a folder that has workflow_settings.yaml or dataform.json in it or in one of its sub-folders.');
         }
     }
     return workspaceFolder;
@@ -94,29 +101,10 @@ export function isDataformWorkspace(workspacePath: string) {
     return detectProjects(workspacePath).some((project) => project.backend === 'dataform');
 }
 
+/** The files of the Project at `workspaceFolder` that end in `extension`, as paths from its root */
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
-    let trimInitial = false;
-    const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
-    const workspaces = vscode.workspace.workspaceFolders;
-    if(workspaces && workspaces?.length > 1){
-        trimInitial = true;
-    }
-    let files = await vscode.workspace.findFiles(globPattern);
-    const fileList = files.map((file) => {
-        if(trimInitial){
-            const pathParts = vscode.workspace.asRelativePath(file).split(path.posix.sep);
-            if(isRunningOnWindows){
-            return path.win32.normalize(pathParts.slice(1).join(path.win32.sep));
-            }
-            return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
-        }
-         const relativePath = vscode.workspace.asRelativePath(file);
-         if(isRunningOnWindows){
-             return path.win32.normalize(relativePath);
-         }
-         return relativePath;
-    });
-    return fileList;
+    const files = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/*${extension}`));
+    return files.map((file) => path.relative(workspaceFolder, file.fsPath));
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {

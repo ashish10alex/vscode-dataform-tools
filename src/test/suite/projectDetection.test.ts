@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import { backendForSharedRootFile, detectProjects, detectWorkspaceProjects, projectForFile, Project } from '../../project/detection';
+import { backendForSharedRootFile, detectProjects, detectProjectsAbove, detectWorkspaceProjects, projectForFile, Project } from '../../project/detection';
 
 suite('project detection', () => {
     let tmp: string;
@@ -152,6 +152,33 @@ suite('project detection', () => {
             const inner: Project = { root: path.join(path.sep, 'repo', 'transform'), backend: 'dbt' };
             assert.deepStrictEqual(projectForFile([outer, inner], path.join(inner.root, 'models', 'orders.sql')), { kind: 'project', project: inner });
             assert.deepStrictEqual(projectForFile([outer, inner], path.join(outer.root, 'definitions', 'orders.sqlx')), { kind: 'project', project: outer });
+        });
+    });
+
+    suite('detectProjectsAbove', () => {
+        test('the nearest directory above the file with a settings file is its Project', () => {
+            const repo = folder('mono', 'README.md', 'transform/dbt_project.yml', 'transform/models/staging/orders.sql', 'pipelines/workflow_settings.yaml');
+            assert.deepStrictEqual(detectProjectsAbove(path.join(repo, 'transform', 'models', 'staging', 'orders.sql'), repo), [{ root: path.join(repo, 'transform'), backend: 'dbt' }]);
+            assert.deepStrictEqual(detectProjectsAbove(path.join(repo, 'pipelines', 'definitions', 'orders.sqlx'), repo), [{ root: path.join(repo, 'pipelines'), backend: 'dataform' }]);
+            assert.deepStrictEqual(detectProjectsAbove(path.join(repo, 'README.md'), repo), []);
+        });
+
+        test('a Project inside another wins for its own files', () => {
+            const repo = folder('nested', 'workflow_settings.yaml', 'dbt/dbt_project.yml');
+            assert.deepStrictEqual(detectProjectsAbove(path.join(repo, 'dbt', 'models', 'orders.sql'), repo), [{ root: path.join(repo, 'dbt'), backend: 'dbt' }]);
+            assert.deepStrictEqual(detectProjectsAbove(path.join(repo, 'definitions', 'orders.sqlx'), repo), [{ root: repo, backend: 'dataform' }]);
+        });
+
+        test('never looks above the workspace folder', () => {
+            const project = folder('too-deep', 'dbt_project.yml', 'models/orders.sql');
+            assert.deepStrictEqual(detectProjectsAbove(path.join(project, 'models', 'orders.sql'), path.join(project, 'models')), []);
+        });
+
+        test('a file of an installed package belongs to the Project that installed it', () => {
+            const project = folder('with-packages', 'dbt_project.yml', 'dbt_packages/dbt_utils/dbt_project.yml', 'node_modules/@dataform/core/dataform.json');
+            const own = [{ root: project, backend: 'dbt' }];
+            assert.deepStrictEqual(detectProjectsAbove(path.join(project, 'dbt_packages', 'dbt_utils', 'macros', 'sql', 'star.sql'), project), own);
+            assert.deepStrictEqual(detectProjectsAbove(path.join(project, 'node_modules', '@dataform', 'core', 'index.js'), project), own);
         });
     });
 });

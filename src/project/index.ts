@@ -5,7 +5,7 @@ import { CompiledGraph, actionsInFile } from '../shared/compiledGraph';
 import type { DataformCompiledJson } from '../types';
 import { CompiledIndices, emptyIndices } from '../utils/compiledJsonIndex';
 import { createDataformBackend } from './dataformBackend';
-import { BACKENDS, BackendName, FileBackendHints } from './detection';
+import { BACKENDS, BackendName, FileBackendHints, isWithin, SETTINGS_FILES } from './detection';
 import { ProjectRegistry, ProjectState } from './registry';
 
 export { ProjectRegistry, ProjectState } from './registry';
@@ -100,36 +100,88 @@ async function askForBackend(filePath: string) {
     }
 }
 
+/**
+ * What the panel calls the Project at `root`, where the window does not make plain which one it is: its root from
+ * the workspace folder when it is below one, its folder's name when the window has several Projects.
+ */
+export function projectLabel(root: string): string | undefined {
+    const folder = workspaceFolderPaths().filter((candidate) => isWithin(candidate, root)).sort((a, b) => b.length - a.length)[0];
+    const below = folder ? path.relative(folder, root).split(path.sep).join('/') : '';
+    if (below) {
+        return below;
+    }
+    return projects.projects.length > 1 ? path.basename(root) : undefined;
+}
+
 let knownProjects = '';
 
 /**
- * Looks for Projects at the workspace-folder roots again and notes which one the editor in focus belongs to.
- * Cheap (a few `stat` calls per folder), so it runs on every editor switch: that is how a settings file created or
- * deleted since the last look is noticed. A file watcher for them is not used, as it shifts when other extensions'
- * file events arrive and made the git state be computed twice on some saves.
+ * Looks at the workspace-folder roots and at the Projects known below them again, and notes which one the editor in
+ * focus belongs to, by the settings file nearest above its file. Cheap (a few `stat` calls per directory), so it runs
+ * on every editor switch: that is how a settings file created or deleted since the last look is noticed. A file
+ * watcher for them is not used, as it shifts when other extensions' file events arrive and made the git state be
+ * computed twice on some saves.
  */
 function syncProjects(editor: vscode.TextEditor | undefined = vscode.window.activeTextEditor) {
     const before = projects.active;
-    const found = projects.refresh(workspaceFolderPaths());
-    const description = found.length === 0 ? 'none' : found.map((project) => `${project.backend} at ${project.root}`).join(', ');
-    if (description !== knownProjects) {
-        knownProjects = description;
-        logger.debug(`Projects: ${description}`);
-        // The Project picker is only worth listing when there is something to pick
-        vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.multipleProjects', found.length > 1);
-        projectsChanged.fire();
-    }
+    projects.refresh(workspaceFolderPaths());
+    let ambiguous: string | undefined;
     if (editor?.document.uri.scheme === 'file') {
         const file = editor.document.uri.fsPath;
         const hints = fileBackendHints(file);
         projects.noteActiveFile(file, hints);
         if (projects.forFile(file, hints).kind === 'ambiguous') {
-            void askForBackend(file);
+            ambiguous = file;
         }
+    }
+    noteProjects();
+    if (ambiguous) {
+        void askForBackend(ambiguous);
     }
     syncBackendContext();
     if (projects.active !== before) {
         activeProjectChanged.fire(projects.active);
+    }
+}
+
+/** Says so when the window's Projects are no longer the ones last noted */
+function noteProjects() {
+    const found = projects.projects;
+    const description = found.length === 0 ? 'none' : found.map((project) => `${project.backend} at ${project.root}`).join(', ');
+    if (description === knownProjects) {
+        return;
+    }
+    knownProjects = description;
+    logger.debug(`Projects: ${description}`);
+    // The Project picker is only worth listing when there is something to pick
+    vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.multipleProjects', found.length > 1);
+    projectsChanged.fire();
+}
+
+/** Never searched for settings files: what a tool installs or builds, where a settings file is not a Project of the user's */
+const NOT_SEARCHED = ['**/node_modules/**', '**/dbt_packages/**', '**/target/**', '**/.venv/**'];
+
+/** The globs a `files.exclude` or `search.exclude` setting turns on. One with braces cannot be put inside another glob */
+function excludedBySetting(section: 'files' | 'search'): string[] {
+    const globs = vscode.workspace.getConfiguration(section).get<Record<string, unknown>>('exclude') ?? {};
+    return Object.keys(globs).filter((glob) => globs[glob] === true && !/[{}]/.test(glob));
+}
+
+/**
+ * Searches the workspace once for the settings files of Projects below the workspace-folder roots, so that a Project
+ * is known before one of its files is opened. Runs in VS Code's search process, not on the path of an editor switch.
+ */
+async function searchForProjects() {
+    const settingsFiles = Object.values(SETTINGS_FILES).flat();
+    const exclude = `{${[...new Set([...NOT_SEARCHED, ...excludedBySetting('files'), ...excludedBySetting('search')])].join(',')}}`;
+    try {
+        const found = await vscode.workspace.findFiles(`**/{${settingsFiles.join(',')}}`, exclude);
+        const roots = [...new Set(found.filter((uri) => uri.scheme === 'file').map((uri) => path.dirname(uri.fsPath)))].sort();
+        if (projects.discover(roots)) {
+            syncProjects();
+        }
+    } catch (error) {
+        logger.debug(`Could not search the workspace for Projects: ${error}`);
     }
 }
 
@@ -147,6 +199,7 @@ export function activateProject(project: ProjectState) {
 export function initProjects(context: vscode.ExtensionContext) {
     workspaceState = context.workspaceState;
     syncProjects();
+    void searchForProjects();
     context.subscriptions.push(
         activeProjectChanged,
         vscode.workspace.onDidChangeConfiguration((event) => {
@@ -154,7 +207,7 @@ export function initProjects(context: vscode.ExtensionContext) {
                 syncProjects();
             }
         }),
-        vscode.workspace.onDidChangeWorkspaceFolders(() => syncProjects()),
+        vscode.workspace.onDidChangeWorkspaceFolders(() => { syncProjects(); void searchForProjects(); }),
         vscode.window.onDidChangeActiveTextEditor((editor) => syncProjects(editor)),
     );
 }

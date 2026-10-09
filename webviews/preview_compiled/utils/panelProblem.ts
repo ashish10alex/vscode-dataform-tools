@@ -18,7 +18,7 @@ export interface PanelProblem {
 }
 
 /** What the panel says of a file in no Project */
-const NOT_IN_A_PROJECT = "This file is not in a Dataform project. Hint: open a folder that has workflow_settings.yaml or dataform.json at its root";
+const NOT_IN_A_PROJECT = "This file is not in a Dataform or dbt project. Hint: it has to be in or below a folder that has workflow_settings.yaml, dataform.json or dbt_project.yml";
 
 const FILE_PROBLEM: Record<FileProblem["kind"], CompilationErrorType> = {
   "unsupported file type": CompilationErrorType.UNSUPPORTED_FILE_TYPE,

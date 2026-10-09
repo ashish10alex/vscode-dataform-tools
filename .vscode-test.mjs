@@ -27,6 +27,14 @@ export default defineConfig([
 		mocha: { timeout: 60 * 1000 },
 	},
 	{
+		// The extension in a workspace whose Projects are below its folder, see src/nestedWorkspace
+		label: 'nested',
+		files: 'out/src/nestedWorkspace/**/*.nested.js',
+		workspaceFolder: 'src/test/fixtures/xf-examples/projects',
+		launchArgs,
+		mocha: { timeout: 60 * 1000 },
+	},
+	{
 		// `just bench`: opens the generated bench project, see src/bench
 		label: 'bench',
 		files: 'out/src/bench/**/*.bench.js',

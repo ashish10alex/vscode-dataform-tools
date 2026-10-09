@@ -5,6 +5,7 @@ import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { ModifierSwitch } from "./ModifierSwitch";
+import { ProjectLabel } from "./ProjectLabel";
 import { RunChangedButton } from "./RunChangedButton";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
@@ -995,7 +996,8 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
               {TAB_LABEL[name]}
             </button>
           ))}
-          <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110">
+          <ProjectLabel project={state.project} className="ml-auto" />
+          <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" target="_blank" rel="noopener noreferrer" className={clsx(!state.project?.label && "ml-auto", "flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110")}>
             Report an issue
             <MessageSquareWarning className="w-3 h-3 ml-1" />
           </a>

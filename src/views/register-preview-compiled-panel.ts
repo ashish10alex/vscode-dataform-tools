@@ -1,5 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projects, requiredTools } from '../project';
+import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
@@ -579,7 +579,7 @@ export class CompiledQueryPanel {
         const backend = dataformBackend();
         const root = currentDataformRoot();
         if (backend && root) {
-            this.slices.send('project', projectSlice({ root }, backend, compiledGraph(), compileNumber()));
+            this.slices.send('project', projectSlice({ root, label: projectLabel(root) }, backend, compiledGraph(), compileNumber()));
         }
     }
 
@@ -781,7 +781,7 @@ export class CompiledQueryPanel {
             changedActions: dbtChangesView(project.root),
         }, project.compileNumber);
         return {
-            project: projectSlice({ root: project.root }, backend, last?.graph, project.compileNumber),
+            project: projectSlice({ root: project.root, label: projectLabel(project.root) }, backend, last?.graph, project.compileNumber),
             // While a compile for another file runs, the panel names the file on show, not that one
             compile: compileStatusSlice(state.compiling ? { ...state, compiling: { ...state.compiling, file } } : state, project.compileNumber),
             file: shown,

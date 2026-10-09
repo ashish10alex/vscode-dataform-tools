@@ -45,6 +45,12 @@ interface Slice {
 export interface ProjectSlice extends Slice {
     /** Absolute path of the Project's root */
     root: string;
+    /**
+     * What to call the Project where the window does not make that plain: its root from the workspace folder when it
+     * is below one, its folder's name when the window has several Projects. Absent for the one Project of a window
+     * at a workspace-folder root.
+     */
+    label?: string;
     backend: BackendName;
     /** Which optional parts the Backend has. The panel hides the controls of a part that is absent */
     parts: Record<BackendPart, boolean>;

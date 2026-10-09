@@ -248,6 +248,20 @@ export class GitService {
         }
     }
 
+    /** The top directory of the git repository the Project is in, or undefined when it is in none */
+    public async getTopLevel(): Promise<string | undefined> {
+        try {
+            return await this.execCmd("git rev-parse --show-toplevel") || undefined;
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    /** The directory git is run in: the root of the Project */
+    public get root(): string {
+        return this.projectRoot;
+    }
+
     public async getHeadSha(): Promise<string | undefined> {
         try {
             return await this.execCmd("git rev-parse HEAD") || undefined;

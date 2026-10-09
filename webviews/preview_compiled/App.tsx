@@ -25,11 +25,14 @@ import { panelProblem } from './utils/panelProblem';
 import { fileView } from './utils/fileView';
 import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
 import { DbtPanel } from './components/DbtPanel';
+import { ProjectLabel } from './components/ProjectLabel';
 
 function HeaderRightActions({
+  project,
   snoozeEndTime,
   onStartSnooze,
 }: {
+  project?: PanelSlices['project'];
   snoozeEndTime?: number | null;
   onStartSnooze?: () => void;
 }) {
@@ -37,6 +40,7 @@ function HeaderRightActions({
 
   return (
     <div className="flex items-center space-x-3">
+      <ProjectLabel project={project} />
       {!isSnoozed && onStartSnooze && (
         <button
           onClick={onStartSnooze}
@@ -249,7 +253,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
               </>
               )}
             </div>
-            <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
+            <HeaderRightActions project={state.project} snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </>
         )}
 
@@ -261,7 +265,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
             </h2>
             <div className="flex-grow"></div>
 
-            <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
+            <HeaderRightActions project={state.project} snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </div>
         )}
       </div>
