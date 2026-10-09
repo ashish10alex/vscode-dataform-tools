@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import path from 'path';
 import { getWorkspaceFolder } from './workspaceUtils';
+import { createTerminalWhenReady, sendTextWhenReady } from './terminalReady';
 
 export function showLoadingProgress<T extends any[]>(
     title: string,
@@ -121,16 +122,17 @@ let cliTerminal: vscode.Terminal | undefined;
 /**
  * Runs a Dataform CLI command in the extension's own "dataform" terminal, made on first use and
  * again if the user closes it. Never the active terminal: that may be running another program,
- * such as a TUI, which would read the command as keystrokes.
+ * such as a TUI, which would read the command as keystrokes. No virtual environment is activated in the terminal, and
+ * the first command in a new terminal waits until the terminal is ready, so that nothing cancels the command (#497).
  */
 export function runCommandInTerminal(command: string): vscode.Terminal {
     if(isRunningOnWindows){
         command = "cmd /C " + command;
     }
     if (!cliTerminal || cliTerminal.exitStatus !== undefined || !vscode.window.terminals.includes(cliTerminal)) {
-        cliTerminal = vscode.window.createTerminal('dataform');
+        cliTerminal = createTerminalWhenReady({ name: 'dataform' });
     }
-    cliTerminal.sendText(command);
+    sendTextWhenReady(cliTerminal, command);
     cliTerminal.show();
     return cliTerminal;
 }

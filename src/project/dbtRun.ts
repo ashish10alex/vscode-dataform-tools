@@ -4,6 +4,7 @@ import { logger } from '../logger';
 import type { RunOptions } from '../shared/compiledGraph';
 import { dbtOptions, dbtSettings } from './dbtCompile';
 import type { ProjectState } from './registry';
+import { createTerminalWhenReady, sendTextWhenReady } from '../utils/terminalReady';
 
 /*
  * Runs of a dbt Project (xf#54): always `dbt build`, in a terminal of the extension, from the Project root, with the
@@ -56,7 +57,7 @@ export function needsConfirmation(target: string | undefined, profileDefault: st
 function terminalFor(root: string): vscode.Terminal {
     let terminal = terminals.get(root);
     if (!terminal || terminal.exitStatus !== undefined || !vscode.window.terminals.includes(terminal)) {
-        terminal = vscode.window.createTerminal({ name: 'dbt', cwd: root });
+        terminal = createTerminalWhenReady({ name: 'dbt', cwd: root });
         terminals.set(root, terminal);
     }
     return terminal;
@@ -101,7 +102,8 @@ export async function runDbt(project: ProjectState, request: RunOptions): Promis
     }
     const terminal = terminalFor(root);
     terminal.show();
-    terminal.sendText(process.platform === 'win32' ? `cmd /C ${command}` : command);
+    // A new terminal is waited on, so that a virtual environment activated in it does not cancel the run (#497)
+    await sendTextWhenReady(terminal, process.platform === 'win32' ? `cmd /C ${command}` : command);
     const run: DbtRun = { request, command, startedAt: Date.now() };
     lastRuns.set(root, run);
     logger.info(`dbt: sent to the terminal, from ${root}: ${command}`);
