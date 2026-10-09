@@ -122,8 +122,8 @@ let cliTerminal: vscode.Terminal | undefined;
 /**
  * Runs a Dataform CLI command in the extension's own "dataform" terminal, made on first use and
  * again if the user closes it. Never the active terminal: that may be running another program,
- * such as a TUI, which would read the command as keystrokes. The first command in a new terminal waits until the
- * terminal is ready, so that a virtual environment activated in it does not cancel the command (#497).
+ * such as a TUI, which would read the command as keystrokes. No virtual environment is activated in the terminal, and
+ * the first command in a new terminal waits until the terminal is ready, so that nothing cancels the command (#497).
  */
 export function runCommandInTerminal(command: string): vscode.Terminal {
     if(isRunningOnWindows){

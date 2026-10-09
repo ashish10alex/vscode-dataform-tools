@@ -5,6 +5,12 @@ import * as vscode from 'vscode';
  * workspace's virtual environment in every new terminal, by sending Ctrl+C and then `source .../activate`, and when
  * that arrives after our command has started, the Ctrl+C stops it (#497). So the first command waits until the shell
  * has started and what other extensions run in a new terminal has finished.
+ *
+ * The wait alone is not enough. VS Code holds a command given to `shellIntegration.executeCommand` before the first
+ * prompt until the shell integration timeout has passed (5s by default), and tells nothing of it meanwhile: the
+ * activation then arrives seconds after the shell has started. So the terminals are also made with `hideFromUser`,
+ * which the Python extensions take as a terminal that is not the user's, and do not activate. Our commands need no
+ * virtual environment: they name their program by its full path.
  */
 
 /** The window events a terminal is waited on with. Tests pass their own */
@@ -109,9 +115,12 @@ export function whenTerminalReady(
 /** When each terminal can take a command. A terminal that is not here is ready */
 const ready = new WeakMap<vscode.Terminal, Promise<void>>();
 
-/** Makes a terminal, whose commands wait until it is ready */
+/**
+ * Makes a terminal, whose commands wait until it is ready. No virtual environment is activated in it. It is not
+ * shown until `show()` is called on it.
+ */
 export function createTerminalWhenReady(options: vscode.TerminalOptions): vscode.Terminal {
-    const terminal = vscode.window.createTerminal(options);
+    const terminal = vscode.window.createTerminal({ ...options, hideFromUser: true });
     ready.set(terminal, whenTerminalReady(terminal));
     return terminal;
 }
