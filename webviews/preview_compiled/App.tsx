@@ -298,8 +298,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span>
                   {state.dataform.dataformCoreVersion
-                    ? `Installing @dataform/core@${state.dataform.dataformCoreVersion} and compiling...`
-                    : `Compiling Dataform...`}
+                    ? `Installing @dataform/core@${state.dataform.dataformCoreVersion} and compiling${state.project?.label ? ` ${state.project.label}` : ''}...`
+                    : `Compiling Dataform${state.project?.label ? ` project ${state.project.label}` : ''}...`}
                 </span>
                 <span
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono rounded bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border border-[var(--vscode-widget-border)]"

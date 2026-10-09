@@ -20,7 +20,7 @@ import type { PanelSlices } from '../shared/panelState';
 import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
 import * as vscode from 'vscode';
-import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
+import { snoozeManager, getFileNameFromDocument, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runActions } from "../runActions";
@@ -305,6 +305,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 return;
             }
             const endSwitchSpan = perfStart('switchPreview');
+            // The first file shown of a Project waits for the Project's first compile: the panel says so, and takes down what it shows of the Project before
+            const ofFile = projects.forFile(editor.document.uri.fsPath, fileBackendHints(editor.document.uri.fsPath));
+            if (ofFile.kind === 'project' && ofFile.project.backend === 'dataform' && !compiledJson(ofFile.project.root) && getFileNameFromDocument(editor.document, false).success) {
+                CompiledQueryPanel.centerPanel?.showFirstCompile(getRelativePath(editor.document.fileName));
+            }
             let currentFileMetadata = await getCurrentFileMetadata(false, { deferralInBackground: true });
             updateSchemaAutoCompletions(currentFileMetadata);
             armedPreviewSpan = endSwitchSpan;
@@ -570,6 +575,17 @@ export class CompiledQueryPanel {
         const info = getCompilationInfo();
         const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
         this.slices.send('compile status', compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()));
+    }
+
+    /**
+     * Shows that `file` waits for the first compile of its Project: what is on show of the Project before is taken
+     * down, and the panel draws as it does while it compiles with nothing to show.
+     */
+    public showFirstCompile(file: string) {
+        this.sendNoActions(file);
+        this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
+        this.sendProject();
+        this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), file: slashPath(file) } });
     }
 
     /**
