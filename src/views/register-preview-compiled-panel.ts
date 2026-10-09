@@ -385,8 +385,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             .catch((error) => logger.error(`Failed to refresh the panel after the startup compilation: ${error}`));
     });
 
-    setOnCompilationInfoChanged((info) => {
-        CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
+    setOnCompilationInfoChanged((info, root) => {
+        // A compile of a Project that is not the one on show is not the panel's to name
+        if (root === currentDataformRoot()) {
+            CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
+        }
     });
 
     recompileActiveDocument = async () => {
@@ -573,7 +576,7 @@ export class CompiledQueryPanel {
      * special about the place it is called from; the rest is what the last compile left.
      */
     public sendCompileStatus(state: Partial<CompileState> = {}) {
-        const info = getCompilationInfo();
+        const info = getCompilationInfo(currentDataformRoot());
         const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
         this.slices.send('compile status', compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()));
     }
@@ -1619,6 +1622,8 @@ export class CompiledQueryPanel {
         this.updateDataformBlock({
             workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
             lastRun: getLastRunView(),
+            // Of the Project of the file on show: the one shown before may have been compiled another way, by another tool
+            compilationInfo: getCompilationInfo(currentDataformRoot()),
         });
 
         // Notify webview that we are starting compilation
@@ -2005,7 +2010,7 @@ export class CompiledQueryPanel {
      * message: the `dataform` block and how the compile stands.
      */
     private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: Tool; compilerOptions?: string; dataformCoreVersion?: string | null }) {
-        const compilationInfo = getCompilationInfo();
+        const compilationInfo = getCompilationInfo(currentDataformRoot());
         this.dataformBlock = {
             ...this.dataformBlock,
             compilerOptions: first.compilerOptions ?? '',

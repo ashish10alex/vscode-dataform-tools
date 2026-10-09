@@ -26,18 +26,21 @@ export type CompilationInfo = {
     cliSource?: "path" | "setting" | "local";
 };
 
-let currentInfo: CompilationInfo | undefined;
-let onChanged: ((info: CompilationInfo) => void) | undefined;
+/** By the root of the Project compiled: each Project has its own tool and its own last compile */
+const infoOf = new Map<string, CompilationInfo>();
+let onChanged: ((info: CompilationInfo, root: string) => void) | undefined;
 
-export function setCompilationInfo(info: CompilationInfo) {
-    currentInfo = info;
-    onChanged?.(info);
+/** Notes how the Project at `root` was last compiled */
+export function setCompilationInfo(root: string, info: CompilationInfo) {
+    infoOf.set(root, info);
+    onChanged?.(info, root);
 }
 
-export function getCompilationInfo(): CompilationInfo | undefined {
-    return currentInfo;
+/** How the Project at `root` was last compiled; undefined before its first compile, and with no Project */
+export function getCompilationInfo(root: string | undefined): CompilationInfo | undefined {
+    return root === undefined ? undefined : infoOf.get(root);
 }
 
-export function setOnCompilationInfoChanged(callback: (info: CompilationInfo) => void) {
+export function setOnCompilationInfoChanged(callback: (info: CompilationInfo, root: string) => void) {
     onChanged = callback;
 }

@@ -249,7 +249,7 @@ async function reportEntry(git: GitService, entry: RemoteCompileEntry, durationM
     const reason = await describeStaleness(git, entry);
     const hasErrors = (entry.compiledJson.graphErrors?.compilationErrors?.length ?? 0) > 0;
     updateRemoteModeStatusBar({ state: "compiled", sha: entry.sha, stale: !!reason, reason, hasErrors });
-    setCompilationInfo({
+    setCompilationInfo(git.root, {
         mode: "api",
         compiledAt: entry.compiledAt,
         durationMs,
