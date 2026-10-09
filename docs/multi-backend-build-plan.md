@@ -184,7 +184,7 @@ Earlier tickets marked these as assumed or untested. Check each in the piece nam
 In this order, each its own effort. (xf#57, less the editor features, which moved into 2.0.0 as Step 7.)
 
 1. A polish release: run results and progress in the panel, recompiling after a run, dbt v2's compile warnings, schema and preview for seeds and sources, a cost estimate across a tag, and `searchTableColumns` for dbt.
-2. Dependency graph for dbt.
+2. ~~Dependency graph for dbt.~~ Done: drawn from the latest parse with the same graph view; the Dependency Inspector is still Dataform-only.
 3. Run Changed for dbt. (Done before 2.0.0: `src/backend/dbt/changes.ts`, `src/project/dbtChanges.ts`.)
 4. Defer for dbt.
 5. Column lineage for dbt.

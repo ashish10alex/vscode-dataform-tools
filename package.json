@@ -3,7 +3,7 @@
     "displayName": "Tools for Dataform and dbt",
     "publisher": "ashishalex",
     "icon": "media/images/dtools.png",
-    "description": "For Dataform and dbt™ projects on BigQuery: compiled query, dry run cost, schema, preview and runs. For Dataform also dependency graphs, column lineage, inline diagnostics, go-to-definition, auto-completion, formatting with sqlfluff and more.",
+    "description": "For Dataform and dbt™ projects on BigQuery: compiled query, dry run cost, schema, preview, runs and dependency graphs. For Dataform also column lineage, inline diagnostics, go-to-definition, auto-completion, formatting with sqlfluff and more.",
     "repository": {
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
@@ -217,7 +217,7 @@
             },
             {
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Show dependency graph"
             },
             {
@@ -496,10 +496,6 @@
                 },
                 {
                     "command": "vscode-dataform-tools.columnImpactOfChanges",
-                    "when": "vscode-dataform-tools.backend != dbt"
-                },
-                {
-                    "command": "vscode-dataform-tools.dependencyGraphPanel",
                     "when": "vscode-dataform-tools.backend != dbt"
                 },
                 {
