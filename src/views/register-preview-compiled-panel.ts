@@ -40,6 +40,7 @@ import { debounce } from "../debounce";
 import { loadDataformTools } from "../lazySdk";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
+import { cancelCliRun, cliRunHint } from "../cliRunJobs";
 import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
 import { timestampToMs } from "../shared/jobTiming";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
@@ -264,7 +265,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
                 const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls });
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls, cliRunHint: cliRunHint() });
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.snoozeCompilation', async () => {
@@ -1489,7 +1490,7 @@ export class CompiledQueryPanel {
               }
               case 'dataform.loadWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls, cliRunHint: cliRunHint() });
                 return;
               case 'dataform.clearWorkflowUrls':
                 await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
@@ -1497,7 +1498,9 @@ export class CompiledQueryPanel {
                 return;
               case 'dataform.cancelWorkflowInvocation':
                 if (message.workflowInvocationId && this.centerPanel) {
-                    const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
+                    const cancelled = message.workflowInvocationId.startsWith('cli-')
+                        ? await cancelCliRun(message.workflowInvocationId)
+                        : await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
                     if (!cancelled) {
                         this.centerPanel?.sendEvent({ event: 'workflow cancel failed', workflowInvocationId: message.workflowInvocationId });
                     }
@@ -1519,7 +1522,8 @@ export class CompiledQueryPanel {
                     await exportWorkflowActionsCsv(entry);
                 } else if (message.command === 'dataform.openBigQueryJob') {
                     const jobAction = message.action;
-                    const action = entry.actions?.find((a) => a.target === jobAction);
+                    // A CLI run has a row for each job, and an action may have several
+                    const action = entry.actions?.find((a) => a.target === jobAction && (!message.jobId || a.jobId === message.jobId));
                     if (action) {
                         openBigQueryJobInConsole(entry, action);
                     }
@@ -1571,6 +1575,7 @@ export class CompiledQueryPanel {
                 if (urlsToRefresh.length > 0) {
                     const refreshedUrls = await Promise.all(urlsToRefresh.map(async (original) => {
                         const item = { ...original };
+                        if (item.executionMode === 'cli') { return item; }
                         const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
                         const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
                         const needsCountsBackfill = !item.actionCounts;
@@ -1651,7 +1656,8 @@ export class CompiledQueryPanel {
                     const latestUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                     const updatedUrls = latestUrls.map((current) => {
                         const index = urlsToRefresh.findIndex((item) => item.workflowInvocationId && item.workflowInvocationId === current.workflowInvocationId);
-                        if (index === -1 || urlsToRefresh[index].state !== current.state) { return current; }
+                        // A CLI run is not the Dataform API's to tell of: what follows its jobs writes its entry meanwhile
+                        if (index === -1 || current.executionMode === 'cli' || urlsToRefresh[index].state !== current.state) { return current; }
                         return refreshedUrls[index];
                     });
                     await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
@@ -1789,6 +1795,7 @@ export class CompiledQueryPanel {
         // Every render that gets this far sends these, as the payloads of a compiled file used to
         this.updateDataformBlock({
             workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
+            cliRunHint: cliRunHint(),
             lastRun: getLastRunView(),
             // Of the Project of the file on show: the one shown before may have been compiled another way, by another tool
             compilationInfo: getCompilationInfo(currentDataformRoot()),

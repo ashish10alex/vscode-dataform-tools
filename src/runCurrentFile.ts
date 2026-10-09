@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { compiledJson } from './project';
-import { getDataformActionCmdFromActionList, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
+import { getDataformActionCmdFromActionList, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode, LastRunRequest } from './types';
@@ -8,6 +8,7 @@ import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 import { beginRun } from './defer/deferRun';
+import { runDataformRunInTerminal } from './cliRunJobs';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
 
@@ -83,7 +84,8 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         // create the dataform run command for the list of actions from actionsList
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includDependencies, includeDependents, fullRefresh);
         if (!(await beginRun(lastRunRequest))) { return; }
-        runCommandInTerminal(dataformActionCmd);
+        const targets = [...currFileMetadata.tables.filter((table: any) => table.type !== 'test'), ...propertyGraphs].map(({ target }) => ({ database: target.database, schema: target.schema, name: target.name }));
+        await runDataformRunInTerminal(workspaceFolder, dataformActionCmd, { targets, includeDependencies: includDependencies, includeDependents, fullRefresh });
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
         const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');

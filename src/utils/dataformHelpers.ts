@@ -12,7 +12,8 @@ import { getWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension }
 import { runCompilation, getOrCompileDataformJson } from './dataformCompiler';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
-import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
+import { showLoadingProgress } from './vscodeUi';
+import { runDataformRunInTerminal } from '../cliRunJobs';
 import { clearCompiled, compiledIndices, compiledJson, fileBackendHints, projects } from '../project';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
@@ -574,7 +575,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         let dataformActionCmd = "";
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includeDependencies, includeDownstreamDependents, fullRefresh);
         if (!(await beginRun(lastRunRequest))) { return false; }
-        runCommandInTerminal(dataformActionCmd);
+        await runDataformRunInTerminal(workspaceFolder, dataformActionCmd, { targets: includedTargets, includeDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
     }
     return false;
 }

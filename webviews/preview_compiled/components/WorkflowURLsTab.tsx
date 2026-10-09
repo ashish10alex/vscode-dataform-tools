@@ -5,6 +5,7 @@ import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { IncludedTargetsList } from './IncludedTargetsList';
+import { RunViaTag, WorkflowActionsTable, executionModeLabel } from './WorkflowActionsTable';
 import { panelProblem } from '../utils/panelProblem';
 
 interface WorkflowURLsTabProps {
@@ -140,21 +141,22 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                     )}
                                     {getStatusIcon(latest.state)}
                                     <span className="font-mono text-[var(--vscode-foreground)]">
-                                        Latest run: {latest.workspace || '(unknown workspace)'} · {getStatusLabel(latest.state)}
+                                        Latest run: {latest.executionMode === 'cli' ? '' : `${latest.workspace || '(unknown workspace)'} · `}{getStatusLabel(latest.state)}
                                     </span>
+                                    <RunViaTag entry={latest} />
                                     {!isTerminal && (
                                         <span className="text-[var(--vscode-descriptionForeground)]">· {elapsedSec}s elapsed</span>
                                     )}
                                     <CancelWorkflowButton entry={latest} />
                                     <span className="ml-auto" />
-                                    <button
+                                    {latest.url && <button
                                         onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
                                         className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
                                         title="Open in GCP"
                                         aria-label="Open in GCP"
                                     >
                                         <ExternalLink className="w-3.5 h-3.5" />
-                                    </button>
+                                    </button>}
                                 </div>
                                 {hasFailures && showExpanded && (
                                     <div className="overflow-x-auto">
@@ -180,6 +182,10 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                         );
                     })()}
                 </div>
+            )}
+
+            {state.dataform.cliRunHint && (
+                <p className="text-xs text-[var(--vscode-descriptionForeground)]">{state.dataform.cliRunHint}</p>
             )}
 
             {urls.length > 0 ? (
@@ -211,7 +217,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
             {urls.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-[var(--vscode-descriptionForeground)] border border-[var(--vscode-widget-border)] rounded-md bg-[var(--vscode-sideBar-background)]">
                     <p>No workflow executions found.</p>
-                    <p className="text-sm mt-2 text-[var(--vscode-descriptionForeground)]">URLs from new executions will appear here.</p>
+                    <p className="text-sm mt-2 text-[var(--vscode-descriptionForeground)]">Runs through the CLI and the Dataform API will appear here.</p>
                 </div>
             ) : (
                 <div className="overflow-x-auto border border-[var(--vscode-widget-border)] rounded-md">
@@ -232,17 +238,20 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                             {urls.slice().reverse().map((item) => {
                                 const isExpanded = expandedRows.has(item.timestamp);
                                 const hasFailures = !!item.failedActions && item.failedActions.length > 0;
+                                // A run whose actions are known opens to all of them; one kept before they were, to those that failed
+                                const hasActions = !!item.actions && item.actions.length > 0;
+                                const details = hasActions ? 'run details' : 'failed models';
                                 return (
                                 <Fragment key={item.timestamp}>
                                 <tr className="border-b border-[var(--vscode-widget-border)] last:border-0 hover:bg-[var(--vscode-toolbar-hoverBackground)]">
                                     <td className="px-2 py-2 w-8 align-middle">
-                                        {hasFailures && (
+                                        {(hasFailures || hasActions) && (
                                             <button
                                                 onClick={() => toggleRow(item.timestamp)}
                                                 className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-foreground)]"
-                                                title={isExpanded ? 'Hide failed models' : 'Show failed models'}
+                                                title={isExpanded ? `Hide ${details}` : `Show ${details}`}
                                                 aria-expanded={isExpanded}
-                                                aria-label={isExpanded ? 'Hide failed models' : 'Show failed models'}
+                                                aria-label={isExpanded ? `Hide ${details}` : `Show ${details}`}
                                             >
                                                 {isExpanded
                                                     ? <ChevronDown className="w-3.5 h-3.5" />
@@ -254,9 +263,13 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                         {new Date(item.timestamp).toLocaleString()}
                                     </td>
                                     <td className="px-4 py-2 text-[var(--vscode-foreground)] truncate max-w-sm">
-                                        <span className="px-2 py-0.5 rounded-full bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] text-xs font-mono">
-                                            {item.workspace || 'unknown'}
-                                        </span>
+                                        {item.executionMode === 'cli' ? (
+                                            <span className="text-[var(--vscode-descriptionForeground)]" title="A CLI run has no workspace: it runs the files as they are here">—</span>
+                                        ) : (
+                                            <span className="px-2 py-0.5 rounded-full bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] text-xs font-mono">
+                                                {item.workspace || 'unknown'}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-2 text-[var(--vscode-descriptionForeground)]">
                                         {item.includedTags && item.includedTags.length > 0 ? (
@@ -276,7 +289,10 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                         )}
                                     </td>
                                     <td className="px-4 py-2 text-[var(--vscode-descriptionForeground)] whitespace-nowrap text-xs">
-                                        {item.executionMode === 'api_workspace' ? 'GCP Workspace' : 'gitCommitish'}
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <RunViaTag entry={item} />
+                                            {item.executionMode !== 'cli' && executionModeLabel(item)}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-2">
                                         <div className="flex items-center space-x-1.5" title={`Status: ${item.state || 'UNKNOWN'}`}>
@@ -319,17 +335,28 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                         </div>
                                     </td>
                                     <td className="px-4 py-2">
-                                        <button
+                                        {item.url && <button
                                             onClick={() => vscode.postMessage({ command: 'openExternal', url: item.url })}
                                             className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] p-1 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] inline-flex items-center justify-center transition-colors"
                                             title="Open execution in GCP"
                                             aria-label="Open execution in GCP"
                                         >
                                             <ExternalLink className="w-4 h-4" />
-                                        </button>
+                                        </button>}
                                     </td>
                                 </tr>
-                                {hasFailures && isExpanded && (
+                                {hasActions && isExpanded && (
+                                    <tr className="bg-[var(--vscode-editorWidget-background)] border-b border-[var(--vscode-widget-border)]">
+                                        <td />
+                                        <td colSpan={7} className="px-4 py-3">
+                                            <div className="flex flex-col gap-1">
+                                                {item.jobsNote && <div className="text-[11px] text-[var(--vscode-descriptionForeground)]">{item.jobsNote}</div>}
+                                                <WorkflowActionsTable entry={item} className="max-h-[28rem] overflow-auto" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                                {hasFailures && !hasActions && isExpanded && (
                                     <tr className="bg-[var(--vscode-editorWidget-background)] border-b border-[var(--vscode-widget-border)]">
                                         <td />
                                         <td colSpan={7} className="px-4 py-3">

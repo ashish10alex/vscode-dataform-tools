@@ -69,7 +69,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const items = state.dataform.workflowUrls || [];
+    // A CLI run is followed by the host, by its BigQuery jobs: the Dataform API knows nothing of it
+    const items = (state.dataform.workflowUrls || []).filter(i => i.executionMode !== 'cli');
     const hasNonTerminal = items.some(i => !i.state || !TERMINAL_WORKFLOW_STATES.has(i.state));
     const hasFailedMissingActions = items.some(i =>
       i.state === 'FAILED' && (!i.failedActions || i.failedActions.length === 0)

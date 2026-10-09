@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
+import { getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { beginRun } from './defer/deferRun';
+import { runDataformRunInTerminal } from './cliRunJobs';
 
 export function getRunSingleTagCommand(workspaceFolder: string, tag: string, includeDependencies: boolean, includeDependents: boolean, fullRefresh: boolean): string {
     return getRunTagsWtOptsCommand(workspaceFolder, [tag], includeDependencies, includeDependents, fullRefresh);
@@ -105,7 +106,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
             if (!(await beginRun({ kind: 'tags', items: [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
-            runCommandInTerminal(getRunSingleTagCommand(workspaceFolder, tagSelection, includeDependencies, includeDependents, fullRefresh));
+            await runDataformRunInTerminal(workspaceFolder, getRunSingleTagCommand(workspaceFolder, tagSelection, includeDependencies, includeDependents, fullRefresh), { tags: [tagSelection], includeDependencies, includeDependents, fullRefresh });
         } else if (firstStageSelection === "run multiple files" || firstStageSelection === "run open sqlx files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
