@@ -3,6 +3,7 @@ import { namesMissingRef } from '../backend/dbt/place';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import type { Kind, Target } from './compiledGraph';
 import { isMadeUpTarget, isTestKind, kindHasTable, targetId } from './compiledGraph/graph';
+import type { ChangedActionsView } from '../types';
 import type { ActionReference, CompileStatus, FileSlice, PanelAction } from './panelContract';
 import { PanelSlices, fileOnShow } from './panelState';
 
@@ -66,6 +67,11 @@ export interface DbtView {
      * actions; `blocked` while there is no fresh compile to run from, and says why.
      */
     run?: { targets: Target[]; blocked?: string };
+    /**
+     * Run Changed is offered: the Project is a BigQuery one in a git repository. It does not depend on the file on
+     * show, nor on a compile: dbt parses the Project itself when it is asked what changed.
+     */
+    changedActions?: ChangedActionsView;
 }
 
 /** A neighbour in the Data Lineage */
@@ -415,6 +421,9 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
             : view.errors.length > 0 ? 'The compile left errors'
             : undefined;
         view.run = { targets: runnable.map((action) => action.target), ...(blocked ? { blocked } : {}) };
+    }
+    if (block?.changedActions && block.changedActions.status !== 'unavailable' && block.bigQuery) {
+        view.changedActions = block.changedActions;
     }
 
     if (compiling) {

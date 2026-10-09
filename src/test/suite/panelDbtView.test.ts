@@ -270,6 +270,26 @@ suite('the dbt panel: Run', () => {
     });
 });
 
+suite('the dbt panel: Run Changed', () => {
+    const withChanges = (slices: PanelSlices, changedActions: DbtBlock['changedActions']): PanelSlices => ({ ...slices, dbt: { ...slices.dbt!, changedActions } });
+
+    test('is offered once the Project is known to be in a git repository, on any file of it', () => {
+        const model = after({ manifest: v2, file: MODEL, state: compiled() });
+        assert.strictEqual(dbtView(model).changedActions, undefined);
+        assert.deepStrictEqual(dbtView(withChanges(model, { status: 'idle' })).changedActions, { status: 'idle' });
+        // A file of macros defines nothing to run, and what changed is the Project's
+        const macros = dbtView(withChanges(after({ manifest: v2, file: 'macros/audit.sql', state: compiled() }), { status: 'ready', changed: [], deleted: [] }));
+        assert.strictEqual(macros.run, undefined);
+        assert.strictEqual(macros.changedActions?.status, 'ready');
+    });
+
+    test('is not offered outside a git repository, nor for another warehouse', () => {
+        assert.strictEqual(dbtView(withChanges(after({ manifest: v2, file: MODEL, state: compiled() }), { status: 'unavailable' })).changedActions, undefined);
+        const snowflake: DbtManifest = { ...v2, metadata: { ...v2.metadata, adapter_type: 'snowflake' } };
+        assert.strictEqual(dbtView(withChanges(after({ manifest: snowflake, file: MODEL, state: compiled() }), { status: 'idle' })).changedActions, undefined);
+    });
+});
+
 suite('the dbt panel: what BigQuery said', () => {
     const shown = after({ manifest: v2, file: 'models/marts/fct_orders.sql', state: compiled() });
     const [model, dataTest] = shown.file!.actions;

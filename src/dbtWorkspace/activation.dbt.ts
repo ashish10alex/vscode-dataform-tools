@@ -46,9 +46,9 @@ suite('a dbt workspace', function () {
 
     suiteTeardown(() => api?.setDbtWithoutPanel(true));
 
-    test('is found as one dbt Project, whose Backend can run and does not list Changed Actions', () => {
+    test('is found as one dbt Project, whose Backend can run and lists Changed Actions', () => {
         assert.deepStrictEqual(api.list(), [{ root: workspaceFolder, backend: 'dbt' }]);
-        assert.deepStrictEqual(api.backendContext(), { backend: 'dbt', canRun: true, listsChangedActions: false });
+        assert.deepStrictEqual(api.backendContext(), { backend: 'dbt', canRun: true, listsChangedActions: true });
     });
 
     test('its dbt is the one the path setting names, probed, and is looked for again when the setting changes', async function () {

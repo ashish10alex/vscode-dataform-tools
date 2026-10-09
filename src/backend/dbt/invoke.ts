@@ -5,7 +5,7 @@ import type { BackendRequest } from '../backend';
 import type { DbtOptions } from './options';
 
 /*
- * Runs a dbt command that writes a manifest: `compile` or `parse`. A port of xf's `invoke`
+ * Runs a dbt command: one that writes a manifest (`compile`, `parse`, `ls`), or `deps`. A port of xf's `invoke`
  * (internal/backend/dbt/dbt.go). It says what dbt left behind; what that means (the Compiled Graph, the errors) is
  * for its callers.
  */
@@ -13,8 +13,12 @@ import type { DbtOptions } from './options';
 /** What running dbt needs of the Backend's options */
 export type DbtRunOptions = Pick<DbtOptions, 'binary' | 'target' | 'vars' | 'profilesDir' | 'artifactDir' | 'env'>;
 
-/** The dbt commands that write a manifest. A parse compiles no SQL and connects to nothing */
-export type DbtCommand = 'compile' | 'parse';
+/**
+ * The dbt commands that are run here. `compile`, `parse` and `ls` write a manifest: a parse compiles no SQL and
+ * connects to nothing, and neither does `ls`, which lists what a selection selects. `deps` installs the Project's
+ * packages and writes none.
+ */
+export type DbtCommand = 'compile' | 'parse' | 'ls' | 'deps';
 
 /** What a dbt command left behind */
 export interface DbtInvocation {
@@ -37,13 +41,14 @@ export function manifestPathIn(artifactDir: string): string {
 /**
  * The arguments for `command` on the Project at `root`. The log is JSON so that errors can be read from it.
  * `--no-version-check` is passed as ADR 0003 decides; in dbt-core it also turns off the check of the Project's
- * `require-dbt-version`. `extra` comes after the command's own, e.g. `--select`.
+ * `require-dbt-version`. `extra` comes after the command's own, e.g. `--select`. `deps` writes nothing to `target/`,
+ * and dbt-core's does not take `--target-path`.
  */
 export function dbtArguments(command: DbtCommand, root: string, options: DbtRunOptions, extra: string[] = []): string[] {
     const args = [
         command,
         '--project-dir', root,
-        '--target-path', path.join(options.artifactDir, 'target'),
+        ...(command === 'deps' ? [] : ['--target-path', path.join(options.artifactDir, 'target')]),
         '--log-path', path.join(options.artifactDir, 'logs'),
         '--log-format', 'json',
         '--no-version-check',

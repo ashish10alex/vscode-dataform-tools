@@ -15,6 +15,7 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
   * **Dry run, cost and schema** for every compiled query, with BigQuery's error at its line and column.
   * **Preview** of a compiled query; for a test, the rows that fail it.
   * **Run**: `dbt build` in a terminal for the file, with dependencies, with dependents, as a full refresh, or by tag. The button names the dbt target, and the first run against a dbt target that is not the profile's default asks first.
+  * **Run Changed**: `dbt build --select state:modified` against the merge-base with the default branch, with the same button as Dataform's: the changed actions by file, why each changed (new, SQL, config, macro), and a tick per file. The extension parses the merge-base itself, so no production manifest is needed. Also the command "Run changed actions (vs default branch)".
   * **dbt target control** in the panel, with a private choice per workspace; settings `dbtTarget`, `dbtVars`, `dbtProfilesDir`.
   * **Compile errors** in the panel with links, and marked in the editor where dbt gave a line.
   * **In the editor**: go to definition from a `ref()`, a `source()` and a macro call; hover on a `ref()` or `source()` with the table's description, partitioning, row count and columns, and on a column name with its type and description; completions for model, source and column names. The language of `.sql` files is not changed. These stand down beside the dbt extension of dbt Labs or Power User for dbt, unless `dbtEditorFeatures` is `on`.
@@ -30,12 +31,12 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
 * The "Not a Dataform workspace" warning is gone.
 * With several workspace folders, the project follows the active editor instead of being picked once per window. "Select workspace folder" is now a project picker, listed only when a window has more than one project.
 * The extension also activates in a workspace that has a `dbt_project.yml` at a folder root.
-* Sixteen commands change category from "Dataform" to "Dataform/dbt". "Run assertions in the current model" is now "Run assertions / tests in the current model".
+* Seventeen commands change category from "Dataform" to "Dataform/dbt". "Run assertions in the current model" is now "Run assertions / tests in the current model".
 * The bottom panel that shows query results is named "BigQuery Results", and the compiled query panel's tab is named "Compiled Query".
 * No command id or setting id changed.
 
 ### Not in a dbt project yet
 
-The dependency graph, column lineage, defer to prod, runs through an API, changed-actions runs, the cost estimate of a tag, formatting, and hover and completions for macros.
+The dependency graph, column lineage, defer to prod, runs through an API, the cost estimate of a tag, formatting, and hover and completions for macros.
 
 dbt and dbt Core are trademarks of dbt Labs, LLC.

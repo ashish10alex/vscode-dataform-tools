@@ -215,18 +215,15 @@ class Reader {
         return path.posix.join(PACKAGES_DIR, packageName, normal);
     }
 
-    read(): DbtGraph {
+    /** Each resource the panel shows, with the Target its action has. Sorted, so that which action wins a Target two of them share does not depend on the engine */
+    entries(): Array<{ node: ManifestNode; kind: Kind; target: Target; disabled: boolean }> {
         const entries: Array<{ node: ManifestNode; kind: Kind; target: Target; disabled: boolean }> = [];
-        const targets = new Map<string, Target>();
         const add = (nodes: Record<string, ManifestNode | undefined> | null | undefined, disabled: boolean) => {
-            // Sorted, so that which action wins a Target two of them share does not depend on the engine
             for (const id of Object.keys(nodes ?? {}).sort()) {
                 const node = nodes![id];
                 const kind = node && kindOf(node);
                 if (node && kind) {
-                    const target = targetOf(node, kind);
-                    targets.set(node.unique_id, target);
-                    entries.push({ node, kind, target, disabled });
+                    entries.push({ node, kind, target: targetOf(node, kind), disabled });
                 }
             }
         };
@@ -235,6 +232,12 @@ class Reader {
         add(this.manifest.exposures, false);
         add(this.manifest.unit_tests, false);
         add(Object.fromEntries(Object.entries(this.manifest.disabled ?? {}).map(([id, definitions]) => [id, definitions?.[0]])), true);
+        return entries;
+    }
+
+    read(): DbtGraph {
+        const entries = this.entries();
+        const targets = new Map(entries.map(({ node, target }) => [node.unique_id, target]));
 
         const names: Record<ActionId, DbtName> = {};
         const actions = entries.map(({ node, kind, target, disabled }) => {
@@ -356,4 +359,9 @@ function nameOf(node: ManifestNode): DbtName | undefined {
 /** The Compiled Graph of a manifest, and what the dbt Backend keeps beside it */
 export function buildDbtGraph(manifest: DbtManifest): DbtGraph {
     return new Reader(manifest).read();
+}
+
+/** The action `buildDbtGraph` gives each resource that is not disabled, by dbt's ID of the resource */
+export function dbtActionIds(manifest: DbtManifest): Map<string, ActionId> {
+    return new Map(new Reader(manifest).entries().filter((entry) => !entry.disabled).map(({ node, target }) => [node.unique_id, targetId(target)]));
 }

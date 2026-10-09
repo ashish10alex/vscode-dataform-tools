@@ -5,6 +5,7 @@ import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { ModifierSwitch } from "./ModifierSwitch";
+import { RunChangedButton } from "./RunChangedButton";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
 import { DbtCard, DbtLineage, DbtStatusLine, DbtTab, DbtView, LineageRow, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase, testedBy } from "../../../src/shared/panelDbtView";
@@ -213,7 +214,7 @@ function DbtRunButton({ target, disabled, title, hasTags, onRun, onRunTag }: { t
 
 /**
  * The toolbar of a dbt file's Compiled query tab, laid out as Dataform's: a row with Graph and Preview Data, then a row with
- * Run and the switches that say how far the run reaches, then the last run. A run is `dbt build` in the extension's
+ * Run, Run Changed and the switches that say how far a run reaches, then the last run. A run is `dbt build` in the extension's
  * terminal (xf#54); the switches apply to a run of the file and to a run by tag alike.
  */
 function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
@@ -236,7 +237,9 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
   const run = view.run;
   // The graph centres on the file's first action, and is drawn from a parse, so it needs no compiled SQL
   const canGraph = view.actions.length > 0;
-  if (!canPreview && !run && !canGraph) {
+  // Run Changed is of the Project, so it is offered on a file that defines nothing to run too
+  const changedActions = view.changedActions;
+  if (!canPreview && !run && !canGraph && !changedActions) {
     return null;
   }
   const blocked = run?.blocked !== undefined;
@@ -271,9 +274,9 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
           )}
         </div>
       )}
-      {run && (
+      {(run || changedActions) && (
         <div className={clsx("flex flex-wrap items-center gap-x-2 gap-y-2", (canGraph || canPreview) && "pt-3 border-t border-[var(--vscode-widget-border)]")}>
-          <div className="relative">
+          {run && <div className="relative">
             <DbtRunButton
               target={state.dbt?.target.name}
               disabled={blocked}
@@ -316,7 +319,10 @@ function Toolbar({ state, view }: { state: PanelSlices; view: DbtView }) {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
+          {changedActions && (
+            <RunChangedButton backend="dbt" changedActions={changedActions} disabled={!state.dbt?.dbt} includeDependencies={includeDependencies} includeDependents={includeDependents} fullRefresh={fullRefresh} />
+          )}
           <div role="group" aria-label="Run modifiers" className="flex flex-wrap items-center gap-1.5">
             <div className="w-px h-5 mr-0.5 bg-[var(--vscode-widget-border)]" aria-hidden="true" />
             <ModifierSwitch label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Also build what these actions read from (a + in front of the selection)" />
