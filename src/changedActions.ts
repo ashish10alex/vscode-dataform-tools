@@ -16,6 +16,7 @@ import { runIncludedTargets } from './utils/dataformHelpers';
 import { extractSnapshot, mirrorTree } from './utils/gitSnapshot';
 import { perfCount } from './perf';
 import { getDataformCompilerOptions, isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 /*
  * "Run changed": runs only the actions whose compiled output differs from the merge-base with the
@@ -57,7 +58,7 @@ export async function isGitRepo(workspaceFolder: string): Promise<boolean> {
 
 /** Read for the Dataform folder, so a folder-level setting applies in multi-root workspaces. */
 function getDefaultBranch(workspaceFolder: string): string {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).get<string>('defaultBranch')?.trim() || 'main';
+    return extensionConfiguration(vscode.Uri.file(workspaceFolder)).get<string>('defaultBranch')?.trim() || 'main';
 }
 
 /** `origin/<branch>` when it exists, else the local branch. Does not fetch. */

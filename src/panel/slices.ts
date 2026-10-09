@@ -42,12 +42,12 @@ import type {
  */
 
 /** The Project slice: where it is, which Backend compiles it and what that Backend can do */
-export function projectSlice(project: { root: string }, backend: Backend<never>, graph: CompiledGraph | undefined, compile: CompileNumber): ProjectSlice {
+export function projectSlice(project: { root: string; label?: string }, backend: Backend<never>, graph: CompiledGraph | undefined, compile: CompileNumber): ProjectSlice {
     const tags = new Set<string>();
     for (const action of Object.values(graph?.actions ?? {})) {
         action.tags.forEach((tag) => tags.add(tag));
     }
-    return { compile, root: project.root, backend: backend.name, parts: backendParts(backend), tags: [...tags].sort() };
+    return { compile, root: project.root, ...(project.label ? { label: project.label } : {}), backend: backend.name, parts: backendParts(backend), tags: [...tags].sort() };
 }
 
 const reference = (action: Action): ActionReference => ({ target: action.target, kind: action.kind, fileName: action.fileName });

@@ -152,6 +152,70 @@ suite('project registry', () => {
         });
     });
 
+    suite('Projects below a workspace folder', () => {
+        let repo: string;
+        let nestedDbt: string;
+        const model = () => path.join(nestedDbt, 'models', 'orders.sql');
+
+        setup(() => {
+            repo = folder(`mono-${Date.now()}-${Math.random()}`);
+            nestedDbt = path.join(repo, 'transform');
+            fs.mkdirSync(path.join(nestedDbt, 'dbt_packages', 'dbt_utils'), { recursive: true });
+            fs.writeFileSync(path.join(nestedDbt, 'dbt_project.yml'), '');
+            fs.writeFileSync(path.join(nestedDbt, 'dbt_packages', 'dbt_utils', 'dbt_project.yml'), '');
+        });
+
+        test('one is found from a file of it, and becomes the active Project', () => {
+            const registry = new ProjectRegistry();
+            assert.deepStrictEqual(registry.refresh([repo]), []);
+            const found = registry.forFile(model());
+            assert.deepStrictEqual(found.kind === 'project' && [found.project.root, found.project.backend], [nestedDbt, 'dbt']);
+            registry.noteActiveFile(model());
+            assert.strictEqual(registry.active?.root, nestedDbt);
+        });
+
+        test('it keeps its state over a refresh, and is dropped when its settings file is gone', () => {
+            const registry = new ProjectRegistry();
+            registry.refresh([repo]);
+            registry.noteActiveFile(model());
+            const known = registry.active;
+            assert.strictEqual(registry.refresh([repo])[0], known);
+            fs.rmSync(path.join(nestedDbt, 'dbt_project.yml'));
+            assert.deepStrictEqual(registry.refresh([repo]), []);
+            assert.strictEqual(registry.active, undefined);
+            assert.deepStrictEqual(registry.forFile(model()), { kind: 'none' });
+        });
+
+        test('it is dropped when its workspace folder is closed', () => {
+            const registry = new ProjectRegistry();
+            registry.refresh([repo, dataformRoot]);
+            registry.forFile(model());
+            assert.deepStrictEqual(registry.refresh([dataformRoot]).map((project) => project.root), [dataformRoot]);
+        });
+
+        test('a file outside every workspace folder finds nothing', () => {
+            const registry = new ProjectRegistry();
+            registry.refresh([dataformRoot]);
+            assert.deepStrictEqual(registry.forFile(model()), { kind: 'none' });
+        });
+
+        test('discover adds the roots a search found, but not an installed package or a root outside the workspace', () => {
+            const registry = new ProjectRegistry();
+            registry.refresh([repo]);
+            assert.strictEqual(registry.discover([nestedDbt, path.join(nestedDbt, 'dbt_packages', 'dbt_utils'), dbtRoot]), true);
+            assert.deepStrictEqual(registry.projects.map((project) => project.root), [nestedDbt]);
+            assert.strictEqual(registry.discover([nestedDbt]), false);
+        });
+
+        test('a file of an installed package is in the Project that installed it', () => {
+            const registry = new ProjectRegistry();
+            registry.refresh([repo]);
+            const found = registry.forFile(path.join(nestedDbt, 'dbt_packages', 'dbt_utils', 'macros', 'star.sql'));
+            assert.strictEqual(found.kind === 'project' && found.project.root, nestedDbt);
+            assert.strictEqual(registry.projects.length, 1);
+        });
+    });
+
     suite('storing a compile result', () => {
         // The window's own registry, which other suites also fill: only these folders are touched
         setup(() => {

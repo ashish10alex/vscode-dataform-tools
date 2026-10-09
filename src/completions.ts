@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
+import { extensionConfiguration } from './project/settings';
 
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
@@ -24,7 +25,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
             if (declarationsAndTargets.length === 0) {
                 return undefined;
             }
-            let sourceAutoCompletionPreference = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sourceAutoCompletionPreference');
+            let sourceAutoCompletionPreference = extensionConfiguration().get('sourceAutoCompletionPreference');
 
             let sourceCompletionItems: vscode.CompletionItem[] = [];
 

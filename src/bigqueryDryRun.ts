@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
 import { getBigQueryClient, getBigQueryClientFor, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import type { JobPlace } from './bigquery/jobPlace';
 import { bigQueryDryRunCostOneGiBByCurrency } from './constants';
 import { formatTimestamp } from './utils';
 import { BigQueryDryRunResponse, LastModifiedTimeMeta, SupportedCurrency, Target } from './types';
 import { perfCount } from './perf';
+import { extensionConfiguration } from './project/settings';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
     //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
@@ -81,7 +81,7 @@ export async function queryDryRun(query: string, alreadyRetried: boolean = false
     };
     */
 
-    let currencyFoDryRunCost: SupportedCurrency | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('currencyFoDryRunCost');
+    let currencyFoDryRunCost: SupportedCurrency | undefined = extensionConfiguration().get('currencyFoDryRunCost');
     if (!currencyFoDryRunCost) {
         currencyFoDryRunCost = "USD" as SupportedCurrency;
     }

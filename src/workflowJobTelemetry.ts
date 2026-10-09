@@ -8,6 +8,7 @@ import { needsJobStats } from './shared/jobTiming';
 import { SupportedCurrency, WorkflowAction, WorkflowActionJobStats, WorkflowUrlEntry } from './types';
 import { formatBytes } from './utils';
 import { arrayToCsv } from './utils/vscodeUi';
+import { extensionConfiguration } from './project/settings';
 
 /*
  * Telemetry for the BigQuery jobs behind a workflow invocation: bytes billed, timing and the SQL Dataform
@@ -75,7 +76,7 @@ export function summariseJobStats(actions: WorkflowAction[], currency: Supported
 }
 
 function getCurrency(): SupportedCurrency {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<SupportedCurrency>('currencyFoDryRunCost') || "USD";
+    return extensionConfiguration().get<SupportedCurrency>('currencyFoDryRunCost') || "USD";
 }
 
 /** BigQuery requires the job location for jobs outside the US / EU multi-regions; the project's default location is the best guess. */

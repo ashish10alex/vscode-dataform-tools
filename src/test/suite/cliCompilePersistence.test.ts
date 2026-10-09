@@ -56,7 +56,7 @@ suite('CLI compilation persisted across sessions', function () {
         await prewarmCliCompilation(project, resolveDataformOptions(project));
         assert.ok(compiledJson(project), 'saved compilation loaded');
         assert.strictEqual(isCompilationStale(), false);
-        assert.strictEqual(getCompilationInfo()?.fromCache, true);
+        assert.strictEqual(getCompilationInfo(project)?.fromCache, true);
 
         const started = performance.now();
         const { dataformCompiledJson, compilationTimeMs } = await runCompilation(project, resolveDataformOptions(project));
@@ -77,13 +77,13 @@ suite('CLI compilation persisted across sessions', function () {
         const outdated = compiledJson(project);
         assert.ok(outdated, 'outdated compilation shown straight away');
         assert.strictEqual(isCompilationStale(), true);
-        assert.match(getCompilationInfo()?.staleReason ?? '', /Project files changed/);
+        assert.match(getCompilationInfo(project)?.staleReason ?? '', /Project files changed/);
 
         // A run waits for, and joins, the compile started on activation
         await ensureFreshCompilation(project, resolveDataformOptions(project));
         assert.strictEqual(isCompilationStale(), false);
         assert.notStrictEqual(compiledJson(project), outdated);
-        assert.strictEqual(getCompilationInfo()?.fromCache, false);
+        assert.strictEqual(getCompilationInfo(project)?.fromCache, false);
 
         // The fresh compilation replaces the saved one for the next session
         await waitFor(async () => ((await loadCliCompile(project))?.meta.compiledAt ?? 0) > savedAt);
@@ -101,13 +101,13 @@ suite('CLI compilation persisted across sessions', function () {
 
         const edited = await runCompilation(project, resolveDataformOptions(project));
         assert.ok(edited.dataformCompiledJson, 'the edit is compiled');
-        const compiledAt = getCompilationInfo()?.compiledAt;
+        const compiledAt = getCompilationInfo(project)?.compiledAt;
 
         // e.g. Run Changed compiling right after the panel compiled the saved file
         const started = performance.now();
         const { dataformCompiledJson } = await runCompilation(project, resolveDataformOptions(project));
         assert.strictEqual(dataformCompiledJson, edited.dataformCompiledJson);
-        assert.strictEqual(getCompilationInfo()?.compiledAt, compiledAt, 'no CLI compile ran');
+        assert.strictEqual(getCompilationInfo(project)?.compiledAt, compiledAt, 'no CLI compile ran');
         assert.ok(performance.now() - started < 500);
     });
 

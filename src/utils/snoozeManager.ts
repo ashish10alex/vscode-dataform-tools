@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { logger } from "../logger";
+import { extensionConfiguration } from '../project/settings';
 
 export class SnoozeManager {
     private static instance: SnoozeManager;
@@ -53,7 +54,7 @@ export class SnoozeManager {
     }
 
     public startSnooze(context?: vscode.ExtensionContext, minutes?: number) {
-        const configMinutes = vscode.workspace.getConfiguration("vscode-dataform-tools").get<number>("compilationSnoozeMinutes") || 5;
+        const configMinutes = extensionConfiguration().get<number>("compilationSnoozeMinutes") || 5;
         const durationMinutes = minutes !== undefined && minutes > 0 ? minutes : configMinutes;
 
         this.clearTimers();

@@ -4,6 +4,7 @@ import path from 'path';
 import { logger } from '../logger';
 import { DataformCompiledJson, TablesWtFullQuery, Table, Operation, Assertion, Notebook } from '../types';
 import type { TableQueryEntry, IncrementalQueryEntry, AssertionQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
+import { extensionConfiguration } from '../project/settings';
 
 function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, relativeFilePath: string, modelObjType: string, isJsFile: boolean) {
     return isJsFile
@@ -323,7 +324,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 
 export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
 
-    let sourceAutoCompletionPreference = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sourceAutoCompletionPreference');
+    let sourceAutoCompletionPreference = extensionConfiguration().get('sourceAutoCompletionPreference');
 
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;

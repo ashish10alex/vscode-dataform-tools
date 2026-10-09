@@ -114,8 +114,23 @@ function readDefaultProjectFromSettings(workspaceFolder: string): string | undef
     return undefined;
 }
 
+/** What API mode says of a Project that is not at the top of its git repository */
+export const notAtRepositoryRootMessage = (settingsDirectory: string) =>
+    `The Dataform API compiles a repository whose settings file is at its top, and this project is in its sub-folder "${settingsDirectory}". Switch to CLI mode to compile it.`;
+
+/** The same directory, whatever links or letter case its path was written with */
+function sameDirectory(a: string, b: string): boolean {
+    const real = (directory: string) => { try { return fs.realpathSync.native(directory); } catch { return path.resolve(directory); } };
+    return real(a) === real(b);
+}
+
 async function getGitInfo(): Promise<{ git: GitService, branch: string, repositoryName: string }> {
     const git = new GitService();
+    // The Dataform API has no setting for a Project below the top of its repository: it would compile nothing, or another Project
+    const topLevel = await git.getTopLevel();
+    if (topLevel && !sameDirectory(topLevel, git.root)) {
+        throw new Error(notAtRepositoryRootMessage(path.relative(fs.realpathSync.native(topLevel), fs.realpathSync.native(git.root)).split(path.sep).join('/')));
+    }
     const gitInfo = await git.getGitBranchAndRepoName();
     if (!gitInfo?.gitBranch || !gitInfo.gitRepoName) {
         throw new Error("Unable to determine the git branch and Dataform repository name");
@@ -234,7 +249,7 @@ async function reportEntry(git: GitService, entry: RemoteCompileEntry, durationM
     const reason = await describeStaleness(git, entry);
     const hasErrors = (entry.compiledJson.graphErrors?.compilationErrors?.length ?? 0) > 0;
     updateRemoteModeStatusBar({ state: "compiled", sha: entry.sha, stale: !!reason, reason, hasErrors });
-    setCompilationInfo({
+    setCompilationInfo(git.root, {
         mode: "api",
         compiledAt: entry.compiledAt,
         durationMs,

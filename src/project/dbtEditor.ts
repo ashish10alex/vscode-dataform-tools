@@ -10,6 +10,7 @@ import { TableColumn, columnHoverText, columnsOf, tableHoverText } from './dbtHo
 import { heldTable } from './dbtSchemas';
 import { fileBackendHints, onDidChangeProjects, projects } from './index';
 import type { ProjectState } from './registry';
+import { extensionConfiguration } from './settings';
 
 /*
  * The editor features of a dbt Project (Step 7 of the build plan). No language is claimed for `.sql`: each provider
@@ -192,7 +193,7 @@ function register() {
         if (!project.dbtBackend?.editor) {
             continue;
         }
-        const setting = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(project.root)).get<string>('dbtEditorFeatures');
+        const setting = extensionConfiguration(vscode.Uri.file(project.root)).get<string>('dbtEditorFeatures');
         const features = dbtEditorFeaturesOn(setting, (id) => vscode.extensions.getExtension(id) !== undefined);
         if (!features.on) {
             says.push(`dbt: go to definition, hover and completions are off in ${project.root}, because ${features.because}.`);

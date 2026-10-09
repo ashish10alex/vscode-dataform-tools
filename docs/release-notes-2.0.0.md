@@ -10,7 +10,7 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
 
 ### Features
 
-* **dbt projects**: open a folder that has `dbt_project.yml` at its root.
+* **dbt projects**: open a folder that has `dbt_project.yml`, at its root or in a sub-folder.
   * **Compiled query**: the model in the editor with the tests that read it, each in its own section; hooks shown as written; a card for a seed, a file of sources, a macro file and `dbt_project.yml`.
   * **Dry run, cost and schema** for every compiled query, with BigQuery's error at its line and column.
   * **Preview** of a compiled query; for a test, the rows that fail it.
@@ -22,7 +22,8 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
   * **Dry-run errors in the editor**: on the line of your file when it is in the compiled query unchanged, else on the first line with the place in the compiled query. A save dry-runs also while the panel is closed; `dbtDryRunOnSave` turns that off.
   * **Finding dbt**: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` or `venv`, the Python extension's environment, `PATH`, common install directories. The panel says which was found.
   * **dbt v2 projects with on-run hooks are only parsed** unless `dbtCompileWithHooks` is on, because dbt v2 runs those hooks on every compile.
-* **Several projects in one window**: with several workspace folders, the project follows the file in the editor. A folder may be a Dataform project, a dbt project, or both.
+* **Several projects in one window**: the project follows the file in the editor. A folder may be a Dataform project, a dbt project, or both.
+* **Projects in sub-folders**, for Dataform and dbt: the project of a file is the nearest folder above it that has `workflow_settings.yaml`, `dataform.json` or `dbt_project.yml`, up to the folder you opened. The panel names the project when it is in a sub-folder or when the window has several. Folders in `files.exclude` and `search.exclude` are not searched for projects. A project in a sub-folder keeps the extension's settings of its own `.vscode/settings.json`, which VS Code does not read there; they come before the window's settings.
 * **Remote hosts**: Remote SSH, dev containers and WSL are supported for both tools. A dev container with a dbt project is in `.devcontainer/dbt`.
 
 ### Changes for Dataform users
@@ -30,7 +31,9 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
 * `gcloud` no longer blocks the compiled query panel. Missing credentials show when a BigQuery call fails.
 * The "Not a Dataform workspace" warning is gone.
 * With several workspace folders, the project follows the active editor instead of being picked once per window. "Select workspace folder" is now a project picker, listed only when a window has more than one project.
-* The extension also activates in a workspace that has a `dbt_project.yml` at a folder root.
+* The extension also activates in a workspace that has a `dbt_project.yml`, and in one that has a settings file in a sub-folder.
+* A Dataform project in a sub-folder of its git repository compiles in CLI mode. API mode says that the Dataform API needs the settings file at the top of the repository.
+* A file in no project gets one message that names the settings files of both tools.
 * Seventeen commands change category from "Dataform" to "Dataform/dbt". "Run assertions in the current model" is now "Run assertions / tests in the current model".
 * The bottom panel that shows query results is named "BigQuery Results", and the compiled query panel's tab is named "Compiled Query".
 * No command id or setting id changed.

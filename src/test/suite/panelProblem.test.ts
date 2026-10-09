@@ -36,7 +36,7 @@ suite('panel: what is wrong, from the compile status and the file slice', () => 
         assert.deepStrictEqual([missing.type, missing.missingTools, missing.message], [CompilationErrorType.MISSING_EXECUTABLE, ['dataform'], null]);
         const outside = panelProblem(after(status({ status: 'no project' }), file({ file: '' })));
         assert.strictEqual(outside.type, CompilationErrorType.NOT_A_DATAFORM_WORKSPACE);
-        assert.ok(outside.message?.startsWith('This file is not in a Dataform project'));
+        assert.ok(outside.message?.startsWith('This file is not in a Dataform or dbt project'));
         const broken = panelProblem(after(failed, file()));
         assert.deepStrictEqual([broken.type, broken.message, broken.compileErrors], [CompilationErrorType.COMPILATION_ERROR, null, errors]);
         // A compile that left a graph and errors, and a file that has something to show: the file is shown

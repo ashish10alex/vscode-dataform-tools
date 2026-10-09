@@ -1,5 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
-import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projects, requiredTools } from '../project';
+import { ProjectState, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
@@ -20,7 +20,7 @@ import type { PanelSlices } from '../shared/panelState';
 import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
 import * as vscode from 'vscode';
-import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
+import { snoozeManager, getFileNameFromDocument, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runActions } from "../runActions";
@@ -63,6 +63,7 @@ import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -305,6 +306,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 return;
             }
             const endSwitchSpan = perfStart('switchPreview');
+            // The first file shown of a Project waits for the Project's first compile: the panel says so, and takes down what it shows of the Project before
+            const ofFile = projects.forFile(editor.document.uri.fsPath, fileBackendHints(editor.document.uri.fsPath));
+            if (ofFile.kind === 'project' && ofFile.project.backend === 'dataform' && !compiledJson(ofFile.project.root) && getFileNameFromDocument(editor.document, false).success) {
+                CompiledQueryPanel.centerPanel?.showFirstCompile(getRelativePath(editor.document.fileName));
+            }
             let currentFileMetadata = await getCurrentFileMetadata(false, { deferralInBackground: true });
             updateSchemaAutoCompletions(currentFileMetadata);
             armedPreviewSpan = endSwitchSpan;
@@ -343,7 +349,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         }
         activeEditorFileName = document?.fileName;
         activeDocumentObj = document;
-        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || (CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)) {
             if (CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
                 const workspaceFolder = await getWorkspaceFolder();
@@ -379,8 +385,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             .catch((error) => logger.error(`Failed to refresh the panel after the startup compilation: ${error}`));
     });
 
-    setOnCompilationInfoChanged((info) => {
-        CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
+    setOnCompilationInfoChanged((info, root) => {
+        // A compile of a Project that is not the one on show is not the panel's to name
+        if (root === currentDataformRoot()) {
+            CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
+        }
     });
 
     recompileActiveDocument = async () => {
@@ -412,7 +421,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 return;
             }
             const panelOpen = CompiledQueryPanel.centerPanel?.centerPanelDisposed === false;
-            const opensOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave') === true;
+            const opensOnSave = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave') === true;
             if (affectsCompile(DBT_COMPILE_FILES, dbt.file) && (panelOpen || opensOnSave)) {
                 activeEditorFileName = document.fileName;
                 activeDocumentObj = document;
@@ -567,9 +576,20 @@ export class CompiledQueryPanel {
      * special about the place it is called from; the rest is what the last compile left.
      */
     public sendCompileStatus(state: Partial<CompileState> = {}) {
-        const info = getCompilationInfo();
+        const info = getCompilationInfo(currentDataformRoot());
         const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
         this.slices.send('compile status', compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()));
+    }
+
+    /**
+     * Shows that `file` waits for the first compile of its Project: what is on show of the Project before is taken
+     * down, and the panel draws as it does while it compiles with nothing to show.
+     */
+    public showFirstCompile(file: string) {
+        this.sendNoActions(file);
+        this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
+        this.sendProject();
+        this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), file: slashPath(file) } });
     }
 
     /**
@@ -579,7 +599,7 @@ export class CompiledQueryPanel {
         const backend = dataformBackend();
         const root = currentDataformRoot();
         if (backend && root) {
-            this.slices.send('project', projectSlice({ root }, backend, compiledGraph(), compileNumber()));
+            this.slices.send('project', projectSlice({ root, label: projectLabel(root) }, backend, compiledGraph(), compileNumber()));
         }
     }
 
@@ -781,7 +801,7 @@ export class CompiledQueryPanel {
             changedActions: dbtChangesView(project.root),
         }, project.compileNumber);
         return {
-            project: projectSlice({ root: project.root }, backend, last?.graph, project.compileNumber),
+            project: projectSlice({ root: project.root, label: projectLabel(project.root) }, backend, last?.graph, project.compileNumber),
             // While a compile for another file runs, the panel names the file on show, not that one
             compile: compileStatusSlice(state.compiling ? { ...state, compiling: { ...state.compiling, file } } : state, project.compileNumber),
             file: shown,
@@ -889,7 +909,7 @@ export class CompiledQueryPanel {
             return;
         }
         const { project, file } = shown;
-        const configuration = vscode.workspace.getConfiguration('vscode-dataform-tools', Uri.file(project.root));
+        const configuration = extensionConfiguration(Uri.file(project.root));
         switch (message.command) {
             case 'dbt.compileWithHooks':
                 // For this workspace only: the hooks of another Project are another decision
@@ -949,7 +969,7 @@ export class CompiledQueryPanel {
         // An outdated saved compilation is shown straight away; the startup compile redraws the panel when it finishes
         const renderFresh = freshCompilation && !isCompilationStale();
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
-            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
                 if (CompiledQueryPanel?.centerPanel?.webviewPanel){
                     CompiledQueryPanel.centerPanel.webviewPanel.dispose();
@@ -959,7 +979,7 @@ export class CompiledQueryPanel {
             CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, renderFresh);
             CompiledQueryPanel.centerPanel.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         } else {
-            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
                 if (!currentFileMetadata) {
@@ -1146,7 +1166,7 @@ export class CompiledQueryPanel {
                 return;
               case 'dataform.updateCompilerOptions': {
                 const compilerOptions = message.compilerOptions;
-                const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+                const config = extensionConfiguration();
                 // Respect where the user has already configured `compilerOptions`.
                 // VS Code's `update()` default writes to Workspace settings, which
                 // leaks team-shared `.vscode/settings.json` when the user
@@ -1564,7 +1584,7 @@ export class CompiledQueryPanel {
         }
         const renderId = ++this.renderSeq;
         const webview = this.webviewPanel.webview;
-        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
+        const compilerOptions = extensionConfiguration().get<string>('compilerOptions');
 
         const workspaceFolder = await getWorkspaceFolder();
         let dataformCoreVersion = undefined;
@@ -1602,6 +1622,8 @@ export class CompiledQueryPanel {
         this.updateDataformBlock({
             workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
             lastRun: getLastRunView(),
+            // Of the Project of the file on show: the one shown before may have been compiled another way, by another tool
+            compilationInfo: getCompilationInfo(currentDataformRoot()),
         });
 
         // Notify webview that we are starting compilation
@@ -1927,7 +1949,7 @@ export class CompiledQueryPanel {
      * which keeps the button's count current after every compile without compiling the base unprompted.
      */
     public async refreshFromCache(currentFileMetadata: CurrentFileMetadata | undefined) {
-        const showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave = extensionConfiguration().get<boolean>('showCompiledQueryInVerticalSplitOnSave');
         await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, true, currentFileMetadata, false);
     }
 
@@ -1972,7 +1994,7 @@ export class CompiledQueryPanel {
     }
 
     private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
-        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
         let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
         this.postChangedActions(false).catch((error) => logger.error(`Failed to refresh changed actions: ${error}`));
         this.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
@@ -1988,7 +2010,7 @@ export class CompiledQueryPanel {
      * message: the `dataform` block and how the compile stands.
      */
     private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: Tool; compilerOptions?: string; dataformCoreVersion?: string | null }) {
-        const compilationInfo = getCompilationInfo();
+        const compilationInfo = getCompilationInfo(currentDataformRoot());
         this.dataformBlock = {
             ...this.dataformBlock,
             compilerOptions: first.compilerOptions ?? '',

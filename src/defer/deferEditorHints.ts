@@ -7,6 +7,7 @@ import { findRefs } from '../documentSymbols';
 import { getRelativePath } from '../utils/workspaceUtils';
 import { builtInDevHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId } from './deferRules';
 import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralWithStaleFlags } from './index';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * A coloured label after each `${ref(...)}` in a .sqlx file that defer to prod reads from prod or from its built
@@ -46,7 +47,7 @@ const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
 });
 
 function hintsEnabled(): boolean {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('deferToProdEditorHints') !== false;
+    return extensionConfiguration().get<boolean>('deferToProdEditorHints') !== false;
 }
 
 function markdown(text: string, trustedCommands: string[] = []): vscode.MarkdownString {

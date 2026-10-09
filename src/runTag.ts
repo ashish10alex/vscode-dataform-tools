@@ -9,6 +9,7 @@ import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
 import { beginRun } from './defer/deferRun';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { dataformRunCommand } from './project/dataformBackend';
+import { extensionConfiguration } from './project/settings';
 
 export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     if (!(await beginRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
@@ -114,7 +115,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
     if (!(await recordThisRun(workspaceFolder))) { return; }
     await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
-    const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+    const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
     const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
     if(!projectId){
         vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);

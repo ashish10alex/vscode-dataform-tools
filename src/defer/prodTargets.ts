@@ -10,6 +10,7 @@ import { compileDataform, createCompilerOptionsObjectForApi, parseCompiledString
 import { compileRemoteHeadWithConfig } from '../utils/remoteCompiler';
 import { buildProdTargetMap } from './deferRules';
 import { getDataformCompilerOptions, isRemoteMode, resolveDataformOptions } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * The Prod Target of every action comes from compiling the project with the Prod Options. A compile takes a
@@ -37,7 +38,7 @@ export function initProdTargets(context: vscode.ExtensionContext) {
  * dev and prod are then the same tables.
  */
 export function getProdCompilerOptions(workspaceFolder: string): string | undefined {
-    const explicit = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).get<string>('prodCompilerOptions')?.trim();
+    const explicit = extensionConfiguration(vscode.Uri.file(workspaceFolder)).get<string>('prodCompilerOptions')?.trim();
     if (explicit) {
         return explicit;
     }
@@ -49,7 +50,7 @@ export function getProdCompilerOptions(workspaceFolder: string): string | undefi
  * targets are prod. Unset, column impact says it compared with the default targets, which may be dev tables.
  */
 export function isProdCompilerOptionsSet(workspaceFolder: string): boolean {
-    const setting = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).inspect<string>('prodCompilerOptions');
+    const setting = extensionConfiguration(vscode.Uri.file(workspaceFolder)).inspect<string>('prodCompilerOptions');
     return [setting?.globalValue, setting?.workspaceValue, setting?.workspaceFolderValue].some((value) => value !== undefined);
 }
 

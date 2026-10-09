@@ -5,6 +5,7 @@ import { readDataformCoreVersion } from '../utils/dataformHelpers';
 import { ConfigLocation, ParsedConfigBlock, getLocationAt, parseConfigBlock } from './parser';
 import { KeyInfo, SqlxActionType, docsUrl, typesAllowingKey } from './schema';
 import { ConfigIssue, getActionType, keySetFor, validateConfigBlock } from './validator';
+import { extensionConfiguration } from '../project/settings';
 
 export const CONFIG_DIAGNOSTIC_SOURCE = 'Dataform config';
 const DIAGNOSTICS_SETTING = 'configBlockDiagnostics';
@@ -109,7 +110,7 @@ async function computeIssues(document: vscode.TextDocument): Promise<ConfigIssue
 }
 
 function diagnosticsEnabled(): boolean {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>(DIAGNOSTICS_SETTING, true);
+    return extensionConfiguration().get<boolean>(DIAGNOSTICS_SETTING, true);
 }
 
 function registerDiagnostics(context: vscode.ExtensionContext) {

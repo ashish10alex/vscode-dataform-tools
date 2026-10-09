@@ -3,6 +3,7 @@ import { logger } from './logger';
 import type { BigQuery, BigQueryOptions } from '@google-cloud/bigquery';
 import { loadBigQuery } from './lazySdk';
 import type { JobPlace, JobSettings } from './bigquery/jobPlace';
+import { extensionConfiguration } from './project/settings';
 
 let bigquery: BigQuery | undefined;
 let isAuthenticated: boolean = false;
@@ -25,9 +26,9 @@ export async function createBigQueryClient(): Promise<string | undefined> {
 
     clientCreationPromise = (async () => {
         try {
-            const projectId : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-            const gcpLocation : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpLocation');
-            const serviceAccountJsonPath : string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+            const projectId : string | undefined = extensionConfiguration().get('gcpProjectId');
+            const gcpLocation : string | undefined = extensionConfiguration().get('gcpLocation');
+            const serviceAccountJsonPath : string | undefined = extensionConfiguration().get('serviceAccountJsonPath');
 
             logger.info(`Creating BigQuery client with Project ID: ${projectId}, Location: ${gcpLocation}, Service Account JSON Path: ${serviceAccountJsonPath}`);
 
@@ -82,7 +83,7 @@ export function getBigQueryClient(): BigQuery | undefined {
 
 /** The `gcpProjectId` and `gcpLocation` settings, for `jobPlace` */
 export function getJobSettings(): JobSettings {
-    const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+    const config = extensionConfiguration();
     return { gcpProjectId: config.get<string>('gcpProjectId') || undefined, gcpLocation: config.get<string>('gcpLocation') || undefined };
 }
 

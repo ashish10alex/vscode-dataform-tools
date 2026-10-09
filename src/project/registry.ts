@@ -1,7 +1,7 @@
 import { Backend, BackendPart, backendParts } from '../backend';
 import { DataformBackend } from '../backend/dataform/backend';
 import { DbtBackend } from '../backend/dbt';
-import { BackendName, detectProjects, detectWorkspaceProjects, FileBackendHints, Project, projectForFile, ProjectForFile } from './detection';
+import { BackendName, detectProjects, detectProjectsAbove, detectWorkspaceProjects, FileBackendHints, isInstalled, isWithin, Project, projectForFile, ProjectForFile } from './detection';
 
 /*
  * The Projects of a window and what each one last compiled to. No `vscode` import: the host (./index.ts) feeds it the
@@ -41,6 +41,7 @@ const keyOf = (project: Project) => `${project.backend}:${project.root}`;
 
 export class ProjectRegistry {
     private states = new Map<string, ProjectState>();
+    private workspaceFolders: readonly string[] = [];
     private lastActive: ProjectState | undefined;
 
     /** @param createDataformBackend Makes the Backend of each Dataform Project found */
@@ -52,25 +53,47 @@ export class ProjectRegistry {
             : new ProjectState(project.root, project.backend, undefined, new DbtBackend());
     }
 
-    /** Every Project of the window, in workspace-folder order */
+    /** Every Project of the window: those at the workspace-folder roots in folder order, then those below them as found */
     get projects(): ProjectState[] {
         return [...this.states.values()];
     }
 
+    /** The innermost workspace folder `filePath` is in */
+    private workspaceFolderOf(filePath: string): string | undefined {
+        return this.workspaceFolders.filter((folder) => isWithin(folder, filePath)).sort((a, b) => b.length - a.length)[0];
+    }
+
     /**
-     * Looks for Projects at the roots of `workspaceFolders`. A Project that is still there keeps its state; one that is
-     * gone is dropped.
+     * Looks for Projects at the roots of `workspaceFolders`, and looks again at each Project known below one. A
+     * Project that is still there keeps its state; one whose settings file or workspace folder is gone is dropped.
      */
     refresh(workspaceFolders: readonly string[]): ProjectState[] {
+        this.workspaceFolders = [...workspaceFolders];
         const next = new Map<string, ProjectState>();
-        for (const project of detectWorkspaceProjects(workspaceFolders)) {
-            next.set(keyOf(project), this.states.get(keyOf(project)) ?? this.newState(project));
-        }
+        const keep = (project: Project) => next.set(keyOf(project), this.states.get(keyOf(project)) ?? this.newState(project));
+        detectWorkspaceProjects(workspaceFolders).forEach(keep);
+        const below = new Set(this.projects.map((project) => project.root).filter((root) => !workspaceFolders.includes(root) && this.workspaceFolderOf(root)));
+        [...below].flatMap(detectProjects).forEach(keep);
         this.states = next;
         if (this.lastActive && !next.has(keyOf(this.lastActive))) {
             this.lastActive = undefined;
         }
         return this.projects;
+    }
+
+    /**
+     * Adds the Projects rooted at `roots`, e.g. from a search of the workspace for settings files. A root outside
+     * every workspace folder, or in an installed package, is passed over. Returns whether a Project was added.
+     */
+    discover(roots: readonly string[]): boolean {
+        const before = this.states.size;
+        for (const root of roots) {
+            const folder = this.workspaceFolderOf(root);
+            if (folder && !isInstalled(folder, root)) {
+                detectProjects(root).forEach((project) => this.ensure(project.root, project.backend));
+            }
+        }
+        return this.states.size > before;
     }
 
     /** The Project of `backend` rooted at `root`, if there is one */
@@ -96,8 +119,15 @@ export class ProjectRegistry {
         return state;
     }
 
-    /** The Project a file belongs to */
+    /**
+     * The Project a file belongs to: the nearest one at or above it, within its workspace folder. The directories
+     * above the file are looked at each time, which is how a Project below a workspace-folder root becomes known.
+     */
     forFile(filePath: string, hints: FileBackendHints = {}): ProjectForFile {
+        const folder = this.workspaceFolderOf(filePath);
+        if (folder) {
+            detectProjectsAbove(filePath, folder).forEach((project) => this.ensure(project.root, project.backend));
+        }
         return projectForFile(this.projects, filePath, hints);
     }
 

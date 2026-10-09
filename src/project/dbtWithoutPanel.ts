@@ -8,6 +8,7 @@ import { compileDbtProject, dbtCompilePending, dbtCompileState } from './dbtComp
 import { onDidChangeDbtTool } from './dbtTool';
 import { fileBackendHints, projects } from './index';
 import type { ProjectState } from './registry';
+import { extensionConfiguration } from './settings';
 
 /*
  * What a dbt Project is given while the compiled query panel is closed (Step 7 of the build plan). The editor
@@ -74,7 +75,7 @@ export async function savedWithoutPanel(saved: DbtFileOfProject, shown: DbtFileO
     }
     const { project } = saved;
     const { root, dbtBackend } = project;
-    const dryRun = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(root)).get<boolean>('dbtDryRunOnSave') !== false;
+    const dryRun = extensionConfiguration(vscode.Uri.file(root)).get<boolean>('dbtDryRunOnSave') !== false;
     const file = shown?.project === project ? shown.file : saved.file;
     asked.add(root);
     await compileDbtProject(project, dryRun ? file : undefined, 'save');

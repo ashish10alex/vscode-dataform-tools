@@ -8,18 +8,19 @@ import { GitService } from '../gitClient';
 import { loadDataformTools } from "../lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
 import { CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
-import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
+import { getWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
 import { runCompilation, getOrCompileDataformJson } from './dataformCompiler';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
-import { clearCompiled, compiledIndices, compiledJson } from '../project';
+import { clearCompiled, compiledIndices, compiledJson, fileBackendHints, projects } from '../project';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
 import { proxyViewsMayExist } from '../defer/proxyViews';
 import { resolveDataformOptions } from '../project/dataformOptions';
 import { dataformRunCommand } from '../project/dataformBackend';
+import { extensionConfiguration } from '../project/settings';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -144,9 +145,9 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
 
     const [filename, relativeFilePath, extension] = result.value;
     logger.debug(`File name: ${filename}, relative file path: ${relativeFilePath}, extension: ${extension}`);
-    if (!workspaceFolder) {
-        workspaceFolder = await getWorkspaceFolder();
-    }
+    // The Project is the file's own: the one the window last worked in may be another, with another compile result
+    const ofFile = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+    workspaceFolder = ofFile.kind === 'project' && ofFile.project.backend === 'dataform' ? ofFile.project.root : await getWorkspaceFolder();
     if (!workspaceFolder) { return { isDataformWorkspace: false }; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);
 
@@ -386,9 +387,7 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     let searchTerm = editor.document.getText(wordRange);
 
-    if (!workspaceFolder) {
-        workspaceFolder = await selectWorkspaceFolder();
-    }
+    workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         return;
     }
@@ -527,7 +526,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         }
         if (!(await beginRun(lastRunRequest))) { return false; }
 
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");

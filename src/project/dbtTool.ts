@@ -5,6 +5,7 @@ import { DbtProbe, probeDbt } from '../backend/dbt';
 import { findDbt } from '../backend/dbt/find';
 import { logger } from '../logger';
 import { onDidChangeActiveProject, projects } from './index';
+import { extensionConfiguration } from './settings';
 
 /*
  * The dbt of each dbt Project (xf#49): found in the background once the extension has started, probed once, and
@@ -71,7 +72,7 @@ async function pythonEnvironmentBin(root: string): Promise<string | undefined> {
 }
 
 async function resolve(root: string): Promise<DbtTool> {
-    const settingPath = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(root)).get<string>('dbtExecutablePath') || undefined;
+    const settingPath = extensionConfiguration(vscode.Uri.file(root)).get<string>('dbtExecutablePath') || undefined;
     const { found, looked } = findDbt({ root, settingPath, pythonEnvironmentBin: await pythonEnvironmentBin(root) });
     if (!found) {
         logger.info(`dbt: none found for ${root}. Looked in: ${looked.join('; ')}`);
