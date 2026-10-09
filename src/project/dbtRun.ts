@@ -57,8 +57,7 @@ export function needsConfirmation(target: string | undefined, profileDefault: st
 function terminalFor(root: string): vscode.Terminal {
     let terminal = terminals.get(root);
     if (!terminal || terminal.exitStatus !== undefined || !vscode.window.terminals.includes(terminal)) {
-        // On Windows the shell is cmd, whatever the user's own is: the command line is quoted for the one shell
-        terminal = createTerminalWhenReady({ name: 'dbt', cwd: root, ...(process.platform === 'win32' ? { shellPath: process.env.ComSpec || 'cmd.exe' } : {}) });
+        terminal = createTerminalWhenReady({ name: 'dbt', cwd: root });
         terminals.set(root, terminal);
     }
     return terminal;

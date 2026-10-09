@@ -200,7 +200,7 @@ export async function formatCurrentFileWithDataform() {
     if (isRunningOnWindows) {
         workspaceFolder = path.win32.normalize(workspaceFolder);
     }
-    runCommandInTerminal(`dataform format ${workspaceFolder}`);
+    runCommandInTerminal(`dataform format "${workspaceFolder}"`);
 }
 
 interface SqlfluffViolation {

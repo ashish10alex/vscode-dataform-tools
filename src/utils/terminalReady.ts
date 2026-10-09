@@ -117,13 +117,15 @@ const ready = new WeakMap<vscode.Terminal, Promise<void>>();
 
 /**
  * Makes a terminal, whose commands wait until it is ready. No virtual environment is activated in it. It is not
- * shown until `show()` is called on it.
+ * shown until `show()` is called on it. On Windows its shell is cmd.
  */
 export function createTerminalWhenReady(options: vscode.TerminalOptions): vscode.Terminal {
-    const terminal = vscode.window.createTerminal({ ...options, hideFromUser: true });
+    // On Windows the shell is cmd, whatever the user's own is: a command line is written for the one shell. Sent
+    // through `cmd /C` to the user's shell it was read twice, by PowerShell or Git Bash first, each in its own way
+    const isCmd = process.platform === 'win32';
+    const terminal = vscode.window.createTerminal({ ...options, ...(isCmd ? { shellPath: process.env.ComSpec || 'cmd.exe' } : {}), hideFromUser: true });
     // cmd has no shell integration to wait for, and starts at once
     const waits = defaultTerminalWaits();
-    const isCmd = /(^|[\\/])cmd(\.exe)?$/i.test(options.shellPath ?? '');
     ready.set(terminal, whenTerminalReady(terminal, vscode.window, isCmd ? { ...waits, shellIntegration: waits.quiet } : waits));
     return terminal;
 }

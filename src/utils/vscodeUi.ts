@@ -126,9 +126,6 @@ let cliTerminal: vscode.Terminal | undefined;
  * the first command in a new terminal waits until the terminal is ready, so that nothing cancels the command (#497).
  */
 export function runCommandInTerminal(command: string): vscode.Terminal {
-    if(isRunningOnWindows){
-        command = "cmd /C " + command;
-    }
     if (!cliTerminal || cliTerminal.exitStatus !== undefined || !vscode.window.terminals.includes(cliTerminal)) {
         cliTerminal = createTerminalWhenReady({ name: 'dataform' });
     }

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { getDataformCliCmdBasedOnScope, getWorkspaceFolder, runCommandInTerminal } from "./utils";
+import { quotedCli } from './backend/dataform/run';
 import { getDataformCompilationTimeoutFromConfig, isRemoteMode } from './project/dataformOptions';
 
 export async function runTests(workspaceFolder?: string) {
@@ -20,7 +21,7 @@ export async function runTests(workspaceFolder?: string) {
     } else {
         dataformCompilationTimeoutVal = "";
     }
-    let cmd = `${customDataformCliPath} test "${resolvedWorkspaceFolder}" ${dataformCompilationTimeoutVal}`;
+    let cmd = `${quotedCli(customDataformCliPath)} test "${resolvedWorkspaceFolder}" ${dataformCompilationTimeoutVal}`;
     
     runCommandInTerminal(cmd);
 }
