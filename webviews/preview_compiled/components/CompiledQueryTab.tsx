@@ -45,6 +45,7 @@ import { panelProblem } from "../utils/panelProblem";
 import { fileView } from "../utils/fileView";
 import { onlyAvailable } from "../utils/runTags";
 import { fileOnShow } from "../../../src/shared/panelState";
+import { ProjectLabel } from "./ProjectLabel";
 import { bigQueryView } from "../utils/bigQueryView";
 
 const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
@@ -331,6 +332,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
             {fileName || " "}
           </span>
+          <ProjectLabel project={state.project} />
           <CompilationInfoBadge info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
         </div>
         <LastRunCard lastRun={state.dataform.lastRun} latestApiRun={latestApiRun} disabled={compiling} onRerunDispatched={handleRerunDispatched} />
@@ -346,6 +348,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
               {fileName || " "}
           </span>
+          <ProjectLabel project={state.project} />
           <CompilationInfoBadge info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
           <div className="flex-grow"></div>
           <button onClick={handleFormat} disabled={formatting || compiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">

@@ -798,6 +798,7 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
       {/* Filename + compile time, then the dbt target where a Dataform file has Format and Lint */}
       <div className="flex flex-wrap items-center gap-2">
         <FileChip file={view.file} />
+        <ProjectLabel project={state.project} />
         {view.status && <StatusLine status={view.status} engine={engineLabel(block?.dbt)} />}
         <div className="flex-grow"></div>
         {block && <TargetControl block={block} />}
@@ -996,8 +997,7 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
               {TAB_LABEL[name]}
             </button>
           ))}
-          <ProjectLabel project={state.project} className="ml-auto" />
-          <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" target="_blank" rel="noopener noreferrer" className={clsx(!state.project?.label && "ml-auto", "flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110")}>
+          <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" target="_blank" rel="noopener noreferrer" className={clsx("ml-auto flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110")}>
             Report an issue
             <MessageSquareWarning className="w-3 h-3 ml-1" />
           </a>
@@ -1008,7 +1008,7 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
         {view.page === "tool missing" && <ToolMissing view={view} looking={looking} />}
         {view.page === "unsupported" && tab !== "project" && (
           <div className="p-4 space-y-4">
-            <div><FileChip file={view.file} /></div>
+            <div className="flex flex-wrap items-center gap-2"><FileChip file={view.file} /><ProjectLabel project={state.project} /></div>
             <h2 className="text-lg font-semibold m-0">This dbt cannot be used</h2>
             <p className="m-0 text-sm">{view.unsupported}</p>
             <ToolButtons looking={looking} />
