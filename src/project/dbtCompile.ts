@@ -8,6 +8,7 @@ import type { CompileState } from '../panel/slices';
 import { actionsInFile, isTestKind, siblingsOf } from '../shared/compiledGraph';
 import { dbtTool } from './dbtTool';
 import type { ProjectState } from './registry';
+import { extensionConfiguration } from './settings';
 
 /*
  * The compile loop of a dbt Project (ADR 0003). The panel asks for a compile when it is first opened, when a file is
@@ -51,7 +52,7 @@ function setState(root: string, state: CompileState) {
 }
 
 function setting<T>(root: string, key: string): T | undefined {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(root)).get<T>(key) ?? undefined;
+    return extensionConfiguration(vscode.Uri.file(root)).get<T>(key) ?? undefined;
 }
 
 /**

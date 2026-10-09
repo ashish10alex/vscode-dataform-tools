@@ -6,6 +6,7 @@ import { clearTableExistenceCache } from './tableExistence';
 import { removeProxyViews } from './proxyViews';
 import { getOrCompileDataformJson } from '../utils/dataformCompiler';
 import { pickConfigurationTarget, resolveDataformOptions } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -51,7 +52,7 @@ function refreshStatusBar() {
 /** Flips defer to prod, or sets it to `enabled` when given, so a caller with a stale view of the setting cannot invert it */
 async function toggleDeferToProd(enabled?: boolean) {
     const workspaceFolder = currentWorkspaceFolder();
-    const config = vscode.workspace.getConfiguration('vscode-dataform-tools', workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    const config = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
     const target = pickConfigurationTarget(config.inspect<boolean>('deferToProd'), !!vscode.workspace.workspaceFolders?.length);
     const value = typeof enabled === 'boolean' ? enabled : !isDeferEnabled(workspaceFolder);
     if (value === isDeferEnabled(workspaceFolder)) {

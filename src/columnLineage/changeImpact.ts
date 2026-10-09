@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import crypto from 'crypto';
 import { logger } from '../logger';
 import { queryDryRun } from '../bigqueryDryRun';
@@ -17,6 +16,7 @@ import { DataplexTraceSource } from './dataplexSource';
 import { resolveProdIndex } from './prodIndex';
 import { isProdCompilerOptionsSet } from '../defer/prodTargets';
 import { SchemaCache } from './schemaCache';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * The column impact of a branch: every table, view and incremental table it changes is dry run and compared with its
@@ -223,7 +223,7 @@ export async function computeColumnImpact(
     const resolveFile = (table: string) => index.get(table)?.fileName;
 
     const schemas = new SchemaCache();
-    const skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('skipPreOpsInDryRun') === true;
+    const skipPreOps = extensionConfiguration().get<boolean>('skipPreOpsInDryRun') === true;
     // Read upstream tables the way a dry run of the file would, so a dev table that was never built doesn't fail it
     const selected = changed.map((change) => actions.get(change.target)).filter((action): action is CompiledAction => !!action);
     let deferral: Awaited<ReturnType<typeof resolveDeferralForActions>>;

@@ -23,7 +23,7 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
   * **Finding dbt**: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` or `venv`, the Python extension's environment, `PATH`, common install directories. The panel says which was found.
   * **dbt v2 projects with on-run hooks are only parsed** unless `dbtCompileWithHooks` is on, because dbt v2 runs those hooks on every compile.
 * **Several projects in one window**: the project follows the file in the editor. A folder may be a Dataform project, a dbt project, or both.
-* **Projects in sub-folders**, for Dataform and dbt: the project of a file is the nearest folder above it that has `workflow_settings.yaml`, `dataform.json` or `dbt_project.yml`, up to the folder you opened. The panel names the project when it is in a sub-folder or when the window has several. Folders in `files.exclude` and `search.exclude` are not searched for projects.
+* **Projects in sub-folders**, for Dataform and dbt: the project of a file is the nearest folder above it that has `workflow_settings.yaml`, `dataform.json` or `dbt_project.yml`, up to the folder you opened. The panel names the project when it is in a sub-folder or when the window has several. Folders in `files.exclude` and `search.exclude` are not searched for projects. A project in a sub-folder keeps the extension's settings of its own `.vscode/settings.json`, which VS Code does not read there; they come before the window's settings.
 * **Remote hosts**: Remote SSH, dev containers and WSL are supported for both tools. A dev container with a dbt project is in `.devcontainer/dbt`.
 
 ### Changes for Dataform users

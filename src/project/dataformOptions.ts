@@ -3,6 +3,7 @@ import type { DataformOptions } from '../backend/dataform/options';
 import { getDataformCliCmdBasedOnScope } from '../utils/executableResolver';
 import { currentDataformRoot } from './index';
 import type { CompilationMode } from './tools';
+import { extensionConfiguration } from './settings';
 
 /*
  * The host's side of a Dataform compile: reads the settings a compile depends on and hands them over as plain data.
@@ -19,7 +20,7 @@ export function initDataformOptions(context: vscode.ExtensionContext) {
 
 function compilationModeConfig() {
     const root = currentDataformRoot();
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', root ? vscode.Uri.file(root) : vscode.workspace.workspaceFolders?.[0]?.uri);
+    return extensionConfiguration(root ? vscode.Uri.file(root) : vscode.workspace.workspaceFolders?.[0]?.uri);
 }
 
 /** Whether the Compilation Mode is API: the pushed commit is compiled with the Dataform API */
@@ -61,7 +62,7 @@ export function pickConfigurationTarget(
 }
 
 export function getDataformCompilationTimeoutFromConfig() {
-    let dataformCompilationTimeoutVal: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('defaultDataformCompileTime');
+    let dataformCompilationTimeoutVal: string | undefined = extensionConfiguration().get('defaultDataformCompileTime');
     if (dataformCompilationTimeoutVal) {
         return dataformCompilationTimeoutVal;
     }
@@ -74,7 +75,7 @@ export function getDataformCompilationTimeoutFromConfig() {
  * Note that `--timeout` only bounds the compilation step of a run.
  */
 export function getDataformExecutionTimeoutFromConfig(): string | undefined {
-    let dataformExecutionTimeoutVal: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('executionTimeout');
+    let dataformExecutionTimeoutVal: string | undefined = extensionConfiguration().get('executionTimeout');
     if (dataformExecutionTimeoutVal) {
         return dataformExecutionTimeoutVal;
     }
@@ -82,7 +83,7 @@ export function getDataformExecutionTimeoutFromConfig(): string | undefined {
 }
 
 export function getDataformCompilerOptions() {
-    let dataformCompilerOptions: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compilerOptions');
+    let dataformCompilerOptions: string | undefined = extensionConfiguration().get('compilerOptions');
     if (dataformCompilerOptions) {
         return dataformCompilerOptions;
     }
@@ -90,7 +91,7 @@ export function getDataformCompilerOptions() {
 }
 
 export function isPersistCompilationEnabled(): boolean {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('persistCompilation') ?? true;
+    return extensionConfiguration().get<boolean>('persistCompilation') ?? true;
 }
 
 /** The release config remote mode compiles with, by its full name; undefined for the default settings */
@@ -104,7 +105,7 @@ export async function setSelectedReleaseConfig(releaseConfig: string | undefined
 
 /** The Dataform CLI a compile will run, and whether it comes from PATH, the executable path setting or the project's node_modules. */
 function describeDataformCli(root: string): NonNullable<DataformOptions['cli']> {
-    const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+    const config = extensionConfiguration();
     const cliPath = getDataformCliCmdBasedOnScope(root);
     if (config.get<string>('dataformCliScope') === 'local') {
         return { path: cliPath, source: "local" };
@@ -119,7 +120,7 @@ function describeDataformCli(root: string): NonNullable<DataformOptions['cli']> 
  * how to compile, whatever the setting says by now.
  */
 export function resolveDataformOptions(root: string, compilationMode: CompilationMode = isRemoteMode() ? 'api' : 'cli'): DataformOptions {
-    const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+    const config = extensionConfiguration();
     return {
         compilationMode,
         compilerOptions: getDataformCompilerOptions(),

@@ -1,4 +1,5 @@
 import fs from "fs";
+import { extensionConfiguration } from './project/settings';
 import { currentDataformRoot } from './project';
 import path from 'path';
 import * as vscode from 'vscode';
@@ -51,8 +52,7 @@ export class GitService {
             // git rev-parse --abbrev-ref HEAD works correctly in worktrees
             const gitBranch = await this.execCmd('git rev-parse --abbrev-ref HEAD') || undefined;
 
-            const overrideRepoName = vscode.workspace
-                .getConfiguration('vscode-dataform-tools')
+            const overrideRepoName = extensionConfiguration(vscode.Uri.file(this.projectRoot))
                 .get<string>('gitRepoName')
                 ?.trim();
             if (overrideRepoName) {

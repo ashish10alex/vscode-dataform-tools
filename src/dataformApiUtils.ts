@@ -9,6 +9,7 @@ import { loadDataformTools } from "./lazySdk";
 import { countActionTypes } from './shared/actionTypes';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
 import { resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 export async function sendWorkflowInvocationNotification(
     url: string,
@@ -337,7 +338,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             return;
         }
 
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
         const gcpProjectId = (gcpProjectIdOveride || compiled.projectConfig.defaultDatabase) as string;
         if (!gcpProjectId) {
             vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
@@ -379,7 +380,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 2
         progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
-        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+        const serviceAccountJsonPath  = extensionConfiguration().get('serviceAccountJsonPath');
         let clientOptions = { projectId: gcpProjectId };
         if(serviceAccountJsonPath){
             vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);

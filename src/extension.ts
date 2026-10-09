@@ -46,6 +46,7 @@ import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineag
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
+import { extensionConfiguration } from './project/settings';
 import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
 import { dbtTool, initDbtTools } from './project/dbtTool';
 import { clearDbtArtifacts, compileDbtProject, forgetDbtCompile, initDbtCompile } from './project/dbtCompile';
@@ -525,7 +526,10 @@ export async function activate(context: vscode.ExtensionContext) {
             dbtRunMessage: (message: DbtRunMessage) => CompiledQueryPanel.centerPanel?.onDbtRunMessage(message),
         },
         // What the tests of a dbt workspace read (src/dbtWorkspace)
-        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), active: () => projects.active?.root, backendContext: () => backendContext(), dbtTool, lastDbtRun,
+        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), active: () => projects.active?.root,
+            /** For tests: a setting as the extension reads it for the Project at `root` */
+            setting: (name: string, root: string) => extensionConfiguration(vscode.Uri.file(root)).get(name),
+            backendContext: () => backendContext(), dbtTool, lastDbtRun,
             /** For tests: compiles a dbt Project for a file as showing it in the panel does, and drops what its compiles left */
             compileDbt: async (root: string, file: string) => { const project = projects.find(root, 'dbt'); if (project) { await compileDbtProject(project, file, 'open'); } },
             /** For tests: what asks BigQuery for a table's schema, and how many are held */

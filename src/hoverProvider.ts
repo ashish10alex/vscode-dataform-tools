@@ -23,6 +23,7 @@ import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 import { isOnConfigKey } from "./configBlock/providers";
 import { perfCount } from "./perf";
 import { resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string, columns?: Column[]): Promise<vscode.MarkdownString> {
           const hoverMarkdownString = new vscode.MarkdownString();
@@ -234,7 +235,7 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
  * just want best-effort metadata (e.g. hover providers).
  */
 export async function fetchTableMetadata(projectId: string, datasetId: string, tableId: string) {
-  const serviceAccountJsonPath = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+  const serviceAccountJsonPath = extensionConfiguration().get('serviceAccountJsonPath');
   let options: { projectId: string; keyFilename?: string } = { projectId };
   if (serviceAccountJsonPath) {
     options = { ...options, keyFilename: serviceAccountJsonPath as string };

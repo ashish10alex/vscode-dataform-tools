@@ -10,6 +10,7 @@ import { compiledGraph, compiledJson } from './project';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { Kind, Target, actionsInFile, isMadeUpTarget, previewSection, targetId } from './shared/compiledGraph';
 import { withoutPreOperations } from './utils/dryRunOrchestrator';
+import { extensionConfiguration } from './project/settings';
 
 export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsViewProvider: CustomViewProvider) {
     if (!queryResultsViewProvider._view) {
@@ -21,7 +22,7 @@ export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsView
 
 export function getQueryStringForPreview(fileMetadata: TablesWtFullQuery, isIncremental: boolean, skipPreOps?: boolean): string {
     if (skipPreOps === undefined) {
-        skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInPreviewQuery') ?? false;
+        skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
     }
     const preOpsQuery = skipPreOps ? "" : fileMetadata.queryMeta.preOpsQuery;
     const incrementalPreOpsQuery = skipPreOps ? "" : fileMetadata.queryMeta.incrementalPreOpsQuery;
@@ -73,7 +74,7 @@ async function checkDeferredPreview<Preview extends DeferredPreview>(preview: Pr
     }
 
     const deferred = countDeferred(preview.deferral);
-    const thresholdGiB = vscode.workspace.getConfiguration('vscode-dataform-tools').get<number>('deferPreviewScanWarningGiB') ?? 10;
+    const thresholdGiB = extensionConfiguration().get<number>('deferPreviewScanWarningGiB') ?? 10;
     const bytes = dryRun.statistics?.totalBytesProcessed ?? 0;
     if (deferred > 0 && thresholdGiB > 0 && !dryRun.error?.hasError && bytes > thresholdGiB * (1024 ** 3)) {
         const cost = dryRun.statistics?.cost;
@@ -145,7 +146,7 @@ export async function previewAction(target: Target, section: string, alone?: boo
         section = previewSection(action, true) ?? section;
     }
 
-    const skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInPreviewQuery') ?? false;
+    const skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
     // Deferral is decided for the file's actions together, as it is for what the panel shows of the file
     const selected = actionsInFile(graph, action.fileName).map((inFile) => ({
         target: isMadeUpTarget(inFile.target) ? undefined : inFile.target,

@@ -20,6 +20,7 @@ import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
 import { proxyViewsMayExist } from '../defer/proxyViews';
 import { resolveDataformOptions } from '../project/dataformOptions';
 import { dataformRunCommand } from '../project/dataformBackend';
+import { extensionConfiguration } from '../project/settings';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -525,7 +526,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
         }
         if (!(await beginRun(lastRunRequest))) { return false; }
 
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");

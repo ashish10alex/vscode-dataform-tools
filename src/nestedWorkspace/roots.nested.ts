@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
@@ -16,6 +17,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 interface ProjectsApi {
     list(): Array<{ root: string; backend: string }>;
     active(): string | undefined;
+    setting(name: string, root: string): unknown;
     backendContext(): { backend: string; canRun: boolean; listsChangedActions: boolean };
     setDbtWithoutPanel(on: boolean): void;
 }
@@ -50,5 +52,21 @@ suite('a workspace with Projects below its folder', function () {
         assert.strictEqual(api.backendContext().backend, 'dbt');
         await vscode.window.showTextDocument(vscode.Uri.file(path.join(workspaceFolder!, 'dbt-hooks', 'dbt_project.yml')));
         assert.strictEqual(api.active(), path.join(workspaceFolder!, 'dbt-hooks'));
+    });
+
+    test('a Project\'s own settings file is read, though VS Code does not read it below a workspace folder', async () => {
+        const root = path.join(workspaceFolder!, 'dbt-broken');
+        const directory = path.join(root, '.vscode');
+        assert.strictEqual(fs.existsSync(directory), false, 'The example Project is not expected to have a .vscode directory');
+        assert.ok(!api.setting('dbtTarget', root));
+        fs.mkdirSync(directory);
+        try {
+            fs.writeFileSync(path.join(directory, 'settings.json'), '{\n  // of this Project alone\n  "vscode-dataform-tools.dbtTarget": "ci",\n}\n');
+            assert.strictEqual(api.setting('dbtTarget', root), 'ci');
+            // Another Project of the window keeps the window's value
+            assert.ok(!api.setting('dbtTarget', path.join(workspaceFolder!, 'dbt')));
+        } finally {
+            fs.rmSync(directory, { recursive: true, force: true });
+        }
     });
 });

@@ -9,6 +9,7 @@ import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 import { beginRun } from './defer/deferRun';
 import { resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 /** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
 export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
@@ -85,7 +86,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         runCommandInTerminal(dataformActionCmd);
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
         const projectId = (gcpProjectIdOveride || compiled?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");

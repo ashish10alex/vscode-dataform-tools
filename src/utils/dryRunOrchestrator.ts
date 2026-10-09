@@ -13,6 +13,7 @@ import { handleAccessDenied } from '../defer';
 import { forgetDryRunSchema, recordDryRunSchema } from '../columnLineage/impactReport';
 import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
 import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
+import { extensionConfiguration } from '../project/settings';
 
 export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
     const preOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.preOpsQuery);
@@ -86,13 +87,13 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     }
 
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
-        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        showCompiledQueryInVerticalSplitOnSave = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
     }
 
     const type = curFileMeta.fileMetadata.queryMeta.type;
     const fileMetadata = curFileMeta.fileMetadata;
 
-    const skipPreOpsInDryRun = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
+    const skipPreOpsInDryRun = extensionConfiguration().get('skipPreOpsInDryRun');
     logger.debug(`skipPreOpsInDryRun: ${skipPreOpsInDryRun}`);
 
     // The file's actions as they are dry-run: reading Deferred Actions from prod, and without pre-operations when

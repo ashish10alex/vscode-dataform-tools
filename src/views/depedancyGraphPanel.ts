@@ -6,6 +6,7 @@ import { fetchTableMetadata } from '../hoverProvider';
 import { ProjectState, projects } from '../project';
 import { dbtDependencyGraph, openDbtAction } from '../project/dbtDependencyGraph';
 import path from 'path';
+import { extensionConfiguration } from '../project/settings';
 
 function normalizeSchemaFields(raw: any[]): Array<{ name: string; type: string; mode?: string; description?: string; fields?: any[] }> {
     if (!Array.isArray(raw)) {return [];}
@@ -128,7 +129,7 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                             initialEdgesStatic: output.initialEdgesStatic,
                             datasetColorMap: Object.fromEntries(output.datasetColorMap),
                             currentActiveEditorIdx: output.currentActiveEditorIdx,
-                            showAssertions: vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showAssertionsInDependencyGraph', false),
+                            showAssertions: extensionConfiguration().get<boolean>('showAssertionsInDependencyGraph', false),
                             backend: dbtProject ? 'dbt' : 'dataform',
                         }
                     });

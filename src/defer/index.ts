@@ -6,6 +6,7 @@ import { applyDeferral, BuiltInDevEntry, collectCandidates, decideDeferral, Defe
 import { findExistingDevTargets, findProxyViews, getDevLastModified, getProdStatuses, getTableExistenceGeneration, markProdUnreadable } from './tableExistence';
 import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
+import { extensionConfiguration } from '../project/settings';
 
 export interface Deferral {
     entries: DeferralEntry[];
@@ -24,7 +25,7 @@ export const onDeferralResolved = deferralResolved.event;
 let lastReportedError: string | undefined;
 
 function settings(workspaceFolder?: string) {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    return extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
 }
 
 export function isDeferEnabled(workspaceFolder?: string): boolean {

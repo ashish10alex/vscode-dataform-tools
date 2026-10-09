@@ -63,6 +63,7 @@ import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -348,7 +349,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         }
         activeEditorFileName = document?.fileName;
         activeDocumentObj = document;
-        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || (CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)) {
             if (CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
                 const workspaceFolder = await getWorkspaceFolder();
@@ -417,7 +418,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 return;
             }
             const panelOpen = CompiledQueryPanel.centerPanel?.centerPanelDisposed === false;
-            const opensOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave') === true;
+            const opensOnSave = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave') === true;
             if (affectsCompile(DBT_COMPILE_FILES, dbt.file) && (panelOpen || opensOnSave)) {
                 activeEditorFileName = document.fileName;
                 activeDocumentObj = document;
@@ -905,7 +906,7 @@ export class CompiledQueryPanel {
             return;
         }
         const { project, file } = shown;
-        const configuration = vscode.workspace.getConfiguration('vscode-dataform-tools', Uri.file(project.root));
+        const configuration = extensionConfiguration(Uri.file(project.root));
         switch (message.command) {
             case 'dbt.compileWithHooks':
                 // For this workspace only: the hooks of another Project are another decision
@@ -965,7 +966,7 @@ export class CompiledQueryPanel {
         // An outdated saved compilation is shown straight away; the startup compile redraws the panel when it finishes
         const renderFresh = freshCompilation && !isCompilationStale();
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
-            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
                 if (CompiledQueryPanel?.centerPanel?.webviewPanel){
                     CompiledQueryPanel.centerPanel.webviewPanel.dispose();
@@ -975,7 +976,7 @@ export class CompiledQueryPanel {
             CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, renderFresh);
             CompiledQueryPanel.centerPanel.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         } else {
-            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
                 if (!currentFileMetadata) {
@@ -1162,7 +1163,7 @@ export class CompiledQueryPanel {
                 return;
               case 'dataform.updateCompilerOptions': {
                 const compilerOptions = message.compilerOptions;
-                const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+                const config = extensionConfiguration();
                 // Respect where the user has already configured `compilerOptions`.
                 // VS Code's `update()` default writes to Workspace settings, which
                 // leaks team-shared `.vscode/settings.json` when the user
@@ -1580,7 +1581,7 @@ export class CompiledQueryPanel {
         }
         const renderId = ++this.renderSeq;
         const webview = this.webviewPanel.webview;
-        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
+        const compilerOptions = extensionConfiguration().get<string>('compilerOptions');
 
         const workspaceFolder = await getWorkspaceFolder();
         let dataformCoreVersion = undefined;
@@ -1943,7 +1944,7 @@ export class CompiledQueryPanel {
      * which keeps the button's count current after every compile without compiling the base unprompted.
      */
     public async refreshFromCache(currentFileMetadata: CurrentFileMetadata | undefined) {
-        const showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave = extensionConfiguration().get<boolean>('showCompiledQueryInVerticalSplitOnSave');
         await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, true, currentFileMetadata, false);
     }
 
@@ -1988,7 +1989,7 @@ export class CompiledQueryPanel {
     }
 
     private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
-        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
         let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
         this.postChangedActions(false).catch((error) => logger.error(`Failed to refresh changed actions: ${error}`));
         this.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));

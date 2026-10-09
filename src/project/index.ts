@@ -7,6 +7,7 @@ import { CompiledIndices, emptyIndices } from '../utils/compiledJsonIndex';
 import { createDataformBackend } from './dataformBackend';
 import { BACKENDS, BackendName, FileBackendHints, isWithin, SETTINGS_FILES } from './detection';
 import { ProjectRegistry, ProjectState } from './registry';
+import { extensionConfiguration } from './settings';
 
 export { ProjectRegistry, ProjectState } from './registry';
 export * from './detection';
@@ -70,7 +71,7 @@ const isBackendName = (value: unknown): value is BackendName => BACKENDS.include
  * user answered when asked.
  */
 export function fileBackendHints(filePath: string): FileBackendHints {
-    const setting = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(filePath)).get<string>('backend');
+    const setting = extensionConfiguration(vscode.Uri.file(filePath)).get<string>('backend');
     const remembered = workspaceState?.get<string>(SHARED_ROOT_BACKEND);
     const preferred = isBackendName(setting) ? setting : isBackendName(remembered) ? remembered : undefined;
     return {

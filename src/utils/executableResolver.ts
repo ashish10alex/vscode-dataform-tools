@@ -7,6 +7,7 @@ import { logger } from '../logger';
 import { perfCount } from '../perf';
 import { cacheDurationMs } from '../constants';
 import { ExecutablePathCache, ExecutablePathInfo, ExecutableSource } from '../types';
+import { extensionConfiguration } from '../project/settings';
 
 const executablePathCache: ExecutablePathCache = new Map<string, ExecutablePathInfo>();
 const execFilePromise = util.promisify(execFile);
@@ -63,7 +64,7 @@ export async function prefetchExecutablePath(executableName: string, workspaceFo
  * `node_modules/.bin` for a `local` dataformCliScope, else the path setting, PATH, then common install locations.
  */
 export function resolveExecutable(name: string, workspaceFolder?: string): { path: string | null, foundBy?: ExecutableSource } {
-    if (name === 'dataform' && workspaceFolder && vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).get('dataformCliScope') === 'local') {
+    if (name === 'dataform' && workspaceFolder && extensionConfiguration(vscode.Uri.file(workspaceFolder)).get('dataformCliScope') === 'local') {
         const localPath = path.join(workspaceFolder, 'node_modules', '.bin', isRunningOnWindows ? 'dataform.cmd' : 'dataform');
         return isValidExecutablePath(localPath) ? { path: localPath, foundBy: 'projectLocal' } : { path: null };
     }
@@ -88,7 +89,7 @@ export function executableIsAvailable(name: string, showErrorOnNotFound: boolean
 /** The Dataform CLI to run for a workspace: `<workspace>/node_modules/.bin/dataform` when dataformCliScope is `local`, otherwise the one found on PATH or in common locations. */
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
-    const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    const dataformCliScope: string | undefined = extensionConfiguration().get('dataformCliScope');
     logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
 
     if (dataformCliScope === 'local') {
@@ -144,7 +145,7 @@ function lookUpExecutable(executableName: string, workspaceFolder?: string): Exe
 // Get user-specified exact path for executable
 function getSpecificExecutablePath(executableName: string, workspaceFolder?: string): string | null {
     try {
-        const vscodeConfig = vscode.workspace.getConfiguration('vscode-dataform-tools', workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+        const vscodeConfig = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
         const configKey = `${executableName}ExecutablePath`;
         const specificPath = vscodeConfig.get<string>(configKey);
 
@@ -322,7 +323,7 @@ export function debugExecutablePaths(): void {
 
 export function getSqlfluffConfigPathFromSettings() {
     let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
-    let sqlfluffConfigPath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
+    let sqlfluffConfigPath: string | undefined = extensionConfiguration().get('sqlfluffConfigPath');
     if (sqlfluffConfigPath) {
         if (isRunningOnWindows) {
             sqlfluffConfigPath = path.win32.normalize(sqlfluffConfigPath);
@@ -337,7 +338,7 @@ export function getSqlfluffConfigPathFromSettings() {
 
 export function getSqlfluffExecutablePathFromSettings() {
     let defaultSqlfluffExecutablePath = "sqlfluff";
-    let sqlfluffExecutablePath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffExecutablePath');
+    let sqlfluffExecutablePath: string | undefined = extensionConfiguration().get('sqlfluffExecutablePath');
     logger.debug(`sqlfluffExecutablePath: ${sqlfluffExecutablePath}`);
     if (sqlfluffExecutablePath !== defaultSqlfluffExecutablePath && sqlfluffExecutablePath !== undefined) {
         if (isRunningOnWindows) {
