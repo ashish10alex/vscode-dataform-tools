@@ -42,7 +42,7 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
         assert.deepStrictEqual(shared.sort(), [
             'cancelQuery', 'clearExtensionCache', 'dependencyGraphPanel', 'rerunLastExecution', 'runAssertions', 'runChangedActions', 'runCurrentFile', 'runCurrentFileWtDeps',
             'runCurrentFileWtDownstreamDeps', 'runFilesTagsWtOptions', 'runQuery', 'runTag', 'runTagWtDeps', 'runTagWtDownstreamDeps',
-            'searchTableColumns', 'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'snoozeCompilation', 'stopSnoozeCompilation',
+            'searchTableColumns', 'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'showProjectInfo', 'snoozeCompilation', 'stopSnoozeCompilation',
         ]);
         assert.ok(shared.every((name) => !hiddenInDbt(name)));
     });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
 import { Loader2, MessageSquareWarning, Info, Settings, Clock, Terminal, Cloud } from 'lucide-react';
 import clsx from 'clsx';
@@ -25,6 +25,7 @@ import { panelProblem } from './utils/panelProblem';
 import { fileView } from './utils/fileView';
 import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
 import { DbtPanel } from './components/DbtPanel';
+import { ProjectInfoTab, useProjectInfoRequest } from './components/ProjectInfoTab';
 
 function HeaderRightActions({
   snoozeEndTime,
@@ -65,7 +66,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   const problem = panelProblem(state);
   const view = fileView(state.file);
   const fileName = fileOnShow(state);
-  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
+  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config' | 'project'>('compilation');
+  useProjectInfoRequest(useCallback(() => setActiveTab('project'), []));
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -171,6 +173,9 @@ function DataformPanel({ state }: { state: PanelSlices }) {
       } else if (e.key === 'w') {
         e.preventDefault();
         setActiveTab('workflow_urls');
+      } else if (e.key === 'p') {
+        e.preventDefault();
+        setActiveTab('project');
       }
     };
 
@@ -179,6 +184,10 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   }, []);
 
   useEffect(() => {
+    // The Project tab is of the Project, not of the file: it stays whichever file is shown
+    if (activeTab === 'project') {
+      return;
+    }
     if (fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json') {
       setActiveTab('project_config');
     } else if (activeTab === 'project_config' || (isPropertyGraphFile && activeTab !== 'compilation')) {
@@ -186,8 +195,15 @@ function DataformPanel({ state }: { state: PanelSlices }) {
     }
   }, [fileName, activeTab, isPropertyGraphFile]);
 
+  const tabClass = (active: boolean) => clsx(
+    "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+    active
+      ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
+      : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
+  );
+
   // Handle declarations view (full page override)
-  if (view.declarations) {
+  if (view.declarations && activeTab !== 'project') {
     return <DeclarationsView declarations={view.declarations} />;
   }
 
@@ -248,6 +264,9 @@ function DataformPanel({ state }: { state: PanelSlices }) {
               </button>
               </>
               )}
+              <button onClick={() => setActiveTab('project')} className={tabClass(activeTab === 'project')}>
+                Project
+              </button>
             </div>
             <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
           </>
@@ -255,10 +274,15 @@ function DataformPanel({ state }: { state: PanelSlices }) {
 
         {isConfigFile && (
           <div className="flex items-center w-full">
-            <h2 className="text-sm font-semibold text-[var(--vscode-foreground)] flex items-center">
-              <Settings className="w-4 h-4 mr-2" />
-              Project Configuration
-            </h2>
+            <div className="flex items-center space-x-2">
+              <button onClick={() => setActiveTab('project_config')} className={clsx(tabClass(activeTab !== 'project'), "flex items-center")}>
+                <Settings className="w-4 h-4 mr-2" />
+                Project Configuration
+              </button>
+              <button onClick={() => setActiveTab('project')} className={tabClass(activeTab === 'project')}>
+                Project
+              </button>
+            </div>
             <div className="flex-grow"></div>
 
             <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
@@ -288,6 +312,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
+        {activeTab === 'project' && <ProjectInfoTab state={state} />}
+        {activeTab !== 'project' && (<>
         {problem.compiling && (() => {
           const mode = state.dataform.compilationMode || state.dataform.compilationInfo?.mode || 'cli';
           const isApi = mode === 'api';
@@ -361,6 +387,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
+        </>)}
 
       </div>
     </div>

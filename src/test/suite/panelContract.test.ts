@@ -20,13 +20,14 @@ suite('panel contract', () => {
         assert.strictEqual(Object.keys(statuses).length, 7);
     });
 
-    test('there are five neutral slices and a block for each Backend', () => {
+    test('there are six neutral slices and a block for each Backend', () => {
         const slices: Record<SliceName, 'neutral' | 'backend'> = {
             'project': 'neutral',
             'file': 'neutral',
             'compile status': 'neutral',
             'bigquery': 'neutral',
             'run status': 'neutral',
+            'project info': 'neutral',
             'dataform': 'backend',
             'dbt': 'backend',
         };
@@ -38,7 +39,7 @@ suite('panel contract', () => {
         const commands: Record<PanelCommand, true> = {
             'ready': true, 'openAction': true, 'openFile': true, 'preview': true, 'run': true, 'runTags': true, 'repeatLastRun': true, 'copyToClipboard': true,
             'exportSchema': true, 'selectProject': true, 'showDependencyGraph': true, 'formatFile': true, 'lintFile': true,
-            'showLogs': true, 'openExternal': true,
+            'showLogs': true, 'openExternal': true, 'projectInfoShown': true, 'projectInfoHidden': true, 'refreshProjectInfo': true, 'followInfoLink': true,
             'dataform.updateCompilerOptions': true, 'dataform.switchCompilationMode': true, 'dataform.compileRemotely': true,
             'dataform.startSnooze': true, 'dataform.stopSnooze': true, 'dataform.runTests': true, 'dataform.runApi': true,
             'dataform.runTagsApi': true, 'dataform.runWithOptions': true, 'dataform.toggleDeferToProd': true,
@@ -53,7 +54,7 @@ suite('panel contract', () => {
             'dbt.computeChangedActions': true, 'dbt.runChangedActions': true,
         };
         const names = Object.keys(commands);
-        assert.strictEqual(names.filter((name) => !name.includes('.')).length, 15);
+        assert.strictEqual(names.filter((name) => !name.includes('.')).length, 19);
         assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 31);
         assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 6);
     });

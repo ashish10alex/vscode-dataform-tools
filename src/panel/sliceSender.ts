@@ -30,7 +30,7 @@ export class SliceSender {
      * listen: what was posted before that found nobody.
      */
     resend() {
-        const order: SliceName[] = ['project', 'dbt', 'compile status', 'file', 'bigquery', 'run status'];
+        const order: SliceName[] = ['project', 'dbt', 'compile status', 'file', 'bigquery', 'run status', 'project info'];
         for (const slice of order) {
             const serialised = this.sent.get(slice);
             if (serialised !== undefined) {

@@ -372,7 +372,7 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     };
 
     if (!compiling && compile?.status === 'tool not found') {
-        return { ...view, page: 'tool missing', lookedIn: compile.lookedIn, tabs: [] };
+        return { ...view, page: 'tool missing', lookedIn: compile.lookedIn };
     }
     if (!compiling && compile?.status === 'version unsupported') {
         return { ...view, page: 'unsupported', unsupported: compile.message };

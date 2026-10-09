@@ -293,6 +293,55 @@ export interface DbtBlock extends Slice {
     changedActions?: ChangedActionsView;
 }
 
+// ---- Project info
+
+/** What a click on a value or a note of the Project tab does */
+export type InfoLink =
+    /** Open the settings file the setting's value comes from, at the setting. `key` is without the section */
+    | { kind: 'setting'; key: string }
+    /** Open a file, or show a directory or an executable where it is */
+    | { kind: 'path'; path: string }
+    | { kind: 'url'; url: string }
+    /** Put the command that signs in to Google Cloud in a terminal, for the user to run */
+    | { kind: 'sign in' };
+
+/** One line of the Project tab: a label, a value and a note. A line that continues the one above has no label */
+export interface InfoRow {
+    label: string;
+    value: string;
+    /** The value stands for one that is not there, e.g. "(not set)": it is drawn muted */
+    absent?: boolean;
+    /** Beside the value, muted: where it came from, or what it means */
+    note?: string;
+    /** Something here is likely not what the user wants, in a few words */
+    warning?: string;
+    link?: InfoLink;
+    noteLink?: InfoLink;
+}
+
+export type InfoSectionName = 'project' | 'binaries' | 'settings' | 'google cloud' | 'git';
+
+export interface InfoSection {
+    name: InfoSectionName;
+    title: string;
+    /** Beside the title, muted */
+    note?: string;
+    /** Part of it is still being looked up: the rows there are may gain values */
+    looking: boolean;
+    rows: InfoRow[];
+}
+
+/**
+ * What the Project tab shows of a Project and of the user's setup: which tools, settings, Google account and git
+ * branch are in use, and where each came from. The same for both Backends. It belongs to no compile, and is sent
+ * only while the tab is on show.
+ */
+export interface ProjectInfoSlice {
+    /** Absolute path of the root of the Project it is about */
+    root: string;
+    sections: InfoSection[];
+}
+
 // ---- Host to panel
 
 export type HostMessage =
@@ -308,13 +357,17 @@ export type HostMessage =
      * workflow links. Without `touched` the whole block is replaced.
      */
     | { slice: 'dataform'; value: DataformBlock; touched?: Array<Exclude<keyof DataformBlock, 'compile'>> }
-    | { slice: 'dbt'; value: DbtBlock };
+    | { slice: 'dbt'; value: DbtBlock }
+    /** Null takes it back: what was sent is of another Project than the one now on show */
+    | { slice: 'project info'; value: ProjectInfoSlice | null };
 
 /** Something that happened once, which is not state: the panel acts on it and keeps nothing */
 export type HostEvent =
     /** The user did not confirm a repeat of the last run */
     | { event: 'rerun aborted' }
-    | { event: 'workflow cancel failed'; workflowInvocationId: string };
+    | { event: 'workflow cancel failed'; workflowInvocationId: string }
+    /** The user asked for the Project tab, with the command */
+    | { event: 'show project info' };
 
 export type SliceName = HostMessage['slice'];
 
@@ -352,7 +405,14 @@ export type SharedPanelMessage =
     | { command: 'formatFile' }
     | { command: 'lintFile' }
     | { command: 'showLogs' }
-    | { command: 'openExternal'; url: string };
+    | { command: 'openExternal'; url: string }
+    /** The Project tab is on show: the host sends the `project info` slice, and keeps it current until the tab is hidden */
+    | { command: 'projectInfoShown' }
+    | { command: 'projectInfoHidden' }
+    /** Look everything up again, the Google accounts and the tools' versions too */
+    | { command: 'refreshProjectInfo' }
+    /** A link of the Project tab was clicked. The host follows only a link of the slice it last sent */
+    | { command: 'followInfoLink'; link: InfoLink };
 
 /** Messages only a Dataform Project's panel sends. Each is named as Dataform's */
 export type DataformPanelMessage =

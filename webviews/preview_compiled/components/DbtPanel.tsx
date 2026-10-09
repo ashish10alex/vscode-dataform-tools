@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { AlertCircle, Check, ChevronDown, ChevronRight, Clock, Copy, ExternalLink, Eye, Loader2, MessageSquareWarning, Network, Play, Tag, Terminal } from "lucide-react";
 import type { MultiValue } from "react-select";
 import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
 import type { OptionType } from "../../dependancy_graph/components/StyledSelect";
 import { ModifierSwitch } from "./ModifierSwitch";
+import { ProjectInfoTab, useProjectInfoRequest } from "./ProjectInfoTab";
 import { ProjectLabel } from "./ProjectLabel";
 import { RunChangedButton } from "./RunChangedButton";
 import type { CompileError } from "../../../src/backend/backend";
@@ -918,46 +919,10 @@ function SchemaTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   );
 }
 
-/** Why the dbt target is the one it is, for the Project tab */
-function targetNote(target: DbtBlock["target"]): string {
-  if (target.overridden) {
-    const fallback = target.setting ?? target.profileDefault;
-    return `  (override${fallback ? `; default is ${fallback}` : ""})`;
-  }
-  if (target.setting === target.name) {
-    return "  (the dbtTarget setting)";
-  }
-  return target.profileDefault === target.name ? "  (profile default)" : "";
-}
-
-function ProjectTab({ state }: { state: PanelSlices }) {
-  const block = state.dbt;
-  const dbt = block?.dbt;
-  const rows: Array<[string, string]> = [
-    ["Backend", "dbt"],
-    ["dbt", dbt ? `${dbt.path}  (found by ${dbt.foundBy})` : block?.looking ? "looking for it…" : "not found"],
-    ["Version", engineLabel(dbt) || "not known"],
-    ["dbt target", block?.target.name ? `${block.target.name}${targetNote(block.target)}` : "dbt chooses; it has not said which yet"],
-    ["dbt vars", block?.vars ?? "none"],
-    ["Profiles dir", block?.profilesDir ?? "where dbt looks by default"],
-    ["Warehouse", block?.warehouse ?? "not known yet"],
-    ["Root", state.project?.root ?? ""],
-  ];
-  return (
-    <dl data-dbt="project" className="m-0 grid grid-cols-[minmax(110px,max-content)_1fr] gap-x-4 gap-y-2 text-sm">
-      {rows.map(([label, value]) => (
-        <React.Fragment key={label}>
-          <dt className={MUTED}>{label}</dt>
-          <dd className="m-0 font-mono text-xs break-all self-center">{value}</dd>
-        </React.Fragment>
-      ))}
-    </dl>
-  );
-}
-
 export function DbtPanel({ state }: { state: PanelSlices }) {
   const view = dbtView(state);
   const [chosen, setChosen] = useState<DbtTab>("compiled");
+  useProjectInfoRequest(useCallback(() => setChosen("project"), []));
   // A tab that the file on show does not have is not left selected
   const tab = view.tabs.includes(chosen) ? chosen : "compiled";
 
@@ -1005,7 +970,8 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
       )}
 
       <div className="flex-1 overflow-auto">
-        {view.page === "tool missing" && <ToolMissing view={view} looking={looking} />}
+        {view.page === "tool missing" && tab !== "project" && <ToolMissing view={view} looking={looking} />}
+        {view.page === "tool missing" && tab === "project" && <div className="p-4"><ProjectInfoTab state={state} /></div>}
         {view.page === "unsupported" && tab !== "project" && (
           <div className="p-4 space-y-4">
             <div className="flex flex-wrap items-center gap-2"><FileChip file={view.file} /><ProjectLabel project={state.project} /></div>
@@ -1021,7 +987,7 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
             {tab !== "schema" && (
               <div className="p-4">
                 {view.page === "panel" && tab === "compiled" && <CompiledTab state={state} view={view} />}
-                {tab === "project" && <ProjectTab state={state} />}
+                {tab === "project" && <ProjectInfoTab state={state} />}
               </div>
             )}
           </>
