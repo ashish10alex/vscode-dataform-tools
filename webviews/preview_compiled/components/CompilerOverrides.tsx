@@ -6,6 +6,24 @@ interface CompilerOverridesProps {
   initialCompilerOptions?: string;
 }
 
+/** The compiler options the four fields stand for, as one command-line string */
+function generatedOptions(tablePrefix: string, schemaSuffix: string, databaseSuffix: string, otherOptions: string): string {
+  const parts = [];
+  if (tablePrefix) {
+    parts.push(`--table-prefix="${tablePrefix}"`);
+  }
+  if (schemaSuffix) {
+    parts.push(`--schema-suffix="${schemaSuffix}"`);
+  }
+  if (databaseSuffix) {
+    parts.push(`--database-suffix="${databaseSuffix}"`);
+  }
+  if (otherOptions) {
+    parts.push(otherOptions);
+  }
+  return parts.join(" ");
+}
+
 export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
   initialCompilerOptions,
 }) => {
@@ -16,63 +34,58 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
   const [databaseSuffix, setDatabaseSuffix] = useState("");
   const [otherOptions, setOtherOptions] = useState("");
 
+  /** The options the host last gave, as the fields write them: what is not to be sent back as a change of the user's */
+  const fromHost = useRef("");
+  /** The options last sent to the host: when they come back, the fields already show them or something newer */
+  const sent = useRef<string | null>(null);
+
+  // The options are those of the Project of the file on show: when the host gives others, the fields follow
   useEffect(() => {
-    if (initialCompilerOptions && !tablePrefix && !schemaSuffix && !databaseSuffix && !otherOptions) {
-      setCompilerOptions(initialCompilerOptions);
-      setIsCompilerOptionsOpen(true);
-
-      const parts = initialCompilerOptions.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-      let tp = "", ss = "", ds = "", other = [];
-
-      for (const part of parts) {
-        if (part.startsWith("--table-prefix=")) {
-          tp = part.split('=')[1].replace(/"/g, '');
-        } else if (part.startsWith("--schema-suffix=")) {
-          ss = part.split('=')[1].replace(/"/g, '');
-        } else if (part.startsWith("--database-suffix=")) {
-          ds = part.split('=')[1].replace(/"/g, '');
-        } else {
-          other.push(part);
-        }
-      }
-      setTablePrefix(tp);
-      setSchemaSuffix(ss);
-      setDatabaseSuffix(ds);
-      setOtherOptions(other.join(" "));
+    const given = initialCompilerOptions ?? "";
+    if (given === sent.current) {
+      return;
     }
+    const parts = given.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+    let tp = "", ss = "", ds = "", other = [];
+
+    for (const part of parts) {
+      if (part.startsWith("--table-prefix=")) {
+        tp = part.split('=')[1].replace(/"/g, '');
+      } else if (part.startsWith("--schema-suffix=")) {
+        ss = part.split('=')[1].replace(/"/g, '');
+      } else if (part.startsWith("--database-suffix=")) {
+        ds = part.split('=')[1].replace(/"/g, '');
+      } else {
+        other.push(part);
+      }
+    }
+    fromHost.current = generatedOptions(tp, ss, ds, other.join(" "));
+    sent.current = null;
+    setCompilerOptions(fromHost.current);
+    if (given) {
+      setIsCompilerOptionsOpen(true);
+    }
+    setTablePrefix(tp);
+    setSchemaSuffix(ss);
+    setDatabaseSuffix(ds);
+    setOtherOptions(other.join(" "));
   }, [initialCompilerOptions]);
 
   useEffect(() => {
-    const parts = [];
-    if (tablePrefix) {
-      parts.push(`--table-prefix="${tablePrefix}"`);
-    }
-    if (schemaSuffix) {
-      parts.push(`--schema-suffix="${schemaSuffix}"`);
-    }
-    if (databaseSuffix) {
-      parts.push(`--database-suffix="${databaseSuffix}"`);
-    }
-    if (otherOptions) {
-      parts.push(otherOptions);
-    }
-
-    const newOptions = parts.join(" ");
+    const newOptions = generatedOptions(tablePrefix, schemaSuffix, databaseSuffix, otherOptions);
     if (newOptions !== compilerOptions) {
       setCompilerOptions(newOptions);
     }
   }, [tablePrefix, schemaSuffix, databaseSuffix, otherOptions]);
 
-  const isInitialMount = useRef(true);
-
+  // Only what the user changed is sent: options the host gave are another Project's to keep when sent back
   useEffect(() => {
-    if (isInitialMount.current && !compilerOptions) {
-      isInitialMount.current = false;
+    if (compilerOptions === fromHost.current) {
       return;
     }
-    isInitialMount.current = false;
-
     const timer = setTimeout(() => {
+      fromHost.current = compilerOptions;
+      sent.current = compilerOptions;
       vscode.postMessage({
         command: "dataform.updateCompilerOptions",
         compilerOptions,

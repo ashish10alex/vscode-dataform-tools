@@ -61,8 +61,11 @@ export function pickConfigurationTarget(
     return vscode.ConfigurationTarget.Workspace;
 }
 
-export function getDataformCompilationTimeoutFromConfig() {
-    let dataformCompilationTimeoutVal: string | undefined = extensionConfiguration().get('defaultDataformCompileTime');
+/** The settings of the Project at `root`; without one, of the active Project */
+const settingsOf = (root?: string) => extensionConfiguration(root ? vscode.Uri.file(root) : undefined);
+
+export function getDataformCompilationTimeoutFromConfig(root?: string) {
+    let dataformCompilationTimeoutVal: string | undefined = settingsOf(root).get('defaultDataformCompileTime');
     if (dataformCompilationTimeoutVal) {
         return dataformCompilationTimeoutVal;
     }
@@ -74,24 +77,24 @@ export function getDataformCompilationTimeoutFromConfig() {
  * Unset by default, matching the Dataform CLI, where the deadline is off unless asked for.
  * Note that `--timeout` only bounds the compilation step of a run.
  */
-export function getDataformExecutionTimeoutFromConfig(): string | undefined {
-    let dataformExecutionTimeoutVal: string | undefined = extensionConfiguration().get('executionTimeout');
+export function getDataformExecutionTimeoutFromConfig(root?: string): string | undefined {
+    let dataformExecutionTimeoutVal: string | undefined = settingsOf(root).get('executionTimeout');
     if (dataformExecutionTimeoutVal) {
         return dataformExecutionTimeoutVal;
     }
     return undefined;
 }
 
-export function getDataformCompilerOptions() {
-    let dataformCompilerOptions: string | undefined = extensionConfiguration().get('compilerOptions');
+export function getDataformCompilerOptions(root?: string) {
+    let dataformCompilerOptions: string | undefined = settingsOf(root).get('compilerOptions');
     if (dataformCompilerOptions) {
         return dataformCompilerOptions;
     }
     return "";
 }
 
-export function isPersistCompilationEnabled(): boolean {
-    return extensionConfiguration().get<boolean>('persistCompilation') ?? true;
+export function isPersistCompilationEnabled(root?: string): boolean {
+    return settingsOf(root).get<boolean>('persistCompilation') ?? true;
 }
 
 /** The release config remote mode compiles with, by its full name; undefined for the default settings */
@@ -105,7 +108,7 @@ export async function setSelectedReleaseConfig(releaseConfig: string | undefined
 
 /** The Dataform CLI a compile will run, and whether it comes from PATH, the executable path setting or the project's node_modules. */
 function describeDataformCli(root: string): NonNullable<DataformOptions['cli']> {
-    const config = extensionConfiguration();
+    const config = settingsOf(root);
     const cliPath = getDataformCliCmdBasedOnScope(root);
     if (config.get<string>('dataformCliScope') === 'local') {
         return { path: cliPath, source: "local" };
@@ -120,14 +123,14 @@ function describeDataformCli(root: string): NonNullable<DataformOptions['cli']> 
  * how to compile, whatever the setting says by now.
  */
 export function resolveDataformOptions(root: string, compilationMode: CompilationMode = isRemoteMode() ? 'api' : 'cli'): DataformOptions {
-    const config = extensionConfiguration();
+    const config = settingsOf(root);
     return {
         compilationMode,
-        compilerOptions: getDataformCompilerOptions(),
-        compileTimeout: getDataformCompilationTimeoutFromConfig(),
-        executionTimeout: getDataformExecutionTimeoutFromConfig(),
+        compilerOptions: getDataformCompilerOptions(root),
+        compileTimeout: getDataformCompilationTimeoutFromConfig(root),
+        executionTimeout: getDataformExecutionTimeoutFromConfig(root),
         cli: compilationMode === 'cli' ? describeDataformCli(root) : undefined,
-        persistCompilation: isPersistCompilationEnabled(),
+        persistCompilation: isPersistCompilationEnabled(root),
         api: {
             gcpProjectId: config.get<string>('gcpProjectId') || undefined,
             serviceAccountJsonPath: config.get<string>('serviceAccountJsonPath') || undefined,
