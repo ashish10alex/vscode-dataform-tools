@@ -254,7 +254,7 @@
             },
             {
                 "command": "vscode-dataform-tools.searchTableColumns",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Search columns in a model"
             },
             {
@@ -513,16 +513,12 @@
                 {
                     "command": "vscode-dataform-tools.lintCurrentFile",
                     "when": "vscode-dataform-tools.backend != dbt"
-                },
-                {
-                    "command": "vscode-dataform-tools.searchTableColumns",
-                    "when": "vscode-dataform-tools.backend != dbt"
                 }
             ],
             "editor/context": [
                 {
                     "command": "vscode-dataform-tools.searchTableColumns",
-                    "when": "resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt",
+                    "when": "(resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt) || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)",
                     "group": "navigation@10"
                 }
             ],
@@ -923,7 +919,6 @@
         "dompurify": "^3.3.1",
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
-        "prism-react-renderer": "^2.4.1",
-        "tablemark": "^3.1.0"
+        "prism-react-renderer": "^2.4.1"
     }
 }

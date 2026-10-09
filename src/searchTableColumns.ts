@@ -1,13 +1,31 @@
 import * as vscode from "vscode";
 import { compiledIndices } from './project';
-import { Column, Target } from "./types";
+import { Column, ColumnMetadata, Target } from "./types";
+import { dbtColumnSource } from "./project/dbtEditor";
 import { fetchTableMetadata, resolveTableReferenceAtPosition } from "./hoverProvider";
 import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
 import { getCurrentFileMetadata } from "./utils";
 
-interface ModelQuickPickItem extends vscode.QuickPickItem {
+/** A table whose columns can be searched, with the descriptions the Project's code gives them */
+export interface SearchedModel {
     target: Target;
     columns?: Column[];
+}
+
+/** Where the command finds the tables of the active file and their schemas: one for each Backend */
+export interface ColumnSource {
+    /** The table the hover named, which skips the pick of a model */
+    ofTarget(target: Target): SearchedModel;
+    /** The table the cursor is on, by the same resolution the hover uses */
+    underCursor(): Promise<SearchedModel | undefined>;
+    /** The table the active file builds, and those it reads. Undefined when the file is no model */
+    ofFile(): Promise<{ thisFile?: SearchedModel; referenced: SearchedModel[] } | undefined>;
+    /** The table's schema as BigQuery has it. Rejects with why when there is none to read */
+    fields(model: SearchedModel): Promise<ColumnMetadata[] | undefined>;
+}
+
+interface ModelQuickPickItem extends vscode.QuickPickItem {
+    model: SearchedModel;
 }
 
 interface ColumnQuickPickItem extends vscode.QuickPickItem {
@@ -30,51 +48,61 @@ function columnsForTarget(target: Target): Column[] | undefined {
     return (match as any)?.actionDescriptor?.columns;
 }
 
-/**
- * Offers the model the active file defines plus every model it refs. `dependencyTargets` comes
- * from the compiler, so it is already resolved and free of CTEs.
- */
-async function pickModel(): Promise<ModelQuickPickItem | undefined> {
-    const curFileMeta = await getCurrentFileMetadata(false);
-    const table = curFileMeta?.fileMetadata?.tables?.[0];
-    if (!isCompleteTarget(table?.target)) {
+/** Dataform's: the models come from the compile, so they are already resolved and free of CTEs */
+const dataformSource: ColumnSource = {
+    ofTarget: (target) => ({ target, columns: columnsForTarget(target) }),
+    underCursor: async () => {
+        const editor = vscode.window.activeTextEditor;
+        const reference = editor && await resolveTableReferenceAtPosition(editor.document, editor.selection.active);
+        return reference && { target: reference.target, columns: reference.columns?.length ? reference.columns : columnsForTarget(reference.target) };
+    },
+    ofFile: async () => {
+        const curFileMeta = await getCurrentFileMetadata(false);
+        const table = curFileMeta?.fileMetadata?.tables?.[0];
+        if (!isCompleteTarget(table?.target)) {
+            return undefined;
+        }
+        return {
+            thisFile: { target: table.target, columns: table.actionDescriptor?.columns },
+            referenced: (table.dependencyTargets ?? []).filter(isCompleteTarget).map((target) => ({ target, columns: columnsForTarget(target) })),
+        };
+    },
+    fields: async ({ target }) => (await fetchTableMetadata(target.database, target.schema, target.name))?.schema?.fields,
+};
+
+/** Offers the model the active file defines plus every model it reads */
+async function pickModel(source: ColumnSource): Promise<SearchedModel | undefined> {
+    const models = await source.ofFile();
+    if (!models || (!models.thisFile && models.referenced.length === 0)) {
         vscode.window.showErrorMessage(
-            "Could not work out which models this file uses. Open a Dataform model, or run this from a model hover."
+            "Could not work out which models this file uses. Open a model, or run this from a model hover."
         );
         return undefined;
     }
+    const item = (icon: string, model: SearchedModel): ModelQuickPickItem => ({
+        label: `$(${icon}) ${model.target.name}`,
+        description: `${model.target.database}.${model.target.schema}`,
+        model,
+    });
 
-    const thisFile: ModelQuickPickItem = {
-        label: `$(file-code) ${table.target.name}`,
-        description: `${table.target.database}.${table.target.schema}`,
-        target: table.target,
-        columns: table.actionDescriptor?.columns,
-    };
-
-    const seen = new Set([fullTableId(table.target)]);
+    const seen = new Set(models.thisFile ? [fullTableId(models.thisFile.target)] : []);
     const referenced: ModelQuickPickItem[] = [];
-    for (const dependency of table.dependencyTargets ?? []) {
-        if (!isCompleteTarget(dependency) || seen.has(fullTableId(dependency))) {
+    for (const dependency of models.referenced) {
+        if (seen.has(fullTableId(dependency.target))) {
             continue;
         }
-        seen.add(fullTableId(dependency));
-        referenced.push({
-            label: `$(link) ${dependency.name}`,
-            description: `${dependency.database}.${dependency.schema}`,
-            target: dependency,
-            columns: columnsForTarget(dependency),
-        });
+        seen.add(fullTableId(dependency.target));
+        referenced.push(item('link', dependency));
     }
 
     // Nothing to choose between.
-    if (referenced.length === 0) {
-        return thisFile;
+    if (models.thisFile && referenced.length === 0) {
+        return models.thisFile;
     }
 
-    referenced.sort((a, b) => a.target.name.localeCompare(b.target.name));
+    referenced.sort((a, b) => a.model.target.name.localeCompare(b.model.target.name));
     const items: vscode.QuickPickItem[] = [
-        { label: "This file", kind: vscode.QuickPickItemKind.Separator },
-        thisFile,
+        ...(models.thisFile ? [{ label: "This file", kind: vscode.QuickPickItemKind.Separator }, item('file-code', models.thisFile)] : []),
         { label: "Referenced models", kind: vscode.QuickPickItemKind.Separator },
         ...referenced,
     ];
@@ -84,53 +112,36 @@ async function pickModel(): Promise<ModelQuickPickItem | undefined> {
         placeHolder: `Select a model (${referenced.length} referenced by this file)`,
         matchOnDescription: true,
     });
-    return picked;
-}
-
-/**
- * Invoked from the editor context menu there is a cursor, so use the same resolution the hover
- * does: a ref, a declaration, a raw table id or self() under the cursor wins over the picker.
- */
-async function modelUnderCursor(): Promise<ModelQuickPickItem | undefined> {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        return undefined;
-    }
-    const reference = await resolveTableReferenceAtPosition(editor.document, editor.selection.active);
-    if (!reference) {
-        return undefined;
-    }
-    return {
-        label: reference.target.name,
-        target: reference.target,
-        columns: reference.columns?.length ? reference.columns : columnsForTarget(reference.target),
-    };
+    return picked?.model;
 }
 
 export async function searchTableColumns(target?: Target) {
-    // The hover passes the table it is describing, which skips the model picker.
-    const model: ModelQuickPickItem | undefined = isCompleteTarget(target)
-        ? { label: target.name, target, columns: columnsForTarget(target) }
-        : (await modelUnderCursor()) ?? (await pickModel());
+    const editor = vscode.window.activeTextEditor;
+    // A file of a dbt Project is asked about as dbt's, any other as Dataform's
+    const source = (editor && dbtColumnSource(editor.document, editor.selection.active)) ?? dataformSource;
+    // The hover passes the table it is describing, which skips the model picker. From the editor
+    // context menu there is a cursor: a table under it wins over the picker.
+    const model = isCompleteTarget(target)
+        ? source.ofTarget(target)
+        : (await source.underCursor()) ?? (await pickModel(source));
     if (!model) {
         return;
     }
 
-    const { database, schema, name } = model.target;
+    const { name } = model.target;
     const tableId = fullTableId(model.target);
 
-    let metadata: any;
+    let fields: ColumnMetadata[] | undefined;
     try {
-        metadata = await vscode.window.withProgress(
+        fields = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Fetching schema for ${name}` },
-            () => fetchTableMetadata(database, schema, name)
+            () => source.fields(model)
         );
     } catch (error: any) {
         vscode.window.showErrorMessage(`Could not fetch schema for ${tableId}: ${error?.message ?? error}`);
         return;
     }
 
-    const fields = metadata?.schema?.fields;
     if (!fields?.length) {
         vscode.window.showWarningMessage(`No schema available for ${tableId}`);
         return;

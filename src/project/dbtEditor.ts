@@ -3,11 +3,14 @@ import path from 'path';
 import * as vscode from 'vscode';
 import type { Editor, EditorDocument } from '../backend';
 import { logger } from '../logger';
-import { Action, actionsInFile, slashPath } from '../shared/compiledGraph';
+import { Action, Target, actionsInFile, buildsTable, isMadeUpTarget, slashPath, targetId } from '../shared/compiledGraph';
 import { dbtDryRunResults } from './dbtBigQuery';
 import { formatTimestamp } from '../utils';
-import { TableColumn, columnHoverText, columnsOf, tableHoverText } from './dbtHoverText';
-import { heldTable } from './dbtSchemas';
+import { rawTableIdAt, tableHoverMarkdown } from '../hoverProvider';
+import type { ColumnSource, SearchedModel } from '../searchTableColumns';
+import { TableColumn, columnHoverText, columnsOf } from './dbtHoverText';
+import { heldTable, heldTableOfId } from './dbtSchemas';
+import { tableHoverText } from './tableHoverText';
 import { fileBackendHints, onDidChangeProjects, projects } from './index';
 import type { ProjectState } from './registry';
 import { extensionConfiguration } from './settings';
@@ -117,7 +120,12 @@ class DbtHoverProvider implements vscode.HoverProvider {
         const table = dbt.editor.tableAt(at(dbt, document, position));
         if (table) {
             const action = graph.actions[table.id];
-            return new vscode.Hover(new vscode.MarkdownString(tableHoverText(action, await heldTable(dbt.project.root, action), formatTimestamp)), range(table));
+            return new vscode.Hover(tableHoverMarkdown(tableHoverText(action, await heldTable(dbt.project.root, action), formatTimestamp)), range(table));
+        }
+        // A plain `project.dataset.table` id: no Action, so only what BigQuery knows of it
+        const target = rawTableIdAt(document, position);
+        if (target) {
+            return new vscode.Hover(tableHoverMarkdown(tableHoverText({ target }, await heldTableOfId(dbt.project.root, target), formatTimestamp)));
         }
         const column = dbt.editor.columnAt(at(dbt, document, position));
         if (!column) {
@@ -128,6 +136,49 @@ class DbtHoverProvider implements vscode.HoverProvider {
             || (column.qualified ? '' : columnHoverText(column.word, ownColumns(dbt)));
         return text ? new vscode.Hover(new vscode.MarkdownString(text), range(column)) : undefined;
     }
+}
+
+/**
+ * What "Search columns" searches in a file of a dbt Project: the table under the cursor, or one of those the file
+ * builds and reads. Undefined for a document that is of no dbt Project, or of one not parsed yet.
+ */
+export function dbtColumnSource(document: vscode.TextDocument, position: vscode.Position): ColumnSource | undefined {
+    const dbt = dbtDocument(document);
+    const graph = dbt?.project.dbtBackend?.lastResult?.graph;
+    if (!dbt || !graph) {
+        return undefined;
+    }
+    const root = dbt.project.root;
+    const ofAction = (action: Action): SearchedModel => ({ target: action.target, columns: action.columns });
+    // The Action that builds the table when the Project has one, for the descriptions its YAML gives the columns
+    const ofTarget = (target: Target): SearchedModel => {
+        const action = graph.actions[targetId(target)];
+        return action && buildsTable(action) ? ofAction(action) : { target };
+    };
+    return {
+        ofTarget,
+        underCursor: async () => {
+            const table = dbt.editor.tableAt(at(dbt, document, position));
+            const raw = table ? undefined : rawTableIdAt(document, position);
+            return table ? ofAction(graph.actions[table.id]) : raw && ofTarget(raw);
+        },
+        ofFile: async () => {
+            const actions = actionsInFile(graph, dbt.file);
+            const built = actions.find(buildsTable);
+            return {
+                thisFile: built && ofAction(built),
+                referenced: actions.flatMap((action) => action.dependencyTargets).filter((target) => !isMadeUpTarget(target)).map(ofTarget),
+            };
+        },
+        fields: async ({ target }) => {
+            const action = graph.actions[targetId(target)];
+            const table = await (action && buildsTable(action) ? heldTable(root, action)! : heldTableOfId(root, target));
+            if (table.state === 'found') {
+                return table.fields;
+            }
+            throw new Error(table.state === 'missing' ? 'BigQuery has no table of this name' : table.error);
+        },
+    };
 }
 
 /**

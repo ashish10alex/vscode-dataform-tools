@@ -18,7 +18,7 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
   * **Run Changed**: `dbt build --select state:modified` against the merge-base with the default branch, with the same button as Dataform's: the changed actions by file, why each changed (new, SQL, config, macro), and a tick per file. The extension parses the merge-base itself, so no production manifest is needed. Also the command "Run changed actions (vs default branch)".
   * **dbt target control** in the panel, with a private choice per workspace; settings `dbtTarget`, `dbtVars`, `dbtProfilesDir`.
   * **Compile errors** in the panel with links, and marked in the editor where dbt gave a line.
-  * **In the editor**: go to definition from a `ref()`, a `source()` and a macro call; hover on a `ref()` or `source()` with the table's description, partitioning, row count and columns, and on a column name with its type and description; completions for model, source and column names. The language of `.sql` files is not changed. These stand down beside the dbt extension of dbt Labs or Power User for dbt, unless `dbtEditorFeatures` is `on`.
+  * **In the editor**: go to definition from a `ref()`, a `source()` and a macro call; hover on a `ref()`, a `source()` or a plain `project.dataset.table` id with the table's kind, location, description, partitioning, row count and columns, and on a column name with its type and description; "Search columns in a model" from the hover, the right-click menu and the command palette; completions for model, source and column names. The language of `.sql` files is not changed. These stand down beside the dbt extension of dbt Labs or Power User for dbt, unless `dbtEditorFeatures` is `on`.
   * **Dry-run errors in the editor**: on the line of your file when it is in the compiled query unchanged, else on the first line with the place in the compiled query. A save dry-runs also while the panel is closed; `dbtDryRunOnSave` turns that off.
   * **Finding dbt**: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` or `venv`, the Python extension's environment, `PATH`, common install directories. The panel says which was found.
   * **dbt v2 projects with on-run hooks are only parsed** unless `dbtCompileWithHooks` is on, because dbt v2 runs those hooks on every compile.
@@ -34,7 +34,8 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
 * The extension also activates in a workspace that has a `dbt_project.yml`, and in one that has a settings file in a sub-folder.
 * A Dataform project in a sub-folder of its git repository compiles in CLI mode. API mode says that the Dataform API needs the settings file at the top of the repository.
 * A file in no project gets one message that names the settings files of both tools.
-* Seventeen commands change category from "Dataform" to "Dataform/dbt". "Run assertions in the current model" is now "Run assertions / tests in the current model".
+* The hover of a table is shorter and the same as in a dbt project: kind and location on one line, then partition, row count and last change on one line. The row count is new. The partition is the one the table has in BigQuery, with how (`order_date (day)`). A description written in the config block wins over BigQuery's, as column descriptions already did. A table that is not built yet, or that BigQuery cannot be asked about, says so.
+* Eighteen commands change category from "Dataform" to "Dataform/dbt". "Run assertions in the current model" is now "Run assertions / tests in the current model".
 * The bottom panel that shows query results is named "BigQuery Results", and the compiled query panel's tab is named "Compiled Query".
 * No command id or setting id changed.
 

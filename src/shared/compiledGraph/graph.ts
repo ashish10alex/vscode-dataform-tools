@@ -133,6 +133,8 @@ export interface Action {
 
     description?: string;
     columns?: ColumnDescription[];
+    /** The partition its config asks for, with how, as a hover says it: `order_date (day)` */
+    partition?: string;
 
     dependencyTargets: Target[];
     /**

@@ -41,6 +41,7 @@ interface ManifestNode {
         materialized?: string | null;
         'pre-hook'?: Array<{ sql: string }> | null;
         'post-hook'?: Array<{ sql: string }> | null;
+        partition_by?: { field?: string | null; data_type?: string | null; granularity?: string | null } | null;
     } | null;
 }
 
@@ -293,6 +294,11 @@ class Reader {
         const description = node.description || node.url;
         if (description) {
             action.description = description;
+        }
+        const partition = node.config?.partition_by;
+        if (partition?.field) {
+            // As BigQuery says it of the built table: dbt partitions by day unless told otherwise
+            action.partition = `${partition.field} (${partition.data_type === 'int64' ? 'range' : (partition.granularity ?? 'day').toLowerCase()})`;
         }
         // A column listed only to test it documents nothing
         const columns = Object.values(node.columns ?? {}).filter((column) => column.description);
