@@ -112,6 +112,19 @@ export function whenTerminalReady(
     });
 }
 
+/** The shells VS Code has shell integration for, by the name of their program */
+const INTEGRATED_SHELLS = new Set(['bash', 'zsh', 'fish', 'pwsh', 'powershell']);
+
+/**
+ * Whether shell integration will say that the shell at `shellPath` has started: the setting is on, and the shell is
+ * one VS Code has integration for. A shell that is not known, as when VS Code names none, is taken to say so, which
+ * is the longer wait.
+ */
+export function shellSaysItHasStarted(shellPath: string, enabled: boolean): boolean {
+    const name = shellPath.split(/[\\/]/).pop()!.toLowerCase().replace(/\.exe$/, '');
+    return enabled && (name === '' || INTEGRATED_SHELLS.has(name));
+}
+
 /** When each terminal can take a command. A terminal that is not here is ready */
 const ready = new WeakMap<vscode.Terminal, Promise<void>>();
 
@@ -122,11 +135,13 @@ const ready = new WeakMap<vscode.Terminal, Promise<void>>();
 export function createTerminalWhenReady(options: vscode.TerminalOptions): vscode.Terminal {
     // On Windows the shell is cmd, whatever the user's own is: a command line is written for the one shell. Sent
     // through `cmd /C` to the user's shell it was read twice, by PowerShell or Git Bash first, each in its own way
-    const isCmd = process.platform === 'win32';
-    const terminal = vscode.window.createTerminal({ ...options, ...(isCmd ? { shellPath: process.env.ComSpec || 'cmd.exe' } : {}), hideFromUser: true });
-    // cmd has no shell integration to wait for, and starts at once
+    const shellPath = process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : options.shellPath;
+    const terminal = vscode.window.createTerminal({ ...options, ...(shellPath ? { shellPath } : {}), hideFromUser: true });
+    // A shell that will not say it has started is not waited on for it: only for the moment a shell takes to start
     const waits = defaultTerminalWaits();
-    ready.set(terminal, whenTerminalReady(terminal, vscode.window, isCmd ? { ...waits, shellIntegration: waits.quiet } : waits));
+    const enabled = vscode.workspace.getConfiguration('terminal.integrated.shellIntegration').get<boolean>('enabled', true);
+    const says = shellSaysItHasStarted(shellPath ?? vscode.env.shell, enabled);
+    ready.set(terminal, whenTerminalReady(terminal, vscode.window, says ? waits : { ...waits, shellIntegration: waits.quiet }));
     return terminal;
 }
 

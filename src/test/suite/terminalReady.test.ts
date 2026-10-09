@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
-import { TerminalWaits, whenTerminalReady } from '../../utils/terminalReady';
+import { TerminalWaits, shellSaysItHasStarted, whenTerminalReady } from '../../utils/terminalReady';
 
 const waits: TerminalWaits = { shellIntegration: 400, quiet: 100, execution: 1000 };
 
@@ -76,6 +76,16 @@ suite('whenTerminalReady', () => {
         const { onDidCloseTerminal } = fakeWindow().events;
         const ms = await timed(whenTerminalReady({} as vscode.Terminal, { onDidCloseTerminal }, waits));
         assert.ok(ms >= 390 && ms < 600, `${ms}ms`);
+    });
+
+    test('only a shell with shell integration, and with the setting on, is waited on to say it has started', () => {
+        assert.strictEqual(shellSaysItHasStarted('/bin/zsh', true), true);
+        assert.strictEqual(shellSaysItHasStarted('C:\\Program Files\\PowerShell\\7\\pwsh.exe', true), true);
+        assert.strictEqual(shellSaysItHasStarted('/bin/zsh', false), false);
+        assert.strictEqual(shellSaysItHasStarted('C:\\WINDOWS\\system32\\cmd.exe', true), false);
+        assert.strictEqual(shellSaysItHasStarted('/usr/bin/nu', true), false);
+        // VS Code names no shell: the longer wait
+        assert.strictEqual(shellSaysItHasStarted('', true), true);
     });
 
     test('stops waiting when the terminal is closed', async () => {
