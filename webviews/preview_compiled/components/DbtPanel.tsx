@@ -649,9 +649,9 @@ function ActionCard({ state, view, action }: { state: PanelSlices; view: DbtView
               href={getUrlToNavigateToTableInBigQuery(database, schema, name)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors break-all"
+              className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] hover:underline transition-colors break-all"
             >
-              <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
+              <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0 text-[var(--vscode-textLink-foreground)]" />
               {[database, schema, name].filter(Boolean).join(".")}
             </a>
             <button

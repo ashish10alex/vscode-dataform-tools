@@ -418,7 +418,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         <BigQueryTableLink
                           id={target}
                           showIcon={true}
-                          className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
+                          className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] hover:underline transition-colors"
                           fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
                         />
                         {model.type === 'notebook' && model.fileName && (
