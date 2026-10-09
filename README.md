@@ -94,7 +94,8 @@ The extension looks for dbt in this order and uses the first it finds: the `dbtE
 | Compile errors | Shown in the panel with a link to the file, and marked in the editor where dbt gave a line. |
 | Dry-run errors | BigQuery's errors are marked in the editor too. See [In the editor](#in-the-editor). |
 | Go to definition | From a `ref()` to its model, seed or snapshot; from a `source()` to its table in the YAML file; from a macro call to its `{% macro %}` line. Also from a `ref()` or `source()` written in a YAML file. |
-| Hover | On a `ref()` or `source()`: the table in BigQuery, its description, partitioning, row count and columns. On a column name: its type and description, in each table the file reads that has it. |
+| Hover | On a `ref()`, a `source()` or a plain `project.dataset.table` id: the same hover as in a Dataform project, with the table in BigQuery, its kind, location, description, partitioning, row count and columns, and a link to search its columns. On a column name: its type and description, in each table the file reads that has it. |
+| Search columns | *Search columns in a model*, from the hover, the right-click menu or the command palette: pick a column of the table under the cursor, or of a table the file reads, by name, type or description. |
 | Completions | Model, seed and snapshot names inside `ref('`; sources and their tables inside `source('`; column names after an alias and a dot, and of every table the file reads. |
 | Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
 | Dependency graph | **Graph** in the panel, or *Show dependency graph*. Every model, seed, snapshot, source, test and exposure, centred on the file in the editor. Tests are hidden until you tick *Show tests*. Read from a parse of the project, so nothing needs compiling first. |
@@ -254,6 +255,8 @@ The extension works over Remote SSH, in dev containers and in WSL, for both Data
 ### <a id="hover">BigQuery hover definition provider</a>
 
 Hover over tables, columns, column types and BigQuery functions to see their documentation, syntax, and examples making it easier to understand and use them correctly without leaving your editor.
+
+The hover of a table is the same in a Dataform and a dbt project: its name as a link to BigQuery, a **Search columns** link, its kind and location, its description, its partition, row count and last change, and its columns. Descriptions written in the project win over BigQuery's. A table that is not built yet says so.
 
 ![table_hover](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/table_hover_dark.png#gh-dark-mode-only)
 

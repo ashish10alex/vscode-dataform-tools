@@ -38,18 +38,18 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
     const hiddenInDbt = (name: string) => (palette.get(name) ?? '').includes('vscode-dataform-tools.backend != dbt');
     const shared = commands.filter((command) => command.category === 'Dataform/dbt').map((command) => command.command.slice(PREFIX.length));
 
-    test('the eighteen that work in a dbt Project, and the Project picker, are in the category of both', () => {
+    test('the nineteen that work in a dbt Project, and the Project picker, are in the category of both', () => {
         assert.deepStrictEqual(shared.sort(), [
             'cancelQuery', 'clearExtensionCache', 'dependencyGraphPanel', 'rerunLastExecution', 'runAssertions', 'runChangedActions', 'runCurrentFile', 'runCurrentFileWtDeps',
             'runCurrentFileWtDownstreamDeps', 'runFilesTagsWtOptions', 'runQuery', 'runTag', 'runTagWtDeps', 'runTagWtDownstreamDeps',
-            'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'snoozeCompilation', 'stopSnoozeCompilation',
+            'searchTableColumns', 'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'snoozeCompilation', 'stopSnoozeCompilation',
         ]);
         assert.ok(shared.every((name) => !hiddenInDbt(name)));
     });
 
     test('every other command is Dataform\'s, and is not listed while the active Project is a dbt one', () => {
         const others = commands.filter((command) => command.category !== 'Dataform/dbt');
-        assert.strictEqual(others.length, 26);
+        assert.strictEqual(others.length, 25);
         for (const command of others) {
             assert.strictEqual(command.category, 'Dataform', command.command);
             assert.ok(hiddenInDbt(command.command.slice(PREFIX.length)), `${command.command} is listed in a dbt Project`);

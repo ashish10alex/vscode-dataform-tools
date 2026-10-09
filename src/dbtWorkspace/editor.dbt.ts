@@ -197,7 +197,8 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         asked.length = 0;
         const [text] = await hovers(document, "'stg_orders'", 3);
         assert.ok(text.startsWith('#### [alex-personal-dev-01.xf_example.stg_orders](https://console.cloud.google.com/bigquery?'), text);
-        assert.ok(text.includes('**Kind:** view \u00B7 `models/staging/stg_orders.sql`'), text);
+        assert.ok(text.includes('[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?'), text);
+        assert.ok(text.includes('**Kind:** view\n'), text);
         assert.ok(text.includes('**Rows:** 42'), text);
         assert.ok(text.includes('| status | STRING |'), text);
         await hovers(document, "'stg_orders'", 3);
@@ -206,6 +207,20 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
 
         const [missing] = await hovers(document, "'stg_payments'", 3);
         assert.ok(missing.includes('_Not built yet: BigQuery has no table of this name._'), missing);
+    });
+
+    test('a hover on a plain table id says what BigQuery knows of the table, which is no Action', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        const edit = new vscode.WorkspaceEdit();
+        edit.insert(document.uri, new vscode.Position(0, 0), '-- reads `other-project.landing.raw_orders`\n');
+        await vscode.workspace.applyEdit(edit);
+        try {
+            const [text] = await hovers(document, 'other-project.landing.raw_orders', 3);
+            assert.ok(text.startsWith('#### [other-project.landing.raw_orders](https://console.cloud.google.com/bigquery?'), text);
+            assert.ok(text.includes('[$(search) Search columns]') && text.includes('**Rows:** 42') && !text.includes('**Kind:**'), text);
+        } finally {
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+        }
     });
 
     test('a hover on a column says which tables the file reads have it, through its alias when it has one', async () => {
