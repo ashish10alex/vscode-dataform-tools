@@ -35,7 +35,7 @@ export const BigQueryTableLink: React.FC<BigQueryTableLinkProps> = ({
       rel="noopener noreferrer"
       className={className}
     >
-      {showIcon && <ExternalLink className="w-4 h-4 mr-2" />}
+      {showIcon && <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0 text-[var(--vscode-textLink-foreground)]" />}
       {displayLabel}
     </a>
   );

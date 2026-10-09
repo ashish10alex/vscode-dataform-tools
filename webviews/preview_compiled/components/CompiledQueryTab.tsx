@@ -343,20 +343,21 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Filename + Compile Time + Format/Lint */}
-      <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
-              {fileName || " "}
-          </span>
-          <ProjectLabel project={state.project} />
+      {/* Filename + Format/Lint, and the compile info on a line of its own: its length does not move the buttons */}
+      <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded">
+                  {fileName || " "}
+              </span>
+              <button onClick={handleFormat} disabled={formatting || compiling} className="flex items-center px-2 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+                  <Wand2 className="w-3 h-3 mr-1.5" /> Format
+              </button>
+              <button onClick={handleLint} disabled={formatting || compiling} className="flex items-center px-2 py-1 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
+                  <ShieldCheck className="w-3 h-3 mr-1.5" /> Lint
+              </button>
+              <ProjectLabel project={state.project} />
+          </div>
           <CompilationInfoBadge info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
-          <div className="flex-grow"></div>
-          <button onClick={handleFormat} disabled={formatting || compiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-              <Wand2 className="w-3 h-3 mr-1.5" /> Format
-          </button>
-          <button onClick={handleLint} disabled={formatting || compiling} className="flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] rounded text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50">
-              <ShieldCheck className="w-3 h-3 mr-1.5" /> Lint
-          </button>
       </div>
 
       <DeferralBanner deferral={state.dataform.deferral} deferToProd={state.dataform.deferToProd} leftoverProxies={state.dataform.leftoverProxies} />
@@ -418,7 +419,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         <BigQueryTableLink
                           id={target}
                           showIcon={true}
-                          className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors"
+                          className="flex items-center text-sm font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] hover:underline transition-colors"
                           fallbackClassName="flex items-center text-sm font-mono text-[var(--vscode-errorForeground)]"
                         />
                         {model.type === 'notebook' && model.fileName && (

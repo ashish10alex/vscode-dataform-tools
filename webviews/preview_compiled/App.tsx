@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, MessageSquareWarning, Info, Settings, Clock, Terminal, Cloud } from 'lucide-react';
-import clsx from 'clsx';
+import { Loader2, Info, Settings, Terminal, Cloud } from 'lucide-react';
 import { vscode } from './utils/vscode';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -26,40 +25,7 @@ import { fileView } from './utils/fileView';
 import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
 import { DbtPanel } from './components/DbtPanel';
 import { ProjectInfoTab, useProjectInfoRequest } from './components/ProjectInfoTab';
-
-function HeaderRightActions({
-  snoozeEndTime,
-  onStartSnooze,
-}: {
-  snoozeEndTime?: number | null;
-  onStartSnooze?: () => void;
-}) {
-  const isSnoozed = !!(snoozeEndTime && snoozeEndTime > Date.now());
-
-  return (
-    <div className="flex items-center space-x-3">
-      {!isSnoozed && onStartSnooze && (
-        <button
-          onClick={onStartSnooze}
-          title="Snooze compilation for 5 minutes"
-          className="flex items-center text-xs text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded transition-colors"
-        >
-          <Clock className="w-3.5 h-3.5 mr-1" />
-          Snooze (5m)
-        </button>
-      )}
-      <a
-        href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-      >
-        Report an issue
-        <MessageSquareWarning className="w-3 h-3 ml-1" />
-      </a>
-    </div>
-  );
-}
+import { PanelHeader, HeaderTab, HeaderMenu } from './components/PanelHeader';
 
 /** The panel of a Dataform Project, and of a file in no Project */
 function DataformPanel({ state }: { state: PanelSlices }) {
@@ -89,7 +55,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   const remainingSec = isSnoozed ? Math.max(0, Math.ceil((state.dataform.snoozeEndTime! - now) / 1000)) : 0;
   const minutesLeft = Math.floor(remainingSec / 60);
   const secondsLeft = remainingSec % 60;
-  const timeLeftFormatted = `${minutesLeft}m ${secondsLeft.toString().padStart(2, "0")}s`;
+  const timeLeftFormatted = `${minutesLeft}:${secondsLeft.toString().padStart(2, "0")}`;
 
   const handleStartSnooze = () => {
     vscode.postMessage({ command: "dataform.startSnooze" });
@@ -195,13 +161,6 @@ function DataformPanel({ state }: { state: PanelSlices }) {
     }
   }, [fileName, activeTab, isPropertyGraphFile]);
 
-  const tabClass = (active: boolean) => clsx(
-    "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-    active
-      ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-      : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-  );
-
   // Handle declarations view (full page override)
   if (view.declarations && activeTab !== 'project') {
     return <DeclarationsView declarations={view.declarations} />;
@@ -210,105 +169,45 @@ function DataformPanel({ state }: { state: PanelSlices }) {
 
   return (
     <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
-      {/* Header / Tabs */}
-      <div className="flex items-center w-full p-4 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] z-10">
-        {/* Tab Navigation */}
-        {!isConfigFile && (
+      <PanelHeader
+        className="bg-[var(--vscode-sideBar-background)]"
+        tabs={isConfigFile ? (
           <>
-            <div className="flex items-center space-x-2 flex-1 min-w-0 overflow-x-auto scrollbar-thin">
-              <button
-                onClick={() => setActiveTab('compilation')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'compilation'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Compiled Query
-              </button>
-              {!isPropertyGraphFile && (
+            <HeaderTab active={activeTab !== 'project'} onClick={() => setActiveTab('project_config')}>
+              <Settings className="w-4 h-4 mr-1.5" />
+              Project Configuration
+            </HeaderTab>
+            <HeaderTab active={activeTab === 'project'} onClick={() => setActiveTab('project')} title="Project (P)">Project</HeaderTab>
+          </>
+        ) : (
+          <>
+            <HeaderTab active={activeTab === 'compilation'} onClick={() => setActiveTab('compilation')} title="Compiled Query (C)">Query</HeaderTab>
+            {!isPropertyGraphFile && (
               <>
-              <button
-                onClick={() => setActiveTab('schema')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'schema'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Schema
-              </button>
-              <button
-                onClick={() => setActiveTab('cost')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'cost'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Cost Estimator
-              </button>
-              <button
-                onClick={() => setActiveTab('workflow_urls')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'workflow_urls'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Workflow Executions
-              </button>
+                <HeaderTab active={activeTab === 'schema'} onClick={() => setActiveTab('schema')} title="Schema (S)">Schema</HeaderTab>
+                <HeaderTab active={activeTab === 'cost'} onClick={() => setActiveTab('cost')} title="Cost Estimator">Cost</HeaderTab>
+                <HeaderTab active={activeTab === 'workflow_urls'} onClick={() => setActiveTab('workflow_urls')} title="Workflow Executions (W)">Executions</HeaderTab>
               </>
-              )}
-              <button onClick={() => setActiveTab('project')} className={tabClass(activeTab === 'project')}>
-                Project
-              </button>
-            </div>
-            <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
+            )}
+            <HeaderTab active={activeTab === 'project'} onClick={() => setActiveTab('project')} title="Project (P)">Project</HeaderTab>
           </>
         )}
-
-        {isConfigFile && (
-          <div className="flex items-center w-full">
-            <div className="flex items-center space-x-2">
-              <button onClick={() => setActiveTab('project_config')} className={clsx(tabClass(activeTab !== 'project'), "flex items-center")}>
-                <Settings className="w-4 h-4 mr-2" />
-                Project Configuration
-              </button>
-              <button onClick={() => setActiveTab('project')} className={tabClass(activeTab === 'project')}>
-                Project
-              </button>
-            </div>
-            <div className="flex-grow"></div>
-
-            <HeaderRightActions snoozeEndTime={state.dataform.snoozeEndTime} onStartSnooze={handleStartSnooze} />
-          </div>
-        )}
-      </div>
-
-      {isSnoozed && (
-        <div className="flex items-center justify-between px-4 py-2 bg-[var(--vscode-inputValidation-warningBackground,rgba(255,200,0,0.1))] border-b border-[var(--vscode-inputValidation-warningBorder,var(--vscode-widget-border))] text-sm z-10">
-          <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4 text-[var(--vscode-inputValidation-warningForeground,var(--vscode-notificationsWarningIcon-foreground))]" />
-            <span className="font-medium text-[var(--vscode-foreground)]">
-              Compilation snoozed
-            </span>
-            <span className="text-xs text-[var(--vscode-descriptionForeground)]">
-              ({timeLeftFormatted} remaining)
-            </span>
-          </div>
-          <button
-            onClick={handleStopSnooze}
-            className="px-2.5 py-1 text-xs rounded bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] font-medium transition-colors border border-[var(--vscode-widget-border)]"
-          >
-            Stop Snooze
-          </button>
-        </div>
-      )}
+        actions={
+          <HeaderMenu
+            snoozeTimeLeft={isSnoozed ? timeLeftFormatted : undefined}
+            onStartSnooze={handleStartSnooze}
+            onStopSnooze={handleStopSnooze}
+            shortcuts={[
+              ...(isConfigFile ? [] : [{ label: 'Compiled Query', hint: 'C', onSelect: () => setActiveTab('compilation') }]),
+              ...(isConfigFile || isPropertyGraphFile ? [] : [
+                { label: 'Schema', hint: 'S', onSelect: () => setActiveTab('schema') },
+                { label: 'Workflow Executions', hint: 'W', onSelect: () => setActiveTab('workflow_urls') },
+              ]),
+              { label: 'Project', hint: 'P', onSelect: () => setActiveTab('project') },
+            ]}
+          />
+        }
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto p-4">
