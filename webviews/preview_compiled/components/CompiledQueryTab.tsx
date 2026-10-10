@@ -443,6 +443,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const lastRunTone: RowTone = runGoing ? "busy" : runFailed && freshRun ? "error" : "calm";
   const runDuration = workflowDurationMs(latestRun);
   const spinner = <Loader2 className="inline w-3.5 h-3.5 mr-1.5 align-middle animate-spin text-[var(--vscode-textLink-foreground)]" />;
+  // What the newest run was asked to run, in a few words: its tags, its one action, or the first of its actions and how many more
+  const ranTargets = latestRun?.includedTargets ?? [];
+  const whatRan = latestRun?.includedTags?.length
+    ? `tag${latestRun.includedTags.length === 1 ? "" : "s"} ${latestRun.includedTags.join(", ")}`
+    : ranTargets.length > 0
+      ? `${ranTargets[0].name}${ranTargets.length > 1 ? ` +${ranTargets.length - 1}` : ""}`
+      : "whole project";
   const lastRunSummary = pendingRun ? (
     <>{spinner}<span className="align-middle">{pendingRun.via === "cli" ? "CLI" : "API"} run {runStage(pendingRun.stages, pendingRun.via) ?? "starting"} · {clock(Date.now() - pendingRun.stages.invokedAt)}</span></>
   ) : submitting ? (
@@ -451,26 +458,41 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     <>
       {spinner}
       <span className="align-middle">
+        <span className="font-mono">{whatRan}</span>
         {[
-          latestRun.state === "CANCELING" ? "Stopping" : (latestRun.stages && !(latestRun.actions?.length) && runStage(latestRun.stages, runVia(latestRun))) || "Running",
+          "",
+          latestRun.state === "CANCELING" ? "stopping" : (latestRun.stages && !(latestRun.actions?.length) && runStage(latestRun.stages, runVia(latestRun))) || "running",
           clock(Date.now() - (latestRun.stages?.invokedAt ?? latestRun.invocationStartTime ?? latestRun.timestamp)),
           progress && progress.total > 0 ? `${progress.succeeded} of ${progress.total} ${latestRun.executionMode === "cli" ? "BigQuery jobs" : "actions"} done` : null,
           progress && progress.failed > 0 ? `${progress.failed} failed` : null,
-        ].filter(Boolean).join(" · ")}
+        ].filter((part) => part !== null && part !== undefined).join(" · ")}
       </span>
     </>
   ) : latestRun ? (
     <>
-      <span className="inline-block w-1.5 h-1.5 mr-1.5 rounded-full align-middle" style={{ background: runFailed || latestRun.state === "CANCELLED" ? "var(--vscode-errorForeground)" : "var(--vscode-testing-iconPassed, #4ec9b0)" }} />
+      {/* The dot says how it ended, so the line has room for what was run */}
+      <span
+        role="img"
+        aria-label={runFailed ? "Failed" : latestRun.state === "CANCELLED" ? "Cancelled" : latestRun.state === "SUCCEEDED" ? "Succeeded" : latestRun.state ?? "Unknown"}
+        title={runFailed ? "Failed" : latestRun.state === "CANCELLED" ? "Cancelled" : latestRun.state === "SUCCEEDED" ? "Succeeded" : latestRun.state ?? "Unknown"}
+        className="inline-block w-1.5 h-1.5 mr-1.5 rounded-full align-middle"
+        style={{ background: runFailed || latestRun.state === "CANCELLED" ? "var(--vscode-errorForeground, #f14c4c)" : latestRun.state === "SUCCEEDED" ? "var(--vscode-testing-iconPassed, #4ec9b0)" : "var(--vscode-descriptionForeground)" }}
+      />
       <span className="align-middle" title={lastRun?.detail}>
+        <span className="font-mono">{whatRan}</span>
         {[
-          runFailed ? "Failed" : latestRun.state === "CANCELLED" ? "Cancelled" : latestRun.state === "SUCCEEDED" ? "Succeeded" : (latestRun.state ?? "Unknown").toLowerCase(),
-          runFailed && progress && progress.total > 0 ? `${progress.failed} of ${progress.total} failed` : null,
+          "",
+          latestRun.includeDependencies ? "+deps" : null,
+          latestRun.includeDependents ? "+dependents" : null,
+          latestRun.fullRefresh ? "full refresh" : null,
+          runFailed ? (progress && progress.total > 0 ? `${progress.failed} of ${progress.total} failed` : "failed") : null,
+          latestRun.state === "CANCELLED" ? "cancelled" : null,
+          !runFailed && latestRun.state !== "CANCELLED" && latestRun.state !== "SUCCEEDED" ? (latestRun.state ?? "unknown").toLowerCase() : null,
           runDuration !== undefined ? formatDuration(runDuration) : null,
           latestRun.jobStatsSummary?.bytesBilledLabel ? `${latestRun.jobStatsSummary.bytesBilledLabel} billed` : null,
           latestRun.jobStatsSummary?.costLabel,
           formatAgo(latestRun.timestamp, now),
-        ].filter(Boolean).join(" · ")}
+        ].filter((part) => part !== null && part !== undefined).join(" · ")}
       </span>
     </>
   ) : lastRun ? (
