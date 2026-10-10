@@ -11,7 +11,7 @@ import { CancelWorkflowButton } from "./CancelWorkflowButton";
 import { SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
 import { clock, runVia } from "./RunStages";
 import { workflowDurationMs, useTick } from "./WorkflowActionsTable";
-import { ROW_BUTTON, ROW_PRIMARY_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
+import { ROW_BUTTON, ROW_LABEL, ROW_PRIMARY_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
 import { RunChangedButton } from "./RunChangedButton";
 import { RunBackend, RunSplitButton } from "./RunSplitButton";
 import { ApiRunGitChip } from "./ApiRunGitChip";
@@ -56,12 +56,6 @@ import { describeApiRunGitState } from "../../../src/shared/apiRunGitState";
 import { runProgress } from "../../../src/shared/cliRunJobs";
 import { runStage } from "../../../src/shared/runStages";
 import { formatDuration } from "../../../src/shared/jobTiming";
-
-const BUTTON_BASE = "py-1.5 rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
-const PRIMARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]`;
-const SECONDARY_BUTTON = `${BUTTON_BASE} px-3 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]`;
-// Full refresh rebuilds tables from scratch: the Run button takes the colour of its switch while it is on
-const FULL_REFRESH_COLOR = "var(--vscode-charts-orange, #d18616)";
 
 /**
  * A stat line ending in UNKNOWN_ACCURACY_STAT means BigQuery could not estimate the bytes.
@@ -436,26 +430,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     </button>
   );
 
-  // Run: what Run will do
+  // Run: there is something to run, and a compile to run it from
   const canRun = hasRunControls || showTestRun;
-  const gitSummary = runsViaApi ? describeApiRunGitState(state.dataform.apiRunGitState) : undefined;
-  const changedCount = state.dataform.changedActions?.status === "ready" ? state.dataform.changedActions.changed?.length ?? 0 : undefined;
-  const runTone: RowTone = !canRun || (compileFailed && models.length === 0) ? "off" : fullRefresh || (gitSummary && gitSummary.tone !== "muted") ? "warning" : "calm";
-  const runScope = [includeDependencies && "+deps", includeDependents && "+dependents"].filter(Boolean).join(" · ");
-  const runSummary = !canRun ? "nothing to run in this file" : runTone === "off" ? "needs a compile that succeeds" : (
-    <>
-      {fullRefresh && <RowChip tone="warning">full refresh</RowChip>}
-      <span className="align-middle" title={gitSummary?.tooltip}>
-        {[
-          hasRunnableActions || hasTags ? (runBackend === "api" ? "API" : "CLI") : null,
-          hasRunnableActions ? (runScope || "this file only") : runScope || null,
-          !hasRunnableActions && showTestRun ? "unit tests" : null,
-          gitSummary && gitSummary.tone !== "muted" ? gitSummary.label : null,
-          changedCount !== undefined ? `${changedCount} changed` : null,
-        ].filter(Boolean).join(" · ")}
-      </span>
-    </>
-  );
+  const runOff = !canRun || (compileFailed && models.length === 0);
 
   // Last run: what the newest run did, and what it is doing while it goes
   const latestEnded = !!latestRun?.state && TERMINAL_WORKFLOW_STATES.has(latestRun.state);
@@ -812,110 +789,102 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           </div>
         </SummaryRow>
 
-        <SummaryRow
-          label="Run"
-          tone={runTone}
-          summary={runSummary}
-          actions={hasRunnableActions ? (
-            <button
-              onClick={() => handleRun(runBackend)}
-              disabled={compiling || runningModel}
-              className={ROW_PRIMARY_BUTTON}
-              style={fullRefresh ? { background: FULL_REFRESH_COLOR, color: "var(--vscode-editor-background)" } : undefined}
-              title={`Run this file's actions via the Dataform ${runBackend === "api" ? "API" : "CLI"}${[includeDependencies && ", with dependencies", includeDependents && ", with dependents", fullRefresh && ", full refresh"].filter(Boolean).join("")}`}
-            >
-              {runningModel ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Run
-            </button>
-          ) : showTestRun ? (
-            <button onClick={handleRunTest} disabled={compiling} className={ROW_PRIMARY_BUTTON}>
-              <Play className="w-3 h-3" /> Run Tests
-            </button>
-          ) : undefined}
-        >
-          {canRun ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-              {showTestRun && (
-                <button onClick={handleRunTest} disabled={compiling} className={hasRunnableActions ? SECONDARY_BUTTON : PRIMARY_BUTTON}>
-                  <Play className="w-4 h-4 mr-1.5" /> Run Tests
-                </button>
-              )}
-              {(hasRunnableActions || hasTags) && (
-                <div ref={tagPopoverRef} className="relative">
-                  <RunSplitButton
-                    backend={runBackend}
+        {/* Run has nothing to open: its modifiers say what Run will do, and its buttons are at the row's end */}
+        <div className={clsx("border-b border-[var(--vscode-widget-border)] text-[12.5px]", runOff && "opacity-50")}>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-h-[30px] px-3 py-[3px]">
+            <span className={ROW_LABEL}>Run</span>
+            {runOff ? (
+              <span className="text-[var(--vscode-foreground)]">{canRun ? "needs a compile that succeeds" : "nothing to run in this file"}</span>
+            ) : (
+              <>
+                {hasRunControls && (
+                  <div role="group" aria-label="Run modifiers" className="flex items-center gap-1 flex-shrink-0">
+                    <ModifierSwitch chip label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Include dependencies (--include-deps)" />
+                    <ModifierSwitch chip label="+Dependents" checked={includeDependents} onChange={setIncludeDependents} title="Include dependents (--include-dependents)" />
+                    <ModifierSwitch chip label="Full refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental tables from scratch (--full-refresh)" warning />
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 ml-auto">
+                  {showTestRun && (
+                    <button onClick={handleRunTest} disabled={compiling} className={hasRunnableActions ? ROW_BUTTON : ROW_PRIMARY_BUTTON}>
+                      <Play className="w-3 h-3" /> Run Tests
+                    </button>
+                  )}
+                  <RunChangedButton
+                    compact
+                    changedActions={state.dataform.changedActions}
                     isRemoteMode={isRemoteMode}
-                    hasTags={hasTags}
-                    tagsOnly={!hasRunnableActions}
-                    running={runningModel}
-                    disabled={compiling}
-                    onRun={handleRun}
-                    onBackendChange={setPreferredBackend}
-                    onRunTag={() => setTagPopoverOpen(true)}
+                    disabled={runningModel || compiling}
+                    includeDependencies={includeDependencies}
+                    includeDependents={includeDependents}
+                    fullRefresh={fullRefresh}
+                    onApiRunDispatched={() => setSubmittingSince(Date.now())}
                   />
-                  {tagPopoverOpen && (
-                    <div
-                      role="dialog"
-                      aria-label="Run by tag"
-                      onKeyDown={handleTagPopoverKeyDown}
-                      className="absolute top-full left-0 mt-1 z-20 w-[min(320px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
-                    >
-                      <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run via the Dataform {runBackend === "api" ? "API" : "CLI"}:</p>
-                      <StyledMultiSelect
-                        options={tagOptions}
-                        value={selectedTagRunOptions}
-                        onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
-                        onMenuOpen={() => setTagMenuOpen(true)}
-                        onMenuClose={() => setTagMenuOpen(false)}
-                        placeholder="Search and select tags..."
-                        isSearchable
-                        closeMenuOnSelect
-                        blurInputOnSelect={false}
-                        autoFocus
+                  {(hasRunnableActions || hasTags) && (
+                    <div ref={tagPopoverRef} className="relative">
+                      <RunSplitButton
+                        compact
+                        warning={fullRefresh}
+                        backend={runBackend}
+                        isRemoteMode={isRemoteMode}
+                        hasTags={hasTags}
+                        tagsOnly={!hasRunnableActions}
+                        running={runningModel}
+                        disabled={compiling}
+                        onRun={handleRun}
+                        onBackendChange={setPreferredBackend}
+                        onRunTag={() => setTagPopoverOpen(true)}
                       />
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
-                        <button
-                          onClick={() => setTagPopoverOpen(false)}
-                          className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
+                      {tagPopoverOpen && (
+                        <div
+                          role="dialog"
+                          aria-label="Run by tag"
+                          onKeyDown={handleTagPopoverKeyDown}
+                          className="absolute top-full right-0 mt-1 z-20 w-[min(320px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
                         >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => { handleRunTag(); setTagPopoverOpen(false); }}
-                          disabled={selectedTagsForRun.length === 0}
-                          className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
-                        >
-                          <Play className="w-3.5 h-3.5 mr-1.5" /> {runTagLabel}
-                          <span className="ml-2 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
-                        </button>
-                      </div>
+                          <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run via the Dataform {runBackend === "api" ? "API" : "CLI"}:</p>
+                          <StyledMultiSelect
+                            options={tagOptions}
+                            value={selectedTagRunOptions}
+                            onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
+                            onMenuOpen={() => setTagMenuOpen(true)}
+                            onMenuClose={() => setTagMenuOpen(false)}
+                            placeholder="Search and select tags..."
+                            isSearchable
+                            closeMenuOnSelect
+                            blurInputOnSelect={false}
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
+                            <button
+                              onClick={() => setTagPopoverOpen(false)}
+                              className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => { handleRunTag(); setTagPopoverOpen(false); }}
+                              disabled={selectedTagsForRun.length === 0}
+                              className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                            >
+                              <Play className="w-3.5 h-3.5 mr-1.5" /> {runTagLabel}
+                              <span className="ml-2 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-              <RunChangedButton
-                changedActions={state.dataform.changedActions}
-                isRemoteMode={isRemoteMode}
-                disabled={runningModel || compiling}
-                includeDependencies={includeDependencies}
-                includeDependents={includeDependents}
-                fullRefresh={fullRefresh}
-                onApiRunDispatched={() => setSubmittingSince(Date.now())}
-              />
-              {hasRunControls && (
-                <div role="group" aria-label="Run modifiers" className="flex flex-wrap items-center gap-1.5">
-                  <ModifierSwitch label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Include dependencies (--include-deps)" />
-                  <ModifierSwitch label="+Dependents" checked={includeDependents} onChange={setIncludeDependents} title="Include dependents (--include-dependents)" />
-                  <ModifierSwitch label="Full Refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental tables from scratch (--full-refresh)" warning />
-                </div>
-              )}
-              {runsViaApi && (
-                <div className="basis-full">
-                  <ApiRunGitChip state={state.dataform.apiRunGitState} />
-                </div>
-              )}
-            </div>
-          ) : null}
-        </SummaryRow>
+                {runsViaApi && describeApiRunGitState(state.dataform.apiRunGitState) && (
+                  <div className="basis-full flex justify-end pb-0.5">
+                    <ApiRunGitChip state={state.dataform.apiRunGitState} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
 
         <SummaryRow
           label="Last run"

@@ -18,6 +18,9 @@ const TONE_COLOR: Record<RowTone, string | undefined> = {
 export const ROW_BUTTON = "flex items-center gap-1 h-6 px-2 rounded text-xs whitespace-nowrap bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
 export const ROW_PRIMARY_BUTTON = "flex items-center gap-1 h-6 px-2 rounded text-xs whitespace-nowrap bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
 
+/** The name of a row, in the column the names of all the rows are in */
+export const ROW_LABEL = "w-[62px] flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]";
+
 /** A value of a row's summary that is set apart from the words around it */
 export function RowChip({ tone = "calm", title, children }: { tone?: RowTone; title?: string; children: ReactNode }) {
   const color = TONE_COLOR[tone];
@@ -96,7 +99,7 @@ export function SummaryRow({ label, tone = "calm", summary, openSummary, actions
           title={canOpen ? (open ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`) : undefined}
           className="flex items-center gap-2 flex-1 min-w-0 h-[30px] text-left bg-transparent border-0 enabled:cursor-pointer enabled:hover:opacity-80 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]"
         >
-          <span className="w-[62px] flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]" style={color ? { color } : undefined}>{label}</span>
+          <span className={ROW_LABEL} style={color ? { color } : undefined}>{label}</span>
           <span className="flex-1 min-w-0 truncate text-[var(--vscode-foreground)]">{open && openSummary !== undefined ? openSummary : summary}</span>
         </button>
         {(open && openActions !== undefined ? openActions : actions) && <div className="flex items-center gap-1.5 flex-shrink-0">{open && openActions !== undefined ? openActions : actions}</div>}

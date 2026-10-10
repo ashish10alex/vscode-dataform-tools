@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
 import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
@@ -44,6 +45,8 @@ interface RunChangedButtonProps {
   fullRefresh: boolean;
   /** Dataform only */
   onApiRunDispatched?: () => void;
+  /** As small as a button of a summary row, and second to the Run button beside it */
+  compact?: boolean;
 }
 
 /** The project is nearly always the same, so only the dataset (muted) and name are shown. */
@@ -170,6 +173,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   includeDependents,
   fullRefresh,
   onApiRunDispatched,
+  compact = false,
 }) => {
   const dbt = backend === "dbt";
   const [open, setOpen] = useState(false);
@@ -323,14 +327,19 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
       <button
         onClick={toggle}
         disabled={disabled}
-        className="pl-3 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
+        className={clsx(
+          compact
+            ? "h-6 pl-2 pr-1 text-xs whitespace-nowrap bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]"
+            : "pl-3 pr-2 py-1.5 text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]",
+          "rounded flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
+        )}
         title={noChanges ? `No changes ${comparison}. Click to recheck` : `Run only the actions changed ${comparison}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <GitCompare className="w-4 h-4 mr-1.5" /> Run Changed
+        <GitCompare className={compact ? "w-3 h-3 mr-1" : "w-4 h-4 mr-1.5"} /> {compact ? "Changed" : "Run Changed"}
         {status === "ready" && (
-          <span className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--vscode-button-foreground) 25%, transparent)" }}>
+          <span className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, currentColor 22%, transparent)" }}>
             {changed.length}
           </span>
         )}
