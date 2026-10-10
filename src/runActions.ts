@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { withRunFeedback } from './runFeedback';
 import { compiledGraph } from './project';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { ActionId, isRunnable, runSelection } from './shared/compiledGraph';
@@ -13,7 +14,11 @@ import { resolveExecutionMode } from './utils/remoteCompiler';
  * is then, as a run of the open file does; else as the actions. Resolves to true when it created a workflow
  * invocation on the pushed branch.
  */
-export async function runActions(context: vscode.ExtensionContext, ids: ActionId[], scope: RunScope, executionMode: ExecutionMode): Promise<boolean> {
+export function runActions(...args: Parameters<typeof runActionsNow>): ReturnType<typeof runActionsNow> {
+    return withRunFeedback(args[3], () => runActionsNow(...args));
+}
+
+async function runActionsNow(context: vscode.ExtensionContext, ids: ActionId[], scope: RunScope, executionMode: ExecutionMode): Promise<boolean> {
     executionMode = resolveExecutionMode(executionMode);
     const workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) {

@@ -36,6 +36,8 @@ interface DataTableProps<TData, TValue> {
   onExpandedChange?: OnChangeFn<ExpandedState>
   /** Where the row built from the columns' `footer` defs goes. Defaults to 'bottom'. */
   footerPosition?: 'top' | 'bottom'
+  /** Keeps the first column in view while the table is scrolled sideways: for a table whose first column names the row */
+  stickyFirstColumn?: boolean
 }
 
 function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, unknown>; shouldAutoFocus: boolean }) {
@@ -79,6 +81,7 @@ export function DataTable<TData, TValue>({
   expanded,
   onExpandedChange,
   footerPosition = 'bottom',
+  stickyFirstColumn = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -122,6 +125,11 @@ export function DataTable<TData, TValue>({
     }
   });
 
+  // A cell that stays put is drawn over the ones that scroll under it, so it has a background of its own; the row's
+  // hover colour, which may be see-through, is laid over that
+  const stuck = (index: number, background: string) => stickyFirstColumn && index === 0
+    ? ` sticky left-0 z-[5] ${background} group-hover/row:[background-image:linear-gradient(var(--vscode-list-hoverBackground),var(--vscode-list-hoverBackground))]`
+    : '';
   const hasFooter = table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer));
 
   return (
@@ -131,12 +139,12 @@ export function DataTable<TData, TValue>({
           <thead className="text-xs uppercase bg-[var(--vscode-sideBarSectionHeader-background)] text-[var(--vscode-foreground)] shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
+                {headerGroup.headers.map((header, index) => {
                   return (
                     <th 
                       key={header.id} 
                       className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] group bg-[var(--vscode-sideBarSectionHeader-background)]"
-                      style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10 }}
+                      style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10, ...(stickyFirstColumn && index === 0 ? { left: 0, zIndex: 11 } : {}) }}
                     >
                       {header.isPlaceholder ? null : (
                         <div className="space-y-2">
@@ -187,8 +195,8 @@ export function DataTable<TData, TValue>({
           <tbody className="divide-y divide-[var(--vscode-widget-border)]">
             {hasFooter && footerPosition === 'top' && table.getFooterGroups().map((footerGroup) => (
               <tr key={footerGroup.id} className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)]">
-                {footerGroup.headers.map((header) => (
-                  <td key={header.id} className="px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]">
+                {footerGroup.headers.map((header, index) => (
+                  <td key={header.id} className={`px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]${stuck(index, 'bg-[var(--vscode-sideBarSectionHeader-background)]')}`}>
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.footer, header.getContext())}
                   </td>
                 ))}
@@ -199,14 +207,14 @@ export function DataTable<TData, TValue>({
                 <tr
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
-                  className={`bg-[var(--vscode-editor-background)] transition-colors ${
+                  className={`group/row bg-[var(--vscode-editor-background)] transition-colors ${
                     onRowClick ? 'cursor-pointer hover:bg-[var(--vscode-list-hoverBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
                   }`}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map((cell, index) => (
                     <td 
                       key={cell.id} 
-                      className="px-4 py-2 break-words align-top border-r border-[var(--vscode-widget-border)]"
+                      className={`px-4 py-2 break-words align-top border-r border-[var(--vscode-widget-border)]${stuck(index, 'bg-[var(--vscode-editor-background)]')}`}
                       style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

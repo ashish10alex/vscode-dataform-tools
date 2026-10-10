@@ -48,7 +48,9 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
                 }
             }}
             className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-[var(--vscode-errorForeground)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--vscode-errorForeground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
-            title="Stop the run: running actions are cancelled and pending ones skipped (cancels the Dataform workflow invocation)"
+            title={entry.executionMode === 'cli'
+                ? 'Stop the run: its running BigQuery jobs are cancelled, and those it starts until it ends (asks first)'
+                : 'Stop the run: running actions are cancelled and pending ones skipped (cancels the Dataform workflow invocation)'}
             aria-label="Stop workflow run"
         >
             <CircleStop className="w-3 h-3" />

@@ -69,7 +69,7 @@ suite('project info: where a setting comes from', () => {
 suite('project info: the slice', () => {
     test('five sections, the same for both Backends', () => {
         const names = (slice: ProjectInfoSlice) => slice.sections.map((section) => section.name);
-        const expected = ['project', 'binaries', 'settings', 'google cloud', 'git'];
+        const expected = ['project', 'binaries', 'google cloud', 'git', 'settings'];
         assert.deepStrictEqual(names(projectInfoSlice(dataform())), expected);
         assert.deepStrictEqual(names(projectInfoSlice({ ...dataform(), backend: 'dbt', settingsFile: 'dbt_project.yml', compilationMode: undefined })), expected);
     });

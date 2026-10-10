@@ -29,6 +29,8 @@ import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
+import { initCliRunJobs } from './cliRunJobs';
+import { initRunFeedback } from './runFeedback';
 import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, onDidPostPanelMessage, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
@@ -104,6 +106,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     initRemoteCompiler(context);
     initLastRun(context);
+    initRunFeedback(context);
+    initCliRunJobs(context);
     initChangedActions(context);
     initProjects(context);
     initDbtTools(context);
@@ -349,8 +353,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.openLastWorkflowExecution', async () => {
         const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-        const lastEntry = workflowUrls[workflowUrls.length - 1];
-        if (!lastEntry?.url) {
+        // A CLI run has no page to open
+        const lastEntry = workflowUrls.filter((entry) => entry.url).pop();
+        if (!lastEntry) {
             vscode.window.showInformationMessage('No workflow execution found. Run a file or tag using the API first.');
             return;
         }
