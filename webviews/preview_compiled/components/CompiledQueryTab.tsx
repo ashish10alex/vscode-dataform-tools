@@ -809,14 +809,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                             {shownTags.length === 0 && <span className="py-1 italic text-[var(--vscode-descriptionForeground)]">No tag has "{tagFilter}" in its name</span>}
                           </div>
                           <div className="flex items-center gap-2 px-2.5 py-2 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))]">
-                            <span className="text-[var(--vscode-descriptionForeground)]">{selectedTagsForRun.length === 0 ? "None chosen" : `${selectedTagsForRun.length} chosen`}</span>
+                            {/* The chosen tags by name: the filter can have them out of the list above */}
+                            <span className="min-w-0 truncate text-[var(--vscode-descriptionForeground)]" title={selectedTagsForRun.join(", ")}>
+                              {selectedTagsForRun.length === 0 ? "None chosen" : <span className="font-mono text-[var(--vscode-foreground)]">{selectedTagsForRun.join(", ")}</span>}
+                            </span>
                             {selectedTagsForRun.length > 0 && (
-                              <button onClick={() => setSelectedTagsForRun([])} className="bg-transparent border-0 p-0 text-[var(--vscode-textLink-foreground)] hover:underline">Clear</button>
+                              <button onClick={() => setSelectedTagsForRun([])} className="flex-shrink-0 bg-transparent border-0 p-0 text-[var(--vscode-textLink-foreground)] hover:underline">Clear</button>
                             )}
                             <button
                               onClick={() => { handleRunTag(); setTagPopoverOpen(false); }}
                               disabled={selectedTagsForRun.length === 0}
-                              className={clsx(ROW_PRIMARY_BUTTON, "ml-auto")}
+                              className={clsx(ROW_PRIMARY_BUTTON, "ml-auto flex-shrink-0")}
                             >
                               <Play className="w-3 h-3" /> {runTagLabel}
                               <span className="ml-1 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
