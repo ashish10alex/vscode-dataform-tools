@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: football_data
+    tables:
+      - name: TRANSFERS
+      - name: PLAYERS
+      - name: CLUBS
+
+models:
+  - name: fct_player_transfers
+    description: The most expensive Manchester United signing of each season
+    config:
+      tags: ["transfers"]
+    columns:
+      - name: player_id
+        description: Unique identifier of a player
+      - name: transfer_date
+        description: Date the player moved from one club to the other
+      - name: transfer_season
+        description: Season of the transfer, e.g. 24/25
+      - name: transfer_fee
+        description: Fee paid, in euros

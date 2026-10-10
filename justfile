@@ -82,6 +82,43 @@ record-panel:
     UPDATE_PANEL_RECORDINGS=1 npx vscode-test --label panel
     git status --short src/panelRecordings/recordings
 
+# Builds the webviews, copies their bundle to website/public/demo, then checks every state in a headless browser
+# and retakes the hero's screenshots. Needs `npx playwright install chromium` once. Commit what it changes.
+# Rebuild the website's live demo from the panel as it is in this checkout
+website-demo:
+    npm run build:webviews
+    node scripts/demo/copy-bundle.mjs
+    node scripts/demo/check.mjs
+
+# gcp_project must hold the tables of website/demo/data/seed.sql. Runs the model once with the Dataform CLI and
+# once with dbt. The states are renamed and checked for leaks (scripts/demo/build-states.mjs) before they reach website/.
+# Record the live demo's states again from the demo Projects (website/demo), against real BigQuery
+website-demo-capture gcp_project:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    work=/tmp/vdt-demo
+    rm -rf "$work" /tmp/vdt-demo-ud
+    mkdir -p "$work"
+    cp -R website/demo/dataform "$work/football"
+    cp -R website/demo/dbt "$work/football-dbt"
+    grep -rl "football-analytics-dev" "$work" | xargs sed -i '' "s/football-analytics-dev/{{gcp_project}}/g"
+    printf '{"projectId": "{{gcp_project}}", "location": "europe-west2"}\n' > "$work/football/.df-credentials.json"
+    for project in football football-dbt; do
+        (cd "$work/$project" && git init -q -b main && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "demo")
+    done
+    npm run compile
+    DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-dataform" DEMO_FILE=definitions/fct_player_transfers.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    rm -rf /tmp/vdt-demo-ud
+    DEMO_WORKSPACE="$work/football-dbt" DEMO_OUT="$work/out-dbt" DEMO_FILE=models/fct_player_transfers.sql \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    (cd "$work/football" && dataform run --actions fct_player_transfers) > "$work/terminal-dataform.txt" 2>&1
+    (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select football.fct_player_transfers --target dev --profiles-dir .) > "$work/terminal-dbt.txt" 2>&1
+    bq query --use_legacy_sql=false --project_id={{gcp_project}} --location=europe-west2 --format=json --max_rows=100 \
+        'SELECT * FROM analytics.fct_player_transfers ORDER BY transfer_date DESC' > "$work/rows.json"
+    node scripts/demo/build-states.mjs "$work" {{gcp_project}}
+    just website-demo
+
 # Set BENCH_GCP_PROJECT for real BigQuery dry runs, BENCH_ITERATIONS to change the 10 runs per loop.
 # macOS only (like `just test`) and needs the Dataform CLI on PATH.
 # Benchmark startup, save -> preview and editor switch on a generated project

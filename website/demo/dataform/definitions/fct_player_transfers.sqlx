@@ -1,0 +1,28 @@
+config {
+  type: "table",
+  description: "The most expensive Manchester United signing of each season",
+  tags: ["transfers"],
+  columns: {
+    transfer_date: "Date the player moved from one club to the other",
+    ...docs.columnDescriptions
+  }
+}
+
+WITH transfers AS (
+  SELECT * FROM ${ref("TRANSFERS")}
+)
+
+, signings AS (
+  SELECT *
+  FROM transfers
+  WHERE to_club_id = ${params.MANCHESTER_UNITED_CLUB_ID}
+)
+
+SELECT *
+FROM signings
+QUALIFY
+  ROW_NUMBER() OVER (
+    PARTITION BY transfer_season
+    ORDER BY transfer_fee DESC
+  ) = 1
+ORDER BY transfer_date DESC
